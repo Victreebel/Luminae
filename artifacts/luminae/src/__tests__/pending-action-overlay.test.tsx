@@ -1,0 +1,56 @@
+import React from 'react';
+import { fireEvent, render, screen } from '@testing-library/react';
+import { describe, expect, it, vi } from 'vitest';
+import { PendingActionOverlay } from '../pages/game-card';
+import { ForgeDeckPile } from '../pages/game-board-forge-deck';
+
+describe('PendingActionOverlay', () => {
+  it('keeps a compact Forge plan legible and cancels without activating its card', () => {
+    const onCancel = vi.fn();
+    const onCardTap = vi.fn();
+
+    render(
+      <div onClick={onCardTap}>
+        <PendingActionOverlay
+          label="Forge pending"
+          compact
+          onCancel={onCancel}
+        />
+      </div>,
+    );
+
+    expect(screen.getByText('Forge')).toBeInTheDocument();
+    expect(screen.getByText('pending')).toBeInTheDocument();
+
+    fireEvent.click(screen.getByRole('button', { name: 'Cancel pending Forge' }));
+
+    expect(onCancel).toHaveBeenCalledTimes(1);
+    expect(onCardTap).not.toHaveBeenCalled();
+  });
+
+  it('gives a pending Encrypt plan a separate cancel button from the Archive', () => {
+    const onCancelPlan = vi.fn();
+    const onDeckTap = vi.fn();
+
+    const { container } = render(
+      <ForgeDeckPile
+        deckCount={12}
+        deckDisabled={false}
+        deckTitle="Cancel pending encrypt"
+        forgeCompact
+        isDeckPending
+        onCancelPlan={onCancelPlan}
+        onDeckTap={onDeckTap}
+        showAvatarSeed={false}
+        tier={1}
+      />,
+    );
+
+    fireEvent.click(screen.getByRole('button', { name: 'Cancel pending Encrypt' }));
+
+    expect(onCancelPlan).toHaveBeenCalledTimes(1);
+    expect(onDeckTap).not.toHaveBeenCalled();
+    expect(container.querySelector('button button')).toBeNull();
+    expect(screen.getByRole('button', { name: /Tier 1 Archive/ })).toBeInTheDocument();
+  });
+});

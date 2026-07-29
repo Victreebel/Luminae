@@ -4,11 +4,11 @@ import { DevTutorialNav } from "./DevTutorialNav";
 import { TutorialDebugOverlay } from "./TutorialDebugOverlay";
 import { CipherApertureAnimation } from "@/components/CipherApertureAnimation";
 import { saveTutorialProgress, saveTutorialProgressId, saveTutorialState, loadTutorialState, clearTutorialProgress, markTutorialSeen, hasTutorialSeen, markTutorialComplete, markIntroSeen } from "@/lib/tutorialProgress";
-import { Sparkles, RotateCcw, Undo2, X, Lock, Volume2, VolumeX, Hammer, Droplets, Hand } from "lucide-react";
+import { RotateCcw, Undo2, X, Volume2, VolumeX, Hammer, Droplets, Hand } from "lucide-react";
 import { motion, AnimatePresence, useReducedMotion, useMotionValue, animate as fmAnimate } from "framer-motion";
 import { useIsMobile } from "@/hooks/use-mobile";
 import { useLocation } from "wouter";
-import { GEM_META, GEM_KEYS, type GemKey } from "@/lib/gemMeta";
+import { AFFINITY_META, AFFINITY_KEYS, type AffinityKey } from "@/lib/affinityMeta";
 import {
   TUTORIAL_BEATS,
   TUTORIAL_CARDS,
@@ -22,7 +22,7 @@ import {
   BEAT_INDEX,
   VERDANCE_LUMINARY_ID,
   type TutorialCard as TutorialCardData,
-  type TutorialMarketView,
+  type TutorialForgeView,
 } from "@/lib/tutorialData";
 import {
   INIT_STATE,
@@ -36,11 +36,11 @@ import { LuminaryArrivalCutscene, LuminaryPanelArt } from "@/lib/luminaryAssets"
 import { BOARD_CARD_W, BOARD_CARD_H } from "@/lib/constants";
 import { CardBackTier1, CardBackTier2, CardBackTier3 } from "@/components/ArtifactCardBack";
 import { AffinityEmblem } from "@/components/AffinityEmblem";
-import { ArtifactCardView, EminenceDiamond, EminenceProgress } from "@/pages/game-card";
+import { ArtifactCardView, EminenceBadge, EminenceDiamond, EminenceProgress } from "@/pages/game-card";
 import { ForgeAnimation } from "@/pages/game-forge-animation";
 import { AffinityWellCells } from "@/components/AffinityWell";
 import { EncryptButton, ForgeButton } from "@/components/ForgeEncryptButton";
-import { addAiPlayer, createRoom, startGame, type ArtifactCard, type CrystalCounts, type GamePlayerState, type GameState } from "@workspace/api-client-react";
+import { addAiPlayer, createRoom, startGame, type ArtifactCard, type AffinityCounts } from "@workspace/api-client-react";
 import { OpponentChip } from "@/pages/game-player";
 import { gameAudio } from "@/lib/audio";
 import { getAccountSession, getAccountToken } from "@/lib/accountSession";
@@ -62,25 +62,33 @@ function asGameCard(card: TutorialCardData): ArtifactCard {
   return {
     id: card.id,
     tier: card.tier,
-    bonusColor: card.bonusColor === "flux" ? "pearl" : card.bonusColor,
-    lumens: card.lumens,
-    cost: card.cost,
+    bonusAffinity: card.bonusAffinity === "singularity" ? "radiance" : card.bonusAffinity,
+    eminence: card.eminence,
+    cost: {
+      flare: 0,
+      radiance: 0,
+      verdance: 0,
+      continuum: 0,
+      abyss: 0,
+      singularity: 0,
+      ...card.cost,
+    },
     name: card.name,
     flavor: "A guided Luminae artifact.",
   };
 }
 
-// ─── Gem images ───────────────────────────────────────────────────────────────
-const ALL_GEMS: GemKey[] = GEM_KEYS;
+// ─── Affinity emblems ─────────────────────────────────────────────────────────
+const ALL_AFFINITIES: AffinityKey[] = [...AFFINITY_KEYS];
 
 // ─── LumiiOrb zone palette (mirrors LumiiTutorial.tsx ZONE_PALETTE) ───────────
 // Each row is 6 node colours subtly shifted toward the zone's affinity theme.
 // "none" restores the default full-spectrum palette.
-const LUMII_ORB_ZONE_PALETTE: Record<"harvest" | "market" | "filters" | "luminaries" | "none", readonly string[]> = {
+const LUMII_ORB_ZONE_PALETTE: Record<"well" | "forge" | "filters" | "luminaries" | "none", readonly string[]> = {
   none:       ["#f97316", "#3b82f6", "#22c55e", "#a855f7", "#e2e8f0", "#fbbf24"],
-  harvest:    ["#f97316", "#60a5fa", "#86c874", "#cb7c40", "#fde8b0", "#f5a332"],
+  well:       ["#f97316", "#60a5fa", "#86c874", "#cb7c40", "#fde8b0", "#f5a332"],
   luminaries: ["#d97b9a", "#818cf8", "#6fc4b0", "#a855f7", "#e2e8f0", "#d4b8f5"],
-  market:     ["#f5a832", "#90b8e8", "#98c87a", "#c48cd4", "#f0e4c0", "#fbbf24"],
+  forge:      ["#f5a832", "#90b8e8", "#98c87a", "#c48cd4", "#f0e4c0", "#fbbf24"],
   filters:    ["#f5a832", "#90b8e8", "#98c87a", "#c48cd4", "#f0e4c0", "#fbbf24"],
 };
 
@@ -104,10 +112,9 @@ const ORB_EMBERS: OrbEmberDef[] = [
   { angle: 340, r0f: 0.29, r1f: 0.62, szf: 0.072, col: EMBER_PALETTE_ORB[4], delay: 0.8, dur: 1.7 },
 ];
 
-function LumiiOrb({ size = 64, excited = false, highlightZone = null, beatKey: _beatKey, muted = false }: { size?: number; excited?: boolean; highlightZone?: "harvest" | "market" | "filters" | "luminaries" | null; beatKey?: string | number; muted?: boolean }) {
+function LumiiOrb({ size = 64, excited = false, highlightZone = null, beatKey: _beatKey, muted = false }: { size?: number; excited?: boolean; highlightZone?: "well" | "forge" | "filters" | "luminaries" | null; beatKey?: string | number; muted?: boolean }) {
   const prefersReducedMotion = useReducedMotion();
   const isMobile = useIsMobile();
-  const blur = Math.round(size * 0.45);
   const mask = "radial-gradient(circle, rgba(0,0,0,0.95) 22%, rgba(0,0,0,0.45) 52%, transparent 74%)";
   const p = muted ? MUTED_ORB_PALETTE : LUMII_ORB_ZONE_PALETTE[highlightZone ?? "none"];
   // Build conic gradients from zone palette so colour tinting stays consistent
@@ -127,13 +134,13 @@ function LumiiOrb({ size = 64, excited = false, highlightZone = null, beatKey: _
       {isMobile ? (
         <div
           className={glowClass}
-          style={{ position: "absolute", inset: "-62%", borderRadius: "50%", background: outerBg, filter: `blur(${blur}px)`, ['--lum-dur' as string]: glowDur }}
+          style={{ position: "absolute", inset: "-62%", borderRadius: "50%", background: outerBg, opacity: 0.42, ['--lum-dur' as string]: glowDur }}
         />
       ) : (
         <motion.div
           animate={{ scale: excited ? [1, 1.4, 1.1, 1.4, 1] : [1, 1.18, 1], opacity: excited ? [0.7, 1, 0.78, 1, 0.7] : [0.52, 0.84, 0.52] }}
           transition={{ duration: excited ? 1.6 : 3.8, repeat: Infinity, ease: "easeInOut" }}
-          style={{ position: "absolute", inset: "-62%", borderRadius: "50%", background: outerBg, filter: `blur(${blur}px)` }}
+          style={{ position: "absolute", inset: "-62%", borderRadius: "50%", background: outerBg }}
         />
       )}
       <div
@@ -214,20 +221,20 @@ function LumiiOrb({ size = 64, excited = false, highlightZone = null, beatKey: _
   );
 }
 
-// ─── MiniGem ──────────────────────────────────────────────────────────────────
-function MiniGem({ gem, size = 14 }: { gem: GemKey; size?: number }) {
-  return <AffinityEmblem color={gem} size={size} />;
+// ─── AffinityToken ──────────────────────────────────────────────────────────────────
+function AffinityToken({ affinity, size = 14 }: { affinity: AffinityKey; size?: number }) {
+  return <AffinityEmblem color={affinity} size={size} />;
 }
 
 // ─── Rich dialogue text ───────────────────────────────────────────────────────
-// Replaces bare affinity names in dialogue text with name + inline MiniGem icon.
-const AFFINITY_TOKENS: { name: string; gem: GemKey }[] = [
-  { name: "Radiance",    gem: "pearl"    },
-  { name: "Flare",       gem: "ruby"     },
-  { name: "Continuum",   gem: "sapphire" },
-  { name: "Verdance",    gem: "emerald"  },
-  { name: "Abyss",       gem: "onyx"     },
-  { name: "Singularity", gem: "flux"     },
+// Replaces bare affinity names in dialogue text with name + inline AffinityToken icon.
+const AFFINITY_TOKENS: { name: string; affinity: AffinityKey }[] = [
+  { name: "Radiance",    affinity: "radiance"    },
+  { name: "Flare",       affinity: "flare"     },
+  { name: "Continuum",   affinity: "continuum" },
+  { name: "Verdance",    affinity: "verdance"  },
+  { name: "Abyss",       affinity: "abyss"     },
+  { name: "Singularity", affinity: "singularity"     },
 ];
 const AFFINITY_RE = new RegExp(`(${AFFINITY_TOKENS.map(t => t.name).join("|")})`, "g");
 
@@ -238,7 +245,7 @@ function renderRichText(text: string): React.ReactNode {
     if (!token) return part;
     return (
       <span key={i} className="inline-flex items-center gap-0.5 align-middle">
-        {part}<MiniGem gem={token.gem} size={11} />
+        {part}<AffinityToken affinity={token.affinity} size={11} />
       </span>
     );
   });
@@ -292,7 +299,7 @@ function DialogueBox({
       className="relative"
     >
       <div
-        className={`bg-slate-950/95 border border-white/10 rounded-2xl px-5 py-4 max-w-sm mx-auto shadow-2xl backdrop-blur-md select-none ${canTap ? "cursor-pointer active:scale-[0.985]" : ""}`}
+        className={`tutorial-dialogue-card bg-slate-950/95 border border-white/10 rounded-2xl px-5 py-4 max-w-sm mx-auto shadow-2xl select-none ${canTap ? "cursor-pointer active:scale-[0.985]" : ""}`}
         onClick={canTap ? () => {
           if (tappingRef.current) return;
           tappingRef.current = true;
@@ -305,9 +312,9 @@ function DialogueBox({
         <div className="flex items-start gap-3">
           {showOrb && <LumiiOrb size={32} excited={!!nudge} highlightZone={null} muted={muted} />}
           <div className="flex-1">
-            <p className="text-sm text-white/90 leading-relaxed">{renderRichText(text)}</p>
+            <p className="tutorial-dialogue-text text-sm text-white/90 leading-relaxed">{renderRichText(text)}</p>
             {hintText && (
-              <p className="text-[10px] text-white/35 mt-2 tut-hint-twinkle">{hintText}</p>
+              <p className="tutorial-dialogue-hint text-[10px] text-white/35 mt-2 tut-hint-twinkle">{hintText}</p>
             )}
           </div>
         </div>
@@ -400,7 +407,7 @@ function CostCallout() {
 function TutorialCard({
   card,
   bonuses,
-  crystals,
+  heldAffinities,
   highlighted,
   foreground,
   costHighlight,
@@ -412,38 +419,38 @@ function TutorialCard({
   onTap,
 }: {
   card: TutorialCardData;
-  bonuses: Record<GemKey, number>;
-  crystals: Record<GemKey, number>;
+  bonuses: Record<AffinityKey, number>;
+  heldAffinities: Record<AffinityKey, number>;
   highlighted?: boolean;
   foreground?: boolean;
   costHighlight?: boolean;
   ringPulse?: boolean;
   forged?: boolean;
   impossible?: boolean;
-  viewMode?: TutorialMarketView;
-  wellSel?: Partial<Record<GemKey, number>>;
+  viewMode?: TutorialForgeView;
+  wellSel?: Partial<Record<AffinityKey, number>>;
   onTap?: () => void;
 }) {
   const eff = effectiveCost(card, bonuses);
   const artUrl = CARD_ART[card.id];
-  const bonusMeta = GEM_META[card.bonusColor];
+  const bonusMeta = AFFINITY_META[card.bonusAffinity];
 
   const bgStyle: React.CSSProperties = artUrl
     ? { backgroundImage: `url(${artUrl})`, backgroundSize: "cover", backgroundPosition: "center" }
     : { background: `linear-gradient(175deg, #021005 0%, #063020 50%, #020c04 100%)` };
 
-  // The normal market view now uses the live game's card renderer. The two
+  // The normal Forge view now uses the live game's Artifact renderer. The two
   // teaching-only cost modes below retain their bespoke chips until they can
   // be expressed through the shared renderer without losing their lesson.
   const sharedCosts = viewMode === "discounted"
     ? eff
     : viewMode === "needed"
       ? Object.fromEntries(
-          (Object.entries(card.cost) as [GemKey, number][]).map(([gem, cost]) => [
-            gem,
-            Math.max(0, (eff[gem] ?? cost) - (crystals[gem] ?? 0) - (wellSel[gem] ?? 0)),
+          (Object.entries(card.cost) as [AffinityKey, number][]).map(([affinity, cost]) => [
+            affinity,
+            Math.max(0, (eff[affinity] ?? cost) - (heldAffinities[affinity] ?? 0) - (wellSel[affinity] ?? 0)),
           ]),
-        ) as Partial<Record<GemKey, number>>
+        ) as Partial<Record<AffinityKey, number>>
       : undefined;
 
   if (["all", "discounted", "needed"].includes(viewMode)) {
@@ -454,7 +461,7 @@ function TutorialCard({
         whileTap={onTap && !forged ? { scale: 0.94 } : undefined}
         onClick={onTap && !forged ? onTap : undefined}
         transition={{ type: "spring", stiffness: 260, damping: 22 }}
-        className={`relative shrink-0 ${onTap && !forged ? "cursor-pointer" : ""}`}
+        className={`tutorial-forge-card-shell relative shrink-0 ${onTap && !forged ? "cursor-pointer" : ""}`}
       >
         {costHighlight && <CostCallout />}
         <div className={highlighted ? "rounded-xl ring-2 ring-amber-400 tut-card-highlight" : "rounded-xl"}>
@@ -475,7 +482,7 @@ function TutorialCard({
   }
 
   // Compute the displayed cost value and styling per affinity based on viewMode
-  const getCostDisplay = (k: GemKey, baseCost: number): { value: number | "✓"; showStrike: boolean; strikeValue: number; bgClass: string; textClass: string } => {
+  const getCostDisplay = (k: AffinityKey, baseCost: number): { value: number | "✓"; showStrike: boolean; strikeValue: number; bgClass: string; textClass: string } => {
     if (viewMode === "discounted") {
       const effCost = eff[k] ?? 0;
       const reduced = effCost < baseCost;
@@ -490,7 +497,7 @@ function TutorialCard({
     }
     if (viewMode === "needed") {
       const effCost = eff[k] ?? 0;
-      const held = crystals[k] ?? 0;
+      const held = heldAffinities[k] ?? 0;
       const inWell = wellSel[k] ?? 0;
       const shortfall = Math.max(0, effCost - held - inWell);
       const free = shortfall === 0;
@@ -519,7 +526,7 @@ function TutorialCard({
       whileTap={onTap && !forged ? { scale: 0.94 } : undefined}
       onClick={onTap && !forged ? onTap : undefined}
       transition={{ type: "spring", stiffness: 260, damping: 22 }}
-      className={`relative shrink-0 ${onTap && !forged ? "cursor-pointer" : ""}`}
+      className={`tutorial-forge-card-shell relative shrink-0 ${onTap && !forged ? "cursor-pointer" : ""}`}
       style={{ width: BOARD_CARD_W, height: BOARD_CARD_H }}
     >
       {costHighlight && <CostCallout />}
@@ -548,7 +555,7 @@ function TutorialCard({
         )}
         <div className="relative z-10 h-full p-2 flex flex-col justify-between">
           <div className="flex justify-between items-start">
-            {card.lumens > 0 ? <span className="bg-black/60 backdrop-blur-sm rounded px-1.5 py-0.5 text-sm font-serif font-bold text-amber-100 drop-shadow-[0_1px_3px_rgba(0,0,0,1)]">{card.lumens}</span> : <span />}
+            {card.eminence > 0 ? <EminenceBadge value={card.eminence} /> : <span />}
             <div className="w-4 h-4 rounded-full ring-1 ring-black/40 overflow-hidden">
               <img src={bonusMeta.image} alt={bonusMeta.name} className="w-full h-full object-contain" draggable={false} />
             </div>
@@ -556,7 +563,7 @@ function TutorialCard({
           <div className="space-y-1">
             <div className="text-[8px] font-semibold text-white drop-shadow line-clamp-2 leading-tight">{card.name}</div>
             <div className="flex flex-wrap gap-0.5 justify-end">
-              {(Object.entries(card.cost) as [GemKey, number][]).map(([k, v]) => {
+              {(Object.entries(card.cost) as [AffinityKey, number][]).map(([k, v]) => {
                 if (!v || v <= 0) return null;
                 const display = getCostDisplay(k, v);
                 const isFree = display.value === "✓";
@@ -573,7 +580,7 @@ function TutorialCard({
                   >
                     {display.showStrike && <span className="text-[6px] text-white/30 line-through mr-0.5">{display.strikeValue}</span>}
                     <span className={`text-[9px] font-bold ${display.textClass}`}>{display.value}</span>
-                    <MiniGem gem={k} size={9} />
+                    <AffinityToken affinity={k} size={9} />
                   </motion.div>
                 );
               })}
@@ -620,14 +627,14 @@ function useIsShortLandscape() {
 // Bottom sheet that slides up when a card is tapped — matches real game's action
 // sheet pattern. Forge/Reserve actions happen here rather than below the card.
 function TutorialCardSheet({
-  card, bonuses, crystals, viewMode, wellSel,
+  card, bonuses, heldAffinities, viewMode, wellSel,
   forgeEnabled, reserveEnabled, onForge, onReserve, onClose,
 }: {
   card: TutorialCardData;
-  bonuses: Record<GemKey, number>;
-  crystals: Record<GemKey, number>;
-  viewMode: TutorialMarketView;
-  wellSel: Partial<Record<GemKey, number>>;
+  bonuses: Record<AffinityKey, number>;
+  heldAffinities: Record<AffinityKey, number>;
+  viewMode: TutorialForgeView;
+  wellSel: Partial<Record<AffinityKey, number>>;
   forgeEnabled: boolean;
   reserveEnabled: boolean;
   onForge?: () => void;
@@ -639,15 +646,15 @@ function TutorialCardSheet({
   useFocusTrap(sheetRef, true, onClose);
 
   const artUrl = CARD_ART[card.id];
-  const bonusMeta = GEM_META[card.bonusColor];
+  const bonusMeta = AFFINITY_META[card.bonusAffinity];
   const eff = effectiveCost(card, bonuses);
-  const affordable = canAfford(card, crystals, bonuses);
+  const affordable = canAfford(card, heldAffinities, bonuses);
 
   const bgStyle: React.CSSProperties = artUrl
     ? { backgroundImage: `url(${artUrl})`, backgroundSize: "cover", backgroundPosition: "center" }
     : { background: `linear-gradient(175deg, #021005 0%, #063020 50%, #020c04 100%)` };
 
-  const getCostDisplay = (k: GemKey, baseCost: number): { value: number | "✓"; showStrike: boolean; strikeValue: number; bgClass: string; textClass: string } => {
+  const getCostDisplay = (k: AffinityKey, baseCost: number): { value: number | "✓"; showStrike: boolean; strikeValue: number; bgClass: string; textClass: string } => {
     if (viewMode === "discounted") {
       const effCost = eff[k] ?? 0;
       const reduced = effCost < baseCost;
@@ -656,7 +663,7 @@ function TutorialCardSheet({
     }
     if (viewMode === "needed") {
       const effCost = eff[k] ?? 0;
-      const held = crystals[k] ?? 0;
+      const held = heldAffinities[k] ?? 0;
       const inWell = wellSel[k] ?? 0;
       const shortfall = Math.max(0, effCost - held - inWell);
       const free = shortfall === 0;
@@ -680,7 +687,7 @@ function TutorialCardSheet({
         ref={(el) => { sheetRef.current = el; }}
         role="dialog"
         aria-modal="true"
-        aria-label="Card actions"
+        aria-label="Artifact actions"
         key="card-sheet-panel"
         className="fixed left-0 right-0 bottom-0 z-[81] rounded-t-2xl border-t border-white/15 shadow-2xl"
         style={{ background: "rgba(6,6,17,0.97)" }}
@@ -695,7 +702,7 @@ function TutorialCardSheet({
               style={{ width: 80, height: 116, ...bgStyle }}>
               <div className="absolute inset-0 bg-gradient-to-b from-black/10 via-black/5 to-black/80" />
               <div className="relative z-10 h-full p-1.5 flex flex-col justify-between">
-                {card.lumens > 0 && <span className="bg-black/60 backdrop-blur-sm rounded px-1 py-0.5 text-xs font-serif font-bold text-amber-100 drop-shadow-[0_1px_3px_rgba(0,0,0,1)]">{card.lumens}</span>}
+                {card.eminence > 0 && <EminenceBadge value={card.eminence} compact />}
                 <div className="w-3.5 h-3.5 rounded-full ring-1 ring-black/40 overflow-hidden ml-auto">
                   <img src={bonusMeta.image} alt={bonusMeta.name} className="w-full h-full object-contain" draggable={false} />
                 </div>
@@ -710,10 +717,10 @@ function TutorialCardSheet({
                 <span className="text-[10px] text-white/45 truncate">{bonusMeta.name} affinity</span>
               </div>
               <span className="text-sm font-semibold text-white leading-tight">{card.name}</span>
-              {card.lumens > 0 && (
+              {card.eminence > 0 && (
                 <div className="flex items-center gap-1">
-                  <Sparkles className="h-3 w-3 text-amber-400 shrink-0" />
-                  <span className="text-[11px] text-amber-300 font-bold">+{card.lumens} Eminence</span>
+                  <EminenceBadge value={card.eminence} compact />
+                  <span className="text-[11px] text-amber-300 font-bold">Eminence</span>
                 </div>
               )}
               <div className="text-[9px] text-white/30 mt-0.5">
@@ -721,14 +728,14 @@ function TutorialCardSheet({
               </div>
               {hasCost ? (
                 <div className="flex flex-wrap gap-1 mt-1">
-                  {(Object.entries(card.cost) as [GemKey, number][]).map(([k, v]) => {
+                  {(Object.entries(card.cost) as [AffinityKey, number][]).map(([k, v]) => {
                     if (!v || v <= 0) return null;
                     const display = getCostDisplay(k, v);
                     return (
                       <div key={k} className={`flex items-center gap-0.5 rounded px-1.5 py-0.5 ${display.bgClass}`}>
                         {display.showStrike && <span className="text-[7px] text-white/30 line-through mr-0.5">{display.strikeValue}</span>}
                         <span className={`text-[10px] font-bold ${display.textClass}`}>{display.value}</span>
-                        <MiniGem gem={k} size={10} />
+                        <AffinityToken affinity={k} size={10} />
                       </div>
                     );
                   })}
@@ -744,17 +751,17 @@ function TutorialCardSheet({
               onClick={() => onForge?.()}
               disabled={!forgeEnabled || !affordable || !onForge}
               label="Forge"
-              subtitle={forgeEnabled ? (affordable ? "Manifest Artifact" : "Need more affinities") : "Follow Lumii's lead"}
+              subtitle={forgeEnabled ? (affordable ? "Forge Artifact" : "Need more affinities") : "Follow Lumii's lead"}
               confirmHex={bonusMeta.hex}
               confirmGlow={bonusMeta.glowHex}
-              darkText={["pearl", "emerald", "flux"].includes(card.bonusColor)}
+              darkText={["radiance", "verdance", "singularity"].includes(card.bonusAffinity)}
             />
             {onReserve !== undefined && (
               <EncryptButton
                 onClick={() => onReserve?.()}
                 disabled={!reserveEnabled}
                 label="Encrypt"
-                subtitle={reserveEnabled ? "Reserve Pattern" : "Follow Lumii's lead"}
+                subtitle={reserveEnabled ? "Encrypt Artifact" : "Follow Lumii's lead"}
                 sigilId={card.id.length}
               />
             )}
@@ -767,14 +774,14 @@ function TutorialCardSheet({
 
 // ─── Affinity Well ─────────────────────────────────────────────────────────────
 function AffinityWell({
-  s, dispatch, beatId, subStep, wellEnabled, fluxLocked = true, harnessFlash = false, onHarnessFlash, onOpenReserved, embedded = false,
+  s, dispatch, beatId, subStep, wellEnabled, singularityLocked = true, harnessFlash = false, onHarnessFlash, onOpenReserved, embedded = false,
 }: {
   s: TutState;
   dispatch: React.Dispatch<TAction>;
   beatId: string;
   subStep: number;
   wellEnabled: boolean;
-  fluxLocked?: boolean;
+  singularityLocked?: boolean;
   harnessFlash?: boolean;
   onHarnessFlash?: () => void;
   onOpenReserved?: () => void;
@@ -782,80 +789,91 @@ function AffinityWell({
 }) {
   const totalSel = Object.values(s.wellSel).reduce((a, b) => a + b, 0);
 
-  const guidedGems: Partial<Record<GemKey, number>> = (() => {
-    if (beatId === "b8_first_harness") return { ruby: 1, sapphire: 1, pearl: 1 };
-    if (beatId === "b11_forge_reserved" && subStep === 0) return { onyx: 2 };
-    if (beatId === "b12_tier2" && subStep === 0 && !s.tier2GrantPending) return { onyx: 2 };
-    if (beatId === "b13_tier3" && subStep === 0 && !s.tier3GrantPending) return { sapphire: 2 };
+  const guidedAffinities: Partial<Record<AffinityKey, number>> = (() => {
+    if (beatId === "b8_first_harness") return { flare: 1, continuum: 1, radiance: 1 };
+    if (beatId === "b11_forge_reserved" && subStep === 0) return { abyss: 2 };
+    if (beatId === "b12_tier2" && subStep === 0 && !s.tier2GrantPending) return { abyss: 2 };
+    if (beatId === "b13_tier3" && subStep === 0 && !s.tier3GrantPending) return { continuum: 2 };
     return {};
   })();
 
-  const isGuidedBeat = Object.keys(guidedGems).length > 0;
+  const isGuidedBeat = Object.keys(guidedAffinities).length > 0;
 
   const isWellPulse = beatId === "b7b_cost_bridge";
   const tutorialPlayer = {
     playerId: "tutorial-you",
     playerName: "You",
-    crystals: s.crystals,
+    affinities: s.affinities,
     bonuses: s.bonuses,
-    reservedCards: s.reserved.map((id) => asGameCard(TUTORIAL_CARDS[id])).filter(Boolean),
-    purchasedCards: s.forged.map((id) => asGameCard(TUTORIAL_CARDS[id])).filter(Boolean),
-  } as unknown as GamePlayerState;
+    reservedArtifacts: s.reserved.map((id) => asGameCard(TUTORIAL_CARDS[id])).filter(Boolean),
+    forgedArtifacts: s.forged.map((id) => asGameCard(TUTORIAL_CARDS[id])).filter(Boolean),
+  };
   const tutorialGame = {
     players: [tutorialPlayer],
-    crystalBank: s.wellBank,
+    affinityWell: s.wellBank,
     luminaryAffinities: [],
     turnCount: 0,
-  } as unknown as GameState;
+  };
 
-  const handleCrystalClick = (gem: keyof CrystalCounts) => {
-    const key = gem as GemKey;
+  const handleAffinityClick = (affinity: keyof AffinityCounts) => {
+    const key = affinity as AffinityKey;
     const current = s.wellSel[key] ?? 0;
-    const guided = guidedGems[key] ?? 0;
-    const isLocked = key === "flux" && fluxLocked;
+    const guided = guidedAffinities[key] ?? 0;
+    const isLocked = key === "singularity" && singularityLocked;
     const canAdd = !isLocked && wellEnabled && current === 0 && (s.wellBank[key] ?? 0) > 0 && (!isGuidedBeat || guided > current);
     if (!canAdd) return;
 
-    const selected = Object.entries(s.wellSel).filter(([, count]) => count > 0) as [GemKey, number][];
-    const hasOtherAffinity = selected.some(([selectedGem]) => selectedGem !== key);
+    const selected = Object.entries(s.wellSel).filter(([, count]) => count > 0) as [AffinityKey, number][];
+    const hasOtherAffinity = selected.some(([selectedAffinity]) => selectedAffinity !== key);
     const prospectiveTotal = totalSel + 1;
     const isValidThreeDifferent = current === 0 && !hasOtherAffinity ? prospectiveTotal <= 3 : current === 0 && hasOtherAffinity && selected.length < 3;
-    const isValidTwoOfSame = current === 1 && !hasOtherAffinity;
+    const isValidTwoOfSame = false;
     if (!isValidThreeDifferent && !isValidTwoOfSame) {
       dispatch({ type: "NUDGE", msg: "Harness up to 3 different affinities, or 2 of the same affinity." });
       return;
     }
-    dispatch({ type: "SEL_AFF", gem: key, delta: 1 });
+    dispatch({ type: "SEL_AFF", affinity: key, delta: 1 });
   };
-  const handleTakeTwo = (gem: GemKey) => {
-    const current = s.wellSel[gem] ?? 0;
-    const guided = guidedGems[gem];
-    if (!wellEnabled || current !== 0 || totalSel !== 0 || (s.wellBank[gem] ?? 0) < 4 || (guided !== undefined && guided !== 2)) {
+  const handleTakeTwo = (affinity: AffinityKey) => {
+    const current = s.wellSel[affinity] ?? 0;
+    const guided = guidedAffinities[affinity];
+    if (!wellEnabled || current !== 0 || totalSel !== 0 || (s.wellBank[affinity] ?? 0) < 4 || (guided !== undefined && guided !== 2)) {
       dispatch({ type: "NUDGE", msg: "×2 needs 4 or more of that affinity remaining in the Well." });
       return;
     }
-    dispatch({ type: "SEL_AFF", gem, delta: 2 });
+    dispatch({ type: "SEL_AFF", affinity, delta: 2 });
   };
-  const selectedKeys = Object.keys(s.wellSel).filter((gem) => (s.wellSel[gem as GemKey] ?? 0) > 0) as GemKey[];
+  const selectedKeys = Object.keys(s.wellSel).filter((affinity) => (s.wellSel[affinity as AffinityKey] ?? 0) > 0) as AffinityKey[];
   const canHarness = wellEnabled && totalSel > 0;
   const undoLastAffinity = () => {
-    const lastGem = [...selectedKeys].pop();
-    if (lastGem) dispatch({ type: "SEL_AFF", gem: lastGem, delta: -1 });
+    const lastAffinity = [...selectedKeys].pop();
+    if (lastAffinity) dispatch({ type: "SEL_AFF", affinity: lastAffinity, delta: -1 });
   };
-  const harnessGradient = selectedKeys.length === 1
-    ? `conic-gradient(${GEM_META[selectedKeys[0]].hex} 0deg, ${GEM_META[selectedKeys[0]].hex}44 180deg, ${GEM_META[selectedKeys[0]].hex} 360deg)`
-    : selectedKeys.length > 1
-      ? `conic-gradient(${selectedKeys.map((gem, index) => {
-          const start = Math.round((index / selectedKeys.length) * 360);
-          const end = Math.round(((index + 1) / selectedKeys.length) * 360);
-          return `${GEM_META[gem].hex} ${start}deg ${end}deg`;
-        }).join(", ")})`
-      : "transparent";
+  const selectedMetas = selectedKeys
+    .map((affinity) => ({ affinity, meta: AFFINITY_META[affinity] }))
+    .filter((entry): entry is { affinity: AffinityKey; meta: (typeof AFFINITY_META)[AffinityKey] } =>
+      !!entry.meta && typeof entry.meta.hex === "string"
+    );
+  const firstSelectedMeta = selectedMetas[0]?.meta;
+  const harnessGradient = selectedMetas.length === 0
+    ? "transparent"
+    : [
+        ...selectedMetas.map(({ meta }, index) => {
+          const positions = [
+            ["18%", "48%"],
+            ["50%", "22%"],
+            ["80%", "52%"],
+          ];
+          const [x, y] = positions[index % positions.length];
+          return `radial-gradient(circle at ${x} ${y}, ${meta.hex} 0%, ${meta.hex}cc 13%, transparent 33%)`;
+        }),
+        `linear-gradient(90deg, ${firstSelectedMeta?.hex ?? "#ffffff"}55, rgba(255,255,255,0.10), ${selectedMetas[selectedMetas.length - 1]?.meta.hex ?? firstSelectedMeta?.hex ?? "#ffffff"}55)`,
+      ].join(", ");
   const actionInstruction = beatId === "b12_tier2" && s.tier2GrantPending
     ? "Lumii is bringing the missing Verdance."
     : beatId === "b13_tier3"
     ? [
-        s.tier3GrantPending ? "Lumii is bringing a reserve from the Well." : "Use Continuum ×2 to harvest 2.",
+        s.tier3GrantPending ? "Lumii is bringing an encrypted Artifact from the Well." : "Use Continuum x2 to Harness 2.",
         "Canopy Ascendant is ready to Forge.",
       ][Math.min(subStep, 1)]
     : beatId === "b16_final_forge" && s.finalGrantPending
@@ -866,7 +884,7 @@ function AffinityWell({
 
   return (
     <motion.div
-      className={`relative overflow-hidden transition-colors ${embedded ? "" : `border-t border-b ${harnessFlash ? "border-emerald-400/70" : isWellPulse ? "border-cyan-300/40" : "border-[#a8c5ff]/20"}`}`}
+      className={`tutorial-affinity-well relative overflow-hidden transition-colors ${embedded ? "" : `border-t border-b ${harnessFlash ? "border-emerald-400/70" : isWellPulse ? "border-cyan-300/40" : "border-[#a8c5ff]/20"}`}`}
       animate={harnessFlash
         ? { boxShadow: ["0 0 6px rgba(52,211,153,0.15)", "0 0 28px rgba(52,211,153,0.50)", "0 0 14px rgba(52,211,153,0.22)"] }
         : { boxShadow: "none" }
@@ -881,12 +899,12 @@ function AffinityWell({
         <div className={`flex items-center gap-1.5 text-[10px] font-semibold uppercase tracking-wider ${isWellPulse ? "text-cyan-300/80" : "text-[#a8c5ff]/65"}`}>
           The Affinity Well <Droplets className="h-3 w-3 shrink-0" />
         </div>
-        <span className="text-[9px] text-white/30">{totalSel ? `${totalSel} selected` : "Harvest"}</span>
+        <span className="text-[9px] text-white/30">{totalSel ? `${totalSel} selected` : "Harness"}</span>
       </div>}
       <AffinityWellCells
         me={tutorialPlayer}
         state={tutorialGame}
-        selectedCrystals={s.wellSel as Partial<CrystalCounts>}
+        selectedAffinities={s.wellSel as Partial<AffinityCounts>}
         isMyTurn
         canPlan={false}
         isActivePlayer
@@ -894,7 +912,7 @@ function AffinityWell({
         tutorialZone={null}
         tutorialAttention={null}
         sessionPlayerId="tutorial-you"
-        onCrystalClick={handleCrystalClick}
+        onAffinityClick={handleAffinityClick}
         onPromoteToTake2={handleTakeTwo}
         onOpenReserved={onOpenReserved ?? (() => undefined)}
         onOpenForged={() => undefined}
@@ -902,10 +920,10 @@ function AffinityWell({
       <div className="px-2 pb-2 pt-1 border-t border-white/10">
         <div className="flex items-center gap-2">
           <div className="flex min-w-0 flex-1 items-center gap-1.5 overflow-x-auto">
-            {selectedKeys.length > 0 ? selectedKeys.map((gem) => (
-              <div key={gem} className="flex shrink-0 items-center gap-1 rounded-full border border-white/10 bg-black/50 py-0.5 pl-1.5 pr-2">
-                <MiniGem gem={gem} size={12} />
-                <span className="text-xs font-bold text-white">x{s.wellSel[gem]}</span>
+            {selectedKeys.length > 0 ? selectedKeys.map((affinity) => (
+              <div key={affinity} className="flex shrink-0 items-center gap-1 rounded-full border border-white/10 bg-black/50 py-0.5 pl-1.5 pr-2">
+                <AffinityToken affinity={affinity} size={12} />
+                <span className="text-xs font-bold text-white">x{s.wellSel[affinity]}</span>
               </div>
             )) : <span className="text-[10px] text-white/40">{actionInstruction ?? "Pick affinities"}</span>}
           </div>
@@ -935,13 +953,13 @@ function AffinityWell({
             className="relative h-7 shrink-0 overflow-hidden rounded-lg border px-3 text-xs font-bold transition-all"
             style={{
               background: "rgba(255,255,255,0.03)",
-              borderColor: selectedKeys.length > 0 ? `${GEM_META[selectedKeys[0]].hex}70` : "rgba(255,255,255,0.18)",
-              boxShadow: selectedKeys.length > 0 ? `inset 0 1px 0 rgba(255,255,255,0.18), 0 0 14px ${GEM_META[selectedKeys[0]].hex}44` : "inset 0 1px 0 rgba(255,255,255,0.08)",
+              borderColor: firstSelectedMeta ? `${firstSelectedMeta.hex}70` : "rgba(255,255,255,0.18)",
+              boxShadow: firstSelectedMeta ? `inset 0 1px 0 rgba(255,255,255,0.18), 0 0 14px ${firstSelectedMeta.hex}44` : "inset 0 1px 0 rgba(255,255,255,0.08)",
               color: canHarness ? "#fff" : "rgba(255,255,255,0.35)",
               cursor: canHarness ? "pointer" : "not-allowed",
             }}
           >
-            {selectedKeys.length > 0 && <span className="absolute -inset-[60%] opacity-50 blur-md harness-swirl-ring" style={{ background: harnessGradient }} />}
+            {selectedKeys.length > 0 && <span className="absolute -inset-[60%] opacity-50 harness-swirl-ring harness-swirl-soft" style={{ background: harnessGradient }} />}
             <span className="relative z-10" style={{ textShadow: canHarness ? "0 1px 5px rgba(0,0,0,0.85)" : "none" }}>Harness</span>
           </motion.button>
         </div>
@@ -950,20 +968,20 @@ function AffinityWell({
   );
 }
 
-function LumiiAffinityDelivery({ drops }: { drops: Array<{ gem: GemKey; amount: number }> }) {
-  const [targets, setTargets] = useState<Array<{ gem: GemKey; x: number; y: number }>>([]);
-  const dropKey = drops.map(({ gem, amount }) => `${gem}:${amount}`).join("|");
+function LumiiAffinityDelivery({ drops }: { drops: Array<{ affinity: AffinityKey; amount: number }> }) {
+  const [targets, setTargets] = useState<Array<{ affinity: AffinityKey; x: number; y: number }>>([]);
+  const dropKey = drops.map(({ affinity, amount }) => `${affinity}:${amount}`).join("|");
 
   useLayoutEffect(() => {
     const updateTargets = () => {
-      const nextTargets = drops.flatMap(({ gem, amount }) => {
-        const selector = gem === "flux"
+      const nextTargets = drops.flatMap(({ affinity, amount }) => {
+        const selector = affinity === "singularity"
           ? "[data-singularity-well]"
-          : `[data-affinity-well=\"${gem}\"]`;
+          : `[data-affinity-well=\"${affinity}\"]`;
         const cell = document.querySelector(selector)?.getBoundingClientRect();
         if (!cell) return [];
         return Array.from({ length: amount }, () => ({
-          gem,
+          affinity,
           x: cell.left + cell.width / 2,
           y: cell.top + cell.height / 2,
         }));
@@ -994,7 +1012,7 @@ function LumiiAffinityDelivery({ drops }: { drops: Array<{ gem: GemKey; amount: 
       </motion.div>
       {targets.map((drop, index) => (
         <motion.div
-          key={`${drop.gem}-${index}`}
+          key={`${drop.affinity}-${index}`}
           className="fixed"
           style={{ translateX: "-50%", translateY: "-50%" }}
           initial={{ left: sourceX, top: sourceY, opacity: 0, scale: 0.35 }}
@@ -1006,7 +1024,7 @@ function LumiiAffinityDelivery({ drops }: { drops: Array<{ gem: GemKey; amount: 
           }}
           transition={{ delay: 0.48 + index * 0.12, duration: 0.82, ease: "easeInOut" }}
         >
-          <AffinityEmblem color={drop.gem} size={28} />
+          <AffinityEmblem color={drop.affinity} size={28} />
         </motion.div>
       ))}
     </div>
@@ -1028,7 +1046,7 @@ function PlayerHand({
   const forgeEnabled = isForgeReservedBeat && subStep >= 1;
 
   return (
-    <div className="border border-white/10 rounded-2xl p-3 backdrop-blur-md" style={{ background: "rgba(3,3,12,0.78)" }}>
+    <div className="border border-white/10 rounded-2xl p-3" style={{ background: "rgba(3,3,12,0.78)" }}>
       <div className="text-[10px] text-white/40 font-semibold uppercase tracking-wider mb-2">Encrypted</div>
       <div className="flex gap-3 flex-wrap">
         {s.reserved.map(id => {
@@ -1060,12 +1078,41 @@ function PlayerHand({
   );
 }
 
-// ─── Market view tabs ─────────────────────────────────────────────────────────
-function MarketTabs() {
+// ─── Forge view tabs ──────────────────────────────────────────────────────────
+function ForgeViewTabs({
+  view,
+  dispatch,
+}: {
+  view: TutorialForgeView;
+  dispatch: React.Dispatch<TAction>;
+}) {
+  const options: Array<{ value: TutorialForgeView; label: string; title: string }> = [
+    { value: "all", label: "Full", title: "Show original printed cost" },
+    { value: "discounted", label: "Discounted", title: "Cost after permanent bonuses" },
+    { value: "needed", label: "Needed", title: "What remains after bonuses and held affinities" },
+  ];
+
   return (
-    <div className="mb-3 flex items-center gap-2">
-      <span className="text-[9px] font-bold uppercase tracking-widest text-white/25">Cost View</span>
-      <span className="rounded-full border border-white/10 bg-white/10 px-2.5 py-1 text-[9px] font-semibold leading-none text-white/75 shadow-sm">Needed</span>
+    <div className="tutorial-forge-controls mb-3 flex items-center gap-2">
+      <span className="shrink-0 text-[9px] font-bold uppercase tracking-widest text-white/25">Cost View</span>
+      <div className="flex items-center gap-0.5 rounded-full border border-white/10 bg-white/[0.04] p-0.5">
+        {options.map(({ value, label, title }) => (
+          <button
+            key={value}
+            type="button"
+            title={title}
+            aria-pressed={view === value}
+            onClick={() => dispatch({ type: "SET_VIEW", view: value })}
+            className={`rounded-full px-2 py-0.5 text-[9px] font-semibold leading-none transition-colors ${
+              view === value
+                ? "bg-white/15 text-white shadow-sm"
+                : "text-white/40 hover:text-white/75"
+            }`}
+          >
+            {label}
+          </button>
+        ))}
+      </div>
     </div>
   );
 }
@@ -1077,8 +1124,8 @@ function MarketTabs() {
 function DeckPile({ tier, count }: { tier: number; count?: number }) {
   const BackComponent = tier === 3 ? CardBackTier3 : tier === 2 ? CardBackTier2 : CardBackTier1;
   return (
-    <div className="flex flex-col items-center shrink-0" style={{ gap: 6 }}>
-      <div className="relative shrink-0" style={{ width: 120, height: 168 }}>
+    <div className="tutorial-forge-deck flex flex-col items-center shrink-0" style={{ gap: 6 }}>
+      <div className="tutorial-forge-deck-stack relative shrink-0" style={{ width: 120, height: 168 }}>
         <div className="absolute rounded-xl overflow-hidden border border-white/5"
           style={{ left: 8, top: 8, width: BOARD_CARD_W, height: BOARD_CARD_H, opacity: 0.28 }}>
           <BackComponent />
@@ -1111,7 +1158,7 @@ function GhostCardSlot({ tier }: { tier: number }) {
     3: "rgba(90,58,106,0.16)",
   };
   return (
-    <div className="shrink-0 rounded-xl border flex items-center justify-center"
+    <div className="tutorial-forge-card-shell tutorial-forge-card-ghost shrink-0 rounded-xl border flex items-center justify-center"
       style={{
         width: BOARD_CARD_W, height: BOARD_CARD_H,
         borderColor: BORDER_COLORS[tier] ?? "rgba(255,255,255,0.09)",
@@ -1131,7 +1178,7 @@ function DeckDrawAnimation({ tier }: { tier: number }) {
   const BackComponent = tier === 3 ? CardBackTier3 : tier === 2 ? CardBackTier2 : CardBackTier1;
   return (
     <motion.div
-      className="shrink-0 rounded-xl overflow-hidden shadow-xl ring-1 ring-white/10"
+      className="tutorial-forge-card-shell shrink-0 rounded-xl overflow-hidden shadow-xl ring-1 ring-white/10"
       style={{ width: BOARD_CARD_W, height: BOARD_CARD_H }}
       initial={{ x: -60, scale: 0.68, opacity: 0 }}
       animate={{ x: 0, scale: 1, opacity: 1 }}
@@ -1145,20 +1192,20 @@ function DeckDrawAnimation({ tier }: { tier: number }) {
 // ─── Forge Eject Animation ────────────────────────────────────────────────────
 // When a card is forged its face briefly flashes bright and rises out of the
 // slot before the DeckDrawAnimation replaces it with the next card.
-function ForgeEjectAnimation({ card, bonuses, crystals, wellSel, viewMode }: {
+function ForgeEjectAnimation({ card, bonuses, heldAffinities, wellSel, viewMode }: {
   card: TutorialCardData;
   bonuses: Record<string, number>;
-  crystals: Record<string, number>;
-  wellSel: Partial<Record<GemKey, number>>;
-  viewMode: TutorialMarketView;
+  heldAffinities: Record<string, number>;
+  wellSel: Partial<Record<AffinityKey, number>>;
+  viewMode: TutorialForgeView;
 }) {
   return (
-    <div style={{ width: 112, height: 160, flexShrink: 0, position: 'relative', overflow: 'hidden' }}>
+    <div className="tutorial-forge-card-shell" style={{ width: 112, height: 160, flexShrink: 0, position: 'relative', overflow: 'hidden' }}>
       <div style={{ position: 'absolute', inset: 0, animation: 'forge-eject 900ms ease-in forwards' }}>
         <TutorialCard
           card={card}
           bonuses={bonuses}
-          crystals={crystals}
+          heldAffinities={heldAffinities}
           highlighted={false}
           foreground={false}
           costHighlight={false}
@@ -1203,7 +1250,7 @@ function CardFlipReveal({
 
   const W = BOARD_CARD_W, H = BOARD_CARD_H;
   return (
-    <div style={{ width: W, height: H, flexShrink: 0, perspective: "700px" }}>
+    <div className="tutorial-forge-card-shell" style={{ width: W, height: H, flexShrink: 0, perspective: "700px" }}>
       {(phase === "back" || phase === "out") && (
         <motion.div
           className="rounded-xl overflow-hidden border border-white/12 shadow-lg"
@@ -1231,8 +1278,8 @@ function CardFlipReveal({
   );
 }
 
-// ─── Scripted Market ──────────────────────────────────────────────────────────
-function ScriptedMarket({ s, dispatch, beatId, subStep, onCardTap, tier1Ref, tier2Ref, tier3Ref }: {
+// ─── Scripted Forge ───────────────────────────────────────────────────────────
+function ScriptedForge({ s, dispatch, beatId, subStep, onCardTap, tier1Ref, tier2Ref, tier3Ref }: {
   s: TutState;
   dispatch: React.Dispatch<TAction>;
   beatId: string;
@@ -1264,11 +1311,11 @@ function ScriptedMarket({ s, dispatch, beatId, subStep, onCardTap, tier1Ref, tie
   }
 
   // Beat-specific card interactions
-  const isForgeMarketBeat = ["b9_first_forge", "b12_tier2", "b13_tier3", "b16_final_forge"].includes(beatId);
+  const isForgeBeat = ["b9_first_forge", "b12_tier2", "b13_tier3", "b16_final_forge"].includes(beatId);
   const isReserveBeat = beatId === "b10_reserve";
 
   const getCardForgeEnabled = (cardId: string) => {
-    if (!isForgeMarketBeat) return false;
+    if (!isForgeBeat) return false;
     // Locked until the second dialogue line ("Select Root Lattice and press Forge.") appears
     if (beatId === "b9_first_forge") return cardId === FIRST_FORGE_ID && s.dlgLine >= 1;
     if (beatId === "b12_tier2") return cardId === TIER2_SINGULARITY_ID && subStep >= 1;
@@ -1331,7 +1378,7 @@ function ScriptedMarket({ s, dispatch, beatId, subStep, onCardTap, tier1Ref, tie
     return () => clearTimeout(t1);
   }, [s.forged]);
 
-  // Track deal-in animations: when new cards appear in the market for the first
+  // Track deal-in animations: when new cards appear in The Forge for the first
   // time (b10_reserve introduces t1e07 + t2e03), flip them from their deck backs.
   const prevBeatIdRef = useRef<string>(beatId);
   const [dealAnimating, setDealAnimating] = useState<Set<string>>(new Set());
@@ -1350,11 +1397,11 @@ function ScriptedMarket({ s, dispatch, beatId, subStep, onCardTap, tier1Ref, tie
 
   // The Forge always keeps its full three-tier structure. Tutorial camera cues
   // decide which row earns attention; they do not change the board itself.
-  const MARKET_SLOTS = 4;
+  const FORGE_SLOTS = 4;
   const DECK_COUNTS: Record<number, number> = { 1: 40, 2: 30, 3: 20 };
 
   const renderTierRow = (tier: number, cardIds: string[], label: string) => {
-    const deckCount = Math.max(0, (DECK_COUNTS[tier] ?? 10) - MARKET_SLOTS);
+    const deckCount = Math.max(0, (DECK_COUNTS[tier] ?? 10) - FORGE_SLOTS);
 
     type Slot =
       | { kind: 'real'; cardId: string }
@@ -1386,20 +1433,20 @@ function ScriptedMarket({ s, dispatch, beatId, subStep, onCardTap, tier1Ref, tie
       }
     }
 
-    // Pad to MARKET_SLOTS with ghost placeholders
-    while (slots.length < MARKET_SLOTS) {
+    // Pad to FORGE_SLOTS with ghost placeholders
+    while (slots.length < FORGE_SLOTS) {
       slots.push({ kind: 'ghost' });
     }
 
     return (
-      <div key={tier} ref={tier === 1 ? tier1Ref : tier === 2 ? tier2Ref : tier3Ref} className="relative rounded-lg mb-3 px-2 pt-2 pb-1" style={{ background: "rgba(255,255,255,0.018)", border: "1px solid rgba(160,140,104,0.18)" }}>
-        <div className="flex items-center gap-2 mb-2 px-0.5">
+      <div key={tier} ref={tier === 1 ? tier1Ref : tier === 2 ? tier2Ref : tier3Ref} className="tutorial-forge-tier relative rounded-lg mb-3 px-2 pt-2 pb-1" style={{ background: "rgba(255,255,255,0.018)", border: "1px solid rgba(160,140,104,0.18)" }}>
+        <div className="tutorial-forge-tier-header flex items-center gap-2 mb-2 px-0.5">
           <span className="text-[10px] font-bold uppercase shrink-0" style={{ color: "#C0A472", letterSpacing: "0.12em", textShadow: "0 1px 6px rgba(192,164,114,0.35)" }}>
             Tier {tier}, {label}
           </span>
           <div className="flex-1 h-px" style={{ background: "linear-gradient(90deg, rgba(192,164,114,0.36), transparent)" }} />
         </div>
-        <div className="flex gap-3 overflow-x-auto pt-1 pb-2 items-start" style={{ minHeight: 170 }}>
+        <div className="tutorial-forge-tier-row flex gap-3 overflow-x-auto pt-1 pb-2 items-start" style={{ minHeight: 170 }}>
           <DeckPile tier={tier} count={deckCount} />
           {slots.map((slot, idx) => {
             if (slot.kind === 'real') {
@@ -1407,12 +1454,12 @@ function ScriptedMarket({ s, dispatch, beatId, subStep, onCardTap, tier1Ref, tie
               const card = TUTORIAL_CARDS[cardId];
               if (!card) return <GhostCardSlot key={`ghost-${cardId}`} tier={tier} />;
               const isImpossible = cardId === T3_IMPOSSIBLE_ID;
-              const affordable = canAfford(card, s.crystals, s.bonuses);
+              const affordable = canAfford(card, s.affinities, s.bonuses);
               const tutCard = (
                 <TutorialCard
                   card={card}
                   bonuses={s.bonuses}
-                  crystals={s.crystals}
+                  heldAffinities={s.affinities}
                   highlighted={getHighlighted(cardId)}
                   ringPulse={beatId === "b9_first_forge" && cardId === FIRST_FORGE_ID}
                   foreground={getForeground(cardId)}
@@ -1430,12 +1477,12 @@ function ScriptedMarket({ s, dispatch, beatId, subStep, onCardTap, tier1Ref, tie
                         : beatId === "b10_reserve" && cardId !== RESERVE_CARD_ID
                           ? () => dispatch({ type: "NUDGE", msg: "Encrypt Void Tendril in Tier 1 first." })
                         : beatId === "b13_tier3" && cardId !== T3_PURCHASABLE_IDS[0]
-                          ? () => dispatch({ type: "NUDGE", msg: "Build the reserve for Canopy Ascendant first." })
+                          ? () => dispatch({ type: "NUDGE", msg: "Gather the Affinity Canopy Ascendant needs first." })
                         : () => onCardTap(
                             card,
                             getCardForgeEnabled(cardId) && affordable,
                             getCardReserveEnabled(cardId),
-                            () => dispatch({ type: "FORGE_MARKET", cardId }),
+                            () => dispatch({ type: "FORGE_ARTIFACT", cardId }),
                             () => dispatch({ type: "RESERVE", cardId }),
                           )
                   }
@@ -1450,7 +1497,7 @@ function ScriptedMarket({ s, dispatch, beatId, subStep, onCardTap, tier1Ref, tie
               if (cardId === FIRST_FORGE_ID) {
                 if (beatId === "b6_forge_appears") {
                   return (
-                    <div key={cardId} style={{ width: BOARD_CARD_W, height: BOARD_CARD_H, flexShrink: 0 }}>
+                    <div key={cardId} className="tutorial-forge-card-shell" style={{ width: BOARD_CARD_W, height: BOARD_CARD_H, flexShrink: 0 }}>
                       <CardBackTier1 />
                     </div>
                   );
@@ -1476,7 +1523,7 @@ function ScriptedMarket({ s, dispatch, beatId, subStep, onCardTap, tier1Ref, tie
                   key={`forge-${slot.cardId}`}
                   card={forgeCard}
                   bonuses={s.bonuses}
-                  crystals={s.crystals}
+                  heldAffinities={s.affinities}
                   wellSel={s.wellSel}
                   viewMode={s.view}
                 />
@@ -1492,7 +1539,7 @@ function ScriptedMarket({ s, dispatch, beatId, subStep, onCardTap, tier1Ref, tie
                   <TutorialCard
                     card={dealCard}
                     bonuses={s.bonuses}
-                    crystals={s.crystals}
+                    heldAffinities={s.affinities}
                     highlighted={false}
                     foreground={false}
                     costHighlight={false}
@@ -1515,8 +1562,8 @@ function ScriptedMarket({ s, dispatch, beatId, subStep, onCardTap, tier1Ref, tie
   };
 
   return (
-    <div>
-      <MarketTabs />
+    <div className="tutorial-forge-layout">
+      <ForgeViewTabs view={s.view} dispatch={dispatch} />
       {renderTierRow(3, t3Cards, "Galactic")}
       {renderTierRow(2, t2Cards, "Stellar")}
       {renderTierRow(1, t1Cards, "Planetary")}
@@ -1896,7 +1943,7 @@ function FullscreenShatterOverlay({ onDone, onRevealCosmos, onShattering }: {
             style={{ background: FS_SHARD_GLASS[i].spec, opacity: 1 }}
           />
 
-          {/* Prismatic iridescence wash — ice-blue/gold/pearl, screen blend, subtle pulse */}
+          {/* Prismatic iridescence wash — ice-blue/gold/radiance, screen blend, subtle pulse */}
           {isShattering && !isMobile && (
             <motion.div className="absolute inset-0 pointer-events-none"
               style={{ background: FS_SHARD_GLASS[i].iri, mixBlendMode: 'screen' }}
@@ -2054,7 +2101,7 @@ function ArchitectAssembly({
   affKeys,
   onComplete,
 }: {
-  affKeys: GemKey[];
+  affKeys: AffinityKey[];
   onComplete: () => void;
 }) {
   const prefersReducedMotion = useReducedMotion();
@@ -2109,7 +2156,7 @@ function ArchitectAssembly({
   });
 
   // Tracks which affinity slots have been "filled" by the flying tokens
-  const [filledKeys, setFilledKeys] = useState<Set<GemKey>>(new Set());
+  const [filledKeys, setFilledKeys] = useState<Set<AffinityKey>>(new Set());
   useEffect(() => {
     if (phase < 4) return;
     // Each token flies for 1.05s with delay i*0.1; it "lands" at ~68% of its travel
@@ -2278,12 +2325,12 @@ function ArchitectAssembly({
           </div>
           {/* Same six-cell affinity rail used by the current Well. */}
           <div className="flex gap-1 overflow-hidden pb-1">
-            {ALL_GEMS.map(gem => {
-              const meta = GEM_META[gem];
-              const active = filledKeys.has(gem);
-              const isFlux = gem === "flux";
+            {ALL_AFFINITIES.map(affinity => {
+              const meta = AFFINITY_META[affinity];
+              const active = filledKeys.has(affinity);
+              const isSingularity = affinity === "singularity";
               return (
-                <div key={gem} className="shrink-0 flex flex-col items-center gap-0.5" style={{ width: 52 }}>
+                <div key={affinity} className="shrink-0 flex flex-col items-center gap-0.5" style={{ width: 52 }}>
                   <motion.div
                     className="w-full rounded-lg flex flex-col items-center gap-0.5 py-1"
                     animate={{ scale: active ? [1, 1.11, 1] : 1 }}
@@ -2291,11 +2338,11 @@ function ArchitectAssembly({
                     style={{ background: active ? `linear-gradient(180deg, ${meta.hex}24 0%, ${meta.hex}0c 100%)` : `linear-gradient(180deg, ${meta.hex}08 0%, transparent 100%)`, border: `1px solid ${active ? `${meta.hex}77` : `${meta.hex}22`}` }}
                   >
                     <span className="text-[5px] font-semibold leading-none" style={{ color: "#a8c5ffcc" }}>{meta.shortName}</span>
-                    <AffinityEmblem color={gem} size={13} style={{ filter: `drop-shadow(0 0 4px ${meta.glowHex})` }} />
+                    <AffinityEmblem color={affinity} size={13} style={{ filter: `drop-shadow(0 0 4px ${meta.glowHex})` }} />
                     <span className="text-[10px] font-black leading-none" style={{ color: active ? "#fff" : meta.hex + "45" }}>{active ? 1 : 0}</span>
-                    <span className="text-[5px] leading-none" style={{ color: meta.hex + "99" }}>{isFlux ? "0/3" : "WELL 7/7"}</span>
+                    <span className="text-[5px] leading-none" style={{ color: meta.hex + "99" }}>{isSingularity ? "0/3" : "WELL 7/7"}</span>
                   </motion.div>
-                  {!isFlux && <span className="w-full rounded-md bg-blue-950/50 py-[1px] text-center text-[6px] font-bold text-blue-400">×2</span>}
+                  {!isSingularity && <span className="w-full rounded-md bg-blue-950/50 py-[1px] text-center text-[6px] font-bold text-blue-400">×2</span>}
                 </div>
               );
             })}
@@ -2325,9 +2372,9 @@ function ArchitectAssembly({
                   transition={{ duration: 1.05, delay: i * 0.1, times: [0, 0.28, 0.65, 1], ease: "easeInOut" }}
                 >
                   <AffinityEmblem
-                    color={key as GemKey}
+                    color={key as AffinityKey}
                     size={32}
-                    style={{ filter: `drop-shadow(0 0 8px ${GEM_META[key].glowHex})` }}
+                    style={{ filter: `drop-shadow(0 0 8px ${AFFINITY_META[key].glowHex})` }}
                   />
                 </motion.div>
               );
@@ -2396,7 +2443,7 @@ function CinematicPhase({ s, dispatch, onSkip }: { s: TutState; dispatch: React.
   // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [devMarker]);
   const affKeys = AFFINITY_SEQ_KEYS;
-  const affinityNames = useMemo(() => AFFINITY_SEQ_KEYS.map(k => GEM_META[k].name), []);
+  const affinityNames = useMemo(() => AFFINITY_SEQ_KEYS.map(k => AFFINITY_META[k].name), []);
 
   // Stable random values for the background star field — prevents framer-motion
   // from restarting animations on every re-render due to new Math.random() calls.
@@ -2569,7 +2616,7 @@ function CinematicPhase({ s, dispatch, onSkip }: { s: TutState; dispatch: React.
                 transition={{ duration: 0.52, ease: [0.22, 1.0, 0.36, 1.0] }}
               >
                 <AffinityEmblem
-                  color={affKeys[affIdx] as GemKey}
+                  color={affKeys[affIdx] as AffinityKey}
                   size={128}
                   style={{ filter: "drop-shadow(0 0 36px rgba(255,255,255,0.55))" }}
                 />
@@ -2751,7 +2798,7 @@ function CinematicPhase({ s, dispatch, onSkip }: { s: TutState; dispatch: React.
             exit={{ opacity: 0 }}
             transition={{ duration: 0.6 }}
             onClick={handleSkipCinematic}
-            className="absolute right-5 z-50 text-white/40 hover:text-white/80 text-xs font-semibold tracking-widest uppercase transition-colors bg-black/20 hover:bg-black/40 px-3 py-1.5 rounded-lg backdrop-blur-sm border border-white/10"
+            className="absolute right-5 z-50 text-white/40 hover:text-white/80 text-xs font-semibold tracking-widest uppercase transition-colors bg-black/20 hover:bg-black/40 px-3 py-1.5 rounded-lg border border-white/10"
             style={{ top: "calc(56px + env(safe-area-inset-top, 0px))" }}
           >
             Skip intro
@@ -2763,7 +2810,7 @@ function CinematicPhase({ s, dispatch, onSkip }: { s: TutState; dispatch: React.
 }
 
 // ─── Fast-forward Cinematic ───────────────────────────────────────────────────
-function FastForwardCinematic({ s, dispatch }: { s: TutState; dispatch: React.Dispatch<TAction> }) {
+function FastForwardCinematic({ dispatch }: { dispatch: React.Dispatch<TAction> }) {
   const [cardStep, setCardStep] = useState(0);
 
   useEffect(() => {
@@ -2821,7 +2868,7 @@ function LuminaryPhase({ s, dispatch }: { s: TutState; dispatch: React.Dispatch<
           luminaryId="lum_verdant"
           luminaryName="The Verdant Oracle"
           domain="Verdance"
-          lumens={2}
+          eminence={2}
           flavor="She reads the future in the rings of trees that have not yet been planted."
           onComplete={() => dispatch({ type: "LUM_DONE" })}
           onSkip={() => dispatch({ type: "LUM_DONE" })}
@@ -2963,149 +3010,6 @@ function VictoryPhase({ s, dispatch }: { s: TutState; dispatch: React.Dispatch<T
   );
 }
 
-// ─── Tutorial Forge Burst ─────────────────────────────────────────────────────
-// Full card-lift animation that matches the real game's cardActionBurst feel:
-// dims the board, slides the card from its approximate market slot to center,
-// scales + Y-rotates, shows player info + "Forged!", then fades out.
-function TutorialForgeBurst({
-  animKey,
-  cardId,
-  lumens,
-  name,
-}: {
-  animKey: number;
-  cardId: string;
-  lumens: number;
-  name: string;
-}) {
-  const card = TUTORIAL_CARDS[cardId];
-  const artUrl = card ? CARD_ART[card.id] : undefined;
-  const bonusMeta = card ? GEM_META[card.bonusColor] : null;
-
-  // Card visual — a lightweight card face rendered at full size for the animation
-  const CardFace = () => {
-    if (!card) return null;
-    const bgStyle: React.CSSProperties = artUrl
-      ? { backgroundImage: `url(${artUrl})`, backgroundSize: "cover", backgroundPosition: "center" }
-      : { background: `linear-gradient(175deg, #021005 0%, #063020 50%, #020c04 100%)` };
-    return (
-      <div className="relative rounded-xl overflow-hidden shadow-2xl ring-2 ring-amber-400/60" style={{ width: 112, height: 156, ...bgStyle }}>
-        <div className="absolute inset-0 bg-gradient-to-b from-black/20 via-black/5 to-black/85" />
-        <div className="relative z-10 h-full p-2 flex flex-col justify-between">
-          <div className="flex justify-between items-start">
-            {card.lumens > 0 ? <span className="bg-black/60 backdrop-blur-sm rounded px-1.5 py-0.5 text-sm font-serif font-bold text-amber-100 drop-shadow-[0_1px_3px_rgba(0,0,0,1)]">{card.lumens}</span> : <span />}
-            {bonusMeta && (
-              <div className="w-4 h-4 rounded-full ring-1 ring-black/40 overflow-hidden">
-                <img src={bonusMeta.image} alt={bonusMeta.name} className="w-full h-full object-contain" draggable={false} />
-              </div>
-            )}
-          </div>
-          <div className="space-y-1">
-            <div className="text-[8px] font-semibold text-white drop-shadow line-clamp-2 leading-tight">{card.name}</div>
-          </div>
-        </div>
-        {/* Amber sheen on forge */}
-        <motion.div
-          className="absolute inset-0 pointer-events-none"
-          style={{ background: "linear-gradient(135deg, rgba(251,191,36,0.22) 0%, transparent 60%)", mixBlendMode: "screen" }}
-          animate={{ opacity: [0, 1, 0.5, 0] }}
-          transition={{ duration: 1.6, ease: "easeOut" }}
-        />
-      </div>
-    );
-  };
-
-  return (
-    <motion.div
-      key={animKey}
-      className="pointer-events-none fixed inset-0 z-[70] flex items-center justify-center"
-      initial={{ opacity: 1 }}
-      animate={{ opacity: [1, 1, 0] }}
-      transition={{ duration: 2.2, times: [0, 0.75, 1], ease: "easeIn" }}
-    >
-      {/* Board dim */}
-      <motion.div
-        className="absolute inset-0 bg-black/60"
-        initial={{ opacity: 0 }}
-        animate={{ opacity: [0, 1, 1, 0] }}
-        transition={{ duration: 2.2, times: [0, 0.12, 0.75, 1] }}
-      />
-
-      {/* Radial gold glow at center */}
-      <motion.div
-        className="absolute pointer-events-none"
-        style={{
-          width: 320, height: 320,
-          borderRadius: "50%",
-          background: "radial-gradient(circle, rgba(251,191,36,0.28) 0%, transparent 70%)",
-        }}
-        initial={{ scale: 0.3, opacity: 0 }}
-        animate={{ scale: [0.3, 1.4, 1.1], opacity: [0, 0.9, 0] }}
-        transition={{ duration: 1.6, ease: "easeOut" }}
-      />
-
-      {/* Card lift: starts from top-center (market zone) → center, scale + rotateY */}
-      <motion.div
-        className="relative flex flex-col items-center gap-3"
-        initial={{ y: -160, scale: 0.55, rotateY: -35, opacity: 0 }}
-        animate={{
-          y: [null, 0, 0, -40],
-          scale: [null, 1.12, 1.08, 0.85],
-          rotateY: [null, 0, 6, 0],
-          opacity: [null, 1, 1, 0],
-        }}
-        transition={{
-          duration: 2.0,
-          times: [0, 0.28, 0.65, 1],
-          ease: "easeOut",
-        }}
-        style={{ perspective: 800 }}
-      >
-        {/* Player label above card */}
-        <motion.div
-          className="flex items-center gap-1.5 bg-black/70 rounded-full px-3 py-1 border border-white/10"
-          initial={{ opacity: 0, y: 8 }}
-          animate={{ opacity: [0, 1, 1, 0], y: [8, 0, 0, -8] }}
-          transition={{ duration: 2.0, times: [0, 0.20, 0.65, 1] }}
-        >
-          <div className="w-4 h-4 rounded-full bg-indigo-700/80 border border-indigo-400/40 flex items-center justify-center">
-            <span className="text-[7px] font-bold text-white">Y</span>
-          </div>
-          <span className="text-[11px] font-semibold text-white/80">You</span>
-        </motion.div>
-
-        <CardFace />
-
-        {/* "Forged!" text + eminence */}
-        <motion.div
-          className="flex flex-col items-center gap-1"
-          initial={{ opacity: 0, y: 10 }}
-          animate={{ opacity: [0, 1, 1, 0], y: [10, 0, 0, -10] }}
-          transition={{ duration: 2.0, times: [0, 0.22, 0.65, 1], delay: 0.1 }}
-        >
-          <span className="text-2xl font-serif font-black text-amber-300 drop-shadow-[0_0_14px_rgba(251,191,36,0.85)]">
-            Forged!
-          </span>
-          {lumens > 0 && (
-            <span className="flex items-center gap-1.5 text-base font-bold text-indigo-300 drop-shadow-[0_0_8px_rgba(129,140,248,0.7)]">
-              +{lumens} Eminence
-            </span>
-          )}
-          <span className="text-[11px] text-white/50 font-medium mt-0.5">{name}</span>
-        </motion.div>
-      </motion.div>
-
-      {/* Expanding ring accent */}
-      <motion.div
-        className="absolute rounded-full border border-amber-400/60"
-        initial={{ width: 80, height: 80, opacity: 0.8 }}
-        animate={{ width: 380, height: 380, opacity: 0 }}
-        transition={{ duration: 1.1, ease: "easeOut", delay: 0.1 }}
-      />
-    </motion.div>
-  );
-}
-
 // ─── Tutorial Luminary Section ────────────────────────────────────────────────
 function TutorialLuminarySection({ beatIndex, verdanceDepth }: { beatIndex: number; verdanceDepth: number }) {
   const verdantRevealed = beatIndex >= (BEAT_INDEX["b16_final_forge"] ?? 999);
@@ -3123,7 +3027,7 @@ function TutorialLuminarySection({ beatIndex, verdanceDepth }: { beatIndex: numb
     </div>
   );
   return (
-    <div className="relative shrink-0 overflow-hidden border border-white/10 rounded-2xl backdrop-blur-md" style={{ background: "rgba(3,3,12,0.72)" }}>
+    <div className="relative shrink-0 overflow-hidden border border-white/10 rounded-2xl" style={{ background: "rgba(3,3,12,0.72)" }}>
       <div className="absolute inset-0 pointer-events-none" style={{
         background: "linear-gradient(180deg, rgba(15,8,40,0.55) 0%, rgba(8,5,28,0.40) 100%)",
         borderBottom: "1px solid rgba(120,80,220,0.22)",
@@ -3151,7 +3055,7 @@ function TutorialLuminarySection({ beatIndex, verdanceDepth }: { beatIndex: numb
               <div className="absolute bottom-2 left-0 right-0 text-center">
                 <div className="text-[7px] font-bold text-white/60 uppercase tracking-widest">Verdant Oracle</div>
                 <div className="text-[6px] text-white/30 mt-0.5">
-                  {verdantClaimed ? "Awakened: +2 Eminence, +1 Verdance next turn" : `${Math.min(verdanceDepth, 5)} / 5 Verdance to awaken`}
+                  {verdantClaimed ? "Awakened: +1 Eminence, +1 Verdance next turn" : `${Math.min(verdanceDepth, 5)} / 5 Verdance to awaken`}
                 </div>
               </div>
             </div>
@@ -3166,21 +3070,21 @@ function TutorialLuminarySection({ beatIndex, verdanceDepth }: { beatIndex: numb
 // ─── Collection Sheet ─────────────────────────────────────────────────────────
 // Slides up from the bottom to show all forged artifacts — mirrors the real
 // game's player-panel tap mechanic.
-function CollectionSheet({ forged, bonuses, filterGem, onClose }: {
+function CollectionSheet({ forged, bonuses, filterAffinity, onClose }: {
   forged: string[];
-  bonuses: Record<GemKey, number>;
-  filterGem?: GemKey | null;
+  bonuses: Record<AffinityKey, number>;
+  filterAffinity?: AffinityKey | null;
   onClose: () => void;
 }) {
   const collSheetRef = useRef<HTMLElement | null>(null);
   // Sheet is always mounted when visible (AnimatePresence controls lifecycle).
   useFocusTrap(collSheetRef, true, onClose);
 
-  const bonusTotals = (Object.entries(bonuses) as [GemKey, number][]).filter(([, v]) => v > 0);
-  const visibleCards = filterGem
-    ? forged.filter(id => TUTORIAL_CARDS[id]?.bonusColor === filterGem)
+  const bonusTotals = (Object.entries(bonuses) as [AffinityKey, number][]).filter(([, v]) => v > 0);
+  const visibleCards = filterAffinity
+    ? forged.filter(id => TUTORIAL_CARDS[id]?.bonusAffinity === filterAffinity)
     : forged;
-  const filterMeta = filterGem ? GEM_META[filterGem] : null;
+  const filterMeta = filterAffinity ? AFFINITY_META[filterAffinity] : null;
   return (
     <>
       <motion.div
@@ -3213,7 +3117,7 @@ function CollectionSheet({ forged, bonuses, filterGem, onClose }: {
                 {bonusTotals.map(([k, v]) => (
                   <div key={k} className="flex items-center gap-0.5 bg-emerald-900/40 rounded px-1.5 py-0.5 border border-emerald-500/20">
                     <span className="text-[9px] text-emerald-300 font-bold">+{v}</span>
-                    <MiniGem gem={k} size={9} />
+                    <AffinityToken affinity={k} size={9} />
                   </div>
                 ))}
               </div>
@@ -3223,7 +3127,7 @@ function CollectionSheet({ forged, bonuses, filterGem, onClose }: {
             <div className="flex items-center gap-2 mb-3">
               <div className="flex items-center gap-1.5 rounded-full px-2.5 py-1 text-[10px] font-semibold border"
                 style={{ background: filterMeta.hex + "22", borderColor: filterMeta.hex + "66", color: filterMeta.glowHex }}>
-                <MiniGem gem={filterGem!} size={10} />
+                <AffinityToken affinity={filterAffinity!} size={10} />
                 {filterMeta.name} artifacts
               </div>
             </div>
@@ -3238,7 +3142,7 @@ function CollectionSheet({ forged, bonuses, filterGem, onClose }: {
                 const card = TUTORIAL_CARDS[id];
                 if (!card) return null;
                 const artUrl = CARD_ART[id];
-                const bonusMeta = GEM_META[card.bonusColor];
+                const bonusMeta = AFFINITY_META[card.bonusAffinity];
                 const bgStyle: React.CSSProperties = artUrl
                   ? { backgroundImage: `url(${artUrl})`, backgroundSize: "cover", backgroundPosition: "center" }
                   : { background: `linear-gradient(175deg, #021005 0%, #063020 50%, #020c04 100%)` };
@@ -3248,7 +3152,7 @@ function CollectionSheet({ forged, bonuses, filterGem, onClose }: {
                     <div className="absolute inset-0 bg-gradient-to-b from-black/20 via-black/5 to-black/90" />
                     <div className="relative z-10 h-full p-2 flex flex-col justify-between">
                       <div className="flex justify-between items-start">
-                        {card.lumens > 0 ? <span className="bg-black/60 backdrop-blur-sm rounded px-1.5 py-0.5 text-sm font-serif font-bold text-amber-100 drop-shadow-[0_1px_3px_rgba(0,0,0,1)]">{card.lumens}</span> : <span />}
+                        {card.eminence > 0 ? <EminenceBadge value={card.eminence} /> : <span />}
                         <div className="w-4 h-4 rounded-full ring-1 ring-black/40 overflow-hidden">
                           <img src={bonusMeta.image} alt={bonusMeta.name} className="w-full h-full object-contain" draggable={false} />
                         </div>
@@ -3258,7 +3162,7 @@ function CollectionSheet({ forged, bonuses, filterGem, onClose }: {
                         <div className="flex items-center gap-1">
                           <div className="flex items-center gap-0.5 bg-emerald-900/60 rounded px-1 py-0.5">
                             <span className="text-[8px] text-emerald-300 font-bold">+1</span>
-                            <MiniGem gem={card.bonusColor} size={8} />
+                            <AffinityToken affinity={card.bonusAffinity} size={8} />
                           </div>
                           <span className="text-[7px] text-white/30">per turn</span>
                         </div>
@@ -3313,7 +3217,7 @@ function GameplayPhase({ s, dispatch }: { s: TutState; dispatch: React.Dispatch<
 
   // Collection sheet — slides up to show all forged artifacts (teaches panel-tap mechanic)
   const [collectionOpen, setCollectionOpen] = useState(false);
-  const [collectionInitialGem, setCollectionInitialGem] = useState<GemKey | null>(null);
+  const [collectionInitialAffinity, setCollectionInitialAffinity] = useState<AffinityKey | null>(null);
   const [reservedPanelOpen, setReservedPanelOpen] = useState(false);
   const openedReservedForgeRef = useRef(false);
   // Artifact inspection no longer lives in the Affinity Well, so the tutorial
@@ -3337,22 +3241,22 @@ function GameplayPhase({ s, dispatch }: { s: TutState; dispatch: React.Dispatch<
   useEffect(() => () => { if (harnessFlashTimerRef.current) clearTimeout(harnessFlashTimerRef.current); }, []);
 
   // ── Burst animation state ──────────────────────────────────────────────────
-  const [purchaseBurst, setPurchaseBurst] = useState<{
-    key: number; lumens: number; name: string; cardId: string;
+  const [forgeBurst, setForgeBurst] = useState<{
+    key: number; eminence: number; name: string; cardId: string;
     startRect: { x: number; y: number; w: number; h: number };
     destPos: { x: number; y: number };
-    spentColors: GemKey[];
+    spentColors: AffinityKey[];
   } | null>(null);
-  const purchaseBurstKeyRef = useRef(0);
-  const [gemBurst, setGemBurst] = useState<{ key: number; gems: GemKey[] } | null>(null);
-  const gemBurstKeyRef = useRef(0);
+  const forgeBurstKeyRef = useRef(0);
+  const [affinityBurst, setAffinityBurst] = useState<{ key: number; affinities: AffinityKey[] } | null>(null);
+  const affinityBurstKeyRef = useRef(0);
   const [forgeJustHappened, setForgeJustHappened] = useState(false);
   const [encryptBurst, setEncryptBurst] = useState<{
     key: number;
     sourceRect: { x: number; y: number; w: number; h: number };
     affinityHex: string;
     cardName: string;
-    gotFlux: boolean;
+    gotSingularity: boolean;
     cardId: string;
     destPos?: { x: number; y: number };
   } | null>(null);
@@ -3362,14 +3266,14 @@ function GameplayPhase({ s, dispatch }: { s: TutState; dispatch: React.Dispatch<
     const trigger = s.animTrigger;
     if (!trigger) return;
     if (trigger.type === "forge") {
-      gameAudio.playCardPurchased();
-      purchaseBurstKeyRef.current += 1;
+      gameAudio.playArtifactForged();
+      forgeBurstKeyRef.current += 1;
       const source = document.querySelector(`[data-tutorial-card-id="${trigger.cardId}"]`)?.getBoundingClientRect();
       const card = TUTORIAL_CARDS[trigger.cardId];
-      const destinationSelector = card?.bonusColor === "flux"
+      const destinationSelector = card?.bonusAffinity === "singularity"
         ? "[data-singularity-well]"
-        : card?.bonusColor
-          ? `[data-affinity-well="${card.bonusColor}"]`
+        : card?.bonusAffinity
+          ? `[data-affinity-well="${card.bonusAffinity}"]`
           : null;
       const destination = destinationSelector
         ? document.querySelector(destinationSelector)?.getBoundingClientRect()
@@ -3380,22 +3284,22 @@ function GameplayPhase({ s, dispatch }: { s: TutState; dispatch: React.Dispatch<
       const destPos = destination
         ? { x: destination.left + destination.width / 2, y: destination.top + destination.height / 2 }
         : { x: window.innerWidth / 2, y: window.innerHeight * 0.82 };
-      const spentColors = card ? Object.keys(card.cost) as GemKey[] : [];
-      setPurchaseBurst({ key: purchaseBurstKeyRef.current, lumens: trigger.lumens, name: trigger.name, cardId: trigger.cardId, startRect, destPos, spentColors });
-      setTimeout(() => setPurchaseBurst(null), 1300);
+      const spentColors = card ? Object.keys(card.cost) as AffinityKey[] : [];
+      setForgeBurst({ key: forgeBurstKeyRef.current, eminence: trigger.eminence, name: trigger.name, cardId: trigger.cardId, startRect, destPos, spentColors });
+      setTimeout(() => setForgeBurst(null), 1300);
       setForgeJustHappened(true);
       setTimeout(() => setForgeJustHappened(false), 3600);
-    } else if (trigger.type === "harvest") {
-      const { gems } = trigger;
-      // Stagger a crystal-pick sound per gem so multi-gem harvests have a satisfying cascade
-      gems.forEach((gem, i) => {
-        setTimeout(() => gameAudio.playCrystalPicked(gem), i * 95);
+    } else if (trigger.type === "harness") {
+      const { affinities } = trigger;
+      // Stagger the selection cue so a multi-Affinity Harness has a clear cadence.
+      affinities.forEach((affinity, i) => {
+        setTimeout(() => gameAudio.playAffinitySelected(affinity), i * 95);
       });
-      gemBurstKeyRef.current += 1;
-      const key = gemBurstKeyRef.current;
-      setGemBurst({ key, gems });
-      const burstDuration = (gems.length - 1) * 0.78 + 1.25 + 0.5 + 0.05;
-      setTimeout(() => setGemBurst(null), (burstDuration + 0.35) * 1000);
+      affinityBurstKeyRef.current += 1;
+      const key = affinityBurstKeyRef.current;
+      setAffinityBurst({ key, affinities });
+      const burstDuration = (affinities.length - 1) * 0.78 + 1.25 + 0.5 + 0.05;
+      setTimeout(() => setAffinityBurst(null), (burstDuration + 0.35) * 1000);
     }
   }, [s.animTrigger]);
 
@@ -3446,11 +3350,10 @@ function GameplayPhase({ s, dispatch }: { s: TutState; dispatch: React.Dispatch<
     !(beatId === "b13_tier3" && (s.dlgLine < 2 || subStep >= 1 || s.tier3GrantPending));
 
   const isEminenceHighlighted = beatId === "b14_win_condition";
-  const isHandHighlighted = beatId === "b10b_reserve_granted";
   const isForgeHighlighted = ["b6_forge_appears", "b11_forge_reserved", "b16_final_forge"].includes(beatId);
 
-  // Flux column locked until Singularity is introduced at b12_tier2
-  const fluxLocked = s.beat < (BEAT_INDEX["b12_tier2"] ?? 14);
+  // Singularity column locked until Singularity is introduced at b12_tier2
+  const singularityLocked = s.beat < (BEAT_INDEX["b12_tier2"] ?? 14);
 
   // Approximate screen positions for highlight zone targets (fixed-overlay coordinates).
   // Values reflect where elements appear on-screen given the active cameraFocus scroll state.
@@ -3459,9 +3362,9 @@ function GameplayPhase({ s, dispatch }: { s: TutState; dispatch: React.Dispatch<
     "forge-btn":      { x: "84%", y: "46%" },
     "hand":           { x: "20%", y: "42%" },
     "storage":        { x: "38%", y: "62%" },
-    "market-t1":      { x: "50%", y: "40%" },
-    "market-t2":      { x: "50%", y: "26%" },
-    "market-t3":      { x: "50%", y: "16%" },
+    "forge-t1":       { x: "50%", y: "40%" },
+    "forge-t2":       { x: "50%", y: "26%" },
+    "forge-t3":       { x: "50%", y: "16%" },
     "card-cost":      { x: "76%", y: "38%" },
     "eminence":       { x: "86%", y: "94%" },
     "discounted-tab": { x: "36%", y: "22%" },
@@ -3471,9 +3374,9 @@ function GameplayPhase({ s, dispatch }: { s: TutState; dispatch: React.Dispatch<
 
   const lumiiTarget = beat.lumiiZone;
   const LUMII_ZONE_POS: Record<string, { x: string; y: string }> = {
-    "market-t1":      { x: "87%", y: "26%" },
-    "market-t2":      { x: "87%", y: "20%" },
-    "market-t3":      { x: "87%", y: "14%" },
+    "forge-t1":       { x: "87%", y: "26%" },
+    "forge-t2":       { x: "87%", y: "20%" },
+    "forge-t3":       { x: "87%", y: "14%" },
     "card-cost":      { x: "78%", y: "40%" },
     // "well" was at 12% which caused Lumii to overlap the top-[54px] dialogue box
     // when cameraFocus === "well" — moved down to 24% to clear it on all screen sizes
@@ -3490,7 +3393,7 @@ function GameplayPhase({ s, dispatch }: { s: TutState; dispatch: React.Dispatch<
     "forge-header":   { x: "87%", y: "44%" },
     // Bottom-right, floating just above the pinned player panel
     "player-panel":   { x: "87%", y: "88%" },
-    // Over the Verdance (emerald) gem box — 3rd of 6 boxes, bottom panel
+    // Over the Verdance (verdance) affinity box — 3rd of 6 boxes, bottom panel
     "verdance-panel": { x: "40%", y: "88%" },
   };
   const lumiiPosRaw = LUMII_ZONE_POS[lumiiTarget] ?? { x: "88%", y: "62%" };
@@ -3504,14 +3407,14 @@ function GameplayPhase({ s, dispatch }: { s: TutState; dispatch: React.Dispatch<
   const lumiiEffectivePos = lumiiPos;
 
   const isActMode = beat.mode === "act" || beat.mode === "semiOpen";
-  const totalCrystals = Object.values(s.crystals).reduce((a, b) => a + b, 0);
+  const totalAffinities = Object.values(s.affinities).reduce((a, b) => a + b, 0);
 
   const scrollRef = useRef<HTMLDivElement>(null);
   const forgeRef = useRef<HTMLDivElement>(null);
   const tier1Ref = useRef<HTMLDivElement>(null);
   const tier2Ref = useRef<HTMLDivElement>(null);
   const tier3Ref = useRef<HTMLDivElement>(null);
-  const cameraFocus: "market" | "well" | "storage" | "forge" | "tier1" | "tier2" | "tier3" = (() => {
+  const cameraFocus: "overview" | "well" | "storage" | "forge" | "tier1" | "tier2" | "tier3" = (() => {
     if (beatId === "b6b_root_lattice" || beatId === "b7_artifact_cost" || beatId === "b7b_cost_bridge" || beatId === "b8_first_harness" || beatId === "b9_first_forge") return "tier1";
     if (beatId === "b9b_forge_complete" || beatId === "b9c_transition" || (beatId === "b10_reserve" && s.dlgLine === 0)) return "well";
     if (beatId === "b10_reserve") return "tier1";
@@ -3522,23 +3425,23 @@ function GameplayPhase({ s, dispatch }: { s: TutState; dispatch: React.Dispatch<
     if (beatId === "b12_tier2" && subStep >= 1) return "tier2";
     if (beatId === "b13_tier3" && subStep >= 1) return "tier3";
     if (beatId === "b13_tier3") return "well";
-    if (beatId === "b16_final_forge" && s.dlgLine < 4) return "market";
+    if (beatId === "b16_final_forge" && s.dlgLine < 4) return "overview";
     if (beatId === "b16_final_forge" && !s.finalDeliveryComplete) return "well";
     if (beatId === "b16_final_forge") return "tier2";
     if (beatId === "b14_win_condition") return "storage";
     if (beatId === "b10b_reserve_granted") return "forge";
-    return "market";
+    return "overview";
   })();
   const activeHighlightZone = beatId === "b9_first_forge" && s.dlgLine >= 1
-    ? "market-t1"
+    ? "forge-t1"
     : beatId === "b10_reserve"
-    ? "market-t1"
+    ? "forge-t1"
     : beatId === "b16_final_forge" && s.dlgLine >= 2
-      ? "market-t2"
+      ? "forge-t2"
     : beatId === "b11_forge_reserved" && subStep >= 1
       ? "well"
     : beatId === "b12_tier2" && subStep >= 1
-      ? "market-t2"
+      ? "forge-t2"
     : beat.highlightZone;
 
   // Close card sheet on beat/subStep change
@@ -3551,6 +3454,12 @@ function GameplayPhase({ s, dispatch }: { s: TutState; dispatch: React.Dispatch<
   useLayoutEffect(() => {
     const container = scrollRef.current;
     if (!container) return;
+    if (window.matchMedia(
+      "(max-width: 600px) and (orientation: portrait), (max-height: 520px) and (orientation: landscape)"
+    ).matches) {
+      container.scrollTo({ top: 0, behavior: "auto" });
+      return;
+    }
     const maxScroll = container.scrollHeight - container.clientHeight;
     if (cameraFocus === "well") {
       container.scrollTo({ top: maxScroll, behavior: "smooth" });
@@ -3620,7 +3529,7 @@ function GameplayPhase({ s, dispatch }: { s: TutState; dispatch: React.Dispatch<
     } else {
       container.scrollTo({ top: 0, behavior: "smooth" });
     }
-  }, [beatId, subStep, cameraFocus]);
+  }, [beatId, subStep, cameraFocus, isShortLandscape]);
 
   // Lock scroll (camera is programmatic)
   useEffect(() => {
@@ -3645,7 +3554,12 @@ function GameplayPhase({ s, dispatch }: { s: TutState; dispatch: React.Dispatch<
   ) => { gameAudio.playButtonSelect(); setSelectedCardData({ card, forgeEnabled, reserveEnabled, onForge, onReserve }); };
 
   return (
-    <div className="fixed inset-0 flex flex-col overflow-hidden bg-[#060412]" data-game-board="true">
+    <div
+      className="tutorial-gameplay fixed inset-0 flex flex-col overflow-hidden bg-[#060412]"
+      data-game-board="true"
+      data-tutorial-gameplay="true"
+      data-tutorial-beat={beatId}
+    >
       {/* Cosmos background */}
       <div className="absolute inset-0 pointer-events-none" style={{
         backgroundImage: `url(${backgroundCosmos})`,
@@ -3664,18 +3578,18 @@ function GameplayPhase({ s, dispatch }: { s: TutState; dispatch: React.Dispatch<
       {isDimmed && <div className="absolute inset-0 bg-black/30 z-20 pointer-events-none" />}
 
       {s.tier2GrantPending && <LumiiAffinityDelivery drops={[
-        { gem: "emerald", amount: 1 },
-        { gem: "onyx", amount: 1 },
+        { affinity: "verdance", amount: 1 },
+        { affinity: "abyss", amount: 1 },
       ]} />}
 
       {s.tier3GrantPending && <LumiiAffinityDelivery drops={[
-        { gem: "sapphire", amount: 3 },
-        { gem: "pearl", amount: 2 },
-        { gem: "flux", amount: 1 },
+        { affinity: "continuum", amount: 3 },
+        { affinity: "radiance", amount: 2 },
+        { affinity: "singularity", amount: 1 },
       ]} />}
 
       {s.finalGrantPending && <LumiiAffinityDelivery drops={[
-        { gem: "sapphire", amount: 5 },
+        { affinity: "continuum", amount: 5 },
       ]} />}
 
       {/* Spotlight vignette — dims edges around the highlighted target zone */}
@@ -3685,7 +3599,7 @@ function GameplayPhase({ s, dispatch }: { s: TutState; dispatch: React.Dispatch<
           className="fixed inset-0 pointer-events-none z-[22]"
           initial={{ opacity: 0 }}
           animate={{ opacity: 1 }}
-          transition={{ duration: 0.9, delay: cameraFocus !== "market" ? 0.82 : 0.25 }}
+          transition={{ duration: 0.9, delay: cameraFocus !== "overview" ? 0.82 : 0.25 }}
           style={{
             background: `radial-gradient(ellipse 52% 38% at ${HIGHLIGHT_ZONE_SCREEN_POS[activeHighlightZone]!.x} ${HIGHLIGHT_ZONE_SCREEN_POS[activeHighlightZone]!.y}, transparent 0%, rgba(0,0,0,0.28) 100%)`,
           }}
@@ -3702,7 +3616,7 @@ function GameplayPhase({ s, dispatch }: { s: TutState; dispatch: React.Dispatch<
       )}
 
       {/* Header */}
-      <header className="shrink-0 z-30 grid grid-cols-[minmax(0,1fr)_auto_minmax(0,1fr)] items-center gap-2 px-4 py-2 border-b border-[#a8c5ff]/20 backdrop-blur-md" style={{ background: "linear-gradient(180deg, rgba(6,4,20,0.97) 0%, rgba(4,2,14,0.94) 100%)", boxShadow: "0 2px 18px rgba(0,0,0,0.34)" }}>
+      <header className="shrink-0 z-30 grid grid-cols-[minmax(0,1fr)_auto_minmax(0,1fr)] items-center gap-2 px-4 py-2 border-b border-[#a8c5ff]/20" style={{ background: "linear-gradient(180deg, rgba(6,4,20,0.97) 0%, rgba(4,2,14,0.94) 100%)", boxShadow: "0 2px 18px rgba(0,0,0,0.34)" }}>
         <div className="min-w-0">
           <div className="flex flex-col leading-none">
             <span className="text-sm font-serif font-bold text-indigo-200 tracking-wide">LUMINAe</span>
@@ -3711,11 +3625,11 @@ function GameplayPhase({ s, dispatch }: { s: TutState; dispatch: React.Dispatch<
         </div>
         <div className="justify-self-center">
           <OpponentChip
-            player={{ playerId: "tutorial-lumii", playerName: "Lumii", avatarId: "stargazer", lumens: 0, isAi: true }}
+            player={{ playerId: "tutorial-lumii", playerName: "Lumii", avatarId: "stargazer", eminence: 0, isAi: true }}
             isActive={false}
             isLocalTurn
-            affinityTotals={{ ruby: 0, sapphire: 0, emerald: 0, onyx: 0, pearl: 0 }}
-            artifactTotals={{ ruby: 0, sapphire: 0, emerald: 0, onyx: 0, pearl: 0 }}
+            affinityTotals={{ flare: 0, continuum: 0, verdance: 0, abyss: 0, radiance: 0 }}
+            artifactTotals={{ flare: 0, continuum: 0, verdance: 0, abyss: 0, radiance: 0 }}
           />
         </div>
         <div className="justify-self-end">
@@ -3787,17 +3701,19 @@ function GameplayPhase({ s, dispatch }: { s: TutState; dispatch: React.Dispatch<
 
       {/* ── Board content area ───────────────────────────────────────── */}
       <motion.div
-        className="relative z-10 flex-1 overflow-hidden"
+        className="tutorial-board-main relative z-10 flex-1 overflow-hidden"
         initial={beatId === "b6_forge_appears" ? { scale: 1.38, y: "-12%" } : false}
         animate={{ scale: 1, y: 0 }}
         transition={{ duration: 1.6, ease: [0.25, 0.46, 0.45, 0.94] }}
         style={{ transformOrigin: "50% 36%" }}
       >
-        <div ref={scrollRef} className={`h-full overflow-y-auto px-3 flex flex-col pb-3 ${isShortLandscape ? "py-2 gap-2" : "py-3 gap-3"}`}>
-          <TutorialLuminarySection beatIndex={s.beat} verdanceDepth={s.bonuses.emerald ?? 0} />
+        <div ref={scrollRef} className={`tutorial-board-scroll h-full overflow-y-auto px-3 flex flex-col pb-3 ${isShortLandscape ? "py-2 gap-2" : "py-3 gap-3"}`}>
+          <div className="tutorial-secondary-board">
+            <TutorialLuminarySection beatIndex={s.beat} verdanceDepth={s.bonuses.verdance ?? 0} />
+          </div>
           <div
             ref={forgeRef}
-            className="relative -mx-3 shrink-0 overflow-hidden"
+            className="tutorial-forge relative -mx-3 shrink-0 overflow-hidden"
             style={{
               background: "linear-gradient(180deg, rgba(28,14,6,0.50) 0%, rgba(20,10,4,0.38) 100%)",
               borderTop: "1px solid rgba(160,100,30,0.18)",
@@ -3822,7 +3738,7 @@ function GameplayPhase({ s, dispatch }: { s: TutState; dispatch: React.Dispatch<
                 />
               ))}
             </div>
-            <div className="relative flex items-center px-4 pb-2 pt-3">
+            <div className="tutorial-forge-header relative flex items-center px-4 pb-2 pt-3">
               <Hammer className="mr-2.5 h-4 w-4 shrink-0" style={{ color: "#D4A84B", opacity: 0.85 }} />
               <div className="flex flex-col leading-none">
                 <span className="text-[8px] font-bold uppercase tracking-[0.22em]" style={{ color: "rgba(192,140,60,0.55)" }}>The</span>
@@ -3830,8 +3746,8 @@ function GameplayPhase({ s, dispatch }: { s: TutState; dispatch: React.Dispatch<
               </div>
               <div className="ml-2.5 h-px w-8" style={{ background: "linear-gradient(90deg, rgba(192,140,60,0.5), transparent)" }} />
             </div>
-            <div className="relative px-3 pb-3">
-              <ScriptedMarket s={s} dispatch={dispatch} beatId={beatId} subStep={subStep} onCardTap={handleCardTap} tier1Ref={tier1Ref} tier2Ref={tier2Ref} tier3Ref={tier3Ref} />
+            <div className="tutorial-forge-body relative px-3 pb-3">
+              <ScriptedForge s={s} dispatch={dispatch} beatId={beatId} subStep={subStep} onCardTap={handleCardTap} tier1Ref={tier1Ref} tier2Ref={tier2Ref} tier3Ref={tier3Ref} />
             </div>
           </div>
         </div>
@@ -3839,7 +3755,7 @@ function GameplayPhase({ s, dispatch }: { s: TutState; dispatch: React.Dispatch<
 
       {/* ── Pinned Player Panel ────────────────────────────────────────── */}
       <div
-        className={`shrink-0 z-20 border-t px-3 backdrop-blur-md transition-all ${
+        className={`tutorial-affinity-panel shrink-0 z-20 border-t px-3 transition-all ${
           isShortLandscape ? "pt-1" : "pt-2"
         } ${
           isEminenceHighlighted ? "border-amber-400/60 tut-bar-glow" : isActMode ? "border-indigo-500/40" : "border-white/10"
@@ -3850,8 +3766,8 @@ function GameplayPhase({ s, dispatch }: { s: TutState; dispatch: React.Dispatch<
           <div className="flex min-w-0 items-center gap-2">
             <Droplets className="h-3.5 w-3.5" style={{ color: "#a8c5ff", opacity: 0.85 }} />
             <div className="flex min-w-0 flex-col leading-none">
-              <span className="text-[7px] font-bold uppercase tracking-[0.22em]" style={{ color: "rgba(168,197,255,0.5)" }}>The</span>
-              <span className="truncate whitespace-nowrap text-[12px] font-black uppercase tracking-[0.06em]" style={{ color: "#a8c5ff", textShadow: "0 0 18px rgba(168,197,255,0.35)" }}>Affinity Well</span>
+              <span className="tutorial-well-title-kicker text-[7px] font-bold uppercase tracking-[0.22em]" style={{ color: "rgba(168,197,255,0.5)" }}>The</span>
+              <span className="tutorial-well-title truncate whitespace-nowrap text-[12px] font-black uppercase tracking-[0.06em]" style={{ color: "#a8c5ff", textShadow: "0 0 18px rgba(168,197,255,0.35)" }}>Affinity Well</span>
             </div>
           </div>
           <button
@@ -3871,7 +3787,7 @@ function GameplayPhase({ s, dispatch }: { s: TutState; dispatch: React.Dispatch<
               {isActMode && <span className="h-1.5 w-1.5 rounded-full bg-indigo-400 animate-pulse shrink-0" />}
               <span className="text-xs font-semibold text-white truncate">You</span>
               {isActMode && (
-                <span className="text-[10px] font-bold text-indigo-300 bg-indigo-500/15 px-1.5 py-0.5 rounded-full shrink-0">your turn</span>
+                <span className="tutorial-turn-badge text-[10px] font-bold text-indigo-300 bg-indigo-500/15 px-1.5 py-0.5 rounded-full shrink-0">your turn</span>
               )}
               {/* Tap-hint badge — shown on beats that explicitly invite panel inspection */}
               {showPanelTapHint && (
@@ -3881,17 +3797,17 @@ function GameplayPhase({ s, dispatch }: { s: TutState; dispatch: React.Dispatch<
               )}
           </button>
           <div className="flex items-center justify-self-end gap-3 shrink-0">
-            <div className="flex items-center gap-1" title={`${totalCrystals} / 10 affinities held`}>
+            <div className="tutorial-held-affinity-total flex items-center gap-1" title={`${totalAffinities} / 10 affinities held`}>
               <Hand className="h-3.5 w-3.5 text-white/85" />
               <span className="font-mono text-sm font-black leading-none tabular-nums text-white/85">
-                {totalCrystals}<span className="text-[10px] font-semibold text-white/45">/10</span>
+                {totalAffinities}<span className="text-[10px] font-semibold text-white/45">/10</span>
               </span>
             </div>
             <EminenceProgress value={s.eminence} />
           </div>
         </div>
         <AffinityWell s={s} dispatch={dispatch} beatId={beatId} subStep={subStep} wellEnabled={isWellEnabled}
-          fluxLocked={fluxLocked} harnessFlash={harnessFlash} onHarnessFlash={triggerHarnessFlash}
+          singularityLocked={singularityLocked} harnessFlash={harnessFlash} onHarnessFlash={triggerHarnessFlash}
           onOpenReserved={s.reserved.length > 0 ? () => setReservedPanelOpen(true) : undefined} embedded />
       </div>
 
@@ -3916,7 +3832,9 @@ function GameplayPhase({ s, dispatch }: { s: TutState; dispatch: React.Dispatch<
           <motion.div
             animate={{ left: effectiveLumiiPos.x, top: effectiveLumiiPos.y }}
             transition={{ type: "spring", stiffness: 55, damping: 20 }}
-            className="fixed z-[60] pointer-events-none"
+            className="tutorial-lumii fixed z-[60] pointer-events-none"
+            data-lumii-target={lumiiTarget}
+            data-floating-dialogue={showFloatingDlg ? "true" : undefined}
           >
             <div style={{ transform: "translate(-50%, -50%)" }}>
             {/* Speech bubble anchored to Lumii for card-explanation beats */}
@@ -4022,21 +3940,21 @@ function GameplayPhase({ s, dispatch }: { s: TutState; dispatch: React.Dispatch<
           <TutorialCardSheet
             card={selectedCardData.card}
             bonuses={s.bonuses}
-            crystals={s.crystals}
+            heldAffinities={s.affinities}
             viewMode={s.view}
             wellSel={s.wellSel}
             forgeEnabled={selectedCardData.forgeEnabled}
             reserveEnabled={selectedCardData.reserveEnabled}
             onForge={selectedCardData.onForge ? () => { setSelectedCardData(null); selectedCardData.onForge!(); } : undefined}
             onReserve={selectedCardData.onReserve ? () => {
-              const affHex = GEM_META[selectedCardData.card.bonusColor as GemKey]?.glowHex ?? '#7090FF';
+              const affHex = AFFINITY_META[selectedCardData.card.bonusAffinity as AffinityKey]?.glowHex ?? '#7090FF';
               encryptBurstKeyRef.current += 1;
               setEncryptBurst({
                 key: encryptBurstKeyRef.current,
                 sourceRect: { x: window.innerWidth / 2 - BOARD_CARD_W / 2, y: window.innerHeight * 0.32, w: BOARD_CARD_W, h: BOARD_CARD_H },
                 affinityHex: affHex,
                 cardName: selectedCardData.card.name,
-                gotFlux: true,
+                gotSingularity: true,
                 cardId: selectedCardData.card.id,
                 destPos: { x: window.innerWidth * 0.12, y: window.innerHeight * 0.76 },
               });
@@ -4055,10 +3973,10 @@ function GameplayPhase({ s, dispatch }: { s: TutState; dispatch: React.Dispatch<
           <CollectionSheet
             forged={s.forged}
             bonuses={s.bonuses}
-            filterGem={collectionInitialGem}
+            filterAffinity={collectionInitialAffinity}
             onClose={() => {
               setCollectionOpen(false);
-              setCollectionInitialGem(null);
+              setCollectionInitialAffinity(null);
               if (beatId === "b9b_forge_complete") dispatch({ type: "PANEL_VIEWED" });
             }}
           />
@@ -4105,10 +4023,10 @@ function GameplayPhase({ s, dispatch }: { s: TutState; dispatch: React.Dispatch<
       {s.dlgLine < beat.dialogue.length && !["b6_forge_appears", "b6b_root_lattice", "b7_artifact_cost", "b7b_cost_bridge"].includes(beatId) && (
         <motion.div
           key={`dlg-settle-${beatId}-${subStep}`}
-          className="fixed left-0 right-0 z-50 px-4"
+          className="tutorial-dialogue fixed left-0 right-0 z-50 px-4"
           initial={{ opacity: 0 }}
           animate={{ opacity: 1 }}
-          transition={{ duration: 0.4, delay: cameraFocus !== "market" ? 0.68 : 0 }}
+          transition={{ duration: 0.4, delay: cameraFocus !== "overview" ? 0.68 : 0 }}
           style={lumiiTarget === "player-panel" || lumiiTarget === "verdance-panel"
             ? {
                 // The tutorial Well is taller than the live compact player panel.
@@ -4149,16 +4067,16 @@ function GameplayPhase({ s, dispatch }: { s: TutState; dispatch: React.Dispatch<
 
       {/* ── Forge Burst Overlay — same stamp-and-fly animation as the game ── */}
       <AnimatePresence>
-        {purchaseBurst && TUTORIAL_CARDS[purchaseBurst.cardId] && (
+        {forgeBurst && TUTORIAL_CARDS[forgeBurst.cardId] && (
           <ForgeAnimation
-            animKey={purchaseBurst.key}
-            card={asGameCard(TUTORIAL_CARDS[purchaseBurst.cardId])}
-            tier={TUTORIAL_CARDS[purchaseBurst.cardId].tier}
-            startRect={purchaseBurst.startRect}
-            destPos={purchaseBurst.destPos}
-            spentColors={purchaseBurst.spentColors}
-            lumens={purchaseBurst.lumens}
-            gotFlux={false}
+            animKey={forgeBurst.key}
+            card={asGameCard(TUTORIAL_CARDS[forgeBurst.cardId])}
+            tier={TUTORIAL_CARDS[forgeBurst.cardId].tier}
+            startRect={forgeBurst.startRect}
+            destPos={forgeBurst.destPos}
+            spentColors={forgeBurst.spentColors}
+            eminence={forgeBurst.eminence}
+            gotSingularity={false}
           />
         )}
       </AnimatePresence>
@@ -4182,23 +4100,23 @@ function GameplayPhase({ s, dispatch }: { s: TutState; dispatch: React.Dispatch<
             affinityHex={encryptBurst.affinityHex}
             cardName={encryptBurst.cardName}
             cardFace={cardFace}
-            gotFlux={encryptBurst.gotFlux}
+            gotSingularity={encryptBurst.gotSingularity}
             destPos={encryptBurst.destPos}
             onComplete={() => setEncryptBurst(null)}
           />
         );
       })()}
 
-      {/* ── Gem Pickup Burst Overlay ─────────────────────────────────────── */}
+      {/* ── Affinity Pickup Burst Overlay ─────────────────────────────────────── */}
       <AnimatePresence>
-        {gemBurst && (() => {
-          const count = gemBurst.gems.length;
+        {affinityBurst && (() => {
+          const count = affinityBurst.affinities.length;
           const spacing = 74;
           const offset = ((count - 1) / 2) * spacing;
           const burstDuration = (count - 1) * 0.78 + 1.25 + 0.5 + 0.05;
           return (
             <motion.div
-              key={gemBurst.key}
+              key={affinityBurst.key}
               className="pointer-events-none fixed inset-0 z-[70] flex items-center justify-center"
               initial={{ opacity: 1 }}
               exit={{ opacity: 0 }}
@@ -4211,12 +4129,12 @@ function GameplayPhase({ s, dispatch }: { s: TutState; dispatch: React.Dispatch<
                 transition={{ duration: 0.25 }}
               />
               <div className="relative h-72 w-[18rem]">
-                {gemBurst.gems.map((gem, index) => {
+                {affinityBurst.affinities.map((affinity, index) => {
                   const x = index * spacing - offset;
                   const delay = index * 0.78 + 0.05;
                   return (
                     <motion.div
-                      key={`${gemBurst.key}-${gem}-${index}`}
+                      key={`${affinityBurst.key}-${affinity}-${index}`}
                       className="absolute inset-0 flex items-center justify-center"
                       initial={{ opacity: 0, rotateY: 0, scale: 0.4, x: 0, y: 64 }}
                       animate={{
@@ -4230,13 +4148,13 @@ function GameplayPhase({ s, dispatch }: { s: TutState; dispatch: React.Dispatch<
                     >
                       <div className="flex flex-col items-center gap-2">
                         <div className="rounded-full bg-black/50 p-2 shadow-[0_0_24px_rgba(255,255,255,0.2)]">
-                          <MiniGem gem={gem} size={52} />
+                          <AffinityToken affinity={affinity} size={52} />
                         </div>
                         <span
                           className="text-xs font-bold uppercase tracking-widest"
-                          style={{ color: GEM_META[gem].glowHex }}
+                          style={{ color: AFFINITY_META[affinity].glowHex }}
                         >
-                          {GEM_META[gem].shortName}
+                          {AFFINITY_META[affinity].shortName}
                         </span>
                       </div>
                     </motion.div>
@@ -4276,8 +4194,8 @@ export function TutorialDirector({ startBeat }: { startBeat?: number }) {
       const card = TUTORIAL_CARDS[cardId];
       if (!card || state.forged.includes(cardId)) return;
       state.forged = [...state.forged, cardId];
-      state.bonuses = { ...state.bonuses, [card.bonusColor]: (state.bonuses[card.bonusColor] ?? 0) + 1 };
-      state.eminence += card.lumens;
+      state.bonuses = { ...state.bonuses, [card.bonusAffinity]: (state.bonuses[card.bonusAffinity] ?? 0) + 1 };
+      state.eminence += card.eminence;
     };
 
     if (atOrAfter("b10_reserve")) grantForged(FIRST_FORGE_ID);
@@ -4287,7 +4205,7 @@ export function TutorialDirector({ startBeat }: { startBeat?: number }) {
     if (atOrAfter("b14_win_condition")) { grantForged(T3_PURCHASABLE_IDS[0]); state.t3choice = T3_PURCHASABLE_IDS[0]; }
     if (atOrAfter("b16_final_forge")) {
       state.ffDone = true;
-      state.crystals = { ...state.crystals, sapphire: 3 };
+      state.affinities = { ...state.affinities, continuum: 3 };
     }
     if (atOrAfter("b17_luminary")) grantForged(FINAL_T2_ID);
     return state;
@@ -4298,7 +4216,7 @@ export function TutorialDirector({ startBeat }: { startBeat?: number }) {
         ...savedState,
         // The guided experience intentionally has one fixed cost presentation.
         view: "needed",
-        crystals: { ...INIT_STATE.crystals, ...savedState.crystals },
+        affinities: { ...INIT_STATE.affinities, ...savedState.affinities },
         wellBank: { ...INIT_STATE.wellBank, ...savedState.wellBank },
         bonuses: { ...INIT_STATE.bonuses, ...savedState.bonuses },
         wellSel: {},
@@ -4409,7 +4327,7 @@ export function TutorialDirector({ startBeat }: { startBeat?: number }) {
         : "gameplay-main";
 
   const subPhaseContent = beat.id === "b15_fast_forward"
-    ? <FastForwardCinematic s={s} dispatch={dispatch} />
+    ? <FastForwardCinematic dispatch={dispatch} />
     : beat.id === "b17_luminary"
       ? <LuminaryPhase s={s} dispatch={dispatch} />
       : beat.id === "b18_victory"
@@ -4427,7 +4345,7 @@ export function TutorialDirector({ startBeat }: { startBeat?: number }) {
             key="cinematic"
             className="fixed inset-0"
             initial={false}
-            exit={{ opacity: 0, filter: "blur(14px)", transition: { duration: 0.42, ease: "easeIn" as const } }}
+            exit={{ opacity: 0, transition: { duration: 0.42, ease: "easeIn" as const } }}
           >
             <CinematicPhase s={s} dispatch={dispatch} onSkip={handleSkip} />
           </motion.div>
@@ -4435,8 +4353,8 @@ export function TutorialDirector({ startBeat }: { startBeat?: number }) {
           <motion.div
             key="gameplay"
             className="fixed inset-0"
-            initial={{ opacity: 0, filter: "blur(14px)" }}
-            animate={{ opacity: 1, filter: "blur(0px)" }}
+            initial={{ opacity: 0}}
+            animate={{ opacity: 1}}
             transition={{ duration: 0.55, ease: "easeOut" }}
           >
             {/* Nested AnimatePresence so b15→b16 and b17→b18 also blur-out/blur-in.
@@ -4446,9 +4364,9 @@ export function TutorialDirector({ startBeat }: { startBeat?: number }) {
               <motion.div
                 key={subPhaseKey}
                 className="fixed inset-0"
-                initial={{ opacity: 0, filter: "blur(14px)" }}
-                animate={{ opacity: 1, filter: "blur(0px)" }}
-                exit={{ opacity: 0, filter: "blur(14px)", transition: { duration: 0.42, ease: "easeIn" as const } }}
+                initial={{ opacity: 0}}
+                animate={{ opacity: 1}}
+                exit={{ opacity: 0, transition: { duration: 0.42, ease: "easeIn" as const } }}
                 transition={{ duration: 0.55, ease: "easeOut" }}
               >
                 {subPhaseContent}
@@ -4465,7 +4383,7 @@ export function TutorialDirector({ startBeat }: { startBeat?: number }) {
       >
         <button
           onClick={() => { const next = gameAudio.toggleMute(); setMuted(next); }}
-          className="flex items-center gap-1.5 text-white/35 hover:text-white/75 text-xs font-semibold tracking-widest uppercase transition-colors bg-black/15 hover:bg-black/35 px-3 py-1.5 rounded-lg backdrop-blur-sm border border-white/10"
+          className="flex items-center gap-1.5 text-white/35 hover:text-white/75 text-xs font-semibold tracking-widest uppercase transition-colors bg-black/15 hover:bg-black/35 px-3 py-1.5 rounded-lg border border-white/10"
           aria-label={muted ? "Unmute sound" : "Mute sound"}
         >
           {muted ? <VolumeX className="h-3 w-3" /> : <Volume2 className="h-3 w-3" />}
@@ -4473,7 +4391,7 @@ export function TutorialDirector({ startBeat }: { startBeat?: number }) {
         </button>
         <button
           onClick={() => navigate("/")}
-          className="flex items-center gap-1.5 text-white/35 hover:text-white/75 text-xs font-semibold tracking-widest uppercase transition-colors bg-black/15 hover:bg-black/35 px-3 py-1.5 rounded-lg backdrop-blur-sm border border-white/10"
+          className="flex items-center gap-1.5 text-white/35 hover:text-white/75 text-xs font-semibold tracking-widest uppercase transition-colors bg-black/15 hover:bg-black/35 px-3 py-1.5 rounded-lg border border-white/10"
         >
           <X className="h-3 w-3" />
           Leave

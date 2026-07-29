@@ -1,5 +1,6 @@
 import { Router, type IRouter } from "express";
 import { eq, and } from "drizzle-orm";
+import { z } from "zod";
 import { db, roomsTable, playersTable, gameStatesTable } from "@workspace/db";
 import { SubmitActionBody } from "@workspace/api-zod";
 import { CARD_LORE } from "../lib/cardLore";
@@ -8,18 +9,30 @@ import {
   formatGameState,
   normalizeState,
   parseAiDifficulty,
+  runDevLuminarySequence,
   type ActionPayload,
-  type CrystalColor,
-  type CrystalCounts,
+  type StandardAffinityKey,
+  type AffinityCounts,
 } from "../lib/gameEngine";
 import { getConnectedPlayerIds, sendToPlayer, filterStateForPlayer } from "../lib/websocket";
 import { runAiTurnsIfNeeded } from "../lib/aiTurnRunner";
 import { withRoomLock } from "../lib/roomLock";
 import { armTurnTimer, updateTurnDeadline } from "../lib/turnTimer";
 import { recordGameResult } from "../lib/rematchManager";
-import { captureDevSnapshot, getDevSnapshot } from "../lib/devRewind";
+import {
+  captureDevSnapshot,
+  getDevSnapshot,
+  prepareDevSequenceState,
+} from "../lib/devRewind";
 
 const router: IRouter = Router();
+const DevLuminarySequenceBody = z.object({
+  sessionToken: z.string().min(1),
+  luminaryIds: z.array(z.string().min(1)).min(1).max(17),
+  includeEndOfTurnEffects: z.boolean().optional().default(true),
+  includeStartOfTurnEffects: z.boolean().optional().default(false),
+  repeatFromBaseline: z.boolean().optional().default(true),
+});
 
 // GET /api/rooms/:roomId/state
 router.get("/rooms/:roomId/state", async (req, res): Promise<void> => {
@@ -75,10 +88,10 @@ router.get("/rooms/:roomId/state", async (req, res): Promise<void> => {
       currentPlayerIndex: 0,
       roundNumber: 0,
       turnCount: 0,
-      crystalBank: { ruby: 0, sapphire: 0, emerald: 0, onyx: 0, pearl: 0, flux: 0 },
-      marketTier1: [],
-      marketTier2: [],
-      marketTier3: [],
+      affinityWell: { flare: 0, continuum: 0, verdance: 0, abyss: 0, radiance: 0, singularity: 0 },
+      forgeTier1: [],
+      forgeTier2: [],
+      forgeTier3: [],
       deckCounts: { tier1: 0, tier2: 0, tier3: 0 },
       luminaries: [],
       luminaryAffinities: [],
@@ -88,12 +101,12 @@ router.get("/rooms/:roomId/state", async (req, res): Promise<void> => {
         avatarId: p.avatarId ?? null,
         isAi: p.isAi,
         aiDifficulty: p.aiDifficulty != null ? parseAiDifficulty(p.aiDifficulty) : null,
-        crystals: { ruby: 0, sapphire: 0, emerald: 0, onyx: 0, pearl: 0, flux: 0 },
-        bonuses: { ruby: 0, sapphire: 0, emerald: 0, onyx: 0, pearl: 0, flux: 0 },
-        lumens: 0,
-        reservedCards: [],
-        purchasedCardIds: [],
-        purchasedCards: [],
+        affinities: { flare: 0, continuum: 0, verdance: 0, abyss: 0, radiance: 0, singularity: 0 },
+        bonuses: { flare: 0, continuum: 0, verdance: 0, abyss: 0, radiance: 0, singularity: 0 },
+        eminence: 0,
+        reservedArtifacts: [],
+        forgedArtifactIds: [],
+        forgedArtifacts: [],
         isConnected: p.isAi ? true : p.isConnected,
         claimedLuminaryIds: [],
       })),
@@ -203,13 +216,11 @@ router.post("/rooms/:roomId/actions", async (req, res): Promise<void> => {
     .where(eq(roomsTable.id, rawId))
     .limit(1);
 
-  // resolve_summon (arrival cutscene) and toggle_luminary_affinity are
-  // non-turn-gated housekeeping actions that must be accepted even when the
-  // All other actions require the room to be actively playing.
+  // Presentation acknowledgements are non-turn-gated housekeeping actions.
+  // All other actions require an active game.
   const isHousekeepingAction =
     actionData.type === "resolve_summon" ||
-    actionData.type === "resolve_luminary_activation" ||
-    actionData.type === "toggle_luminary_affinity";
+    actionData.type === "resolve_luminary_activation";
 
   if (!room || (room.status !== "playing" && !isHousekeepingAction)) {
     res.status(400).json({ error: "Game not in progress" });
@@ -221,13 +232,13 @@ router.post("/rooms/:roomId/actions", async (req, res): Promise<void> => {
     type: actionData.type as ActionPayload["type"],
     cardId: actionData.cardId ?? undefined,
     tier: actionData.tier as 1 | 2 | 3 | undefined,
-    crystal: actionData.crystal as CrystalColor | undefined,
-    crystals: actionData.crystals as Partial<Record<string, number>> | undefined,
-    returnCrystals: actionData.returnCrystals as Partial<CrystalCounts> | undefined,
+    affinity: actionData.affinity as StandardAffinityKey | undefined,
+    affinities: actionData.affinities as Partial<Record<string, number>> | undefined,
+    returnAffinities: actionData.returnAffinities as Partial<AffinityCounts> | undefined,
     luminaryId: actionData.luminaryId ?? undefined,
-    affinity: actionData.affinity as CrystalColor | undefined,
     eventId: actionData.eventId ?? undefined,
     plannedActionData: actionData.plannedActionData as ActionPayload | undefined,
+    orderedIds: Array.isArray(actionData.orderedIds) ? actionData.orderedIds : undefined,
   };
 
   // Serialize all read-modify-write on this room's state behind a per-room
@@ -267,16 +278,13 @@ router.post("/rooms/:roomId/actions", async (req, res): Promise<void> => {
       captureDevSnapshot(rawId, preActionSnapshot);
     }
 
-    // Refresh per-turn deadline based on configured timer.
-    // Non-turn-gated actions that do not advance the turn must not reset it.
-    // plan_action / cancel_plan don't advance the turn themselves (auto-execution
-    // is internal to applyAction), so skip the deadline reset for them too.
+    // Refresh the deadline for every resolution acknowledgement. Intermediate
+    // stages keep it paused; the final acknowledgement starts the incoming
+    // player's full timer. Provisional planning and metadata edits do not.
     if (
-      action.type !== "toggle_luminary_affinity" &&
-      action.type !== "resolve_summon" &&
-      action.type !== "resolve_luminary_activation" &&
       action.type !== "plan_action" &&
-      action.type !== "cancel_plan"
+      action.type !== "cancel_plan" &&
+      action.type !== "set_civ_name"
     ) {
       updateTurnDeadline(stateData);
     }
@@ -349,10 +357,9 @@ router.post("/rooms/:roomId/actions", async (req, res): Promise<void> => {
       }
     }
     if (
-      action.type !== "toggle_luminary_affinity" &&
-      action.type !== "resolve_luminary_activation" &&
       action.type !== "plan_action" &&
-      action.type !== "cancel_plan"
+      action.type !== "cancel_plan" &&
+      action.type !== "set_civ_name"
     ) {
       armTurnTimer(rawId, stateData);
     }
@@ -369,6 +376,162 @@ router.post("/rooms/:roomId/actions", async (req, res): Promise<void> => {
 
   // If next player is an AI, kick off AI turn loop in background
   void runAiTurnsIfNeeded(rawId);
+});
+
+// POST /api/dev/rooms/:roomId/luminary-sequence
+// DEV-ONLY: claim an ordered set of Luminaries for the requesting player and
+// queue their normal arrival/effect events in the live game state.
+router.post("/dev/rooms/:roomId/luminary-sequence", async (req, res): Promise<void> => {
+  if (process.env.NODE_ENV === "production") {
+    res.status(403).json({ error: "Not available in production" });
+    return;
+  }
+
+  const rawId = Array.isArray(req.params.roomId)
+    ? req.params.roomId[0]
+    : req.params.roomId;
+  const parsed = DevLuminarySequenceBody.safeParse(req.body);
+  if (!parsed.success) {
+    res.status(400).json({ error: parsed.error.message });
+    return;
+  }
+
+  const [player] = await db
+    .select()
+    .from(playersTable)
+    .where(
+      and(
+        eq(playersTable.sessionToken, parsed.data.sessionToken),
+        eq(playersTable.roomId, rawId),
+      ),
+    )
+    .limit(1);
+  if (!player) {
+    res.status(403).json({ error: "Not a member of this room" });
+    return;
+  }
+
+  const [room] = await db
+    .select()
+    .from(roomsTable)
+    .where(eq(roomsTable.id, rawId))
+    .limit(1);
+  if (!room || room.status !== "playing") {
+    res.status(400).json({ error: "Game not in progress" });
+    return;
+  }
+
+  const outcome = await withRoomLock(rawId, async () => {
+    const [gs] = await db
+      .select()
+      .from(gameStatesTable)
+      .where(eq(gameStatesTable.roomId, rawId))
+      .limit(1);
+    if (!gs) {
+      return { ok: false as const, status: 404, error: "Game state not found" };
+    }
+
+    const currentState = normalizeState(gs.state);
+    const expectedVersion = currentState.version;
+    const stateData = prepareDevSequenceState(
+      rawId,
+      currentState,
+      parsed.data.repeatFromBaseline,
+    );
+    const result = runDevLuminarySequence(stateData, player.id, parsed.data);
+    if (!result.success) {
+      return { ok: false as const, status: 400, error: result.error ?? "Sequence failed" };
+    }
+
+    updateTurnDeadline(stateData);
+    const updated = await db
+      .update(gameStatesTable)
+      .set({
+        state: stateData as unknown as Record<string, unknown>,
+        version: stateData.version,
+        updatedAt: new Date(),
+      })
+      .where(
+        and(
+          eq(gameStatesTable.roomId, rawId),
+          eq(gameStatesTable.version, expectedVersion),
+        ),
+      )
+      .returning({ id: gameStatesTable.roomId });
+    if (updated.length === 0) {
+      return {
+        ok: false as const,
+        status: 409,
+        error: "Game state changed concurrently, please retry",
+      };
+    }
+
+    const allPlayers = await db
+      .select()
+      .from(playersTable)
+      .where(eq(playersTable.roomId, rawId));
+    const connectedIds = getConnectedPlayerIds(rawId);
+    for (const candidate of allPlayers) {
+      if (candidate.isAi) connectedIds.add(candidate.id);
+    }
+    const avatarMap = new Map<string, string | null>(
+      allPlayers.map((candidate) => [candidate.id, candidate.avatarId ?? null]),
+    );
+    const aiMap = new Map(
+      allPlayers.map((candidate) => [
+        candidate.id,
+        {
+          isAi: candidate.isAi,
+          aiDifficulty: candidate.aiDifficulty != null
+            ? parseAiDifficulty(candidate.aiDifficulty)
+            : null,
+        },
+      ]),
+    );
+    const formatted = formatGameState(
+      rawId,
+      room.status,
+      stateData,
+      connectedIds,
+      avatarMap,
+      aiMap,
+    );
+    for (const candidate of allPlayers) {
+      if (candidate.isAi) continue;
+      sendToPlayer(rawId, candidate.id, {
+        type: "state_update",
+        state: filterStateForPlayer(formatted, candidate.id),
+      });
+    }
+    armTurnTimer(rawId, stateData);
+
+    return {
+      ok: true as const,
+      summonEventIds: result.summonEventIds ?? [],
+      activationEventIds: result.activationEventIds ?? [],
+    };
+  });
+
+  if (!outcome.ok) {
+    res.status(outcome.status).json({ error: outcome.error });
+    return;
+  }
+
+  req.log.info(
+    {
+      roomId: rawId,
+      playerId: player.id,
+      luminaryIds: parsed.data.luminaryIds,
+      summonEvents: outcome.summonEventIds.length,
+      activationEvents: outcome.activationEventIds.length,
+    },
+    "Dev Luminary sequence queued",
+  );
+  res.json({
+    ok: true,
+    summonEventIds: outcome.summonEventIds,
+    activationEventIds: outcome.activationEventIds,
+  });
 });
 
 // POST /api/dev/rooms/:roomId/rewind

@@ -1,13 +1,9 @@
 /**
- * CinderMandateBrandingDirector
+ * ArtifactBrandingDirector
  *
- * Purpose-built director for the Ember Sovereign `summon` activation event.
- * Owns the full brand-strike sequence:
- *   1. Camera prepare (compact + frame condemned cards)
- *   2. "CINDER MANDATE" beat overlay (BEAT_HOLD_MS)
- *   3. Source portal pulse + brand-strike beams
- *   4. Aftermath hold
- *   5. Calls onComplete — camera stays compact (no restore)
+ * Shared branded-effect director for Cinder Mandate, Forgotten Hour, and Black
+ * Domain. Each keeps its own colors and keyword while following the canonical
+ * announce → frame → target → resolve → reveal → aftermath contract.
  *
  * Does NOT call viewOrchestrator.restore() — the camera remains in whatever
  * state the prepare() call leaves it until the caller's onComplete handler
@@ -23,13 +19,21 @@
  *
  * The solution: remove all state so the component never triggers a re-render
  * of itself.  The beat overlay is animated imperatively via framer-motion's
- * standalone animate() function, which requires no React hook.  The entire
- * sequence runs inside a single mount useEffect via a setTimeout chain.
+ * standalone animate() function, which requires no React hook. Phase advancement
+ * and exactly-once completion belong to the shared sequence controller.
  */
-import React, { useEffect, useRef } from 'react';
+import { useEffect, useRef } from 'react';
 import { animate } from 'framer-motion';
 import { createPortal } from 'react-dom';
+import {
+  LuminaryEffectAnnouncement,
+  LuminaryEffectSkipControl,
+} from './LuminaryEffectChrome';
 import type { AnimationProcedureStep } from '@/lib/animationProcedure';
+import {
+  createLuminaryEffectSequence,
+  type LuminaryEffectSequenceController,
+} from '@/lib/luminaryEffectSequence';
 
 // ─── Timing constants ─────────────────────────────────────────────────────────
 
@@ -54,7 +58,7 @@ export const AFTERMATH_HOLD_MS = 200;
 
 // ─── Types ────────────────────────────────────────────────────────────────────
 
-export interface CinderMandateBrandingActions {
+export interface ArtifactBrandingActions {
   /** Prepare the camera (compact + scroll to show condemned cards). */
   prepare: (
     procedure: AnimationProcedureStep[],
@@ -92,64 +96,80 @@ export interface CinderMandateBrandingActions {
       restoreImmediate?: boolean;
     },
   ) => string | null;
-  /** Play the brand-strike audio cue. */
-  playBrandStrike: () => void;
 }
 
-interface CinderMandateBrandingDirectorProps {
+interface ArtifactBrandingDirectorProps {
   luminaryId: string;
   lumSummonColor?: string;
   lumSummonSecondaryColor?: string;
   targetCardIds: string[];
   reducedMotion: boolean;
-  actions: CinderMandateBrandingActions;
+  markerType?: 'condemned' | 'forgotten' | 'nullified';
+  effectName?: string;
+  resultLabel?: string;
+  effectDescription?: string;
+  luminaryName?: string;
+  triggeringPlayerName?: string;
+  effectType?: 'summon' | 'end_of_turn' | 'start_of_turn';
+  queuePosition?: number;
+  queueTotal?: number;
+  actions: ArtifactBrandingActions;
   onComplete: (skipped?: boolean) => void;
 }
 
 // ─── Component ────────────────────────────────────────────────────────────────
 
-export function CinderMandateBrandingDirector({
+export function ArtifactBrandingDirector({
   luminaryId,
   lumSummonColor,
   lumSummonSecondaryColor,
   targetCardIds,
   reducedMotion,
+  markerType = 'condemned',
+  effectName = 'Cinder Mandate',
+  resultLabel = 'Condemned',
+  effectDescription,
+  luminaryName = 'The Ember Sovereign',
+  triggeringPlayerName,
+  effectType = 'summon',
+  queuePosition = 1,
+  queueTotal = 1,
   actions,
   onComplete,
-}: CinderMandateBrandingDirectorProps) {
+}: ArtifactBrandingDirectorProps) {
   // Stable refs — updated each render so setTimeout callbacks always capture
   // the latest values without needing to be in effect dep arrays.
   const onCompleteRef = useRef(onComplete);
   onCompleteRef.current = onComplete;
   const actionsRef = useRef(actions);
   actionsRef.current = actions;
+  const sequenceRef = useRef<LuminaryEffectSequenceController | null>(null);
   // Ref to the beat overlay DOM node for imperative animation.
   const beatOverlayRef = useRef<HTMLDivElement | null>(null);
 
-  // ── Single mount effect — entire sequence runs imperatively ────────────────
-  useEffect(() => {
-    const timers: ReturnType<typeof setTimeout>[] = [];
+  const effectTypeLabel =
+    effectType === 'end_of_turn'
+      ? 'END OF TURN EFFECT'
+      : effectType === 'start_of_turn'
+        ? 'START OF TURN EFFECT'
+        : 'ARRIVAL EFFECT';
+  const queueLabel = queueTotal > 1
+    ? `${effectTypeLabel} · ${queuePosition} OF ${queueTotal}`
+    : effectTypeLabel;
 
-    // Nothing to brand — skip immediately
+  // ── Single mount effect — phases are advanced by the shared controller ─────
+  useEffect(() => {
     if (targetCardIds.length === 0) {
       onCompleteRef.current(false);
       return;
     }
 
-    // Lock scroll immediately — before prepare() so the entire cinematic
-    // (beat overlay display + camera movement + brand-strike beams) is fully
-    // protected.  Brand-strike beams use viewport-relative getBoundingClientRect()
-    // snapshots; any scroll before or during capture drifts the SVG overlay off
-    // its targets.  The lock is released when onComplete fires (or in cleanup if
-    // the component unmounts early).
     actionsRef.current.lockBoardScroll();
 
     const procedure: AnimationProcedureStep[] = [
-      { type: 'targetClaim', targetIds: targetCardIds, keyword: 'condemned' },
+      { type: 'targetClaim', targetIds: targetCardIds, keyword: markerType },
     ];
-
     const lead = reducedMotion ? 0 : SOURCE_PULSE_LEAD_MS;
-    // Pre-size the drain gate to cover the worst-case full sequence duration.
     const estimatedTotalMs =
       SETTLE_ESTIMATE_MS +
       BEAT_HOLD_MS +
@@ -160,97 +180,135 @@ export function CinderMandateBrandingDirector({
       AFTERMATH_HOLD_MS;
     actionsRef.current.setAnimEndTime(estimatedTotalMs);
 
-    actionsRef.current.prepare(
-      procedure,
-      () => {
-        // ── Phase 1: animate beat overlay in ────────────────────────────────
-        const overlay = beatOverlayRef.current;
-        if (overlay) {
-          void animate(overlay, { opacity: 1 }, { duration: 0.22, ease: 'easeOut' });
+    let source:
+      | {
+          rect: { x: number; y: number; w: number; h: number };
+          primary: string;
+          secondary: string;
         }
+      | undefined;
+    let usedLead = 0;
 
-        // ── Phase 2: after beat hold, fire strikes ────────────────────────────
-        // NOTE: the overlay stays visible — it fades out after the brand-strike
-        // animation completes so the announcement covers its full segment.
-        const beatTimer = setTimeout(() => {
-          // Scroll is already locked (locked at mount, above).
-          // Capture source-portal rect now that layout has settled.
-          const portalEl = document.querySelector(`[data-luminary-id="${luminaryId}"]`);
-          let source:
-            | {
-                rect: { x: number; y: number; w: number; h: number };
-                primary: string;
-                secondary: string;
-              }
-            | undefined;
-          if (portalEl && !reducedMotion) {
-            const pr = portalEl.getBoundingClientRect();
-            if (pr.width > 0) {
-              source = {
-                rect: { x: pr.x, y: pr.y, w: pr.width, h: pr.height },
-                primary: lumSummonColor ?? '#ef4444',
-                secondary: lumSummonSecondaryColor ?? lumSummonColor ?? '#f97316',
-              };
+    const sequence = createLuminaryEffectSequence({
+      reducedMotion,
+      phases: [
+        {
+          id: 'announce',
+          durationMs: BEAT_HOLD_MS,
+          reducedDurationMs: 160,
+          run: () => {
+            const overlay = beatOverlayRef.current;
+            if (overlay) {
+              void animate(
+                overlay,
+                { opacity: 1 },
+                { duration: reducedMotion ? 0.06 : 0.22, ease: 'easeOut' },
+              );
             }
-          }
+          },
+        },
+        {
+          id: 'frame',
+          run: ({ waitFor }) => waitFor(
+            done => actionsRef.current.prepare(
+              procedure,
+              done,
+              { forceOrchestrate: true },
+            ),
+            SETTLE_ESTIMATE_MS,
+          ),
+        },
+        {
+          id: 'target',
+          run: () => {
+            const portalEl = document.querySelector(
+              `[data-luminary-id="${luminaryId}"]`,
+            );
+            if (portalEl && !reducedMotion) {
+              const rect = portalEl.getBoundingClientRect();
+              if (rect.width > 0) {
+                source = {
+                  rect: { x: rect.x, y: rect.y, w: rect.width, h: rect.height },
+                  primary: lumSummonColor ?? '#ef4444',
+                  secondary:
+                    lumSummonSecondaryColor ??
+                    lumSummonColor ??
+                    '#f97316',
+                };
+              }
+            }
+            usedLead = source ? lead : 0;
+          },
+        },
+        {
+          id: 'resolve',
+          run: async ({ wait }) => {
+            const syntheticMarkers = Object.fromEntries(
+              targetCardIds.map(id => [id, { type: markerType }]),
+            );
+            const strikeId = actionsRef.current.fireBrandStrikes(
+              targetCardIds,
+              syntheticMarkers,
+              {
+                source,
+                lead: usedLead,
+                orchestrated: false,
+                restoreImmediate: reducedMotion,
+              },
+            );
+            actionsRef.current.unsuppressMarkers(targetCardIds);
 
-          const usedLead = source ? lead : 0;
-
-          actionsRef.current.playBrandStrike();
-          // Build synthetic markers: the server encodes condemned IDs into the event payload
-          // precisely because state.marketMarkers may be cleared before the animation runs.
-          // We know all targets are type "condemned" — do NOT use state.marketMarkers here.
-          const syntheticMarkers = Object.fromEntries(
-            targetCardIds.map(id => [id, { type: 'condemned' as const }]),
-          );
-          const strikeId = actionsRef.current.fireBrandStrikes(targetCardIds, syntheticMarkers, {
-            source,
-            lead: usedLead,
-            // orchestrated: false — director owns camera; ArrivalBrandStrike must NOT call restore()
-            orchestrated: false,
-            restoreImmediate: reducedMotion,
-          });
-
-          // Reveal overlays + badges (badges use brandDelayMap timing)
-          actionsRef.current.unsuppressMarkers(targetCardIds);
-
-          const strikeTotalMs = usedLead + (targetCardIds.length - 1) * 90 + 1420 + 400;
-          // Refine the drain gate to the exact strike duration
-          actionsRef.current.setAnimEndTime(strikeTotalMs + AFTERMATH_HOLD_MS);
-
-          const completeDelay = strikeId
-            ? strikeTotalMs + AFTERMATH_HOLD_MS
-            : 200; // No visible DOM targets — complete quickly
-
-          // Fade the overlay out once the brand-strike aura fully settles
-          // (at strikeTotalMs from now), so the announcement covers its entire
-          // branding animation segment instead of vanishing before beams fire.
-          if (overlay) {
-            const overlayFadeDelay = strikeId ? strikeTotalMs : 0;
-            const overlayFadeTimer = setTimeout(() => {
-              void animate(overlay, { opacity: 0 }, { duration: 0.28, ease: 'easeOut' });
-            }, overlayFadeDelay);
-            timers.push(overlayFadeTimer);
-          }
-
-          // After strikes settle + aftermath hold: call onComplete.
-          // Camera stays compact — no restore() here.
-          const completeTimer = setTimeout(() => {
-            actionsRef.current.unlockBoardScroll();
-            onCompleteRef.current(false);
-          }, completeDelay);
-          timers.push(completeTimer);
-        }, BEAT_HOLD_MS);
-
-        timers.push(beatTimer);
+            const strikeTotalMs =
+              usedLead +
+              (targetCardIds.length - 1) * 90 +
+              1420 +
+              400;
+            actionsRef.current.setAnimEndTime(
+              strikeTotalMs + AFTERMATH_HOLD_MS,
+            );
+            await wait(strikeId ? strikeTotalMs : 200);
+          },
+        },
+        {
+          id: 'reveal',
+          run: () => {
+            const overlay = beatOverlayRef.current;
+            if (overlay) {
+              void animate(
+                overlay,
+                { opacity: 0 },
+                { duration: reducedMotion ? 0.06 : 0.28, ease: 'easeOut' },
+              );
+            }
+          },
+        },
+        {
+          id: 'aftermath',
+          durationMs: AFTERMATH_HOLD_MS,
+          reducedDurationMs: 80,
+        },
+      ],
+      onPhaseChange: phase => {
+        const overlay = beatOverlayRef.current;
+        if (overlay) overlay.dataset.effectPhase = phase;
       },
-      { forceOrchestrate: true },
-    );
+      onSkip: () => {
+        const overlay = beatOverlayRef.current;
+        if (overlay) overlay.style.opacity = '0';
+        actionsRef.current.unsuppressMarkers(targetCardIds);
+        actionsRef.current.unlockBoardScroll();
+      },
+      onComplete: skipped => {
+        actionsRef.current.unlockBoardScroll();
+        onCompleteRef.current(skipped);
+      },
+    });
+    sequenceRef.current = sequence;
+    sequence.start();
 
     return () => {
-      timers.forEach(clearTimeout);
-      // Safety: release scroll lock if the component unmounts before the
-      // completeTimer fires (e.g. skip / fast-forward path).
+      sequence.cancel();
+      if (sequenceRef.current === sequence) sequenceRef.current = null;
       actionsRef.current.unlockBoardScroll();
     };
     // eslint-disable-next-line react-hooks/exhaustive-deps
@@ -275,36 +333,29 @@ export function CinderMandateBrandingDirector({
           'radial-gradient(ellipse at 50% 52%, rgba(239,68,68,0.09) 0%, transparent 66%)',
         opacity: 0,
       }}
+      data-testid="luminary-branding-director"
     >
-      <div style={{ textAlign: 'center', userSelect: 'none' }}>
-        <div
-          style={{
-            fontFamily: "'Cinzel', 'Palatino Linotype', serif",
-            fontSize: 19,
-            letterSpacing: '0.22em',
-            fontWeight: 700,
-            color: '#ef4444',
-            textTransform: 'uppercase',
-            textShadow:
-              '0 0 22px rgba(239,68,68,0.75), 0 0 7px rgba(239,68,68,0.45)',
-          }}
-        >
-          Cinder Mandate
-        </div>
-        <div
-          style={{
-            marginTop: 6,
-            fontFamily: "'Cinzel', 'Palatino Linotype', serif",
-            fontSize: 10,
-            letterSpacing: '0.18em',
-            color: 'rgba(251,191,36,0.68)',
-            textTransform: 'uppercase',
-          }}
-        >
-          Condemned
-        </div>
-      </div>
+      <LuminaryEffectAnnouncement
+        effectName={effectName}
+        luminaryName={luminaryName}
+        resultLabel={resultLabel}
+        description={effectDescription}
+        triggeringPlayerName={triggeringPlayerName}
+        queueLabel={queueLabel}
+        primaryColor={lumSummonColor ?? '#ef4444'}
+        secondaryColor={lumSummonSecondaryColor ?? '#fbbf24'}
+      />
+      <LuminaryEffectSkipControl
+        color={lumSummonColor ?? '#ef4444'}
+        reducedMotion={reducedMotion}
+        onSkip={() => sequenceRef.current?.skip()}
+        label={`Skip ${effectName} branding phase`}
+      />
     </div>,
     document.body,
   );
 }
+
+// Compatibility aliases for existing imports and timing tests.
+export type CinderMandateBrandingActions = ArtifactBrandingActions;
+export const CinderMandateBrandingDirector = ArtifactBrandingDirector;

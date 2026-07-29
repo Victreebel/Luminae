@@ -10,6 +10,7 @@
     "typecheck": "eslint src --ext .ts,.tsx && tsc -p tsconfig.json --noEmit",
     "test": "vitest run --config vitest.config.ts",
     "test:watch": "vitest --config vitest.config.ts",
+    "verify:coordination": "vitest run --config vitest.config.ts src/hooks/__tests__/use-authoritative-state-ingress.test.ts src/hooks/__tests__/use-luminary-presentation-engine.test.ts src/lib/__tests__/luminarySequenceController.test.ts src/lib/__tests__/luminarySequenceGate.test.ts src/__tests__/dev-luminary-sequence-panel.test.tsx src/lib/__tests__/artifactBrands.test.ts src/__tests__/branding-keyword-overlay.test.tsx src/components/__tests__/LuminaryActivationCinematic.sequence.test.tsx && tsc -p tsconfig.json --noEmit",
     "lint": "eslint src --ext .ts,.tsx"
   },
   "devDependencies": {

@@ -252,7 +252,7 @@ export function TierIII() {
           </div>
           <div className="flex flex-col items-center gap-3">
             <div style={{ width: 112, height: 160 }}><CardBackTier3 /></div>
-            <span style={{ color: '#6070a0', fontSize: 11, letterSpacing: '0.08em' }}>in-game market</span>
+            <span style={{ color: '#6070a0', fontSize: 11, letterSpacing: '0.08em' }}>in-game Forge</span>
           </div>
           <div className="flex flex-col items-center gap-3">
             <div style={{ width: 36, height: 51 }}><CardBackTier3 count={8} /></div>

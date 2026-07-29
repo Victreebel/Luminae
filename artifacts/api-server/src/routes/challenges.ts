@@ -65,6 +65,8 @@ router.post("/challenges", accountAuth, async (req: Request, res): Promise<void>
   const parsed = z.object({
     challengedUsername: z.string(),
     maxPlayers: z.number().int().min(2).max(4).optional().default(2),
+    victoryRequirement: z.union([z.literal(15), z.literal(20), z.literal(25)]).optional().default(15),
+    cinematicMode: z.union([z.literal("standard"), z.literal("epic")]).optional().default("standard"),
     turnTimerSeconds: z.number().int().nullable().optional(),
   }).safeParse(req.body);
 
@@ -73,7 +75,7 @@ router.post("/challenges", accountAuth, async (req: Request, res): Promise<void>
     return;
   }
 
-  const { challengedUsername, maxPlayers, turnTimerSeconds } = parsed.data;
+  const { challengedUsername, maxPlayers, victoryRequirement, cinematicMode, turnTimerSeconds } = parsed.data;
 
   if (challengedUsername.toLowerCase() === account.username.toLowerCase()) {
     res.status(400).json({ error: "Cannot challenge yourself" });
@@ -138,6 +140,8 @@ router.post("/challenges", accountAuth, async (req: Request, res): Promise<void>
     .values({
       inviteCode,
       maxPlayers,
+      victoryRequirement,
+      cinematicMode,
       status: "lobby",
       turnTimerSeconds: turnTimerSeconds ?? null,
     })
@@ -505,6 +509,8 @@ router.patch("/challenges/:id", accountAuth, async (req: Request, res): Promise<
       inviteCode: row.room.inviteCode,
       status: row.room.status,
       maxPlayers: row.room.maxPlayers,
+      victoryRequirement: row.room.victoryRequirement,
+      cinematicMode: row.room.cinematicMode,
       turnTimerSeconds: row.room.turnTimerSeconds,
     },
     player: {

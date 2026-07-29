@@ -1,16 +1,24 @@
 import React, { useState, useRef, useEffect } from 'react';
 import { motion, AnimatePresence } from 'framer-motion';
-import { Clock } from 'lucide-react';
-import type { ArtifactCard, CrystalCounts } from '@workspace/api-client-react';
-import { GEM_META, type GemKey } from '@/lib/gemMeta';
+import { Clock, X } from 'lucide-react';
+import type { ArtifactCard, AffinityCounts } from '@workspace/api-client-react';
+import { AFFINITY_META, type AffinityKey } from '@/lib/affinityMeta';
 import { AffinityEmblem } from '@/components/AffinityEmblem';
 import { CardBackTier1, CardBackTier2, CardBackTier3 } from '@/components/ArtifactCardBack';
 import { useFocusTrap } from '@/hooks/use-focus-trap';
-import { CRYSTALS, CARD_ART, GEM_CARD_GRADIENTS, TIER_BACKDROPS } from './game-constants';
+import { AFFINITIES, CARD_ART, AFFINITY_CARD_GRADIENTS, TIER_BACKDROPS } from './game-constants';
 import cardTier1Bg from '@assets/generated_images/card_tier1.png';
 
-export function MiniGem({ color, size = 16 }: { color: GemKey; size?: number }) {
-  return <AffinityEmblem color={color} size={size} />;
+export function AffinityToken({
+  color,
+  size = 16,
+  className,
+}: {
+  color: AffinityKey;
+  size?: number;
+  className?: string;
+}) {
+  return <AffinityEmblem color={color} size={size} className={className} />;
 }
 
 export function EminenceDiamond({ size = 10 }: { size?: number }) {
@@ -28,7 +36,7 @@ export function EminenceSigil({
   value?: number;
   target?: number;
 }) {
-  const score = Math.max(0, Math.min(value, target));
+  const eminenceProgress = Math.max(0, Math.min(value, target));
   const stageValue = target / SEAL_STAGES.length;
   return (
     <svg
@@ -54,7 +62,7 @@ export function EminenceSigil({
       <path d="M50 12 64 30 59 77 50 86 41 77 36 30 50 12Z" fill="none" stroke="rgba(255,239,180,0.35)" strokeWidth="1" />
       <path d="M50 17 58 31 50 45 42 31 50 17Z" fill="#24170B" stroke="#DFA847" strokeWidth="1" />
       {SEAL_STAGES.map((stage) => {
-        const stageProgress = Math.max(0, Math.min(1, (score - stage * stageValue) / stageValue));
+        const stageProgress = Math.max(0, Math.min(1, (eminenceProgress - stage * stageValue) / stageValue));
         const y = 39 + stage * 15;
         return (
           <g key={stage} opacity={0.28 + stageProgress * 0.72}>
@@ -63,9 +71,36 @@ export function EminenceSigil({
           </g>
         );
       })}
-      <circle cx="50" cy="31" r="3.2" fill={score > 0 ? '#FFF7D1' : '#2A1B0D'} stroke="#E8B84F" strokeWidth="1.2" />
+      <circle cx="50" cy="31" r="3.2" fill={eminenceProgress > 0 ? '#FFF7D1' : '#2A1B0D'} stroke="#E8B84F" strokeWidth="1.2" />
       <path d="M25 27 16 35M75 27 84 35M31 79 23 85M69 79 77 85" stroke="rgba(239,204,116,0.64)" strokeWidth="1.35" strokeLinecap="round" />
     </svg>
+  );
+}
+
+export function EminenceBadge({
+  value,
+  compact = false,
+  className = '',
+  title,
+}: {
+  value: number;
+  compact?: boolean;
+  className?: string;
+  title?: string;
+}) {
+  const isNegative = value < 0;
+  const isZero = value === 0;
+  const absValue = Math.abs(value);
+  const displayValue = `${isNegative ? '-' : ''}${absValue}`;
+
+  return (
+    <span
+      className={`eminence-card-badge ${compact ? 'eminence-card-badge--compact' : ''} ${isNegative ? 'eminence-card-badge--oblivion' : ''} ${isZero ? 'eminence-card-badge--zero' : ''} ${className}`.trim()}
+      title={title ?? (isNegative ? `${displayValue} Eminence` : `+${displayValue} Eminence`)}
+      aria-label={title ?? (isNegative ? `${displayValue} Eminence` : `${displayValue} Eminence`)}
+    >
+      <span className="eminence-card-badge__value">{displayValue}</span>
+    </span>
   );
 }
 
@@ -73,19 +108,23 @@ export function EminenceProgress({
   value,
   target = 15,
   variant = 'hud',
+  sigilTarget,
+  impactKey,
 }: {
   value: number;
   target?: number;
   variant?: 'hud' | 'monument';
+  sigilTarget?: string;
+  impactKey?: number | string | null;
 }) {
-  const score = Math.max(0, Math.min(value, target));
-  const isNearVictory = score >= target - 3;
-  const isVictorious = score >= target;
+  const eminenceProgress = Math.max(0, Math.min(value, target));
+  const isNearVictory = eminenceProgress >= target - 3;
+  const isVictorious = eminenceProgress >= target;
   const isMonument = variant === 'monument';
 
   return (
     <div
-      className={`eminence-progress flex items-center text-left ${isMonument ? 'eminence-progress--monument min-w-[170px] gap-3 px-3 py-2' : 'eminence-progress--hud gap-1 px-0.5 py-0.5'}`}
+      className={`eminence-progress flex items-center text-left ${isMonument ? 'eminence-progress--monument min-w-[170px] gap-3 px-3 py-2' : 'eminence-progress--hud gap-1 px-0.5 py-0.5'} ${isVictorious ? 'eminence-progress--victory' : isNearVictory ? 'eminence-progress--critical' : eminenceProgress >= target - 6 ? 'eminence-progress--near' : ''}`}
       style={{
         borderColor: isVictorious ? 'rgba(255,232,160,0.86)' : isNearVictory ? 'rgba(236,184,71,0.72)' : 'rgba(221,171,61,0.28)',
         background: isVictorious
@@ -101,18 +140,24 @@ export function EminenceProgress({
       }}
     >
       <motion.div
-        key={score}
+        key={eminenceProgress}
         initial={{ scale: 1.22, rotate: -14, opacity: 0.55 }}
         animate={{ scale: 1, rotate: 0, opacity: 1 }}
         transition={{ type: 'spring', stiffness: 360, damping: 18 }}
       >
-        <EminenceSigil size={isMonument ? 78 : 31} value={score} target={target} />
+        <span
+          key={`eminence-sigil-${eminenceProgress}-${impactKey ?? 'idle'}`}
+          data-eminence-sigil={sigilTarget}
+          className={`eminence-sigil-target ${impactKey ? 'eminence-sigil-target--impact' : ''}`}
+        >
+          <EminenceSigil size={isMonument ? 78 : 31} value={eminenceProgress} target={target} />
+        </span>
       </motion.div>
       <div className="min-w-0">
         <div className="mb-0.5 text-[8px] font-bold uppercase tracking-[0.12em] text-[#f4cf78]/75">Eminence</div>
         <div className="flex items-baseline gap-0.5 leading-none">
           <motion.span
-            key={`score-${score}`}
+            key={`eminence-value-${eminenceProgress}`}
             initial={{ y: 5, opacity: 0, scale: 1.16 }}
             animate={{ y: 0, opacity: 1, scale: 1 }}
             transition={{ type: 'spring', stiffness: 360, damping: 22 }}
@@ -152,7 +197,10 @@ export function BaseDialog({
   useFocusTrap(containerRef, open, onClose, { handleEscape: false });
   if (!open) return null;
   return (
-    <div className="fixed inset-0 z-[120] flex items-center justify-center bg-black/70 px-4">
+    <div
+      data-cinematic-obscurable="true"
+      className="fixed inset-0 z-[120] flex items-center justify-center bg-black/70 px-4"
+    >
       <div
         ref={(el) => { containerRef.current = el; }}
         role="dialog"
@@ -176,13 +224,13 @@ export function BaseDialog({
   );
 }
 
-export function CrystalIcon({
+export function AffinityTokenButton({
   color, count, onClick, selectable, selected, size = 40,
 }: {
-  color: GemKey; count?: number; onClick?: () => void;
+  color: AffinityKey; count?: number; onClick?: () => void;
   selectable?: boolean; selected?: boolean; size?: number;
 }) {
-  const meta = GEM_META[color];
+  const meta = AFFINITY_META[color];
   const Tag = selectable ? motion.button : motion.div;
   return (
     <Tag
@@ -191,7 +239,8 @@ export function CrystalIcon({
       onClick={selectable ? onClick : undefined}
       title={meta.name}
       aria-label={`${meta.name} affinity${count !== undefined ? `, ${count} available` : ''}`}
-      data-testid={`gem-${color}`}
+      data-affinity={color}
+      data-testid={`affinity-${color}`}
       className={`relative rounded-full flex items-center justify-center font-bold text-white ${selectable ? 'cursor-pointer' : ''} ${selected ? 'ring-4 ring-primary ring-offset-2 ring-offset-background' : ''}`}
       style={{
         width: size, height: size,
@@ -216,20 +265,22 @@ export function CrystalIcon({
 }
 
 export const ArtifactCardView = React.memo(function ArtifactCardView({
-  card, onTap, tapped, tier, effectiveCosts, bonusCosts, artOnly, hideStrike,
+  card, onTap, tapped, tier, effectiveCosts, bonusCosts, artOnly, hideStrike, hideEminence,
 }: {
   card: ArtifactCard;
   onTap?: () => void;
   tapped?: boolean;
   tier?: number;
-  effectiveCosts?: Partial<Record<GemKey, number>>;
+  effectiveCosts?: Partial<Record<AffinityKey, number>>;
   /** Pure after-bonuses cost (no tokens subtracted). Used to gate the "free" ✓ chip so it only fires when bonuses alone cover the cost, not when tokens happen to cover it. */
-  bonusCosts?: Partial<Record<GemKey, number>>;
+  bonusCosts?: Partial<Record<AffinityKey, number>>;
   artOnly?: boolean;
   /** When true, suppresses the crossed-out original cost shown alongside a reduced cost (e.g. when costMode is 'needed_now'). */
   hideStrike?: boolean;
+  /** Used only by forge animations after the Eminence seal has visibly separated from the card. */
+  hideEminence?: boolean;
 }) {
-  const bonusMeta = GEM_META[card.bonusColor as GemKey];
+  const bonusMeta = AFFINITY_META[card.bonusAffinity as AffinityKey];
   const cardTier = tier ?? card.tier ?? 1;
   const specificArt = CARD_ART[card.id];
 
@@ -243,7 +294,7 @@ export const ArtifactCardView = React.memo(function ArtifactCardView({
     backgroundImage: specificArt
       ? `url(${specificArt})`
       : cardTier === 2
-        ? (GEM_CARD_GRADIENTS[card.bonusColor] ?? GEM_CARD_GRADIENTS.pearl)
+        ? (AFFINITY_CARD_GRADIENTS[card.bonusAffinity] ?? AFFINITY_CARD_GRADIENTS.radiance)
         : `url(${TIER_BACKDROPS[cardTier] ?? cardTier1Bg})`,
     backgroundSize: 'cover',
     backgroundPosition: 'center',
@@ -304,7 +355,7 @@ export const ArtifactCardView = React.memo(function ArtifactCardView({
       onClick={handleClick}
       onTouchStart={handleTouchStart}
       onTouchEnd={handleTouchEnd}
-      className={`relative w-[var(--card-w)] h-[var(--card-h)] rounded-xl overflow-hidden bg-black shrink-0 ${onTap ? 'cursor-pointer active:brightness-110' : ''}`}
+      className={`artifact-card-view relative w-[var(--card-w)] h-[var(--card-h)] rounded-xl overflow-hidden bg-black shrink-0 ${onTap ? 'cursor-pointer active:brightness-110' : ''}`}
       style={{
         boxShadow: tapped
           ? `inset 0 0 0 2px ${bonusMeta?.hex ?? '#6366f1'}, 0 0 20px 4px ${bonusMeta?.glowHex ?? '#818cf8'}66, 0 20px 25px -5px rgb(0 0 0 / 0.1), 0 8px 10px -6px rgb(0 0 0 / 0.1)`
@@ -322,31 +373,31 @@ export const ArtifactCardView = React.memo(function ArtifactCardView({
       )}
       {!artOnly && <div className="absolute inset-0 bg-gradient-to-b from-black/20 via-black/10 to-black/90 pointer-events-none" />}
 
-      {!artOnly && <div className="relative z-10 h-full p-2 flex flex-col justify-between">
-        <div className="flex justify-between items-start">
-          {card.lumens > 0
-            ? <span className="bg-black/60 backdrop-blur-sm rounded px-1.5 py-0.5 text-sm font-serif font-bold text-amber-100 drop-shadow-[0_1px_3px_rgba(0,0,0,1)]">{card.lumens}</span>
-            : <span />}
+      {!artOnly && <div className="artifact-card-content relative z-10 h-full">
+        <div className="artifact-card-meta-row">
+          {!hideEminence && (card.eminence ?? 0) > 0
+            ? <EminenceBadge value={card.eminence ?? 0} className="artifact-card-eminence-badge" />
+            : <span className="artifact-card-eminence-placeholder" />}
           {bonusMeta && (
-            <div className="w-9 h-9 rounded-full shadow-md overflow-hidden" title={bonusMeta.name}>
+            <div className="artifact-card-bonus-badge rounded-full shadow-md overflow-hidden" title={bonusMeta.name}>
               <img src={bonusMeta.image} alt="" className="w-full h-full object-cover" draggable={false} />
             </div>
           )}
         </div>
 
-        <div className="space-y-1">
-          <div className="text-[9px] font-semibold leading-tight text-white drop-shadow-[0_1px_2px_rgba(0,0,0,1)] line-clamp-2">
+        <div className="artifact-card-text-stack">
+          <div className="artifact-card-name">
             {card.name}
           </div>
-          <div className="flex flex-wrap gap-0.5 justify-end">
-            {CRYSTALS.map((c) => {
-              const baseCost = card.cost[c as keyof CrystalCounts] ?? 0;
+          <div className="artifact-card-cost-row">
+            {AFFINITIES.map((c) => {
+              const baseCost = card.cost[c as keyof AffinityCounts] ?? 0;
               if (baseCost <= 0) return null;
               const effCost = effectiveCosts !== undefined ? (effectiveCosts[c] ?? 0) : baseCost;
               const isReduced = effectiveCosts !== undefined && effCost < baseCost;
               // "free" only when permanent bonuses alone cover this affinity — not when tokens happen to cover it.
               // If bonusCosts is provided (needed_now mode), check the bonus-only cost; otherwise fall back to effCost.
-              const bonusEffCost = bonusCosts !== undefined ? (bonusCosts[c as GemKey] ?? baseCost) : effCost;
+              const bonusEffCost = bonusCosts !== undefined ? (bonusCosts[c as AffinityKey] ?? baseCost) : effCost;
               const isFree = isReduced && effCost === 0 && bonusEffCost === 0;
               // In needed_now mode, effCost=0 means the player has enough right now — show ✓ visually but do not set isFree (backend uses isFree for pricing).
               const isNeededCovered = hideStrike && effCost === 0 && !isFree;
@@ -363,15 +414,15 @@ export const ArtifactCardView = React.memo(function ArtifactCardView({
                       ? { type: 'spring', stiffness: 340, damping: 24, mass: 0.65 }
                       : { duration: 0 }
                   }
-                  className={`flex items-center gap-0.5 backdrop-blur-sm rounded px-1 py-0.5 ${isGreen ? 'bg-green-900/70' : isReduced ? 'bg-blue-900/70' : 'bg-black/55'}`}
+                  className={`artifact-card-cost-chip rounded border border-white/10 ${isGreen ? 'bg-green-950/85' : isReduced ? 'bg-blue-950/85' : 'bg-black/78'}`}
                 >
                   {isReduced && !isGreen && !hideStrike && (
-                    <span className="text-[7px] font-bold text-white/40 line-through mr-0.5">{baseCost}</span>
+                    <span className="artifact-card-cost-original text-white/40 line-through">{baseCost}</span>
                   )}
-                  <span className={`text-[10px] font-bold ${isGreen ? 'text-green-300' : isReduced ? 'text-blue-200' : 'text-white'}`}>
+                  <span className={`artifact-card-cost-value ${isGreen ? 'text-green-300' : isReduced ? 'text-blue-200' : 'text-white'}`}>
                     {isGreen ? '✓' : effCost}
                   </span>
-                  <MiniGem color={c} size={10} />
+                  <AffinityToken color={c} size={10} className="artifact-card-cost-affinity" />
                 </motion.div>
               );
             })}
@@ -410,7 +461,7 @@ export function ForgedCardWithTooltip({ card, tier, onOpenSheet }: { card: Artif
   const [show, setShow] = useState(false);
   const bonuses = card.bonusesAtForge;
   const nonZero = bonuses
-    ? CRYSTALS.filter(c => c !== 'flux' && (bonuses[c as keyof CrystalCounts] ?? 0) > 0)
+    ? AFFINITIES.filter(c => c !== 'singularity' && (bonuses[c as keyof AffinityCounts] ?? 0) > 0)
     : [];
   return (
     <div
@@ -440,8 +491,8 @@ export function ForgedCardWithTooltip({ card, tier, onOpenSheet }: { card: Artif
                 <div className="flex flex-wrap gap-1">
                   {nonZero.map(c => (
                     <div key={c} className="flex items-center gap-0.5 bg-white/5 rounded px-1 py-0.5">
-                      <MiniGem color={c as GemKey} size={10} />
-                      <span className="text-white font-bold">×{bonuses![c as keyof CrystalCounts]}</span>
+                      <AffinityToken color={c as AffinityKey} size={10} />
+                      <span className="text-white font-bold">×{bonuses![c as keyof AffinityCounts]}</span>
                     </div>
                   ))}
                 </div>
@@ -456,11 +507,60 @@ export function ForgedCardWithTooltip({ card, tier, onOpenSheet }: { card: Artif
   );
 }
 
-export function QueuedOverlay() {
+export function PendingActionOverlay({
+  label = 'Pending action',
+  compact = false,
+  onCancel,
+}: {
+  label?: string;
+  compact?: boolean;
+  onCancel?: () => void | Promise<void>;
+}) {
+  const actionLabel = label.replace(/\s+pending$/i, '').trim() || 'Action';
+  const cancelLabel = `Cancel pending ${actionLabel}`;
+
   return (
-    <div className="absolute inset-0 rounded-xl pointer-events-none" style={{ boxShadow: '0 0 0 2px #fbbf24, 0 0 12px 3px #fbbf2466' }}>
-      <span className="absolute top-1 left-1/2 -translate-x-1/2 text-[8px] font-bold uppercase tracking-wider bg-amber-500/90 text-black rounded px-1 py-0.5 leading-none shadow">Queued</span>
-    </div>
+    <span
+      data-pending-action-overlay="true"
+      data-compact={compact ? 'true' : undefined}
+      className={`absolute inset-0 z-[45] block pointer-events-none ${compact ? 'rounded-lg' : 'rounded-xl'}`}
+      style={{ boxShadow: '0 0 0 2px #fbbf24, 0 0 12px 3px #fbbf2466' }}
+    >
+      <span
+        className={
+          compact
+            ? 'absolute inset-x-0.5 top-1/2 z-30 flex min-w-0 -translate-y-1/2 flex-col items-center gap-0.5 rounded border border-amber-200/85 bg-black/94 p-0.5 text-amber-100 shadow'
+            : 'absolute left-1/2 top-1/2 z-30 flex max-w-[92%] -translate-x-1/2 -translate-y-1/2 items-center gap-1 rounded border border-amber-200/80 bg-black/90 py-0.5 pl-1.5 pr-0.5 text-center text-[8px] font-black uppercase leading-none tracking-wider text-amber-200 shadow'
+        }
+        style={{ textShadow: '0 0 6px rgba(251, 191, 36, 0.65)' }}
+      >
+        {compact ? (
+          <span className="flex w-full min-w-0 flex-col items-center justify-center overflow-hidden uppercase leading-none">
+            <span className="w-full truncate text-center text-[7px] font-black tracking-[0.04em]">{actionLabel}</span>
+            <span className="mt-0.5 text-[5px] font-bold tracking-[0.1em] text-amber-200/72">pending</span>
+          </span>
+        ) : (
+          <span className="truncate">{label}</span>
+        )}
+        {onCancel && (
+          <button
+            type="button"
+            aria-label={cancelLabel}
+            title={cancelLabel}
+            className={`${compact ? 'h-[18px] w-full' : 'h-5 w-5'} pointer-events-auto inline-flex shrink-0 items-center justify-center rounded-sm border border-amber-100/25 bg-amber-300/12 text-amber-100 transition-colors hover:bg-amber-300/25 active:bg-amber-300/35 focus-visible:outline-none focus-visible:ring-1 focus-visible:ring-amber-100`}
+            onPointerDown={(event) => event.stopPropagation()}
+            onKeyDown={(event) => event.stopPropagation()}
+            onClick={(event) => {
+              event.preventDefault();
+              event.stopPropagation();
+              void onCancel();
+            }}
+          >
+            <X className={compact ? 'h-3.5 w-3.5' : 'h-3 w-3'} aria-hidden="true" />
+          </button>
+        )}
+      </span>
+    </span>
   );
 }
 
@@ -485,10 +585,13 @@ export function TurnCountdown({ deadline, active }: { deadline: number | null; a
 }
 
 export function CardBack({ size = 'md', count, tier }: { size?: 'sm' | 'md' | 'compact'; count?: number; tier?: 1 | 2 | 3 }) {
-  const sz = size === 'sm' ? 'w-9 h-12' : size === 'compact' ? 'w-[56px] h-[78px]' : 'w-[var(--card-w)] h-[var(--card-h)]';
+  const sz = size === 'sm' ? 'w-9 h-12' : size === 'compact' ? '' : 'w-[var(--card-w)] h-[var(--card-h)]';
+  const compactStyle = size === 'compact'
+    ? { width: 'var(--forge-chip-w, 56px)', height: 'var(--forge-chip-h, 78px)' }
+    : undefined;
   const t = tier ?? 1;
   return (
-    <div className={`${sz} relative rounded-xl overflow-hidden border border-[#c4a85a]/30 shadow-md bg-[#030509] shrink-0`}>
+    <div className={`${sz} relative rounded-xl overflow-hidden border border-[#c4a85a]/30 shadow-md bg-[#030509] shrink-0`} style={compactStyle}>
       {t === 1 && <CardBackTier1 count={count} />}
       {t === 2 && <CardBackTier2 count={count} />}
       {t === 3 && <CardBackTier3 count={count} />}

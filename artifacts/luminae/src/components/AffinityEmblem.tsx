@@ -1,9 +1,9 @@
 import type { CSSProperties } from "react";
-import type { GemKey } from "@/lib/gemMeta";
-import { GEM_META } from "@/lib/gemMeta";
+import type { AffinityKey } from "@/lib/affinityMeta";
+import { AFFINITY_META } from "@/lib/affinityMeta";
 
 export interface AffinityEmblemProps {
-  color: GemKey;
+  color: AffinityKey;
   /** Explicit pixel size. If omitted the element fills its container — use className for sizing. */
   size?: number;
   className?: string;
@@ -12,15 +12,15 @@ export interface AffinityEmblemProps {
 
 /**
  * Unified affinity emblem renderer.
- * All six gems use a PNG asset with transparent background.
- * pearl → luminae_radiance_emblem_v2.png   (solar-gold starburst medallion)
- * flux  → luminae_singularity_emblem_v1.png (prismatic crystalline diamond)
+ * All six Affinities use PNG emblems with transparent backgrounds.
+ * radiance → luminae_radiance_emblem_v2.png   (solar-gold starburst medallion)
+ * singularity  → luminae_singularity_emblem_v1.png (prismatic crystalline diamond)
  * other → existing affinity coin PNGs
  *
- * The default filter is a per-gem glowHex drop-shadow; callers override via `style`.
+ * The default filter is the Affinity's glowHex drop shadow; callers may override it via `style`.
  */
 export function AffinityEmblem({ color, size, className, style }: AffinityEmblemProps) {
-  const meta = GEM_META[color];
+  const meta = AFFINITY_META[color];
   return (
     <img
       src={meta.image}

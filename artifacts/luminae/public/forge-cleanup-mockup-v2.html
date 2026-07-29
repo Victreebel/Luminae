@@ -1,0 +1,497 @@
+<!doctype html>
+<html>
+<head>
+  <meta charset="utf-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1" />
+  <title>Luminae Forge Cleanup Mockup v2</title>
+  <style>
+    :root {
+      color-scheme: dark;
+      --ink: #05050b;
+      --forge: #d8ae55;
+      --forge-soft: rgba(216, 174, 85, 0.16);
+      --forge-line: rgba(216, 174, 85, 0.34);
+      --text: #f4ecd7;
+      --dim: rgba(230, 219, 191, 0.54);
+      --panel: rgba(7, 7, 13, 0.88);
+    }
+
+    * { box-sizing: border-box; }
+
+    body {
+      margin: 0;
+      min-height: 100vh;
+      display: grid;
+      place-items: center;
+      background:
+        radial-gradient(circle at 54% 38%, rgba(137, 91, 26, 0.16), transparent 38%),
+        radial-gradient(circle at 22% 78%, rgba(50, 65, 102, 0.12), transparent 42%),
+        #02040a;
+      font-family: Inter, ui-sans-serif, system-ui, -apple-system, BlinkMacSystemFont, "Segoe UI", sans-serif;
+      color: var(--text);
+    }
+
+    .forge {
+      width: min(1200px, calc(100vw - 28px));
+      height: min(724px, calc(100vh - 28px));
+      min-height: 620px;
+      display: grid;
+      grid-template-rows: 62px 1fr;
+      overflow: hidden;
+      background:
+        linear-gradient(180deg, rgba(42, 24, 8, 0.52), rgba(5, 6, 11, 0.96) 17%),
+        rgba(3, 4, 9, 0.96);
+      border: 1px solid rgba(216, 174, 85, 0.42);
+      box-shadow:
+        inset 0 1px 0 rgba(255, 237, 180, 0.14),
+        inset 0 0 0 1px rgba(0, 0, 0, 0.74),
+        0 26px 80px rgba(0, 0, 0, 0.62);
+    }
+
+    .forge-header {
+      display: grid;
+      grid-template-columns: minmax(0, 1fr) auto;
+      align-items: center;
+      gap: 20px;
+      padding: 10px 18px 10px 16px;
+      border-bottom: 1px solid rgba(216, 174, 85, 0.24);
+      background:
+        linear-gradient(90deg, rgba(103, 61, 15, 0.28), transparent 48%),
+        rgba(0, 0, 0, 0.16);
+    }
+
+    .forge-title {
+      display: flex;
+      align-items: center;
+      gap: 12px;
+      min-width: 0;
+    }
+
+    .mark {
+      width: 28px;
+      height: 28px;
+      display: grid;
+      place-items: center;
+      border: 1px solid rgba(216, 174, 85, 0.38);
+      background: rgba(216, 174, 85, 0.08);
+      color: var(--forge);
+      border-radius: 5px;
+      font-size: 17px;
+      line-height: 1;
+    }
+
+    .title-copy {
+      display: grid;
+      grid-template-columns: auto auto;
+      grid-template-rows: auto auto;
+      column-gap: 13px;
+      align-items: end;
+      min-width: 0;
+    }
+
+    .title-copy small {
+      grid-column: 1;
+      color: rgba(216, 174, 85, 0.58);
+      font-size: 8px;
+      font-weight: 900;
+      letter-spacing: 0.28em;
+      line-height: 1;
+      text-transform: uppercase;
+    }
+
+    .title-copy h1 {
+      grid-column: 1;
+      margin: 0;
+      font-family: Georgia, "Times New Roman", serif;
+      font-size: 26px;
+      letter-spacing: 0.09em;
+      line-height: 0.95;
+      color: var(--forge);
+      text-transform: uppercase;
+      text-shadow: 0 0 18px rgba(216, 174, 85, 0.25);
+    }
+
+    .title-copy span {
+      grid-column: 2;
+      grid-row: 2;
+      margin-bottom: 2px;
+      color: rgba(232, 222, 196, 0.54);
+      font-size: 10px;
+      font-weight: 800;
+      letter-spacing: 0.17em;
+      text-transform: uppercase;
+      white-space: nowrap;
+    }
+
+    .controls {
+      display: flex;
+      align-items: center;
+      gap: 8px;
+      min-width: 0;
+    }
+
+    .cost-label {
+      color: rgba(232, 222, 196, 0.42);
+      font-size: 10px;
+      font-weight: 900;
+      letter-spacing: 0.15em;
+      text-transform: uppercase;
+    }
+
+    .seg {
+      display: flex;
+      gap: 3px;
+      padding: 3px;
+      border-radius: 999px;
+      background: rgba(0, 0, 0, 0.36);
+      border: 1px solid rgba(216, 174, 85, 0.16);
+    }
+
+    .seg button {
+      border: 0;
+      border-radius: 999px;
+      background: transparent;
+      color: rgba(231, 222, 198, 0.62);
+      padding: 4px 10px;
+      font: inherit;
+      font-size: 11px;
+      font-weight: 800;
+    }
+
+    .seg button.active {
+      color: #0c0a05;
+      background: linear-gradient(180deg, #edd184, #b98935);
+      box-shadow: 0 0 16px rgba(216, 174, 85, 0.18);
+    }
+
+    .forge-body {
+      display: grid;
+      grid-template-rows: repeat(3, minmax(0, 1fr));
+      gap: 8px;
+      padding: 10px;
+      min-height: 0;
+    }
+
+    .lane {
+      position: relative;
+      display: grid;
+      grid-template-columns: 102px 96px minmax(0, 1fr);
+      gap: 12px;
+      align-items: center;
+      min-height: 0;
+      padding: 16px 12px 12px;
+      background:
+        linear-gradient(90deg, rgba(216, 174, 85, 0.075), transparent 38%),
+        linear-gradient(180deg, rgba(255, 245, 206, 0.028), rgba(0, 0, 0, 0.12)),
+        var(--panel);
+      border: 1px solid rgba(216, 174, 85, 0.20);
+      box-shadow: inset 0 1px 0 rgba(255, 237, 180, 0.055);
+    }
+
+    .lane::before {
+      content: "";
+      position: absolute;
+      left: 12px;
+      right: 12px;
+      top: 34px;
+      border-top: 1px solid rgba(216, 174, 85, 0.18);
+      pointer-events: none;
+    }
+
+    .tier {
+      position: relative;
+      z-index: 1;
+      align-self: start;
+      display: grid;
+      grid-template-columns: 34px 1fr;
+      gap: 8px;
+      align-items: center;
+      min-width: 0;
+      padding-top: 1px;
+      background: linear-gradient(90deg, rgba(12, 9, 5, 0.96) 78%, transparent);
+    }
+
+    .roman {
+      width: 34px;
+      height: 28px;
+      display: grid;
+      place-items: center;
+      color: #f2da95;
+      font-family: Georgia, "Times New Roman", serif;
+      font-weight: 900;
+      letter-spacing: 0.04em;
+      border-radius: 5px;
+      border: 1px solid rgba(216, 174, 85, 0.46);
+      background: rgba(216, 174, 85, 0.09);
+    }
+
+    .tier-text {
+      display: grid;
+      gap: 1px;
+      line-height: 1;
+      min-width: 0;
+    }
+
+    .tier-text b {
+      color: rgba(216, 174, 85, 0.58);
+      font-size: 9px;
+      font-weight: 900;
+      letter-spacing: 0.17em;
+      text-transform: uppercase;
+    }
+
+    .tier-text span {
+      color: var(--forge);
+      font-size: 14px;
+      font-weight: 950;
+      letter-spacing: 0.13em;
+      text-transform: uppercase;
+      white-space: nowrap;
+    }
+
+    .deck {
+      position: relative;
+      justify-self: center;
+      width: 74px;
+      aspect-ratio: 0.68;
+      border-radius: 7px;
+      overflow: visible;
+      padding: 2px;
+      background: linear-gradient(135deg, rgba(229, 198, 112, 0.78), rgba(229, 198, 112, 0.09));
+      box-shadow: 0 10px 20px rgba(0,0,0,0.36);
+    }
+
+    .deck img,
+    .card img {
+      width: 100%;
+      height: 100%;
+      object-fit: cover;
+      display: block;
+      border-radius: inherit;
+    }
+
+    .deck::after {
+      content: attr(data-count);
+      position: absolute;
+      top: -8px;
+      right: -9px;
+      min-width: 25px;
+      height: 25px;
+      display: grid;
+      place-items: center;
+      border-radius: 999px;
+      background: rgba(0,0,0,0.86);
+      border: 1px solid rgba(235, 212, 150, 0.42);
+      color: var(--text);
+      font-size: 13px;
+      font-weight: 950;
+    }
+
+    .cards {
+      position: relative;
+      display: grid;
+      grid-template-columns: repeat(5, minmax(92px, 1fr));
+      gap: clamp(10px, 1.5vw, 20px);
+      align-items: center;
+      min-width: 0;
+      height: 100%;
+      overflow: hidden;
+      padding-right: 12px;
+      mask-image: linear-gradient(90deg, #000 0%, #000 94%, transparent 100%);
+    }
+
+    .card {
+      position: relative;
+      justify-self: center;
+      width: min(110px, 100%);
+      aspect-ratio: 0.68;
+      overflow: hidden;
+      border-radius: 10px;
+      background: #08080f;
+      box-shadow: 0 0 0 1px rgba(0,0,0,0.72), 0 12px 22px rgba(0,0,0,0.32);
+    }
+
+    .card::after {
+      content: "";
+      position: absolute;
+      inset: 0;
+      pointer-events: none;
+      background:
+        linear-gradient(180deg, rgba(0,0,0,0.05), transparent 48%, rgba(0,0,0,0.78)),
+        radial-gradient(circle at 82% 12%, rgba(255,255,255,0.10), transparent 24%);
+    }
+
+    .card.affordable {
+      box-shadow:
+        0 0 0 1px rgba(0,0,0,0.72),
+        0 0 0 2px rgba(216,174,85,0.78),
+        0 0 18px rgba(216,174,85,0.16);
+    }
+
+    .badge {
+      position: absolute;
+      z-index: 2;
+      display: grid;
+      place-items: center;
+      font-weight: 950;
+      text-shadow: 0 1px 2px #000;
+    }
+
+    .cost {
+      top: 6px;
+      left: 6px;
+      min-width: 24px;
+      height: 24px;
+      border-radius: 7px;
+      border: 1px solid rgba(255,255,255,0.14);
+      background: rgba(0,0,0,0.76);
+      color: #f2ead2;
+      font-size: 15px;
+    }
+
+    .em {
+      top: 5px;
+      right: 6px;
+      width: 25px;
+      height: 31px;
+      clip-path: polygon(50% 0, 92% 25%, 86% 77%, 50% 100%, 14% 77%, 8% 25%);
+      background: linear-gradient(180deg, #f1d984, #78571e);
+      color: #fff6ca;
+      font-family: Georgia, "Times New Roman", serif;
+      font-size: 17px;
+      border: 0;
+    }
+
+    .bonus {
+      top: 6px;
+      right: 7px;
+      width: 28px;
+      height: 28px;
+      border-radius: 999px;
+      border: 1px solid rgba(134, 255, 181, 0.45);
+      background: radial-gradient(circle, #77f3ad 0 31%, rgba(27, 92, 58, 0.9) 34% 68%, rgba(8, 25, 18, 0.88));
+      box-shadow: 0 0 13px rgba(80, 231, 139, 0.34);
+    }
+
+    .name {
+      position: absolute;
+      z-index: 2;
+      left: 7px;
+      right: 7px;
+      bottom: 34px;
+      color: rgba(255,255,255,0.92);
+      font-size: 11px;
+      font-weight: 850;
+      line-height: 1.05;
+      text-shadow: 0 1px 3px #000;
+    }
+
+    .costs {
+      position: absolute;
+      z-index: 2;
+      right: 6px;
+      bottom: 6px;
+      display: flex;
+      gap: 3px;
+    }
+
+    .affinity {
+      width: 17px;
+      height: 17px;
+      display: grid;
+      place-items: center;
+      border-radius: 5px;
+      background: rgba(0,0,0,0.78);
+      border: 1px solid rgba(255,255,255,0.12);
+      font-size: 10px;
+      font-weight: 950;
+    }
+
+    .red { color: #ff7069; }
+    .gold { color: #ffd86a; }
+    .green { color: #67eea1; }
+    .blue { color: #6faeff; }
+    .purple { color: #d16fff; }
+
+    @media (max-width: 900px) {
+      .forge {
+        width: calc(100vw - 20px);
+        height: auto;
+      }
+      .title-copy span { display: none; }
+      .forge-header { grid-template-columns: 1fr; align-items: start; }
+      .controls { justify-self: start; }
+      .lane {
+        grid-template-columns: 76px 68px minmax(0,1fr);
+        gap: 8px;
+      }
+      .cards {
+        grid-template-columns: repeat(4, minmax(58px, 1fr));
+        gap: 8px;
+      }
+      .name { display: none; }
+      .tier-text span { font-size: 11px; }
+    }
+  </style>
+</head>
+<body>
+  <section class="forge">
+    <header class="forge-header">
+      <div class="forge-title">
+        <div class="mark">⌁</div>
+        <div class="title-copy">
+          <small>The</small>
+          <h1>Forge</h1>
+          <span>Artifacts awaiting civilization</span>
+        </div>
+      </div>
+      <div class="controls">
+        <div class="cost-label">Cost View</div>
+        <div class="seg">
+          <button>Full</button>
+          <button>Discounted</button>
+          <button class="active">Needed</button>
+        </div>
+      </div>
+    </header>
+
+    <main class="forge-body">
+      <section class="lane">
+        <div class="tier"><div class="roman">III</div><div class="tier-text"><b>Tier 3</b><span>Galactic</span></div></div>
+        <div class="deck" data-count="16"><img src="/src/assets/cards/t3o01.png" /></div>
+        <div class="cards">
+          <article class="card affordable"><img src="/src/assets/cards/t3o03.png" /><div class="badge cost">4</div><div class="badge bonus"></div><div class="name">Extinction Furnace Veto</div><div class="costs"><span class="affinity red">3</span><span class="affinity green">3</span><span class="affinity purple">6</span></div></article>
+          <article class="card"><img src="/src/assets/cards/t3e01.png" /><div class="badge cost">3</div><div class="badge bonus"></div><div class="name">Cryptobiotic Root Key</div><div class="costs"><span class="affinity gold">3</span><span class="affinity green">3</span><span class="affinity blue">5</span></div></article>
+          <article class="card"><img src="/src/assets/cards/t3r03.png" /><div class="badge cost">5</div><div class="badge em">5</div><div class="name">Species-Rights Witness Prism</div><div class="costs"><span class="affinity gold">7</span><span class="affinity blue">3</span><span class="affinity purple">3</span></div></article>
+          <article class="card"><img src="/src/assets/cards/t3s03.png" /><div class="badge cost">5</div><div class="badge bonus"></div><div class="name">Star-River Propulsion Core</div><div class="costs"><span class="affinity red">3</span><span class="affinity blue">5</span></div></article>
+          <article class="card"><img src="/src/assets/cards/t3p04.png" /><div class="badge cost">3</div><div class="badge em">3</div><div class="name">Mycelial Throne</div><div class="costs"><span class="affinity gold">3</span><span class="affinity blue">3</span><span class="affinity purple">5</span></div></article>
+        </div>
+      </section>
+
+      <section class="lane">
+        <div class="tier"><div class="roman">II</div><div class="tier-text"><b>Tier 2</b><span>Stellar</span></div></div>
+        <div class="deck" data-count="25"><img src="/src/assets/cards/t2o01.png" /></div>
+        <div class="cards">
+          <article class="card"><img src="/src/assets/cards/t2e04.png" /><div class="badge cost">1</div><div class="badge bonus"></div><div class="name">Stellar Crucible</div><div class="costs"><span class="affinity gold">2</span><span class="affinity blue">2</span><span class="affinity purple">3</span></div></article>
+          <article class="card"><img src="/src/assets/cards/t2r03.png" /><div class="badge cost">2</div><div class="badge bonus"></div><div class="name">Null-Convergence Prism</div><div class="costs"><span class="affinity green">1</span><span class="affinity blue">2</span><span class="affinity purple">4</span></div></article>
+          <article class="card"><img src="/src/assets/cards/t2p04.png" /><div class="badge cost">1</div><div class="badge bonus"></div><div class="name">Extinction Forge Die</div><div class="costs"><span class="affinity red">2</span><span class="affinity gold">2</span><span class="affinity green">3</span></div></article>
+          <article class="card"><img src="/src/assets/cards/t2o05.png" /><div class="badge cost">2</div><div class="badge bonus"></div><div class="name">Epoch Graft Ledger</div><div class="costs"><span class="affinity green">2</span><span class="affinity blue">4</span></div></article>
+          <article class="card"><img src="/src/assets/cards/t2s05.png" /><div class="badge cost">2</div><div class="badge em">2</div><div class="name">Verdant Emergence</div><div class="costs"><span class="affinity green">3</span><span class="affinity purple">3</span></div></article>
+        </div>
+      </section>
+
+      <section class="lane">
+        <div class="tier"><div class="roman">I</div><div class="tier-text"><b>Tier 1</b><span>Planetary</span></div></div>
+        <div class="deck" data-count="36"><img src="/src/assets/cards/t1o01.png" /></div>
+        <div class="cards">
+          <article class="card"><img src="/src/assets/cards/t1e02.png" /><div class="badge cost">1</div><div class="badge bonus"></div><div class="name">Undergrowth Silencer</div><div class="costs"><span class="affinity green">2</span><span class="affinity purple">1</span></div></article>
+          <article class="card"><img src="/src/assets/cards/t1r03.png" /><div class="badge cost">1</div><div class="badge bonus"></div><div class="name">Ignition Kernel</div><div class="costs"><span class="affinity gold">1</span><span class="affinity green">1</span><span class="affinity purple">1</span></div></article>
+          <article class="card"><img src="/src/assets/cards/t1o05.png" /><div class="badge cost">1</div><div class="badge bonus"></div><div class="name">Char Tendril</div><div class="costs"><span class="affinity red">1</span><span class="affinity blue">1</span><span class="affinity purple">1</span></div></article>
+          <article class="card"><img src="/src/assets/cards/t1s06.png" /><div class="badge cost">1</div><div class="badge bonus"></div><div class="name">Echo Splinter</div><div class="costs"><span class="affinity red">1</span><span class="affinity blue">1</span></div></article>
+          <article class="card"><img src="/src/assets/cards/t1p02.png" /><div class="badge cost">2</div><div class="badge em">1</div><div class="name">Root Lattice</div><div class="costs"><span class="affinity red">1</span><span class="affinity gold">1</span><span class="affinity blue">1</span></div></article>
+        </div>
+      </section>
+    </main>
+  </section>
+</body>
+</html>

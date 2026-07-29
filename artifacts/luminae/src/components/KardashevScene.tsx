@@ -154,7 +154,7 @@ function genOrbits(rng: () => number, count: number): OrbitPlanet[] {
     orbitR:  52 + i * 22 + rng() * 8,
     angle0:  rng() * Math.PI * 2,
     angSpd:  0.12 + (0.3 / (i + 1)) + rng() * 0.05,
-    radius:  5 + rng() * 7,
+    radius:  4 + rng() * 4.5,
     colorIdx: i % 3,
   }));
 }
@@ -612,10 +612,11 @@ function drawStar(
   ctx: CanvasRenderingContext2D,
   cx: number, cy: number,
   t: number,
+  scale = 1,
 ) {
   const pulse = 1 + 0.06 * Math.sin(t * 1.8);
-  const coreR = 10 * pulse;
-  const glowR = 58 * pulse;
+  const coreR = 18 * scale * pulse;
+  const glowR = 78 * scale * pulse;
 
   const glo = ctx.createRadialGradient(cx, cy, 0, cx, cy, glowR);
   glo.addColorStop(0, 'rgba(255,252,220,0.95)');
@@ -737,8 +738,9 @@ function drawDysonSwarm(
   palette: AffinityPalette,
   progressFraction: number,
   bornAt: Float32Array,
+  scale = 1,
 ) {
-  const orbitR  = 28;
+  const orbitR  = 34 * scale;
   const orbitRY = orbitR * 0.48; // same ellipse aspect ratio as planet orbits
 
   // Arc span scale: short arcs at sparse end, longer arcs at dense end
@@ -751,7 +753,7 @@ function drawDysonSwarm(
     [3.9 + t * 0.015, 0.42 * arcScale],  // panel C
   ];
   ctx.save();
-  ctx.lineWidth = 1.2;
+  ctx.lineWidth = Math.max(1, 1.2 * scale);
   for (const [startA, spanR] of arcDefs) {
     const pulseA = 0.10 + 0.06 * Math.sin(t * 0.9 + startA);
     ctx.beginPath();
@@ -786,7 +788,7 @@ function drawDysonSwarm(
     const y = cy + Math.sin(angle) * orbitRY;
     const a = sat.alpha * (0.55 + 0.45 * Math.sin(t * 1.4 + sat.angle0 * 3)) * fadeAlpha;
     ctx.beginPath();
-    ctx.arc(x, y, 1, 0, Math.PI * 2);
+    ctx.arc(x, y, Math.max(1, 1.1 * scale), 0, Math.PI * 2);
     ctx.fillStyle = hexAlpha(palette.primary, a);
     ctx.fill();
   }
@@ -897,18 +899,25 @@ function renderTier2(
   drawStars(ctx, w, h, t, stars, 0.42);
   const cx = w * 0.5;
   const cy = h * 0.5;
-  for (const o of orbits) drawOrbitPath(ctx, cx, cy, o);
-  drawStar(ctx, cx, cy, t);
+  const systemScale = Math.min(2.45, Math.max(1.15, Math.min(w, h) / 230));
+  const scaledOrbits = orbits.map((orbit) => ({
+    ...orbit,
+    orbitR: orbit.orbitR * systemScale,
+    radius: orbit.radius * systemScale,
+  }));
+
+  for (const o of scaledOrbits) drawOrbitPath(ctx, cx, cy, o);
+  drawStar(ctx, cx, cy, t, systemScale);
   // Dyson swarm sits just outside the star glow, inside the innermost planet orbit
-  drawDysonSwarm(ctx, cx, cy, t, dysonSwarm, palette, progressFraction, bornAt);
+  drawDysonSwarm(ctx, cx, cy, t, dysonSwarm, palette, progressFraction, bornAt, systemScale);
   // Draw planets back-to-front (further first using y-sorted trick with orbit angle)
-  const sortedOrbits = [...orbits].sort((a, b) => {
+  const sortedOrbits = [...scaledOrbits].sort((a, b) => {
     const ay = Math.sin(a.angle0 + a.angSpd * t);
     const by = Math.sin(b.angle0 + b.angSpd * t);
     return ay - by;
   });
   // Identify the outermost orbit so we can tint it in the secondary affinity color
-  const maxOrbitR = Math.max(...orbits.map((o) => o.orbitR));
+  const maxOrbitR = Math.max(...scaledOrbits.map((o) => o.orbitR));
   for (const o of sortedOrbits) {
     drawOrbitPlanet(ctx, cx, cy, o, t, palette, secondaryColor, o.orbitR === maxOrbitR);
   }
@@ -960,6 +969,12 @@ interface KardashevCanvasProps {
    *  - Tiers 0 and 3: ignored.
    *  Defaults to 1 (full density / fully lit). */
   progressFraction?: number;
+  /** Draw one stable frame and stop the RAF loop. Used under full-screen cinematics. */
+  paused?: boolean;
+  /** Optional frame-rate cap for decorative/background scene instances. */
+  fps?: number;
+  /** Optional device-pixel-ratio cap for decorative/background scene instances. */
+  maxDpr?: number;
 }
 
 const TIER_LABELS: Record<KardashevTier, string> = {
@@ -969,12 +984,20 @@ const TIER_LABELS: Record<KardashevTier, string> = {
   3: 'Galactic',
 };
 
-function KardashevCanvas({ tier, palette, progressFraction = 1 }: KardashevCanvasProps) {
+function KardashevCanvas({ tier, palette, progressFraction = 1, paused = false, fps, maxDpr = 2 }: KardashevCanvasProps) {
   const canvasRef = useRef<HTMLCanvasElement>(null);
   const isMobile = useIsMobile();
   const isMobileRef = useRef(isMobile);
   isMobileRef.current = isMobile;
   const frameCountRef = useRef(0);
+  const lastRenderAtRef = useRef(0);
+  const palettePrimary = palette.primary;
+  const paletteSecondary = palette.secondary;
+  const paletteAccent = palette.accent;
+  const stablePalette = useMemo(
+    () => ({ primary: palettePrimary, secondary: paletteSecondary, accent: paletteAccent }),
+    [palettePrimary, paletteSecondary, paletteAccent],
+  );
 
   // Generate stable scene data (seeded, won't change between renders).
   // dysonSwarm is always generated at max count (60); drawDysonSwarm slices it.
@@ -1004,7 +1027,7 @@ function KardashevCanvas({ tier, palette, progressFraction = 1 }: KardashevCanva
     const ctx = canvas.getContext('2d');
     if (!ctx) return;
 
-    const dpr = Math.min(window.devicePixelRatio ?? 1, 2);
+    const dpr = Math.min(window.devicePixelRatio ?? 1, maxDpr);
 
     const syncSize = () => {
       const { width, height } = canvas.getBoundingClientRect();
@@ -1027,12 +1050,21 @@ function KardashevCanvas({ tier, palette, progressFraction = 1 }: KardashevCanva
       );
     }
 
-    const secondaryColor = getSecondaryAffinityColor(palette);
+    const secondaryColor = getSecondaryAffinityColor(stablePalette);
     const clampedFraction = Math.min(1, Math.max(0, progressFraction));
 
+    const shouldAnimate = !paused;
+    const minFrameMs = shouldAnimate && fps && fps > 0 ? 1000 / fps : 0;
+
     const render = (now: number) => {
+      if (shouldAnimate && minFrameMs > 0 && now - lastRenderAtRef.current < minFrameMs) {
+        rafId = requestAnimationFrame(render);
+        return;
+      }
+      lastRenderAtRef.current = now;
+
       // On mobile skip every other frame to halve the GPU workload.
-      if (isMobileRef.current) {
+      if (shouldAnimate && isMobileRef.current) {
         frameCountRef.current++;
         if (frameCountRef.current % 2 !== 0) {
           rafId = requestAnimationFrame(render);
@@ -1062,16 +1094,22 @@ function KardashevCanvas({ tier, palette, progressFraction = 1 }: KardashevCanva
       ctx.clearRect(0, 0, w, h);
 
       if (tier === 0) renderTier0(ctx, w, h, t, stars);
-      else if (tier === 1) renderTier1(ctx, w, h, t, stars, patches, palette, secondaryColor, cityLights, clampedFraction);
-      else if (tier === 2) renderTier2(ctx, w, h, t, stars, orbits, isMobileRef.current ? [] : dysonSwarm, palette, secondaryColor, clampedFraction, bornAtRef.current);
-      else renderTier3(ctx, w, h, t, stars, galaxyPoints, palette, secondaryColor, clampedFraction);
+      else if (tier === 1) renderTier1(ctx, w, h, t, stars, patches, stablePalette, secondaryColor, cityLights, clampedFraction);
+      else if (tier === 2) renderTier2(ctx, w, h, t, stars, orbits, isMobileRef.current ? [] : dysonSwarm, stablePalette, secondaryColor, clampedFraction, bornAtRef.current);
+      else renderTier3(ctx, w, h, t, stars, galaxyPoints, stablePalette, secondaryColor, clampedFraction);
 
-      rafId = requestAnimationFrame(render);
+      if (shouldAnimate) {
+        rafId = requestAnimationFrame(render);
+      }
     };
 
-    rafId = requestAnimationFrame(render);
+    if (shouldAnimate) {
+      rafId = requestAnimationFrame(render);
+    } else {
+      render(performance.now());
+    }
     return () => cancelAnimationFrame(rafId);
-  }, [tier, palette, progressFraction, stars, galaxyPoints, patches, orbits, dysonSwarm, cityLights]);
+  }, [tier, stablePalette, progressFraction, paused, fps, maxDpr, stars, galaxyPoints, patches, orbits, dysonSwarm, cityLights]);
 
   return (
     <>
@@ -1102,9 +1140,15 @@ export interface KardashevSceneProps {
    *  - Tiers 0 and 3: ignored.
    *  Defaults to 1 (full density / fully lit). */
   progressFraction?: number;
+  /** Stops the internal canvas RAF and removes scene crossfade motion. */
+  paused?: boolean;
+  /** Optional frame-rate cap for decorative/background scene instances. */
+  fps?: number;
+  /** Optional device-pixel-ratio cap for decorative/background scene instances. */
+  maxDpr?: number;
 }
 
-export function KardashevScene({ tier, palette, className, progressFraction }: KardashevSceneProps) {
+export function KardashevScene({ tier, palette, className, progressFraction, paused = false, fps, maxDpr }: KardashevSceneProps) {
   const civName = getCivilizationName(palette, tier);
   const civKey = `${tier}-${palette.primary}-${palette.secondary}`;
   const secondaryColor = getSecondaryAffinityColor(palette);
@@ -1122,12 +1166,12 @@ export function KardashevScene({ tier, palette, className, progressFraction }: K
           <motion.div
             key={tier}
             className="absolute inset-0"
-            initial={{ opacity: 0, scale: 0.97 }}
-            animate={{ opacity: 1, scale: 1 }}
-            exit={{ opacity: 0, scale: 1.03 }}
-            transition={{ duration: TIER_CROSSFADE_DURATION_S, ease: 'easeInOut' }}
+            initial={paused ? false : { opacity: 0, scale: 0.97 }}
+            animate={paused ? { opacity: 1, scale: 1 } : { opacity: 1, scale: 1 }}
+            exit={paused ? undefined : { opacity: 0, scale: 1.03 }}
+            transition={paused ? { duration: 0 } : { duration: TIER_CROSSFADE_DURATION_S, ease: 'easeInOut' }}
           >
-            <KardashevCanvas tier={tier} palette={palette} progressFraction={progressFraction} />
+            <KardashevCanvas tier={tier} palette={palette} progressFraction={progressFraction} paused={paused} fps={fps} maxDpr={maxDpr} />
           </motion.div>
         </AnimatePresence>
 
@@ -1137,9 +1181,9 @@ export function KardashevScene({ tier, palette, className, progressFraction }: K
             key={civKey}
             className="absolute bottom-2 left-3 text-[9px] font-mono tracking-widest uppercase select-none pointer-events-none"
             style={{ color: 'rgba(180,200,255,0.28)' }}
-            initial={{ opacity: 0 }}
-            animate={{ opacity: 1, transition: { delay: CIV_LABEL_DELAY_S, duration: CIV_LABEL_DURATION_S, ease: 'easeInOut' } }}
-            exit={{ opacity: 0, transition: { duration: CIV_LABEL_EXIT_S, ease: 'easeInOut' } }}
+            initial={paused ? false : { opacity: 0 }}
+            animate={paused ? { opacity: 1 } : { opacity: 1, transition: { delay: CIV_LABEL_DELAY_S, duration: CIV_LABEL_DURATION_S, ease: 'easeInOut' } }}
+            exit={paused ? undefined : { opacity: 0, transition: { duration: CIV_LABEL_EXIT_S, ease: 'easeInOut' } }}
           >
             {civName}
           </motion.div>
@@ -1156,10 +1200,10 @@ export function KardashevScene({ tier, palette, className, progressFraction }: K
               key={`accent-ring-${tier}-${palette.primary}-${secondaryColor ?? ''}`}
               className="absolute inset-0 rounded-2xl pointer-events-none"
               style={{ boxShadow: ringBoxShadow }}
-              initial={{ opacity: 0 }}
+              initial={paused ? false : { opacity: 0 }}
               animate={{ opacity: 1 }}
-              exit={{ opacity: 0 }}
-              transition={{ duration: CIV_LABEL_DURATION_S, delay: CIV_LABEL_DELAY_S, ease: 'easeInOut' }}
+              exit={paused ? undefined : { opacity: 0 }}
+              transition={paused ? { duration: 0 } : { duration: CIV_LABEL_DURATION_S, delay: CIV_LABEL_DELAY_S, ease: 'easeInOut' }}
             />
           )}
         </AnimatePresence>

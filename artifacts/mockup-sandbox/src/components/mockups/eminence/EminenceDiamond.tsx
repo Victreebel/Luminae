@@ -1,5 +1,5 @@
 export function EminenceDiamond() {
-  const scores = [0, 3, 7, 12, 15];
+  const eminenceSamples = [0, 3, 7, 12, 15];
 
   return (
     <div className="min-h-screen flex items-center justify-center p-10"
@@ -19,7 +19,7 @@ export function EminenceDiamond() {
           <div className="flex flex-col gap-3">
             <p className="text-xs uppercase tracking-widest" style={{ color: '#7c6f9a' }}>Current — number + icon</p>
             <div className="flex items-center gap-8 flex-wrap">
-              {scores.map(n => (
+              {eminenceSamples.map(n => (
                 <div key={n} className="flex flex-col items-center gap-2">
                   {/* Large sidebar */}
                   <div className="flex items-center gap-1">
@@ -45,7 +45,7 @@ export function EminenceDiamond() {
           <div className="flex flex-col gap-3">
             <p className="text-xs uppercase tracking-widest" style={{ color: '#7c6f9a' }}>Proposed — number inside diamond</p>
             <div className="flex items-center gap-8 flex-wrap">
-              {scores.map(n => (
+              {eminenceSamples.map(n => (
                 <div key={n} className="flex flex-col items-center gap-2">
                   {/* Large sidebar */}
                   <DiamondBadge value={n} size="lg" />
@@ -63,9 +63,9 @@ export function EminenceDiamond() {
             <p className="text-xs uppercase tracking-widest" style={{ color: '#7c6f9a' }}>In-context — player bar comparison</p>
             <div className="flex flex-col gap-3">
               {/* Current */}
-              <PlayerBar label="Current" lumens={7} useDiamond={false} />
+              <PlayerBar label="Current" eminence={7} useDiamond={false} />
               {/* Proposed */}
-              <PlayerBar label="Proposed" lumens={7} useDiamond={true} />
+              <PlayerBar label="Proposed" eminence={7} useDiamond={true} />
             </div>
           </div>
 
@@ -156,7 +156,7 @@ function DiamondBadge({ value, size }: { value: number; size: 'sm' | 'md' | 'lg'
   );
 }
 
-function PlayerBar({ label, lumens, useDiamond }: { label: string; lumens: number; useDiamond: boolean }) {
+function PlayerBar({ label, eminence, useDiamond }: { label: string; eminence: number; useDiamond: boolean }) {
   return (
     <div className="flex flex-col gap-1">
       <p className="text-xs" style={{ color: '#7c6f9a' }}>{label}</p>
@@ -169,10 +169,10 @@ function PlayerBar({ label, lumens, useDiamond }: { label: string; lumens: numbe
         <span className="text-sm font-medium" style={{ color: '#e2d9f3' }}>Ariadne</span>
         {/* Eminence */}
         {useDiamond ? (
-          <DiamondBadge value={lumens} size="sm" />
+          <DiamondBadge value={eminence} size="sm" />
         ) : (
           <div className="flex items-center gap-0.5">
-            <span className="font-serif font-black text-white" style={{ fontSize: 18 }}>{lumens}</span>
+            <span className="font-serif font-black text-white" style={{ fontSize: 18 }}>{eminence}</span>
             <CurrentDiamond size={12} />
           </div>
         )}

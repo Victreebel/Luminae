@@ -25,7 +25,7 @@ import { fileURLToPath } from "url";
 // ── Types ──────────────────────────────────────────────────────────────────────
 
 export interface Violation {
-  /** The string label of the case, e.g. "take_three_crystals" */
+  /** The string label of the case, e.g. "harness_three_affinities" */
   caseLabel: string;
   /** 1-indexed line number of the `case "..."` keyword in the source */
   caseStartLine: number;

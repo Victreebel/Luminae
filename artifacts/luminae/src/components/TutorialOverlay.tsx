@@ -11,7 +11,7 @@ interface TutorialStep {
   title: string;
   instruction: string;
   actionHint: string;
-  zone: "harvest" | "market" | "hand" | "luminaries" | null;
+  zone: "well" | "forge" | "hand" | "luminaries" | null;
   permittedActionTypes: string[];
   requiresConfirm: boolean;
 }
@@ -19,49 +19,49 @@ interface TutorialStep {
 const TUTORIAL_STEPS: TutorialStep[] = [
   {
     id: 0,
-    title: "Step 1 of 5 — Harvest Affinities",
+    title: "Step 1 of 5 — Harness Affinities",
     instruction:
-      "Affinities are the core currency of Luminae. On your turn, tap 3 different affinity crystals in the bank below, then tap Harness to collect them.",
-    actionHint: "Tap 3 different gem icons, then tap Harness",
-    zone: "harvest",
-    permittedActionTypes: ["take_three_crystals"],
+      "Affinities are the core resources of Luminae. On your turn, tap 3 different Affinity icons in the Well below, then tap Harness to collect them.",
+    actionHint: "Tap 3 different Affinity icons, then tap Harness",
+    zone: "well",
+    permittedActionTypes: ["harness_three_affinities"],
     requiresConfirm: false,
   },
   {
     id: 1,
-    title: "Step 2 of 5 — Harvest Again",
+    title: "Step 2 of 5 — Harness Again",
     instruction:
-      "You can also harvest 2 of the same affinity if there are 4 or more in the bank. Try harvesting again — 2 of the same or 3 different.",
-    actionHint: "Tap crystals to build your harvest, then tap Harness",
-    zone: "harvest",
-    permittedActionTypes: ["take_two_crystals", "take_three_crystals"],
+      "You can also Harness 2 of the same Affinity if there are 4 or more left in that channel. Try again with 2 of the same or 3 different.",
+    actionHint: "Tap Affinities to build your selection, then tap Harness",
+    zone: "well",
+    permittedActionTypes: ["harness_two_affinities", "harness_three_affinities"],
     requiresConfirm: false,
   },
   {
     id: 2,
-    title: "Step 3 of 5 — Encrypt a Card",
+    title: "Step 3 of 5 — Encrypt an Artifact",
     instruction:
-      "Tap any Artifact card in the market, then tap Encrypt. Encrypting holds the card so no one else can take it, and gives you 1 Singularity (wild) crystal.",
-    actionHint: "Tap a market card, then tap Encrypt for later",
-    zone: "market",
-    permittedActionTypes: ["reserve_card"],
+      "Tap any Artifact in the Forge, then tap Encrypt. Encrypting keeps the Artifact from being claimed by rival civilizations and gives you 1 Singularity.",
+    actionHint: "Tap a Forge Artifact, then tap Encrypt for later",
+    zone: "forge",
+    permittedActionTypes: ["reserve_artifact"],
     requiresConfirm: false,
   },
   {
     id: 3,
     title: "Step 4 of 5 — Forge an Artifact",
     instruction:
-      "Forging a card spends your affinities to permanently claim it. Forged cards give you a permanent discount on future purchases. Tap an affordable card (costs shown in green) and tap Forge.",
-    actionHint: "Tap an affordable card, then tap Forge Artifact",
-    zone: "market",
-    permittedActionTypes: ["purchase_card", "purchase_reserved"],
+      "Forging an Artifact spends held Affinities to add it permanently to your civilization. Its Affinity bonus discounts future Forge costs.",
+    actionHint: "Tap an affordable Artifact, then tap Forge Artifact",
+    zone: "forge",
+    permittedActionTypes: ["forge_artifact", "forge_reserved_artifact"],
     requiresConfirm: false,
   },
   {
     id: 4,
     title: "Step 5 of 5 — Meet the Luminaries",
     instruction:
-      "The top row shows Luminaries — cosmic patrons granting bonus Eminence. Each shows the artifact bonuses required to claim them. The first player whose collection meets those requirements wins the patron automatically. Race to 15 Eminence to win!",
+      "The top row shows Luminaries, distant rulebreakers at the edge of the observable universe. Each shows the Affinity bonuses required to awaken it. When your civilization meets those requirements, it breaks through automatically. Race to 15 Eminence to win!",
     actionHint: "Read the above, then tap Got it to begin playing",
     zone: "luminaries",
     permittedActionTypes: [],
@@ -269,8 +269,8 @@ export function TutorialOverlay({
               </p>
               <ul className="text-left text-sm space-y-2 mb-6">
                 {[
-                  "Harvesting affinities (3 different or 2 of the same)",
-                  "Encrypting cards to hold them for later",
+                  "Harnessing Affinities (3 different or 2 of the same)",
+                  "Encrypting Artifacts to hold them for later",
                   "Forging Artifacts for permanent bonuses",
                   "Claiming Luminaries by meeting their requirements",
                 ].map((item) => (
@@ -309,7 +309,7 @@ export function TutorialOverlay({
             className="fixed left-0 right-0 z-[200]"
             style={{ bottom: "env(safe-area-inset-bottom, 0px)" }}
           >
-            <div ref={innerPanelRef} className="mx-3 mb-3 rounded-2xl border border-white/10 bg-slate-950/96 shadow-2xl shadow-black/60 overflow-hidden backdrop-blur-md">
+            <div ref={innerPanelRef} className="mx-3 mb-3 rounded-2xl border border-white/10 bg-slate-950/96 shadow-2xl shadow-black/60 overflow-hidden">
               {/* Progress bar */}
               <div className="h-0.5 bg-white/5">
                 <motion.div

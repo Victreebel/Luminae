@@ -1,6 +1,6 @@
-import { GEM_KEYS, type GemKey } from '@/lib/gemMeta';
-import cardTier1Bg from '@assets/generated_images/card_tier1.png';
-import cardTier3Bg from '@assets/generated_images/card_tier3.png';
+import { AFFINITY_KEYS, type AffinityKey } from "@/lib/affinityMeta";
+import cardTier1Bg from "@assets/generated_images/card_tier1.png";
+import cardTier3Bg from "@assets/generated_images/card_tier3.png";
 
 export function hexRgba(hex: string, alpha: number): string {
   const r = parseInt(hex.slice(1, 3), 16) || 0;
@@ -9,17 +9,26 @@ export function hexRgba(hex: string, alpha: number): string {
   return `rgba(${r},${g},${b},${alpha})`;
 }
 
-const CARD_ART_MODULES = import.meta.glob(
-  '../assets/cards/*.png',
-  { eager: true, query: '?url', import: 'default' },
-) as Record<string, string>;
+const CARD_ART_MODULES = import.meta.glob("../assets/cards/*.png", {
+  eager: true,
+  query: "?url",
+  import: "default",
+}) as Record<string, string>;
 export const CARD_ART: Record<string, string> = {};
 for (const [path, url] of Object.entries(CARD_ART_MODULES)) {
-  const id = path.split('/').pop()!.replace('.png', '');
+  const id = path.split("/").pop()!.replace(".png", "");
   CARD_ART[id] = url;
 }
 
-export const CRYSTALS: GemKey[] = GEM_KEYS;
+export const AFFINITIES: AffinityKey[] = [...AFFINITY_KEYS];
+
+export const AFFINITY_LABEL_TO_KEY: Record<string, AffinityKey> = {
+  Flare: "flare",
+  Continuum: "continuum",
+  Verdance: "verdance",
+  Abyss: "abyss",
+  Radiance: "radiance",
+};
 
 export const TIER_BACKDROPS: Record<number, string> = {
   1: cardTier1Bg,
@@ -27,37 +36,49 @@ export const TIER_BACKDROPS: Record<number, string> = {
 };
 
 export const TIER_CIVILIZATION: Record<number, string> = {
-  1: 'Planetary',
-  2: 'Stellar',
-  3: 'Galactic',
+  1: "Planetary",
+  2: "Stellar",
+  3: "Galactic",
 };
 
-export const GEM_CARD_GRADIENTS: Record<string, string> = {
-  ruby:     'linear-gradient(175deg, #1a0404 0%, #3d0808 35%, #220505 70%, #100202 100%)',
-  sapphire: 'linear-gradient(175deg, #020510 0%, #071840 35%, #040a28 70%, #020510 100%)',
-  emerald:  'linear-gradient(175deg, #021005 0%, #063020 35%, #041a10 70%, #020c04 100%)',
-  onyx:     'linear-gradient(175deg, #060606 0%, #181818 35%, #0e0e0e 70%, #050505 100%)',
-  pearl:    'linear-gradient(175deg, #100c02 0%, #2a2008 35%, #1c1606 70%, #0c0a02 100%)',
-  flux:     'linear-gradient(175deg, #08080f 0%, #141428 35%, #0e0e1e 70%, #08080f 100%)',
+export const AFFINITY_CARD_GRADIENTS: Record<string, string> = {
+  flare:
+    "linear-gradient(175deg, #1a0404 0%, #3d0808 35%, #220505 70%, #100202 100%)",
+  continuum:
+    "linear-gradient(175deg, #020510 0%, #071840 35%, #040a28 70%, #020510 100%)",
+  verdance:
+    "linear-gradient(175deg, #021005 0%, #063020 35%, #041a10 70%, #020c04 100%)",
+  abyss:
+    "linear-gradient(175deg, #060606 0%, #181818 35%, #0e0e0e 70%, #050505 100%)",
+  radiance:
+    "linear-gradient(175deg, #100c02 0%, #2a2008 35%, #1c1606 70%, #0c0a02 100%)",
+  singularity:
+    "linear-gradient(175deg, #08080f 0%, #141428 35%, #0e0e1e 70%, #08080f 100%)",
 };
 
-export const GEM_KEY_TO_HEX: Record<string, string> = {
-  ruby:     '#ff5a3c',
-  sapphire: '#60a5fa',
-  emerald:  '#2ecc71',
-  onyx:     '#0f172a',
-  pearl:    '#DFC878',
-  flux:     '#E8E4FF',
+export const AFFINITY_KEY_TO_HEX: Record<string, string> = {
+  flare: "#ff5a3c",
+  continuum: "#60a5fa",
+  verdance: "#2ecc71",
+  abyss: "#0f172a",
+  radiance: "#DFC878",
+  singularity: "#E8E4FF",
 };
 
 export const opponentTurnVariants = {
   idle:   { scale: 1 },
-  active: { scale: [1, 1.14, 1], transition: { duration: 0.45, ease: [0.34, 1.56, 0.64, 1] as const } },
+  active: {
+    scale: [1, 1.14, 1],
+    transition: { duration: 0.45, ease: [0.34, 1.56, 0.64, 1] as const },
+  },
 };
 
 export const localTurnVariants = {
   idle:   { scale: 1 },
-  active: { scale: [1, 1.07, 1], transition: { duration: 0.4,  ease: [0.34, 1.56, 0.64, 1] as const } },
+  active: {
+    scale: [1, 1.07, 1],
+    transition: { duration: 0.4, ease: [0.34, 1.56, 0.64, 1] as const },
+  },
 };
 
 /** Duration of the deal-from-deck (card fly + flip) animation in ms.
@@ -76,16 +97,16 @@ export const INITIAL_TURN_GUARD_MS = 1200;
 
 /** Duration of the abridged forge shrink animation (ms).
  *  Abridged forge lock = ABRIDGED_SHRINK_MS + DEAL_ANIM_MS + ANIM_LOCK_BUFFER_MS. */
-export const ABRIDGED_SHRINK_MS = 450;
+export const ABRIDGED_SHRINK_MS = 650;
 
 /** Trailing buffer added after a deal animation in the abridged forge lock (ms). */
 export const ANIM_LOCK_BUFFER_MS = 270;
 
 /** Animation lock duration for simple abridged actions with no deal phase
  *  (reserved-card forge, deck reserve, local forge from hand) (ms). */
-export const ABRIDGED_ACTION_MS = 550;
+export const ABRIDGED_ACTION_MS = 780;
 
-/** Full forge animation duration for market purchases
+/** Full animation duration when forging a face-up Artifact.
  *  (stamp + fly + deal + settling buffer) (ms). */
 export const FORGE_FULL_MS = 3000;
 
@@ -99,24 +120,27 @@ export const FALLBACK_FLIP_ANIM_MS = 5800;
  *  so the DOM state is cleared just before the lock releases. */
 export const FALLBACK_FLIP_CLEANUP_MS = FALLBACK_FLIP_ANIM_MS - 150;
 
-/** Small tail buffer added to CIPHER_GAME_TOTAL_MS for the deck-reserve lock
- *  (no deal phase, so a tighter margin is acceptable) (ms). */
-export const CIPHER_TAIL_BUFFER_MS = 100;
+/** How long the encrypted-receipt label remains after arrival (ms). */
+export const ARRIVAL_LABEL_LINGER_MS = 260;
 
-/** Per-gem stagger interval in the gem harvest burst animation (ms). */
-export const GEM_BURST_STAGGER_MS = 780;
+/** Keeps deck encryption locked until the receipt label has faded completely. */
+export const CIPHER_TAIL_BUFFER_MS = ARRIVAL_LABEL_LINGER_MS + 220;
 
-/** Base animation duration for the final gem in a harvest burst (ms). */
-export const GEM_BURST_BASE_MS = 1250;
+/** Per-Affinity stagger interval in the causal Well-to-player trace (ms). */
+export const AFFINITY_BURST_STAGGER_MS = 80;
 
-/** Settling tail added after the final gem animation in a harvest burst (ms).
- *  Total burst lock = (gems.length - 1) * GEM_BURST_STAGGER_MS + GEM_BURST_BASE_MS + GEM_BURST_SETTLE_MS. */
-export const GEM_BURST_SETTLE_MS = 550;
+/** Base travel duration for the final Affinity in a Harness trace (ms). */
+export const AFFINITY_BURST_BASE_MS = 760;
+
+/** Settling tail added after the final Affinity lands on the player chip (ms).
+ *  Total burst lock = (affinities.length - 1) * AFFINITY_BURST_STAGGER_MS + AFFINITY_BURST_BASE_MS + AFFINITY_BURST_SETTLE_MS. */
+export const AFFINITY_BURST_SETTLE_MS = 180;
 
 /** Abridged forge animation lock when a replacement card is dealt from the deck (ms).
  *  Covers the card shrink, the deal-from-deck fly/flip, and the trailing settle buffer.
  *  = ABRIDGED_SHRINK_MS + DEAL_ANIM_MS + ANIM_LOCK_BUFFER_MS */
-export const ABRIDGED_FORGE_LOCK_MS = ABRIDGED_SHRINK_MS + DEAL_ANIM_MS + ANIM_LOCK_BUFFER_MS;
+export const ABRIDGED_FORGE_LOCK_MS =
+  ABRIDGED_SHRINK_MS + DEAL_ANIM_MS + ANIM_LOCK_BUFFER_MS;
 
 /** All valid animation modes for CipherApertureAnimation.
  *  Adding a new mode here (and a matching entry in CIPHER_MODE_TOTAL_MS) is the only
@@ -125,12 +149,12 @@ export const ABRIDGED_FORGE_LOCK_MS = ABRIDGED_SHRINK_MS + DEAL_ANIM_MS + ANIM_L
 export type CipherApertureMode = "tutorial" | "game";
 
 /** Total duration of the CipherApertureAnimation in "game" mode (ms).
- *  Phase breakdown: forefront(180) + circuit(950) + compress(600) + travel(620) + arrive(330) = 2680. */
-export const CIPHER_GAME_TOTAL_MS = 2680;
+ *  Phase breakdown: release(160) + conceal(760) + lock(320) + transfer(500) + arrive(260) = 2000. */
+export const CIPHER_GAME_TOTAL_MS = 2000;
 
 /** Total duration of the CipherApertureAnimation in "tutorial" mode (ms).
- *  Phase breakdown: forefront(180) + circuit(900) + compress(580) + travel(600) + arrive(350) = 2610. */
-export const CIPHER_TUTORIAL_TOTAL_MS = 2610;
+ *  Phase breakdown: release(180) + conceal(820) + lock(360) + transfer(560) + arrive(300) = 2220. */
+export const CIPHER_TUTORIAL_TOTAL_MS = 2220;
 
 /** Expected phase-sum totals for every CipherApertureMode.
  *  Typed as Record<CipherApertureMode, number> so TypeScript enforces full coverage —
@@ -147,9 +171,6 @@ export const CIPHER_MODE_TOTAL_MS: Record<CipherApertureMode, number> = {
  *  clears, rather than at the exact moment the final phase completes.
  *  = CIPHER_GAME_TOTAL_MS + 70 */
 export const CIPHER_DEAL_FIRE_DELAY_MS = CIPHER_GAME_TOTAL_MS + 70;
-
-/** How long the arrival label lingers after the cipher animation completes before fading (ms). */
-export const ARRIVAL_LABEL_LINGER_MS = 250;
 
 /** Duration of the LuminaryIdleOverlay return-flight animation — the entity
  *  flies from viewport centre back to its portal card ("shrink to vortex") over

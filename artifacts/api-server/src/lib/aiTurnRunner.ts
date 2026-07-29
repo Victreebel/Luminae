@@ -5,7 +5,7 @@ import {
   formatGameState,
   normalizeState,
   parseAiDifficulty,
-  CRYSTAL_COLORS,
+  STANDARD_AFFINITY_KEYS,
   LUMINARY_MAP,
 } from "./gameEngine";
 import { chooseAiAction } from "./aiPlayer";
@@ -13,16 +13,12 @@ import { getConnectedPlayerIds, sendToPlayer, filterStateForPlayer } from "./web
 import { logger } from "./logger";
 import { withRoomLock, tryClaimAiRunner, releaseAiRunner } from "./roomLock";
 import { armTurnTimer, updateTurnDeadline } from "./turnTimer";
+import { getOpeningTurnPresentationWaitMs } from "./turnPresentationGate";
 
-const AI_TURN_DELAY_MS = 950;
-const AI_TURN_DELAY_CARD_ANIM_MS = 2400;
+const AI_TURN_DELAY_MS = 2200;
 
-// Easy AI feels human-paced: 5–9 s for regular moves, 7–11 s for card actions
-// (card anim needs ~2.4 s to complete, so the easy floor already covers it)
-const easyDelay = (isCardAction: boolean): number =>
-  isCardAction
-    ? 7000 + Math.random() * 4000
-    : 5000 + Math.random() * 4000;
+// AI cadence is game pacing, not a proxy for any one client's animation length.
+const easyDelay = (): number => 2800 + Math.random() * 1600;
 
 // On server startup, resume AI turns for any rooms where the game is in
 // progress and the current player is an AI (e.g. the server restarted mid-turn).
@@ -73,22 +69,7 @@ export async function runAiTurnsIfNeeded(roomId: string): Promise<void> {
   if (!tryClaimAiRunner(roomId)) return;
 
   try {
-    // Read last action to decide delay — card animations need more time
-    const initialDelay = await withRoomLock(roomId, async () => {
-      const [gs] = await db
-        .select()
-        .from(gameStatesTable)
-        .where(eq(gameStatesTable.roomId, roomId))
-        .limit(1);
-      if (!gs) return AI_TURN_DELAY_MS;
-      const s = normalizeState(gs.state);
-      const lastType = (s.lastAction as Record<string, unknown> | null)?.type;
-      if (lastType === "purchase_card" || lastType === "reserve_card") {
-        return AI_TURN_DELAY_CARD_ANIM_MS;
-      }
-      return AI_TURN_DELAY_MS;
-    });
-    await new Promise((resolve) => setTimeout(resolve, initialDelay));
+    await new Promise((resolve) => setTimeout(resolve, AI_TURN_DELAY_MS));
 
     for (let i = 0; i < 50; i++) {
       // All read-modify-write happens inside the lock so it can't interleave
@@ -113,19 +94,14 @@ export async function runAiTurnsIfNeeded(roomId: string): Promise<void> {
         const state = normalizeState(gs.state);
         if ((state.phase as string) === "finished") return { kind: "stop" as const };
 
-        // Pause AI turns while Luminary cutscenes are still resolving on
-        // clients. The runner will be re-invoked by the next action handler.
-        // Note: only non-summon activation events block here — summon-type
-        // entries are pushed by the engine but skipped by every client's
-        // activation-cinematic detection loop (the arrival cutscene handles
-        // them visually), so they are never resolved via resolve_luminary_activation
-        // and would cause a permanent stall if counted here.
-        const pendingNonSummonActivations = (
-          state.pendingLuminaryActivationEvents ?? []
-        ).filter((e) => e.effectType !== "summon");
+        // The engine owns one durable resolution barrier across arrivals,
+        // summon effects, end effects, and start effects. The runner is
+        // re-invoked after each acknowledgement and may act only once the
+        // transition has fully released the incoming turn.
         if (
+          !!state.pendingTurnTransition ||
           (state.pendingSummonEvents?.length ?? 0) > 0 ||
-          pendingNonSummonActivations.length > 0
+          (state.pendingLuminaryActivationEvents?.length ?? 0) > 0
         ) {
           return { kind: "stop" as const };
         }
@@ -141,6 +117,11 @@ export async function runAiTurnsIfNeeded(roomId: string): Promise<void> {
           .limit(1);
         if (!dbPlayer || !dbPlayer.isAi) return { kind: "stop" as const };
 
+        const presentationDelay = getOpeningTurnPresentationWaitMs(state);
+        if (presentationDelay > 0) {
+          return { kind: "wait" as const, delay: presentationDelay };
+        }
+
         const difficulty = parseAiDifficulty(dbPlayer.aiDifficulty ?? "medium");
 
         // Handle pending multi-Luminary choice: AI picks highest-eminence first,
@@ -153,8 +134,8 @@ export async function runAiTurnsIfNeeded(roomId: string): Promise<void> {
           candidates.sort((a, b) => {
             const la = LUMINARY_MAP.get(a);
             const lb = LUMINARY_MAP.get(b);
-            const aVal = la ? (la.lumens ?? 0) : 0;
-            const bVal = lb ? (lb.lumens ?? 0) : 0;
+            const aVal = la ? (la.eminence ?? 0) : 0;
+            const bVal = lb ? (lb.eminence ?? 0) : 0;
             return bVal - aVal;
           });
           const action = { type: "choose_luminary_order" as const, orderedIds: candidates };
@@ -180,9 +161,40 @@ export async function runAiTurnsIfNeeded(roomId: string): Promise<void> {
             );
           if (updated.rowCount === 0) return { kind: "stop" as const };
           const connectedIds = getConnectedPlayerIds(roomId);
-          for (const pid of connectedIds) {
-            const filtered = filterStateForPlayer(state, pid);
-            sendToPlayer(roomId, pid, { type: "state_update", state: filtered });
+          const allPlayers = await db
+            .select()
+            .from(playersTable)
+            .where(eq(playersTable.roomId, roomId));
+          for (const player of allPlayers) {
+            if (player.isAi) connectedIds.add(player.id);
+          }
+          const avatarMap = new Map<string, string | null>(
+            allPlayers.map((player) => [player.id, player.avatarId ?? null]),
+          );
+          const aiMap = new Map(
+            allPlayers.map((player) => [
+              player.id,
+              {
+                isAi: player.isAi,
+                aiDifficulty:
+                  player.aiDifficulty != null ? parseAiDifficulty(player.aiDifficulty) : null,
+              },
+            ]),
+          );
+          const formatted = formatGameState(
+            roomId,
+            isFinished ? "finished" : "playing",
+            state,
+            connectedIds,
+            avatarMap,
+            aiMap,
+          );
+          for (const player of allPlayers) {
+            if (player.isAi) continue;
+            sendToPlayer(roomId, player.id, {
+              type: "state_update",
+              state: filterStateForPlayer(formatted, player.id),
+            });
           }
           return { kind: "continue" as const, delay: AI_TURN_DELAY_MS };
         }
@@ -197,11 +209,11 @@ export async function runAiTurnsIfNeeded(roomId: string): Promise<void> {
             "AI action failed, attempting fallback",
           );
           let recovered = false;
-          for (const color of CRYSTAL_COLORS) {
-            if (state.crystalBank[color] > 0) {
+          for (const color of STANDARD_AFFINITY_KEYS) {
+            if (state.affinityWell[color] > 0) {
               const fallback = applyAction(state, currentPlayerId, {
-                type: "take_three_crystals",
-                crystals: { [color]: 1 },
+                type: "harness_three_affinities",
+                affinities: { [color]: 1 },
               });
               if (fallback.success) {
                 recovered = true;
@@ -292,17 +304,17 @@ export async function runAiTurnsIfNeeded(roomId: string): Promise<void> {
       });
 
       if (outcome.kind === "stop") return;
+      if (outcome.kind === "wait") {
+        await new Promise((resolve) => setTimeout(resolve, outcome.delay));
+        continue;
+      }
 
-      const isCardAction =
-        outcome.actionType === "purchase_card" || outcome.actionType === "reserve_card";
       const betweenDelay =
         outcome.difficulty === "passive"
           ? 400
           : outcome.difficulty === "easy"
-            ? easyDelay(isCardAction)
-            : isCardAction
-              ? AI_TURN_DELAY_CARD_ANIM_MS
-              : AI_TURN_DELAY_MS;
+            ? easyDelay()
+            : AI_TURN_DELAY_MS;
       await new Promise((resolve) => setTimeout(resolve, betweenDelay));
     }
   } catch (err) {

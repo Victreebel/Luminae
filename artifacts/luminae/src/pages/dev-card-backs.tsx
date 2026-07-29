@@ -32,7 +32,7 @@ export default function DevCardBacks() {
               <Component />
             </div>
             <span style={{ color: "#6070a0", fontSize: 11, letterSpacing: "0.08em", fontFamily: "system-ui" }}>
-              in-game market
+              in-game Forge
             </span>
           </div>
           <div className="flex flex-col items-center gap-3">

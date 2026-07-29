@@ -135,7 +135,7 @@ export interface GameHistoryEntry {
   /** ISO timestamp when the game finished (room updatedAt) */
   finishedAt: string;
   result: GameHistoryEntryResult;
-  /** Eminence (lumens) earned by the player in this game */
+  /** Eminence (eminence) earned by the player in this game */
   eminenceEarned: number;
   /** Number of human players in the game */
   totalPlayers: number;
@@ -207,6 +207,29 @@ export interface ChallengesResponse {
   challenges: ChallengeEntry[];
 }
 
+/**
+ * Eminence required to trigger the final round
+ */
+export type CreateChallengeBodyVictoryRequirement =
+  (typeof CreateChallengeBodyVictoryRequirement)[keyof typeof CreateChallengeBodyVictoryRequirement];
+
+export const CreateChallengeBodyVictoryRequirement = {
+  NUMBER_15: 15,
+  NUMBER_20: 20,
+  NUMBER_25: 25,
+} as const;
+
+/**
+ * Luminary cinematic presentation mode
+ */
+export type CreateChallengeBodyCinematicMode =
+  (typeof CreateChallengeBodyCinematicMode)[keyof typeof CreateChallengeBodyCinematicMode];
+
+export const CreateChallengeBodyCinematicMode = {
+  standard: "standard",
+  epic: "epic",
+} as const;
+
 export interface CreateChallengeBody {
   challengedUsername: string;
   /**
@@ -214,6 +237,10 @@ export interface CreateChallengeBody {
    * @maximum 4
    */
   maxPlayers?: number;
+  /** Eminence required to trigger the final round */
+  victoryRequirement?: CreateChallengeBodyVictoryRequirement;
+  /** Luminary cinematic presentation mode */
+  cinematicMode?: CreateChallengeBodyCinematicMode;
   /** @nullable */
   turnTimerSeconds?: number | null;
 }
@@ -263,6 +290,29 @@ export interface ChallengeAcceptedResponse {
   player?: ChallengeAcceptedResponsePlayer;
 }
 
+/**
+ * Eminence required to trigger the final round
+ */
+export type CreateRoomBodyVictoryRequirement =
+  (typeof CreateRoomBodyVictoryRequirement)[keyof typeof CreateRoomBodyVictoryRequirement];
+
+export const CreateRoomBodyVictoryRequirement = {
+  NUMBER_15: 15,
+  NUMBER_20: 20,
+  NUMBER_25: 25,
+} as const;
+
+/**
+ * Luminary cinematic presentation mode
+ */
+export type CreateRoomBodyCinematicMode =
+  (typeof CreateRoomBodyCinematicMode)[keyof typeof CreateRoomBodyCinematicMode];
+
+export const CreateRoomBodyCinematicMode = {
+  standard: "standard",
+  epic: "epic",
+} as const;
+
 export interface CreateRoomBody {
   hostName: string;
   /**
@@ -270,6 +320,10 @@ export interface CreateRoomBody {
    * @maximum 4
    */
   maxPlayers: number;
+  /** Eminence required to trigger the final round */
+  victoryRequirement?: CreateRoomBodyVictoryRequirement;
+  /** Luminary cinematic presentation mode */
+  cinematicMode?: CreateRoomBodyCinematicMode;
   /**
    * Optional per-turn time limit in seconds (null = no timer)
    * @nullable
@@ -297,6 +351,29 @@ export interface RejoinRoomBody {
 
 export interface HostActionBody {
   sessionToken: string;
+}
+
+export interface RematchBody {
+  sessionToken: string;
+  /** When true, the next rematch reuses the original opening Forge, deck, Luminary, and first-player setup when available. */
+  sameBoard?: boolean;
+}
+
+export type RematchVoteResponseSessionStats = {
+  [key: string]: {
+    wins: number;
+    losses: number;
+    ties: number;
+    playerName: string;
+  };
+};
+
+export interface RematchVoteResponse {
+  voterIds: string[];
+  sameBoard: boolean;
+  /** @nullable */
+  countdownEndsAt: number | null;
+  sessionStats: RematchVoteResponseSessionStats;
 }
 
 export type AddAiPlayerBodyDifficulty =
@@ -349,11 +426,22 @@ export const RoomInfoStatus = {
   finished: "finished",
 } as const;
 
+export type RoomInfoCinematicMode =
+  (typeof RoomInfoCinematicMode)[keyof typeof RoomInfoCinematicMode];
+
+export const RoomInfoCinematicMode = {
+  standard: "standard",
+  epic: "epic",
+} as const;
+
 export interface RoomInfo {
   id: string;
   inviteCode: string;
   status: RoomInfoStatus;
   maxPlayers: number;
+  /** Eminence required to trigger the final round */
+  victoryRequirement: number;
+  cinematicMode: RoomInfoCinematicMode;
   /** @nullable */
   turnTimerSeconds?: number | null;
   players: RoomPlayer[];
@@ -365,36 +453,39 @@ export interface RoomWithPlayer {
   sessionToken: string;
 }
 
-export interface CrystalCounts {
-  ruby: number;
-  sapphire: number;
-  emerald: number;
-  onyx: number;
-  pearl: number;
-  flux: number;
+/**
+ * A complete set of Luminae Affinity counts.
+ */
+export interface AffinityCounts {
+  flare: number;
+  continuum: number;
+  verdance: number;
+  abyss: number;
+  radiance: number;
+  singularity: number;
 }
 
-export type ArtifactCardBonusColor =
-  (typeof ArtifactCardBonusColor)[keyof typeof ArtifactCardBonusColor];
+export type ArtifactCardBonusAffinity =
+  (typeof ArtifactCardBonusAffinity)[keyof typeof ArtifactCardBonusAffinity];
 
-export const ArtifactCardBonusColor = {
-  ruby: "ruby",
-  sapphire: "sapphire",
-  emerald: "emerald",
-  onyx: "onyx",
-  pearl: "pearl",
+export const ArtifactCardBonusAffinity = {
+  flare: "flare",
+  continuum: "continuum",
+  verdance: "verdance",
+  abyss: "abyss",
+  radiance: "radiance",
 } as const;
 
 export interface ArtifactCard {
   id: string;
   tier: number;
-  bonusColor: ArtifactCardBonusColor;
-  lumens: number;
-  cost: CrystalCounts;
+  bonusAffinity: ArtifactCardBonusAffinity;
+  eminence: number;
+  cost: AffinityCounts;
   name: string;
   flavor: string;
-  /** Snapshot of the player's effective bonuses at the moment this card was forged. Present only on purchased cards; absent on market/reserved cards and on cards forged before this feature was added. */
-  bonusesAtForge?: CrystalCounts;
+  /** Snapshot of the player's effective Affinity bonuses at the moment this Artifact was forged. Present only on forged Artifacts; absent on Forge or reserved Artifacts and on Artifacts forged before this feature was added. */
+  bonusesAtForge?: AffinityCounts;
 }
 
 export type BurnEventTier = (typeof BurnEventTier)[keyof typeof BurnEventTier];
@@ -405,15 +496,45 @@ export const BurnEventTier = {
   NUMBER_3: 3,
 } as const;
 
+export type BurnEventSourceType =
+  (typeof BurnEventSourceType)[keyof typeof BurnEventSourceType];
+
+export const BurnEventSourceType = {
+  luminary: "luminary",
+  action: "action",
+  system: "system",
+} as const;
+
 /**
- * A single Artifact card removed from the market by a Luminary burn effect
+ * Final destination after the Burn resolves; Eternal Recurrence redirects to archive
+ */
+export type BurnEventDestination =
+  (typeof BurnEventDestination)[keyof typeof BurnEventDestination];
+
+export const BurnEventDestination = {
+  burn_pile: "burn_pile",
+  archive: "archive",
+} as const;
+
+/**
+ * A single Artifact Burned by a Luminary effect, including its final destination
  */
 export interface BurnEvent {
+  /** Stable event identifier used to correlate one Burn across state updates and animation */
+  eventId: string;
   cardId: string;
+  /** Artifact name captured when the Burn resolved */
+  artifactName: string;
   tier: BurnEventTier;
+  sourceType: BurnEventSourceType;
+  sourceLuminaryId: string;
+  sourceName?: string;
+  ownerPlayerId?: string;
+  triggeredByPlayerId?: string;
+  /** Final destination after the Burn resolves; Eternal Recurrence redirects to archive */
+  destination: BurnEventDestination;
   /** turnCount at the time of the burn */
   turn: number;
-  sourceLuminaryId: string;
 }
 
 export interface ActionLogEntry {
@@ -428,11 +549,11 @@ export interface Luminary {
   name: string;
   /** Cosmic domain or element of this Luminary (e.g. Flame, Time, Stars) */
   domain: string;
-  lumens: number;
-  /** Oblivion penalty — when this Luminary is claimed, ALL players lose this many Eminence. Mutually exclusive with a positive lumens award. Omitted (or 0) on normal Eminence Luminaries.
+  eminence: number;
+  /** Oblivion penalty — when this Luminary is claimed, ALL players lose this many Eminence. Mutually exclusive with a positive eminence award. Omitted (or 0) on normal Eminence Luminaries.
    */
   oblivion?: number;
-  requirements: CrystalCounts;
+  requirements: AffinityCounts;
   /** Short lore/flavor text shown on the Luminary card */
   flavor: string;
   /** Primary hex color used for glow and aura effects */
@@ -479,14 +600,14 @@ export interface GamePlayerState {
    * @nullable
    */
   aiDifficulty: GamePlayerStateAiDifficulty;
-  crystals: CrystalCounts;
-  bonuses: CrystalCounts;
-  lumens: number;
-  reservedCards: ArtifactCard[];
-  purchasedCardIds: string[];
-  /** Card IDs that were forged with zero crystals spent (fully covered by bonuses at forge time) */
+  affinities: AffinityCounts;
+  bonuses: AffinityCounts;
+  eminence: number;
+  reservedArtifacts: ArtifactCard[];
+  forgedArtifactIds: string[];
+  /** Artifact IDs forged with zero Affinities spent (fully covered by bonuses at forge time) */
   discountedForgeIds: string[];
-  purchasedCards: ArtifactCard[];
+  forgedArtifacts: ArtifactCard[];
   isConnected: boolean;
   /** IDs of luminaries this player has claimed */
   claimedLuminaryIds: string[];
@@ -511,22 +632,22 @@ export type LuminaryActiveStateActiveAffinity =
   (typeof LuminaryActiveStateActiveAffinity)[keyof typeof LuminaryActiveStateActiveAffinity];
 
 export const LuminaryActiveStateActiveAffinity = {
-  ruby: "ruby",
-  sapphire: "sapphire",
-  emerald: "emerald",
-  onyx: "onyx",
-  pearl: "pearl",
+  flare: "flare",
+  continuum: "continuum",
+  verdance: "verdance",
+  abyss: "abyss",
+  radiance: "radiance",
 } as const;
 
 export type LuminaryActiveStateEligibleAffinitiesItem =
   (typeof LuminaryActiveStateEligibleAffinitiesItem)[keyof typeof LuminaryActiveStateEligibleAffinitiesItem];
 
 export const LuminaryActiveStateEligibleAffinitiesItem = {
-  ruby: "ruby",
-  sapphire: "sapphire",
-  emerald: "emerald",
-  onyx: "onyx",
-  pearl: "pearl",
+  flare: "flare",
+  continuum: "continuum",
+  verdance: "verdance",
+  abyss: "abyss",
+  radiance: "radiance",
 } as const;
 
 export interface LuminaryActiveState {
@@ -569,14 +690,14 @@ export interface PendingLuminaryActivationEvent {
   triggeringPlayerId: string;
   /** Unix ms timestamp when this event was created; optional for backward compat */
   createdAt?: number;
-  /** Card IDs targeted by this activation (e.g. condemned cards for start_of_turn burn). Captured server-side before state mutations clear marketMarkers. */
+  /** Artifact IDs targeted by this activation (e.g. condemned Artifacts for start_of_turn burn). Captured server-side before state mutations clear artifactMarkers. */
   targetCardIds?: string[];
 }
 
-export type CardMarkerType =
-  (typeof CardMarkerType)[keyof typeof CardMarkerType];
+export type ArtifactMarkerType =
+  (typeof ArtifactMarkerType)[keyof typeof ArtifactMarkerType];
 
-export const CardMarkerType = {
+export const ArtifactMarkerType = {
   forgotten: "forgotten",
   condemned: "condemned",
   nullified: "nullified",
@@ -584,13 +705,17 @@ export const CardMarkerType = {
 } as const;
 
 /**
- * A marker placed on a market card by a Luminary effect (v0.8)
+ * One persistent Luminary brand carried by an Artifact
  */
-export interface CardMarker {
-  type: CardMarkerType;
+export interface ArtifactBrand {
+  type: ArtifactMarkerType;
   ownerId: string;
   summonedAtTurnCount: number;
 }
+
+export type ArtifactMarker = ArtifactBrand & {
+  brands?: ArtifactBrand[];
+};
 
 export type GameStateStatus =
   (typeof GameStateStatus)[keyof typeof GameStateStatus];
@@ -599,6 +724,25 @@ export const GameStateStatus = {
   lobby: "lobby",
   playing: "playing",
   finished: "finished",
+} as const;
+
+/**
+ * First-player selection for this game instance; persists so clients can animate it once
+ * @nullable
+ */
+export type GameStateOpeningTurnOrder = {
+  id: string;
+  startedAt: number;
+  firstPlayerId: string;
+  playerIds: string[];
+} | null;
+
+export type GameStateCinematicMode =
+  (typeof GameStateCinematicMode)[keyof typeof GameStateCinematicMode];
+
+export const GameStateCinematicMode = {
+  standard: "standard",
+  epic: "epic",
 } as const;
 
 export type GameStateDeckCounts = {
@@ -612,10 +756,39 @@ export type GameStateDeckCounts = {
  */
 export type GameStateLastAction = { [key: string]: unknown } | null;
 
+export type GameStatePendingTurnTransitionStage =
+  (typeof GameStatePendingTurnTransitionStage)[keyof typeof GameStatePendingTurnTransitionStage];
+
+export const GameStatePendingTurnTransitionStage = {
+  after_action: "after_action",
+  after_end_effects: "after_end_effects",
+  after_start_effects: "after_start_effects",
+} as const;
+
 /**
- * Active card markers keyed by cardId (v0.8 — Forgotten/Condemned/Nullified/AvatarSeed)
+ * Durable turn-resolution cursor held until all Luminary presentation events are acknowledged
  */
-export type GameStateMarketMarkers = { [key: string]: CardMarker };
+export type GameStatePendingTurnTransition = {
+  stage: GameStatePendingTurnTransitionStage;
+  endingPlayerId: string;
+  nextPlayerIndex?: number;
+} | null;
+
+/**
+ * Active Artifact markers keyed by cardId (v0.8 — Forgotten/Condemned/Nullified/AvatarSeed)
+ */
+export type GameStateArtifactMarkers = { [key: string]: ArtifactMarker };
+
+/**
+ * Owner-relative Forgotten Hour timing keyed by source playerId
+ */
+export type GameStateForgottenHourCycle = {
+  [key: string]: {
+    lastAppliedTurnCount: number;
+    /** @nullable */
+    cooldownOwnerTurnsRemaining: number | null;
+  };
+};
 
 /**
  * Set when the current player must choose the order to claim multiple simultaneous Luminaries
@@ -629,14 +802,26 @@ export type GameStatePendingLuminaryChoice = {
 export interface GameState {
   roomId: string;
   status: GameStateStatus;
+  /** Unix timestamp (ms) when this game instance was initialized */
+  startedAt: number;
+  /**
+   * First-player selection for this game instance; persists so clients can animate it once
+   * @nullable
+   */
+  openingTurnOrder: GameStateOpeningTurnOrder;
+  /** True when the original opening board snapshot is available for same-board rematches. */
+  canReplaySameBoard: boolean;
   currentPlayerIndex: number;
   roundNumber: number;
   /** Monotonically increasing counter incremented each time any player's turn ends */
   turnCount: number;
-  crystalBank: CrystalCounts;
-  marketTier1: ArtifactCard[];
-  marketTier2: ArtifactCard[];
-  marketTier3: ArtifactCard[];
+  /** Eminence required to trigger the final round */
+  victoryRequirement: number;
+  cinematicMode: GameStateCinematicMode;
+  affinityWell: AffinityCounts;
+  forgeTier1: ArtifactCard[];
+  forgeTier2: ArtifactCard[];
+  forgeTier3: ArtifactCard[];
   deckCounts: GameStateDeckCounts;
   luminaries: Luminary[];
   /** Active affinity state for each claimed Luminary */
@@ -664,8 +849,14 @@ export interface GameState {
   pendingSummonEvents: PendingSummonEvent[];
   /** Activation events queued for the short (~4s) per-effect cinematic overlay */
   pendingLuminaryActivationEvents: PendingLuminaryActivationEvent[];
-  /** Active card markers keyed by cardId (v0.8 — Forgotten/Condemned/Nullified/AvatarSeed) */
-  marketMarkers?: GameStateMarketMarkers;
+  /** Durable turn-resolution cursor held until all Luminary presentation events are acknowledged */
+  pendingTurnTransition: GameStatePendingTurnTransition;
+  /** Development-only lease held while the in-game Luminary Sequence Lab still has staged presentations to resolve */
+  devLuminarySequenceActive?: boolean;
+  /** Active Artifact markers keyed by cardId (v0.8 — Forgotten/Condemned/Nullified/AvatarSeed) */
+  artifactMarkers?: GameStateArtifactMarkers;
+  /** Owner-relative Forgotten Hour timing keyed by source playerId */
+  forgottenHourCycle?: GameStateForgottenHourCycle;
   /** Card IDs currently in deck with Avatar Seed markers (v0.8) */
   avatarSeedDeckSeeds?: string[];
   /**
@@ -674,7 +865,7 @@ export interface GameState {
    */
   avatarSeedOwnerId?: string | null;
   /**
-   * Player ID if First Hunger Assimilation is available this turn (v0.8)
+   * Player ID if Final Hunger Assimilation is available this turn (v0.8)
    * @nullable
    */
   firstHungerAvailable?: string | null;
@@ -684,11 +875,11 @@ export interface GameState {
   concordanceMandalaTriggered?: boolean;
   /** True once The Glass Orchard Perfect Replication has fired (v0.8) */
   glassOrchardTriggered?: boolean;
-  /** Ordered list of card IDs removed from the market by Luminary burn effects (never reused) */
+  /** Ordered list of Burned Artifact IDs awaiting an effect that may return them to their Archives */
   burnPile?: string[];
-  /** Ordered list of individual burn events (one per card burned) including tier and source Luminary */
+  /** Ordered list of individual Burn events, including source Luminary and final destination */
   burnEvents?: BurnEvent[];
-  /** True once the current player has used their core action this turn (harvest, forge, or reserve); resets to false on advanceTurn */
+  /** True once the current player has used their core action this turn (Harness, Forge, or reserve); resets only when the staged Luminary resolution pipeline releases the next turn */
   coreActionUsed?: boolean;
   /** Set when the current player must choose the order to claim multiple simultaneous Luminaries */
   pendingLuminaryChoice?: GameStatePendingLuminaryChoice;
@@ -698,17 +889,18 @@ export type ActionRequestType =
   (typeof ActionRequestType)[keyof typeof ActionRequestType];
 
 export const ActionRequestType = {
-  take_three_crystals: "take_three_crystals",
-  take_two_crystals: "take_two_crystals",
-  reserve_card: "reserve_card",
-  purchase_card: "purchase_card",
-  purchase_reserved: "purchase_reserved",
+  harness_three_affinities: "harness_three_affinities",
+  harness_two_affinities: "harness_two_affinities",
+  reserve_artifact: "reserve_artifact",
+  forge_artifact: "forge_artifact",
+  forge_reserved_artifact: "forge_reserved_artifact",
   pass: "pass",
   surrender: "surrender",
   toggle_luminary_affinity: "toggle_luminary_affinity",
   resolve_summon: "resolve_summon",
   resolve_luminary_activation: "resolve_luminary_activation",
   plan_action: "plan_action",
+  execute_plan: "execute_plan",
   cancel_plan: "cancel_plan",
   tutorial_fast_forward: "tutorial_fast_forward",
   set_civ_name: "set_civ_name",
@@ -716,41 +908,30 @@ export const ActionRequestType = {
   assimilate: "assimilate",
 } as const;
 
-export type ActionRequestCrystal =
-  (typeof ActionRequestCrystal)[keyof typeof ActionRequestCrystal];
-
-export const ActionRequestCrystal = {
-  ruby: "ruby",
-  sapphire: "sapphire",
-  emerald: "emerald",
-  onyx: "onyx",
-  pearl: "pearl",
-} as const;
-
 /**
- * Target affinity for toggle_luminary_affinity action
+ * Affinity selected for a same-Affinity Harness; legacy Luminary toggle requests are rejected
  */
 export type ActionRequestAffinity =
   (typeof ActionRequestAffinity)[keyof typeof ActionRequestAffinity];
 
 export const ActionRequestAffinity = {
-  ruby: "ruby",
-  sapphire: "sapphire",
-  emerald: "emerald",
-  onyx: "onyx",
-  pearl: "pearl",
+  flare: "flare",
+  continuum: "continuum",
+  verdance: "verdance",
+  abyss: "abyss",
+  radiance: "radiance",
 } as const;
 
 /**
- * Crystals to return when a harvest or reserve would exceed the 10-crystal hand limit (sparse map — only include colors being returned; for reserve_card use exactly 1 total when hand is full)
+ * Affinities to return when a Harness or reserve would exceed the 10-Affinity holding limit (sparse map — include only the Affinities being returned; for reserve_artifact use exactly 1 total when the holding limit is reached)
  */
-export type ActionRequestReturnCrystals = {
-  ruby?: number;
-  sapphire?: number;
-  emerald?: number;
-  onyx?: number;
-  pearl?: number;
-  flux?: number;
+export type ActionRequestReturnAffinities = {
+  flare?: number;
+  continuum?: number;
+  verdance?: number;
+  abyss?: number;
+  radiance?: number;
+  singularity?: number;
 };
 
 /**
@@ -761,18 +942,17 @@ export type ActionRequestPlannedActionData = { [key: string]: unknown };
 export interface ActionRequest {
   sessionToken: string;
   type: ActionRequestType;
-  crystals?: CrystalCounts;
-  crystal?: ActionRequestCrystal;
+  affinities?: AffinityCounts;
+  /** Affinity selected for a same-Affinity Harness; legacy Luminary toggle requests are rejected */
+  affinity?: ActionRequestAffinity;
   cardId?: string;
   tier?: number;
-  /** Luminary ID for toggle_luminary_affinity action */
+  /** Luminary ID for Luminary-specific action payloads */
   luminaryId?: string;
-  /** Target affinity for toggle_luminary_affinity action */
-  affinity?: ActionRequestAffinity;
   /** Event ID for resolve_summon action */
   eventId?: string;
-  /** Crystals to return when a harvest or reserve would exceed the 10-crystal hand limit (sparse map — only include colors being returned; for reserve_card use exactly 1 total when hand is full) */
-  returnCrystals?: ActionRequestReturnCrystals;
+  /** Affinities to return when a Harness or reserve would exceed the 10-Affinity holding limit (sparse map — include only the Affinities being returned; for reserve_artifact use exactly 1 total when the holding limit is reached) */
+  returnAffinities?: ActionRequestReturnAffinities;
   /** Nested action payload for plan_action type */
   plannedActionData?: ActionRequestPlannedActionData;
   /** New civilization name for set_civ_name action */

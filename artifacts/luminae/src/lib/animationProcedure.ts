@@ -13,11 +13,11 @@ export type KeywordAnimationEvent =
 /** Alias for use in the AnimationTimeline spec — identical to KeywordAnimationEvent. */
 export type KeywordEventType = KeywordAnimationEvent;
 
-/** Persistent keyword states that sit on a card (as opposed to one-shot events like burn). */
+/** Persistent keyword states that sit on an Artifact, unlike one-shot events such as Burn. */
 export type KeywordMarker = Exclude<KeywordAnimationEvent, 'burn'>;
 
 /**
- * A single keyword event targeting one or more cards or entities.
+ * A single keyword event targeting one or more Artifacts or entities.
  * Used inside `keywordEvents` batch steps so that multiple simultaneous burns,
  * condemns, etc. animate together (with stagger) before the driver advances.
  */
@@ -50,16 +50,29 @@ export type AnimationProcedureStep =
       type: 'keywordEvents';
       events: KeywordEvent[];
     }
-  | { type: 'marketRedraw'; slotIds: string[] }
-  | { type: 'residue'; keyword: KeywordMarker; targetIds: string[] }
-  | { type: 'scoreChange'; playerIds: string[]; amount: number }
-  | { type: 'crystalReturn'; playerIds: string[]; crystalType?: string }
+  // These two discriminants are compatibility names used by existing procedures.
+  | { type: 'forgeRefill'; slotIds: string[] }
+  | {
+      /** Burned Artifacts visibly travel back into their matching tier Archives. */
+      type: 'archiveReturn';
+      cardIds: string[];
+    }
+  | {
+      type: 'residue';
+      keyword: KeywordMarker;
+      targetIds: string[];
+      /** Optional threshold change that lands with this persistent brand. */
+      victoryRequirementChange?: number;
+    }
+  | { type: 'eminenceChange'; playerIds: string[]; amount: number }
+  | { type: 'victoryRequirementChange'; amount: number }
+  | { type: 'affinityReturn'; playerIds: string[]; affinityType?: string }
   | { type: 'deckScry'; tierIds: string[]; affinityBias?: string }
   | { type: 'pendingAction'; action: 'assimilate'; ownerId: string }
   | {
       /**
-       * Reveal one or more cards into a forefront inspection position.
-       * Used for both batch reveal (all cards at once) and sequential reveal-until
+       * Reveal one or more Artifacts into a forefront inspection position.
+       * Used for both batch reveal (all Artifacts at once) and sequential reveal-until
        * (one by one). The ProcedureStrip renders this as a "REVEAL" pill.
        *
        * For sequential reveal-until, each individual card gets its own `reveal`
@@ -84,8 +97,8 @@ export type AnimationProcedure = AnimationProcedureStep[];
  *   1. luminaryPulse   — always first
  *   2. targetClaim     — before any keyword resolution
  *   3. keywordEvents   — after targetClaim; staggered within the batch
- *   4. marketRedraw    — only after all keyword events are legible
- *   5. scoreChange / crystalReturn — after their causal keyword event
+ *   4. forgeRefill — compatibility name for a Forge refresh after keyword events
+ *   5. eminenceChange / victoryRequirementChange / affinityReturn — after their causal event
  */
 export type AnimationTimelineStep = AnimationProcedureStep;
 export type AnimationTimeline = AnimationTimelineStep[];

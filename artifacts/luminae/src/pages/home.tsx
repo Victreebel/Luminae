@@ -81,6 +81,7 @@ export default function Home() {
 
   const [hostName, setHostName] = useState("");
   const [maxPlayers, setMaxPlayers] = useState(2);
+  const [victoryRequirement, setVictoryRequirement] = useState<15 | 20 | 25>(15);
   const [turnTimer, setTurnTimer] = useState<string>("0");
   const [playerName, setPlayerName] = useState("");
   const [inviteCode, setInviteCode] = useState("");
@@ -177,9 +178,14 @@ export default function Home() {
           setActiveSession(null);
         }
       })
-      .catch(() => {
-        clearSession();
-        setActiveSession(null);
+      .catch((error: { status?: number }) => {
+        // A dev-server restart or brief connection failure must not destroy an
+        // otherwise valid match session. Only discard it when the server has
+        // explicitly rejected it or the room no longer exists.
+        if (error.status === 401 || error.status === 403 || error.status === 404) {
+          clearSession();
+          setActiveSession(null);
+        }
       });
   }, []);
 
@@ -190,7 +196,7 @@ export default function Home() {
     if (!name.trim()) return;
     try {
       const res = await createRoom.mutateAsync({
-        data: { hostName: name, maxPlayers, turnTimerSeconds: parseInt(turnTimer) || null, avatarId },
+        data: { hostName: name, maxPlayers, victoryRequirement, cinematicMode: "standard", turnTimerSeconds: parseInt(turnTimer) || null, avatarId },
         ...(accountToken ? { headers: { Authorization: `Bearer ${accountToken}` } } : {}),
       });
       saveSession({
@@ -407,7 +413,7 @@ export default function Home() {
             <button
               type="button"
               onClick={() => setShowAvatarPicker((v) => !v)}
-              className="w-full flex items-center gap-3 rounded-2xl border border-border/50 bg-card/50 backdrop-blur px-3 py-2.5 hover:border-border transition-colors"
+              className="w-full flex items-center gap-3 rounded-2xl border border-border/50 bg-card/50 px-3 py-2.5 hover:border-border transition-colors"
             >
               <div
                 className="w-10 h-10 rounded-xl overflow-hidden shrink-0 border-2"
@@ -463,7 +469,7 @@ export default function Home() {
             >
               {/* Resume session banner */}
               {activeSession && (
-                <div className="rounded-2xl border border-primary/40 bg-primary/10 backdrop-blur p-4 flex items-center justify-between gap-3">
+                <div className="rounded-2xl border border-primary/40 bg-primary/10 p-4 flex items-center justify-between gap-3">
                   <div>
                     <div className="text-xs text-primary font-semibold uppercase tracking-wider mb-0.5">Active game</div>
                     <div className="font-bold text-sm">{activeSession.playerName}</div>
@@ -502,7 +508,7 @@ export default function Home() {
                   setTutorialSavedBeat(saved);
                   setShowTutorialModal(true);
                 }}
-                className="w-full flex items-center gap-3 rounded-2xl border border-border/40 bg-card/40 backdrop-blur px-5 py-3.5 text-left hover:border-border/70 hover:bg-card/60 transition-colors"
+                className="w-full flex items-center gap-3 rounded-2xl border border-border/40 bg-card/40 px-5 py-3.5 text-left hover:border-border/70 hover:bg-card/60 transition-colors"
               >
                 <div className="w-9 h-9 rounded-xl bg-primary/10 border border-primary/20 flex items-center justify-center shrink-0">
                   <BookOpen className="h-4.5 w-4.5 text-primary" />
@@ -516,7 +522,7 @@ export default function Home() {
                       ? "You've already completed the tutorial — jump straight in?"
                       : tutorialSeen
                         ? "Pick up where you left off with Lumii"
-                        : "Guide your civilization to legend — harvest, forge, arrive, ascend"}
+                        : "Guide your civilization to legend: Harness, Forge, arrive, ascend"}
                   </div>
                 </div>
                 <ArrowRight className="h-4 w-4 text-muted-foreground shrink-0" />
@@ -524,7 +530,7 @@ export default function Home() {
 
               {/* Account CTA — guest vs signed-in */}
               {account ? (
-                <div className="rounded-2xl border border-primary/30 bg-primary/10 backdrop-blur p-4 flex items-center justify-between gap-3">
+                <div className="rounded-2xl border border-primary/30 bg-primary/10 p-4 flex items-center justify-between gap-3">
                   <div className="min-w-0">
                     <div className="text-[10px] font-semibold uppercase tracking-wider text-primary/70 mb-0.5">Signed in</div>
                     <div className="font-bold text-sm truncate">{account.username}</div>
@@ -575,7 +581,7 @@ export default function Home() {
                   </div>
                 </div>
               ) : (
-                <div className="rounded-2xl border border-border/50 bg-card/60 backdrop-blur p-4 space-y-3">
+                <div className="rounded-2xl border border-border/50 bg-card/60 p-4 space-y-3">
                   <div>
                     <div className="text-xs font-semibold uppercase tracking-wider text-muted-foreground mb-1">
                       Save progress & play with friends
@@ -623,7 +629,7 @@ export default function Home() {
                 ← Back
               </button>
               <h2 className="text-2xl font-serif font-bold">Account</h2>
-              <div className="rounded-2xl border border-border/50 bg-card/70 backdrop-blur p-5">
+              <div className="rounded-2xl border border-border/50 bg-card/70 p-5">
                 <LoginRegisterForm onSuccess={() => setMode("home")} />
               </div>
             </motion.div>
@@ -678,6 +684,22 @@ export default function Home() {
                       className={`flex-1 h-12 rounded-xl font-bold text-base border transition-colors ${maxPlayers === n ? "bg-primary text-primary-foreground border-primary" : "bg-secondary/60 border-border text-muted-foreground"}`}
                     >
                       {n}
+                    </button>
+                  ))}
+                </div>
+              </div>
+
+              <div className="space-y-1.5">
+                <Label className="text-sm font-medium">Eminence target: {victoryRequirement}</Label>
+                <div className="flex gap-2">
+                  {([15, 20, 25] as const).map((target) => (
+                    <button
+                      key={target}
+                      type="button"
+                      onClick={() => setVictoryRequirement(target)}
+                      className={`flex-1 h-12 rounded-xl font-bold text-base border transition-colors ${victoryRequirement === target ? "bg-primary text-primary-foreground border-primary" : "bg-secondary/60 border-border text-muted-foreground"}`}
+                    >
+                      {target}
                     </button>
                   ))}
                 </div>

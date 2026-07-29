@@ -104,7 +104,7 @@ function GameCard({
       initial={{ opacity: 0, y: 12 }}
       animate={{ opacity: 1, y: 0 }}
       transition={{ delay: index * 0.04 + 0.1 }}
-      className="rounded-2xl border border-border/50 bg-card/60 backdrop-blur p-4"
+      className="rounded-2xl border border-border/50 bg-card/60 p-4"
     >
       <div className="flex items-start justify-between gap-3">
         <div className="min-w-0 flex-1">
@@ -231,7 +231,7 @@ function StatsBar({ stats, isLoading }: { stats: PlayerStats | null; isLoading: 
     return (
       <div className="grid grid-cols-3 gap-3 mb-6">
         {[0, 1, 2].map((i) => (
-          <div key={i} className="rounded-2xl border border-border/40 bg-card/40 backdrop-blur p-4 flex flex-col items-center gap-1">
+          <div key={i} className="rounded-2xl border border-border/40 bg-card/40 p-4 flex flex-col items-center gap-1">
             <div className="h-6 w-10 bg-muted/40 rounded animate-pulse" />
             <div className="h-3 w-12 bg-muted/30 rounded animate-pulse" />
           </div>
@@ -251,15 +251,15 @@ function StatsBar({ stats, isLoading }: { stats: PlayerStats | null; isLoading: 
       transition={{ delay: 0.08 }}
       className="grid grid-cols-3 gap-3 mb-6"
     >
-      <div className="rounded-2xl border border-border/40 bg-card/40 backdrop-blur p-4 flex flex-col items-center gap-0.5">
+      <div className="rounded-2xl border border-border/40 bg-card/40 p-4 flex flex-col items-center gap-0.5">
         <span className="text-2xl font-bold font-serif text-primary">{stats.gamesPlayed}</span>
         <span className="text-xs text-muted-foreground">Games</span>
       </div>
-      <div className="rounded-2xl border border-border/40 bg-card/40 backdrop-blur p-4 flex flex-col items-center gap-0.5">
+      <div className="rounded-2xl border border-border/40 bg-card/40 p-4 flex flex-col items-center gap-0.5">
         <span className="text-2xl font-bold font-serif text-green-400">{winRate}%</span>
         <span className="text-xs text-muted-foreground">Win Rate</span>
       </div>
-      <div className="rounded-2xl border border-border/40 bg-card/40 backdrop-blur p-4 flex flex-col items-center gap-0.5">
+      <div className="rounded-2xl border border-border/40 bg-card/40 p-4 flex flex-col items-center gap-0.5">
         <span className="text-2xl font-bold font-serif text-yellow-300">{stats.avgEminence}</span>
         <span className="text-xs text-muted-foreground">Avg Eminence</span>
       </div>
@@ -298,7 +298,7 @@ function HistoryTab({ stats, isLoading }: { stats: PlayerStats | null; isLoading
           initial={{ opacity: 0, y: 8 }}
           animate={{ opacity: 1, y: 0 }}
           transition={{ delay: i * 0.03 }}
-          className="rounded-2xl border border-border/50 bg-card/60 backdrop-blur p-4 flex items-center gap-3"
+          className="rounded-2xl border border-border/50 bg-card/60 p-4 flex items-center gap-3"
         >
           <ResultBadge result={game.result} />
           <div className="flex-1 min-w-0">
@@ -345,7 +345,7 @@ function SettingsTab({ accountId, token }: { accountId: string; token: string | 
 
   const options: { value: CostModePref; label: string; desc: string }[] = [
     { value: "remember", label: "Remember last used", desc: "Restores whichever mode you last used in a game" },
-    { value: "printed", label: "Full", desc: "Always show the card's base cost" },
+    { value: "printed", label: "Full", desc: "Always show the Artifact's base cost" },
     { value: "after_bonuses", label: "Discounted", desc: "Always show cost after your permanent bonuses" },
     { value: "needed_now", label: "Needed", desc: "Always show what you still need to pay right now" },
   ];
@@ -464,7 +464,7 @@ function SettingsTab({ accountId, token }: { accountId: string; token: string | 
   if (loadingPrefs) {
     return (
       <motion.div initial={{ opacity: 0, y: 8 }} animate={{ opacity: 1, y: 0 }} className="space-y-4">
-        <div className="rounded-2xl border border-border/50 bg-card/60 backdrop-blur p-5">
+        <div className="rounded-2xl border border-border/50 bg-card/60 p-5">
           <div className="h-4 w-36 rounded bg-muted/50 animate-pulse mb-2" />
           <div className="h-3 w-56 rounded bg-muted/30 animate-pulse mb-5" />
           <div className="space-y-2">
@@ -473,7 +473,7 @@ function SettingsTab({ accountId, token }: { accountId: string; token: string | 
             ))}
           </div>
         </div>
-        <div className="rounded-2xl border border-border/50 bg-card/60 backdrop-blur p-5">
+        <div className="rounded-2xl border border-border/50 bg-card/60 p-5">
           <div className="h-4 w-32 rounded bg-muted/50 animate-pulse mb-2" />
           <div className="h-3 w-64 rounded bg-muted/30 animate-pulse mb-5" />
           <div className="space-y-2">
@@ -488,7 +488,7 @@ function SettingsTab({ accountId, token }: { accountId: string; token: string | 
 
   return (
     <motion.div initial={{ opacity: 0, y: 8 }} animate={{ opacity: 1, y: 0 }} className="space-y-4">
-      <div className="rounded-2xl border border-border/50 bg-card/60 backdrop-blur p-5">
+      <div className="rounded-2xl border border-border/50 bg-card/60 p-5">
         <h3 className="text-sm font-semibold mb-1">Audio &amp; animations</h3>
         <p className="text-xs text-muted-foreground mb-4">
           These settings sync across devices when you're signed in.
@@ -506,7 +506,7 @@ function SettingsTab({ accountId, token }: { accountId: string; token: string | 
             toggleAbridgedAnims,
             <Zap className="h-4 w-4" />,
             "Reduced animations",
-            "Compact Luminary effects and shorter forge and harvest animations",
+            "Compact Luminary effects and shorter Forge and Harness animations",
           )}
           {prefToggle(
             !skipCinematics,
@@ -545,7 +545,7 @@ function SettingsTab({ accountId, token }: { accountId: string; token: string | 
         </div>
       </div>
 
-      <div className="rounded-2xl border border-border/50 bg-card/60 backdrop-blur p-5">
+      <div className="rounded-2xl border border-border/50 bg-card/60 p-5">
         <h3 className="text-sm font-semibold mb-1">Default cost view</h3>
         <p className="text-xs text-muted-foreground mb-4">
           Choose which cost display mode opens when you enter a game.
@@ -706,7 +706,7 @@ function DashboardContent() {
       <div className="absolute inset-0 bg-background/80 pointer-events-none" />
 
       {/* Nav */}
-      <div className="relative z-10 flex items-center justify-between px-5 py-4 border-b border-border/40 bg-card/30 backdrop-blur">
+      <div className="relative z-10 flex items-center justify-between px-5 py-4 border-b border-border/40 bg-card/30">
         <button
           type="button"
           onClick={() => setLocation("/")}

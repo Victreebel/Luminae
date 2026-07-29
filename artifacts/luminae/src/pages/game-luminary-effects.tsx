@@ -3,48 +3,37 @@ import { createPortal } from 'react-dom';
 import { motion, AnimatePresence } from 'framer-motion';
 import { useEffect, useRef } from 'react';
 import { useIsMobile } from '@/hooks/use-mobile';
-import { Tooltip, TooltipTrigger, TooltipContent } from '@/components/ui/tooltip';
-
-// ── CardMarkerBadge ──────────────────────────────────────────────────────────
-// Small overlay badge rendered in the top-left corner of a market card slot.
-// Appears with a pop animation when first added.
-//
-// Forgotten   — blue-black memory glitch (erased Eminence glow)
-// Condemned   — red-black decree seal
-// Nullified   — black-blue-white domain marker
-// Avatar Seed — blue-green seed sigil
-// Burned      — transient fire-orange burn label (~300 ms, fades as BurnFlash ramps up)
+import { CARD_ART } from './game-constants';
+import { BrandStampSVG } from './game-brand-stamp';
 
 export type MarkerType = 'forgotten' | 'condemned' | 'nullified' | 'avatar_seed' | 'burned';
+export type PersistentMarkerType = Exclude<MarkerType, 'burned'>;
 
-const MARKER_META: Record<
+export const MARKER_META: Record<
   MarkerType,
-  { label: string; bg: string; border: string; text: string; icon: string; meaning: string; duration: string }
+  { label: string; bg: string; border: string; text: string; meaning: string; duration: string }
 > = {
   forgotten: {
     label:    'Forgotten',
     bg:       'rgba(10,6,30,0.93)',
     border:   '#3b2b8c',
     text:     '#9988ee',
-    icon:     '◎',
-    meaning:  'This Artifact awards 0 Eminence when forged until this effect expires.',
-    duration: 'Expires at the end of the source player\'s next turn.',
+    meaning:  'If forged while marked, this Artifact awards 0 Eminence and cannot be used for blueprints. Encrypt is unavailable while Forgotten Hour is active.',
+    duration: 'Lasts only until the source player\'s next end of turn.',
   },
   condemned: {
     label:    'Condemned',
     bg:       'rgba(60,4,4,0.95)',
     border:   '#c82828',
     text:     '#ff6060',
-    icon:     '⌬',
-    meaning:  'Condemned — Burns at the end of Ember Sovereign\'s next turn.',
-    duration: 'Burns at the end of Ember Sovereign\'s next turn.',
+    meaning:  'This Artifact will burn instead of remaining in the Forge.',
+    duration: 'Resolves at the end of Ember Sovereign\'s next turn.',
   },
   nullified: {
     label:    'Nullified',
     bg:       'rgba(4,8,22,0.95)',
     border:   '#1c3b6e',
     text:     '#6080c0',
-    icon:     '⊘',
     meaning:  'This Artifact awards 0 Eminence while marked.',
     duration: 'Persists while this Artifact remains marked.',
   },
@@ -53,8 +42,7 @@ const MARKER_META: Record<
     bg:       'rgba(4,18,12,0.95)',
     border:   '#1a5c3a',
     text:     '#4cc88a',
-    icon:     '⁕',
-    meaning:  'If an opponent forges this card, the source player gains pending Eminence.',
+    meaning:  'If an opponent forges this Artifact, the source player gains pending Eminence.',
     duration: 'Active until an opponent forges this Artifact.',
   },
   burned: {
@@ -62,21 +50,55 @@ const MARKER_META: Record<
     bg:       'rgba(48,12,0,0.96)',
     border:   '#cc4400',
     text:     '#ff7040',
-    icon:     '✕',
     meaning:  '',
     duration: '',
   },
 };
 
-// Persistent-marker → source Luminary mapping (1:1). Drives the tooltip "source"
-// line and the hover trace-back glow on the originating Luminary portal.
+// Persistent-marker → source Luminary mapping (1:1). Drives the originating
+// Luminary pulse and strike color framing.
 export const MARKER_SOURCE: Record<MarkerType, { lumId: string; lumName: string } | null> = {
-  forgotten:   { lumId: 'lum_compass', lumName: 'The Hourless Compass' },
+  forgotten:   { lumId: 'lum_compass', lumName: '???' },
   condemned:   { lumId: 'lum_ember',   lumName: 'Ember Sovereign' },
   nullified:   { lumId: 'lum_null',    lumName: 'Null Sovereign' },
   avatar_seed: { lumId: 'lum_seed',    lumName: 'The Seed Beyond Seasons' },
   burned:      null,
 };
+
+export function BlueprintRedaction({
+  revealed,
+  className = '',
+}: {
+  revealed: boolean;
+  className?: string;
+}) {
+  if (revealed) return <span className={className}>blueprints</span>;
+
+  return (
+    <span
+      className={`inline-block h-[0.72em] w-[4.8em] align-[-0.1em] rounded-sm bg-black/95 shadow-[0_0_8px_rgba(129,140,248,0.26)] ${className}`}
+      role="img"
+      aria-label="redacted term"
+      title="Unknown term"
+    />
+  );
+}
+
+export function ForgottenHourDescription({
+  revealBlueprintText,
+  className = '',
+}: {
+  revealBlueprintText: boolean;
+  className?: string;
+}) {
+  return (
+    <p className={className}>
+      On arrival, raises the shared victory requirement by 1 and marks all currently face-up Forge Artifacts as Forgotten.
+      {' '}Forgotten marks last only until the source player's next end of turn, and players cannot Encrypt during that window. After the marks expire, 12 owner-turn cycles pass; then Forgotten Hour returns at the source player's end of turn. Artifacts forged while Forgotten award 0 Eminence and cannot be used for{' '}
+      <BlueprintRedaction revealed={revealBlueprintText} />.
+    </p>
+  );
+}
 
 // Per-marker-type visual config for the ArrivalBrandStrike beam animation.
 // No blur is used anywhere — all sharpness is achieved via gradients + borders.
@@ -118,117 +140,59 @@ const BRAND_META: Record<MarkerType, {
   },
 };
 
+function BrandTattooWordmark({
+  type,
+  compact = false,
+  primaryColor,
+  secondaryColor,
+}: {
+  type: MarkerType;
+  compact?: boolean;
+  primaryColor?: string;
+  secondaryColor?: string;
+}) {
+  const bm = BRAND_META[type];
+  const mm = MARKER_META[type];
+  const primary = primaryColor ?? bm.flashColor;
+  const secondary = secondaryColor ?? bm.beamColor;
+
+  return (
+    <div
+      data-brand-keyword={type}
+      data-brand-label={mm.label}
+      data-brand-treatment="forged-tattoo"
+      data-compact={compact ? 'true' : 'false'}
+      className="relative flex w-full items-center justify-center"
+      style={{
+        aspectRatio: '2.2 / 1',
+        filter: `drop-shadow(0 0 ${compact ? 3 : 5}px ${secondary}88)`,
+      }}
+    >
+      <BrandStampSVG
+        width="100%"
+        height="100%"
+        accent={primary}
+        accentGlow={secondary}
+        accentDark={mm.bg}
+        label={mm.label}
+        showForgeCrest={false}
+      />
+    </div>
+  );
+}
+
 // Lead time (ms) for the source-Luminary arrival pulse that precedes the brand
 // beams. The caller bakes this into each strike's delay when a source is present
 // so the beams begin only after the source has visibly "fired".
 export const SOURCE_PULSE_LEAD_MS = 300;
-
-export function CardMarkerBadge({
-  type,
-  isNew = false,
-  brandDelay,
-  onTraceSource,
-}: {
-  type: MarkerType;
-  isNew?: boolean;
-  /** When set, delays the pop-in spring so the badge settles after the brand strike. */
-  brandDelay?: number;
-  /**
-   * Called on hover/focus with the source Luminary id (and null on leave/blur),
-   * letting the parent pulse a trace-back glow on the originating portal.
-   */
-  onTraceSource?: (lumId: string | null) => void;
-}) {
-  const meta = MARKER_META[type];
-  const src = MARKER_SOURCE[type];
-  const animClass =
-    type === 'condemned'  ? 'kw-condemned'  :
-    type === 'forgotten'  ? 'kw-forgotten'  :
-    type === 'avatar_seed'? 'kw-seeded'     : '';
-  const delayS = isNew && brandDelay !== undefined ? brandDelay / 1000 : 0.06;
-
-  const enter = () => onTraceSource?.(src?.lumId ?? null);
-  const leave = () => onTraceSource?.(null);
-
-  return (
-    <Tooltip>
-      <TooltipTrigger asChild>
-        <motion.div
-          className="absolute top-1 left-1 z-30 pointer-events-auto cursor-help"
-          initial={isNew ? { scale: 0, opacity: 0 } : false}
-          animate={{ scale: 1, opacity: 1 }}
-          exit={{ scale: 0.5, opacity: 0, transition: { duration: 0.28, ease: 'easeOut' } }}
-          transition={
-            isNew
-              ? { type: 'spring', stiffness: 420, damping: 22, delay: delayS }
-              : {}
-          }
-          tabIndex={0}
-          role="button"
-          aria-label={`${meta.label} marker${src ? ` — source ${src.lumName}` : ''}`}
-          onMouseEnter={enter}
-          onMouseLeave={leave}
-          onFocus={enter}
-          onBlur={leave}
-          onClick={(e) => { e.stopPropagation(); }}
-        >
-          {type === 'condemned' ? (
-            // Stamp pill — rotated text label matching the Forge stamp style
-            <div
-              className={`flex items-center justify-center rounded px-[3px] py-[1.5px] font-black uppercase transition-[filter] duration-150 hover:brightness-125${animClass ? ` ${animClass}` : ''}`}
-              style={{
-                fontSize: 6.5,
-                letterSpacing: '0.09em',
-                lineHeight: 1.25,
-                whiteSpace: 'nowrap',
-                background: meta.bg,
-                border: `1.5px solid ${meta.border}`,
-                color: meta.text,
-                boxShadow: `0 0 8px 2px ${meta.border}cc`,
-                transform: 'rotate(-7deg)',
-              }}
-            >
-              {meta.label}
-            </div>
-          ) : (
-            // Circular icon badge for all other marker types
-            <div
-              className={`flex items-center justify-center rounded-full text-[9px] font-bold leading-none transition-[filter] duration-150 hover:brightness-125${animClass ? ` ${animClass}` : ''}`}
-              style={{
-                width: 18,
-                height: 18,
-                background: meta.bg,
-                border: `1.5px solid ${meta.border}`,
-                color: meta.text,
-                boxShadow: `0 0 8px 2px ${meta.border}cc`,
-              }}
-            >
-              {meta.icon}
-            </div>
-          )}
-        </motion.div>
-      </TooltipTrigger>
-      <TooltipContent
-        side="top"
-        className="max-w-[240px] text-left text-[11px] leading-snug"
-        style={{ background: 'rgba(10,12,24,0.97)', color: '#e8eaf2', border: `1px solid ${meta.border}` }}
-      >
-        <p className="font-bold" style={{ color: meta.text }}>{meta.label}</p>
-        {meta.meaning && <p className="mt-0.5 opacity-95">{meta.meaning}</p>}
-        {src && <p className="mt-1 opacity-70">Source: {src.lumName}</p>}
-        {meta.duration && <p className="opacity-70">{meta.duration}</p>}
-      </TooltipContent>
-    </Tooltip>
-  );
-}
 
 // ── ArrivalBrandStrike ────────────────────────────────────────────────────────
 // Portal-rendered overlay that fires when a Luminary arrival brands cards with
 // persistent markers. For each affected card shows:
 //   1. A lightning beam descending from above the viewport
 //   2. A crisp impact flash on the card border
-//   3. A large brand symbol covering the card face, pulse, then fade
-// The persistent CardMarkerBadge then springs in (delayed via brandDelay prop).
+//   3. A keyword stamp crossing the card face, then handing off to
+//      the persistent card-bound brand in CardKeywordOverlay
 // No blur effects used anywhere — sharpness via gradients and borders only.
 
 export interface BrandStrikeTarget {
@@ -240,20 +204,25 @@ export interface BrandStrikeTarget {
 export function ArrivalBrandStrike({
   strikes,
   source,
+  onFirstImpact,
   onDone,
 }: {
   strikes: BrandStrikeTarget[];
   /**
    * Optional source-Luminary framing: the originating portal's viewport rect and
    * its summon colors. When present (and not reduced-motion), an expanding pulse
-   * fires from the portal before the beams, and the large brand glyph is tinted
+   * fires from the portal before the beams, and the keyword stamp is tinted
    * with the Luminary's colors instead of the marker's default palette.
    */
   source?: { rect: { x: number; y: number; w: number; h: number }; primary: string; secondary: string };
+  /** Fires exactly once when the first strike reaches its target card. */
+  onFirstImpact?: () => void;
   onDone: () => void;
 }) {
   const onDoneRef = useRef(onDone);
   onDoneRef.current = onDone;
+  const onFirstImpactRef = useRef(onFirstImpact);
+  onFirstImpactRef.current = onFirstImpact;
   const reducedMotion = useRef(
     typeof window !== 'undefined'
       ? window.matchMedia('(prefers-reduced-motion: reduce)').matches
@@ -262,23 +231,31 @@ export function ArrivalBrandStrike({
 
   useEffect(() => {
     const maxDelay = strikes.length > 0 ? Math.max(...strikes.map(s => s.delay)) : 0;
+    const firstDelay = strikes.length > 0 ? Math.min(...strikes.map(s => s.delay)) : 0;
     // Aura crackles from beam-impact (+420ms) for 1000ms. Wait until it fully fades
     // before calling onDone so the camera does not restore while the aura is still
     // visible.
     //   maxDelay + 420 (beam impact) + 1000 (aura duration) = +1420
     const totalMs = reducedMotion ? 350 : maxDelay + 1420;
-    const t = setTimeout(() => onDoneRef.current(), totalMs);
-    return () => clearTimeout(t);
+    const impactMs = reducedMotion ? firstDelay : firstDelay + 420;
+    const impactTimer = setTimeout(() => onFirstImpactRef.current?.(), impactMs);
+    const doneTimer = setTimeout(() => onDoneRef.current(), totalMs);
+    return () => {
+      clearTimeout(impactTimer);
+      clearTimeout(doneTimer);
+    };
   // eslint-disable-next-line react-hooks/exhaustive-deps
   }, []);
 
   if (reducedMotion) {
     // Reduced-motion: quick crisp border flash per card, no beam
     return createPortal(
-      <div style={{ position: 'fixed', inset: 0, pointerEvents: 'none', zIndex: 75 }}>
+      <div
+        data-testid="arrival-brand-strike"
+        style={{ position: 'fixed', inset: 0, pointerEvents: 'none', zIndex: 75 }}
+      >
         {strikes.map((s, i) => {
           const bm = BRAND_META[s.type];
-          const mm = MARKER_META[s.type];
           return (
             <React.Fragment key={i}>
               <motion.div
@@ -292,7 +269,7 @@ export function ArrivalBrandStrike({
                 animate={{ opacity: [0, 1, 0] }}
                 transition={{ duration: 0.28, delay: s.delay / 1000, ease: 'easeOut' }}
               />
-              {/* Large brand — reduced motion: appears instantly then fades */}
+              {/* Keyword brand — reduced motion: appears instantly then fades */}
               <motion.div
                 style={{
                   position: 'fixed',
@@ -300,10 +277,12 @@ export function ArrivalBrandStrike({
                   top:  s.rect.y + s.rect.h / 2,
                   translateX: '-50%',
                   translateY: '-50%',
-                  fontSize: Math.round(s.rect.w * 0.55),
-                  lineHeight: 1,
-                  color: source?.primary ?? bm.brandColor,
-                  fontWeight: 'bold',
+                  width: s.rect.w * 0.92,
+                  minHeight: Math.max(16, s.rect.h * 0.16),
+                  display: 'flex',
+                  alignItems: 'center',
+                  justifyContent: 'center',
+                  fontSize: Math.max(7, Math.min(13, Math.round(s.rect.w * 0.11))),
                   userSelect: 'none',
                   pointerEvents: 'none',
                 }}
@@ -311,7 +290,12 @@ export function ArrivalBrandStrike({
                 animate={{ opacity: [0, 1, 0] }}
                 transition={{ duration: 0.28, delay: s.delay / 1000 + 0.04, ease: 'easeOut' }}
               >
-                {mm.icon}
+                <BrandTattooWordmark
+                  type={s.type}
+                  compact={s.rect.w < 90}
+                  primaryColor={source?.primary}
+                  secondaryColor={source?.secondary}
+                />
               </motion.div>
             </React.Fragment>
           );
@@ -322,7 +306,10 @@ export function ArrivalBrandStrike({
   }
 
   return createPortal(
-    <div style={{ position: 'fixed', inset: 0, pointerEvents: 'none', zIndex: 75 }}>
+    <div
+      data-testid="arrival-brand-strike"
+      style={{ position: 'fixed', inset: 0, pointerEvents: 'none', zIndex: 75 }}
+    >
       {/* ── Source-Luminary arrival pulse (expanding only — no shrink-in) ── */}
       {source && (() => {
         const cx = source.rect.x + source.rect.w / 2;
@@ -382,7 +369,6 @@ export function ArrivalBrandStrike({
       })()}
       {strikes.map((s, i) => {
         const bm = BRAND_META[s.type];
-        const mm = MARKER_META[s.type];
         const d = s.delay / 1000; // seconds for framer-motion
         const cardCx = s.rect.x + s.rect.w / 2;
         const beamTip = s.rect.y + s.rect.h * 0.55;
@@ -437,7 +423,7 @@ export function ArrivalBrandStrike({
               animate={{ opacity: [0, 1, 0] }}
               transition={{ duration: 0.22, delay: d + 0.41, ease: 'easeOut' }}
             />
-            {/* ── Glow halo — pulsing behind the brand symbol like the condemned badge ── */}
+            {/* ── Glow halo — pulsing behind the keyword brand ── */}
             <motion.div
               style={{
                 position: 'fixed',
@@ -463,7 +449,7 @@ export function ArrivalBrandStrike({
                 ease: 'easeOut',
               }}
             />
-            {/* ── Large brand symbol — stamps in at the audio peak (420ms) ── */}
+            {/* ── Keyword brand — stamps in at the audio peak (420ms) ── */}
             <motion.div
               style={{
                 position: 'fixed',
@@ -471,18 +457,20 @@ export function ArrivalBrandStrike({
                 top:  s.rect.y + s.rect.h / 2,
                 translateX: '-50%',
                 translateY: '-50%',
-                fontSize: Math.round(s.rect.w * 0.58),
-                lineHeight: 1,
-                color: source?.primary ?? bm.brandColor,
-                textShadow: `0 0 6px ${(source?.secondary ?? bm.beamColor)}cc`,
-                fontWeight: 'bold',
+                width: s.rect.w * 0.92,
+                minHeight: Math.max(16, s.rect.h * 0.16),
+                display: 'flex',
+                alignItems: 'center',
+                justifyContent: 'center',
+                fontSize: Math.max(7, Math.min(13, Math.round(s.rect.w * 0.11))),
                 userSelect: 'none',
                 pointerEvents: 'none',
               }}
-              initial={{ scale: 0, opacity: 0 }}
+              initial={{ scaleX: 0, scaleY: 0.86, opacity: 0 }}
               animate={{
-                scale:   [0,    1.14, 1,    1.09, 1,    1,    0  ],
-                opacity: [0,    1,    1,    1,    1,    1,    0  ],
+                scaleX:  [0,    1.08, 1,    1.04, 1,    1,    0.92],
+                scaleY:  [0.86, 1.05, 1,    1.03, 1,    1,    0.96],
+                opacity: [0,    1,    1,    1,    1,    1,    0],
               }}
               transition={{
                 duration: 1.35,
@@ -491,7 +479,12 @@ export function ArrivalBrandStrike({
                 ease: 'easeOut',
               }}
             >
-              {mm.icon}
+              <BrandTattooWordmark
+                type={s.type}
+                compact={s.rect.w < 90}
+                primaryColor={source?.primary}
+                secondaryColor={source?.secondary}
+              />
             </motion.div>
           </React.Fragment>
         );
@@ -502,8 +495,9 @@ export function ArrivalBrandStrike({
 }
 
 // ── BrandStrikeAura ───────────────────────────────────────────────────────────
-// Lingering electric aura rendered inside a market card slot after a brand
-// strike lands. Flickers like residual discharge energy for ~3.2s then fades.
+// Lingering electric aura rendered inside a Forge slot after a brand
+// strike lands. Flickers like residual discharge energy, then the persistent
+// CardKeywordOverlay keeps the keyword brand alive until the card leaves.
 // `delay` is the ms elapsed from when fireBrandStrikes was called until the
 // beam hit this card (= lead + i*90 + 420ms — the Spellbound.wav impact peak).
 export function BrandStrikeAura({
@@ -716,78 +710,273 @@ export function BrandStrikeAura({
 }
 
 // ── CardKeywordOverlay ────────────────────────────────────────────────────────
-// Thin card-level aura/haze overlay rendered inside the same relative container
-// as the card.  Communicates the keyword state visually across the entire card
-// face — not just the corner badge.
+// Card-level aura plus a centered keyword band rendered inside the card. The
+// keyword remains visible in both compact and full Forge presentations.
 //
 // Condemned  — ember-red pulsing vignette at card edges; implies burning imminence.
 // Forgotten  — blue-black haze + CSS backdrop desaturation; Eminence muted visually.
 // Nullified  — cold grey full-card desaturation overlay; void/silent, no animation.
 // Seeded     — soft green edge shimmer; implies a future claim.
 
+function HeldBrandKeyword({
+  type,
+  brandDelay,
+  compact = false,
+  stackIndex = 0,
+  stackCount = 1,
+}: {
+  type: PersistentMarkerType;
+  brandDelay?: number;
+  compact?: boolean;
+  stackIndex?: number;
+  stackCount?: number;
+}) {
+  const bm = BRAND_META[type];
+  const mm = MARKER_META[type];
+  const delayS = brandDelay === undefined ? 0 : Math.max(0, brandDelay - 150) / 1000;
+  const pulseDuration = 3.6;
+  const restingGlow = `drop-shadow(0 0 ${compact ? 1 : 2}px ${bm.beamColor}55)`;
+  const peakGlow = [
+    `drop-shadow(0 0 ${compact ? 5 : 9}px ${bm.flashColor}ff)`,
+    `drop-shadow(0 0 ${compact ? 9 : 16}px ${bm.beamColor}cc)`,
+  ].join(' ');
+  const reducedMotion = useRef(
+    typeof window !== 'undefined'
+      ? window.matchMedia('(prefers-reduced-motion: reduce)').matches
+      : false,
+  ).current;
+  const stackOffset =
+    (stackIndex - (stackCount - 1) / 2) * (compact ? 10 : 18);
+
+  return (
+    <motion.div
+      className="absolute inset-0 z-[15] flex items-center justify-center pointer-events-none"
+      initial={{ opacity: 0, scale: 0.96 }}
+      animate={{ opacity: 1, scale: 1 }}
+      transition={{ duration: 0.18, delay: delayS, ease: 'easeOut' }}
+      role="img"
+      aria-label={`${mm.label} brand`}
+    >
+      <div
+        className="absolute inset-0 flex items-center justify-center"
+        style={{
+          transform: `translateY(${stackOffset}px)`,
+        }}
+      >
+        <motion.div
+          className="absolute"
+          style={{
+            width: compact ? '98%' : '94%',
+            height: compact ? 18 : 25,
+            background: `radial-gradient(ellipse, ${bm.flashColor}4f 0%, ${bm.beamColor}26 48%, transparent 76%)`,
+          }}
+          animate={
+            reducedMotion
+              ? { opacity: 0.34, scale: 1 }
+              : { opacity: [0.16, 0.64, 0.16], scaleX: [0.98, 1.04, 0.98] }
+          }
+          transition={
+            reducedMotion
+              ? { duration: 0.18, delay: delayS, ease: 'easeOut' }
+              : {
+                  duration: pulseDuration,
+                  delay: delayS,
+                  times: [0, 0.5, 1],
+                  repeat: Infinity,
+                  repeatType: 'loop',
+                  ease: 'easeInOut',
+                }
+          }
+        />
+        <motion.div
+          className="relative flex items-center justify-center"
+          style={{
+            width: compact ? '98%' : '96%',
+            rotate: stackCount > 1 ? -8 + stackIndex * 5 : -10,
+            filter: restingGlow,
+          }}
+          animate={
+            reducedMotion
+              ? { opacity: 0.88, scaleX: 1, filter: restingGlow }
+              : {
+                  opacity: [0.68, 1, 0.68],
+                  scaleX: 1,
+                  filter: [restingGlow, peakGlow, restingGlow],
+                }
+          }
+          transition={
+            reducedMotion
+              ? { duration: 0.18, delay: delayS, ease: 'easeOut' }
+              : {
+                  duration: pulseDuration,
+                  delay: delayS,
+                  times: [0, 0.5, 1],
+                  repeat: Infinity,
+                  repeatType: 'loop',
+                  ease: 'easeInOut',
+                }
+          }
+        >
+          <BrandTattooWordmark type={type} compact={compact} />
+        </motion.div>
+      </div>
+    </motion.div>
+  );
+}
+
 export function CardKeywordOverlay({
   type,
+  brandDelay,
+  compact = false,
+  stackIndex = 0,
+  stackCount = 1,
+  showSurfaceTreatment = true,
 }: {
-  type: 'forgotten' | 'condemned' | 'nullified' | 'avatar_seed';
+  type: PersistentMarkerType;
+  brandDelay?: number;
+  compact?: boolean;
+  stackIndex?: number;
+  stackCount?: number;
+  showSurfaceTreatment?: boolean;
 }) {
   if (type === 'condemned') {
     return (
-      /* Faint static edge vignette — just enough to signal the Condemned brand
-         without creating visual noise.  No animation: the pulsing ember effect
-         comes from CardMarkerBadge (.kw-condemned class on the badge chip), and
-         the electrical crackle is handled entirely by BrandStrikeAura which
-         fires once per strike then unmounts.  Multiple condemned cards must not
-         create a wall of constant animated electricity. */
-      <div
-        className="absolute inset-0 z-[20] pointer-events-none rounded-xl overflow-hidden"
-        style={{
-          background:
-            'radial-gradient(ellipse at 50% 50%, transparent 48%, rgba(148,12,0,0.24) 100%)',
-          boxShadow: 'inset 0 0 0 1.5px rgba(200,38,0,0.38)',
-        }}
-      />
+      <>
+        {showSurfaceTreatment && (
+          <div
+            className="absolute inset-0 z-10 pointer-events-none rounded-xl overflow-hidden"
+            style={{
+              background:
+                'radial-gradient(ellipse at 50% 50%, transparent 48%, rgba(148,12,0,0.24) 100%)',
+              boxShadow: 'inset 0 0 0 1.5px rgba(200,38,0,0.38)',
+            }}
+          />
+        )}
+        <HeldBrandKeyword type={type} brandDelay={brandDelay} compact={compact} stackIndex={stackIndex} stackCount={stackCount} />
+      </>
     );
   }
   if (type === 'forgotten') {
     // Edge-biased tint (darker top/bottom, clear centre) so card art + cost remain
     // readable while Eminence area is visibly muted.
     return (
-      <div
-        className="absolute inset-0 z-10 pointer-events-none rounded-xl overflow-hidden"
-        style={{
-          background: 'linear-gradient(to bottom, rgba(8,4,28,0.32) 0%, rgba(8,4,28,0.10) 28%, rgba(8,4,28,0.10) 70%, rgba(8,4,28,0.34) 100%)',
-          backdropFilter: 'saturate(0.50) brightness(0.88)',
-          WebkitBackdropFilter: 'saturate(0.50) brightness(0.88)',
-        }}
-      />
+      <>
+        {showSurfaceTreatment && (
+          <div
+            className="absolute inset-0 z-10 pointer-events-none rounded-xl overflow-hidden"
+            style={{
+              background: 'linear-gradient(to bottom, rgba(8,4,28,0.32) 0%, rgba(8,4,28,0.10) 28%, rgba(8,4,28,0.10) 70%, rgba(8,4,28,0.34) 100%)',
+            }}
+          />
+        )}
+        <HeldBrandKeyword type={type} brandDelay={brandDelay} compact={compact} stackIndex={stackIndex} stackCount={stackCount} />
+      </>
     );
   }
   if (type === 'nullified') {
     // Full desaturation — void/silent state.  brightness(0.82) keeps card readable.
     return (
-      <div
-        className="absolute inset-0 z-10 pointer-events-none rounded-xl overflow-hidden"
-        style={{
-          background: 'rgba(8,10,22,0.18)',
-          backdropFilter: 'saturate(0) brightness(0.82) contrast(0.90)',
-          WebkitBackdropFilter: 'saturate(0) brightness(0.82) contrast(0.90)',
-        }}
-      />
+      <>
+        {showSurfaceTreatment && (
+          <div
+            className="absolute inset-0 z-10 pointer-events-none rounded-xl overflow-hidden"
+            style={{
+              background: 'rgba(8,10,22,0.18)',
+            }}
+          />
+        )}
+        <HeldBrandKeyword type={type} brandDelay={brandDelay} compact={compact} stackIndex={stackIndex} stackCount={stackCount} />
+      </>
     );
   }
   if (type === 'avatar_seed') {
     return (
-      <div
-        className="kw-overlay-seeded absolute inset-0 z-10 pointer-events-none rounded-xl overflow-hidden"
-        style={{
-          background:
-            'linear-gradient(to bottom, transparent 45%, rgba(26,92,58,0.28) 100%)',
-          boxShadow: 'inset 0 0 0 1px rgba(44,140,80,0.38)',
-        }}
-      />
+      <>
+        {showSurfaceTreatment && (
+          <div
+            className="kw-overlay-seeded absolute inset-0 z-10 pointer-events-none rounded-xl overflow-hidden"
+            style={{
+              background:
+                'linear-gradient(to bottom, transparent 45%, rgba(26,92,58,0.28) 100%)',
+              boxShadow: 'inset 0 0 0 1px rgba(44,140,80,0.38)',
+            }}
+          />
+        )}
+        <HeldBrandKeyword type={type} brandDelay={brandDelay} compact={compact} stackIndex={stackIndex} stackCount={stackCount} />
+      </>
     );
   }
   return null;
+}
+
+export function ArtifactBrandDetails({
+  types,
+  className = '',
+}: {
+  types: readonly PersistentMarkerType[];
+  className?: string;
+}) {
+  const uniqueTypes = types.filter((type, index) => types.indexOf(type) === index);
+  if (uniqueTypes.length === 0) return null;
+
+  return (
+    <section
+      data-testid="artifact-active-brands"
+      className={`border-y border-white/10 bg-black/20 px-3 py-2.5 ${className}`}
+      aria-label="Active Artifact brands"
+    >
+      <div className="mb-2 flex items-center justify-between gap-2">
+        <span className="text-[9px] font-bold uppercase tracking-[0.16em] text-white/62">
+          Active {uniqueTypes.length === 1 ? 'brand' : 'brands'}
+        </span>
+        <span className="text-[9px] tabular-nums text-white/38">
+          {uniqueTypes.length}
+        </span>
+      </div>
+      <div className="flex flex-col gap-2">
+        {uniqueTypes.map(type => {
+          const meta = MARKER_META[type];
+          const source = MARKER_SOURCE[type];
+          return (
+            <div
+              key={type}
+              className="grid min-w-0 grid-cols-[3px_minmax(0,1fr)] gap-2"
+            >
+              <span
+                aria-hidden="true"
+                className="h-full min-h-8 rounded-full"
+                style={{
+                  background: meta.text,
+                  boxShadow: `0 0 8px ${meta.text}66`,
+                }}
+              />
+              <div className="min-w-0">
+                <div className="flex flex-wrap items-baseline gap-x-2">
+                  <span
+                    className="text-[10px] font-black uppercase tracking-[0.11em]"
+                    style={{ color: meta.text }}
+                  >
+                    {meta.label}
+                  </span>
+                  {source && (
+                    <span className="text-[8px] uppercase tracking-[0.1em] text-white/34">
+                      {source.lumName}
+                    </span>
+                  )}
+                </div>
+                <p className="mt-0.5 text-[10px] leading-snug text-white/72">
+                  {meta.meaning}
+                </p>
+                <p className="mt-0.5 text-[9px] leading-snug text-white/42">
+                  {meta.duration}
+                </p>
+              </div>
+            </div>
+          );
+        })}
+      </div>
+    </section>
+  );
 }
 
 // ── ArmedSigil ───────────────────────────────────────────────────────────────
@@ -843,8 +1032,8 @@ export function ArmedSigil({
 
 // ── BurnBadgeOverlay ──────────────────────────────────────────────────────────
 // Short-lived "Burned" badge rendered as a document.body portal at the slot's
-// top-left corner.  Appears immediately when a burn is detected, holds for
-// ~200 ms, then fades out just as the BurnFlash ramps up.
+// top-left corner. Appears immediately when a burn is detected, holds long
+// enough to read, then fades as the BurnFlash ramps up.
 //
 // Portal-based (position: fixed) so it is visible even after the burned card
 // has been replaced in the render tree.  Calls onDone when the animation ends.
@@ -866,18 +1055,16 @@ export function BurnBadgeOverlay({
         zIndex: 9994,
         pointerEvents: 'none',
       }}
-      initial={{ scale: 0, opacity: 0 }}
-      animate={{ scale: [0, 1, 1, 0.5], opacity: [0, 1, 1, 0] }}
-      transition={{ duration: 0.32, times: [0, 0.18, 0.72, 1], ease: 'easeOut' }}
+      initial={{ scale: 0.78, opacity: 0, y: 3 }}
+      animate={{ scale: [0.78, 1.08, 1, 1, 0.94], opacity: [0, 1, 1, 1, 0], y: [3, 0, 0, -2, -9] }}
+      transition={{ duration: 0.86, times: [0, 0.14, 0.58, 0.78, 1], ease: 'easeOut' }}
       onAnimationComplete={onDone}
       title={meta.label}
     >
       <motion.div
-        className="flex items-center justify-center rounded-full text-[9px] font-bold leading-none"
+        className="animation-readable-pill text-[9px] font-black uppercase leading-none"
         style={{
-          width: 16,
-          height: 16,
-          background: meta.bg,
+          minHeight: 20,
           border: `1px solid ${meta.border}`,
           color: meta.text,
         }}
@@ -892,7 +1079,7 @@ export function BurnBadgeOverlay({
         }}
         transition={{ duration: 0.3, times: [0, 0.22, 0.48, 0.74, 1], ease: 'easeInOut' }}
       >
-        {meta.icon}
+        <span>{meta.label}</span>
       </motion.div>
     </motion.div>,
     document.body,
@@ -900,7 +1087,7 @@ export function BurnBadgeOverlay({
 }
 
 // ── BurnFlash ─────────────────────────────────────────────────────────────────
-// Reusable Burn keyword animation.  Plays over the affected market slot and
+// Reusable Burn keyword animation. Plays over the affected Forge slot and
 // self-destructs after completion.  Renders as a document.body portal to
 // escape overflow containers.
 //
@@ -909,12 +1096,14 @@ export function BurnBadgeOverlay({
 // Visual principle: the burn MUST stay crisp and readable throughout.
 //   • The card burns progressively from bottom to top — the unburned upper
 //     portion remains fully readable until the flame line reaches it.
-//   • No blur effects of any kind — no motion blur, no Gaussian blur (filter:blur()),
+//   • No blur effects of any kind: no motion blur, no Gaussian blur,
 //     no smeared card image, no blurry dissolve, no hazy fade masking the card.
 //   • Do not hide the card with blur, smoke layers, or overbright wash effects.
 //
 // Forbidden CSS/style properties inside BurnFlash (and any burn-adjacent layer):
-//   filter: blur(...)   backdropFilter: blur(...)   WebkitFilter: blur(...)
+//   filter: blur(...)
+//   backdropFilter: blur(...)
+//   WebkitFilter: blur(...)
 //
 // ── PHASE SEQUENCE ────────────────────────────────────────────────────────────
 //
@@ -1016,7 +1205,7 @@ const SMOKE_WISPS = [
 //
 // Mobile suppressions:
 //   • Flame tongues (8 blending divs, 7-stop animation) — omitted.
-//   • Smoke wisps (5 blurred divs, filter:blur(3px) each) — omitted.
+//   • Smoke wisps (5 animated radial-gradient divs) — omitted.
 export const BurnFlash = React.memo(function BurnFlash({
   slotRect,
   onDone,
@@ -1185,7 +1374,7 @@ export const BurnFlash = React.memo(function BurnFlash({
         />
       ))}
 
-      {/* ── Phase 6: Smoke wisps — suppressed on mobile (filter:blur cost) ── */}
+      {/* ── Phase 6: Smoke wisps — suppressed on mobile ── */}
       {!isMobile && SMOKE_WISPS.map((s, i) => (
         <div
           key={`smoke-${i}`}
@@ -1197,7 +1386,6 @@ export const BurnFlash = React.memo(function BurnFlash({
             height: s.h,
             borderRadius: '50%',
             background: 'radial-gradient(ellipse at 50% 50%, rgba(80,80,80,0.35) 0%, rgba(60,60,60,0.20) 50%, transparent 80%)',
-            filter: 'blur(3px)',
             transformOrigin: 'center bottom',
             pointerEvents: 'none',
             ['--smoke-drift' as string]: `${s.drift}px`,
@@ -1236,17 +1424,19 @@ export const BurnFlash = React.memo(function BurnFlash({
 export function DelayedEffectFloat({
   amount,
   color,
+  label = 'Eminence',
   originRect,
   onDone,
 }: {
   amount: number;
   color: string;
+  label?: string;
   originRect: DOMRect;
   onDone: () => void;
 }) {
   const onDoneRef = useRef(onDone);
   useEffect(() => {
-    const t = setTimeout(() => onDoneRef.current(), 1700);
+    const t = setTimeout(() => onDoneRef.current(), 2350);
     return () => clearTimeout(t);
   }, []);
 
@@ -1265,25 +1455,286 @@ export function DelayedEffectFloat({
         zIndex: 9998,
       }}
       initial={{ y: 0, opacity: 0, scale: 0.5 }}
-      animate={{ y: -80, opacity: [0, 1, 1, 0], scale: [0.5, 1.15, 1.05, 0.8] }}
-      transition={{ duration: 1.5, ease: 'easeOut', times: [0, 0.1, 0.65, 1] }}
+      animate={{ y: -92, opacity: [0, 1, 1, 0], scale: [0.5, 1.15, 1.05, 0.86] }}
+      transition={{ duration: 2.05, ease: 'easeOut', times: [0, 0.1, 0.78, 1] }}
     >
       <span
+        className="animation-readable-pill font-serif flex-col"
         style={{
-          fontFamily: 'Georgia, serif',
           fontWeight: 900,
           fontSize: 22,
           lineHeight: 1,
           color: color,
-          textShadow: `0 0 20px ${color}cc, 0 0 8px ${color}88`,
-          display: 'flex',
-          alignItems: 'center',
-          gap: 2,
+          borderColor: `${color}aa`,
+          boxShadow: `0 0 0 1px rgba(0,0,0,0.76), 0 8px 18px rgba(0,0,0,0.58), 0 0 24px ${color}66`,
+          textShadow: `0 1px 2px rgba(0,0,0,1), 0 0 18px ${color}cc, 0 0 8px ${color}88`,
           whiteSpace: 'nowrap',
         }}
       >
-        +{amount}◆
+        <span>+{amount}</span>
+        <span
+          style={{
+            marginTop: 3,
+            fontFamily: 'var(--app-font-sans)',
+            fontSize: 8,
+            fontWeight: 800,
+            letterSpacing: '0.12em',
+            textTransform: 'uppercase',
+            color: 'rgba(255,255,255,0.82)',
+          }}
+        >
+          {label}
+        </span>
       </span>
+    </motion.div>,
+    document.body,
+  );
+}
+
+// ── LuminaryEminenceBurst ────────────────────────────────────────────────────
+// Epic Eminence-impact flourish after a Luminary arrival resolves: power blooms
+// from the claimed portal, travels to the claimant's Eminence readout, and lands
+// with a ceremonial seal.
+
+type BurstRect = Pick<DOMRect, 'left' | 'top' | 'width' | 'height'>;
+
+export function LuminaryEminenceBurst({
+  amount,
+  color,
+  secondaryColor,
+  luminaryName,
+  playerName,
+  originRect,
+  targetRect,
+  reducedMotion = false,
+  onDone,
+}: {
+  amount: number;
+  color: string;
+  secondaryColor?: string;
+  luminaryName: string;
+  playerName: string;
+  originRect?: BurstRect | null;
+  targetRect?: BurstRect | null;
+  reducedMotion?: boolean;
+  onDone: () => void;
+}) {
+  const onDoneRef = useRef(onDone);
+  useEffect(() => { onDoneRef.current = onDone; }, [onDone]);
+  const gradientIdRef = useRef(`lum-eminence-burst-${Math.floor(Math.random() * 1_000_000)}`);
+
+  useEffect(() => {
+    const t = setTimeout(() => onDoneRef.current(), reducedMotion ? 980 : 2200);
+    return () => clearTimeout(t);
+  }, [reducedMotion]);
+
+  if (typeof document === 'undefined' || typeof window === 'undefined' || amount <= 0) return null;
+
+  const vw = window.innerWidth;
+  const vh = window.innerHeight;
+  const source = originRect
+    ? { x: originRect.left + originRect.width / 2, y: originRect.top + originRect.height / 2 }
+    : { x: vw / 2, y: vh * 0.34 };
+  const target = targetRect
+    ? { x: targetRect.left + targetRect.width / 2, y: targetRect.top + targetRect.height / 2 }
+    : { x: vw / 2, y: Math.min(vh - 96, vh * 0.78) };
+  const dx = target.x - source.x;
+  const dy = target.y - source.y;
+  const controlA = { x: source.x + dx * 0.25, y: source.y + dy * 0.08 - 120 };
+  const controlB = { x: source.x + dx * 0.72, y: source.y + dy * 0.92 - 80 };
+  const mid = {
+    x: source.x + dx * 0.5,
+    y: Math.max(72, Math.min(vh - 128, source.y + dy * 0.42 - 58)),
+  };
+  const glow = secondaryColor ?? color;
+  const burstSize = reducedMotion ? 130 : 210;
+
+  return createPortal(
+    <motion.div
+      className="pointer-events-none fixed inset-0"
+      style={{ zIndex: 9997, isolation: 'isolate' }}
+      initial={{ opacity: 0 }}
+      animate={{ opacity: [0, 1, 1, 0] }}
+      transition={{ duration: reducedMotion ? 0.9 : 2.05, times: [0, 0.08, 0.78, 1], ease: 'easeOut' }}
+    >
+      <motion.div
+        className="absolute rounded-full"
+        style={{
+          left: source.x,
+          top: source.y,
+          width: burstSize,
+          height: burstSize,
+          translateX: '-50%',
+          translateY: '-50%',
+          background: `radial-gradient(circle, rgba(255,255,255,0.88) 0 4%, ${glow}aa 10%, ${color}55 30%, transparent 70%)`,
+          boxShadow: `0 0 48px ${glow}99, 0 0 110px ${color}44`,
+        }}
+        initial={{ scale: 0.15, opacity: 0 }}
+        animate={reducedMotion ? { scale: [0.35, 1.1, 0.92], opacity: [0, 0.8, 0] } : { scale: [0.15, 1.28, 0.9], opacity: [0, 1, 0] }}
+        transition={{ duration: reducedMotion ? 0.8 : 1.35, ease: [0.16, 1, 0.3, 1] }}
+      />
+
+      {!reducedMotion && (
+        <svg className="absolute inset-0 w-full h-full overflow-visible">
+          <defs>
+            <linearGradient id={gradientIdRef.current} x1={source.x} y1={source.y} x2={target.x} y2={target.y} gradientUnits="userSpaceOnUse">
+              <stop offset="0" stopColor="#fff7cf" />
+              <stop offset="0.42" stopColor={glow} />
+              <stop offset="1" stopColor={color} />
+            </linearGradient>
+          </defs>
+          {[-18, -10, 0, 11, 19].map((offset, index) => {
+            const jitterPath = `M ${source.x + offset * 0.2} ${source.y + offset} C ${controlA.x - offset * 1.5} ${controlA.y + offset * 0.7}, ${controlB.x + offset * 1.2} ${controlB.y - offset * 0.6}, ${target.x + offset * 0.12} ${target.y + offset * 0.25}`;
+            return (
+              <motion.path
+                key={offset}
+                d={jitterPath}
+                fill="none"
+                stroke={index === 2 ? `url(#${gradientIdRef.current})` : glow}
+                strokeWidth={index === 2 ? 4.2 : 1.6}
+                strokeLinecap="round"
+                pathLength={1}
+                initial={{ pathLength: 0, opacity: 0 }}
+                animate={{ pathLength: [0, 1, 1], opacity: [0, index === 2 ? 0.95 : 0.46, 0] }}
+                transition={{ duration: 1.16, delay: 0.18 + index * 0.045, times: [0, 0.68, 1], ease: 'easeInOut' }}
+                style={{ filter: `drop-shadow(0 0 ${index === 2 ? 16 : 8}px ${glow})` }}
+              />
+            );
+          })}
+        </svg>
+      )}
+
+      {!reducedMotion && [0, 1, 2, 3, 4].map((i) => {
+        const drift = (i - 2) * 14;
+        const lift = i % 2 === 0 ? -64 : -112;
+        return (
+          <motion.div
+            key={`head-${i}`}
+            className="absolute rounded-full"
+            style={{
+              left: source.x,
+              top: source.y,
+              width: i === 2 ? 11 : 7,
+              height: i === 2 ? 11 : 7,
+              translateX: '-50%',
+              translateY: '-50%',
+              background: i === 2 ? '#fff7d6' : glow,
+              boxShadow: `0 0 14px 5px ${glow}, 0 0 26px 8px ${color}77`,
+            }}
+            initial={{ opacity: 0, scale: 0.35, x: 0, y: 0 }}
+            animate={{
+              opacity: [0, 1, 1, 0],
+              scale: [0.35, 1.35, 1.08, 0.35],
+              x: [0, dx * 0.34 + drift, dx * 0.74 - drift * 0.35, dx],
+              y: [0, dy * 0.18 + lift, dy * 0.72 + lift * 0.35, dy],
+            }}
+            transition={{
+              duration: 1.12,
+              delay: 0.22 + i * 0.075,
+              times: [0, 0.2, 0.78, 1],
+              ease: 'easeInOut',
+            }}
+          />
+        );
+      })}
+
+      <motion.div
+        className="absolute flex flex-col items-center text-center"
+        style={{
+          left: mid.x,
+          top: mid.y,
+          translateX: '-50%',
+          translateY: '-50%',
+          minWidth: 180,
+          maxWidth: 300,
+        }}
+        initial={{ opacity: 0, scale: 0.58, y: 18 }}
+        animate={{ opacity: [0, 1, 1, 0], scale: [0.58, 1.1, 1, 0.82], y: [18, -4, -12, -26] }}
+        transition={{ duration: reducedMotion ? 0.9 : 1.65, delay: reducedMotion ? 0.08 : 0.32, times: [0, 0.18, 0.76, 1], ease: [0.16, 1, 0.3, 1] }}
+      >
+        <div
+          className="animation-readable-pill relative flex-col px-5 py-3"
+          style={{
+            borderRadius: 10,
+            border: `1px solid ${glow}aa`,
+            background: `radial-gradient(circle at 50% 0%, ${glow}38, transparent 62%), rgba(7, 6, 13, 0.96)`,
+            boxShadow: `0 0 0 1px rgba(0,0,0,0.82), 0 10px 26px rgba(0,0,0,0.64), 0 0 38px ${glow}7a, inset 0 0 32px ${color}1f`,
+          }}
+        >
+          <motion.div
+            className="absolute inset-0"
+            style={{
+              borderRadius: 10,
+              background: `linear-gradient(90deg, transparent, rgba(255,255,255,0.22), transparent)`,
+              mixBlendMode: 'screen',
+            }}
+            initial={{ x: '-115%', opacity: 0 }}
+            animate={{ x: ['-115%', '115%'], opacity: [0, 0.78, 0] }}
+            transition={{ duration: reducedMotion ? 0.55 : 0.9, delay: reducedMotion ? 0.12 : 0.45, ease: 'easeOut' }}
+          />
+          <div
+            className="animation-readable-text"
+            style={{
+              color: '#fff4c5',
+              fontFamily: 'Georgia, serif',
+              fontWeight: 900,
+              fontSize: 'clamp(1.9rem, 7vw, 3.9rem)',
+              letterSpacing: '0.02em',
+              lineHeight: 0.92,
+              textShadow: `0 2px 2px rgba(0,0,0,1), 0 0 28px ${glow}, 0 0 14px rgba(0,0,0,0.92)`,
+            }}
+          >
+            +{amount}
+          </div>
+          <div
+            className="animation-readable-text"
+            style={{
+              color: '#fff7d6',
+              fontSize: 11,
+              fontWeight: 900,
+              letterSpacing: '0.18em',
+              lineHeight: 1,
+              marginTop: 5,
+              textTransform: 'uppercase',
+              textShadow: `0 1px 2px rgba(0,0,0,1), 0 0 12px ${glow}`,
+            }}
+          >
+            Eminence
+          </div>
+          <div
+            style={{
+              color: 'rgba(255,255,255,0.82)',
+              fontSize: 10,
+              fontWeight: 700,
+              marginTop: 7,
+              textShadow: '0 1px 2px rgba(0,0,0,1)',
+              maxWidth: 240,
+              overflow: 'hidden',
+              textOverflow: 'ellipsis',
+              whiteSpace: 'nowrap',
+            }}
+          >
+            {playerName} drew {luminaryName}
+          </div>
+        </div>
+      </motion.div>
+
+      <motion.div
+        className="absolute rounded-full"
+        style={{
+          left: target.x,
+          top: target.y,
+          width: 86,
+          height: 86,
+          translateX: '-50%',
+          translateY: '-50%',
+          border: `2px solid ${glow}`,
+          boxShadow: `0 0 28px ${glow}, inset 0 0 24px ${color}66`,
+        }}
+        initial={{ scale: 0.25, opacity: 0 }}
+        animate={{ scale: [0.25, 1.4, 2.15], opacity: [0, 1, 0] }}
+        transition={{ duration: reducedMotion ? 0.7 : 0.95, delay: reducedMotion ? 0.26 : 1.18, ease: 'easeOut' }}
+      />
     </motion.div>,
     document.body,
   );
@@ -1401,7 +1852,7 @@ export function BloomSeedParticle({
 }
 
 // ── BurnPileParticle ──────────────────────────────────────────────────────────
-// A small charred-card fragment that flies in an arc from the burned market slot
+// A small charred Artifact fragment that flies from the burned Forge slot
 // toward the burn pile chip after BurnFlash completes.
 // Portal-based (fixed position) so it escapes overflow containers.
 // Self-destructs after ~0.85 s. Non-blocking — game proceeds during flight.
@@ -1415,7 +1866,6 @@ export function BurnPileParticle({
   to: DOMRect;
   onDone: () => void;
 }) {
-  const isMobile = useIsMobile();
   const onDoneRef = useRef(onDone);
   useEffect(() => {
     const t = setTimeout(() => onDoneRef.current(), 950);
@@ -1443,7 +1893,6 @@ export function BurnPileParticle({
           height: 8,
           borderRadius: '50%',
           background: 'radial-gradient(circle, #ff8833cc 0%, #ff440055 60%, transparent 100%)',
-          filter: isMobile ? undefined : 'blur(2px)',
           pointerEvents: 'none',
           zIndex: 9993,
         }}
@@ -1480,6 +1929,78 @@ export function BurnPileParticle({
         transition={{ duration: 0.78, ease: 'easeInOut', times: [0, 0.45, 1] }}
       />
     </>,
+    document.body,
+  );
+}
+
+// ── ArchiveReturnParticle ────────────────────────────────────────────────────
+// Eternal Recurrence keeps the full Artifact identity visible as it travels
+// from a burned Forge slot into the matching Archive.
+
+export function ArchiveReturnParticle({
+  cardId,
+  from,
+  to,
+  onDone,
+}: {
+  cardId: string;
+  from: DOMRect;
+  to: DOMRect;
+  onDone: () => void;
+}) {
+  const onDoneRef = useRef(onDone);
+  useEffect(() => {
+    const timer = setTimeout(() => onDoneRef.current(), 980);
+    return () => clearTimeout(timer);
+  }, []);
+
+  const x0 = from.left + from.width / 2;
+  const y0 = from.top + from.height / 2;
+  const x1 = to.left + to.width / 2;
+  const y1 = to.top + to.height / 2;
+  const mx = (x0 + x1) / 2;
+  const my = Math.min(y0, y1) - 64;
+
+  return createPortal(
+    <motion.div
+      style={{
+        position: 'fixed',
+        left: x0 - 18,
+        top: y0 - 25,
+        width: 36,
+        height: 50,
+        overflow: 'hidden',
+        borderRadius: 3,
+        border: '1px solid rgba(191,219,254,0.85)',
+        background: '#050914',
+        boxShadow: '0 0 15px rgba(61,107,255,0.72), 0 0 8px rgba(244,63,94,0.5)',
+        pointerEvents: 'none',
+        zIndex: 9995,
+        transformStyle: 'preserve-3d',
+      }}
+      animate={{
+        left: [x0 - 18, mx - 18, x1 - 18],
+        top: [y0 - 25, my - 25, y1 - 25],
+        rotateY: [0, 35, 88],
+        rotateZ: [0, -9, 0],
+        scale: [0.82, 1, 0.25],
+        opacity: [0.95, 1, 0],
+        filter: [
+          'brightness(0.78) saturate(0.72)',
+          'brightness(1.22) saturate(1.08)',
+          'brightness(1.7) saturate(0.75)',
+        ],
+      }}
+      transition={{ duration: 0.82, ease: [0.22, 0.72, 0.18, 1] }}
+    >
+      {CARD_ART[cardId] && (
+        <img src={CARD_ART[cardId]} alt="" className="h-full w-full object-cover" draggable={false} />
+      )}
+      <span
+        className="absolute inset-0"
+        style={{ background: 'linear-gradient(135deg, rgba(244,63,94,0.16), transparent 44%, rgba(61,107,255,0.34))' }}
+      />
+    </motion.div>,
     document.body,
   );
 }
@@ -1633,12 +2154,12 @@ export function OrchardCopyPulse({
   );
 }
 
-// ── ArrivalMarketOverlay ───────────────────────────────────────────────────────
+// ── ArrivalEffectOverlay ──────────────────────────────────────────────────────
 // Per-Luminary full-viewport overlay that fires when that Luminary arrives.
 // Layered above the board but below any modal.
 // Each lumId maps to a distinct visual treatment.
 
-export function ArrivalMarketOverlay({
+export function ArrivalEffectOverlay({
   lumId,
   onDone,
 }: {
@@ -1673,7 +2194,6 @@ export function ArrivalMarketOverlay({
 
 // Red Moth — two crimson wings sweeping inward from the sides
 function RedMothFlareFx() {
-  const isMobile = useIsMobile();
   const wing = (side: 'left' | 'right') => {
     const offscreen = side === 'left' ? '-100%' : '100%';
     const retreat   = side === 'left' ?  '-40%' :  '40%';
@@ -1690,7 +2210,6 @@ function RedMothFlareFx() {
           background: side === 'left'
             ? 'radial-gradient(ellipse at right center, #dc262688 0%, #991b1b55 40%, transparent 75%)'
             : 'radial-gradient(ellipse at left center, #dc262688 0%, #991b1b55 40%, transparent 75%)',
-          filter: isMobile ? undefined : 'blur(6px)',
         }}
         initial={{ x: offscreen, opacity: 0 }}
         animate={{ x: [offscreen, '0%', retreat], opacity: [0, 0.85, 0] }}
@@ -1712,7 +2231,6 @@ function RedMothFlareFx() {
           width: '30vw', height: '20vh',
           borderRadius: '50%',
           background: 'radial-gradient(ellipse, #fca5a588 0%, transparent 70%)',
-          filter: isMobile ? undefined : 'blur(8px)',
           pointerEvents: 'none',
           zIndex: 69,
         }}
@@ -1726,7 +2244,6 @@ function RedMothFlareFx() {
 
 // Iron Harbinger — amber impact shockwave
 function IronHarbingerFx() {
-  const isMobile = useIsMobile();
   return (
     <div style={{ position: 'fixed', inset: 0, pointerEvents: 'none', zIndex: 69 }}>
       {/* Shockwave rings */}
@@ -1757,7 +2274,6 @@ function IronHarbingerFx() {
           width: '40vw', height: '25vh',
           borderRadius: '50%',
           background: 'radial-gradient(ellipse, #fde68acc 0%, #f97316aa 35%, transparent 70%)',
-          filter: isMobile ? undefined : 'blur(10px)',
           pointerEvents: 'none',
           zIndex: 69,
         }}
@@ -1808,7 +2324,6 @@ function NullDomainFx() {
 
 // Ember Sovereign — decree seal expanding then dissolving
 function EmberDecreeFx() {
-  const isMobile = useIsMobile();
   return (
     <div style={{ position: 'fixed', inset: 0, pointerEvents: 'none', zIndex: 69 }}>
       {/* Seal glow */}
@@ -1820,7 +2335,6 @@ function EmberDecreeFx() {
           width: '45vw', height: '45vw',
           borderRadius: '50%',
           background: 'radial-gradient(circle, #fde68aaa 0%, #f97316cc 30%, #dc2626aa 55%, transparent 75%)',
-          filter: isMobile ? undefined : 'blur(8px)',
           pointerEvents: 'none',
           zIndex: 69,
         }}
@@ -1848,7 +2362,7 @@ function EmberDecreeFx() {
   );
 }
 
-// Forgotten Hour — digital scan-line glitch across the market
+// Forgotten Hour — digital scan-line glitch across the Forge
 function ForgottenHourFx() {
   return (
     <div style={{ position: 'fixed', inset: 0, pointerEvents: 'none', zIndex: 69 }}>
@@ -1861,8 +2375,8 @@ function ForgottenHourFx() {
             left: 0, right: 0,
             height: 2 + i,
             background: i % 2 === 0
-              ? 'linear-gradient(90deg, transparent 0%, #818cf8cc 20%, #c4b5fdee 50%, #818cf8cc 80%, transparent 100%)'
-              : 'linear-gradient(90deg, transparent 0%, #60a5facc 25%, #93c5fddd 50%, #60a5facc 75%, transparent 100%)',
+              ? 'linear-gradient(90deg, transparent 0%, #1e40afcc 20%, #93c5fdee 50%, #1e40afcc 80%, transparent 100%)'
+              : 'linear-gradient(90deg, transparent 0%, #2563ebcc 25%, #bfdbfddd 50%, #2563ebcc 75%, transparent 100%)',
             pointerEvents: 'none',
             zIndex: 69,
           }}
@@ -1895,7 +2409,6 @@ function ForgottenHourFx() {
 
 // Verdant Oracle — subtle green early-bloom pulse
 function VerdantBloomFx() {
-  const isMobile = useIsMobile();
   return createPortal(
     <motion.div
       style={{
@@ -1904,7 +2417,6 @@ function VerdantBloomFx() {
         width: '35vw', height: '35vw',
         borderRadius: '50%',
         background: 'radial-gradient(circle, #4ade8066 0%, #16a34a44 40%, transparent 70%)',
-        filter: isMobile ? undefined : 'blur(12px)',
         pointerEvents: 'none',
         zIndex: 69,
       }}
@@ -1918,7 +2430,6 @@ function VerdantBloomFx() {
 
 // Pale Merchant — contract seal that opens/unfurls
 function PaleMerchantFx() {
-  const isMobile = useIsMobile();
   return (
     <div style={{ position: 'fixed', inset: 0, pointerEvents: 'none', zIndex: 69 }}>
       {/* Contract seal glow */}
@@ -1930,7 +2441,6 @@ function PaleMerchantFx() {
           width: '38vw', height: '38vw',
           borderRadius: '50%',
           background: 'radial-gradient(circle, #f1f5f988 0%, #cbd5e1aa 35%, transparent 70%)',
-          filter: isMobile ? undefined : 'blur(8px)',
           pointerEvents: 'none',
           zIndex: 69,
         }}
@@ -1963,18 +2473,17 @@ function PaleMerchantFx() {
 }
 
 // Tide Architect — left-to-right card-flip scry wave over Tier III then Tier II
-// Continuum/Sapphire palette: deep blue, ice-blue, cool cyan.
-// A vertical sweep bar travels L→R across the market zone; as it passes each
+// Continuum/Continuum palette: deep blue, ice-blue, cool cyan.
+// A vertical sweep bar travels left to right across the Forge; as it passes each
 // column a brief flip-shimmer panel lights up, suggesting card faces being
 // revealed.  Prismatic glints fire at each reveal point.
 // Total duration: ~2.0 s.
 const SCRY_COLS = 8 as const; // 4 Tier-III + 4 Tier-II columns
 function TideScryFx() {
-  const isMobile = useIsMobile();
   return (
     <div style={{ position: 'fixed', inset: 0, pointerEvents: 'none', zIndex: 69 }}>
 
-      {/* Ambient sapphire glow — broad ellipse across the market band */}
+      {/* Ambient Continuum glow across the Forge band. */}
       <motion.div
         style={{
           position: 'fixed',
@@ -1984,7 +2493,6 @@ function TideScryFx() {
           borderRadius: '50%',
           background:
             'radial-gradient(ellipse, #1e3a8a55 0%, #1d4ed866 30%, #0ea5e933 58%, transparent 78%)',
-          filter: isMobile ? undefined : 'blur(18px)',
           pointerEvents: 'none',
           zIndex: 69,
         }}
@@ -2078,7 +2586,7 @@ function TideScryFx() {
         );
       })}
 
-      {/* Trailing sapphire edge line — briefly outlines the market zone */}
+      {/* Trailing Continuum edge line briefly outlines the Forge. */}
       <motion.div
         style={{
           position: 'fixed',
@@ -2101,7 +2609,6 @@ function TideScryFx() {
 
 // Void Warden — dark implosion collapse, all light draining inward
 function VoidWardenFx() {
-  const isMobile = useIsMobile();
   return (
     <div style={{ position: 'fixed', inset: 0, pointerEvents: 'none', zIndex: 69 }}>
       {/* Central void implosion glow */}
@@ -2113,7 +2620,6 @@ function VoidWardenFx() {
           width: '50vw', height: '50vw',
           borderRadius: '50%',
           background: 'radial-gradient(circle, #2e1065 0%, #4c1d95 25%, #0a0a14 60%, transparent 78%)',
-          filter: isMobile ? undefined : 'blur(10px)',
           pointerEvents: 'none',
           zIndex: 69,
         }}
@@ -2170,9 +2676,8 @@ function VoidWardenFx() {
   );
 }
 
-// First Hunger — golden maw / consumption vortex, card being devoured
+// Final Hunger — golden maw / consumption vortex, card being devoured
 function FirstHungerFx() {
-  const isMobile = useIsMobile();
   return (
     <div style={{ position: 'fixed', inset: 0, pointerEvents: 'none', zIndex: 69 }}>
       {/* Warm amber core glow — the "maw" */}
@@ -2184,7 +2689,6 @@ function FirstHungerFx() {
           width: '30vw', height: '30vw',
           borderRadius: '50%',
           background: 'radial-gradient(circle, #fbbf2488 0%, #f59e0b55 35%, #92400e22 60%, transparent 75%)',
-          filter: isMobile ? undefined : 'blur(8px)',
           pointerEvents: 'none',
           zIndex: 69,
         }}

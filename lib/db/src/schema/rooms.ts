@@ -9,6 +9,8 @@ export const roomsTable = pgTable("rooms", {
   status: text("status").notNull().default("lobby"), // lobby | playing | finished
   maxPlayers: integer("max_players").notNull().default(4),
   turnTimerSeconds: integer("turn_timer_seconds"),
+  victoryRequirement: integer("victory_requirement").notNull().default(15),
+  cinematicMode: text("cinematic_mode").notNull().default("standard"),
   createdAt: timestamp("created_at", { withTimezone: true }).notNull().defaultNow(),
   updatedAt: timestamp("updated_at", { withTimezone: true }).notNull().defaultNow(),
 });

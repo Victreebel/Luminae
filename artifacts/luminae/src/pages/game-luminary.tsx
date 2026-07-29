@@ -1,12 +1,125 @@
-import React, { useRef, useMemo, useEffect, useCallback } from 'react';
-import { motion, AnimatePresence } from 'framer-motion';
-import type { Luminary, GamePlayerState, LuminaryActiveState, CrystalCounts } from '@workspace/api-client-react';
-import { GEM_META, GEM_KEYS, type GemKey } from '@/lib/gemMeta';
-import { LuminaryPanelArt } from '@/lib/luminaryAssets';
-import { CRYSTALS } from './game-constants';
-import { MiniGem } from './game-card';
+import React, { useRef, useMemo, useEffect } from 'react';
+import { motion, AnimatePresence, useReducedMotion } from 'framer-motion';
+import type { Luminary, GamePlayerState, LuminaryActiveState, AffinityCounts } from '@workspace/api-client-react';
+import { AFFINITY_META, AFFINITY_KEYS, type AffinityKey } from '@/lib/affinityMeta';
+import { LuminaryClaimedEntityArt, LuminaryPanelArt } from '@/lib/luminaryAssets';
+import { AFFINITIES } from './game-constants';
+import { EminenceBadge, AffinityToken } from './game-card';
 import { PlayerAvatar } from './game-player';
-import { ArmedSigil } from './game-luminary-effects';
+
+export function getLuminaryEminenceTitle(value: number) {
+  if (value > 0) return `+${value} Eminence`;
+  if (value < 0) return `${value} Eminence`;
+  return '0 Eminence';
+}
+
+export function LuminaryClaimedPresence({
+  luminaryId,
+  activeColor,
+  className = '',
+  showNativePortal = true,
+  style,
+}: {
+  luminaryId: string;
+  activeColor?: string;
+  className?: string;
+  showNativePortal?: boolean;
+  style?: React.CSSProperties;
+}) {
+  const presenceStyle = {
+    ...(activeColor ? { '--lum-claimed-active': activeColor } : {}),
+    ...style,
+  } as React.CSSProperties;
+
+  return (
+    <div className={`lum-claimed-presence-layer ${className}`} style={presenceStyle} aria-hidden="true">
+      {showNativePortal && <div className="lum-claimed-native-portal" />}
+      <LuminaryClaimedEntityArt
+        luminaryId={luminaryId}
+        activeColor={activeColor}
+        className="absolute inset-0 opacity-95 lum-claimed-entity-art--emergent"
+        showAura={false}
+      />
+    </div>
+  );
+}
+
+type ReleasedLuminaryLayout = {
+  entityLeft: string;
+  entityRight: string;
+  entityTop: string;
+  entityHeight: string;
+};
+
+const DEFAULT_RELEASED_LUMINARY_LAYOUT: ReleasedLuminaryLayout = {
+  entityLeft: '-11%',
+  entityRight: '-11%',
+  entityTop: '-3%',
+  entityHeight: '88%',
+};
+
+// Optical calibration for silhouettes that do not share the default upright
+// portrait proportions. Keep released-state geometry in one place.
+const RELEASED_LUMINARY_LAYOUTS: Record<string, Partial<ReleasedLuminaryLayout>> = {
+  lum_ember: {
+    entityLeft: '-13%',
+    entityRight: '-13%',
+    entityTop: '-4%',
+    entityHeight: '90%',
+  },
+  lum_tide: {
+    entityLeft: '-9%',
+    entityRight: '-9%',
+    entityTop: '-2%',
+    entityHeight: '87%',
+  },
+  lum_void: {
+    entityTop: '-1%',
+    entityHeight: '84%',
+  },
+  lum_radiant: {
+    entityLeft: '4%',
+    entityRight: '4%',
+    entityTop: '2%',
+    entityHeight: '82%',
+  },
+  lum_astral: {
+    entityLeft: '-18%',
+    entityRight: '-18%',
+    entityTop: '1%',
+    entityHeight: '82%',
+  },
+  lum_moth: {
+    entityLeft: '-18%',
+    entityRight: '-18%',
+    entityTop: '0%',
+    entityHeight: '84%',
+  },
+  lum_compass: {
+    entityLeft: '-12%',
+    entityRight: '-12%',
+    entityTop: '5%',
+    entityHeight: '76%',
+  },
+  lum_seed: {
+    entityLeft: '-20%',
+    entityRight: '-20%',
+    entityTop: '4%',
+    entityHeight: '79%',
+  },
+  lum_orchard: {
+    entityLeft: '-19%',
+    entityRight: '-19%',
+    entityTop: '4%',
+    entityHeight: '80%',
+  },
+  lum_bloom: {
+    entityLeft: '-9%',
+    entityRight: '-9%',
+    entityTop: '4%',
+    entityHeight: '80%',
+  },
+};
 
 // ── LuminaryClaimedPortal ─────────────────────────────────────────────────────
 // Replaces the Luminary panel card after it has been claimed by any player.
@@ -14,338 +127,203 @@ import { ArmedSigil } from './game-luminary-effects';
 //
 // isLive=true   → bonus is currently active (turnCount > summonedAtTurnCount)
 // isNew=true    → 900ms entrance: collapses from center, spiral burst, spring-settle.
-// canToggle=true → entire card is a button cycling eligible affinities.
 //
-// Vortex design: outer ring uses conicActive (active ~55%, others ~45%).
-// Inner counter-swirl uses conicAll (all colours equal) so every requirement
-// colour remains visibly present. 4 of 7 motes are the active colour;
-// remaining 3 cycle through the other requirement colours.
+// Claimed design: the rupture has settled into a low-cost post-summon seal.
+// The active affinity colours the scar while the entity keeps a subtle living
+// motion. Keep this separate from the summon cutscene path.
 export function LuminaryClaimedPortal({
   luminary, claimedByPlayer, luminaryAffinity,
-  isOwnedByMe, isLive: _isLive, canToggle, onToggle, onOpenSheet, isNew = false,
-  isArmed = false, burnCount,
+  isOwnedByMe, isLive: _isLive, onOpenSheet, isNew = false,
+  showClaimedIdentity = true, showActiveAffinity = true,
 }: {
   luminary: Luminary;
   claimedByPlayer?: GamePlayerState | null;
   luminaryAffinity?: LuminaryActiveState | null;
   isOwnedByMe?: boolean;
   isLive?: boolean;
-  canToggle?: boolean;
-  onToggle?: (affinity: string) => void;
   onOpenSheet?: () => void;
   isNew?: boolean;
   isArmed?: boolean;
   burnCount?: number;
+  showClaimedIdentity?: boolean;
+  showActiveAffinity?: boolean;
 }) {
   const fresh = useRef(isNew).current;
+  const prefersReducedMotion = useReducedMotion();
 
-  const activeKey = (luminaryAffinity?.activeAffinity ?? null) as GemKey | null;
-  const eligibleKeys = (luminaryAffinity?.eligibleAffinities ?? []) as GemKey[];
+  const activeKey = (luminaryAffinity?.activeAffinity ?? null) as AffinityKey | null;
 
-  const activeAffinityMeta = activeKey ? GEM_META[activeKey] : null;
+  const activeAffinityMeta = activeKey ? AFFINITY_META[activeKey] : null;
 
-  // All requirement colours — basis for the vortex mix (no flux)
-  const accentMeta = useMemo(
-    () => GEM_KEYS.filter(k => k !== 'flux' && (luminary.requirements[k as GemKey] ?? 0) > 0).map(k => GEM_META[k as GemKey]),
+  // All requirement colours form the tear. The active Affinity receives extra
+  // angular weight so it dominates without erasing the other requirements.
+  const requirementColors = useMemo(
+    () => AFFINITY_KEYS
+      .filter(k => k !== 'singularity' && (luminary.requirements[k as AffinityKey] ?? 0) > 0)
+      .map(k => ({
+        key: k as AffinityKey,
+        amount: luminary.requirements[k as AffinityKey] ?? 0,
+        meta: AFFINITY_META[k as AffinityKey],
+      })),
     // eslint-disable-next-line react-hooks/exhaustive-deps
     [luminary.id],
   );
-  // eslint-disable-next-line react-hooks/exhaustive-deps
-  const colors = accentMeta.length > 0 ? accentMeta : [GEM_META.flux];
-  const hexes = useMemo(() => colors.map(c => c.hex), [colors]);
+  const portalColors = requirementColors.length > 0
+    ? requirementColors
+    : [{ key: 'singularity' as AffinityKey, amount: 1, meta: AFFINITY_META.singularity }];
+  const hexes = portalColors.map(entry => entry.meta.hex);
 
-  // Active affinity drives dominant colour; fallback to first requirement colour
+  // Active affinity drives dominant colour; fallback to first requirement colour.
   const g1 = activeAffinityMeta?.hex ?? hexes[0];
   const g2 = activeAffinityMeta?.glowHex ?? hexes[0];
 
-  // conicAll: equal distribution of ALL requirement colours.
-  // Used for inner swirl + burst so every requirement colour stays visible.
-  const conicAll = useMemo(() => {
-    if (hexes.length <= 1) return `conic-gradient(${hexes[0]}, ${hexes[0]}88, ${hexes[0]})`;
-    const deg = 360 / hexes.length;
-    return `conic-gradient(from 0deg, ${hexes.flatMap((h, i) => [`${h} ${i * deg}deg`, `${h} ${(i + 1) * deg}deg`]).join(', ')})`;
-    // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [hexes.join(',')]);
-
-  // conicActive: active affinity ~55% (200°), others share ~45%.
-  // Used for outer rotating ring — dominant but non-exclusive.
-  const conicActive = useMemo(() => {
-    const otherHexes = hexes.filter(h => h !== g1);
-    if (hexes.length <= 1 || otherHexes.length === 0) {
-      return `conic-gradient(${g1}ee, ${g1}88, ${g1}ee)`;
-    }
-    const activeDeg = 200;
-    const sliceDeg = (360 - activeDeg) / otherHexes.length;
-    const parts: string[] = [`${g1} 0deg`, `${g1} ${activeDeg}deg`];
-    otherHexes.forEach((h, i) => {
-      parts.push(`${h} ${activeDeg + i * sliceDeg}deg`, `${h} ${activeDeg + (i + 1) * sliceDeg}deg`);
+  const portalSpectrum = useMemo(() => {
+    const weighted = portalColors.map(entry => ({
+      ...entry,
+      weight: Math.max(1, entry.amount) * (entry.key === activeKey ? 2.35 : 1),
+    }));
+    const totalWeight = weighted.reduce((sum, entry) => sum + entry.weight, 0);
+    let cursor = 0;
+    const stops = weighted.flatMap((entry) => {
+      const start = cursor;
+      cursor += (entry.weight / totalWeight) * 360;
+      return [`${entry.meta.hex} ${start.toFixed(1)}deg`, `${entry.meta.hex} ${cursor.toFixed(1)}deg`];
     });
-    parts.push(`${g1} 360deg`);
-    return `conic-gradient(from 0deg, ${parts.join(', ')})`;
+    return `conic-gradient(from -24deg, ${stops.join(', ')})`;
     // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [hexes.join(','), g1]);
+  }, [activeKey, luminary.id]);
 
-  // Particle positions — stable per luminary (seeded by id)
-  const particlePositions = useMemo(
-    () => Array.from({ length: 7 }, (_, i) => ({
-      left:  8  + (i * 19 % 90),
-      top:   12 + (i * 31 % 120),
-      dur:   2.4 + i * 0.38,
-      delay: i  * 0.28,
-    })),
-    // eslint-disable-next-line react-hooks/exhaustive-deps
-    [luminary.id],
-  );
-
-  // Particle colours — 4/7 bias toward active affinity, 3/7 secondary req colours
-  const particleColors = useMemo(() => {
-    const otherHexes = hexes.filter(h => h !== g1);
-    return Array.from({ length: 7 }, (_, i) => {
-      const useActive = i < 4;
-      return {
-        color: useActive ? g1 : (otherHexes.length > 0 ? otherHexes[(i - 4) % otherHexes.length] : g1),
-        size:  useActive ? (2 + (i % 2) * 0.8) : (1.2 + (i % 2) * 0.5),
-      };
-    });
-    // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [hexes.join(','), g1]);
-
-  const lastTapTimeRef = useRef<number>(0);
-  const openSheetTimerRef = useRef<ReturnType<typeof setTimeout> | null>(null);
-
-  useEffect(() => () => {
-    if (openSheetTimerRef.current !== null) clearTimeout(openSheetTimerRef.current);
-  }, []);
-
-  const handleClick = useCallback(() => {
-    const now = Date.now();
-    const delta = now - lastTapTimeRef.current;
-    const isDoubleTap = delta < 280;
-
-    if (isDoubleTap) {
-      // Double tap — cycle affinity
-      if (openSheetTimerRef.current !== null) {
-        clearTimeout(openSheetTimerRef.current);
-        openSheetTimerRef.current = null;
-      }
-      lastTapTimeRef.current = 0;
-      if (canToggle && onToggle && eligibleKeys.length >= 2 && activeKey) {
-        const idx = eligibleKeys.indexOf(activeKey);
-        onToggle(eligibleKeys[(idx + 1) % eligibleKeys.length]);
-      }
-    } else {
-      // First tap — open sheet after brief delay (so double-tap can cancel it)
-      lastTapTimeRef.current = now;
-      if (onOpenSheet) {
-        if (canToggle) {
-          openSheetTimerRef.current = setTimeout(() => {
-            openSheetTimerRef.current = null;
-            onOpenSheet();
-          }, 280);
-        } else {
-          onOpenSheet();
-        }
-      }
-    }
-  }, [canToggle, onToggle, onOpenSheet, eligibleKeys, activeKey]);
-
-  const isInteractive = !!(onOpenSheet || canToggle);
+  const isInteractive = !!onOpenSheet;
   const ownerName = claimedByPlayer?.playerName ?? '';
+  const isCompass = luminary.id === 'lum_compass';
+  const releasedLayout = {
+    ...DEFAULT_RELEASED_LUMINARY_LAYOUT,
+    ...RELEASED_LUMINARY_LAYOUTS[luminary.id],
+  };
+  const hoverSeed = Array.from(luminary.id).reduce(
+    (sum, character, index) => sum + character.charCodeAt(0) * (index + 1),
+    0,
+  );
+  const hoverDuration = 4.6 + (hoverSeed % 13) * 0.16;
 
   return (
     <motion.button
       type="button"
-      className="absolute inset-0 bg-[#030308]"
-      style={{ transformOrigin: '50% 42%', cursor: isInteractive ? 'pointer' : 'default' }}
+      data-testid="summoned-luminary-card"
+      data-luminary-id={luminary.id}
+      className={`absolute inset-0 bg-[#030308] rounded-xl lum-portal-seal lum-portal-seal--freed ${isCompass ? 'lum-portal-seal--compass' : ''} ${fresh ? 'lum-portal-seal--fresh' : ''}`}
+      style={{
+        transformOrigin: '50% 42%',
+        cursor: isInteractive ? 'pointer' : 'default',
+        '--lum-portal-life': g1,
+        '--lum-portal-life-rim': `${g1}88`,
+        '--lum-portal-life-soft': `${g1}30`,
+        '--lum-portal-life-faint': `${g1}18`,
+        '--lum-portal-life-glow': `${g2}99`,
+        '--lum-portal-spectrum': portalSpectrum,
+        '--lum-portal-active': g1,
+        '--lum-portal-active-glow': g2,
+        '--lum-claimed-active': g1,
+        '--lum-claimed-primary': g1,
+        '--lum-claimed-glow': g2,
+        '--luminary-freed-left': releasedLayout.entityLeft,
+        '--luminary-freed-right': releasedLayout.entityRight,
+        '--luminary-freed-top': releasedLayout.entityTop,
+        '--luminary-freed-height': releasedLayout.entityHeight,
+      } as React.CSSProperties}
       initial={fresh ? { scale: 0.04, opacity: 0 } : false}
       animate={{ scale: 1, opacity: 1 }}
       transition={fresh ? { duration: 0.88, ease: [0.16, 1, 0.3, 1] } : {}}
-      onClick={isInteractive ? handleClick : undefined}
+      onClick={onOpenSheet}
       whileTap={isInteractive ? { scale: 0.97 } : {}}
+      aria-label={`Released Luminary: ${luminary.name}${ownerName ? `, allied with ${ownerName}` : ''}`}
     >
       {/* ── Opening spiral burst ── */}
       {fresh && (
         <>
-          {/* Conic vortex bloom — conicAll so all req colours appear in burst */}
+          {/* Soft portal bloom — the arrival cutscene owns the rupture. */}
           <motion.div
             className="absolute pointer-events-none"
-            style={{ inset: -24, background: conicAll, filter: 'blur(22px)' }}
-            initial={{ opacity: 0, rotate: 0, scale: 0.1 }}
-            animate={{ opacity: [0, 0.72, 0], rotate: 540, scale: [0.1, 1.5, 1.0] }}
-            transition={{ duration: 0.96, ease: [0.16, 0.8, 0.3, 1] }}
+            style={{
+              inset: -18,
+              background: `
+                radial-gradient(ellipse 56% 42% at 50% 44%, rgba(255,255,255,0.22) 0%, ${g1}66 22%, transparent 64%),
+                ${portalSpectrum}
+              `,
+            }}
+            initial={{ opacity: 0, rotate: 0, scale: 0.48 }}
+            animate={{ opacity: [0, 0.62, 0], rotate: 120, scale: [0.48, 1.08, 1.18] }}
+            transition={{ duration: 0.84, ease: [0.16, 0.8, 0.3, 1] }}
           />
-
-          {/* Reality crack lines */}
-          <motion.div
-            className="absolute inset-0 pointer-events-none z-20"
-            initial={{ opacity: 0 }}
-            animate={{ opacity: [0, 1, 1, 0] }}
-            transition={{ duration: 0.82, times: [0, 0.04, 0.38, 1], ease: 'easeOut' }}
-          >
-            <svg width="112" height="160" viewBox="0 0 112 160" className="w-full h-full overflow-visible">
-              <polyline points="56,70 50,54 62,40 53,24 61,10 49,0" stroke={g2} strokeWidth="1.6" fill="none" strokeLinecap="round" strokeLinejoin="round" style={{ filter: `drop-shadow(0 0 4px white) drop-shadow(0 0 8px ${g1})` }} />
-              <polyline points="62,40 74,32 82,18" stroke={g2} strokeWidth="0.9" fill="none" strokeLinecap="round" style={{ filter: `drop-shadow(0 0 2px ${g1})` }} />
-              <polyline points="53,24 44,20 36,12" stroke={g2} strokeWidth="0.7" fill="none" strokeLinecap="round" style={{ filter: `drop-shadow(0 0 2px ${g1})` }} />
-              <polyline points="56,70 70,64 82,70 98,62 112,66" stroke="white" strokeWidth="0.7" fill="none" strokeLinecap="round" strokeLinejoin="round" style={{ opacity: 0.75, filter: `drop-shadow(0 0 2px ${g1})` }} />
-              <polyline points="56,70 42,76 28,70 12,75 0,72" stroke="white" strokeWidth="0.7" fill="none" strokeLinecap="round" strokeLinejoin="round" style={{ opacity: 0.7, filter: `drop-shadow(0 0 2px ${g1})` }} />
-              <polyline points="56,70 66,84 60,102 70,122 63,148 70,160" stroke="white" strokeWidth="0.65" fill="none" strokeLinecap="round" strokeLinejoin="round" style={{ opacity: 0.65, filter: `drop-shadow(0 0 2px ${g1})` }} />
-              <polyline points="56,70 44,86 50,106 42,132 48,160" stroke="white" strokeWidth="0.6" fill="none" strokeLinecap="round" strokeLinejoin="round" style={{ opacity: 0.6, filter: `drop-shadow(0 0 2px ${g1})` }} />
-              <polyline points="56,70 66,56 74,44 70,28 80,14 88,0" stroke="white" strokeWidth="0.65" fill="none" strokeLinecap="round" strokeLinejoin="round" style={{ opacity: 0.6, filter: `drop-shadow(0 0 2px ${g1})` }} />
-              <polyline points="56,70 64,72 74,68 86,74 100,70" stroke="white" strokeWidth="0.35" fill="none" style={{ opacity: 0.45 }} />
-              <polyline points="56,70 48,62 38,66 24,62 8,65" stroke="white" strokeWidth="0.35" fill="none" style={{ opacity: 0.45 }} />
-              <polyline points="56,70 60,82 56,96 62,114 58,136" stroke="white" strokeWidth="0.35" fill="none" style={{ opacity: 0.4 }} />
-              <polyline points="56,70 50,76 40,72 26,78 10,75" stroke="white" strokeWidth="0.3" fill="none" style={{ opacity: 0.35 }} />
-              <polyline points="56,70 68,78 80,74 96,80" stroke="white" strokeWidth="0.3" fill="none" style={{ opacity: 0.35 }} />
-              <polyline points="61,10 56,6 64,2" stroke="white" strokeWidth="0.4" fill="none" style={{ opacity: 0.5 }} />
-              <polyline points="49,0 43,4 38,0" stroke="white" strokeWidth="0.4" fill="none" style={{ opacity: 0.4 }} />
-            </svg>
-          </motion.div>
-
-          {/* Falling glass shards */}
-          {([
-            { x: 46, y: 52, dx: -20, dy: 58, rot: -50, w: 9,  h: 7,  clip: '0% 0%,100% 20%,80% 100%', delay: 0.06 },
-            { x: 60, y: 46, dx:  25, dy: 72, rot:  65, w: 11, h: 8,  clip: '50% 0%,100% 90%,0% 100%', delay: 0.10 },
-            { x: 50, y: 36, dx:  -6, dy: 88, rot: -28, w: 7,  h: 5,  clip: '20% 0%,100% 40%,0% 100%', delay: 0.05 },
-            { x: 60, y: 57, dx:  32, dy: 56, rot:  82, w: 8,  h: 6,  clip: '0% 10%,100% 0%,90% 100%', delay: 0.14 },
-            { x: 42, y: 62, dx: -28, dy: 50, rot: -72, w: 10, h: 7,  clip: '50% 0%,100% 80%,10% 100%', delay: 0.09 },
-            { x: 66, y: 60, dx:  20, dy: 78, rot:  48, w: 7,  h: 6,  clip: '0% 0%,100% 30%,70% 100%', delay: 0.17 },
-            { x: 48, y: 40, dx: -38, dy: 66, rot: -58, w: 6,  h: 5,  clip: '30% 0%,100% 60%,0% 100%', delay: 0.08 },
-            { x: 62, y: 65, dx:  14, dy: 90, rot:  38, w: 9,  h: 7,  clip: '10% 0%,100% 20%,60% 100%', delay: 0.13 },
-          ] as const).map((s, i) => (
-            <motion.div
-              key={i}
-              className="absolute pointer-events-none z-20"
-              style={{
-                left: s.x, top: s.y, width: s.w, height: s.h,
-                clipPath: `polygon(${s.clip})`,
-                background: `linear-gradient(135deg, #ffffffcc 0%, ${g1}cc 55%, ${g2}66 100%)`,
-                boxShadow: `0 0 ${s.w + 2}px ${g1}88`,
-              }}
-              initial={{ opacity: 0, x: 0, y: 0, rotate: 0, scale: 1 }}
-              animate={{ opacity: [0, 1, 0.8, 0], x: s.dx, y: s.dy, rotate: s.rot, scale: 0.2 }}
-              transition={{ duration: 0.88, delay: s.delay, ease: 'easeIn',
-                opacity: { duration: 0.88, delay: s.delay, times: [0, 0.08, 0.5, 1] } }}
-            />
-          ))}
         </>
       )}
 
-      {/* Outer rotating ring — CSS replaces repeat:Infinity framer-motion loop */}
-      <div
-        className="absolute lum-portal-ring-cw"
-        style={{ inset: -16, background: conicActive, filter: 'blur(16px)', opacity: 0.45 }}
-      />
-      {/* Inner counter-rotating swirl — CSS replaces repeat:Infinity loop */}
-      <div
-        className="absolute lum-portal-ring-ccw"
-        style={{ inset: 18, borderRadius: '50%', background: conicAll, filter: 'blur(10px)', opacity: 0.3 }}
-      />
-      {/* Deep void centre */}
-      <div
-        className="absolute inset-0"
-        style={{ background: 'radial-gradient(ellipse 62% 62% at 50% 44%, #030308 0%, #030308 32%, transparent 68%)' }}
-      />
-      {/* Pulsing depth aura — CSS replaces repeat:Infinity loop */}
-      <div
-        className="absolute inset-0 lum-portal-aura-pulse"
-        style={{ background: `radial-gradient(ellipse 75% 65% at 50% 44%, transparent 28%, ${g1}1a 62%, ${g2}14 80%, transparent 90%)` }}
-      />
-      {/* Centre singularity mote — CSS handles translate + scale + opacity */}
-      <div
-        className="absolute lum-portal-mote-center"
-        style={{
-          left: '50%', top: '42%', width: 5, height: 5, borderRadius: '50%',
-          background: `radial-gradient(circle, #fff 0%, ${g1} 60%, transparent 100%)`,
-          filter: 'blur(0.5px)',
-        }}
-      />
-      {/* Drifting motes — CSS drift class; duration/delay vary inline per mote */}
-      {particlePositions.map((p, i) => (
-        <div
-          key={i}
-          className="absolute rounded-full lum-portal-drift"
-          style={{
-            left: p.left, top: p.top,
-            width: particleColors[i].size, height: particleColors[i].size,
-            background: particleColors[i].color,
-            boxShadow: `0 0 ${particleColors[i].size + 2}px ${particleColors[i].color}`,
-            animationDuration: `${p.dur}s`,
-            animationDelay: `${p.delay + (fresh ? 0.46 : 0)}s`,
-          }}
-        />
-      ))}
+      {/* Broken remnants of the original containment mold. */}
+      <div className="luminary-claimed-residual-frame pointer-events-none" aria-hidden="true" />
 
-      {/* ── UI Overlay ── */}
-      {/* Top row: eminence value (left) + floating active affinity gem (right) */}
-      <div className="absolute top-2 left-0 right-0 z-10 pointer-events-none flex justify-between items-start px-2">
-        <span className="text-lg font-serif font-black leading-none select-none text-white drop-shadow-[0_2px_4px_rgba(0,0,0,1)]">
-          {luminary.oblivion ? `-${luminary.oblivion}` : luminary.lumens}
-        </span>
-      </div>
-      {/* Active affinity gem — CSS float replaces repeat:Infinity loop */}
-      {activeKey && (
-        <div className="absolute top-2 right-2 z-30 pointer-events-none">
+      {/* Keep the post-arrival backdrop continuous with the summoned reveal. */}
+      <div
+        className="lum-claimed-native-portal luminary-claimed-summoned-backdrop pointer-events-none"
+        aria-hidden="true"
+      />
+
+      {/* Alliance and active affinity are embedded in the abandoned mount. */}
+      <div className="luminary-claimed-mount pointer-events-none">
+        <div className="luminary-claimed-mount-rail" />
+        {showClaimedIdentity && claimedByPlayer && ownerName && (
           <div
-            className="lum-portal-gem-float"
-            style={{ filter: `drop-shadow(0 0 7px ${g2}dd)` }}
+            className="luminary-corner-orb luminary-claimed-panel-token luminary-claimed-panel-token--ally"
+            title={`Alliance with ${ownerName}`}
+            aria-hidden="true"
+          >
+            <PlayerAvatar avatarId={claimedByPlayer.avatarId ?? null} name={ownerName} size={17} />
+          </div>
+        )}
+        {showActiveAffinity && activeKey && (
+          <div
+            className="luminary-corner-orb lum-portal-seal-affinity luminary-claimed-panel-token luminary-claimed-panel-token--affinity"
+            style={{ '--lum-portal-affinity-glow': `${g2}aa` } as React.CSSProperties}
             title={activeAffinityMeta ? (isOwnedByMe ? `Active affinity: ${activeAffinityMeta.name}` : undefined) : undefined}
           >
-            <MiniGem color={activeKey} size={22} />
+            <AffinityToken color={activeKey} size={17} />
           </div>
-        </div>
-      )}
+        )}
+      </div>
 
-      {/* Bottom: full-width alliance bar — gradient overlay, anterior to art */}
-      {claimedByPlayer && ownerName && (
-        <div
-          className="absolute bottom-0 left-0 right-0 z-20 px-2 py-1.5 pointer-events-none"
-          style={{ background: 'linear-gradient(to top, rgba(3,3,8,0.90) 0%, rgba(3,3,8,0.45) 65%, transparent 100%)' }}
-        >
-          <div className="flex items-center gap-1.5">
-            <span className="text-[8px] font-medium tracking-wide text-white/60 shrink-0">Alliance with</span>
-            <PlayerAvatar avatarId={claimedByPlayer.avatarId ?? null} name={ownerName} size={14} />
-            <span className="text-[9px] font-semibold leading-none text-white truncate" style={{ textShadow: '0 1px 4px rgba(0,0,0,0.9)' }}>{ownerName}</span>
-          </div>
-        </div>
-      )}
+      {/* The liberated Luminary owns the absolute foreground. */}
+      <motion.div
+        className="luminary-claimed-free-entity"
+        style={{
+          '--luminary-freed-hover-duration': `${hoverDuration}s`,
+          '--luminary-freed-hover-delay': `${-(hoverSeed % 7) * 0.38}s`,
+          animation: isCompass ? 'none' : undefined,
+        } as React.CSSProperties}
+        animate={isCompass && !prefersReducedMotion ? { scaleX: [0.94, 1.06, 0.94], y: 0 } : undefined}
+        transition={isCompass && !prefersReducedMotion
+          ? { duration: hoverDuration, ease: 'easeInOut', repeat: Infinity }
+          : undefined}
+        aria-hidden="true"
+      >
+        <LuminaryClaimedEntityArt
+          luminaryId={luminary.id}
+          activeColor={g1}
+          className="absolute inset-0 opacity-95 luminary-claimed-contained-art"
+          showAura={false}
+          presentation="freed"
+          animate={false}
+        />
+      </motion.div>
 
-      {/* Bloom burn count — only for lum_bloom */}
-      {luminary.id === 'lum_bloom' && typeof burnCount === 'number' && (
-        <div
-          className="absolute z-10 pointer-events-none"
-          style={{ bottom: claimedByPlayer ? 26 : 6, right: 6 }}
-        >
-          <div
-            className="flex items-center gap-0.5 rounded-full px-1.5 py-0.5 select-none"
-            style={{
-              background: 'linear-gradient(135deg, rgba(34,197,94,0.18) 0%, rgba(239,68,68,0.18) 100%)',
-              border: '1px solid rgba(34,197,94,0.45)',
-              boxShadow: '0 0 6px rgba(34,197,94,0.25), 0 1px 3px rgba(0,0,0,0.6)',
-              backdropFilter: 'blur(4px)',
-            }}
-          >
-            <span className="text-[9px] leading-none">🔥</span>
-            <span
-              className="text-[9px] font-bold tabular-nums leading-none"
-              style={{ color: '#86efac', textShadow: '0 0 6px rgba(34,197,94,0.7)' }}
-            >
-              {burnCount}
-            </span>
-          </div>
-        </div>
-      )}
-
-      {/* Armed sigil */}
-      <ArmedSigil isVisible={isArmed} color={g1} />
     </motion.button>
   );
 }
 
 export function LuminaryCard({
   luminary, claimedByNames = [], isReleased = false,
-  luminaryAffinity, claimedByPlayer, isOwnedByMe, isLive, canToggle, onToggle,
+  luminaryAffinity, claimedByPlayer, isOwnedByMe, isLive,
   costMode, playerBonuses, isMyTurn, onOpenSheet,
-  isArmed = false, isFlashing = false, burnCount,
+  isArmed = false, isFlashing = false, burnCount, showClaimedPresence = true,
+  showClaimedIdentity = true, showActiveAffinity = true, showClaimedSummary = false,
 }: {
   luminary: Luminary;
   claimedByNames?: string[];
@@ -354,17 +332,20 @@ export function LuminaryCard({
   claimedByPlayer?: GamePlayerState | null;
   isOwnedByMe?: boolean;
   isLive?: boolean;
-  canToggle?: boolean;
-  onToggle?: (affinity: string) => void;
   costMode?: 'printed' | 'after_bonuses' | 'needed_now';
-  playerBonuses?: Partial<CrystalCounts>;
+  playerBonuses?: Partial<AffinityCounts>;
   isMyTurn?: boolean;
   onOpenSheet?: () => void;
   isArmed?: boolean;
   isFlashing?: boolean;
   burnCount?: number;
+  showClaimedPresence?: boolean;
+  showClaimedIdentity?: boolean;
+  showActiveAffinity?: boolean;
+  showClaimedSummary?: boolean;
 }) {
   const isClaimed = claimedByNames.length > 0;
+  const isCompass = luminary.id === 'lum_compass';
   const initialClaimedRef = useRef(isClaimed);
   const portalIsNew = !initialClaimedRef.current;
 
@@ -375,32 +356,37 @@ export function LuminaryCard({
     }
   }, [isFlashing]);
 
-  const glowKey = ((luminaryAffinity?.activeAffinity as GemKey | undefined)
-    ?? (GEM_KEYS.find(k => k !== 'flux' && (luminary.requirements[k as GemKey] ?? 0) > 0) as GemKey | undefined)
-    ?? 'flux') as GemKey;
-  const glowHex = GEM_META[glowKey].glowHex;
+  const glowKey = ((luminaryAffinity?.activeAffinity as AffinityKey | undefined)
+    ?? (AFFINITY_KEYS.find(k => k !== 'singularity' && (luminary.requirements[k as AffinityKey] ?? 0) > 0) as AffinityKey | undefined)
+    ?? 'singularity') as AffinityKey;
+  const glowColor = AFFINITY_META[glowKey].hex;
+  const glowHex = AFFINITY_META[glowKey].glowHex;
 
   const isHidden = isReleased && !isClaimed;
   const hoverAnim = (isHidden || !onOpenSheet)
     ? {}
-    : { scale: 1.02, boxShadow: `0 0 18px 4px ${glowHex}55, 0 0 6px 1px ${glowHex}33` };
+    : isClaimed
+      ? {}
+      : { scale: 1.02, boxShadow: `0 0 18px 4px ${glowHex}55, 0 0 6px 1px ${glowHex}33` };
 
   const canAffordLuminary = !isClaimed && isMyTurn === true && (
-    CRYSTALS.every(c => {
-      const printed = luminary.requirements[c as keyof CrystalCounts] ?? 0;
+    AFFINITIES.every(c => {
+      const printed = luminary.requirements[c as keyof AffinityCounts] ?? 0;
       if (printed <= 0) return true;
-      return (playerBonuses?.[c as keyof CrystalCounts] ?? 0) >= printed;
+      return (playerBonuses?.[c as keyof AffinityCounts] ?? 0) >= printed;
     })
   );
+  const eminenceValue = luminary.eminence ?? 0;
 
   return (
     <motion.div
       ref={cardRef}
+      data-testid="terminus-luminary-card"
       whileHover={hoverAnim}
       whileTap={!isHidden ? { scale: 0.97 } : {}}
       data-luminary-id={luminary.id}
-      className={`relative w-[var(--card-w)] h-[var(--card-h)] rounded-xl overflow-hidden shadow-xl bg-black shrink-0 ${
-        isClaimed ? 'ring-1 ring-white/10' : canAffordLuminary ? 'ring-0 lum-card-afford-pulse' : 'ring-1 ring-black/30'
+      className={`luminary-card ${isClaimed ? 'luminary-card--claimed' : 'luminary-card--dormant'} relative w-[var(--card-w)] h-[var(--card-h)] rounded-xl ${isClaimed ? 'overflow-visible isolate' : 'overflow-hidden'} shadow-xl bg-black shrink-0 ${isClaimed && isCompass ? 'luminary-card--compass-claimed' : ''} ${
+        isClaimed ? 'ring-1 ring-white/10' : canAffordLuminary ? 'ring-0 lum-card-afford-tremor' : 'ring-1 ring-black/30'
       }`}
       title={isClaimed
         ? `Released${claimedByPlayer ? ` — claimed by ${claimedByPlayer.playerName}` : ''}`
@@ -415,35 +401,82 @@ export function LuminaryCard({
       onClick={!isClaimed && !isHidden && onOpenSheet ? onOpenSheet : undefined}
     >
       {isClaimed ? (
-        <LuminaryClaimedPortal
-          luminary={luminary}
-          claimedByPlayer={claimedByPlayer}
-          luminaryAffinity={luminaryAffinity}
-          isOwnedByMe={isOwnedByMe}
-          isLive={isLive}
-          canToggle={canToggle}
-          onToggle={onToggle}
-          onOpenSheet={onOpenSheet}
-          isNew={portalIsNew}
-          isArmed={isArmed}
-          burnCount={burnCount}
-        />
+        <>
+          <div className="luminary-claimed-panel luminary-claimed-panel--freed relative z-10 h-full w-full rounded-xl bg-black">
+            <LuminaryClaimedPortal
+              luminary={luminary}
+              claimedByPlayer={claimedByPlayer}
+              luminaryAffinity={luminaryAffinity}
+              isOwnedByMe={isOwnedByMe}
+              isLive={isLive}
+              onOpenSheet={onOpenSheet}
+              isNew={portalIsNew}
+              isArmed={isArmed}
+              burnCount={burnCount}
+              showClaimedIdentity={showClaimedSummary ? false : showClaimedIdentity}
+              showActiveAffinity={showActiveAffinity}
+            />
+            {showClaimedSummary && (
+              <div className="luminary-claimed-panel-status absolute inset-0 z-30 flex flex-col justify-between p-1.5 pointer-events-none">
+                <div className="flex items-start justify-between">
+                  {eminenceValue > 0 ? (
+                    <EminenceBadge
+                      value={eminenceValue}
+                      compact
+                      title={getLuminaryEminenceTitle(eminenceValue)}
+                    />
+                  ) : (
+                    <span aria-hidden="true" />
+                  )}
+                </div>
+                <div className={`luminary-claimed-summary ${showClaimedIdentity && claimedByPlayer ? 'luminary-claimed-summary--with-owner' : ''}`}>
+                  <div className="luminary-claimed-name">{luminary.name}</div>
+                  <div
+                    className="luminary-claimed-owner"
+                    title={claimedByPlayer ? `Allied with ${claimedByPlayer.playerName}` : 'Manifested'}
+                  >
+                    {claimedByPlayer && showClaimedIdentity && (
+                      <PlayerAvatar
+                        avatarId={claimedByPlayer.avatarId ?? null}
+                        name={claimedByPlayer.playerName}
+                        size={14}
+                      />
+                    )}
+                    <span>{claimedByPlayer ? claimedByPlayer.playerName : 'Manifested'}</span>
+                  </div>
+                </div>
+              </div>
+            )}
+          </div>
+          {showClaimedPresence && (
+            <LuminaryClaimedPresence
+              luminaryId={luminary.id}
+              activeColor={glowColor}
+              showNativePortal={false}
+            />
+          )}
+        </>
       ) : (
         <>
           {/* Background art layer — procedural entity portrait fills the card */}
-          <div className="absolute inset-0 pointer-events-none">
-            <LuminaryPanelArt luminaryId={luminary.id} width={112} height={160} claimed={false} />
+          <div className="luminary-card-art absolute inset-0 pointer-events-none">
+            <LuminaryPanelArt luminaryId={luminary.id} width="100%" height="100%" claimed={false} />
           </div>
 
           {/* Same dark gradient as artifact cards */}
-          <div className="absolute inset-0 bg-gradient-to-b from-black/20 via-black/10 to-black/90 pointer-events-none" />
+          <div className="luminary-card-veil absolute inset-0 bg-gradient-to-b from-black/20 via-black/10 to-black/90 pointer-events-none" />
 
-          <div className="relative z-10 h-full p-2 flex flex-col justify-between">
-            {/* Top row — lumens/oblivion (left) + can-afford badge (right), mirroring ArtifactCardView */}
+          <div className="luminary-card-content relative z-10 h-full p-2 flex flex-col justify-between">
+            {/* Top row — Eminence reward (left) + can-afford badge (right), mirroring ArtifactCardView */}
             <div className="flex justify-between items-start">
-              <span className={`bg-black/60 backdrop-blur-sm rounded px-1.5 py-0.5 text-sm font-serif font-bold drop-shadow-[0_1px_3px_rgba(0,0,0,1)] ${luminary.oblivion ? 'text-red-300' : 'text-amber-100'}`}>
-                {luminary.oblivion ? `-${luminary.oblivion}` : luminary.lumens}
-              </span>
+              {eminenceValue > 0 ? (
+                <EminenceBadge
+                  value={eminenceValue}
+                  title={getLuminaryEminenceTitle(eminenceValue)}
+                />
+              ) : (
+                <span aria-hidden="true" />
+              )}
               <AnimatePresence>
                 {canAffordLuminary && (
                   <motion.div
@@ -452,40 +485,40 @@ export function LuminaryCard({
                     animate={{ scale: 1, opacity: 1 }}
                     exit={{ scale: 0, opacity: 0 }}
                     transition={{ type: 'spring', stiffness: 480, damping: 13, mass: 0.55 }}
-                    className="flex items-center gap-0.5 backdrop-blur-sm rounded px-1 py-0.5 bg-green-900/70"
+                    className="flex items-center gap-0.5 rounded border border-white/10 px-1 py-0.5 bg-green-950/85"
                     title="You meet all requirements — claim this Luminary!"
                   >
                     <span className="text-[10px] font-bold text-green-300">✓</span>
-                    <MiniGem color={glowKey} size={10} />
+                    <AffinityToken color={glowKey} size={10} />
                   </motion.div>
                 )}
               </AnimatePresence>
             </div>
 
-            {/* Bottom — name + requirement gems */}
+            {/* Bottom: name and required Affinities. */}
             <div className="space-y-1">
-              <div className="text-[9px] font-semibold leading-tight text-white drop-shadow-[0_1px_2px_rgba(0,0,0,1)] line-clamp-2">
+              <div className="luminary-card-name text-[9px] font-semibold leading-tight text-white drop-shadow-[0_1px_2px_rgba(0,0,0,1)] line-clamp-2">
                 {luminary.name}
               </div>
-              <div className="text-[6px] uppercase tracking-[0.15em] font-bold text-white/70 drop-shadow-[0_1px_1px_rgba(0,0,0,1)]">
+              <div className="luminary-card-requirements-label text-[6px] uppercase tracking-[0.15em] font-bold text-white/70 drop-shadow-[0_1px_1px_rgba(0,0,0,1)]">
                 Artifacts Required:
               </div>
-              {/* Affinity requirement chips — mini card shapes, gem image as texture */}
-              <div className="flex flex-wrap gap-0.5 justify-end items-end">
-                {CRYSTALS.map((c) => {
-                  const printed = luminary.requirements[c as keyof CrystalCounts];
+              {/* Affinity requirement chips use compact card silhouettes. */}
+              <div className="luminary-card-requirements flex flex-wrap gap-0.5 justify-end items-end">
+                {AFFINITIES.map((c) => {
+                  const printed = luminary.requirements[c as keyof AffinityCounts];
                   if (printed <= 0) return null;
-                  const bonus = playerBonuses?.[c as keyof CrystalCounts] ?? 0;
+                  const bonus = playerBonuses?.[c as keyof AffinityCounts] ?? 0;
                   const displayVal = costMode === 'needed_now'
                     ? Math.max(0, printed - bonus)
                     : printed;
                   const isMet = costMode === 'needed_now' && displayVal === 0;
-                  const meta = GEM_META[c];
+                  const meta = AFFINITY_META[c];
                   const tooltipBase = costMode === 'needed_now'
                     ? (isMet
                         ? `${meta.name} requirement met (${bonus}/${printed})`
-                        : `${displayVal} more ${meta.name} bonus card${displayVal === 1 ? '' : 's'} needed (have ${bonus}/${printed})`)
-                    : `${printed} ${meta.name} bonus card${printed === 1 ? '' : 's'} required`;
+                        : `${displayVal} more ${meta.name} Artifact${displayVal === 1 ? '' : 's'} needed (have ${bonus}/${printed})`)
+                    : `${printed} ${meta.name} Artifact${printed === 1 ? '' : 's'} required`;
                   return (
                     <div
                       key={c}

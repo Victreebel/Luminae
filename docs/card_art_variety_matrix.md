@@ -390,7 +390,7 @@ The variety matrix was designed so that no two cards in the same affinity share 
 > Note: If a future art regeneration pass produces an image that visually matches another card's slot, the slot audit tool (proposed as follow-up task #498) will detect it.
 
 ### Priority C — Severe T1 scale mismatches (20 cards)
-T1 cards whose current images show planet/galaxy-scale content directly contradict the accepted T1 cards already in the live market. These are the most visible inconsistency in the current card set.
+T1 cards whose current images show planet/galaxy-scale content directly contradict the accepted T1 cards already in the live Forge. These are the most visible inconsistency in the current card set.
 
 | ID | Name | Affinity | Variety Slot |
 |---|---|---|---|

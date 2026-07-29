@@ -329,10 +329,10 @@ router.get("/auth/me/stats", accountAuth, async (req: Request, res): Promise<voi
     if (!state) continue;
 
     const winnerId = state.winnerId as string | null;
-    const players = (state.players as Array<{ playerId: string; lumens: number }>) ?? [];
+    const players = (state.players as Array<{ playerId: string; eminence: number }>) ?? [];
 
     const playerData = players.find((p) => p.playerId === row.player.id);
-    const eminenceEarned = playerData?.lumens ?? 0;
+    const eminenceEarned = playerData?.eminence ?? 0;
 
     let result: "win" | "loss" | "tie";
     if (winnerId === null) {

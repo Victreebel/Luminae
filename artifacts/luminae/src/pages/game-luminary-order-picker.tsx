@@ -1,18 +1,17 @@
-import React, { useRef, useState } from 'react';
+import React, { useMemo, useRef, useState } from 'react';
 import { motion, AnimatePresence } from 'framer-motion';
 import type { Luminary } from '@workspace/api-client-react';
-import { useSubmitAction } from '@workspace/api-client-react';
 import { LuminaryPanelArt, getLuminaryVisuals } from '@/lib/luminaryAssets';
 import { BOARD_CARD_W, BOARD_CARD_H } from '@/lib/constants';
 import { useFocusTrap } from '@/hooks/use-focus-trap';
-import { EminenceDiamond } from './game-card';
-import { useIsMobile } from '@/hooks/use-mobile';
+import { EminenceBadge } from './game-card';
 
 // ── LuminaryOrderPicker ────────────────────────────────────────────────────────
 //
 // Full-screen modal overlay shown when a player simultaneously qualifies for
-// multiple Luminaries.  The player clicks cards to assign claim order (1st, 2nd
-// …), then confirms.  Claim order matters: each Luminary's passive effect
+// multiple Luminaries.  The player taps cards to assign claim order (1st, 2nd
+// ...), taps placed cards to remove them, then confirms.  Claim order matters:
+// each Luminary's passive effect
 // activates immediately after its claim, so later claims benefit from earlier
 // passives.
 //
@@ -23,47 +22,66 @@ interface LuminaryOrderPickerProps {
   candidates: Luminary[];
   isMyChoice: boolean;
   choosingPlayerName: string;
-  roomId: string;
-  sessionToken: string;
+  onConfirmOrder: (orderedIds: string[]) => Promise<void>;
 }
 
 export const LuminaryOrderPicker = React.memo(function LuminaryOrderPicker({
   candidates,
   isMyChoice,
   choosingPlayerName,
-  roomId,
-  sessionToken,
+  onConfirmOrder,
 }: LuminaryOrderPickerProps) {
   const [selectedOrder, setSelectedOrder] = useState<string[]>([]);
+  const [isSubmitting, setIsSubmitting] = useState(false);
+  const [submitError, setSubmitError] = useState<string | null>(null);
   const containerRef = useRef<HTMLElement | null>(null);
-  const submitAction = useSubmitAction();
-  const isMobile = useIsMobile();
+  const candidateById = useMemo(
+    () => new Map(candidates.map((candidate) => [candidate.id, candidate] as const)),
+    [candidates],
+  );
 
-  const isConfirmReady = isMyChoice && selectedOrder.length === candidates.length;
+  const isConfirmReady = isMyChoice && selectedOrder.length === candidates.length && candidates.length > 0;
 
   useFocusTrap(containerRef, isMyChoice, () => {});
 
-  const handleCardClick = (lumId: string) => {
+  const placeLuminary = (lumId: string) => {
+    setSubmitError(null);
     setSelectedOrder((prev) => {
-      if (prev.includes(lumId)) {
-        return prev.filter((id) => id !== lumId);
-      }
+      if (prev.includes(lumId) || prev.length >= candidates.length) return prev;
       return [...prev, lumId];
     });
   };
 
-  const handleReset = () => setSelectedOrder([]);
+  const removeLuminary = (lumId: string) => {
+    setSubmitError(null);
+    setSelectedOrder((prev) => prev.filter((id) => id !== lumId));
+  };
 
-  const handleConfirm = () => {
-    if (!isConfirmReady) return;
-    submitAction.mutate({
-      roomId,
-      data: {
-        sessionToken,
-        type: 'choose_luminary_order',
-        orderedIds: selectedOrder,
-      },
-    });
+  const handleCardClick = (lumId: string) => {
+    if (!isMyChoice || isSubmitting) return;
+    setSubmitError(null);
+    if (selectedOrder.includes(lumId)) {
+      removeLuminary(lumId);
+      return;
+    }
+    placeLuminary(lumId);
+  };
+
+  const handleReset = () => {
+    setSubmitError(null);
+    setSelectedOrder([]);
+  };
+
+  const handleConfirm = async () => {
+    if (!isConfirmReady || isSubmitting) return;
+    setSubmitError(null);
+    setIsSubmitting(true);
+    try {
+      await onConfirmOrder(selectedOrder);
+    } catch (err) {
+      setSubmitError(err instanceof Error ? err.message : 'Could not submit Luminary order');
+      setIsSubmitting(false);
+    }
   };
 
   const ordinalLabel = (n: number) => {
@@ -81,7 +99,7 @@ export const LuminaryOrderPicker = React.memo(function LuminaryOrderPicker({
       exit={{ opacity: 0 }}
       transition={{ duration: 0.25 }}
       className="fixed inset-0 z-[120] flex flex-col items-center justify-center"
-      style={{ background: 'rgba(0,0,0,0.82)', backdropFilter: isMobile ? undefined : 'blur(6px)' }}
+      style={{ background: 'rgba(0,0,0,0.82)'}}
     >
       {isMyChoice ? (
         <div
@@ -97,9 +115,36 @@ export const LuminaryOrderPicker = React.memo(function LuminaryOrderPicker({
               Choose Claim Order
             </h2>
             <p className="text-xs text-white/70 leading-snug max-w-xs mx-auto">
-              Tap in the order you want to claim. Each Luminary's effect activates
-              immediately, so your first claim benefits the second.
+              Tap a Luminary to place it next. Tap a placed Luminary to remove it.
             </p>
+          </div>
+
+          <div className="grid w-full grid-cols-2 gap-2 sm:grid-cols-3">
+            {Array.from({ length: candidates.length }, (_, index) => {
+              const lumId = selectedOrder[index];
+              const lum = lumId ? candidateById.get(lumId) : null;
+              const glowHex = lum ? getLuminaryVisuals(lum.id).summonColor : '#fbbf24';
+              return (
+                <div
+                  key={index}
+                  className="flex min-h-[46px] items-center gap-2 rounded-lg border px-3 py-2"
+                  style={{
+                    borderColor: lum ? `${glowHex}66` : 'rgba(255,255,255,0.12)',
+                    background: lum ? `${glowHex}14` : 'rgba(255,255,255,0.045)',
+                  }}
+                >
+                  <span
+                    className="flex h-6 w-6 shrink-0 items-center justify-center rounded-full font-serif text-sm font-black text-black"
+                    style={{ background: lum ? glowHex : 'rgba(255,255,255,0.28)' }}
+                  >
+                    {index + 1}
+                  </span>
+                  <span className={`min-w-0 truncate text-xs font-semibold ${lum ? 'text-white/90' : 'text-white/35'}`}>
+                    {lum?.name ?? 'Unplaced'}
+                  </span>
+                </div>
+              );
+            })}
           </div>
 
           {/* Candidate cards */}
@@ -107,6 +152,7 @@ export const LuminaryOrderPicker = React.memo(function LuminaryOrderPicker({
             {candidates.map((lum) => {
               const rank = selectedOrder.indexOf(lum.id);
               const isSelected = rank !== -1;
+              const nextRank = selectedOrder.length + 1;
               const visuals = getLuminaryVisuals(lum.id);
               const glowHex = visuals.summonColor; // API contract field
 
@@ -114,6 +160,7 @@ export const LuminaryOrderPicker = React.memo(function LuminaryOrderPicker({
                 <motion.button
                   key={lum.id}
                   onClick={() => handleCardClick(lum.id)}
+                  onContextMenu={(event) => event.preventDefault()}
                   whileTap={{ scale: 0.95 }}
                   className="relative rounded-xl overflow-hidden shrink-0 focus-visible:outline-none"
                   style={{
@@ -123,9 +170,14 @@ export const LuminaryOrderPicker = React.memo(function LuminaryOrderPicker({
                       ? `0 0 0 2.5px ${glowHex}ff, 0 0 24px 8px ${glowHex}88`
                       : `0 0 0 1.5px ${glowHex}88, 0 0 10px 3px ${glowHex}33`,
                     opacity: isSelected ? 1 : 0.88,
+                    touchAction: 'manipulation',
+                    userSelect: 'none',
                   }}
-                  aria-label={`${lum.name} — click to select as ${ordinalLabel(selectedOrder.length + 1)} claim`}
+                  aria-label={isSelected
+                    ? `${lum.name} — placed ${ordinalLabel(rank + 1)}. Tap to remove.`
+                    : `${lum.name} — tap to place as ${ordinalLabel(nextRank)} claim`}
                   aria-pressed={isSelected}
+                  disabled={isSubmitting}
                 >
                   {/* Panel art */}
                   <div className="absolute inset-0 pointer-events-none">
@@ -138,10 +190,12 @@ export const LuminaryOrderPicker = React.memo(function LuminaryOrderPicker({
                   {/* Card info */}
                   <div className="relative z-10 h-full p-2 flex flex-col justify-between pointer-events-none">
                     <div className="flex justify-end">
-                      <span className="bg-black/60 backdrop-blur-sm rounded px-1.5 py-0.5 text-sm font-serif font-bold text-amber-100 drop-shadow-[0_1px_3px_rgba(0,0,0,1)] flex items-center gap-0.5">
-                        {lum.oblivion ? `-${lum.oblivion}` : lum.lumens}
-                        <EminenceDiamond size={9} />
-                      </span>
+                      {(lum.eminence ?? 0) > 0 && (
+                        <EminenceBadge
+                          value={lum.eminence}
+                          title={`+${lum.eminence} Eminence`}
+                        />
+                      )}
                     </div>
                     <div className="text-[9px] font-semibold leading-tight text-white drop-shadow-[0_1px_2px_rgba(0,0,0,1)] line-clamp-2">
                       {lum.name}
@@ -189,11 +243,16 @@ export const LuminaryOrderPicker = React.memo(function LuminaryOrderPicker({
             {/* Selection progress hint */}
             <p className="text-[11px] text-white/50">
               {selectedOrder.length === 0
-                ? 'Tap a Luminary to claim it first'
+                ? 'Tap a Luminary to place it first'
                 : selectedOrder.length < candidates.length
-                ? `${candidates.length - selectedOrder.length} more to place`
+                ? `Tap to place ${ordinalLabel(selectedOrder.length + 1)} — ${candidates.length - selectedOrder.length} remaining`
                 : 'All placed — confirm when ready'}
             </p>
+            {submitError && (
+              <p className="max-w-xs text-center text-[11px] font-semibold text-red-300">
+                {submitError}
+              </p>
+            )}
 
             <div className="flex items-center gap-3">
               {selectedOrder.length > 0 && (
@@ -206,7 +265,7 @@ export const LuminaryOrderPicker = React.memo(function LuminaryOrderPicker({
               )}
               <motion.button
                 onClick={handleConfirm}
-                disabled={!isConfirmReady || submitAction.isPending}
+                disabled={!isConfirmReady || isSubmitting}
                 whileTap={isConfirmReady ? { scale: 0.96 } : {}}
                 className={`px-6 py-2 rounded-lg font-semibold text-sm transition-all ${
                   isConfirmReady
@@ -214,7 +273,7 @@ export const LuminaryOrderPicker = React.memo(function LuminaryOrderPicker({
                     : 'bg-white/10 text-white/30 cursor-not-allowed'
                 }`}
               >
-                {submitAction.isPending ? 'Claiming…' : 'Confirm Order'}
+                {isSubmitting ? 'Claiming…' : 'Confirm Order'}
               </motion.button>
             </div>
           </div>

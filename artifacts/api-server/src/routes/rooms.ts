@@ -1,5 +1,6 @@
 import { Router, type IRouter } from "express";
 import { eq, and, isNull, ne } from "drizzle-orm";
+import { z } from "zod";
 import { db, roomsTable, playersTable, gameStatesTable } from "@workspace/db";
 import {
   CreateRoomBody,
@@ -33,6 +34,7 @@ function generateSessionToken(): string {
 }
 
 type DbPlayer = typeof playersTable.$inferSelect;
+type DbRoom = typeof roomsTable.$inferSelect;
 
 function serializePlayer(p: DbPlayer) {
   return {
@@ -44,6 +46,18 @@ function serializePlayer(p: DbPlayer) {
     isAi: p.isAi,
     aiDifficulty: p.aiDifficulty,
     avatarId: p.avatarId ?? null,
+  };
+}
+
+function serializeRoomBase(room: DbRoom) {
+  return {
+    id: room.id,
+    inviteCode: room.inviteCode,
+    status: room.status,
+    maxPlayers: room.maxPlayers,
+    victoryRequirement: room.victoryRequirement,
+    cinematicMode: room.cinematicMode,
+    turnTimerSeconds: room.turnTimerSeconds,
   };
 }
 
@@ -85,6 +99,15 @@ function pickAiAvatar(existing: string[]): string {
 
 const MAX_ACTIVE_GAMES = 5;
 
+const UpdateRoomSettingsBody = z.object({
+  sessionToken: z.string(),
+  cinematicMode: z.union([z.literal("standard"), z.literal("epic")]).optional(),
+});
+
+const RematchBody = StartGameBody.extend({
+  sameBoard: z.boolean().optional(),
+});
+
 async function countActiveGames(accountId: string): Promise<number> {
   const rows = await db
     .select({ roomId: playersTable.roomId })
@@ -108,7 +131,7 @@ router.post("/rooms", optionalAccountAuth, async (req, res): Promise<void> => {
     res.status(400).json({ error: parsed.error.message });
     return;
   }
-  const { hostName, maxPlayers, turnTimerSeconds, avatarId: hostAvatarId } = parsed.data;
+  const { hostName, maxPlayers, victoryRequirement, cinematicMode, turnTimerSeconds, avatarId: hostAvatarId } = parsed.data;
 
   if (req.account) {
     const active = await countActiveGames(req.account.id);
@@ -126,6 +149,8 @@ router.post("/rooms", optionalAccountAuth, async (req, res): Promise<void> => {
     .values({
       inviteCode,
       maxPlayers,
+      victoryRequirement,
+      cinematicMode,
       status: "lobby",
       turnTimerSeconds: turnTimerSeconds ?? null,
     })
@@ -157,11 +182,7 @@ router.post("/rooms", optionalAccountAuth, async (req, res): Promise<void> => {
 
   res.status(201).json({
     room: {
-      id: room.id,
-      inviteCode: room.inviteCode,
-      status: room.status,
-      maxPlayers: room.maxPlayers,
-      turnTimerSeconds: room.turnTimerSeconds,
+      ...serializeRoomBase(room),
       players: [serialized],
     },
     player: serialized,
@@ -205,11 +226,7 @@ router.get("/rooms/:inviteCode", async (req, res): Promise<void> => {
     .orderBy(playersTable.orderIndex);
 
   res.json({
-    id: room.id,
-    inviteCode: room.inviteCode,
-    status: room.status,
-    maxPlayers: room.maxPlayers,
-    turnTimerSeconds: room.turnTimerSeconds,
+    ...serializeRoomBase(room),
     players: players.map(serializePlayer),
   });
 });
@@ -289,11 +306,7 @@ router.post("/rooms/:roomId/join", optionalAccountAuth, async (req, res): Promis
 
   res.json({
     room: {
-      id: room.id,
-      inviteCode: room.inviteCode,
-      status: room.status,
-      maxPlayers: room.maxPlayers,
-      turnTimerSeconds: room.turnTimerSeconds,
+      ...serializeRoomBase(room),
       players: allPlayers.map(serializePlayer),
     },
     player: serialized,
@@ -356,11 +369,7 @@ router.post("/rooms/:roomId/rejoin", async (req, res): Promise<void> => {
 
   res.json({
     room: {
-      id: room.id,
-      inviteCode: room.inviteCode,
-      status: room.status,
-      maxPlayers: room.maxPlayers,
-      turnTimerSeconds: room.turnTimerSeconds,
+      ...serializeRoomBase(room),
       players: refreshed.map(serializePlayer),
     },
     player: serializePlayer(updated),
@@ -462,6 +471,76 @@ router.post("/rooms/:roomId/ai-players", async (req, res): Promise<void> => {
   res.json(serialized);
 });
 
+// PATCH /api/rooms/:roomId/settings — update lobby room settings
+router.patch("/rooms/:roomId/settings", async (req, res): Promise<void> => {
+  const rawId = Array.isArray(req.params.roomId)
+    ? req.params.roomId[0]
+    : req.params.roomId;
+
+  const parsed = UpdateRoomSettingsBody.safeParse(req.body);
+  if (!parsed.success) {
+    res.status(400).json({ error: parsed.error.message });
+    return;
+  }
+
+  const [room] = await db
+    .select()
+    .from(roomsTable)
+    .where(eq(roomsTable.id, rawId))
+    .limit(1);
+
+  if (!room) {
+    res.status(404).json({ error: "Room not found" });
+    return;
+  }
+
+  if (room.status !== "lobby") {
+    res.status(400).json({ error: "Room settings can only be changed before the game starts" });
+    return;
+  }
+
+  const [host] = await db
+    .select()
+    .from(playersTable)
+    .where(
+      and(
+        eq(playersTable.sessionToken, parsed.data.sessionToken),
+        eq(playersTable.roomId, rawId),
+      ),
+    )
+    .limit(1);
+
+  if (!host || !host.isHost) {
+    res.status(403).json({ error: "Only the host can change room settings" });
+    return;
+  }
+
+  const [updatedRoom] = await db
+    .update(roomsTable)
+    .set({
+      cinematicMode: parsed.data.cinematicMode ?? room.cinematicMode,
+      updatedAt: new Date(),
+    })
+    .where(eq(roomsTable.id, rawId))
+    .returning();
+
+  const players = await db
+    .select()
+    .from(playersTable)
+    .where(eq(playersTable.roomId, rawId))
+    .orderBy(playersTable.orderIndex);
+
+  broadcastToRoom(rawId, {
+    type: "room_updated",
+    room: serializeRoomBase(updatedRoom),
+  });
+
+  res.json({
+    ...serializeRoomBase(updatedRoom),
+    players: players.map(serializePlayer),
+  });
+});
+
 // POST /api/rooms/:roomId/start
 router.post("/rooms/:roomId/start", async (req, res): Promise<void> => {
   const rawId = Array.isArray(req.params.roomId)
@@ -519,6 +598,8 @@ router.post("/rooms/:roomId/start", async (req, res): Promise<void> => {
   const gameData = initializeGame(
     players.map((p) => ({ id: p.id, name: p.name })),
     players.length,
+    room.victoryRequirement,
+    room.cinematicMode === "epic" ? "epic" : "standard",
   );
   gameData.turnTimerSeconds = room.turnTimerSeconds ?? null;
   updateTurnDeadline(gameData);
@@ -582,7 +663,7 @@ router.post("/rooms/:roomId/rematch", async (req, res): Promise<void> => {
     ? req.params.roomId[0]
     : req.params.roomId;
 
-  const parsed = StartGameBody.safeParse(req.body);
+  const parsed = RematchBody.safeParse(req.body);
   if (!parsed.success) {
     res.status(400).json({ error: parsed.error.message });
     return;
@@ -620,6 +701,23 @@ router.post("/rooms/:roomId/rematch", async (req, res): Promise<void> => {
     return;
   }
 
+  if (parsed.data.sameBoard === true) {
+    const [gameStateRow] = await db
+      .select({ state: gameStatesTable.state })
+      .from(gameStatesTable)
+      .where(eq(gameStatesTable.roomId, rawId))
+      .limit(1);
+
+    const savedState = gameStateRow?.state as { initialBoard?: unknown } | undefined;
+    if (!savedState?.initialBoard) {
+      res.status(409).json({
+        error:
+          "Replay Same Board is only available for games started after opening board snapshots were added.",
+      });
+      return;
+    }
+  }
+
   const allPlayers = await db
     .select()
     .from(playersTable)
@@ -630,6 +728,7 @@ router.post("/rooms/:roomId/rematch", async (req, res): Promise<void> => {
     rawId,
     player.id,
     allPlayers.map((p) => ({ id: p.id, name: p.name, isAi: p.isAi })),
+    { sameBoard: parsed.data.sameBoard === true },
   );
 
   // Broadcast updated vote state to all players in the room
@@ -638,6 +737,7 @@ router.post("/rooms/:roomId/rematch", async (req, res): Promise<void> => {
     sendToPlayer(rawId, p.id, {
       type: "rematch_vote_update",
       voterIds: voteInfo.voterIds,
+      sameBoard: voteInfo.sameBoard,
       countdownEndsAt: voteInfo.countdownEndsAt,
       sessionStats: voteInfo.sessionStats,
     });

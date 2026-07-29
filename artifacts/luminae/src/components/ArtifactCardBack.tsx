@@ -14,11 +14,11 @@
 //   card back (it is not part of the card-back visual language).
 // ─────────────────────────────────────────────────────────────────────────────
 
-const F  = '#ef4444'; // Flare     (ruby)
-const C  = '#3b82f6'; // Continuum (sapphire)
-const V  = '#22c55e'; // Verdance  (emerald)
-const A  = '#a855f7'; // Abyss     (onyx)
-const R  = '#DFC878'; // Radiance  (pearl)
+const F  = '#ef4444'; // Flare     (flare)
+const C  = '#3b82f6'; // Continuum (continuum)
+const V  = '#22c55e'; // Verdance  (verdance)
+const A  = '#a855f7'; // Abyss     (abyss)
+const R  = '#DFC878'; // Radiance  (radiance)
 
 const GOLD  = '#c4a85a';
 const GOLD2 = '#ead68c';

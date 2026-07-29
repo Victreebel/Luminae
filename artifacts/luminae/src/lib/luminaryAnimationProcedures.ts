@@ -25,8 +25,8 @@
 // Concordance Mandala   |  ✓     |  ✓     |  ✓     |  —     | None                   | —
 // Phoenix Paradox       |  ✓     |  ✓     |  ✓     |  —     | None                   | —
 // Catalyst Bloom        |  ✓     |  ✗     |  ✗*    |  —     | No targetClaim; used   | Added
-//                       |        |        |        |        | burnEvents.length      | targetClaim
-//                       |        |        |        |        | (should be burnPile)   | + burnPile
+//                       |        |        |        |        | Burn Pile is not the   | targetClaim
+//                       |        |        |        |        | payout accumulator     | + engine counter
 // Iron Harbinger        |  ✓     |  ✓     |  ✓     |  —     | None                   | —
 // ??? (lum_compass)     |  ✓     |  ✓     |  ✓     |  ✓     | None                   | —
 // Seed Beyond Seasons   |  ✓     |  ✓     |  ✓     |  ✓     | residue targetIds []   | —
@@ -34,12 +34,12 @@
 // Glass Orchard         |  ✓     |  ✓     |  ✓     |  —     | None                   | —
 // Pale Merchant         |  ✓     |  ✓     |  ✓     |  —     | None                   | —
 // Ember Sovereign       |  ✓     |  ✓     |  ✓     |  ✓     | None                   | —
-// First Hunger          |  ✓     |  ✗     |  ✓     |  ✓     | No targetClaim before  | Added
+// Final Hunger          |  ✓     |  ✗     |  ✓     |  ✓     | No targetClaim before  | Added
 //                       |        |        |        |        | pendingAction; owner   | targetClaim
 //                       |        |        |        |        | not highlighted        | (ownerId)
 // Null Sovereign        |  ✓     |  ✓     |  ✓     |  ✓     | None                   | —
 //
-// Marker exit transition (CardMarkerBadge.exit): was using framer-motion default
+// Marker exit transition: was using the framer-motion default
 //   (could be near-instant).  Pinned to 0.28s ease-out in game-luminary-effects.tsx.
 //
 // Forgotten vs Nullified distinction (confirmed adequate):
@@ -55,29 +55,31 @@
 //   - Burn pile counter chip increments at next state update
 // ─────────────────────────────────────────────────────────────────────────────
 
-import type { GameState, ArtifactCard } from '@workspace/api-client-react';
+import type { GameState, ArtifactCard, ArtifactMarkerType } from '@workspace/api-client-react';
 import type { AnimationTimelineStep, KeywordMarker } from './animationProcedure';
+import { artifactMarkerHasBrand } from './artifactBrands';
 
 // ── Helpers ────────────────────────────────────────────────────────────────────
 
-function t3(s: GameState): ArtifactCard[] { return s.marketTier3 ?? []; }
-function t2(s: GameState): ArtifactCard[] { return s.marketTier2 ?? []; }
-function t1(s: GameState): ArtifactCard[] { return s.marketTier1 ?? []; }
+function t3(s: GameState): ArtifactCard[] { return s.forgeTier3 ?? []; }
+function t2(s: GameState): ArtifactCard[] { return s.forgeTier2 ?? []; }
+function t1(s: GameState): ArtifactCard[] { return s.forgeTier1 ?? []; }
 function t3Ids(s: GameState): string[] { return t3(s).map(c => c.id); }
-function t2Ids(s: GameState): string[] { return t2(s).map(c => c.id); }
-function allMarket(s: GameState): ArtifactCard[] { return [...t3(s), ...t2(s), ...t1(s)]; }
-function allMarketIds(s: GameState): string[] { return allMarket(s).map(c => c.id); }
-function allPlayerIds(s: GameState): string[] { return (s.players ?? []).map(p => p.playerId); }
-function markedIds(s: GameState, type: string): string[] {
-  return Object.entries(s.marketMarkers ?? {})
-    .filter(([, m]) => m.type === type)
+function allForgeArtifacts(s: GameState): ArtifactCard[] { return [...t3(s), ...t2(s), ...t1(s)]; }
+function allForgeArtifactIds(s: GameState): string[] { return allForgeArtifacts(s).map(c => c.id); }
+function allPlayerIds(s: GameState): string[] {
+  return (s.players ?? []).map((p: { playerId: string }) => p.playerId);
+}
+function markedIds(s: GameState, type: ArtifactMarkerType): string[] {
+  return Object.entries(s.artifactMarkers ?? {})
+    .filter(([, marker]) => artifactMarkerHasBrand(marker, type))
     .map(([id]) => id);
 }
 function byBonus(cards: ArtifactCard[], colors: string[]): ArtifactCard[] {
-  return cards.filter(c => colors.includes(c.bonusColor));
+  return cards.filter(c => colors.includes(c.bonusAffinity));
 }
 function excludeBonus(cards: ArtifactCard[], excluded: string[]): ArtifactCard[] {
-  return cards.filter(c => !excluded.includes(c.bonusColor));
+  return cards.filter(c => !excluded.includes(c.bonusAffinity));
 }
 function pulse(luminaryId: string): AnimationTimelineStep {
   return { type: 'luminaryPulse', luminaryId };
@@ -89,24 +91,24 @@ function residue(keyword: KeywordMarker, targetIds: string[]): AnimationTimeline
 // ── Per-Luminary resolvers ─────────────────────────────────────────────────────
 
 // 1. Red Moth / Rupture of the Still (lum_moth)
-//    luminaryPulse → targetClaim Tier III+II → burn → marketRedraw
-function resolveMoth(s: GameState): AnimationTimelineStep[] {
-  const targets = [...t3Ids(s), ...t2Ids(s)];
+//    luminaryPulse → targetClaim qualifying Tier III → burn → forgeRefill
+function resolveMoth(targetCardIds?: string[]): AnimationTimelineStep[] {
+  const targets = targetCardIds ?? [];
   return [
     pulse('lum_moth'),
     { type: 'targetClaim', targetIds: targets, keyword: 'burn' },
     { type: 'keywordEvents', events: [{ keyword: 'burn', targetIds: targets }] },
-    { type: 'marketRedraw', slotIds: [] },
+    { type: 'forgeRefill', slotIds: [] },
   ];
 }
 
 // 2. Tide Architect / The Observer Effect (lum_tide)
-//    luminaryPulse → deckScry Tier II/III (sapphire bias = Continuum cards shimmer first) → marketRedraw
+//    luminaryPulse → deckScry Tier II/III (Continuum bias shimmers first) → forgeRefill (Forge refresh)
 function resolveTide(): AnimationTimelineStep[] {
   return [
     pulse('lum_tide'),
-    { type: 'deckScry', tierIds: ['tier2', 'tier3'], affinityBias: 'sapphire' },
-    { type: 'marketRedraw', slotIds: [] },
+    { type: 'deckScry', tierIds: ['tier2', 'tier3'], affinityBias: 'continuum' },
+    { type: 'forgeRefill', slotIds: [] },
   ];
 }
 
@@ -120,103 +122,68 @@ function resolveVerdant(_s: GameState, _ownerId: string): AnimationTimelineStep[
 }
 
 // 4. Void Warden / Oblivion (lum_void)
-//    luminaryPulse → targetClaim all players (incl. claimer) → scoreChange all −4
+//    luminaryPulse → targetClaim all players (incl. claimer) → victory requirement +5
 //    targetClaim ensures every player panel — including the claimer — is visibly
-//    highlighted before the Eminence drain resolves.
+//    highlighted before the shared win line moves outward.
 function resolveVoid(s: GameState): AnimationTimelineStep[] {
   const players = allPlayerIds(s);
   return [
     pulse('lum_void'),
     { type: 'targetClaim', targetIds: players },
-    { type: 'scoreChange', playerIds: players, amount: -4 },
+    { type: 'victoryRequirementChange', amount: 5 },
   ];
 }
 
 // 5. Concordance Mandala / Perfect Coherence (lum_radiant)
-//    luminaryPulse → Radiance (pearl) artifact targetClaim → scoreChange owner +2
+//    luminaryPulse → Radiance (radiance) artifact targetClaim → eminenceChange owner +2
 function resolveRadiant(s: GameState, ownerId: string): AnimationTimelineStep[] {
-  const pearlIds = byBonus(allMarket(s), ['pearl']).map(c => c.id);
+  const radianceIds = byBonus(allForgeArtifacts(s), ['radiance']).map(c => c.id);
   return [
     pulse('lum_radiant'),
-    { type: 'targetClaim', targetIds: pearlIds },
-    { type: 'scoreChange', playerIds: [ownerId], amount: 2 },
+    { type: 'targetClaim', targetIds: radianceIds },
+    { type: 'eminenceChange', playerIds: [ownerId], amount: 2 },
   ];
 }
 
-// 6. Phoenix Paradox / Ash-Seeking Recurrence (lum_astral)
-//    Sequential reveal-until: non-Flare/Continuum cards burn one by one
-//    from Tier III then Tier II until a matching card is found.
-//    The surviving card locks into place with a final targetClaim.
-function resolveAstral(s: GameState): AnimationTimelineStep[] {
-  const t3Cards = t3(s);
-  const t2Cards = t2(s);
-
-  // Build reveal-until sequences per tier from the live state.
-  // The engine has already resolved the cascade; we reconstruct the per-card
-  // sequence from the current market (post-cascade) + burnEvents.
-  function buildTierSequence(cards: ArtifactCard[], tier: number): AnimationTimelineStep[] {
-    const result: AnimationTimelineStep[] = [];
-    const nonMatching = excludeBonus(cards, ['ruby', 'sapphire']);
-    const matching = byBonus(cards, ['ruby', 'sapphire']);
-
-    // Non-matching cards: each is revealed and burned immediately
-    for (const card of nonMatching) {
-      result.push({ type: 'reveal', cardIds: [card.id], tier, stopCondition: 'Flare or Continuum', revealType: 'sequential' });
-      result.push({ type: 'keywordEvent', keyword: 'burn', targetIds: [card.id] });
-    }
-
-    // Matching card: revealed and locked in (no burn)
-    if (matching.length > 0) {
-      // Use the first matching card as the survivor
-      result.push({ type: 'reveal', cardIds: [matching[0].id], tier, stopCondition: 'Flare or Continuum', revealType: 'sequential' });
-    }
-
-    return result;
-  }
-
-  const t3Sequence = buildTierSequence(t3Cards, 3);
-  const t2Sequence = buildTierSequence(t2Cards, 2);
-
-  // Survivor IDs for the final lock-in pulse
-  const survivorIds = [...byBonus(t3Cards, ['ruby', 'sapphire']).map(c => c.id),
-                       ...byBonus(t2Cards, ['ruby', 'sapphire']).map(c => c.id)];
-
+// 6. Phoenix Paradox / Eternal Recurrence (lum_astral)
+//    Arrival establishes the passive. At the beginning of the owner's next
+//    turn, the server supplies the Burned Artifact IDs that return to Archives.
+function resolveAstral(
+  effectType: EffectType,
+  returnedCardIds: string[] = [],
+): AnimationTimelineStep[] {
+  if (effectType !== 'start_of_turn') return [pulse('lum_astral')];
   return [
     pulse('lum_astral'),
-    ...t3Sequence,
-    ...t2Sequence,
-    // Final lock-in pulse for surviving cards
-    ...(survivorIds.length > 0
-      ? [{ type: 'targetClaim' as const, targetIds: survivorIds }]
-      : []),
-    { type: 'marketRedraw', slotIds: [] },
+    { type: 'archiveReturn', cardIds: returnedCardIds },
+    { type: 'forgeRefill', slotIds: [] },
   ];
 }
 
 // 7. Catalyst Bloom / Aftergrowth (lum_bloom)
-//    luminaryPulse → targetClaim owner → scoreChange owner +(total burned cards)
-//    Uses burnPile.length (canonical deduplicated burn count) not burnEvents.length.
+//    luminaryPulse → targetClaim owner → eminenceChange owner +(tracked Burns)
+//    Uses the engine-owned accumulator so Phoenix redirects still feed Bloom.
 //    targetClaim added so the owner panel is highlighted before the gain resolves,
 //    making the source of Eminence legible without replaying individual burn events.
 //
-//    Zero-burn guard: if burnPile is empty the scoreChange step is omitted entirely.
+//    Zero-burn guard: if the accumulator is empty the eminenceChange step is omitted.
 //    This prevents "+0 EMN" appearing in the ProcedureStrip, which implies something
 //    happened when nothing did. The targetClaim still fires (owner panel is highlighted
 //    so the player can see why the cinematic played at all).
 function resolveBloom(s: GameState, ownerId: string): AnimationTimelineStep[] {
-  const burnCount = (s.burnPile ?? []).length;
+  const burnCount = s.catalystBloomBurnCount ?? 0;
   return [
     pulse('lum_bloom'),
     { type: 'targetClaim', targetIds: [ownerId] },
     ...(burnCount > 0
-      ? [{ type: 'scoreChange' as const, playerIds: [ownerId], amount: burnCount }]
+      ? [{ type: 'eminenceChange' as const, playerIds: [ownerId], amount: burnCount }]
       : []),
   ];
 }
 
 // 8. Iron Harbinger / Impact Extinction (lum_forge)
 //    luminaryPulse → targetClaim all face-up Tier III (hammer-shadow, keyword: burn pre-tint)
-//    → burn all → marketRedraw
+//    → burn all → forgeRefill (Forge refresh)
 //    The burn pre-tint on targetClaim produces the "hammer-shadow falls before the strike" beat.
 function resolveForge(s: GameState): AnimationTimelineStep[] {
   const targets = t3Ids(s);
@@ -224,38 +191,46 @@ function resolveForge(s: GameState): AnimationTimelineStep[] {
     pulse('lum_forge'),
     { type: 'targetClaim', targetIds: targets, keyword: 'burn' },
     { type: 'keywordEvents', events: [{ keyword: 'burn', targetIds: targets }] },
-    { type: 'marketRedraw', slotIds: [] },
+    { type: 'forgeRefill', slotIds: [] },
   ];
 }
 
 // 9. lum_compass / The Forgotten Hour
 //    luminaryPulse → deckScry all tiers (compass-needle sweep, hour-ring visual)
-//    → targetClaim all face-up market → forgotten residue → Eminence muted
-//    The deckScry step gives the "needle spins / broken hour-ring passes over the market"
-//    beat before the Forgotten residue lands, making the suppression feel earned.
-function resolveCompass(s: GameState): AnimationTimelineStep[] {
-  const targets = allMarketIds(s);
+//    → targetClaim all face-up Forge cards → forgotten residue + victory rise
+//    The deckScry step gives the "needle spins / broken hour-ring passes over the Forge"
+//    beat before the Forgotten residue lands; the threshold rise is part of that
+//    same branding step rather than a separate activation.
+function resolveCompass(
+  s: GameState,
+  effectType: EffectType,
+  payloadIds?: string[],
+): AnimationTimelineStep[] {
+  const targets = payloadIds ?? allForgeArtifactIds(s);
   return [
     pulse('lum_compass'),
     { type: 'deckScry', tierIds: ['tier1', 'tier2', 'tier3'] },
     { type: 'targetClaim', targetIds: targets },
-    residue('forgotten', targets),
+    {
+      ...residue('forgotten', targets),
+      ...(effectType === 'summon' ? { victoryRequirementChange: 1 } : {}),
+    },
   ];
 }
 
 // 10. Seed Beyond Seasons / Avatar Seeds (lum_seed)
-//     luminaryPulse → deckScry all tiers → seeded residue on top cards (appear on market entry)
+//     luminaryPulse → deckScry all tiers → seeded residue on top Artifacts (shown on Forge entry)
 function resolveSeed(): AnimationTimelineStep[] {
   return [
     pulse('lum_seed'),
     { type: 'deckScry', tierIds: ['tier1', 'tier2', 'tier3'], affinityBias: 'seeded' },
-    residue('seeded', []),  // targetIds resolved when seeded cards appear in market
+    residue('seeded', []),  // targetIds resolve when seeded Artifacts enter the Forge
   ];
 }
 
 // 11. Glass Orchard / Perfect Replication (lum_orchard)
 //     luminaryPulse → cheapest Tier I targetClaim → boon ConsequenceSnap
-//     No scoreChange step — +0 EMN was actively misleading ("nothing happened").
+//     No eminenceChange step — +0 EMN was actively misleading ("nothing happened").
 //     The CLAIM pill + golden boon flash communicates "you received something good."
 function resolveOrchard(s: GameState, _ownerId: string): AnimationTimelineStep[] {
   const tier1Cards = t1(s);
@@ -272,22 +247,22 @@ function resolveOrchard(s: GameState, _ownerId: string): AnimationTimelineStep[]
 }
 
 // 12. Pale Merchant / Balance Due (lum_pale)
-//     luminaryPulse → player crystal areas targetClaim → crystalReturn players above threshold
+//     luminaryPulse → player Affinity areas targetClaim → affinityReturn above the limit
 function resolvePale(s: GameState): AnimationTimelineStep[] {
   const playerIds = allPlayerIds(s);
   return [
     pulse('lum_pale'),
     { type: 'targetClaim', targetIds: playerIds },
-    { type: 'crystalReturn', playerIds },
+    { type: 'affinityReturn', playerIds },
   ];
 }
 
 // 13. Ember Sovereign / Cinder Mandate (lum_ember)
 //     On arrival: luminaryPulse → targetClaim non-Flare/Abyss/Radiance → condemned residue
-//     On end_of_turn: condemned cards flare → burn → marketRedraw
+//     On end_of_turn: condemned Artifacts flare → burn → forgeRefill (Forge refresh)
 //
-//     payloadIds: card IDs captured by the server BEFORE the burn loop cleared marketMarkers.
-//     Without the payload the client cannot resolve targets — marketMarkers is already empty
+//     payloadIds: card IDs captured by the server BEFORE the burn loop cleared artifactMarkers.
+//     Without the payload the client cannot resolve targets — artifactMarkers is already empty
 //     by the time the activation event is consumed. Always prefer payloadIds over a live state
 //     lookup for the end_of_turn path.
 function resolveEmber(
@@ -306,7 +281,7 @@ function resolveEmber(
       pulse('lum_ember'),
       { type: 'targetClaim', targetIds: condemnedIds, keyword: 'burn' },
       { type: 'keywordEvents', events: [{ keyword: 'burn', targetIds: condemnedIds }] },
-      { type: 'marketRedraw', slotIds: [] },
+      { type: 'forgeRefill', slotIds: [] },
     ];
   }
   // arrival / end_of_turn: mark cards as condemned.
@@ -315,7 +290,7 @@ function resolveEmber(
   // the payload hasn't been set (e.g. dev-rewind or direct state injection).
   const affected = (payloadIds && payloadIds.length > 0)
     ? payloadIds
-    : excludeBonus(allMarket(s), ['ruby', 'onyx', 'pearl']).map(c => c.id);
+    : excludeBonus(allForgeArtifacts(s), ['flare', 'abyss', 'radiance']).map(c => c.id);
   return [
     pulse('lum_ember'),
     { type: 'targetClaim', targetIds: affected },
@@ -323,7 +298,7 @@ function resolveEmber(
   ];
 }
 
-// 14. First Hunger / Assimilate (lum_hunger)
+// 14. Final Hunger / Assimilate (lum_hunger)
 //     On arrival: luminaryPulse → targetClaim owner → pendingAction assimilate
 //     targetClaim highlights the owner panel so the player knows who receives
 //     the assimilate replacement action before the ASSIMILATE pill appears.
@@ -337,8 +312,14 @@ function resolveHunger(_s: GameState, ownerId: string): AnimationTimelineStep[] 
 
 // 15. Null Sovereign / Black Domain (lum_null)
 //     luminaryPulse → targetClaim face-up Tier III → nullified residue → Eminence muted
-function resolveNull(s: GameState): AnimationTimelineStep[] {
-  const targets = t3Ids(s);
+function resolveNull(s: GameState, payloadIds?: string[]): AnimationTimelineStep[] {
+  const targets = payloadIds ?? t3(s)
+    .filter(card => (
+      (card.cost.continuum ?? 0) === 0 ||
+      (card.cost.abyss ?? 0) === 0 ||
+      (card.cost.radiance ?? 0) === 0
+    ))
+    .map(card => card.id);
   return [
     pulse('lum_null'),
     { type: 'targetClaim', targetIds: targets },
@@ -368,21 +349,21 @@ export function resolveLuminaryProcedure(
   if (!state) return [];
   try {
     switch (luminaryId) {
-      case 'lum_moth':    return resolveMoth(state);
+      case 'lum_moth':    return resolveMoth(eventPayload?.targetCardIds);
       case 'lum_tide':    return resolveTide();
       case 'lum_verdant': return resolveVerdant(state, ownerId);
       case 'lum_void':    return resolveVoid(state);
       case 'lum_radiant': return resolveRadiant(state, ownerId);
-      case 'lum_astral':  return resolveAstral(state);
+      case 'lum_astral':  return resolveAstral(effectType, eventPayload?.targetCardIds);
       case 'lum_bloom':   return resolveBloom(state, ownerId);
       case 'lum_forge':   return resolveForge(state);
-      case 'lum_compass': return resolveCompass(state);
+      case 'lum_compass': return resolveCompass(state, effectType, eventPayload?.targetCardIds);
       case 'lum_seed':    return resolveSeed();
       case 'lum_orchard': return resolveOrchard(state, ownerId);
       case 'lum_pale':    return resolvePale(state);
       case 'lum_ember':   return resolveEmber(state, effectType, eventPayload?.targetCardIds);
       case 'lum_hunger':  return resolveHunger(state, ownerId);
-      case 'lum_null':    return resolveNull(state);
+      case 'lum_null':    return resolveNull(state, eventPayload?.targetCardIds);
       default:            return [];
     }
   } catch {

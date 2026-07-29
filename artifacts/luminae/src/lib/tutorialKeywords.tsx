@@ -34,14 +34,14 @@ const KEYWORDS: KeywordDef[] = [
   // ── Affinities / Affinity ───────────────────────────────────────────────
   {
     pattern: /\bAffinit(?:ies|y)\b/g,
-    color: "#E2E8F0",       // prismatic white (matches --color-gem-pearl)
+    color: "#E2E8F0",       // prismatic white (matches --color-affinity-radiance)
     glowColor: "#C4B5FD",   // soft violet glow to hint at prismatic spectrum
   },
 
   // ── Singularity ─────────────────────────────────────────────────────────
   {
     pattern: /\bSingularity\b/g,
-    color: "#FFC43D",       // flux-yellow (matches --color-gem-flux)
+    color: "#FFC43D",       // singularity-yellow (matches --color-affinity-singularity)
     glowColor: "#FFC43D",
   },
 
@@ -55,7 +55,7 @@ const KEYWORDS: KeywordDef[] = [
   // ── Encrypt / Encrypting / Encrypted ────────────────────────────────────
   {
     pattern: /\bEncrypt(?:ed|ing|s)?\b/g,
-    color: "#60A5FA",       // blue (matches Continuum / sapphire palette)
+    color: "#60A5FA",       // blue (matches Continuum / continuum palette)
     glowColor: "#3B82F6",
   },
 
@@ -66,10 +66,10 @@ const KEYWORDS: KeywordDef[] = [
     glowColor: "#F97316",
   },
 
-  // ── Harvest / Harness ───────────────────────────────────────────────────
+  // ── Harness ─────────────────────────────────────────────────────────────
   {
     pattern: /\bHar(?:vest|ness)(?:ing|ed)?\b/g,
-    color: "#4ADE80",       // verdant green (matches --color-gem-emerald)
+    color: "#4ADE80",       // verdant green (matches --color-affinity-verdance)
     glowColor: "#22C55E",
   },
 

@@ -4,7 +4,7 @@ import { useFocusTrap } from '@/hooks/use-focus-trap';
 import { motion, AnimatePresence, useReducedMotion } from 'framer-motion';
 import { useIsMobile } from '@/hooks/use-mobile';
 import cardTier3Bg from '@assets/generated_images/card_tier3.png';
-import { gameAudio } from './audio';
+import { ARRIVAL_CUTSCENE_BEATS_MS, gameAudio } from './audio';
 import { KNOWN_AURA_STYLES } from '@workspace/game-types';
 import type { AuraStyle, LuminaryId } from '@workspace/game-types';
 import { BOARD_CARD_W, BOARD_CARD_H } from './constants';
@@ -107,7 +107,7 @@ interface LuminaryVisuals {
 //   lum_tide    — accepted (recursive tidal spiral, dark oceanic void bg)
 //   lum_pale    — accepted (panel, entity, aura — static illustrated assets; animated SVG retired)
 //   lum_astral  — accepted (cosmic arachnid embedded in dark crystal facets, constellation
-//                  line overlay, dual ruby/sapphire corner gems, fire medallion)
+//                  line overlay, dual Flare/Continuum corner emblems, fire medallion)
 //   lum_hunger  — accepted
 //   lum_moth    — accepted (Red Moth; panel + entity on disk; no aura, falls back gracefully)
 // ─────────────────────────────────────────────────────────────────────────────
@@ -147,7 +147,7 @@ for (const [path, mod] of Object.entries(_luminaryImageModules)) {
   }
 }
 
-function _getLuminaryImage(id: string, slot: 'panel' | 'entity' | 'background'): string | null {
+function _getLuminaryImage(id: string, slot: 'panel' | 'entity' | 'background' | 'cinematic'): string | null {
   if (!ILLUSTRATED_IDS.has(id)) return null;
   return _luminaryImageMap[`${id}/${slot}`] ?? null;
 }
@@ -158,12 +158,15 @@ export interface LuminaryImageAssets {
   panelArt: string | null;
   /** Freed entity transparent cutout. No card border or square portrait edges. */
   entityCutout: string | null;
+  /** Bounded runtime texture for full-screen cinematics. Keeps animation decode/GPU upload stable. */
+  cinematicArt: string | null;
 }
 
 export function getLuminaryImageAssets(id: string): LuminaryImageAssets {
   return {
     panelArt:     _getLuminaryImage(id, 'panel'),
     entityCutout: _getLuminaryImage(id, 'entity'),
+    cinematicArt: _getLuminaryImage(id, 'cinematic'),
   };
 }
 
@@ -270,11 +273,25 @@ function TideEntityFallback({ size = 140, className = '' }: { size?: number; cla
 // black pupil, pulsing iris glow halo, and random autonomous blinking.
 // The full iris group drifts slowly within the sclera; the eyelid closes
 // from the top edge on a random schedule (every 2.5–7.5 s).
-function TideEyeOverlay({ width, height, cyFactor = 0.472 }: { width: number; height: number; cyFactor?: number }) {
+function TideEyeOverlay({
+  width,
+  height,
+  cyFactor = 0.472,
+  nativeAligned = false,
+  nativeAlign = 'center',
+}: {
+  width: number;
+  height: number;
+  cyFactor?: number;
+  nativeAligned?: boolean;
+  nativeAlign?: 'top' | 'center';
+}) {
   const isMobile = useIsMobile();
-  const cx      = 0.490 * width;
-  const cy      = cyFactor * height;
-  const irisR   = 0.052 * width;
+  const canvasWidth = nativeAligned ? 511 : width;
+  const canvasHeight = nativeAligned ? 730 : height;
+  const cx      = (nativeAligned ? 0.472 : 0.490) * canvasWidth;
+  const cy      = (nativeAligned ? 0.474 : cyFactor) * canvasHeight;
+  const irisR   = 0.052 * canvasWidth;
   const scleraRX = irisR * 1.54;
   const scleraRY = irisR * 1.28;
   const pupilR   = irisR * 0.38;
@@ -301,9 +318,21 @@ function TideEyeOverlay({ width, height, cyFactor = 0.472 }: { width: number; he
 
   return (
     <svg
-      style={{ position: 'absolute', inset: 0, pointerEvents: 'none', zIndex: 4, overflow: 'visible' }}
-      width={width} height={height}
-      viewBox={`0 0 ${width} ${height}`}
+      style={{
+        position: 'absolute',
+        inset: 0,
+        width: nativeAligned ? '100%' : width,
+        height: nativeAligned ? '100%' : height,
+        pointerEvents: 'none',
+        zIndex: 4,
+        overflow: 'visible',
+      }}
+      width={nativeAligned ? '100%' : width}
+      height={nativeAligned ? '100%' : height}
+      viewBox={`0 0 ${canvasWidth} ${canvasHeight}`}
+      preserveAspectRatio={nativeAligned
+        ? (nativeAlign === 'top' ? 'xMidYMin meet' : 'xMidYMid meet')
+        : undefined}
     >
       <defs>
         {/* Sapphire iris — deep navy core → vibrant sky blue → dark limbal ring */}
@@ -1002,7 +1031,7 @@ function PaleEntity({ size = 140, className = '' }: { size?: number; className?:
   );
 }
 
-// ── The First Hunger (lum_hunger) ─────────────────────────────────────────────
+// ── The Final Hunger (lum_hunger) ─────────────────────────────────────────────
 // Nanite swarm intelligence — Abyss + Flare.
 // Background crossfade layers (background1/2) were removed to reduce GPU load.
 // Only the static entity PNG is rendered now — fast, no animation churn.
@@ -1021,7 +1050,7 @@ function HungerEntity({ size = 140, className = '' }: { size?: number; className
 }
 
 // ─── Luminary Visuals Map ─────────────────────────────────────────────────────
-// Colors derived from each Luminary's requirement gem palette.
+// Colors derived from each Luminary's required Affinity palette.
 // summonColor / summonSecondaryColor are the single source of truth for flash
 // tints — they mirror gameEngine.ts LUMINARIES[].summonColor (API contract) but live here so
 // the frontend never reads them from the server event. Update both files in
@@ -1037,7 +1066,7 @@ export const LUMINARY_VISUALS: Record<LuminaryId, LuminaryVisuals> = {
   lum_forge:   { id: 'lum_forge',   primaryColor: '#f97316', secondaryColor: '#1c1917', glowColor: 'rgba(249,115,22,0.6)',   EntityArt: ForgeEntity,   summonColor: '#f97316', summonSecondaryColor: '#1c1917', auraStyle: 'storm',   tier: 2 },
   lum_pale:    { id: 'lum_pale',    primaryColor: '#94a3b8', secondaryColor: '#0a0a14', glowColor: 'rgba(148,163,184,0.5)',  EntityArt: PaleEntity,    summonColor: '#cbd5e1', summonSecondaryColor: '#0a0a14', auraStyle: 'pale',    tier: 2 },
   lum_bloom:   { id: 'lum_bloom',   primaryColor: '#4ade80', secondaryColor: '#7f1d1d', glowColor: 'rgba(74,222,128,0.55)',  EntityArt: BloomEntity,   summonColor: '#86efac', summonSecondaryColor: '#7f1d1d', auraStyle: 'bloom',   tier: 2 },
-  lum_compass: { id: 'lum_compass', primaryColor: '#3d6bff', secondaryColor: '#2ecc71', glowColor: 'rgba(61,107,255,0.55)',  EntityArt: CompassEntity, summonColor: '#38bdf8', summonSecondaryColor: '#0a0a14', auraStyle: 'distorted', tier: 2, entityBlendMode: 'screen' },
+  lum_compass: { id: 'lum_compass', primaryColor: '#1e40af', secondaryColor: '#0a0a14', glowColor: 'rgba(37,99,235,0.55)',   EntityArt: CompassEntity, summonColor: '#2563eb', summonSecondaryColor: '#0a0a14', auraStyle: 'distorted', tier: 2, entityBlendMode: 'screen' },
   lum_oracle:  { id: 'lum_oracle',  primaryColor: '#f59e0b', secondaryColor: '#2dd4bf', glowColor: 'rgba(245,158,11,0.65)', EntityArt: OracleEntity,  summonColor: '#fbbf24', summonSecondaryColor: '#ef4444', auraStyle: 'oracle',  tier: 3 },
   lum_null:    { id: 'lum_null',    primaryColor: '#ffffff', secondaryColor: '#0a0a14', glowColor: 'rgba(255,255,255,0.45)', EntityArt: NullEntity,    summonColor: '#ffffff', summonSecondaryColor: '#0a0a14', auraStyle: 'null',    tier: 3 },
   lum_hunger:  { id: 'lum_hunger',  primaryColor: '#dc2626', secondaryColor: '#0a0a0a', glowColor: 'rgba(220,38,38,0.55)',   EntityArt: HungerEntity,  summonColor: '#fbbf24', summonSecondaryColor: '#4ade80', auraStyle: 'oracle',  tier: 3 },
@@ -1196,18 +1225,19 @@ export function LuminaryPanelArt({
   claimed = false,
 }: {
   luminaryId: string;
-  /** Explicit pixel width applied to the component's own root div. Required so callers
-   *  can never accidentally produce a 0×0 invisible tile by forgetting to size the parent. */
-  width: number;
-  /** Explicit pixel height applied to the component's own root div. Required for the same
-   *  reason as `width`. */
-  height: number;
+  /** Pixel or CSS width applied to the component's root. Board cards pass 100%
+   *  so the art follows responsive card sizing; cutscenes pass pixels. */
+  width: number | string;
+  /** Pixel or CSS height applied to the component's root. */
+  height: number | string;
   claimed?: boolean;
 }) {
   const vis = getLuminaryVisuals(luminaryId);
   const { primaryColor, secondaryColor, glowColor, EntityArt } = vis;
   const { panelArt } = getLuminaryImageAssets(luminaryId);
-  const entitySize = Math.min(width, height);
+  const numericWidth = typeof width === 'number' ? width : 112;
+  const numericHeight = typeof height === 'number' ? height : 160;
+  const entitySize = Math.min(numericWidth, numericHeight);
 
   return (
     <div className="relative overflow-hidden" style={{ width, height }}>
@@ -1245,7 +1275,7 @@ export function LuminaryPanelArt({
         style={{ background: `radial-gradient(ellipse at 50% 28%, ${primaryColor}77 0%, ${secondaryColor}33 50%, transparent 82%)` }}
       />
 
-      {/* Inner noble-tile frame — double line */}
+      {/* Inner double-line containment frame. */}
       <div
         className="absolute pointer-events-none"
         style={{ inset: 5, border: `1px solid ${primaryColor}45`, borderRadius: 7 }}
@@ -1316,6 +1346,70 @@ type CutscenePhase =
   | 'pressure' | 'firstcrack' | 'leaking' | 'secondcrack' | 'cracking'
   | 'shattering' | 'flashing' | 'revealed' | 'fading' | 'done';
 
+export interface ArrivalBoardSnapshot {
+  src?: string;
+  html?: string;
+  className?: string;
+  attributes?: Record<string, string>;
+  shellClassName?: string;
+  shellAttributes?: Record<string, string>;
+  rect: { x: number; y: number; w: number; h: number };
+  cardRect: { cx: number; cy: number; w: number };
+  scroll: { x: number; y: number };
+  content: { w: number; h: number };
+  capturedAt: number;
+}
+
+interface LuminaryArrivalCutsceneProps {
+  luminaryId: string;
+  luminaryName: string;
+  domain: string;
+  eminence: number;
+  flavor: string;
+  effectName?: string;
+  claimedBy?: string;
+  cardRect?: { cx: number; cy: number; w: number };
+  boardSnapshot?: ArrivalBoardSnapshot;
+  cinematicMode?: 'standard' | 'epic';
+  onComplete: () => void;
+  onFlash?: () => void;
+  onSkip?: () => void;
+  autoSkipAfterMs?: number;
+  overrideColor?: string;
+}
+
+function ArrivalEffectBanner({
+  effectName,
+  primaryColor,
+}: {
+  effectName?: string;
+  primaryColor: string;
+}) {
+  if (!effectName) return null;
+  return (
+    <div
+      data-testid="luminary-arrival-effect"
+      className="mt-1 w-full rounded-xl border px-3 py-2 text-left"
+      style={{
+        maxWidth: 'min(92vw, 420px)',
+        background: 'rgba(3,4,14,0.86)',
+        borderColor: `${primaryColor}66`,
+        boxShadow: `0 8px 26px rgba(0,0,0,0.5), 0 0 18px ${primaryColor}18`,
+        overflowWrap: 'anywhere',
+      }}
+    >
+      {effectName && (
+        <div
+          className="text-[10px] font-bold uppercase"
+          style={{ color: primaryColor, letterSpacing: '0.16em' }}
+        >
+          {effectName}
+        </div>
+      )}
+    </div>
+  );
+}
+
 // Board-card dimensions: imported from '@/lib/constants' (BOARD_CARD_W / BOARD_CARD_H)
 
 // Freed entity display size (larger than original card frame)
@@ -1340,30 +1434,31 @@ const AMBIENT_H = Math.round(IDLE_H * 2.5);      // ≈ 440
 // `scale`          — multiplier on the inner entity wrapper (transformOrigin: center top).
 // `objectPosition` — CSS object-position for the entity <img>; overrides 'center top'.
 // `objectFit`      — CSS object-fit for the entity <img>; overrides 'contain'.
-// `idleCyFactor`   — TideEyeOverlay-only: vertical centre of the eye in the idle panel
-//                    as a fraction of IDLE_H. Lower value → eye moves up.
 const IDLE_ENTITY_OVERRIDES: Record<string, {
   scale?: number;
   objectPosition?: string;
   objectFit?: string;
-  idleCyFactor?: number;
+  claimedScale?: number;
+  claimedObjectPosition?: string;
+  claimedObjectFit?: string;
+  freedScale?: number;
   noFloat?: boolean;
 }> = {
   lum_void:   { scale: 1.22, objectPosition: 'center 25%' },
-  lum_tide:   { idleCyFactor: 0.435 },
   // Cosmic arachnid spans radially — center it in the portrait card frame
   // rather than using the default portrait 'center top' position.
-  lum_astral: { scale: 1.08, objectPosition: 'center 42%' },
-  // Wide cosmic entity — crop to fill the portrait card so it doesn't shrink
-  // to a tiny sliver with letterbox bars on top and bottom.
-  lum_compass: { scale: 1.0, objectFit: 'cover', objectPosition: 'center center', noFloat: true },
+  lum_astral: { scale: 1.08, objectPosition: 'center 42%', freedScale: 1.02 },
+  // Wide cosmic entity — keep the whole silhouette visible, then scale it up
+  // so it uses the panel's vertical space without hard clipping.
+  lum_compass: { scale: 1.9, objectFit: 'contain', objectPosition: 'center center', claimedScale: 1.9, claimedObjectFit: 'contain', claimedObjectPosition: 'center 50%', freedScale: 1.08, noFloat: true },
+  lum_pale: { claimedScale: 1.04, claimedObjectPosition: 'center 48%' },
   // Wide horizontal seed — shift down slightly so the body fills the tall
   // portrait panel without floating at the top.
-  lum_seed: { objectPosition: 'center 55%' },
+  lum_seed: { objectPosition: 'center 55%', claimedScale: 0.86, claimedObjectPosition: 'center 52%', freedScale: 1.04 },
   // Wide horizontal Glass Orchard — scale up and center so it fills the panel.
-  lum_orchard: { scale: 1.18, objectPosition: 'center 45%' },
+  lum_orchard: { scale: 1.18, objectPosition: 'center 45%', claimedScale: 0.90, claimedObjectPosition: 'center 48%', freedScale: 1.03 },
   // Landscape invasive growth organism — center it and stretch to fill the portrait frame.
-  lum_bloom: { objectPosition: 'center 50%' },
+  lum_bloom: { objectPosition: 'center 50%', claimedScale: 0.92, claimedObjectPosition: 'center 52%', freedScale: 1.06 },
 };
 
 // ── Six-Chunk Crystal Shatter Geometry ───────────────────────────────────────
@@ -1482,32 +1577,2234 @@ const PHASES: CutscenePhase[] = [
   'shattering', 'flashing', 'revealed', 'fading', 'done',
 ];
 
+const CANVAS_ARRIVAL_TIMES = {
+  establish: 0.00,
+  pan: ARRIVAL_CUTSCENE_BEATS_MS.focus / 1000,
+  focus: ARRIVAL_CUTSCENE_BEATS_MS.intro / 1000,
+  vessel: 1.70,
+  pressure: ARRIVAL_CUTSCENE_BEATS_MS.pressure / 1000,
+  firstCrack: ARRIVAL_CUTSCENE_BEATS_MS.firstCrack / 1000,
+  leaking: ARRIVAL_CUTSCENE_BEATS_MS.leak / 1000,
+  secondCrack: ARRIVAL_CUTSCENE_BEATS_MS.secondCrack / 1000,
+  cracking: ARRIVAL_CUTSCENE_BEATS_MS.cracking / 1000,
+  shattering: ARRIVAL_CUTSCENE_BEATS_MS.shatter / 1000,
+  flashing: ARRIVAL_CUTSCENE_BEATS_MS.flash / 1000,
+  revealed: ARRIVAL_CUTSCENE_BEATS_MS.reveal / 1000,
+  title: ARRIVAL_CUTSCENE_BEATS_MS.reveal / 1000 + 0.54,
+  tap: 8.86,
+} as const;
 
-export function LuminaryArrivalCutscene({
+function shouldUsePerformanceArrivalCutscene(): boolean {
+  if (typeof window === 'undefined') return true;
+  const params = new URLSearchParams(window.location.search);
+  return params.get('cssArrival') === '1';
+}
+
+export function LuminaryArrivalCutscene(props: LuminaryArrivalCutsceneProps) {
+  const autoSkipRef = useRef(props.onSkip);
+  autoSkipRef.current = props.onSkip;
+  useEffect(() => {
+    if (props.autoSkipAfterMs == null || !autoSkipRef.current) return;
+    const timer = setTimeout(() => autoSkipRef.current?.(), props.autoSkipAfterMs);
+    return () => clearTimeout(timer);
+  }, [props.autoSkipAfterMs, props.luminaryId]);
+
+  if (typeof window !== 'undefined') {
+    const params = new URLSearchParams(window.location.search);
+    if (params.get('fullArrival') === '1') return <LuminaryArrivalCutsceneFull {...props} />;
+  }
+  return shouldUsePerformanceArrivalCutscene()
+    ? <LuminaryArrivalCutscenePerformance {...props} />
+    : <LuminaryArrivalCutsceneCanvas {...props} />;
+}
+
+function easeOutCubic(t: number): number {
+  const x = Math.max(0, Math.min(1, t));
+  return 1 - Math.pow(1 - x, 3);
+}
+
+function clamp01(t: number): number {
+  return Math.max(0, Math.min(1, t));
+}
+
+function easeInOutCubic(t: number): number {
+  const x = Math.max(0, Math.min(1, t));
+  return x < 0.5 ? 4 * x * x * x : 1 - Math.pow(-2 * x + 2, 3) / 2;
+}
+
+function easeInOutSine(t: number): number {
+  const x = clamp01(t);
+  return -(Math.cos(Math.PI * x) - 1) / 2;
+}
+
+function hexToRgb(hex: string): { r: number; g: number; b: number } {
+  const clean = hex.startsWith('#') ? hex.slice(1) : hex;
+  const normalized = clean.length >= 6 ? clean.slice(0, 6) : 'a78bfa';
+  return {
+    r: parseInt(normalized.slice(0, 2), 16),
+    g: parseInt(normalized.slice(2, 4), 16),
+    b: parseInt(normalized.slice(4, 6), 16),
+  };
+}
+
+function rgbaFromRgb({ r, g, b }: { r: number; g: number; b: number }, alpha: number): string {
+  return `rgba(${r},${g},${b},${alpha})`;
+}
+
+function rgbaFromHex(hex: string, alpha: number): string {
+  return rgbaFromRgb(hexToRgb(hex), alpha);
+}
+
+function relativeLuminance({ r, g, b }: { r: number; g: number; b: number }): number {
+  const linear = [r, g, b].map((channel) => {
+    const c = channel / 255;
+    return c <= 0.03928 ? c / 12.92 : Math.pow((c + 0.055) / 1.055, 2.4);
+  });
+  return linear[0] * 0.2126 + linear[1] * 0.7152 + linear[2] * 0.0722;
+}
+
+function mixRgb(
+  from: { r: number; g: number; b: number },
+  to: { r: number; g: number; b: number },
+  amount: number,
+): { r: number; g: number; b: number } {
+  const a = clamp01(amount);
+  return {
+    r: Math.round(from.r + (to.r - from.r) * a),
+    g: Math.round(from.g + (to.g - from.g) * a),
+    b: Math.round(from.b + (to.b - from.b) * a),
+  };
+}
+
+function normalizedCrackRgb(hex: string): { r: number; g: number; b: number } {
+  const rgb = hexToRgb(hex);
+  const lum = relativeLuminance(rgb);
+  if (lum < 0.26) {
+    return mixRgb(rgb, { r: 255, g: 255, b: 255 }, Math.min(0.38, (0.26 - lum) * 1.15));
+  }
+  if (lum > 0.58) {
+    return mixRgb(rgb, { r: 120, g: 130, b: 160 }, Math.min(0.24, (lum - 0.58) * 0.62));
+  }
+  return rgb;
+}
+
+function drawRoundedRectPath(
+  ctx: CanvasRenderingContext2D,
+  x: number,
+  y: number,
+  w: number,
+  h: number,
+  r: number,
+) {
+  const radius = Math.min(r, w / 2, h / 2);
+  ctx.beginPath();
+  ctx.moveTo(x + radius, y);
+  ctx.arcTo(x + w, y, x + w, y + h, radius);
+  ctx.arcTo(x + w, y + h, x, y + h, radius);
+  ctx.arcTo(x, y + h, x, y, radius);
+  ctx.arcTo(x, y, x + w, y, radius);
+  ctx.closePath();
+}
+
+function fitCanvasTextLine(ctx: CanvasRenderingContext2D, text: string, maxWidth: number): string {
+  if (ctx.measureText(text).width <= maxWidth) return text;
+  let trimmed = text.trim();
+  while (trimmed.length > 1 && ctx.measureText(`${trimmed}...`).width > maxWidth) {
+    trimmed = trimmed.slice(0, -1).trimEnd();
+  }
+  return `${trimmed}...`;
+}
+
+function wrapCanvasTextLines(
+  ctx: CanvasRenderingContext2D,
+  text: string,
+  maxWidth: number,
+  maxLines: number,
+): string[] {
+  const words = text.trim().split(/\s+/).filter(Boolean);
+  const lines: string[] = [];
+  let current = '';
+
+  for (let i = 0; i < words.length; i++) {
+    const candidate = current ? `${current} ${words[i]}` : words[i];
+    if (ctx.measureText(candidate).width <= maxWidth) {
+      current = candidate;
+      continue;
+    }
+
+    if (current) {
+      lines.push(current);
+      current = words[i];
+    } else {
+      lines.push(fitCanvasTextLine(ctx, words[i], maxWidth));
+      current = '';
+    }
+
+    if (lines.length === maxLines) {
+      const remaining = [current, ...words.slice(i + 1)].filter(Boolean).join(' ');
+      lines[maxLines - 1] = fitCanvasTextLine(ctx, `${lines[maxLines - 1]} ${remaining}`, maxWidth);
+      return lines;
+    }
+  }
+
+  if (current) lines.push(current);
+  if (lines.length > maxLines) {
+    const kept = lines.slice(0, maxLines);
+    kept[maxLines - 1] = fitCanvasTextLine(ctx, kept[maxLines - 1], maxWidth);
+    return kept;
+  }
+  return lines;
+}
+
+function drawCoverImage(
+  ctx: CanvasRenderingContext2D,
+  img: HTMLImageElement,
+  x: number,
+  y: number,
+  w: number,
+  h: number,
+) {
+  const iw = img.naturalWidth || img.width;
+  const ih = img.naturalHeight || img.height;
+  if (!iw || !ih) return;
+  const scale = Math.max(w / iw, h / ih);
+  const sw = w / scale;
+  const sh = h / scale;
+  const sx = (iw - sw) / 2;
+  const sy = (ih - sh) / 2;
+  ctx.drawImage(img, sx, sy, sw, sh, x, y, w, h);
+}
+
+type DrawableImage = HTMLImageElement | HTMLCanvasElement;
+
+function getDrawableSize(img: DrawableImage): { width: number; height: number } {
+  if ('naturalWidth' in img) {
+    return {
+      width: img.naturalWidth || img.width,
+      height: img.naturalHeight || img.height,
+    };
+  }
+  return { width: img.width, height: img.height };
+}
+
+function drawContainDrawableTransformed(
+  ctx: CanvasRenderingContext2D,
+  img: DrawableImage,
+  cx: number,
+  cy: number,
+  maxW: number,
+  maxH: number,
+  scale = 1,
+  scaleX = 1,
+  scaleY = 1,
+  rotation = 0,
+) {
+  const { width: iw, height: ih } = getDrawableSize(img);
+  if (!iw || !ih) return;
+  const fit = Math.min(maxW / iw, maxH / ih) * scale;
+  const w = iw * fit;
+  const h = ih * fit;
+  ctx.save();
+  ctx.translate(cx, cy);
+  ctx.rotate(rotation);
+  ctx.scale(scaleX, scaleY);
+  ctx.drawImage(img, -w / 2, -h / 2, w, h);
+  ctx.restore();
+}
+
+function getContainDrawSize(
+  img: DrawableImage,
+  maxW: number,
+  maxH: number,
+  scale = 1,
+): { w: number; h: number } | null {
+  const { width: iw, height: ih } = getDrawableSize(img);
+  if (!iw || !ih) return null;
+  const fit = Math.min(maxW / iw, maxH / ih) * scale;
+  return { w: iw * fit, h: ih * fit };
+}
+
+function drawContainImageTransformed(
+  ctx: CanvasRenderingContext2D,
+  img: HTMLImageElement,
+  cx: number,
+  cy: number,
+  maxW: number,
+  maxH: number,
+  scale = 1,
+  scaleX = 1,
+  scaleY = 1,
+  rotation = 0,
+) {
+  drawContainDrawableTransformed(ctx, img, cx, cy, maxW, maxH, scale, scaleX, scaleY, rotation);
+}
+
+function drawCanvasTideEye(
+  ctx: CanvasRenderingContext2D,
+  cx: number,
+  cy: number,
+  entityW: number,
+  entityH: number,
+  scaleX: number,
+  scaleY: number,
+  rotation: number,
+  t: number,
+  alpha: number,
+) {
+  const eyeCx = -entityW / 2 + entityW * 0.49;
+  const eyeCy = -entityH / 2 + entityH * 0.472;
+  const irisR = Math.max(4, entityW * 0.052);
+  const scleraRX = irisR * 1.54;
+  const scleraRY = irisR * 1.28;
+  const pupilR = irisR * 0.38;
+  const blinkCycle = 5.8;
+  const blinkPhase = ((t + 0.85) % blinkCycle) / blinkCycle;
+  let blink = 0;
+  if (blinkPhase > 0.86) {
+    const p = (blinkPhase - 0.86) / 0.14;
+    const close = p < 0.42
+      ? easeInOutSine(p / 0.42)
+      : p < 0.58
+        ? 1
+        : 1 - easeInOutSine((p - 0.58) / 0.42);
+    blink = close * 0.86;
+  }
+  const openness = Math.max(0.16, 1 - blink * 0.96);
+  const blinkFade = 1 - blink * 0.08;
+  const maxDX = (scleraRX - irisR) * 0.76;
+  const maxDY = (scleraRY - irisR) * 0.76;
+  const blinkFocus = 1 - blink * 0.62;
+  const irisDx = (
+    Math.sin(t * 0.86) * maxDX * 0.72 +
+    Math.sin(t * 0.31 + 1.4) * maxDX * 0.20
+  ) * blinkFocus;
+  const irisDy = Math.sin(t * 0.73 + 2.1) * maxDY * 0.55 * blinkFocus;
+  const pulse = 0.55 + 0.45 * Math.sin(t * 2.2);
+
+  ctx.save();
+  ctx.translate(cx, cy);
+  ctx.rotate(rotation);
+  ctx.scale(scaleX, scaleY);
+  ctx.globalAlpha *= alpha;
+
+  ctx.save();
+  ctx.globalCompositeOperation = 'lighter';
+  ctx.strokeStyle = `rgba(30,184,240,${(0.24 + pulse * 0.28) * (1 - blink * 0.55)})`;
+  ctx.lineWidth = irisR * 0.42;
+  ctx.beginPath();
+  ctx.arc(eyeCx, eyeCy, irisR * 1.18, 0, Math.PI * 2);
+  ctx.stroke();
+  ctx.restore();
+
+  ctx.save();
+  ctx.beginPath();
+  ctx.ellipse(eyeCx, eyeCy, scleraRX, scleraRY * openness, 0, 0, Math.PI * 2);
+  ctx.clip();
+  ctx.globalAlpha *= blinkFade;
+
+  const sclera = ctx.createRadialGradient(
+    eyeCx - scleraRX * 0.22,
+    eyeCy - scleraRY * 0.22,
+    0,
+    eyeCx,
+    eyeCy,
+    scleraRX,
+  );
+  sclera.addColorStop(0, 'rgba(255,255,255,0.98)');
+  sclera.addColorStop(0.68, 'rgba(226,241,247,0.92)');
+  sclera.addColorStop(1, 'rgba(162,185,200,0.68)');
+  ctx.fillStyle = sclera;
+  ctx.beginPath();
+  ctx.ellipse(eyeCx, eyeCy, scleraRX, scleraRY, 0, 0, Math.PI * 2);
+  ctx.fill();
+
+  const irisX = eyeCx + irisDx;
+  const irisY = eyeCy + irisDy;
+  const iris = ctx.createRadialGradient(irisX - irisR * 0.22, irisY - irisR * 0.24, 0, irisX, irisY, irisR);
+  iris.addColorStop(0, '#091828');
+  iris.addColorStop(0.18, '#0c3460');
+  iris.addColorStop(0.46, '#1560a0');
+  iris.addColorStop(0.72, '#2a96dc');
+  iris.addColorStop(1, '#061525');
+  ctx.fillStyle = iris;
+  ctx.beginPath();
+  ctx.arc(irisX, irisY, irisR, 0, Math.PI * 2);
+  ctx.fill();
+
+  for (let i = 0; i < 24; i++) {
+    const a = (i / 24) * Math.PI * 2 + Math.sin(t * 0.25) * 0.06;
+    const inner = irisR * 0.24;
+    const outer = irisR * 0.97;
+    ctx.strokeStyle = `rgba(109,207,252,${0.14 + (i % 4) * 0.07})`;
+    ctx.lineWidth = Math.max(0.5, irisR * 0.03);
+    ctx.beginPath();
+    ctx.moveTo(irisX + Math.cos(a) * inner, irisY + Math.sin(a) * inner);
+    ctx.lineTo(irisX + Math.cos(a) * outer, irisY + Math.sin(a) * outer);
+    ctx.stroke();
+  }
+
+  ctx.strokeStyle = 'rgba(6,20,36,0.88)';
+  ctx.lineWidth = irisR * 0.10;
+  ctx.beginPath();
+  ctx.arc(irisX, irisY, irisR, 0, Math.PI * 2);
+  ctx.stroke();
+
+  const pupil = ctx.createRadialGradient(irisX, irisY, 0, irisX, irisY, pupilR * 1.2);
+  pupil.addColorStop(0, '#000');
+  pupil.addColorStop(0.82, '#020508');
+  pupil.addColorStop(1, '#060c18');
+  ctx.fillStyle = pupil;
+  ctx.beginPath();
+  ctx.arc(irisX, irisY, pupilR, 0, Math.PI * 2);
+  ctx.fill();
+
+  ctx.fillStyle = `rgba(255,255,255,${0.94 * (1 - blink * 0.82)})`;
+  ctx.beginPath();
+  ctx.arc(irisX + irisR * 0.32, irisY - irisR * 0.36, irisR * 0.14, 0, Math.PI * 2);
+  ctx.fill();
+  ctx.globalAlpha *= 0.58 * (1 - blink * 0.82);
+  ctx.beginPath();
+  ctx.arc(irisX - irisR * 0.18, irisY + irisR * 0.44, irisR * 0.06, 0, Math.PI * 2);
+  ctx.fill();
+  ctx.restore();
+
+  ctx.fillStyle = 'rgba(2,8,16,0.32)';
+  ctx.beginPath();
+  ctx.ellipse(eyeCx, eyeCy - scleraRY * 0.10, scleraRX * 0.98, scleraRY * 0.60, 0, 0, Math.PI * 2);
+  ctx.fill();
+
+  if (blink > 0.01) {
+    const left = eyeCx - scleraRX * 0.92;
+    const right = eyeCx + scleraRX * 0.92;
+    const seamY = eyeCy + scleraRY * 0.03;
+    ctx.strokeStyle = `rgba(132,201,236,${0.18 * blink})`;
+    ctx.lineWidth = Math.max(1, irisR * 0.07);
+    ctx.beginPath();
+    ctx.moveTo(left, seamY);
+    ctx.quadraticCurveTo(eyeCx, seamY + scleraRY * 0.08, right, seamY);
+    ctx.stroke();
+  }
+
+  ctx.restore();
+}
+
+function createTintedImageCanvas(img: HTMLImageElement, tint = 'rgba(0,0,0,0.96)'): HTMLCanvasElement | null {
+  if (typeof document === 'undefined') return null;
+  const iw = img.naturalWidth || img.width;
+  const ih = img.naturalHeight || img.height;
+  if (!iw || !ih) return null;
+
+  const canvas = document.createElement('canvas');
+  canvas.width = iw;
+  canvas.height = ih;
+  const canvasCtx = canvas.getContext('2d');
+  if (!canvasCtx) return null;
+
+  canvasCtx.drawImage(img, 0, 0, iw, ih);
+  canvasCtx.globalCompositeOperation = 'source-in';
+  canvasCtx.fillStyle = tint;
+  canvasCtx.fillRect(0, 0, iw, ih);
+  canvasCtx.globalCompositeOperation = 'source-over';
+  return canvas;
+}
+
+function drawTintedContainImageTransformed(
+  ctx: CanvasRenderingContext2D,
+  img: HTMLImageElement,
+  scratch: HTMLCanvasElement,
+  cx: number,
+  cy: number,
+  maxW: number,
+  maxH: number,
+  scale = 1,
+  scaleX = 1,
+  scaleY = 1,
+  rotation = 0,
+  tint = 'rgba(0,0,0,0.96)',
+) {
+  const iw = img.naturalWidth || img.width;
+  const ih = img.naturalHeight || img.height;
+  if (!iw || !ih) return;
+
+  if (scratch.width !== iw || scratch.height !== ih) {
+    scratch.width = iw;
+    scratch.height = ih;
+  }
+
+  const scratchCtx = scratch.getContext('2d');
+  if (!scratchCtx) return;
+  scratchCtx.clearRect(0, 0, iw, ih);
+  scratchCtx.globalCompositeOperation = 'source-over';
+  scratchCtx.drawImage(img, 0, 0, iw, ih);
+  scratchCtx.globalCompositeOperation = 'source-in';
+  scratchCtx.fillStyle = tint;
+  scratchCtx.fillRect(0, 0, iw, ih);
+  scratchCtx.globalCompositeOperation = 'source-over';
+
+  const fit = Math.min(maxW / iw, maxH / ih) * scale;
+  const w = iw * fit;
+  const h = ih * fit;
+  ctx.save();
+  ctx.translate(cx, cy);
+  ctx.rotate(rotation);
+  ctx.scale(scaleX, scaleY);
+  ctx.drawImage(scratch, -w / 2, -h / 2, w, h);
+  ctx.restore();
+}
+
+function seededStars(seed: string, count: number) {
+  let h = 2166136261;
+  for (let i = 0; i < seed.length; i++) {
+    h ^= seed.charCodeAt(i);
+    h = Math.imul(h, 16777619);
+  }
+  const rand = () => {
+    h += 0x6D2B79F5;
+    let t = h;
+    t = Math.imul(t ^ (t >>> 15), t | 1);
+    t ^= t + Math.imul(t ^ (t >>> 7), t | 61);
+    return ((t ^ (t >>> 14)) >>> 0) / 4294967296;
+  };
+  return Array.from({ length: count }, () => ({
+    x: rand(),
+    y: rand(),
+    r: 0.35 + rand() * 1.15,
+    a: 0.18 + rand() * 0.54,
+  }));
+}
+
+function polygonCoordsFromClip(clip: string): Array<{ x: number; y: number }> {
+  const nums = Array.from(clip.matchAll(/(-?\d+(?:\.\d+)?)%/g)).map(m => Number(m[1]) / 100);
+  const coords: Array<{ x: number; y: number }> = [];
+  for (let i = 0; i < nums.length - 1; i += 2) coords.push({ x: nums[i], y: nums[i + 1] });
+  return coords;
+}
+
+const CANVAS_SHARD_PIECES = PANEL_PIECES.map(piece => ({
+  ...piece,
+  coords: polygonCoordsFromClip(piece.clip),
+}));
+
+type CanvasPoint = { x: number; y: number };
+
+function drawPartialPolyline(
+  ctx: CanvasRenderingContext2D,
+  points: CanvasPoint[],
+  progress: number,
+) {
+  if (points.length < 2) return;
+  const p = clamp01(progress);
+  if (p <= 0) return;
+
+  const lengths: number[] = [];
+  let total = 0;
+  for (let i = 0; i < points.length - 1; i++) {
+    const a = points[i];
+    const b = points[i + 1];
+    const length = Math.hypot(b.x - a.x, b.y - a.y);
+    lengths.push(length);
+    total += length;
+  }
+  if (total <= 0) return;
+
+  let remaining = total * p;
+  ctx.beginPath();
+  ctx.moveTo(points[0].x, points[0].y);
+  for (let i = 0; i < lengths.length; i++) {
+    const length = lengths[i];
+    const a = points[i];
+    const b = points[i + 1];
+    if (remaining >= length) {
+      ctx.lineTo(b.x, b.y);
+      remaining -= length;
+      continue;
+    }
+    const local = length <= 0 ? 1 : remaining / length;
+    ctx.lineTo(a.x + (b.x - a.x) * local, a.y + (b.y - a.y) * local);
+    break;
+  }
+  ctx.stroke();
+}
+
+function drawPolylineSegment(
+  ctx: CanvasRenderingContext2D,
+  points: CanvasPoint[],
+  startProgress: number,
+  endProgress: number,
+) {
+  if (points.length < 2) return;
+  const start = clamp01(startProgress);
+  const end = clamp01(endProgress);
+  if (end <= start) return;
+
+  const lengths: number[] = [];
+  let total = 0;
+  for (let i = 0; i < points.length - 1; i++) {
+    const a = points[i];
+    const b = points[i + 1];
+    const length = Math.hypot(b.x - a.x, b.y - a.y);
+    lengths.push(length);
+    total += length;
+  }
+  if (total <= 0) return;
+
+  const startDistance = total * start;
+  const endDistance = total * end;
+  let travelled = 0;
+  let hasMoved = false;
+
+  ctx.beginPath();
+  for (let i = 0; i < lengths.length; i++) {
+    const length = lengths[i];
+    const a = points[i];
+    const b = points[i + 1];
+    const segmentStart = travelled;
+    const segmentEnd = travelled + length;
+    travelled = segmentEnd;
+
+    if (segmentEnd < startDistance || segmentStart > endDistance || length <= 0) continue;
+
+    const localStart = clamp01((Math.max(startDistance, segmentStart) - segmentStart) / length);
+    const localEnd = clamp01((Math.min(endDistance, segmentEnd) - segmentStart) / length);
+    const sx = a.x + (b.x - a.x) * localStart;
+    const sy = a.y + (b.y - a.y) * localStart;
+    const ex = a.x + (b.x - a.x) * localEnd;
+    const ey = a.y + (b.y - a.y) * localEnd;
+
+    if (!hasMoved) {
+      ctx.moveTo(sx, sy);
+      hasMoved = true;
+    } else {
+      ctx.lineTo(sx, sy);
+    }
+    ctx.lineTo(ex, ey);
+  }
+
+  if (hasMoved) ctx.stroke();
+}
+
+function drawLuminaryPanelCanvas(
+  ctx: CanvasRenderingContext2D,
+  img: HTMLImageElement | null,
+  x: number,
+  y: number,
+  w: number,
+  h: number,
+  primaryColor: string,
+  secondaryColor: string,
+) {
+  drawRoundedRectPath(ctx, x, y, w, h, Math.min(13, w * 0.08));
+  ctx.clip();
+  if (img) {
+    drawCoverImage(ctx, img, x, y, w, h);
+  } else {
+    const panel = ctx.createLinearGradient(x, y, x + w, y + h);
+    panel.addColorStop(0, rgbaFromHex(primaryColor, 0.48));
+    panel.addColorStop(0.52, '#070511');
+    panel.addColorStop(1, rgbaFromHex(secondaryColor, 0.38));
+    ctx.fillStyle = panel;
+    ctx.fillRect(x, y, w, h);
+  }
+  const tint = ctx.createRadialGradient(x + w * 0.5, y + h * 0.25, 0, x + w * 0.5, y + h * 0.5, h * 0.75);
+  tint.addColorStop(0, rgbaFromHex(primaryColor, 0.32));
+  tint.addColorStop(0.55, 'rgba(0,0,0,0)');
+  tint.addColorStop(1, 'rgba(0,0,0,0.68)');
+  ctx.fillStyle = tint;
+  ctx.fillRect(x, y, w, h);
+}
+
+function drawCanvasCrackNetwork(
+  ctx: CanvasRenderingContext2D,
+  x: number,
+  y: number,
+  w: number,
+  h: number,
+  progress: number,
+  primaryColor: string,
+) {
+  const p = clamp01(progress);
+  if (p <= 0) return;
+
+  type CrackPathSpec = {
+    points: Array<[number, number]>;
+    delay: number;
+    duration: number;
+    coreWidth: number;
+    glowWidth: number;
+  };
+
+  const unit = w / BOARD_CARD_W;
+  const toPoint = ([cx, cy]: [number, number]): CanvasPoint => ({
+    x: x + (cx / BOARD_CARD_W) * w,
+    y: y + (cy / BOARD_CARD_H) * h,
+  });
+  const pointAt = (cx: number, cy: number): CanvasPoint => toPoint([cx, cy]);
+  const crackRgb = normalizedCrackRgb(primaryColor);
+  const crackRgba = (alpha: number) => rgbaFromRgb(crackRgb, alpha);
+
+  const paths: CrackPathSpec[] = [
+    { points: [[TAX, 0], [K1X, K1Y], [PX, PY]], delay: 0.00, duration: 0.15, coreWidth: 1.50, glowWidth: 22 },
+    { points: [[PX, PY], [K2X, K2Y], [BOARD_CARD_W, RAY]], delay: 0.06, duration: 0.15, coreWidth: 1.20, glowWidth: 18 },
+    { points: [[PX, PY], [K3aX, K3aY], [K3bX, K3bY], [0, LA2Y]], delay: 0.07, duration: 0.17, coreWidth: 1.00, glowWidth: 16 },
+    { points: [[K1X, K1Y], [22, 14], [12, 5]], delay: 0.10, duration: 0.10, coreWidth: 0.60, glowWidth: 8 },
+    { points: [[PX, PY], [K4X, K4Y], [QX, QY], [K8X, K8Y], [BAX, BOARD_CARD_H]], delay: 0.46, duration: 0.22, coreWidth: 1.60, glowWidth: 24 },
+    { points: [[K4X, K4Y], [38, 84], [28, 82]], delay: 0.50, duration: 0.10, coreWidth: 0.55, glowWidth: 7 },
+    { points: [[QX, QY], [K5X, K5Y], [K6X, K6Y], [BOARD_CARD_W, RBY]], delay: 0.54, duration: 0.18, coreWidth: 1.00, glowWidth: 14 },
+    { points: [[QX, QY], [K7X, K7Y], [0, LAY]], delay: 0.59, duration: 0.16, coreWidth: 0.85, glowWidth: 11 },
+  ];
+
+  const drawPool = (cx: number, cy: number, radius: number, amount: number) => {
+    const a = clamp01(amount);
+    if (a <= 0) return;
+    const center = pointAt(cx, cy);
+    const r = radius * unit * (0.72 + a * 0.18);
+    const pool = ctx.createRadialGradient(center.x, center.y, 0, center.x, center.y, r);
+    pool.addColorStop(0, `rgba(255,255,255,${0.32 * a})`);
+    pool.addColorStop(0.24, crackRgba(0.28 * a));
+    pool.addColorStop(0.62, crackRgba(0.07 * a));
+    pool.addColorStop(1, 'rgba(255,255,255,0)');
+    ctx.fillStyle = pool;
+    ctx.beginPath();
+    ctx.arc(center.x, center.y, r, 0, Math.PI * 2);
+    ctx.fill();
+  };
+
+  const drawRay = (from: [number, number], to: [number, number], widthCard: number, amount: number) => {
+    const a = clamp01(amount);
+    if (a <= 0) return;
+    const start = toPoint(from);
+    const end = toPoint(to);
+    const ray = ctx.createLinearGradient(start.x, start.y, end.x, end.y);
+    ray.addColorStop(0, `rgba(255,255,255,${0.52 * a})`);
+    ray.addColorStop(0.18, crackRgba(0.24 * a));
+    ray.addColorStop(1, 'rgba(255,255,255,0)');
+    ctx.strokeStyle = ray;
+    ctx.lineWidth = widthCard * unit;
+    ctx.beginPath();
+    ctx.moveTo(start.x, start.y);
+    ctx.lineTo(end.x, end.y);
+    ctx.stroke();
+  };
+
+  ctx.save();
+  ctx.lineCap = 'round';
+  ctx.lineJoin = 'round';
+
+  drawPool(PX, PY, 18, (p - 0.13) / 0.20);
+  drawPool(K2X, K2Y, 10, (p - 0.22) / 0.30);
+  drawPool(QX, QY, 16, (p - 0.47) / 0.20);
+
+  ctx.globalCompositeOperation = 'lighter';
+  for (const path of paths) {
+    const localRaw = (p - path.delay) / path.duration;
+    const local = clamp01(localRaw);
+    if (local <= 0) continue;
+    const draw = easeOutCubic(local);
+    const traceDelay = Math.max(0.035, path.duration * 0.28);
+    const traceRaw = (p - path.delay - traceDelay) / (path.duration * 2.35);
+    const trace = easeOutCubic(clamp01(traceRaw));
+    const residualRaw = (p - path.delay - path.duration * 0.90) / (path.duration * 2.20);
+    const residual = easeOutCubic(clamp01(residualRaw));
+    const points = path.points.map(toPoint);
+    const hot = Math.max(0, 1 - local * 0.72);
+    const traceHeat = Math.sin(clamp01(traceRaw) * Math.PI);
+    const traceHeadTail = Math.max(0, trace - 0.12 - path.duration * 0.38);
+    const traceGlowTail = Math.max(0, trace - 0.20 - path.duration * 0.58);
+
+    // Canvas equivalent of the original 4-layer crack paint:
+    // white rupture first, then the Luminary color chases and settles into the wound.
+    if (trace > 0) {
+      ctx.strokeStyle = crackRgba((0.18 + 0.26 * traceHeat) * (1 - residual * 0.72));
+      ctx.lineWidth = path.glowWidth * unit * 0.24;
+      drawPolylineSegment(ctx, points, traceGlowTail, trace);
+
+      ctx.strokeStyle = crackRgba(0.30 + 0.30 * traceHeat);
+      ctx.lineWidth = Math.max(1.3, path.coreWidth * unit * 2.35);
+      drawPolylineSegment(ctx, points, traceHeadTail, trace);
+    }
+
+    if (residual > 0) {
+      ctx.strokeStyle = crackRgba(0.10 + 0.18 * residual);
+      ctx.lineWidth = Math.max(0.9, path.coreWidth * unit * 1.45);
+      drawPartialPolyline(ctx, points, Math.max(trace, residual));
+
+      ctx.strokeStyle = crackRgba(0.18 + 0.18 * residual);
+      ctx.lineWidth = Math.max(0.75, path.coreWidth * unit * 0.92);
+      drawPartialPolyline(ctx, points, Math.max(trace, residual));
+    }
+
+    ctx.strokeStyle = `rgba(255,255,255,${0.68 + 0.30 * hot})`;
+    ctx.lineWidth = Math.max(0.7, path.coreWidth * unit);
+    drawPartialPolyline(ctx, points, draw);
+  }
+
+  const rayAmount = Math.sin(clamp01((p - 0.62) / 0.25) * Math.PI) * 0.82;
+  drawRay([PX, PY], [PX, 0], 2.4, rayAmount);
+  drawRay([PX, PY], [PX, BOARD_CARD_H], 2.4, rayAmount * 0.9);
+  drawRay([PX, PY], [0, PY], 1.6, rayAmount * 0.7);
+  drawRay([PX, PY], [BOARD_CARD_W, PY], 1.6, rayAmount * 0.7);
+
+  const motePoints: Array<[number, number, number, number]> = [
+    [TAX, 8, 1.1, 0.22],
+    [K1X, K1Y, 0.9, 0.18],
+    [PX, PY, 1.5, 0.12],
+    [K2X, K2Y, 0.9, 0.25],
+    [K3bX, K3bY, 0.9, 0.28],
+    [K4X, K4Y, 1.0, 0.50],
+    [K5X, K5Y, 0.9, 0.58],
+    [QX, QY, 1.2, 0.50],
+  ];
+  for (let i = 0; i < motePoints.length; i++) {
+    const [mx, my, radius, delay] = motePoints[i];
+    const a = clamp01((p - delay) / 0.14);
+    if (a <= 0) continue;
+    const mote = pointAt(mx, my);
+    ctx.fillStyle = `rgba(255,255,255,${0.34 + 0.48 * Math.sin(a * Math.PI)})`;
+    ctx.beginPath();
+    ctx.arc(
+      mote.x + Math.sin(p * 42 + i) * unit * 0.5,
+      mote.y + Math.cos(p * 35 + i) * unit * 0.5,
+      radius * unit,
+      0,
+      Math.PI * 2,
+    );
+    ctx.fill();
+  }
+
+  ctx.globalCompositeOperation = 'source-over';
+  const core = ctx.createRadialGradient(x + w * 0.50, y + h * 0.43, 0, x + w * 0.50, y + h * 0.43, Math.max(w, h) * 0.25);
+  core.addColorStop(0, `rgba(255,255,255,${0.05 * p})`);
+  core.addColorStop(0.32, crackRgba(0.07 * p));
+  core.addColorStop(1, 'rgba(255,255,255,0)');
+  ctx.fillStyle = core;
+  ctx.fillRect(x, y, w, h);
+  ctx.restore();
+}
+
+function drawCanvasPanelReleaseLight(
+  ctx: CanvasRenderingContext2D,
+  x: number,
+  y: number,
+  w: number,
+  h: number,
+  leakProgress: number,
+  burstProgress: number,
+  primaryColor: string,
+  secondaryColor: string,
+) {
+  const leak = easeOutCubic(clamp01(leakProgress));
+  const burst = Math.sin(clamp01(burstProgress) * Math.PI);
+  const intensity = Math.max(leak * 0.64, burst);
+  if (intensity <= 0) return;
+
+  const unit = w / BOARD_CARD_W;
+  const ruptureX = x + (PX / BOARD_CARD_W) * w;
+  const ruptureY = y + (PY / BOARD_CARD_H) * h;
+  const crackRgb = normalizedCrackRgb(primaryColor);
+  const crackRgba = (alpha: number) => rgbaFromRgb(crackRgb, alpha);
+  const toPoint = ([cx, cy]: [number, number]): CanvasPoint => ({
+    x: x + (cx / BOARD_CARD_W) * w,
+    y: y + (cy / BOARD_CARD_H) * h,
+  });
+
+  ctx.save();
+  drawRoundedRectPath(ctx, x, y, w, h, Math.min(13, w * 0.08));
+  ctx.clip();
+  ctx.globalCompositeOperation = 'lighter';
+
+  const coreRadius = Math.max(w, h) * (0.26 + leak * 0.24 + burst * 0.16);
+  const core = ctx.createRadialGradient(ruptureX, ruptureY, 0, ruptureX, ruptureY, coreRadius);
+  core.addColorStop(0, `rgba(255,255,255,${0.12 * leak + 0.54 * burst})`);
+  core.addColorStop(0.16, crackRgba(0.13 * leak + 0.44 * burst));
+  core.addColorStop(0.46, rgbaFromHex(secondaryColor, 0.10 * leak + 0.26 * burst));
+  core.addColorStop(1, 'rgba(255,255,255,0)');
+  ctx.fillStyle = core;
+  ctx.fillRect(x, y, w, h);
+
+  const paths: Array<Array<[number, number]>> = [
+    [[TAX, 0], [K1X, K1Y], [PX, PY], [K2X, K2Y], [BOARD_CARD_W, RAY]],
+    [[PX, PY], [K3aX, K3aY], [K3bX, K3bY], [0, LA2Y]],
+    [[PX, PY], [K4X, K4Y], [QX, QY], [K8X, K8Y], [BAX, BOARD_CARD_H]],
+    [[QX, QY], [K5X, K5Y], [K6X, K6Y], [BOARD_CARD_W, RBY]],
+    [[QX, QY], [K7X, K7Y], [0, LAY]],
+  ];
+
+  const rayAlpha = Math.min(1, leak * 0.34 + burst * 0.88);
+  ctx.lineCap = 'round';
+  ctx.lineJoin = 'round';
+  for (const [i, path] of paths.entries()) {
+    const pathProgress = clamp01((leakProgress - i * 0.035) / 0.74 + burst * 0.35);
+    if (pathProgress <= 0) continue;
+    const points = path.map(toPoint);
+    ctx.strokeStyle = `rgba(255,255,255,${rayAlpha * (0.18 + burst * 0.15)})`;
+    ctx.lineWidth = Math.max(1.0, unit * (1.5 + burst * 1.4));
+    drawPartialPolyline(ctx, points, pathProgress);
+    ctx.strokeStyle = crackRgba(rayAlpha * (0.12 + burst * 0.16));
+    ctx.lineWidth = Math.max(1.6, unit * (2.8 + burst * 3.0));
+    drawPolylineSegment(ctx, points, Math.max(0, pathProgress - 0.18), pathProgress);
+  }
+
+  ctx.restore();
+}
+
+function drawCanvasShard(
+  ctx: CanvasRenderingContext2D,
+  img: HTMLImageElement | null,
+  piece: (typeof CANVAS_SHARD_PIECES)[number],
+  pieceIndex: number,
+  x: number,
+  y: number,
+  w: number,
+  h: number,
+  ageSeconds: number,
+  primaryColor: string,
+  secondaryColor: string,
+) {
+  if (ageSeconds <= 0) return;
+
+  const breakaway = easeOutCubic(clamp01(ageSeconds / 0.18));
+  const life = clamp01(ageSeconds / 2.25);
+  const drift = breakaway * 0.28 + ageSeconds * 0.92;
+  const spinProgress = easeOutCubic(clamp01(ageSeconds / 1.05));
+  const spin = (piece.rotateZ * (0.32 * breakaway + 1.62 * spinProgress)) * Math.PI / 180;
+  const dx = piece.dx * drift * 1.36;
+  const dy = piece.dy * drift * 1.36 - Math.sin(clamp01(ageSeconds / 0.90) * Math.PI) * 14;
+  const fade = easeInOutCubic(clamp01((ageSeconds - 0.58) / 1.05));
+  const opacity = Math.max(0, 1 - fade);
+  const transmute = easeInOutCubic(clamp01((ageSeconds - 0.20) / 0.92));
+  const glowPulse = Math.sin(life * Math.PI);
+  const shardScale = 1 - transmute * 0.26;
+  const slabOpacity = opacity * (1 - transmute * 0.42);
+  const centroid = piece.coords.reduce(
+    (acc, pt) => ({ x: acc.x + pt.x, y: acc.y + pt.y }),
+    { x: 0, y: 0 },
+  );
+  centroid.x /= Math.max(1, piece.coords.length);
+  centroid.y /= Math.max(1, piece.coords.length);
+  const localX = (centroid.x - 0.5) * w * shardScale;
+  const localY = (centroid.y - 0.5) * h * shardScale;
+  const baseX = x + w / 2 + dx + Math.cos(spin) * localX - Math.sin(spin) * localY;
+  const baseY = y + h / 2 + dy + Math.sin(spin) * localX + Math.cos(spin) * localY;
+  const outward = Math.atan2(piece.dy || 1, piece.dx || 1);
+
+  ctx.save();
+  ctx.globalAlpha *= slabOpacity;
+  ctx.translate(x + w / 2 + dx, y + h / 2 + dy);
+  ctx.rotate(spin);
+  ctx.scale(shardScale, shardScale);
+  ctx.translate(-w / 2, -h / 2);
+  ctx.beginPath();
+  piece.coords.forEach((pt, i) => {
+    const px = pt.x * w;
+    const py = pt.y * h;
+    if (i === 0) ctx.moveTo(px, py);
+    else ctx.lineTo(px, py);
+  });
+  ctx.closePath();
+  ctx.clip();
+  drawLuminaryPanelCanvas(ctx, img, 0, 0, w, h, primaryColor, secondaryColor);
+  ctx.globalCompositeOperation = 'screen';
+  ctx.fillStyle = rgbaFromHex(primaryColor, 0.18 + transmute * 0.62 + glowPulse * 0.12);
+  ctx.fillRect(0, 0, w, h);
+  ctx.globalCompositeOperation = 'source-over';
+  ctx.strokeStyle = rgbaFromHex(primaryColor, 0.32 + transmute * 0.36);
+  ctx.lineWidth = 1.1 + transmute * 0.9;
+  ctx.stroke();
+  ctx.restore();
+
+  const fragmentProgress = clamp01((ageSeconds - 0.28) / 1.58);
+  const fragmentAlpha = Math.sin(fragmentProgress * Math.PI) * (0.42 + transmute * 0.42) * opacity;
+  if (fragmentAlpha > 0.01) {
+    ctx.save();
+    ctx.globalCompositeOperation = 'lighter';
+    ctx.globalAlpha *= fragmentAlpha;
+    for (let j = 0; j < 6; j++) {
+      const seed = pieceIndex * 19 + j * 11;
+      const side = j % 2 === 0 ? 1 : -1;
+      const spread = (j - 2.5) * 0.22 + side * 0.16 + Math.sin(seed) * 0.08;
+      const angle = outward + spread + Math.sin(ageSeconds * 4.2 + seed) * 0.04;
+      const travel = (11 + j * 4.2 + pieceIndex * 1.7) * (0.45 + fragmentProgress * 1.55);
+      const chipX = baseX + Math.cos(angle) * travel + Math.sin(ageSeconds * 5.7 + seed) * 2.4;
+      const chipY = baseY + Math.sin(angle) * travel + Math.cos(ageSeconds * 4.9 + seed) * 2.4;
+      const chipSize = (1.9 + (j % 3) * 0.8) * (1 - fragmentProgress * 0.38);
+      const chipSpin = spin + ageSeconds * (0.8 + j * 0.17) * side;
+
+      ctx.save();
+      ctx.translate(chipX, chipY);
+      ctx.rotate(chipSpin);
+      ctx.fillStyle = j % 3 === 0
+        ? `rgba(255,255,255,${0.20 + transmute * 0.42})`
+        : rgbaFromHex(primaryColor, 0.24 + transmute * 0.46);
+      ctx.beginPath();
+      ctx.moveTo(0, -chipSize * 1.25);
+      ctx.lineTo(chipSize * 0.95, chipSize * 0.64);
+      ctx.lineTo(-chipSize * 0.72, chipSize * 0.84);
+      ctx.closePath();
+      ctx.fill();
+      ctx.restore();
+    }
+    ctx.restore();
+  }
+
+  const spark = Math.sin(clamp01((ageSeconds - 0.10) / 1.28) * Math.PI) * opacity;
+  if (spark > 0.01) {
+    ctx.save();
+    ctx.globalCompositeOperation = 'lighter';
+    ctx.globalAlpha *= spark * (0.34 + transmute * 0.38);
+    for (let j = 0; j < 4; j++) {
+      const side = j % 2 === 0 ? 1 : -1;
+      const spread = (j + 1) * 0.30 * side;
+      const angle = outward + spread + Math.sin(ageSeconds * 6 + j) * 0.10;
+      const length = (16 + j * 5) * (0.55 + transmute * 0.85);
+      const start = 3 + j * 1.7;
+      ctx.strokeStyle = j === 0
+        ? `rgba(255,255,255,${0.36 + transmute * 0.36})`
+        : rgbaFromHex(primaryColor, 0.32 + transmute * 0.42);
+      ctx.lineWidth = j === 0 ? 1.2 : 0.85;
+      ctx.beginPath();
+      ctx.moveTo(baseX + Math.cos(angle) * start, baseY + Math.sin(angle) * start);
+      ctx.lineTo(baseX + Math.cos(angle) * (start + length), baseY + Math.sin(angle) * (start + length));
+      ctx.stroke();
+    }
+    ctx.fillStyle = rgbaFromHex(secondaryColor, 0.22 + transmute * 0.42);
+    for (let j = 0; j < 3; j++) {
+      const angle = outward + (j - 1) * 0.58;
+      const radius = (10 + j * 9) * (0.60 + transmute);
+      ctx.beginPath();
+      ctx.arc(
+        baseX + Math.cos(angle) * radius,
+        baseY + Math.sin(angle) * radius,
+        1.1 + transmute * 1.2,
+        0,
+        Math.PI * 2,
+      );
+      ctx.fill();
+    }
+    ctx.restore();
+  }
+}
+
+function LuminaryArrivalCutsceneCanvas({
   luminaryId,
   luminaryName,
   domain,
-  lumens,
+  eminence,
   flavor,
+  effectName,
+  claimedBy,
+  cardRect,
+  boardSnapshot,
+  cinematicMode,
+  onComplete,
+  onFlash,
+  onSkip,
+  overrideColor,
+}: LuminaryArrivalCutsceneProps) {
+  const canvasRef = useRef<HTMLCanvasElement | null>(null);
+  const containerRef = useRef<HTMLElement | null>(null);
+  const frameRef = useRef<number | null>(null);
+  const startRef = useRef(0);
+  const fadeStartRef = useRef<number | null>(null);
+  const completedRef = useRef(false);
+  const waitingRef = useRef(false);
+  const flashFiredRef = useRef(false);
+  const redrawRef = useRef<(() => void) | null>(null);
+  const [awaitingDismiss, setAwaitingDismiss] = useState(false);
+  const [isFinishing, setIsFinishing] = useState(false);
+  const onCompleteRef = useRef(onComplete);
+  useEffect(() => { onCompleteRef.current = onComplete; }, [onComplete]);
+  const onFlashRef = useRef(onFlash);
+  useEffect(() => { onFlashRef.current = onFlash; }, [onFlash]);
+
+  const vis = getLuminaryVisuals(luminaryId);
+  const { primaryColor: visPrimaryColor, secondaryColor, glowColor, auraStyle } = vis;
+  const primaryColor = (overrideColor && overrideColor.startsWith('#') && overrideColor.length >= 7)
+    ? overrideColor
+    : visPrimaryColor;
+  const isEpicSnapshot = cinematicMode === 'epic' && !!boardSnapshot && !!cardRect;
+  const { panelArt, entityCutout, cinematicArt } = getLuminaryImageAssets(luminaryId);
+  // Use the transparent entity art for the moving figure. The cheap cinematic
+  // textures are useful fallbacks, but several are square renders; using them as
+  // the primary swing-in entity makes the summon feel boxed or visually swapped.
+  const entityImageSrc = luminaryId === 'lum_radiant' ? null : entityCutout ?? cinematicArt ?? panelArt;
+  const panelImageRef = useRef<HTMLImageElement | null>(null);
+  const entityImageRef = useRef<HTMLImageElement | null>(null);
+  const radiantLayerRefs = useRef<{
+    ring: HTMLImageElement | null;
+    body: HTMLImageElement | null;
+    core: HTMLImageElement | null;
+  }>({ ring: null, body: null, core: null });
+  const boardSnapshotImageRef = useRef<HTMLImageElement | null>(null);
+  const silhouetteCanvasRef = useRef<HTMLCanvasElement | null>(null);
+  const starsRef = useRef(seededStars(luminaryId, 70));
+
+  useEffect(() => {
+    let cancelled = false;
+    panelImageRef.current = null;
+    if (panelArt) {
+      const img = new Image();
+      img.decoding = 'async';
+      img.src = panelArt;
+      img.onload = () => {
+        if (cancelled) return;
+        panelImageRef.current = img;
+        redrawRef.current?.();
+      };
+    }
+    return () => { cancelled = true; };
+  }, [panelArt]);
+
+  useEffect(() => {
+    let cancelled = false;
+    entityImageRef.current = null;
+    silhouetteCanvasRef.current = null;
+    if (entityImageSrc) {
+      const img = new Image();
+      img.decoding = 'async';
+      img.src = entityImageSrc;
+      img.onload = () => {
+        if (cancelled) return;
+        entityImageRef.current = img;
+        silhouetteCanvasRef.current = createTintedImageCanvas(img);
+        redrawRef.current?.();
+      };
+    }
+    return () => { cancelled = true; };
+  }, [entityImageSrc]);
+
+  useEffect(() => {
+    let cancelled = false;
+    radiantLayerRefs.current = { ring: null, body: null, core: null };
+    if (luminaryId !== 'lum_radiant') {
+      redrawRef.current?.();
+      return () => { cancelled = true; };
+    }
+
+    const loadLayer = (key: keyof typeof radiantLayerRefs.current, src: string | null) => {
+      if (!src) return;
+      const img = new Image();
+      img.decoding = 'async';
+      img.src = src;
+      img.onload = () => {
+        if (cancelled) return;
+        radiantLayerRefs.current[key] = img;
+        redrawRef.current?.();
+      };
+    };
+
+    loadLayer('ring', _luminaryImageMap['lum_radiant/Radiant 1'] ?? null);
+    loadLayer('body', _luminaryImageMap['lum_radiant/Radiant 2'] ?? null);
+    loadLayer('core', _luminaryImageMap['lum_radiant/Radiant 3'] ?? null);
+    return () => { cancelled = true; };
+  }, [luminaryId]);
+
+  useEffect(() => {
+    let cancelled = false;
+    boardSnapshotImageRef.current = null;
+    if (!boardSnapshot?.src) {
+      redrawRef.current?.();
+      return () => { cancelled = true; };
+    }
+    const img = new Image();
+    img.onload = () => {
+      if (!cancelled) {
+        boardSnapshotImageRef.current = img;
+        redrawRef.current?.();
+      }
+    };
+    img.onerror = () => {
+      if (!cancelled) {
+        boardSnapshotImageRef.current = null;
+        redrawRef.current?.();
+      }
+    };
+    img.src = boardSnapshot.src;
+    return () => { cancelled = true; };
+  }, [boardSnapshot?.src]);
+
+  const finish = () => {
+    if (completedRef.current) return;
+    fadeStartRef.current = performance.now();
+    waitingRef.current = false;
+    setAwaitingDismiss(false);
+    setIsFinishing(true);
+    if (frameRef.current === null) {
+      frameRef.current = requestAnimationFrame(loop);
+    }
+  };
+
+  useFocusTrap(
+    containerRef,
+    true,
+    awaitingDismiss
+      ? finish
+      : (onSkip
+        ? () => {
+            gameAudio.stopArrivalCutscene();
+            onSkip();
+          }
+        : (() => {})),
+  );
+
+  const loop = (now: number) => {
+    const canvas = canvasRef.current;
+    if (!canvas || completedRef.current) return;
+    draw(now);
+    const elapsed = now - startRef.current;
+    const fadeElapsed = fadeStartRef.current === null ? 0 : now - fadeStartRef.current;
+    const fadeDuration = isEpicSnapshot ? 640 : 420;
+    if (fadeStartRef.current !== null && fadeElapsed >= fadeDuration) {
+      completedRef.current = true;
+      frameRef.current = null;
+      onCompleteRef.current();
+      return;
+    }
+    if (elapsed >= CANVAS_ARRIVAL_TIMES.tap * 1000 && fadeStartRef.current === null) {
+      if (!waitingRef.current) {
+        waitingRef.current = true;
+        setAwaitingDismiss(true);
+      }
+      frameRef.current = requestAnimationFrame(loop);
+      return;
+    }
+    frameRef.current = requestAnimationFrame(loop);
+  };
+
+  const draw = (now: number) => {
+    const canvas = canvasRef.current;
+    const ctx = canvas?.getContext('2d', { alpha: true });
+    if (!canvas || !ctx) return;
+    const rect = canvas.getBoundingClientRect();
+    const dpr = Math.min(window.devicePixelRatio || 1, 1.5);
+    const targetW = Math.max(1, Math.floor(rect.width * dpr));
+    const targetH = Math.max(1, Math.floor(rect.height * dpr));
+    if (canvas.width !== targetW || canvas.height !== targetH) {
+      canvas.width = targetW;
+      canvas.height = targetH;
+    }
+    ctx.setTransform(dpr, 0, 0, dpr, 0, 0);
+    const w = rect.width;
+    const h = rect.height;
+    const elapsed = now - startRef.current;
+    const t = elapsed / 1000;
+    if (t >= CANVAS_ARRIVAL_TIMES.flashing && !flashFiredRef.current) {
+      flashFiredRef.current = true;
+      onFlashRef.current?.();
+    }
+    const fadeDuration = isEpicSnapshot ? 640 : 420;
+    const fade = fadeStartRef.current === null ? 0 : easeOutCubic((now - fadeStartRef.current) / fadeDuration);
+    const alpha = 1 - fade;
+    ctx.clearRect(0, 0, w, h);
+
+    const overlayAlpha =
+      isEpicSnapshot && t < CANVAS_ARRIVAL_TIMES.vessel ? 0.68 :
+      t < CANVAS_ARRIVAL_TIMES.pan ? 0 :
+      t < CANVAS_ARRIVAL_TIMES.vessel ? easeInOutCubic((t - CANVAS_ARRIVAL_TIMES.pan) / (CANVAS_ARRIVAL_TIMES.vessel - CANVAS_ARRIVAL_TIMES.pan)) * 0.42 :
+      t < CANVAS_ARRIVAL_TIMES.shattering ? 0.88 :
+      t < CANVAS_ARRIVAL_TIMES.flashing ? 0.98 :
+      t < CANVAS_ARRIVAL_TIMES.revealed ? 0.42 :
+      0.56;
+
+    const bg = ctx.createRadialGradient(w * 0.5, h * 0.40, 0, w * 0.5, h * 0.45, Math.max(w, h) * 0.78);
+    bg.addColorStop(0, rgbaFromHex(primaryColor, 0.24 * alpha * overlayAlpha));
+    bg.addColorStop(0.42, `rgba(5,3,18,${0.88 * alpha * overlayAlpha})`);
+    bg.addColorStop(1, `rgba(3,2,10,${0.98 * alpha * overlayAlpha})`);
+    ctx.fillStyle = bg;
+    ctx.fillRect(0, 0, w, h);
+
+    ctx.save();
+    ctx.globalAlpha = alpha;
+    for (const star of starsRef.current) {
+      ctx.fillStyle = `rgba(220,230,255,${star.a * alpha * Math.max(0.18, overlayAlpha)})`;
+      ctx.beginPath();
+      ctx.arc(star.x * w, star.y * h, star.r, 0, Math.PI * 2);
+      ctx.fill();
+    }
+    ctx.restore();
+
+    const cx = w * 0.5;
+    const cy = h * 0.42;
+    const sourceCx = cardRect?.cx ?? cx;
+    const sourceCy = cardRect?.cy ?? cy;
+    const sourceW = Math.min(Math.max(cardRect?.w ?? BOARD_CARD_W, 74), 150);
+    const sourceH = Math.round(sourceW * BOARD_CARD_H / BOARD_CARD_W);
+    const cinematicScale = Math.min(
+      (w * 0.58) / BOARD_CARD_W,
+      (h * 0.62) / BOARD_CARD_H,
+      3.8,
+    );
+    const vesselTargetW = BOARD_CARD_W * cinematicScale;
+    const vesselTargetH = Math.round(vesselTargetW * BOARD_CARD_H / BOARD_CARD_W);
+    const focusRaw = clamp01((t - CANVAS_ARRIVAL_TIMES.pan) / (CANVAS_ARRIVAL_TIMES.vessel - CANVAS_ARRIVAL_TIMES.pan));
+    const focus = easeInOutCubic(focusRaw);
+    const vesselCx = sourceCx + (cx - sourceCx) * focus;
+    const vesselCy = sourceCy + (cy - sourceCy) * focus;
+    const baseVesselW = sourceW + (vesselTargetW - sourceW) * focus;
+    const baseVesselH = sourceH + (vesselTargetH - sourceH) * focus;
+    const pressure = Math.max(0, Math.min(1, (t - CANVAS_ARRIVAL_TIMES.pressure) / 0.78));
+    const crackProgress = clamp01((t - CANVAS_ARRIVAL_TIMES.firstCrack) / (CANVAS_ARRIVAL_TIMES.shattering - CANVAS_ARRIVAL_TIMES.firstCrack));
+    const crack = easeOutCubic(crackProgress);
+    const shatter = Math.max(0, Math.min(1, (t - CANVAS_ARRIVAL_TIMES.shattering) / 1.08));
+    const leakProgress = (t - CANVAS_ARRIVAL_TIMES.leaking) / (CANVAS_ARRIVAL_TIMES.shattering - CANVAS_ARRIVAL_TIMES.leaking);
+    const releaseProgress = clamp01((t - CANVAS_ARRIVAL_TIMES.shattering) / 0.54);
+    const releaseBurst = Math.sin(releaseProgress * Math.PI);
+    const pulse = pressure > 0 && shatter < 0.18
+      ? 1 + Math.sin(t * 34) * 0.010 * pressure + Math.sin(t * 17) * 0.020 * pressure
+      : 1;
+    const shakeX = crack > 0 && shatter < 0.10 ? Math.sin(t * 63) * 3.1 * crack : 0;
+    const shakeY = crack > 0 && shatter < 0.10 ? Math.cos(t * 51) * 2.0 * crack : 0;
+    const vesselW = baseVesselW * pulse;
+    const vesselH = baseVesselH * pulse;
+    const vesselX = vesselCx - vesselW / 2 + shakeX;
+    const vesselY = vesselCy - vesselH / 2 + shakeY;
+
+    const snapshotActive = isEpicSnapshot && t >= CANVAS_ARRIVAL_TIMES.pan && t < CANVAS_ARRIVAL_TIMES.vessel;
+    if (snapshotActive && boardSnapshot?.src) {
+      const snapshotImage = boardSnapshotImageRef.current;
+      const cameraTargetScale = vesselTargetW / sourceW;
+      const cameraScale = 1 + focus * (cameraTargetScale - 1);
+      const cameraCx = sourceCx + (cx - sourceCx) * focus;
+      const cameraCy = sourceCy + (cy - sourceCy) * focus;
+      const snap = boardSnapshot.rect;
+      ctx.save();
+      ctx.globalAlpha = alpha * (0.96 - focus * 0.10);
+      const drawX = cameraCx + (snap.x - sourceCx) * cameraScale;
+      const drawY = cameraCy + (snap.y - sourceCy) * cameraScale;
+      const drawW = snap.w * cameraScale;
+      const drawH = snap.h * cameraScale;
+      if (snapshotImage) {
+        ctx.drawImage(snapshotImage, drawX, drawY, drawW, drawH);
+      }
+      ctx.restore();
+    }
+
+    if (snapshotActive) {
+      const cameraCx = sourceCx + (cx - sourceCx) * focus;
+      const cameraCy = sourceCy + (cy - sourceCy) * focus;
+      ctx.save();
+      const shade = ctx.createRadialGradient(cameraCx, cameraCy, 0, cameraCx, cameraCy, Math.max(w, h) * (0.20 + focus * 0.25));
+      shade.addColorStop(0, `rgba(255,255,255,${0.05 * alpha})`);
+      shade.addColorStop(0.28, rgbaFromHex(primaryColor, 0.14 * alpha));
+      shade.addColorStop(0.62, `rgba(4,3,13,${0.28 * alpha})`);
+      shade.addColorStop(1, 'rgba(255,255,255,0)');
+      ctx.fillStyle = shade;
+      ctx.fillRect(0, 0, w, h);
+      ctx.restore();
+    }
+
+    if (!snapshotActive && t < CANVAS_ARRIVAL_TIMES.vessel && cardRect) {
+      const p = easeOutCubic(t / CANVAS_ARRIVAL_TIMES.vessel);
+      ctx.save();
+      ctx.globalAlpha = (1 - p) * 0.80 * alpha;
+      ctx.strokeStyle = rgbaFromHex(primaryColor, 0.86);
+      ctx.lineWidth = 1.4;
+      const ringW = sourceW * (1 + p * 1.35);
+      const ringH = sourceH * (1 + p * 1.35);
+      drawRoundedRectPath(ctx, sourceCx - ringW / 2, sourceCy - ringH / 2, ringW, ringH, 16);
+      ctx.stroke();
+      ctx.restore();
+    }
+
+    if (releaseBurst > 0.01) {
+      const ruptureX = vesselX + (PX / BOARD_CARD_W) * vesselW;
+      const ruptureY = vesselY + (PY / BOARD_CARD_H) * vesselH;
+      const portalAlpha = releaseBurst * alpha;
+      const portal = ctx.createRadialGradient(
+        ruptureX,
+        ruptureY,
+        0,
+        ruptureX,
+        ruptureY,
+        Math.max(w, h) * (0.12 + releaseProgress * 0.34),
+      );
+      portal.addColorStop(0, `rgba(255,255,255,${0.68 * portalAlpha})`);
+      portal.addColorStop(0.18, rgbaFromHex(primaryColor, 0.58 * portalAlpha));
+      portal.addColorStop(0.46, rgbaFromHex(secondaryColor, 0.24 * portalAlpha));
+      portal.addColorStop(1, 'rgba(255,255,255,0)');
+      ctx.save();
+      ctx.globalCompositeOperation = 'lighter';
+      ctx.fillStyle = portal;
+      ctx.fillRect(0, 0, w, h);
+      ctx.restore();
+    }
+
+    const vesselHandoff = !isEpicSnapshot || t >= CANVAS_ARRIVAL_TIMES.vessel - 0.12;
+    if (vesselHandoff && t < CANVAS_ARRIVAL_TIMES.flashing) {
+      const handoffAlpha = isEpicSnapshot ? easeInOutCubic(clamp01((t - (CANVAS_ARRIVAL_TIMES.vessel - 0.12)) / 0.28)) : 1;
+      const vesselAlpha = alpha * handoffAlpha * (1 - easeOutCubic(Math.max(0, Math.min(1, (shatter - 0.08) / 0.24))));
+      ctx.save();
+      ctx.globalAlpha = vesselAlpha;
+      drawLuminaryPanelCanvas(ctx, panelImageRef.current, vesselX, vesselY, vesselW, vesselH, primaryColor, secondaryColor);
+      ctx.fillStyle = `rgba(0,0,0,${0.16 + crack * 0.18})`;
+      ctx.fillRect(vesselX, vesselY, vesselW, vesselH);
+      drawCanvasPanelReleaseLight(
+        ctx,
+        vesselX,
+        vesselY,
+        vesselW,
+        vesselH,
+        leakProgress,
+        releaseProgress,
+        primaryColor,
+        secondaryColor,
+      );
+      drawCanvasCrackNetwork(ctx, vesselX, vesselY, vesselW, vesselH, crackProgress, primaryColor);
+      if (pressure > 0 && crack < 0.2) {
+        ctx.strokeStyle = rgbaFromHex(primaryColor, 0.22 + pressure * 0.32);
+        ctx.lineWidth = 2;
+        drawRoundedRectPath(ctx, vesselX - 3, vesselY - 3, vesselW + 6, vesselH + 6, 15);
+        ctx.stroke();
+      }
+      ctx.restore();
+    }
+
+    const shardAge = t - CANVAS_ARRIVAL_TIMES.shattering;
+    if (shardAge > 0.05 && shardAge < 3.05) {
+      ctx.save();
+      ctx.globalAlpha = alpha;
+      CANVAS_SHARD_PIECES.forEach((piece, i) => {
+        drawCanvasShard(
+          ctx,
+          panelImageRef.current,
+          piece,
+          i,
+          cx - vesselTargetW / 2,
+          cy - vesselTargetH / 2,
+          vesselTargetW,
+          vesselTargetH,
+          shardAge - i * 0.025,
+          primaryColor,
+          secondaryColor,
+        );
+      });
+      ctx.restore();
+    }
+
+    const flash = Math.max(0, Math.min(1, (t - CANVAS_ARRIVAL_TIMES.flashing) / 0.95));
+    if (flash > 0 && flash < 1) {
+      const fAlpha = Math.sin(flash * Math.PI) * alpha;
+      const fg = ctx.createRadialGradient(cx, cy, 0, cx, cy, Math.max(w, h) * (0.18 + flash * 0.42));
+      fg.addColorStop(0, `rgba(255,255,255,${0.88 * fAlpha})`);
+      fg.addColorStop(0.22, rgbaFromHex(primaryColor, 0.72 * fAlpha));
+      fg.addColorStop(0.70, rgbaFromHex(secondaryColor, 0.22 * fAlpha));
+      fg.addColorStop(1, 'rgba(255,255,255,0)');
+      ctx.fillStyle = fg;
+      ctx.fillRect(0, 0, w, h);
+    }
+
+    const swingStart = CANVAS_ARRIVAL_TIMES.shattering + 0.18;
+    const swingEnd = CANVAS_ARRIVAL_TIMES.revealed + 0.62;
+    const swingLinear = clamp01((t - swingStart) / (swingEnd - swingStart));
+    const swingProgress = swingLinear * 0.16 + easeInOutSine(swingLinear) * 0.84;
+    const shadow = t < CANVAS_ARRIVAL_TIMES.revealed ? Math.min(0.92, swingProgress) : 1;
+    const glory = easeInOutSine(clamp01((t - (CANVAS_ARRIVAL_TIMES.revealed - 0.20)) / 0.78));
+    const arrivalImpact = t >= CANVAS_ARRIVAL_TIMES.revealed
+      ? Math.sin(clamp01((t - CANVAS_ARRIVAL_TIMES.revealed) / 0.58) * Math.PI)
+      : 0;
+    const presence = Math.max(shadow, glory);
+    if (presence > 0) {
+      ctx.save();
+      ctx.globalAlpha = alpha;
+      const finalY = cy - h * 0.03;
+      const startY = finalY - Math.min(h * 0.20, 142);
+      const swingArc = Math.sin(swingLinear * Math.PI);
+      let entityY = startY
+        + (finalY - startY) * swingProgress
+        + swingArc * Math.min(h * 0.078, 58);
+      const descentArc = Math.sin(swingLinear * Math.PI);
+      const settleProgress = easeInOutSine(clamp01((t - CANVAS_ARRIVAL_TIMES.revealed) / 0.72));
+      const settleArc = Math.sin(settleProgress * Math.PI);
+      const lateralStart = Math.min(w * 0.050, 42);
+      const lateralResolve = 1 - easeOutCubic(swingLinear);
+      let entityX = cx - lateralStart * lateralResolve + descentArc * w * 0.006 - settleArc * w * 0.004;
+      const swing = Math.sin(swingProgress * Math.PI);
+      let rotation = (-0.22 * (1 - swingProgress)) + descentArc * 0.030 + settleArc * 0.026;
+      const baseScale = 0.08 + swingProgress * 0.80;
+      let entityScale = baseScale + (1 - baseScale) * glory + arrivalImpact * 0.012;
+      const squeezedX = 0.09 + swingProgress * 0.63;
+      let entityScaleX = squeezedX + (1 - squeezedX) * glory;
+      let entityScaleY = 0.84 + swingProgress * 0.12 + glory * 0.035 + arrivalImpact * 0.006;
+      const revealedAge = Math.max(0, t - CANVAS_ARRIVAL_TIMES.revealed);
+      const revealLife = easeInOutSine(clamp01(revealedAge / 0.82));
+      if (revealLife > 0) {
+        const breath = Math.sin(revealedAge * 1.42);
+        const drift = Math.sin(revealedAge * 0.98 + 0.75);
+        const counterDrift = Math.sin(revealedAge * 1.18 + 2.1);
+        entityX += revealLife * drift * Math.min(w * 0.003, 4);
+        entityY += revealLife * (
+          breath * Math.min(h * 0.006, 6)
+          + counterDrift * Math.min(h * 0.002, 2)
+        );
+        rotation += revealLife * Math.sin(revealedAge * 0.86 + 0.35) * 0.012;
+        entityScale += revealLife * (breath * 0.006 + Math.sin(revealedAge * 0.74 + 1.6) * 0.003);
+        entityScaleX += revealLife * Math.sin(revealedAge * 1.28 + 0.2) * 0.004;
+        entityScaleY += revealLife * breath * 0.006;
+      }
+      const canvasEntityAlpha = 1;
+      const revealGlowDamp = luminaryId === 'lum_radiant' ? 0.58 : 1;
+
+      const aperture = ctx.createRadialGradient(entityX, entityY, 0, entityX, entityY, Math.min(w, h) * 0.42);
+      aperture.addColorStop(0, `rgba(0,0,0,${0.68 * shadow * (1 - glory * 0.70)})`);
+      aperture.addColorStop(0.34, rgbaFromHex(secondaryColor, 0.22 * shadow));
+      aperture.addColorStop(0.72, rgbaFromHex(primaryColor, 0.10 * shadow));
+      aperture.addColorStop(1, 'rgba(0,0,0,0)');
+      ctx.fillStyle = aperture;
+      ctx.fillRect(0, 0, w, h);
+
+      ctx.globalCompositeOperation = 'lighter';
+      const halo = ctx.createRadialGradient(entityX, entityY, 0, entityX, entityY, Math.min(w, h) * 0.55);
+      halo.addColorStop(0, `rgba(255,255,255,${(0.16 * shadow + 0.58 * glory + 0.36 * arrivalImpact) * revealGlowDamp})`);
+      halo.addColorStop(0.18, rgbaFromHex(primaryColor, (0.22 * shadow + 0.52 * glory) * revealGlowDamp));
+      halo.addColorStop(0.48, rgbaFromHex(secondaryColor, (0.12 * shadow + 0.26 * glory) * revealGlowDamp));
+      halo.addColorStop(1, 'rgba(255,255,255,0)');
+      ctx.fillStyle = halo;
+      ctx.fillRect(0, 0, w, h);
+
+      if (arrivalImpact > 0) {
+        const impact = ctx.createRadialGradient(entityX, entityY, 0, entityX, entityY, Math.max(w, h) * 0.70);
+        impact.addColorStop(0, `rgba(255,255,255,${0.72 * arrivalImpact * revealGlowDamp})`);
+        impact.addColorStop(0.16, rgbaFromHex(primaryColor, 0.54 * arrivalImpact * revealGlowDamp));
+        impact.addColorStop(0.44, rgbaFromHex(secondaryColor, 0.22 * arrivalImpact * revealGlowDamp));
+        impact.addColorStop(1, 'rgba(255,255,255,0)');
+        ctx.fillStyle = impact;
+        ctx.fillRect(0, 0, w, h);
+      }
+
+      ctx.save();
+      ctx.translate(entityX, entityY);
+      ctx.rotate((t * 0.18) % (Math.PI * 2));
+      ctx.strokeStyle = glowColor;
+      ctx.globalAlpha *= (0.12 * shadow + 0.44 * glory + 0.30 * arrivalImpact) * revealGlowDamp;
+      ctx.lineWidth = 2;
+      for (let i = 0; i < 3; i++) {
+        const ring = 0.55 + i * 0.19 + Math.sin(t * 0.7 + i) * 0.025 + arrivalImpact * 0.22;
+        ctx.beginPath();
+        ctx.ellipse(0, 0, Math.min(w * 0.24, 230) * ring, Math.min(h * 0.19, 180) * ring, i * 0.62, 0, Math.PI * 2);
+        ctx.stroke();
+      }
+      ctx.restore();
+      ctx.globalCompositeOperation = 'source-over';
+
+      const img = entityImageRef.current;
+      const maxEntityW = Math.min(w * 0.84, 760);
+      const maxEntityH = Math.min(h * 0.74, 760);
+      const radiantLayers = radiantLayerRefs.current;
+      const hasRadiantComposite =
+        luminaryId === 'lum_radiant' &&
+        !!radiantLayers.ring &&
+        !!radiantLayers.body &&
+        !!radiantLayers.core;
+
+      if (hasRadiantComposite && canvasEntityAlpha > 0.01) {
+        const radiantMotion = clamp01((swingProgress - 0.18) / 0.82);
+        const radiantRingSpin = -t * (Math.PI * 2 / 30) * radiantMotion;
+        const radiantCoreSpin = t * (Math.PI * 2 / 22) * radiantMotion;
+        const radiantBodyPulse = 1 + revealLife * Math.sin(t * (Math.PI * 2 / 2.4)) * 0.008;
+        const radiantCorePulse = 1 + revealLife * Math.sin(t * (Math.PI * 2 / 1.8)) * 0.014;
+        const radiantCoreGlowPulse = 0.5 + 0.5 * Math.sin(t * (Math.PI * 2 / 1.45));
+        const drawRadiantComposite = (
+          layerAlpha: number,
+          layerScale: number,
+          blendMode: GlobalCompositeOperation = 'source-over',
+        ) => {
+          ctx.save();
+          ctx.globalAlpha *= layerAlpha;
+          ctx.globalCompositeOperation = blendMode;
+          drawContainImageTransformed(
+            ctx,
+            radiantLayers.ring!,
+            entityX,
+            entityY - 3 * entityScale,
+            maxEntityW,
+            maxEntityH,
+            entityScale * layerScale * 1.05,
+            entityScaleX,
+            entityScaleY,
+            rotation + radiantRingSpin,
+          );
+          drawContainImageTransformed(
+            ctx,
+            radiantLayers.body!,
+            entityX,
+            entityY,
+            maxEntityW,
+            maxEntityH,
+            entityScale * layerScale * 0.98 * radiantBodyPulse,
+            entityScaleX,
+            entityScaleY,
+            rotation,
+          );
+          drawContainImageTransformed(
+            ctx,
+            radiantLayers.core!,
+            entityX,
+            entityY - 8 * entityScale,
+            maxEntityW,
+            maxEntityH,
+            entityScale * layerScale * 0.15 * radiantCorePulse,
+            entityScaleX,
+            entityScaleY,
+            rotation + radiantCoreSpin,
+          );
+          ctx.restore();
+        };
+
+        drawRadiantComposite(
+          canvasEntityAlpha * (0.10 + shadow * 0.14 + glory * 0.22 + arrivalImpact * 0.06),
+          1,
+          'source-over',
+        );
+        drawRadiantComposite(
+          canvasEntityAlpha * Math.min(1, 0.18 * arrivalImpact + 0.94 * glory) * 0.76,
+          1,
+          'screen',
+        );
+        drawRadiantComposite(
+          canvasEntityAlpha * (0.08 * glory + 0.18 * arrivalImpact) * 0.36,
+          1.02 + arrivalImpact * 0.025,
+          'lighter',
+        );
+        ctx.save();
+        ctx.globalCompositeOperation = 'lighter';
+        ctx.globalAlpha *= canvasEntityAlpha * revealLife * (0.18 + radiantCoreGlowPulse * 0.28);
+        const coreGlowRadius = Math.min(maxEntityW, maxEntityH) * entityScale * (0.052 + radiantCoreGlowPulse * 0.026);
+        const coreGlow = ctx.createRadialGradient(
+          entityX,
+          entityY - 8 * entityScale,
+          0,
+          entityX,
+          entityY - 8 * entityScale,
+          coreGlowRadius,
+        );
+        coreGlow.addColorStop(0, 'rgba(255,239,173,0.82)');
+        coreGlow.addColorStop(0.34, 'rgba(245,194,84,0.40)');
+        coreGlow.addColorStop(0.72, 'rgba(245,194,84,0.14)');
+        coreGlow.addColorStop(1, 'rgba(245,194,84,0)');
+        ctx.fillStyle = coreGlow;
+        ctx.beginPath();
+        ctx.arc(entityX, entityY - 8 * entityScale, coreGlowRadius, 0, Math.PI * 2);
+        ctx.fill();
+        ctx.restore();
+        ctx.save();
+        ctx.globalAlpha *= canvasEntityAlpha * Math.min(1, 0.28 + glory * 0.62 + arrivalImpact * 0.16);
+        ctx.globalCompositeOperation = 'source-over';
+        drawContainImageTransformed(
+          ctx,
+          radiantLayers.core!,
+          entityX,
+          entityY - 8 * entityScale,
+          maxEntityW,
+          maxEntityH,
+          entityScale * 0.17 * radiantCorePulse,
+          entityScaleX,
+          entityScaleY,
+          rotation + radiantCoreSpin * 1.2,
+        );
+        ctx.restore();
+      } else if (img && canvasEntityAlpha > 0.01) {
+
+        ctx.save();
+        ctx.globalAlpha *= canvasEntityAlpha * (0.06 + shadow * 0.18) * (1 - glory * 0.88);
+        const silhouette = silhouetteCanvasRef.current;
+        if (silhouette) {
+          drawContainDrawableTransformed(
+            ctx,
+            silhouette,
+            entityX,
+            entityY + h * 0.008 * swing,
+            maxEntityW,
+            maxEntityH,
+            entityScale,
+            Math.max(0.12, entityScaleX * 0.84),
+            entityScaleY,
+            rotation,
+          );
+        } else if (typeof document !== 'undefined') {
+          const scratch = document.createElement('canvas');
+          drawTintedContainImageTransformed(
+            ctx,
+            img,
+            scratch,
+            entityX,
+            entityY + h * 0.008 * swing,
+            maxEntityW,
+            maxEntityH,
+            entityScale,
+            Math.max(0.12, entityScaleX * 0.84),
+            entityScaleY,
+            rotation,
+            'rgba(0,0,0,0.96)',
+          );
+        }
+        ctx.restore();
+
+        ctx.save();
+        ctx.globalAlpha *= canvasEntityAlpha * Math.min(1, 0.16 * arrivalImpact + 0.92 * glory);
+        drawContainImageTransformed(
+          ctx,
+          img,
+          entityX,
+          entityY,
+          maxEntityW,
+          maxEntityH,
+          entityScale,
+          entityScaleX,
+          entityScaleY,
+          rotation,
+        );
+        ctx.restore();
+
+        if (luminaryId === 'lum_tide') {
+          const tideDrawSize = getContainDrawSize(img, maxEntityW, maxEntityH, entityScale);
+          if (tideDrawSize) {
+            drawCanvasTideEye(
+              ctx,
+              entityX,
+              entityY,
+              tideDrawSize.w,
+              tideDrawSize.h,
+              entityScaleX,
+              entityScaleY,
+              rotation,
+              t,
+              canvasEntityAlpha * Math.min(1, 0.16 * arrivalImpact + 0.92 * glory),
+            );
+          }
+        }
+
+        ctx.save();
+        ctx.globalCompositeOperation = 'lighter';
+        ctx.globalAlpha *= canvasEntityAlpha * (0.10 * glory + 0.20 * arrivalImpact);
+        drawContainImageTransformed(
+          ctx,
+          img,
+          entityX,
+          entityY,
+          maxEntityW,
+          maxEntityH,
+          entityScale * (1.01 + arrivalImpact * 0.025),
+          entityScaleX,
+          entityScaleY,
+          rotation,
+        );
+        ctx.restore();
+      } else if (canvasEntityAlpha > 0.01) {
+        ctx.globalAlpha *= canvasEntityAlpha;
+        ctx.fillStyle = rgbaFromHex(primaryColor, 0.72);
+        ctx.beginPath();
+        ctx.arc(entityX, entityY, Math.min(w, h) * 0.18 * presence, 0, Math.PI * 2);
+        ctx.fill();
+      }
+      ctx.restore();
+    }
+
+    const title = easeInOutCubic(Math.max(0, Math.min(1, (t - CANVAS_ARRIVAL_TIMES.title) / 0.86))) * alpha;
+    if (title > 0) {
+      ctx.save();
+      ctx.globalAlpha = title;
+      ctx.textAlign = 'center';
+      ctx.textBaseline = 'middle';
+      const plateW = Math.min(w - 44, Math.max(340, Math.min(620, luminaryName.length * 17 + 176)));
+      const showFlavor = Boolean(flavor) && h > 560;
+      const flavorFont = 'italic 12px system-ui, -apple-system, BlinkMacSystemFont, sans-serif';
+      ctx.font = flavorFont;
+      const flavorLines = showFlavor
+        ? wrapCanvasTextLines(ctx, `"${flavor}"`, plateW - 56, 2)
+        : [];
+      const quoteBoxH = flavorLines.length > 0 ? flavorLines.length * 15 + 14 : 0;
+      const effectBoxH = effectName ? 24 : 0;
+      const plateH = (claimedBy ? 118 : 94)
+        + (quoteBoxH ? quoteBoxH + 4 : 0)
+        + effectBoxH;
+      const baseTitleY = cy + Math.min(h * 0.29, 260);
+      const titleY = Math.max(
+        118,
+        Math.min(h - 132, baseTitleY, h - 18 - plateH + 64),
+      );
+      const plateX = cx - plateW / 2;
+      const plateY = titleY - 64;
+      ctx.save();
+      ctx.globalAlpha *= 0.78;
+      ctx.fillStyle = 'rgba(3,4,14,0.82)';
+      drawRoundedRectPath(ctx, plateX, plateY, plateW, plateH, 18);
+      ctx.fill();
+      ctx.strokeStyle = rgbaFromHex(primaryColor, 0.36);
+      ctx.lineWidth = 1.2;
+      drawRoundedRectPath(ctx, plateX, plateY, plateW, plateH, 18);
+      ctx.stroke();
+      ctx.restore();
+      ctx.shadowColor = 'rgba(0,0,0,0.95)';
+      ctx.shadowBlur = 12;
+      ctx.shadowOffsetY = 2;
+      if (domain) {
+        ctx.font = '700 11px system-ui, -apple-system, BlinkMacSystemFont, sans-serif';
+        ctx.fillStyle = primaryColor;
+        ctx.fillText(domain.toUpperCase(), cx, titleY - 42);
+      }
+      ctx.font = `${luminaryName.length > 24 ? '700 23px' : '700 28px'} Georgia, Times New Roman, serif`;
+      ctx.fillStyle = 'rgba(255,255,255,0.96)';
+      ctx.fillText(luminaryName, cx, titleY - 12, plateW - 42);
+      if (eminence !== 0) {
+        ctx.font = '700 14px system-ui, -apple-system, BlinkMacSystemFont, sans-serif';
+        ctx.fillStyle = primaryColor;
+        ctx.fillText(eminence < 0 ? `-${Math.abs(eminence)} Eminence - all players` : `+${eminence} Eminence`, cx, titleY + 21);
+      }
+      if (claimedBy) {
+        ctx.font = '600 12px system-ui, -apple-system, BlinkMacSystemFont, sans-serif';
+        ctx.fillStyle = 'rgba(255,255,255,0.70)';
+        ctx.fillText(`Allied with ${claimedBy}`, cx, titleY + 45);
+      }
+      if (flavorLines.length > 0) {
+        const quoteBoxW = plateW - 56;
+        const quoteBoxX = cx - quoteBoxW / 2;
+        const quoteBoxY = titleY + (claimedBy ? 58 : 34);
+        ctx.save();
+        ctx.shadowBlur = 0;
+        ctx.shadowOffsetY = 0;
+        ctx.fillStyle = 'rgba(255,255,255,0.055)';
+        drawRoundedRectPath(ctx, quoteBoxX, quoteBoxY, quoteBoxW, quoteBoxH, 10);
+        ctx.fill();
+        ctx.strokeStyle = rgbaFromHex(primaryColor, 0.18);
+        ctx.lineWidth = 1;
+        drawRoundedRectPath(ctx, quoteBoxX, quoteBoxY, quoteBoxW, quoteBoxH, 10);
+        ctx.stroke();
+        ctx.restore();
+        ctx.font = flavorFont;
+        ctx.fillStyle = 'rgba(255,255,255,0.46)';
+        flavorLines.forEach((line, index) => {
+          ctx.fillText(line, cx, quoteBoxY + 12 + index * 15);
+        });
+      }
+      if (effectName) {
+        const effectBoxW = plateW - 56;
+        const effectBoxX = cx - effectBoxW / 2;
+        const effectBoxY = titleY + (claimedBy ? 58 : 34) + quoteBoxH + (quoteBoxH ? 4 : 0);
+        ctx.save();
+        ctx.shadowBlur = 0;
+        ctx.shadowOffsetY = 0;
+        ctx.fillStyle = rgbaFromHex(primaryColor, 0.10);
+        drawRoundedRectPath(ctx, effectBoxX, effectBoxY, effectBoxW, Math.max(20, effectBoxH - 4), 10);
+        ctx.fill();
+        ctx.strokeStyle = rgbaFromHex(primaryColor, 0.28);
+        ctx.lineWidth = 1;
+        drawRoundedRectPath(ctx, effectBoxX, effectBoxY, effectBoxW, Math.max(20, effectBoxH - 4), 10);
+        ctx.stroke();
+        ctx.restore();
+        ctx.font = `700 9px system-ui, -apple-system, BlinkMacSystemFont, sans-serif`;
+        ctx.fillStyle = primaryColor;
+        ctx.fillText(effectName.toUpperCase(), cx, effectBoxY + 10);
+      }
+      if (waitingRef.current) {
+        ctx.font = '700 10px system-ui, -apple-system, BlinkMacSystemFont, sans-serif';
+        ctx.fillStyle = 'rgba(255,255,255,0.38)';
+        ctx.fillText('DOUBLE TAP TO CONTINUE', cx, h - 34);
+      }
+      ctx.restore();
+    }
+  };
+
+  useEffect(() => {
+    completedRef.current = false;
+    waitingRef.current = false;
+    flashFiredRef.current = false;
+    fadeStartRef.current = null;
+    setAwaitingDismiss(false);
+    setIsFinishing(false);
+    gameAudio.playArrivalCutscene(auraStyle);
+    startRef.current = performance.now();
+    const resize = () => redrawRef.current?.();
+    window.addEventListener('resize', resize);
+    redrawRef.current = () => draw(performance.now());
+    frameRef.current = requestAnimationFrame(loop);
+    return () => {
+      window.removeEventListener('resize', resize);
+      if (frameRef.current !== null) cancelAnimationFrame(frameRef.current);
+      frameRef.current = null;
+      redrawRef.current = null;
+    };
+  }, [luminaryId]); // eslint-disable-line react-hooks/exhaustive-deps
+
+  const snapshotDomMotion = (() => {
+    if (!isEpicSnapshot || !boardSnapshot?.html || !cardRect || typeof window === 'undefined') return null;
+    const vw = window.innerWidth;
+    const vh = window.innerHeight;
+    const targetCx = vw * 0.5;
+    const targetCy = vh * 0.42;
+    const sourceW = Math.min(Math.max(cardRect.w, 74), 150);
+    const cinematicScale = Math.min(
+      (vw * 0.58) / BOARD_CARD_W,
+      (vh * 0.62) / BOARD_CARD_H,
+      3.8,
+    );
+    const targetScale = (BOARD_CARD_W * cinematicScale) / sourceW;
+    return {
+      x: targetCx - cardRect.cx,
+      y: targetCy - cardRect.cy,
+      scale: targetScale,
+      originX: cardRect.cx - boardSnapshot.rect.x,
+      originY: cardRect.cy - boardSnapshot.rect.y,
+    };
+  })();
+  return (
+    <div
+      ref={(el) => { containerRef.current = el; }}
+      className="fixed inset-0 z-[9000]"
+      onClick={() => {
+        if (awaitingDismiss) finish();
+      }}
+      style={{ background: isEpicSnapshot ? '#03020a' : 'transparent' }}
+    >
+      {onSkip && !awaitingDismiss && (
+        <button
+          onClick={(e) => {
+            e.stopPropagation();
+            gameAudio.stopArrivalCutscene();
+            onSkip();
+          }}
+          className="absolute top-4 right-4 z-[9100] flex items-center gap-1.5 text-white/55 hover:text-white/90 text-xs px-3 py-1.5 rounded-full border border-white/15 bg-black/80 transition-colors select-none"
+          aria-label="Skip arrival view"
+        >
+          <svg width="10" height="10" viewBox="0 0 10 10" fill="currentColor" className="opacity-70">
+            <path d="M1 1l8 4-8 4V1z" />
+            <rect x="8" y="1" width="1.5" height="8" rx="0.5" />
+          </svg>
+          Skip view
+        </button>
+      )}
+      <canvas
+        ref={canvasRef}
+        className="relative z-[3] block h-full w-full"
+        aria-label={`${luminaryName} arrival cutscene`}
+      />
+      {snapshotDomMotion && boardSnapshot?.html && (
+        <motion.div
+          className="absolute pointer-events-none overflow-hidden"
+          initial={{ x: 0, y: 0, scale: 1, opacity: 1 }}
+          animate={isFinishing
+            ? {
+                x: 0,
+                y: 0,
+                scale: 1,
+                opacity: [0.18, 0.92, 1],
+              }
+            : {
+                x: snapshotDomMotion.x,
+                y: snapshotDomMotion.y,
+                scale: snapshotDomMotion.scale,
+                opacity: [1, 1, 0.18],
+              }}
+          transition={isFinishing
+            ? {
+                x: { duration: 0.58, ease: [0.16, 1, 0.3, 1] },
+                y: { duration: 0.58, ease: [0.16, 1, 0.3, 1] },
+                scale: { duration: 0.58, ease: [0.16, 1, 0.3, 1] },
+                opacity: { duration: 0.58, times: [0, 0.48, 1], ease: 'easeOut' },
+              }
+            : {
+                x: { duration: CANVAS_ARRIVAL_TIMES.vessel, ease: [0.65, 0, 0.35, 1] },
+                y: { duration: CANVAS_ARRIVAL_TIMES.vessel, ease: [0.65, 0, 0.35, 1] },
+                scale: { duration: CANVAS_ARRIVAL_TIMES.vessel, ease: [0.65, 0, 0.35, 1] },
+                opacity: { duration: CANVAS_ARRIVAL_TIMES.vessel + 0.34, times: [0, 0.86, 1], ease: 'easeOut' },
+              }}
+          style={{
+            left: boardSnapshot.rect.x,
+            top: boardSnapshot.rect.y,
+            width: boardSnapshot.rect.w,
+            height: boardSnapshot.rect.h,
+            transformOrigin: `${snapshotDomMotion.originX}px ${snapshotDomMotion.originY}px`,
+            zIndex: 1,
+            contain: 'layout paint style',
+            willChange: 'transform, opacity',
+          }}
+          aria-hidden="true"
+        >
+          <div
+            className={boardSnapshot.shellClassName ?? 'game-shell'}
+            {...boardSnapshot.shellAttributes}
+            style={{
+              width: boardSnapshot.content.w,
+              height: boardSnapshot.content.h,
+              maxWidth: 'none',
+              maxHeight: 'none',
+              overflow: 'visible',
+              pointerEvents: 'none',
+              transform: `translate(${-boardSnapshot.scroll.x}px, ${-boardSnapshot.scroll.y}px)`,
+              transformOrigin: '0 0',
+            }}
+          >
+            <div
+              className={boardSnapshot.className}
+              {...boardSnapshot.attributes}
+              style={{
+                width: boardSnapshot.content.w,
+                height: boardSnapshot.content.h,
+                maxWidth: 'none',
+                maxHeight: 'none',
+                overflow: 'visible',
+                pointerEvents: 'none',
+              }}
+              dangerouslySetInnerHTML={{ __html: boardSnapshot.html }}
+            />
+          </div>
+        </motion.div>
+      )}
+    </div>
+  );
+}
+
+type PerformanceArrivalPhase = 'forming' | 'crack' | 'flash' | 'reveal' | 'fading';
+
+function LuminaryArrivalCutscenePerformance({
+  luminaryId,
+  luminaryName,
+  domain,
+  eminence,
+  flavor,
+  effectName,
+  claimedBy,
+  cardRect,
+  onComplete,
+  onSkip,
+  overrideColor,
+}: LuminaryArrivalCutsceneProps) {
+  const [phase, setPhase] = useState<PerformanceArrivalPhase>('forming');
+  const [awaitingDismiss, setAwaitingDismiss] = useState(false);
+  const containerRef = useRef<HTMLElement | null>(null);
+  const dismissedRef = useRef(false);
+  const timersRef = useRef<ReturnType<typeof setTimeout>[]>([]);
+  const onCompleteRef = useRef(onComplete);
+  useEffect(() => { onCompleteRef.current = onComplete; }, [onComplete]);
+
+  const vis = getLuminaryVisuals(luminaryId);
+  const { primaryColor: visPrimaryColor, secondaryColor, glowColor, EntityArt } = vis;
+  const primaryColor = (overrideColor && overrideColor.startsWith('#') && overrideColor.length >= 7)
+    ? overrideColor
+    : visPrimaryColor;
+  const { panelArt, entityCutout, cinematicArt } = getLuminaryImageAssets(luminaryId);
+  const entityImage = luminaryId === 'lum_radiant' ? null : cinematicArt ?? entityCutout ?? panelArt;
+  const vw = typeof window !== 'undefined' ? window.innerWidth : 375;
+  const vh = typeof window !== 'undefined' ? window.innerHeight : 667;
+  const proxyW = Math.min(148, Math.max(112, vw * 0.20));
+  const proxyH = Math.round(proxyW * BOARD_CARD_H / BOARD_CARD_W);
+  const sourceSize = Math.min(Math.max(cardRect?.w ?? BOARD_CARD_W, 72), 132);
+  const sourceCx = cardRect?.cx ?? vw / 2;
+  const sourceCy = cardRect?.cy ?? vh / 2;
+
+  const finish = () => {
+    if (dismissedRef.current) return;
+    dismissedRef.current = true;
+    timersRef.current.forEach(clearTimeout);
+    timersRef.current = [];
+    gameAudio.stopActivationSting();
+    setAwaitingDismiss(false);
+    setPhase('fading');
+    setTimeout(() => onCompleteRef.current(), 240);
+  };
+
+  useFocusTrap(
+    containerRef,
+    true,
+    awaitingDismiss
+      ? finish
+      : (onSkip ?? finish),
+  );
+
+  useEffect(() => {
+    timersRef.current = [
+      setTimeout(() => setPhase('crack'), 420),
+      setTimeout(() => {
+        setPhase('flash');
+        gameAudio.playLuminaryFanfare(primaryColor);
+      }, 1080),
+      setTimeout(() => setPhase('reveal'), 1320),
+      setTimeout(() => setAwaitingDismiss(true), 2320),
+    ];
+    return () => {
+      timersRef.current.forEach(clearTimeout);
+      timersRef.current = [];
+      gameAudio.stopActivationSting();
+    };
+  }, []); // eslint-disable-line react-hooks/exhaustive-deps
+
+  const showVessel = phase === 'forming' || phase === 'crack';
+  const showCracks = phase === 'crack';
+  const showFlash = phase === 'flash';
+  const showEntity = phase === 'flash' || phase === 'reveal' || phase === 'fading';
+  const isFading = phase === 'fading';
+  return (
+    <div
+      ref={(el) => { containerRef.current = el; }}
+      className="fixed inset-0 z-[9000]"
+      onClick={() => {
+        if (awaitingDismiss) finish();
+      }}
+      style={{
+        '--lum-arrival-primary': primaryColor,
+        '--lum-arrival-secondary': secondaryColor,
+        '--lum-arrival-glow': glowColor,
+      } as React.CSSProperties}
+    >
+      {onSkip && !awaitingDismiss && (
+        <button
+          onClick={(e) => {
+            e.stopPropagation();
+            gameAudio.stopActivationSting();
+            onSkip();
+          }}
+          className="absolute top-4 right-4 z-[9100] flex items-center gap-1.5 text-white/55 hover:text-white/90 text-xs px-3 py-1.5 rounded-full border border-white/15 bg-black/80 transition-colors select-none"
+          aria-label="Skip arrival view"
+        >
+          <svg width="10" height="10" viewBox="0 0 10 10" fill="currentColor" className="opacity-70">
+            <path d="M1 1l8 4-8 4V1z" />
+            <rect x="8" y="1" width="1.5" height="8" rx="0.5" />
+          </svg>
+          Skip view
+        </button>
+      )}
+
+      <div
+        className="absolute inset-0 pointer-events-none"
+        style={{
+          opacity: isFading ? 0 : 1,
+          transition: 'opacity 240ms ease',
+          background: `radial-gradient(ellipse 72% 68% at 50% 42%, ${primaryColor}18 0%, rgba(5,3,18,0.92) 48%, rgba(3,2,10,0.98) 100%)`,
+        }}
+      />
+
+      {cardRect && (
+        <div
+          className="lum-arrival-perf-source absolute pointer-events-none"
+          style={{
+            left: sourceCx - sourceSize / 2,
+            top: sourceCy - sourceSize / 2,
+            width: sourceSize,
+            height: sourceSize,
+            borderColor: `${primaryColor}88`,
+          }}
+        />
+      )}
+
+      {showVessel && (
+        <div
+          className={`lum-arrival-perf-vessel absolute overflow-hidden bg-black ${showCracks ? 'is-cracking' : ''}`}
+          style={{
+            left: vw / 2 - proxyW / 2,
+            top: vh / 2 - proxyH / 2,
+            width: proxyW,
+            height: proxyH,
+            borderRadius: 12,
+            border: `1px solid ${primaryColor}55`,
+          }}
+        >
+          <LuminaryPanelArt luminaryId={luminaryId} width={proxyW} height={proxyH} />
+          <div className="absolute inset-0 pointer-events-none bg-gradient-to-b from-black/10 via-black/0 to-black/75" />
+          {showCracks && (
+            <div className="absolute inset-0 pointer-events-none">
+              <span className="lum-arrival-perf-crack c1" />
+              <span className="lum-arrival-perf-crack c2" />
+              <span className="lum-arrival-perf-crack c3" />
+              <span className="lum-arrival-perf-crack c4" />
+              <span className="lum-arrival-perf-core" />
+            </div>
+          )}
+        </div>
+      )}
+
+      {showFlash && <div className="lum-arrival-perf-flash absolute inset-0 pointer-events-none" />}
+
+      {showEntity && (
+        <div
+          className={`lum-arrival-perf-entity absolute inset-0 pointer-events-none flex items-center justify-center ${isFading ? 'is-fading' : ''}`}
+        >
+          <div className="lum-arrival-perf-halo absolute" />
+          <div className="lum-arrival-perf-entity-life" style={{ position: 'relative', zIndex: 1 }}>
+            {luminaryId === 'lum_radiant' ? (
+              <RadiantLivingEntityComposite size={`min(68vh, 620px, 78vw)`} />
+            ) : entityImage ? (
+              <img
+                src={entityImage}
+                alt=""
+                draggable={false}
+                decoding="async"
+                fetchPriority="high"
+                style={{
+                  width: 'auto',
+                  height: 'min(68vh, 620px)',
+                  maxWidth: '78vw',
+                  objectFit: 'contain',
+                }}
+              />
+            ) : (
+              <EntityArt size={Math.min(360, Math.max(220, vw * 0.42))} />
+            )}
+          </div>
+        </div>
+      )}
+
+      {showEntity && (
+        <div
+          className={`lum-arrival-perf-title absolute inset-x-0 bottom-10 flex flex-col items-center gap-1.5 px-5 text-center pointer-events-none ${isFading ? 'is-fading' : ''}`}
+        >
+          {domain && (
+            <div className="text-[10px] font-bold tracking-[0.24em] uppercase" style={{ color: primaryColor }}>
+              {domain}
+            </div>
+          )}
+          <div className="text-2xl font-serif font-bold text-white">
+            {luminaryName}
+          </div>
+          {claimedBy && (
+            <div className="text-[11px] font-semibold px-3 py-0.5 rounded-full" style={{ background: `${primaryColor}22`, color: primaryColor, border: `1px solid ${primaryColor}44` }}>
+              Allied with {claimedBy}
+            </div>
+          )}
+          {eminence !== 0 && (
+            <div className="text-sm font-bold px-3 py-0.5 rounded-full" style={{ background: `${primaryColor}28`, color: primaryColor, border: `1px solid ${primaryColor}55` }}>
+              {eminence < 0 ? `\u2212${Math.abs(eminence)} Eminence \u2014 all players` : `+${eminence} Eminence`}
+            </div>
+          )}
+          {flavor && (
+            <div
+              className="mt-1 max-w-[300px] rounded-lg border px-3 py-2 text-[11px] italic leading-snug text-white/58"
+              style={{
+                background: 'rgba(255,255,255,0.055)',
+                borderColor: `${primaryColor}2e`,
+              }}
+            >
+              &ldquo;{flavor}&rdquo;
+            </div>
+          )}
+          {awaitingDismiss && (
+            <ArrivalEffectBanner
+              effectName={effectName}
+              primaryColor={primaryColor}
+            />
+          )}
+          {awaitingDismiss && (
+            <div className="mt-2 text-[10px] uppercase tracking-[0.18em] text-white/38">
+              tap to continue
+            </div>
+          )}
+        </div>
+      )}
+    </div>
+  );
+}
+
+function LuminaryArrivalCutsceneFull({
+  luminaryId,
+  luminaryName,
+  domain,
+  eminence,
+  flavor,
+  effectName,
   claimedBy,
   cardRect,
   onComplete,
   onFlash,
   onSkip,
   overrideColor,
-}: {
-  luminaryId: string;
-  luminaryName: string;
-  domain: string;
-  lumens: number;
-  flavor: string;
-  claimedBy?: string;
-  cardRect?: { cx: number; cy: number; w: number };
-  onComplete: () => void;
-  onFlash?: () => void;
-  onSkip?: () => void;
-  overrideColor?: string;
-}) {
+}: LuminaryArrivalCutsceneProps) {
   const [phase, setPhase] = useState<CutscenePhase>('establish');
   // True once the cutscene reaches the fully-revealed phase and lingers,
   // waiting for the player to tap/click to continue.
@@ -1556,6 +3853,42 @@ export function LuminaryArrivalCutscene({
   useEffect(() => { onFlashRef.current = onFlash; }, [onFlash]);
   const onCompleteRef = useRef(onComplete);
   useEffect(() => { onCompleteRef.current = onComplete; }, [onComplete]);
+  const logArrivalCutsceneDebug = (stage: string, detail: Record<string, unknown> = {}) => {
+    if (typeof window === 'undefined') return;
+    const debugParams = new URLSearchParams(window.location.search);
+    if (debugParams.get('debugArrival') !== '1' && debugParams.get('debugCutscene') !== '1') return;
+    console.info(`[Luminae arrival cutscene] ${JSON.stringify({
+      stage,
+      luminaryId,
+      luminaryName,
+      ...detail,
+    })}`);
+  };
+
+  useEffect(() => {
+    logArrivalCutsceneDebug('mount', {
+      domain,
+      eminence,
+      claimedBy,
+      hasCardRect: !!cardRect,
+      cardRect,
+      overrideColor,
+      viewport: {
+        width: typeof window !== 'undefined' ? window.innerWidth : undefined,
+        height: typeof window !== 'undefined' ? window.innerHeight : undefined,
+      },
+    });
+    return () => {
+      logArrivalCutsceneDebug('unmount');
+    };
+  }, []); // eslint-disable-line react-hooks/exhaustive-deps
+
+  useEffect(() => {
+    logArrivalCutsceneDebug('phase', {
+      phase,
+      awaitingDismiss,
+    });
+  }, [phase, awaitingDismiss, luminaryId, luminaryName]);
 
   // Fire all cutscene sound effects pre-scheduled against AudioContext time.
   // Runs exactly once on mount; respects the user's mute setting internally.
@@ -1573,6 +3906,7 @@ export function LuminaryArrivalCutscene({
       idx++;
       const next = PHASES[idx] ?? 'done';
       setPhase(next);
+      logArrivalCutsceneDebug('advance', { next });
       if (next === 'flashing') onFlashRef.current?.();
 
       if (next === 'revealed') {
@@ -1581,6 +3915,7 @@ export function LuminaryArrivalCutscene({
         setAwaitingDismiss(true);
         dismissRef.current = () => {
           if (cancelled || !dismissRef.current) return;
+          logArrivalCutsceneDebug('dismiss');
           dismissRef.current = null; // guard against double-fire
           setAwaitingDismiss(false);
           advance(); // advances idx → fading, then done
@@ -1589,7 +3924,10 @@ export function LuminaryArrivalCutscene({
       }
 
       if (next !== 'done') setTimeout(advance, PHASE_DURATIONS[next]);
-      else setTimeout(() => onCompleteRef.current(), 80);
+      else setTimeout(() => {
+        logArrivalCutsceneDebug('complete');
+        onCompleteRef.current();
+      }, 80);
     }
     const t = setTimeout(advance, PHASE_DURATIONS['establish']);
     return () => {
@@ -1768,13 +4106,12 @@ export function LuminaryArrivalCutscene({
   // there before the vessel appears, so they perfectly overlap.
   const vesselLeft = vw / 2 - BOARD_CARD_W / 2;
   const vesselTop  = vh / 2 - BOARD_CARD_H / 2;
-
   return (
     <div
       ref={(el) => { containerRef.current = el; }}
       className="fixed inset-0 z-[9000]"
       onClick={() => {
-        if (awaitingDismiss && dismissRef.current) dismissRef.current();
+        if (awaitingDismiss) dismissRef.current?.();
       }}
     >
 
@@ -1785,7 +4122,7 @@ export function LuminaryArrivalCutscene({
             e.stopPropagation();
             onSkip();
           }}
-          className="absolute top-4 right-4 z-[9100] flex items-center gap-1.5 text-white/55 hover:text-white/90 text-xs px-3 py-1.5 rounded-full border border-white/15 bg-black/40 backdrop-blur transition-colors select-none"
+          className="absolute top-4 right-4 z-[9100] flex items-center gap-1.5 text-white/55 hover:text-white/90 text-xs px-3 py-1.5 rounded-full border border-white/15 bg-black/80 transition-colors select-none"
           aria-label="Skip arrival view"
         >
           <svg width="10" height="10" viewBox="0 0 10 10" fill="currentColor" className="opacity-70">
@@ -2315,7 +4652,7 @@ export function LuminaryArrivalCutscene({
               left: vesselLeft + BOARD_CARD_W / 2 - BOARD_CARD_W * 2.75,
               top:  vesselTop  + BOARD_CARD_H / 2 - BOARD_CARD_H * 2.5,
               background: `radial-gradient(ellipse 42% 46% at 50% 44%, #ffffff 0%, #ffffffff 10%, #ffffffdd 24%, #ffffff88 50%, transparent 84%)`,
-              filter: isMobile ? undefined : 'blur(6px)',
+              boxShadow: isMobile ? undefined : '0 0 28px rgba(255,255,255,0.22)',
               borderRadius: '50%',
               transformOrigin: '50% 50%',
             }}
@@ -2498,7 +4835,7 @@ export function LuminaryArrivalCutscene({
               exit={{ opacity: 0, transition: { duration: prefersReducedMotion ? 0.6 : 0.2, ease: 'easeOut' } }}
               style={{
                 background: `radial-gradient(ellipse 55% 55% at 50% 42%, #ffffff 0%, rgba(255,255,255,0.85) 40%, rgba(255,255,255,0.2) 70%, transparent 100%)`,
-                filter: isMobile ? undefined : 'blur(4px)',
+                boxShadow: isMobile ? undefined : '0 0 36px rgba(255,255,255,0.24)',
               }}
             />
             {/* Affinity haze — quick burst of the luminary's color */}
@@ -2515,7 +4852,7 @@ export function LuminaryArrivalCutscene({
               exit={{ opacity: 0, transition: { duration: prefersReducedMotion ? 0.6 : 0.25, ease: 'easeOut' } }}
               style={{
                 background: `radial-gradient(ellipse at 50% 42%, rgba(${pRgb},0.9) 0%, rgba(${pRgb},0.5) 35%, rgba(${sRgb},0.2) 60%, transparent 85%)`,
-                filter: isMobile ? undefined : 'blur(8px)',
+                boxShadow: isMobile ? undefined : `0 0 42px rgba(${pRgb},0.24)`,
               }}
             />
             {/* Shock ring — expanding ring burst; hidden under prefers-reduced-motion */}
@@ -2575,26 +4912,17 @@ export function LuminaryArrivalCutscene({
             key="entity"
             className="absolute inset-0 flex items-center justify-center pointer-events-none"
             style={{ overflow: 'visible' }}
-            initial={{ opacity: 0, filter: 'blur(20px) brightness(0.25)' }}
+            initial={{ opacity: 0 }}
             animate={isFading
-              ? { opacity: 0, filter: 'blur(0px) brightness(1.0)' }
+              ? { opacity: 0 }
               : {
                   opacity: 1,
-                  filter: (prefersReducedMotion || isMobile)
-                    ? 'blur(0px) brightness(1.0)'
-                    : [
-                        'blur(20px) brightness(0.22)',
-                        'blur(18px) brightness(0.25)',
-                        'blur(8px)  brightness(0.60)',
-                        'blur(0px)  brightness(1.0)',
-                      ],
                 }
             }
             transition={isFading
               ? { duration: 0.55, ease: 'easeIn' }
               : {
                   opacity: { duration: 1.80, delay: 0.30, ease: 'easeOut' },
-                  filter:  { duration: 2.15, delay: 0.30, times: [0, 0.75, 0.92, 1.0], ease: 'easeOut' },
                 }
             }
           >
@@ -2653,8 +4981,8 @@ export function LuminaryArrivalCutscene({
                       top: '50%', left: '50%',
                       x: '-50%', y: '-52%',
                       borderRadius: '50%',
-                      background: `radial-gradient(ellipse at 50% 48%, ${primaryColor}ff 0%, ${primaryColor}cc 12%, ${primaryColor}77 34%, ${secondaryColor}33 58%, transparent 76%)`,
-                      filter: isMobile ? undefined : 'blur(12px)',
+                      background: `radial-gradient(ellipse at 50% 48%, ${primaryColor}ee 0%, ${primaryColor}aa 18%, ${primaryColor}55 42%, ${secondaryColor}22 64%, transparent 82%)`,
+                      boxShadow: isMobile ? undefined : `0 0 44px ${primaryColor}26`,
                       zIndex: 0,
                     }}
                   />
@@ -2676,8 +5004,8 @@ export function LuminaryArrivalCutscene({
                       top: '50%', left: '50%',
                       x: '-50%', y: '-52%',
                       borderRadius: '50%',
-                      background: `radial-gradient(ellipse at 50% 46%, ${glowColor}88 0%, ${glowColor}55 18%, ${glowColor}22 36%, ${primaryColor}11 56%, transparent 76%)`,
-                      filter: isMobile ? undefined : 'blur(8px)',
+                      background: `radial-gradient(ellipse at 50% 46%, ${glowColor}77 0%, ${glowColor}44 22%, ${glowColor}1e 44%, ${primaryColor}10 62%, transparent 80%)`,
+                      boxShadow: isMobile ? undefined : `0 0 30px ${glowColor}20`,
                       zIndex: 2,
                       mixBlendMode: 'screen',
                     }}
@@ -2730,7 +5058,10 @@ export function LuminaryArrivalCutscene({
                         : `drop-shadow(0 0 22px ${glowColor}cc) drop-shadow(0 0 10px ${primaryColor}88)`,
                     }}
                   >
-                    <div style={{ position: 'relative', width: ENT_W, height: ENT_H, zIndex: 1 }}>
+                    <div
+                      className={isFading ? undefined : 'lum-arrival-reveal-life'}
+                      style={{ position: 'relative', width: ENT_W, height: ENT_H, zIndex: 1 }}
+                    >
                       {luminaryId === 'lum_radiant' ? (() => {
                         // Three-layer animated composite — same form as the idle overlay,
                         // scaled to the larger ENT_W container.
@@ -2840,10 +5171,9 @@ export function LuminaryArrivalCutscene({
                 {/* Name / domain / Eminence badge */}
                 <motion.div
                   className="flex flex-col items-center gap-1 text-center"
-                  initial={{ opacity: 0, filter: isMobile ? 'brightness(4)' : 'brightness(4) blur(4px)' }}
+                  initial={{ opacity: 0 }}
                   animate={{
                     opacity: isFlashing ? 0 : (isFading ? 0 : 1),
-                    filter: isFlashing ? (isMobile ? 'brightness(4)' : 'brightness(4) blur(4px)') : 'brightness(1)',
                   }}
                   transition={{ duration: 0.9, delay: 0.2, ease: [0.16, 1, 0.3, 1] }}
                 >
@@ -2860,16 +5190,29 @@ export function LuminaryArrivalCutscene({
                       Allied with {claimedBy}
                     </div>
                   )}
-                  <div className="text-base font-bold px-3 py-0.5 rounded-full"
-                    style={{ background: `${primaryColor}28`, color: primaryColor, border: `1px solid ${primaryColor}55` }}>
-                    {lumens < 0 ? `\u2212${Math.abs(lumens)} Eminence \u2014 all players` : `+${lumens} Eminence`}
-                  </div>
+                  {eminence !== 0 && (
+                    <div className="text-base font-bold px-3 py-0.5 rounded-full"
+                      style={{ background: `${primaryColor}28`, color: primaryColor, border: `1px solid ${primaryColor}55` }}>
+                      {eminence < 0 ? `\u2212${Math.abs(eminence)} Eminence \u2014 all players` : `+${eminence} Eminence`}
+                    </div>
+                  )}
                   {flavor && (
-                    <div className="text-[11px] text-white/50 italic max-w-[260px] mt-1 leading-snug">
+                    <div
+                      className="mt-1 max-w-[280px] rounded-lg border px-3 py-2 text-[11px] italic leading-snug text-white/58"
+                      style={{
+                        background: 'rgba(255,255,255,0.055)',
+                        borderColor: `${primaryColor}2e`,
+                      }}
+                    >
                       &ldquo;{flavor}&rdquo;
                     </div>
                   )}
-                  {/* Footer ends here — no aura label/description */}
+                  {awaitingDismiss && (
+                    <ArrivalEffectBanner
+                      effectName={effectName}
+                      primaryColor={primaryColor}
+                    />
+                  )}
                 </motion.div>
 
               </div>
@@ -2920,7 +5263,7 @@ export function AuraPreviewModal({
       onClick={onClose}
     >
       {/* Backdrop — dark with a soft centered halo in the Luminary's color.
-          Intentionally avoids backdrop-filter:blur (very expensive on mobile).
+          Intentionally avoids backdrop-
           The gradient alone is sufficient and runs at native GPU fill-rate. */}
       <div
         className="absolute inset-0"
@@ -2991,6 +5334,154 @@ export function AuraPreviewModal({
   );
 }
 
+export function LuminaryClaimedEntityArt({
+  luminaryId,
+  activeColor,
+  className,
+  showAura = true,
+  presentation = 'contained',
+  animate = true,
+}: {
+  luminaryId: string;
+  activeColor?: string;
+  className?: string;
+  showAura?: boolean;
+  presentation?: 'contained' | 'freed';
+  animate?: boolean;
+}) {
+  const vis = getLuminaryVisuals(luminaryId);
+  const { EntityArt, primaryColor, glowColor, entityBlendMode, auraStyle } = vis;
+  const auraVariant = AURA_VARIANTS[auraStyle] ?? AURA_VARIANT_FALLBACK;
+  const { entityCutout } = getLuminaryImageAssets(luminaryId);
+  const ov = IDLE_ENTITY_OVERRIDES[luminaryId] ?? {};
+  const entScale = presentation === 'freed'
+    ? (ov.freedScale ?? 1)
+    : (ov.claimedScale ?? ov.scale ?? 1);
+  const objPos = ov.claimedObjectPosition ?? ov.objectPosition ?? 'center center';
+  const objFit = ov.claimedObjectFit ?? ov.objectFit ?? 'contain';
+  // Claimed Luminaries stay alive after arrival, but their motion is only a
+  // vertical hover so the Terminus remains calm and readable.
+  const idleClass = animate
+    ? (entScale !== 1 ? 'lum-claimed-hover-scaled' : 'lum-claimed-hover')
+    : '';
+  const hoverSeed = Array.from(luminaryId).reduce((sum, character) => sum + character.charCodeAt(0), 0);
+  const entityTransform = presentation === 'freed' ? undefined :
+    luminaryId === 'lum_seed' ? 'scale(1.15, 1.68)' :
+    luminaryId === 'lum_oracle' ? 'scale(1.30)' :
+    luminaryId === 'lum_orchard' ? 'scale(1.25, 1.45)' :
+    luminaryId === 'lum_bloom' ? 'scale(1.12, 1.78)' :
+    undefined;
+  const claimedMask = luminaryId === 'lum_compass'
+    ? 'radial-gradient(ellipse 122% 132% at 50% 48%, black 18%, rgba(0,0,0,0.98) 62%, rgba(0,0,0,0.78) 82%, rgba(0,0,0,0.30) 96%, transparent 108%)'
+    : 'radial-gradient(ellipse 104% 112% at 50% 44%, black 12%, rgba(0,0,0,0.96) 54%, rgba(0,0,0,0.70) 74%, rgba(0,0,0,0.28) 88%, transparent 98%)';
+
+  const auraColor = activeColor ?? glowColor;
+  const presenceClass = `lum-claimed-presence lum-claimed-presence--${auraStyle}`;
+  const claimedStyle = {
+    '--lum-claimed-primary': primaryColor,
+    '--lum-claimed-glow': glowColor,
+    '--lum-claimed-active': auraColor,
+    '--lum-claimed-hover-duration': `${4.6 + (hoverSeed % 5) * 0.35}s`,
+    '--lum-claimed-hover-delay': `${-(hoverSeed % 7) * 0.42}s`,
+  } as React.CSSProperties;
+  const auraEl = (
+    <div
+      className={`lum-claimed-aura ${auraVariant.idleClass}`}
+      style={{
+        position: 'absolute',
+        inset: '-14% -18%',
+        borderRadius: 22,
+        background: `radial-gradient(${auraVariant.gradientShape}, ${auraColor}42 0%, ${primaryColor}24 42%, ${glowColor}12 66%, transparent 84%)`,
+      }}
+    />
+  );
+
+  let entityEl: React.ReactNode;
+  if (luminaryId === 'lum_radiant') {
+    const ring = _luminaryImageMap['lum_radiant/Radiant 1'] ?? null;
+    const body = _luminaryImageMap['lum_radiant/Radiant 2'] ?? null;
+    const core = _luminaryImageMap['lum_radiant/Radiant 3'] ?? null;
+    if (ring && body && core) {
+      const absfill: React.CSSProperties = { position: 'absolute', inset: 0 };
+      const layerImg: React.CSSProperties = {
+        position: 'absolute',
+        inset: 0,
+        width: '100%',
+        height: '100%',
+        objectFit: 'contain',
+        display: 'block',
+        mixBlendMode: 'screen',
+      };
+      entityEl = (
+        <div className={idleClass} style={{ position: 'absolute', inset: '-2% -4% 0' }}>
+          <div className="lum-radiant-ring-pulse" style={{ ...absfill, transform: 'scale(1.25) translateY(-3px)', transformOrigin: 'center center' }}>
+            <img src={ring} draggable={false} alt="" className="lum-radiant-ring" style={layerImg} />
+          </div>
+          <div style={{ ...absfill, transform: 'scale(1.1)', transformOrigin: 'center center' }}>
+            <img src={body} draggable={false} alt="" style={layerImg} />
+          </div>
+          <div className="lum-radiant-core-pulse" style={{ ...absfill, transform: 'translateY(-5px) scale(0.20)', transformOrigin: 'center center' }}>
+            <img src={core} draggable={false} alt="" className="lum-radiant-core" style={layerImg} />
+          </div>
+        </div>
+      );
+    }
+  }
+
+  entityEl ??= entityCutout ? (
+    <div
+      className={idleClass}
+      style={{
+        position: 'absolute',
+        inset: '-2% 0 0',
+        ...(entScale !== 1 ? { ['--lum-ent-scale' as string]: entScale } : {}),
+        ...(!animate && entScale !== 1 ? { transform: `scale(${entScale})` } : {}),
+      }}
+    >
+      <img
+        src={entityCutout}
+        alt=""
+        draggable={false}
+        style={{
+          width: '100%',
+          height: '100%',
+          objectFit: objFit as React.CSSProperties['objectFit'],
+          objectPosition: objPos,
+          display: 'block',
+          transform: entityTransform,
+          transformOrigin: 'center center',
+          ...(entityBlendMode ? { mixBlendMode: entityBlendMode as React.CSSProperties['mixBlendMode'] } : {}),
+          ...(presentation === 'freed' ? {} : {
+            maskImage: claimedMask,
+            WebkitMaskImage: claimedMask,
+          }),
+        }}
+      />
+      {luminaryId === 'lum_tide' && (
+        <TideEyeOverlay
+          width={IDLE_W}
+          height={IDLE_H}
+          nativeAligned
+        />
+      )}
+    </div>
+  ) : (
+    <div className={idleClass} style={{ position: 'absolute', inset: '10% 0 0' }}>
+      <EntityArt size={IDLE_W} />
+    </div>
+  );
+
+  return (
+    <div className={`pointer-events-none overflow-visible lum-claimed-entity-art ${className ?? ''}`} style={claimedStyle}>
+      <div style={{ position: 'relative', width: '100%', height: '100%' }}>
+        {showAura && <div className={presenceClass} />}
+        {showAura && auraEl}
+        {entityEl}
+      </div>
+    </div>
+  );
+}
+
 // ── LuminaryIdleOverlay ──────────────────────────────────────────────────────
 // After the arrival cutscene completes the entity flies back to its panel card
 // and remains there as a living guardian for the rest of the game.
@@ -3006,7 +5497,19 @@ export function AuraPreviewModal({
 //
 // The entity art uses objectFit:cover + a radial mask so the bottom ~28 %
 // of the card (name, claim tag) stays legible underneath the transparent edge.
-export const LuminaryIdleOverlay = React.memo(function LuminaryIdleOverlay({ luminaryId, frozen = false, hidden = false, activeAffinityColor }: { luminaryId: string; frozen?: boolean; hidden?: boolean; activeAffinityColor?: string }) {
+export const LuminaryIdleOverlay = React.memo(function LuminaryIdleOverlay({
+  luminaryId,
+  frozen = false,
+  hidden = false,
+  skipReturnFlight = false,
+  activeAffinityColor,
+}: {
+  luminaryId: string;
+  frozen?: boolean;
+  hidden?: boolean;
+  skipReturnFlight?: boolean;
+  activeAffinityColor?: string;
+}) {
   const vis = getLuminaryVisuals(luminaryId);
   const { EntityArt, primaryColor, glowColor, entityBlendMode, auraStyle } = vis;
   const auraVariant = AURA_VARIANTS[auraStyle] ?? AURA_VARIANT_FALLBACK;
@@ -3015,9 +5518,14 @@ export const LuminaryIdleOverlay = React.memo(function LuminaryIdleOverlay({ lum
   const tierSuffix = vis.tier === 3 ? '-t3' : vis.tier === 2 ? '-t2' : '';
   const tieredAmbientClass = `${auraVariant.ambientClass}${tierSuffix}`;
   const { entityCutout } = getLuminaryImageAssets(luminaryId);
+  const hoverSeed = Array.from(luminaryId).reduce((sum, character) => sum + character.charCodeAt(0), 0);
+  const hoverMotionStyle = {
+    '--lum-claimed-hover-duration': `${4.6 + (hoverSeed % 5) * 0.35}s`,
+    '--lum-claimed-hover-delay': `${-(hoverSeed % 7) * 0.42}s`,
+  } as React.CSSProperties;
 
   const [cardPos, setCardPos] = useState<{ x: number; y: number } | null>(null);
-  const [isIdle, setIsIdle] = useState(false);
+  const [isIdle, setIsIdle] = useState(skipReturnFlight);
   // False when the card has been scrolled outside the <main> scroller's visible
   // area (e.g. user scrolled down and the Luminary row is above the fold).
   // The overlay is hidden while out-of-bounds so it doesn't paint over the header.
@@ -3042,9 +5550,9 @@ export const LuminaryIdleOverlay = React.memo(function LuminaryIdleOverlay({ lum
   // Keep a ref so the scroll handler always sees the latest frozen value
   // without needing to re-register listeners on every render.
   const frozenRef = useRef(frozen);
-  useEffect(() => { frozenRef.current = frozen; }, [frozen]);
+  useLayoutEffect(() => { frozenRef.current = frozen; }, [frozen]);
   const hiddenRef = useRef(hidden);
-  useEffect(() => { hiddenRef.current = hidden; }, [hidden]);
+  useLayoutEffect(() => { hiddenRef.current = hidden; }, [hidden]);
 
   // Exposed so the unhide effect below can force a single measurement that
   // bypasses the hiddenRef early-return guard (before hiddenRef updates).
@@ -3073,17 +5581,26 @@ export const LuminaryIdleOverlay = React.memo(function LuminaryIdleOverlay({ lum
     // measureCore: raw measurement without any guards. Extracted so both the
     // normal (gated) path and the forced unhide path share the same logic.
     const measureCore = () => {
-      const el = luminaryCardRef.current ?? document.querySelector(
-        `[data-luminary-id="${luminaryId}"]`
-      ) as HTMLElement | null;
+      let el = luminaryCardRef.current;
+      if (!el || !el.isConnected) {
+        el = document.querySelector(
+          `[data-luminary-id="${luminaryId}"]`
+        ) as HTMLElement | null;
+      }
       if (el) luminaryCardRef.current = el;
       if (!el) return;
       const r = el.getBoundingClientRect();
-      if (r.width === 0) return;
+      if (r.width === 0 || r.height === 0) {
+        luminaryCardRef.current = null;
+        return;
+      }
       // Check whether the card overlaps the scroll container's visible bounds.
       // When scrolled above the header the overlay must be hidden so it doesn't
       // paint over fixed chrome.
-      const mainEl = mainElRef.current ?? document.querySelector('[data-game-board]') as HTMLElement | null;
+      let mainEl = mainElRef.current;
+      if (!mainEl || !mainEl.isConnected) {
+        mainEl = document.querySelector('[data-game-board]') as HTMLElement | null;
+      }
       if (mainEl) mainElRef.current = mainEl;
       const mainRect = mainEl?.getBoundingClientRect() ?? null;
       boardRectRef.current = mainRect;
@@ -3113,8 +5630,8 @@ export const LuminaryIdleOverlay = React.memo(function LuminaryIdleOverlay({ lum
       setCardPos(prev => {
         if (!prev && !startViewRef.current) {
           startViewRef.current = {
-            x: window.innerWidth  / 2,
-            y: window.innerHeight / 2,
+            x: skipReturnFlight ? newX : window.innerWidth  / 2,
+            y: skipReturnFlight ? newY : window.innerHeight / 2,
           };
         }
         return { x: newX, y: newY };
@@ -3245,13 +5762,13 @@ export const LuminaryIdleOverlay = React.memo(function LuminaryIdleOverlay({ lum
       resizeObserver?.disconnect();
       mutationObserver?.disconnect();
     };
-  }, [luminaryId]);
+  }, [luminaryId, skipReturnFlight]);
 
   // Start the idle loop 1.2 s after cardPos first arrives (once only).
   useEffect(() => {
-    if (!cardPos || idleTimerRef.current) return;
+    if (skipReturnFlight || !cardPos || idleTimerRef.current) return;
     idleTimerRef.current = setTimeout(() => setIsIdle(true), 1200);
-  }, [cardPos]);
+  }, [cardPos, skipReturnFlight]);
 
   useEffect(() => () => {
     if (idleTimerRef.current) clearTimeout(idleTimerRef.current);
@@ -3321,12 +5838,12 @@ export const LuminaryIdleOverlay = React.memo(function LuminaryIdleOverlay({ lum
     const entScale = ov.scale ?? 1;
     const objPos   = ov.objectPosition ?? 'center top';
     const objFit   = ov.objectFit ?? 'contain';
-    const cyFactor = ov.idleCyFactor;
     // When entScale !== 1 we use the scaled variant keyframe (embeds the scale
     // factor via CSS custom property) so CSS transform and scale never conflict.
-    const idleClass = isIdle && !ov.noFloat
-      ? (entScale !== 1 ? 'lum-idle-float-scaled' : 'lum-idle-float')
+    const idleClass = isIdle
+      ? (entScale !== 1 ? 'lum-claimed-hover-scaled' : 'lum-claimed-hover')
       : undefined;
+    const compassMask = 'radial-gradient(ellipse 122% 132% at 50% 48%, black 18%, rgba(0,0,0,0.98) 62%, rgba(0,0,0,0.78) 82%, rgba(0,0,0,0.30) 96%, transparent 108%)';
 
     // ── lum_radiant: three-layer ring / body / core animation ──────────
     if (luminaryId === 'lum_radiant') {
@@ -3342,12 +5859,12 @@ export const LuminaryIdleOverlay = React.memo(function LuminaryIdleOverlay({ lum
         const absfill: React.CSSProperties = { position: 'absolute', inset: 0 };
         return (
           <div style={{ position: 'relative', width: IDLE_W, height: IDLE_H }}>
-            <div className={isIdle ? 'lum-idle-float' : undefined} style={absfill}>
+            <div className={isIdle ? 'lum-claimed-hover' : undefined} style={absfill}>
               <div className="lum-radiant-ring-pulse" style={{ ...absfill, transform: 'scale(1.25) translateY(-3px)', transformOrigin: 'center center' }}>
                 <img src={ring} draggable={false} alt="" className="lum-radiant-ring" style={layerImg} />
               </div>
             </div>
-            <div className={isIdle ? 'lum-idle-float' : undefined} style={absfill}>
+            <div className={isIdle ? 'lum-claimed-hover' : undefined} style={absfill}>
               <div style={{ ...absfill, transform: 'scale(1.1)', transformOrigin: 'center center' }}>
                 <img src={body} draggable={false} alt="" style={layerImg} />
               </div>
@@ -3363,7 +5880,7 @@ export const LuminaryIdleOverlay = React.memo(function LuminaryIdleOverlay({ lum
     // ── lum_compass: transparent entity — no background needed ──
     if (luminaryId === 'lum_compass') {
       return (
-        <div className={isIdle ? 'lum-compass-heat-haze lum-idle-float' : undefined} style={{ position: 'relative', width: IDLE_W, height: IDLE_H }}>
+        <div className={isIdle ? idleClass : undefined} style={{ position: 'relative', width: IDLE_W, height: IDLE_H, overflow: 'visible' }}>
           {entityCutout && (
             <img
               src={entityCutout} alt="" draggable={false}
@@ -3373,8 +5890,8 @@ export const LuminaryIdleOverlay = React.memo(function LuminaryIdleOverlay({ lum
                 objectFit: objFit as React.CSSProperties['objectFit'],
                 objectPosition: objPos,
                 ...(entScale !== 1 ? { transform: `scale(${entScale})`, transformOrigin: 'center center' } : {}),
-                maskImage: 'radial-gradient(ellipse 90% 96% at 50% 30%, black 16%, rgba(0,0,0,0.92) 44%, rgba(0,0,0,0.55) 60%, rgba(0,0,0,0.12) 74%, transparent 84%)',
-                WebkitMaskImage: 'radial-gradient(ellipse 90% 96% at 50% 30%, black 16%, rgba(0,0,0,0.92) 44%, rgba(0,0,0,0.55) 60%, rgba(0,0,0,0.12) 74%, transparent 84%)',
+                maskImage: compassMask,
+                WebkitMaskImage: compassMask,
               }}
             />
           )}
@@ -3386,7 +5903,7 @@ export const LuminaryIdleOverlay = React.memo(function LuminaryIdleOverlay({ lum
     if (luminaryId === 'lum_hunger') {
       const hEnt = _getLuminaryImage('lum_hunger', 'entity');
       return (
-        <div className={isIdle ? 'lum-idle-float' : undefined} style={{ position: 'relative', width: IDLE_W, height: IDLE_H }}>
+        <div className={isIdle ? 'lum-claimed-hover' : undefined} style={{ position: 'relative', width: IDLE_W, height: IDLE_H }}>
           {hEnt && (
             <img src={hEnt} alt="" draggable={false}
               style={{ position: 'absolute', inset: 0, width: '100%', height: '100%', objectFit: 'contain', zIndex: 1, display: 'block', border: 'none', WebkitMaskImage: 'radial-gradient(ellipse at center, black 70%, transparent 95%)', maskImage: 'radial-gradient(ellipse at center, black 70%, transparent 95%)' }} />
@@ -3428,7 +5945,12 @@ export const LuminaryIdleOverlay = React.memo(function LuminaryIdleOverlay({ lum
               }}
             />
             {luminaryId === 'lum_tide' && (
-              <TideEyeOverlay width={IDLE_W} height={IDLE_H} {...(cyFactor !== undefined ? { cyFactor } : {})} />
+              <TideEyeOverlay
+                width={IDLE_W}
+                height={IDLE_H}
+                nativeAligned
+                nativeAlign="top"
+              />
             )}
           </>
         ) : (
@@ -3445,8 +5967,9 @@ export const LuminaryIdleOverlay = React.memo(function LuminaryIdleOverlay({ lum
   // measurement needed on scroll events. absCardPos is container-relative and
   // only changes on layout reflows (ResizeObserver), not on scroll events.
   if (isIdle) {
-    const portalTarget = mainElRef.current
-      ?? (document.querySelector('[data-game-board]') as HTMLElement | null);
+    const portalTarget = mainElRef.current?.isConnected
+      ? mainElRef.current
+      : (document.querySelector('[data-game-board]') as HTMLElement | null);
     if (portalTarget && absCardPos) {
       const absEntityLeft = absCardPos.x - IDLE_W  / 2;
       const absEntityTop  = absCardPos.y - IDLE_H  / 2;
@@ -3484,11 +6007,12 @@ export const LuminaryIdleOverlay = React.memo(function LuminaryIdleOverlay({ lum
               top: absEntityTop,
               width: IDLE_W,
               height: IDLE_H,
+              overflow: 'visible',
               opacity: hidden ? 0 : 1,
               transition: hidden ? 'none' : 'opacity 0.3s ease-in',
             }}
           >
-            <div style={{ position: 'relative', width: IDLE_W, height: IDLE_H }}>
+            <div style={{ position: 'relative', width: IDLE_W, height: IDLE_H, overflow: 'visible', ...hoverMotionStyle }}>
               {auraEl}
               {entityArt}
             </div>
@@ -3546,13 +6070,14 @@ export const LuminaryIdleOverlay = React.memo(function LuminaryIdleOverlay({ lum
       <div
         className="fixed pointer-events-none"
         style={{ zIndex: 18, left: destX, top: destY, width: IDLE_W, height: IDLE_H,
+                 overflow: 'visible',
                  opacity: (hidden || !isWithinScroller) ? 0 : 1,
                  transition: (hidden || !isWithinScroller) ? 'none' : 'opacity 0.3s ease-in',
                  display: (hidden || !isWithinScroller) ? 'none' : undefined }}
       >
         {/* ── Return flight: centre of viewport → card position ── */}
         <motion.div
-          style={{ position: 'relative', width: IDLE_W, height: IDLE_H }}
+          style={{ position: 'relative', width: IDLE_W, height: IDLE_H, overflow: 'visible' }}
           initial={{ x: initX, y: initY, scale: initScale, opacity: 0 }}
           animate={{ x: 0, y: 0, scale: 1, opacity: 1 }}
           transition={{

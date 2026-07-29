@@ -3,7 +3,7 @@ import { createPortal } from 'react-dom';
 import { motion } from 'framer-motion';
 import { ArtifactCardView } from './game-card';
 
-// --- Compact market ghost: fire-and-forget portal that escapes all overflow containers ---
+// --- Compact Forge ghost: fire-and-forget portal that escapes overflow containers ---
 // Accepts the chip's pre-measured DOMRect so it doesn't need to touch the DOM itself.
 // Self-destructs after the animation finishes via onDone — it is NOT tied to flippingCards,
 // so the pre-cleanup that clears flippingCards on the next action cannot kill it early.
@@ -44,4 +44,3 @@ export function CompactCardGhost({
     document.body,
   );
 }
-

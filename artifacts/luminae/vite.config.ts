@@ -105,16 +105,22 @@ if (rawPort) {
 }
 
 const basePath = process.env.BASE_PATH ?? "/";
+const buildStamp = new Date().toISOString();
+const buildLabel = process.env.LUMINAE_BUILD_LABEL ?? buildStamp;
 
 export default defineConfig({
   base: basePath,
+  define: {
+    __LUMINAE_BUILD_STAMP__: JSON.stringify(buildStamp),
+    __LUMINAE_BUILD_LABEL__: JSON.stringify(buildLabel),
+  },
   plugins: [
     hmrNoReload(),
     react(),
     tailwindcss(),
     runtimeErrorOverlay(),
     VitePWA({
-      registerType: "autoUpdate",
+      registerType: "prompt",
       // Let vite-plugin-pwa inject the manifest link tag and build the SW.
       // We supply our own manifest.json from public/ so injectManifest picks
       // it up; setting manifest:false would skip the <link> injection.
@@ -156,10 +162,15 @@ export default defineConfig({
         ],
       },
       workbox: {
-        // Precache all JS/CSS/HTML + card art + icons
-        globPatterns: ["**/*.{js,css,html,ico,png,jpg,jpeg,svg,woff,woff2,webp}"],
-        maximumFileSizeToCacheInBytes: 6 * 1024 * 1024,
-        // Never intercept API or WebSocket traffic
+        // Keep the PWA install light. The generated game art library is large,
+        // and precaching it all competes with animation/rendering on mobile and
+        // wrapper builds. Browser HTTP cache can handle art assets on demand.
+        globPatterns: ["**/*.{js,css,html,ico,svg,woff,woff2}"],
+        maximumFileSizeToCacheInBytes: 2 * 1024 * 1024,
+        cleanupOutdatedCaches: true,
+        clientsClaim: true,
+        skipWaiting: false,
+        // Never intercept API or WebSocket traffic.
         navigateFallback: "index.html",
         navigateFallbackDenylist: [/^\/api/, /^\/ws/],
         runtimeCaching: [
@@ -180,18 +191,6 @@ export default defineConfig({
             options: {
               cacheName: "google-fonts-webfonts",
               expiration: { maxEntries: 30, maxAgeSeconds: 60 * 60 * 24 * 365 },
-              cacheableResponse: { statuses: [0, 200] },
-            },
-          },
-          // API calls — NetworkFirst so multiplayer state is always fresh,
-          // falls back to cache when offline.
-          {
-            urlPattern: /^.*\/api\/.*/i,
-            handler: "NetworkFirst",
-            options: {
-              cacheName: "api-responses",
-              networkTimeoutSeconds: 5,
-              expiration: { maxEntries: 50, maxAgeSeconds: 60 * 5 },
               cacheableResponse: { statuses: [0, 200] },
             },
           },

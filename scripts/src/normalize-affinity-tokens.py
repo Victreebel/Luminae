@@ -1,5 +1,5 @@
 """
-Normalize all six gem token PNGs to a consistent 512×512 canvas.
+Normalize Luminae Affinity token PNGs to a consistent 512x512 canvas.
 
 For each file:
   1. Load with full alpha channel
@@ -17,14 +17,16 @@ the remaining files and exits 1 only when every file failed.
 PROTECTED FILES — do not regenerate these in asset-generation sessions:
   attached_assets/luminae_radiance_emblem_v2.png
   attached_assets/luminae_singularity_emblem_v1.png
-  attached_assets/generated_images/gem_flare.png
-  attached_assets/generated_images/gem_continuum.png
-  attached_assets/generated_images/gem_verdance.png
-  attached_assets/generated_images/gem_abyss.png
+  attached_assets/generated_images/affinity_flare.png
+  attached_assets/generated_images/affinity_continuum.png
+  attached_assets/generated_images/affinity_verdance.png
+  attached_assets/generated_images/affinity_abyss.png
 These tokens were restored from commit 4758e88 after multiple inadvertent
 replacements degraded them (singularity dropped to 3% coverage / 33 KB).
 If you intentionally want to update a token, do so deliberately and remove
 the coverage guard for that specific file.
+
+All token filenames use the canonical ``affinity_`` prefix.
 """
 
 from PIL import Image
@@ -41,12 +43,12 @@ _REPO_ROOT = os.path.abspath(os.path.join(os.path.dirname(__file__), "..", "..")
 FILES = [
     os.path.join(_REPO_ROOT, "attached_assets/luminae_radiance_emblem_v2.png"),
     os.path.join(_REPO_ROOT, "attached_assets/luminae_singularity_emblem_v1.png"),
-    os.path.join(_REPO_ROOT, "attached_assets/generated_images/gem_flare.png"),
-    os.path.join(_REPO_ROOT, "attached_assets/generated_images/gem_continuum.png"),
-    os.path.join(_REPO_ROOT, "attached_assets/generated_images/gem_verdance.png"),
-    os.path.join(_REPO_ROOT, "attached_assets/generated_images/gem_abyss.png"),
-    os.path.join(_REPO_ROOT, "attached_assets/generated_images/gem_radiance.png"),
-    os.path.join(_REPO_ROOT, "attached_assets/generated_images/gem_singularity.png"),
+    os.path.join(_REPO_ROOT, "attached_assets/generated_images/affinity_flare.png"),
+    os.path.join(_REPO_ROOT, "attached_assets/generated_images/affinity_continuum.png"),
+    os.path.join(_REPO_ROOT, "attached_assets/generated_images/affinity_verdance.png"),
+    os.path.join(_REPO_ROOT, "attached_assets/generated_images/affinity_abyss.png"),
+    os.path.join(_REPO_ROOT, "attached_assets/generated_images/affinity_radiance.png"),
+    os.path.join(_REPO_ROOT, "attached_assets/generated_images/affinity_singularity.png"),
 ]
 
 
@@ -62,7 +64,7 @@ def visible_coverage(img: Image.Image) -> float:
 
 def normalize(path: str) -> str:
     """
-    Normalize a single gem PNG in place.
+    Normalize a single Affinity token PNG in place.
 
     Returns one of:
       "ok"       — file was successfully normalized
@@ -138,7 +140,7 @@ def normalize(path: str) -> str:
 
 
 def main() -> None:
-    print(f"Normalizing gem token PNGs → {CANVAS}×{CANVAS}, fill={int(FILL_PCT*100)}%  (min coverage {MIN_COVERAGE_PCT:.0%})\n")
+    print(f"Normalizing Affinity token PNGs -> {CANVAS}x{CANVAS}, fill={int(FILL_PCT*100)}%  (min coverage {MIN_COVERAGE_PCT:.0%})\n")
 
     counts = {"ok": 0, "skip": 0, "warn": 0}
     for path in FILES:

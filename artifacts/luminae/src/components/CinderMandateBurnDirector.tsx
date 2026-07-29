@@ -1,15 +1,9 @@
 /**
  * CinderMandateBurnDirector
  *
- * Purpose-built director for the Ember Sovereign `end_of_turn` activation event.
- * Owns the full condemned-card burn sequence:
- *   1. Camera prepare (compact + frame condemned cards)
- *   2. Decree interstitial: "CINDER MANDATE / The condemned are burned." (DECREE_MS)
- *   3. Shudder (SHUDDER_MS) + heat wash (HEAT_WASH_MS) on condemned slots
- *   4. Director-owned BurnFlash for each condemned slot
- *   5. Burn pile particle + chip pulse
- *   6. Market refill pulse (after BurnFlash completes)
- *   7. Aftermath hold → restore camera → onComplete
+ * Purpose-built visuals for the Ember Sovereign `end_of_turn` activation event,
+ * advanced through the shared announce → frame → target → resolve → reveal →
+ * aftermath contract.
  *
  * BurnFlash suppression: game.tsx detects lum_ember burns in the state-diff
  * block and saves the pre-measured slot rects to a ref instead of firing
@@ -26,14 +20,22 @@
  *
  * Solution: remove all useState so the component never triggers a re-render
  * of itself.  All overlays are always in the DOM (opacity 0 initially) and
- * animated imperatively via framer-motion's standalone animate() function,
- * which requires no React hook.  The entire sequence runs inside a single
- * mount useEffect via a setTimeout chain.
+ * animated imperatively via framer-motion's standalone animate() function.
+ * Phase advancement and exactly-once completion belong to the shared sequence
+ * controller.
  */
-import React, { useEffect, useRef } from 'react';
+import { useEffect, useRef } from 'react';
 import { animate } from 'framer-motion';
 import { createPortal } from 'react-dom';
+import {
+  LuminaryEffectAnnouncement,
+  LuminaryEffectSkipControl,
+} from './LuminaryEffectChrome';
 import type { AnimationProcedureStep } from '@/lib/animationProcedure';
+import {
+  createLuminaryEffectSequence,
+  type LuminaryEffectSequenceController,
+} from '@/lib/luminaryEffectSequence';
 import type { ArtifactCard } from '@workspace/api-client-react';
 
 // ─── Timing constants ─────────────────────────────────────────────────────────
@@ -129,10 +131,13 @@ interface CinderMandateBurnDirectorProps {
   /**
    * Pre-measured slot rects for condemned cards.
    * Captured in game.tsx during the state-diff BurnFlash block so they
-   * reflect the pre-refill layout even after the market is replenished.
+   * reflect the pre-refill layout even after the Forge is replenished.
    */
   pendingBurnSlots: DirectorBurnSlot[];
   reducedMotion: boolean;
+  triggeringPlayerName?: string;
+  queuePosition?: number;
+  queueTotal?: number;
   actions: CinderMandateBurnActions;
   onComplete: (skipped?: boolean) => void;
 }
@@ -143,6 +148,9 @@ export function CinderMandateBurnDirector({
   targetCardIds,
   pendingBurnSlots,
   reducedMotion,
+  triggeringPlayerName,
+  queuePosition = 1,
+  queueTotal = 1,
   actions,
   onComplete,
 }: CinderMandateBurnDirectorProps) {
@@ -152,6 +160,7 @@ export function CinderMandateBurnDirector({
   onCompleteRef.current = onComplete;
   const actionsRef = useRef(actions);
   actionsRef.current = actions;
+  const sequenceRef = useRef<LuminaryEffectSequenceController | null>(null);
   // Snapshot of slots at mount time (the ref in game.tsx is cleared after this)
   const slotsRef = useRef(pendingBurnSlots);
   // Capture targetCardIds at mount so shudder closure uses the stable value
@@ -161,14 +170,14 @@ export function CinderMandateBurnDirector({
   const decreeRef = useRef<HTMLDivElement | null>(null);
   const heatWashRef = useRef<HTMLDivElement | null>(null);
 
-  // ── Single mount effect — entire sequence runs imperatively ────────────────
+  // ── Single mount effect — phases are advanced by the shared controller ─────
   useEffect(() => {
     const slots = slotsRef.current;
     const ids = targetIdsRef.current;
 
     // ── Phase 0: set condemned ghost cards immediately at mount ─────────────
-    // The server burns condemned cards (replacing them in the market) in the
-    // same advanceTurn call that pushes the activation event.  By the time
+    // The server burns condemned cards (replacing them in The Forge) in the
+    // same staged transition that pushes the activation event. By the time
     // this director mounts, the TQ state already shows replacement cards in
     // the condemned slots.  We must set ghost cards NOW — before any timer
     // fires — so the condemned card art is visible from the first frame of
@@ -203,120 +212,153 @@ export function CinderMandateBurnDirector({
         ? [{ type: 'targetClaim', targetIds: ids, keyword: 'condemned' }]
         : [];
 
-    // Pre-size drain gate for worst-case full sequence
     const totalMs =
       DECREE_MS + SHUDDER_MS + HEAT_WASH_MS + BURN_FLASH_TOTAL_MS + AFTERMATH_HOLD_MS;
     actionsRef.current.setAnimEndTime(totalMs + 800 /* camera settle */);
 
-    // Begin camera framing immediately
-    actionsRef.current.prepare(procedure, undefined, { forceOrchestrate: true });
+    const sequence = createLuminaryEffectSequence({
+      reducedMotion,
+      phases: [
+        {
+          id: 'announce',
+          durationMs: DECREE_MS,
+          reducedDurationMs: 160,
+          run: () => {
+            const decree = decreeRef.current;
+            if (decree) {
+              void animate(
+                decree,
+                { opacity: 1 },
+                { duration: reducedMotion ? 0.06 : 0.28, ease: 'easeOut' },
+              );
+            }
+          },
+        },
+        {
+          id: 'frame',
+          run: ({ waitFor }) => waitFor(
+            done => actionsRef.current.prepare(
+              procedure,
+              done,
+              { forceOrchestrate: true },
+            ),
+            800,
+          ),
+        },
+        {
+          id: 'target',
+          run: async ({ wait, signal }) => {
+            const elements: HTMLElement[] = [];
+            for (const id of ids) {
+              const card = document.querySelector(`[data-card-id="${id}"]`);
+              const slot = card?.closest('[data-slot-key]') as HTMLElement | null;
+              if (slot) elements.push(slot);
+            }
+            elements.forEach(element => {
+              element.style.animation =
+                'cinder-shudder 0.08s ease-in-out 5 alternate';
+            });
 
-    const timers: ReturnType<typeof setTimeout>[] = [];
-    const t = (fn: () => void, ms: number) => {
-      const h = setTimeout(fn, reducedMotion ? Math.min(ms, 100) : ms);
-      timers.push(h);
-    };
+            const heatDelay = reducedMotion
+              ? 0
+              : Math.round(SHUDDER_MS * 0.4);
+            await wait(heatDelay);
+            if (!signal.aborted && heatWashRef.current) {
+              void animate(
+                heatWashRef.current,
+                { opacity: [0, 0.17, 0] },
+                {
+                  duration: reducedMotion ? 0.08 : HEAT_WASH_MS / 1000,
+                  ease: 'easeInOut',
+                  times: [0, 0.35, 1],
+                },
+              );
+            }
+            await wait(Math.max(0, SHUDDER_MS - heatDelay));
+            elements.forEach(element => {
+              element.style.animation = '';
+              element.style.transform = '';
+            });
+          },
+        },
+        {
+          id: 'resolve',
+          run: async ({ wait, signal }) => {
+            const chip = document.querySelector('[data-burn-pile-chip]');
+            const chipRect = chip?.getBoundingClientRect() ?? null;
 
-    // ── Phase 1: decree overlay (animate in immediately) ────────────────────
-    // Fades out after BurnFlash completes so the announcement covers its full
-    // burn animation segment (decree hold → shudder → BurnFlash).
-    const decree = decreeRef.current;
-    if (!reducedMotion && decree) {
-      void animate(decree, { opacity: 1 }, { duration: 0.28, ease: 'easeOut' });
-      t(() => {
-        void animate(decree, { opacity: 0 }, { duration: 0.22, ease: 'easeOut' });
-      }, DECREE_MS + SHUDDER_MS + BURN_FLASH_TOTAL_MS);
-    }
+            slots.forEach(({ slotKey, sourceLuminaryId }, index) => {
+              const slot = document.querySelector(`[data-slot-key="${slotKey}"]`);
+              const liveRect =
+                slot?.getBoundingClientRect() ??
+                new DOMRect(0, 0, 0, 0);
 
-    // ── Phase 2: shudder — direct DOM manipulation, no state ───────────────
-    const shudderStart = reducedMotion ? 0 : DECREE_MS;
-    t(() => {
-      const els: HTMLElement[] = [];
-      for (const id of ids) {
-        const cardEl = document.querySelector(`[data-card-id="${id}"]`);
-        if (!cardEl) continue;
-        const slotEl = cardEl.closest('[data-slot-key]') as HTMLElement | null;
-        if (slotEl) els.push(slotEl);
-      }
-      els.forEach(el => {
-        el.style.animation = 'cinder-shudder 0.08s ease-in-out 5 alternate';
-      });
-      // Clear shudder after its duration
-      setTimeout(() => {
-        els.forEach(el => {
-          el.style.animation = '';
-          el.style.transform = '';
-        });
-      }, SHUDDER_MS);
-    }, shudderStart);
+              actionsRef.current.playCardBurn(index, slots.length);
+              actionsRef.current.onBurnFlash({
+                id: `director-burn-${slotKey}-${Date.now()}-${index}`,
+                slotRect: liveRect,
+                sourceLuminaryId,
+              });
 
-    // ── Phase 3: heat wash — animate via ref, no state ─────────────────────
-    const heatStart = shudderStart + Math.round(SHUDDER_MS * 0.4);
-    const wash = heatWashRef.current;
-    t(() => {
-      if (wash) {
-        void animate(wash, { opacity: [0, 0.17, 0] }, {
-          duration: HEAT_WASH_MS / 1000,
-          ease: 'easeInOut',
-          times: [0, 0.35, 1],
-        });
-      }
-    }, heatStart);
+              if (chipRect && liveRect.width > 0) {
+                void (async () => {
+                  await wait(380 + index * 80);
+                  if (!signal.aborted) {
+                    actionsRef.current.onBurnPileParticle(liveRect, chipRect);
+                  }
+                })();
+              }
+            });
 
-    // ── Phase 4: BurnFlash (fires after shudder completes) ─────────────────
-    // Ghost cards were already set at Phase 0 (mount), so condemned card art
-    // is visible throughout decree and shudder.  Just fire BurnFlash here.
-    const burnAt = shudderStart + SHUDDER_MS;
-    t(() => {
-      const chipEl = document.querySelector('[data-burn-pile-chip]');
-      const chipRect = chipEl?.getBoundingClientRect() ?? null;
-
-      slots.forEach(({ slotKey, sourceLuminaryId }, i) => {
-        // Re-measure slot in case the DOM shifted during compact transition
-        const slotEl = document.querySelector(`[data-slot-key="${slotKey}"]`);
-        const liveRect: DOMRect =
-          slotEl?.getBoundingClientRect() ??
-          // eslint-disable-next-line no-restricted-syntax -- DOMRect constructor is fine; we're building a synthetic rect from saved values
-          new DOMRect(0, 0, 0, 0);
-
-        actionsRef.current.playCardBurn(i, slots.length);
-        actionsRef.current.onBurnFlash({
-          id: `director-burn-${slotKey}-${Date.now()}-${i}`,
-          slotRect: liveRect,
-          sourceLuminaryId,
-        });
-
-        // Fragment flies toward burn chip ~400 ms into BurnFlash
-        if (chipRect && liveRect.width > 0) {
-          setTimeout(() => {
-            actionsRef.current.onBurnPileParticle(liveRect, chipRect);
-          }, 380 + i * 80);
-        }
-      });
-
-      if (slots.length > 0) {
-        actionsRef.current.onBurnChipPulse();
-      }
-
-      // Refill pulse fires after BurnFlash animation completes
-      setTimeout(() => {
-        const keys = slots.map(s => s.slotKey);
-        if (keys.length > 0) actionsRef.current.onRefillPulse(keys);
-      }, BURN_FLASH_TOTAL_MS);
-    }, burnAt);
-
-    // ── Phase 5: aftermath + complete ──────────────────────────────────────
-    const completesAt = burnAt + BURN_FLASH_TOTAL_MS + AFTERMATH_HOLD_MS;
-    t(() => {
-      actionsRef.current.unlockBoardScroll();
-      actionsRef.current.restore({ immediate: reducedMotion });
-      onCompleteRef.current(reducedMotion);
-    }, completesAt);
+            if (slots.length > 0) {
+              actionsRef.current.onBurnChipPulse();
+            }
+            await wait(BURN_FLASH_TOTAL_MS);
+          },
+        },
+        {
+          id: 'reveal',
+          run: () => {
+            const keys = slots.map(slot => slot.slotKey);
+            if (keys.length > 0) actionsRef.current.onRefillPulse(keys);
+            const decree = decreeRef.current;
+            if (decree) {
+              void animate(
+                decree,
+                { opacity: 0 },
+                { duration: reducedMotion ? 0.06 : 0.22, ease: 'easeOut' },
+              );
+            }
+          },
+        },
+        {
+          id: 'aftermath',
+          durationMs: AFTERMATH_HOLD_MS,
+          reducedDurationMs: 100,
+        },
+      ],
+      onPhaseChange: phase => {
+        const decree = decreeRef.current;
+        if (decree) decree.dataset.effectPhase = phase;
+      },
+      onSkip: () => {
+        const decree = decreeRef.current;
+        if (decree) decree.style.opacity = '0';
+        actionsRef.current.unlockBoardScroll();
+        actionsRef.current.restore({ immediate: true });
+      },
+      onComplete: skipped => {
+        actionsRef.current.unlockBoardScroll();
+        actionsRef.current.restore({ immediate: skipped || reducedMotion });
+        onCompleteRef.current(skipped);
+      },
+    });
+    sequenceRef.current = sequence;
+    sequence.start();
 
     return () => {
-      timers.forEach(clearTimeout);
-      // Safety: release scroll lock if the component unmounts before the
-      // completesAt timer fires (e.g. skip / fast-forward path).
+      sequence.cancel();
+      if (sequenceRef.current === sequence) sequenceRef.current = null;
       actionsRef.current.unlockBoardScroll();
     };
     // eslint-disable-next-line react-hooks/exhaustive-deps
@@ -331,6 +373,7 @@ export function CinderMandateBurnDirector({
       {/* Decree interstitial — fades in immediately, out at DECREE_MS */}
       <div
         ref={(el) => { decreeRef.current = el; }}
+        data-testid="cinder-mandate-burn-director"
         style={{
           position: 'fixed',
           inset: 0,
@@ -344,34 +387,25 @@ export function CinderMandateBurnDirector({
           opacity: 0,
         }}
       >
-        <div style={{ textAlign: 'center', userSelect: 'none' }}>
-          <div
-            style={{
-              fontFamily: "'Cinzel', 'Palatino Linotype', serif",
-              fontSize: 19,
-              letterSpacing: '0.22em',
-              fontWeight: 700,
-              color: '#ef4444',
-              textTransform: 'uppercase',
-              textShadow:
-                '0 0 22px rgba(239,68,68,0.80), 0 0 8px rgba(239,68,68,0.50)',
-            }}
-          >
-            Cinder Mandate
-          </div>
-          <div
-            style={{
-              marginTop: 8,
-              fontFamily: "'Cinzel', 'Palatino Linotype', serif",
-              fontSize: 10,
-              letterSpacing: '0.14em',
-              color: 'rgba(251,191,36,0.62)',
-              textTransform: 'uppercase',
-            }}
-          >
-            The condemned are burned.
-          </div>
-        </div>
+        <LuminaryEffectAnnouncement
+          effectName="Cinder Mandate"
+          luminaryName="The Ember Sovereign"
+          description="All condemned Artifacts are burned."
+          triggeringPlayerName={triggeringPlayerName}
+          queueLabel={
+            queueTotal > 1
+              ? `END OF TURN EFFECT · ${queuePosition} OF ${queueTotal}`
+              : 'END OF TURN EFFECT'
+          }
+          primaryColor="#ef4444"
+          secondaryColor="#fbbf24"
+        />
+        <LuminaryEffectSkipControl
+          color="#ef4444"
+          reducedMotion={reducedMotion}
+          onSkip={() => sequenceRef.current?.skip()}
+          label="Skip Cinder Mandate burn phase"
+        />
       </div>
 
       {/* Heat wash — ember glow floods the lower board */}

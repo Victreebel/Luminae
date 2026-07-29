@@ -3,10 +3,10 @@
  * Luminary Playtest Harness
  *
  * Extends the existing simulation with per-arrival impact capture:
- *   - Claimer score before / after
+ *   - Claimer Eminence before / after
  *   - All-player Eminence deltas
- *   - Market size change from arrival effect
- *   - Cards burned per arrival
+ *   - Forge size change from arrival effect
+ *   - Artifacts burned per arrival
  *   - Claimer position at claim time (ahead / even / behind)
  *   - Claimer win rate
  *
@@ -19,9 +19,9 @@ import {
   initializeGame,
   applyAction,
   LUMINARY_MAP,
-  CRYSTAL_COLORS,
+  STANDARD_AFFINITY_KEYS,
   type GameStateData,
-  type CrystalColor,
+  type StandardAffinityKey,
 } from "../lib/gameEngine.js";
 import { chooseAiAction } from "../lib/aiPlayer.js";
 
@@ -48,23 +48,23 @@ interface ArrivalRecord {
   /** turnCount at the moment of claim */
   turn:               number;
   roundNumber:        number;
-  /** Claimer lumens immediately BEFORE the action that triggered the arrival */
-  emnBefore:          number;
-  /** Claimer lumens AFTER the action (arrival effect applied) */
-  emnAfter:           number;
-  /** Per-player Emn delta across the arrival (includes arrival award + effect) */
-  emnDelta:           Record<string, number>;
+  /** Claimer Eminence immediately before the action that triggered the arrival. */
+  eminenceBefore:          number;
+  /** Claimer Eminence after the action and arrival effect. */
+  eminenceAfter:           number;
+  /** Per-player Eminence delta across the arrival, including its award and effect. */
+  eminenceDelta:           Record<string, number>;
   /** Was claimer ahead / tied / behind the field max before arrival? */
   position:           "ahead" | "even" | "behind";
-  /** Face-up market cards before the action */
-  marketBefore:       number;
-  /** Face-up market cards after the action */
-  marketAfter:        number;
+  /** Face-up Artifacts in the Forge before the action. */
+  forgeBefore:       number;
+  /** Face-up Artifacts in the Forge after the action. */
+  forgeAfter:        number;
   /** Cards added to burn pile by this action */
   burnsThisAction:    number;
   /** Filled after game ends */
   claimerWon:         boolean;
-  winnerEmn:          number;
+  winnerEminence:          number;
   gameTurns:          number;
 }
 
@@ -73,7 +73,7 @@ interface GameRecord {
   players:    number;
   turns:      number;
   winnerId:   string;
-  winnerEmn:  number;
+  winnerEminence:  number;
   active:     string[];        // active luminary IDs
   arrivals:   ArrivalRecord[];
   abandoned:  boolean;
@@ -81,13 +81,13 @@ interface GameRecord {
 
 // ── Helpers ───────────────────────────────────────────────────────────────────
 
-function mktSize(s: GameStateData): number {
-  return s.marketTier1.length + s.marketTier2.length + s.marketTier3.length;
+function forgeSize(s: GameStateData): number {
+  return s.forgeTier1.length + s.forgeTier2.length + s.forgeTier3.length;
 }
 
-function scoreMap(s: GameStateData): Record<string, number> {
+function eminenceMap(s: GameStateData): Record<string, number> {
   const m: Record<string, number> = {};
-  for (const p of s.players) m[p.playerId] = p.lumens;
+  for (const p of s.players) m[p.playerId] = p.eminence;
   return m;
 }
 
@@ -147,7 +147,7 @@ function runGame(gameId: string, playerCount: number): GameRecord {
   const arrivals: ArrivalRecord[] = [];
   const knownArrivals = new Set<string>();  // "lumId::ownerId"
   let turnsSinceProgress = 0;
-  let lastTotalLumens = 0;
+  let lastTotalEminence = 0;
   let totalTurns = 0;
   let abandoned = false;
 
@@ -161,8 +161,8 @@ function runGame(gameId: string, playerCount: number): GameRecord {
     if (!cp) break;
 
     // ── Snapshot BEFORE action ──────────────────────────────────────────────
-    const snapScores   = scoreMap(state);
-    const snapMkt      = mktSize(state);
+    const eminenceBefore = eminenceMap(state);
+    const snapForgeSize      = forgeSize(state);
     const snapBurnLen  = (state.burnPile ?? []).length;
     const snapArrivals = new Set(knownArrivals);
 
@@ -171,13 +171,13 @@ function runGame(gameId: string, playerCount: number): GameRecord {
     const res    = applyAction(state, cp.playerId, action);
 
     if (!res.success) {
-      // Fallback: harvest one crystal of whatever's available
+      // Fallback: Harness one available Affinity.
       let recovered = false;
-      for (const c of CRYSTAL_COLORS) {
-        if (state.crystalBank[c] > 0) {
+      for (const c of STANDARD_AFFINITY_KEYS) {
+        if (state.affinityWell[c] > 0) {
           const fb = applyAction(state, cp.playerId, {
-            type: "take_three_crystals",
-            crystals: { [c]: 1 },
+            type: "harness_three_affinities",
+            affinities: { [c]: 1 },
           });
           if (fb.success) { recovered = true; break; }
         }
@@ -198,10 +198,10 @@ function runGame(gameId: string, playerCount: number): GameRecord {
       const lum = LUMINARY_MAP.get(la.luminaryId);
       if (!lum) continue;
 
-      const afterScores = scoreMap(state);
+      const eminenceAfter = eminenceMap(state);
       const delta: Record<string, number> = {};
       for (const p of state.players) {
-        delta[p.playerId] = (afterScores[p.playerId] ?? 0) - (snapScores[p.playerId] ?? 0);
+        delta[p.playerId] = (eminenceAfter[p.playerId] ?? 0) - (eminenceBefore[p.playerId] ?? 0);
       }
 
       arrivals.push({
@@ -211,23 +211,23 @@ function runGame(gameId: string, playerCount: number): GameRecord {
         claimerId:        la.ownerId,
         turn:             state.turnCount,
         roundNumber:      state.roundNumber,
-        emnBefore:        snapScores[la.ownerId] ?? 0,
-        emnAfter:         afterScores[la.ownerId] ?? 0,
-        emnDelta:         delta,
-        position:         position(la.ownerId, snapScores),
-        marketBefore:     snapMkt,
-        marketAfter:      mktSize(state),
+        eminenceBefore:        eminenceBefore[la.ownerId] ?? 0,
+        eminenceAfter:         eminenceAfter[la.ownerId] ?? 0,
+        eminenceDelta:         delta,
+        position:         position(la.ownerId, eminenceBefore),
+        forgeBefore:     snapForgeSize,
+        forgeAfter:      forgeSize(state),
         burnsThisAction:  Math.max(0, (state.burnPile ?? []).length - snapBurnLen),
         // filled post-game:
         claimerWon: false,
-        winnerEmn:  0,
+        winnerEminence:  0,
         gameTurns:  0,
       });
     }
 
     // ── Stall detector ──────────────────────────────────────────────────────
-    const tot = state.players.reduce((s, p) => s + p.lumens, 0);
-    if (tot > lastTotalLumens) { lastTotalLumens = tot; turnsSinceProgress = 0; }
+    const tot = state.players.reduce((s, p) => s + p.eminence, 0);
+    if (tot > lastTotalEminence) { lastTotalEminence = tot; turnsSinceProgress = 0; }
     else if (++turnsSinceProgress > 80) { abandoned = true; break; }
   }
 
@@ -235,12 +235,12 @@ function runGame(gameId: string, playerCount: number): GameRecord {
   const winner = state.winnerId
     ? state.players.find((p) => p.playerId === state.winnerId) ?? state.players[0]
     : state.players.reduce((b, p) =>
-        p.lumens > b.lumens || (p.lumens === b.lumens && p.purchasedCardIds.length < b.purchasedCardIds.length)
+        p.eminence > b.eminence || (p.eminence === b.eminence && p.forgedArtifactIds.length < b.forgedArtifactIds.length)
           ? p : b);
 
   for (const a of arrivals) {
     a.claimerWon = a.claimerId === winner.playerId;
-    a.winnerEmn   = winner.lumens;
+    a.winnerEminence   = winner.eminence;
     a.gameTurns   = totalTurns;
   }
 
@@ -249,7 +249,7 @@ function runGame(gameId: string, playerCount: number): GameRecord {
     players: playerCount,
     turns: totalTurns,
     winnerId: winner.playerId,
-    winnerEmn: winner.lumens,
+    winnerEminence: winner.eminence,
     active: [...state.activeLuminaries],
     arrivals,
     abandoned,
@@ -261,16 +261,16 @@ function runGame(gameId: string, playerCount: number): GameRecord {
 interface LumStats {
   id:                  string;
   name:                string;
-  emnAward:            number;   // lumens field from LUMINARY_MAP
+  eminenceAward:          number;   // Eminence awarded by the Luminary definition
   gamesActive:         number;
   arrivalCount:      number;
   arrivalRate:       number;
   avgTurn:           number;
   avgRound:          number;
-  avgEmnBefore:      number;
-  avgClaimerDelta:   number;   // claimer EMN change at arrival (award + effect on self)
-  avgOpponentDelta:  number;   // avg per-opponent EMN change (often negative for disruptive lums)
-  avgMarketRemoved:  number;
+  avgEminenceBefore:      number;
+  avgClaimerDelta:   number;   // claimer Eminence change at arrival
+  avgOpponentDelta:  number;   // average per-opponent Eminence change
+  avgForgeRemoved:  number;
   avgBurns:          number;
   posAhead:          number;
   posEven:           number;
@@ -303,7 +303,7 @@ function aggregate(games: GameRecord[]): LumStats[] {
       n === 0 ? 0 : obs.reduce((s, o) => s + fn(o), 0) / n;
 
     const avgOpp = n === 0 ? 0 : obs.reduce((sum, o) => {
-      const opps = Object.entries(o.emnDelta)
+      const opps = Object.entries(o.eminenceDelta)
         .filter(([pid]) => pid !== o.claimerId)
         .map(([, d]) => d);
       return sum + (opps.length > 0 ? opps.reduce((a, b) => a + b, 0) / opps.length : 0);
@@ -317,16 +317,16 @@ function aggregate(games: GameRecord[]): LumStats[] {
     stats.push({
       id:                lumId,
       name:              lum.name,
-      emnAward:          lum.lumens,
+      eminenceAward:          lum.eminence,
       gamesActive:       gamesAct,
       arrivalCount:      n,
       arrivalRate:       gamesAct > 0 ? n / gamesAct : 0,
       avgTurn:           avg((o) => o.turn),
       avgRound:          avg((o) => o.roundNumber),
-      avgEmnBefore:      avg((o) => o.emnBefore),
-      avgClaimerDelta:   avg((o) => o.emnDelta[o.claimerId] ?? 0),
+      avgEminenceBefore:      avg((o) => o.eminenceBefore),
+      avgClaimerDelta:   avg((o) => o.eminenceDelta[o.claimerId] ?? 0),
       avgOpponentDelta:  avgOpp,
-      avgMarketRemoved:  avg((o) => o.marketBefore - o.marketAfter),
+      avgForgeRemoved:  avg((o) => o.forgeBefore - o.forgeAfter),
       avgBurns:          avg((o) => o.burnsThisAction),
       posAhead:          posA,
       posEven:           posE,
@@ -353,7 +353,7 @@ function powerVerdict(s: LumStats): Verdict {
   if (sd >= 4 && od <= -2) return "Very Strong";
   if (sd >= 3 || (sd >= 2 && od <= -1.5)) return "Strong";
   if (sd <= 0.5 && od >= -0.5 && s.avgBurns < 0.5) return "Too Weak";
-  if (sd <= 1 && s.avgBurns < 0.5 && s.avgMarketRemoved < 0.5) return "Too Weak";
+  if (sd <= 1 && s.avgBurns < 0.5 && s.avgForgeRemoved < 0.5) return "Too Weak";
   return "Fair";
 }
 
@@ -367,9 +367,9 @@ function confusionVerdict(s: LumStats): FeelVerdict {
 }
 
 function frustrationVerdict(s: LumStats): FeelVerdict {
-  if (s.avgBurns >= 3 || s.avgMarketRemoved >= 3) return "Yes";
+  if (s.avgBurns >= 3 || s.avgForgeRemoved >= 3) return "Yes";
   if (s.avgOpponentDelta <= -2) return "Yes";
-  if (s.avgBurns >= 1.5 || s.avgMarketRemoved >= 1.5) return "Some";
+  if (s.avgBurns >= 1.5 || s.avgForgeRemoved >= 1.5) return "Some";
   if (s.avgOpponentDelta <= -1) return "Some";
   return "Low";
 }
@@ -401,10 +401,10 @@ function reqStr(id: string): string {
   const r = LUMINARY_MAP.get(id)?.requirements;
   if (!r) return "?";
   const parts: string[] = [];
-  const labels: Record<CrystalColor, string> = {
-    ruby: "Fl", sapphire: "Co", emerald: "Ve", onyx: "Ab", pearl: "Ra",
+  const labels: Record<StandardAffinityKey, string> = {
+    flare: "Fl", continuum: "Co", verdance: "Ve", abyss: "Ab", radiance: "Ra",
   };
-  for (const c of CRYSTAL_COLORS) if (r[c] > 0) parts.push(`${r[c]}${labels[c]}`);
+  for (const c of STANDARD_AFFINITY_KEYS) if (r[c] > 0) parts.push(`${r[c]}${labels[c]}`);
   return parts.join("+");
 }
 
@@ -435,13 +435,13 @@ function printReport(allGames: GameRecord[]): void {
 
   // ── Game rhythm ───────────────────────────────────────────────────────────
   console.log("\n── GAME RHYTHM ───────────────────────────────────────────────────────────────────────────");
-  console.log(pad("Players", 10) + pad("Avg turns", 12) + pad("Avg win EMN", 14) + "Avg arrivals/game");
+  console.log(pad("Players", 10) + pad("Avg turns", 12) + pad("Avg win Eminence", 18) + "Avg arrivals/game");
   console.log("─".repeat(50));
   for (const pc of PLAYER_COUNTS) {
     const g = allGames.filter((x) => x.players === pc);
     if (g.length === 0) continue;
     const avgT  = g.reduce((s, x) => s + x.turns, 0) / g.length;
-    const avgW  = g.reduce((s, x) => s + x.winnerEmn, 0) / g.length;
+    const avgW  = g.reduce((s, x) => s + x.winnerEminence, 0) / g.length;
     const avgS  = g.reduce((s, x) => s + x.arrivals.length, 0) / g.length;
     console.log(pad(`${pc}p (${g.length} games)`, 10) + pad(f1(avgT), 12) + pad(f1(avgW), 14) + f1(avgS));
   }
@@ -479,7 +479,7 @@ function printReport(allGames: GameRecord[]): void {
       parts.push(`Δself ${sign(s.avgClaimerDelta)}`);
       if (Math.abs(s.avgOpponentDelta) >= 0.1) parts.push(`Δopp ${sign(s.avgOpponentDelta)}`);
       if (s.avgBurns >= 0.3)         parts.push(`burns ${f1(s.avgBurns)}`);
-      if (s.avgMarketRemoved >= 0.3) parts.push(`mkt−${f1(s.avgMarketRemoved)}`);
+      if (s.avgForgeRemoved >= 0.3) parts.push(`Forge-${f1(s.avgForgeRemoved)}`);
       parts.push(`win% ${pctStr(s.claimerWinRate)}`);
       const posStr = `${s.posAhead}A/${s.posEven}E/${s.posBehind}B`;
       parts.push(`pos ${posStr}`);
@@ -506,10 +506,10 @@ function printReport(allGames: GameRecord[]): void {
     for (const s of wl) {
       console.log(`\n  ★ ${s.name}  (${s.id})`);
       console.log(`    Arrived ${s.arrivalCount}× in ${s.gamesActive} active games  (${pctStr(s.arrivalRate)} claim rate)`);
-      console.log(`    Avg round at arrival   : ${f1(s.avgRound)}    Avg EMN before: ${f1(s.avgEmnBefore)}`);
-      console.log(`    Claimer EMN delta    : ${sign(s.avgClaimerDelta)}   (raw award ${s.emnAward} EMN declared)`);
-      console.log(`    Avg opponent EMN delta : ${sign(s.avgOpponentDelta)} per opponent`);
-      console.log(`    Avg market cards removed: ${f2(s.avgMarketRemoved)}    Avg burns: ${f2(s.avgBurns)}`);
+      console.log(`    Avg round at arrival   : ${f1(s.avgRound)}    Avg Eminence before: ${f1(s.avgEminenceBefore)}`);
+      console.log(`    Claimer Eminence delta : ${sign(s.avgClaimerDelta)}   (declared award ${s.eminenceAward})`);
+      console.log(`    Avg opponent Eminence delta: ${sign(s.avgOpponentDelta)} per opponent`);
+      console.log(`    Avg Forge Artifacts removed: ${f2(s.avgForgeRemoved)}    Avg burns: ${f2(s.avgBurns)}`);
       console.log(`    Claimer position      : ${s.posAhead} ahead / ${s.posEven} even / ${s.posBehind} behind`);
       console.log(`    Claimer win rate      : ${pctStr(s.claimerWinRate)}  (${s.winnerWasClaimer}/${s.arrivalCount} games)`);
     }
@@ -522,9 +522,9 @@ function printReport(allGames: GameRecord[]): void {
       .filter((g) => g.players === pc)
       .flatMap((g) => g.arrivals.filter((a) => a.luminaryId === "lum_void"));
     if (voidObs.length === 0) { console.log(`  ${pc}p: not arrived`); continue; }
-    const avgSelf  = voidObs.reduce((s, o) => s + (o.emnDelta[o.claimerId] ?? 0), 0) / voidObs.length;
+    const avgSelf  = voidObs.reduce((s, o) => s + (o.eminenceDelta[o.claimerId] ?? 0), 0) / voidObs.length;
     const avgOppTotal = voidObs.reduce((sum, o) => {
-      const opps = Object.entries(o.emnDelta)
+      const opps = Object.entries(o.eminenceDelta)
         .filter(([pid]) => pid !== o.claimerId)
         .map(([, d]) => d);
       return sum + opps.reduce((a, b) => a + b, 0);
@@ -544,7 +544,7 @@ function printReport(allGames: GameRecord[]): void {
     .filter((s) => s.arrivalCount > 0 && s.avgBurns > 0)
     .sort((a, b) => b.avgBurns - a.avgBurns);
   for (const s of burners) {
-    console.log(`  ${pad(s.name, 24)} ${f2(s.avgBurns)} burns/arrival  market−${f2(s.avgMarketRemoved)}`);
+    console.log(`  ${pad(s.name, 24)} ${f2(s.avgBurns)} burns/arrival  Forge-${f2(s.avgForgeRemoved)}`);
   }
 
   // ── Summoner win rate ranked ──────────────────────────────────────────────
@@ -564,7 +564,7 @@ function printReport(allGames: GameRecord[]): void {
   if (never.length > 0) {
     console.log("\n── NEVER ARRIVED ───────────────────────────────────────────────────────────────────────");
     for (const s of never) {
-      console.log(`  ${s.name}  (cost ${reqStr(s.id)}, ${s.emnAward} EMN)  active in ${s.gamesActive} games`);
+      console.log(`  ${s.name}  (cost ${reqStr(s.id)}, ${s.eminenceAward} Eminence)  active in ${s.gamesActive} games`);
     }
   }
 

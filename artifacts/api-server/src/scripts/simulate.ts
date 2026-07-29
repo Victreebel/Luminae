@@ -37,13 +37,13 @@ import {
   LUMINARIES,
   LUMINARY_MAP,
   CARD_MAP,
-  CRYSTAL_COLORS,
-  effectiveBonuses,
-  zeroCrystals,
+  STANDARD_AFFINITY_KEYS,
+  effectiveAffinityBonuses,
+  zeroAffinities,
   parseAiDifficulty,
   type GameStateData,
-  type CrystalColor,
-  type CrystalCounts,
+  type StandardAffinityKey,
+  type AffinityCounts,
   type ArtifactCard,
   type LuminaryDef,
   type ActionPayload,
@@ -97,20 +97,20 @@ function parseArgs(): {
 
 interface GameResult {
   turnsTotal: number;
-  winnerLumens: number;
+  winnerEminence: number;
   luminaryClaims: Record<string, string>; // luminaryId → claimerPlayerId
   claimedAtTurn: Record<string, number>;  // luminaryId → turnCount when claimed
   actionCounts: Record<string, number>;
-  playerFinalLumens: number[];
+  playerFinalEminence: number[];
   /** Max bonus any single player accumulated per color during this game. */
-  maxBonusObserved: Record<CrystalColor, number>;
+  maxBonusObserved: Record<StandardAffinityKey, number>;
   /** Which Luminary IDs were in the active pool for this game. */
   activeLuminaryIds: string[];
 }
 
 const MAX_TURNS_PER_GAME = 400;
 
-function runOneGame(playerCount: number, difficulty: AiDifficulty, verbose = false): GameResult {
+function runOneGame(playerCount: number, difficulty: AiDifficulty): GameResult {
   const playerDefs = Array.from({ length: playerCount }, (_, i) => ({
     id: `p${i + 1}`,
     name: `AI-${i + 1}`,
@@ -123,7 +123,7 @@ function runOneGame(playerCount: number, difficulty: AiDifficulty, verbose = fal
   const claimedAtTurn: Record<string, number> = {};
   const prevClaimed = new Set<string>();
   let turnsSinceLastProgress = 0;
-  let lastTotalLumens = 0;
+  let lastTotalEminence = 0;
 
   function detectNewClaims(): void {
     for (const p of state.players) {
@@ -157,23 +157,17 @@ function runOneGame(playerCount: number, difficulty: AiDifficulty, verbose = fal
 
     if (result.success) {
       actionCounts[action.type] = (actionCounts[action.type] ?? 0) + 1;
-      if (verbose && action.type === "toggle_luminary_affinity") {
-        const lumName = LUMINARY_MAP.get(action.luminaryId ?? "")?.name ?? action.luminaryId ?? "?";
-        console.log(
-          `  [turn ${state.turnCount}] ${currentPlayer.playerName} (${difficulty}) switched ${lumName} → ${action.affinity}`,
-        );
-      }
     } else {
       let recovered = false;
-      for (const color of ["ruby", "pearl", "emerald", "sapphire", "onyx"] as const) {
-        if (state.crystalBank[color] > 0) {
+      for (const color of ["flare", "radiance", "verdance", "continuum", "abyss"] as const) {
+        if (state.affinityWell[color] > 0) {
           const fb = applyAction(state, currentPlayer.playerId, {
-            type: "take_three_crystals",
-            crystals: { [color]: 1 },
+            type: "harness_three_affinities",
+            affinities: { [color]: 1 },
           });
           if (fb.success) {
             detectNewClaims();
-            actionCounts["take_three_crystals"] = (actionCounts["take_three_crystals"] ?? 0) + 1;
+            actionCounts["harness_three_affinities"] = (actionCounts["harness_three_affinities"] ?? 0) + 1;
             recovered = true;
             break;
           }
@@ -182,9 +176,9 @@ function runOneGame(playerCount: number, difficulty: AiDifficulty, verbose = fal
       if (!recovered) break;
     }
 
-    const totalLumens = state.players.reduce((s, p) => s + p.lumens, 0);
-    if (totalLumens > lastTotalLumens) {
-      lastTotalLumens = totalLumens;
+    const totalEminence = state.players.reduce((s, p) => s + p.eminence, 0);
+    if (totalEminence > lastTotalEminence) {
+      lastTotalEminence = totalEminence;
       turnsSinceLastProgress = 0;
     } else {
       turnsSinceLastProgress++;
@@ -199,11 +193,11 @@ function runOneGame(playerCount: number, difficulty: AiDifficulty, verbose = fal
     }
   }
 
-  const maxBonusObserved: Record<CrystalColor, number> = {
-    ruby: 0, pearl: 0, emerald: 0, sapphire: 0, onyx: 0,
+  const maxBonusObserved: Record<StandardAffinityKey, number> = {
+    flare: 0, radiance: 0, verdance: 0, continuum: 0, abyss: 0,
   };
   for (const p of state.players) {
-    for (const color of CRYSTAL_COLORS) {
+    for (const color of STANDARD_AFFINITY_KEYS) {
       if (p.bonuses[color] > maxBonusObserved[color]) {
         maxBonusObserved[color] = p.bonuses[color];
       }
@@ -212,15 +206,15 @@ function runOneGame(playerCount: number, difficulty: AiDifficulty, verbose = fal
 
   const winner = state.winnerId
     ? state.players.find((p) => p.playerId === state.winnerId) ?? state.players[0]
-    : state.players.reduce((best, p) => (p.lumens > best.lumens ? p : best));
+    : state.players.reduce((best, p) => (p.eminence > best.eminence ? p : best));
 
   return {
     turnsTotal: state.turnCount,
-    winnerLumens: winner.lumens,
+    winnerEminence: winner.eminence,
     luminaryClaims,
     claimedAtTurn,
     actionCounts,
-    playerFinalLumens: state.players.map((p) => p.lumens),
+    playerFinalEminence: state.players.map((p) => p.eminence),
     maxBonusObserved,
     activeLuminaryIds,
   };
@@ -257,17 +251,17 @@ function percentile(arr: number[], p: number): number {
 }
 
 function lumTier(lum: (typeof LUMINARIES)[0]): number {
-  const colors = ["ruby", "pearl", "emerald", "sapphire", "onyx"] as const;
+  const colors = ["flare", "radiance", "verdance", "continuum", "abyss"] as const;
   const nonZero = colors.filter((c) => lum.requirements[c] > 0);
-  if (nonZero.length === 1) return lum.lumens <= 1 ? 1 : 2;
+  if (nonZero.length === 1) return lum.eminence <= 1 ? 1 : 2;
   if (nonZero.length === 2) return 3;
   return 4;
 }
 
 function reqSummary(lum: (typeof LUMINARIES)[0]): string {
-  const colors = ["ruby", "pearl", "emerald", "sapphire", "onyx"] as const;
+  const colors = ["flare", "radiance", "verdance", "continuum", "abyss"] as const;
   const labels: Record<string, string> = {
-    ruby: "Flr", pearl: "Rad", emerald: "Vrd", sapphire: "Con", onyx: "Aby",
+    flare: "Flr", radiance: "Rad", verdance: "Vrd", continuum: "Con", abyss: "Aby",
   };
   return colors
     .filter((c) => lum.requirements[c] > 0)
@@ -275,8 +269,8 @@ function reqSummary(lum: (typeof LUMINARIES)[0]): string {
     .join("+");
 }
 
-const COLOR_LABEL: Record<CrystalColor, string> = {
-  ruby: "Flr", pearl: "Rad", emerald: "Vrd", sapphire: "Con", onyx: "Aby",
+const COLOR_LABEL: Record<StandardAffinityKey, string> = {
+  flare: "Flr", radiance: "Rad", verdance: "Vrd", continuum: "Con", abyss: "Aby",
 };
 
 // ── Single-difficulty report ──────────────────────────────────────────────────
@@ -288,7 +282,7 @@ interface DifficultyStats {
   avgTurns: number;
   minTurns: number;
   maxTurns: number;
-  avgWinLumens: number;
+  avgWinEminence: number;
   claimedCount: Record<string, number>;
   totalClaims: number;
   avgClaimsPerGame: number;
@@ -300,7 +294,7 @@ interface DifficultyStats {
   tripleAvgRate: number;
   warnings: string[];
   claimTurns: Record<string, number[]>;
-  peakBonusObserved: Record<CrystalColor, number>;
+  peakBonusObserved: Record<StandardAffinityKey, number>;
   gamesActiveCount: Record<string, number>;
 }
 
@@ -309,13 +303,13 @@ function runDifficulty(difficulty: AiDifficulty, games: number, players: number,
   const results: GameResult[] = [];
   for (let i = 0; i < games; i++) {
     if (verbose) console.log(`\n── Game ${i + 1} ────────────────────────────────────────────────────`);
-    results.push(runOneGame(players, difficulty, verbose));
+    results.push(runOneGame(players, difficulty));
     if (!verbose && (i + 1) % 50 === 0) process.stdout.write(`    Progress: ${i + 1}/${games}\r`);
   }
   if (games >= 50) process.stdout.write("\n");
 
   const turns = results.map((r) => r.turnsTotal);
-  const winnerLumens = results.map((r) => r.winnerLumens);
+  const winnerEminence = results.map((r) => r.winnerEminence);
 
   const claimedCount: Record<string, number> = {};
   const claimTurns: Record<string, number[]> = {};
@@ -328,8 +322,8 @@ function runDifficulty(difficulty: AiDifficulty, games: number, players: number,
   const claimsPerGame: number[] = [];
   const totalActionCounts: Record<string, number> = {};
 
-  const peakBonusObserved: Record<CrystalColor, number> = {
-    ruby: 0, pearl: 0, emerald: 0, sapphire: 0, onyx: 0,
+  const peakBonusObserved: Record<StandardAffinityKey, number> = {
+    flare: 0, radiance: 0, verdance: 0, continuum: 0, abyss: 0,
   };
   const gamesActiveCount: Record<string, number> = {};
   for (const lum of LUMINARIES) gamesActiveCount[lum.id] = 0;
@@ -348,7 +342,7 @@ function runDifficulty(difficulty: AiDifficulty, games: number, players: number,
     for (const [k, v] of Object.entries(r.actionCounts)) {
       totalActionCounts[k] = (totalActionCounts[k] ?? 0) + v;
     }
-    for (const color of CRYSTAL_COLORS) {
+    for (const color of STANDARD_AFFINITY_KEYS) {
       if (r.maxBonusObserved[color] > peakBonusObserved[color]) {
         peakBonusObserved[color] = r.maxBonusObserved[color];
       }
@@ -379,7 +373,7 @@ function runDifficulty(difficulty: AiDifficulty, games: number, players: number,
   const tripleAvgRate = tripleCount > 0 ? tripleClaims / tripleCount / games : 0;
 
   const avgTurns = mean(turns);
-  const avgWinLumens = mean(winnerLumens);
+  const avgWinEminence = mean(winnerEminence);
 
   const warnings: string[] = [];
   if (monoAvgRate < 0.03) warnings.push("Mono Luminaries rarely claimed (<3% per game)");
@@ -405,7 +399,7 @@ function runDifficulty(difficulty: AiDifficulty, games: number, players: number,
   return {
     difficulty, playerCount: players, games, avgTurns,
     minTurns: Math.min(...turns), maxTurns: Math.max(...turns),
-    avgWinLumens, claimedCount, totalClaims, avgClaimsPerGame: mean(claimsPerGame),
+    avgWinEminence, claimedCount, totalClaims, avgClaimsPerGame: mean(claimsPerGame),
     gamesWithClaims, tierGroups, actionCounts: totalActionCounts,
     monoAvgRate, dualAvgRate, tripleAvgRate, warnings, claimTurns,
     peakBonusObserved, gamesActiveCount,
@@ -417,7 +411,7 @@ function printDifficultyReport(s: DifficultyStats): void {
     1: "mono-1L", 2: "mono-2L", 3: "dual-3L", 4: "triple-4L",
   };
   const tierNames: Record<number, string> = {
-    1: "Mono-color  1L", 2: "Mono-color  2L", 3: "Dual-color  3L", 4: "Triple-color 4L",
+    1: "Mono-Affinity 1E", 2: "Mono-Affinity 2E", 3: "Dual-Affinity 3E", 4: "Triple-Affinity 4E",
   };
 
   console.log(`\n${"═".repeat(64)}`);
@@ -426,7 +420,7 @@ function printDifficultyReport(s: DifficultyStats): void {
 
   console.log("\n── Game Pacing ──────────────────────────────────────────────────");
   console.log(`  Avg turns     : ${s.avgTurns.toFixed(1)}  (${s.minTurns}–${s.maxTurns})`);
-  console.log(`  Avg win Emn.  : ${s.avgWinLumens.toFixed(1)}`);
+  console.log(`  Avg win Eminence: ${s.avgWinEminence.toFixed(1)}`);
 
   const totalActions = Object.values(s.actionCounts).reduce((a, b) => a + b, 0);
   console.log("\n── AI Action Distribution ───────────────────────────────────────");
@@ -575,7 +569,7 @@ function printStructuralReachability(s: DifficultyStats): void {
       continue;
     }
 
-    const reqColors = CRYSTAL_COLORS.filter((c) => lum.requirements[c] > 0);
+    const reqColors = STANDARD_AFFINITY_KEYS.filter((c) => lum.requirements[c] > 0);
     let anyShortfall = false;
     const shortfallLines: string[] = [];
     const metLines: string[] = [];
@@ -630,17 +624,17 @@ function printComparisonTable(allStats: DifficultyStats[]): void {
 
   row("Avg turns / game", allStats.map((s) => s.avgTurns.toFixed(1)));
   row("Turn range", allStats.map((s) => `${s.minTurns}–${s.maxTurns}`));
-  row("Avg winner Eminence", allStats.map((s) => s.avgWinLumens.toFixed(1)));
+  row("Avg winner Eminence", allStats.map((s) => s.avgWinEminence.toFixed(1)));
   row("Avg Luminary claims / game", allStats.map((s) => s.avgClaimsPerGame.toFixed(2)));
   row("Games with ≥1 claim", allStats.map((s) => pct(s.gamesWithClaims, s.games)));
   row("Mono avg rate / Lum / game", allStats.map((s) => (s.monoAvgRate * 100).toFixed(1) + "%"));
   row("Dual avg rate / Lum / game", allStats.map((s) => (s.dualAvgRate * 100).toFixed(1) + "%"));
   row("Triple avg rate / Lum / game", allStats.map((s) => (s.tripleAvgRate * 100).toFixed(1) + "%"));
   row(
-    "Purchase share",
+    "Forge share",
     allStats.map((s) => {
       const total = Object.values(s.actionCounts).reduce((a, b) => a + b, 0);
-      return pct(s.actionCounts["purchase_card"] ?? 0, total);
+      return pct(s.actionCounts["forge_artifact"] ?? 0, total);
     }),
   );
 
@@ -700,17 +694,17 @@ function printPlayerCountComparison(allStats: DifficultyStats[]): void {
   row("Active Luminaries per game", allStats.map((s) => String(s.playerCount + 1)));
   row("Avg turns / game", allStats.map((s) => s.avgTurns.toFixed(1)));
   row("Turn range", allStats.map((s) => `${s.minTurns}–${s.maxTurns}`));
-  row("Avg winner Eminence", allStats.map((s) => s.avgWinLumens.toFixed(1)));
+  row("Avg winner Eminence", allStats.map((s) => s.avgWinEminence.toFixed(1)));
   row("Avg Luminary claims / game", allStats.map((s) => s.avgClaimsPerGame.toFixed(2)));
   row("Games with ≥1 claim", allStats.map((s) => pct(s.gamesWithClaims, s.games)));
   row("Mono avg rate / Lum / game", allStats.map((s) => (s.monoAvgRate * 100).toFixed(1) + "%"));
   row("Dual avg rate / Lum / game", allStats.map((s) => (s.dualAvgRate * 100).toFixed(1) + "%"));
   row("Triple avg rate / Lum / game", allStats.map((s) => (s.tripleAvgRate * 100).toFixed(1) + "%"));
   row(
-    "Purchase share",
+    "Forge share",
     allStats.map((s) => {
       const total = Object.values(s.actionCounts).reduce((a, b) => a + b, 0);
-      return pct(s.actionCounts["purchase_card"] ?? 0, total);
+      return pct(s.actionCounts["forge_artifact"] ?? 0, total);
     }),
   );
 
@@ -823,16 +817,16 @@ function printPlayerCountComparison(allStats: DifficultyStats[]): void {
 
 function probeScoreCard(
   card: ArtifactCard,
-  player: { bonuses: CrystalCounts },
+  player: { bonuses: AffinityCounts },
   targetLum: LuminaryDef,
 ): number {
-  const need = targetLum.requirements[card.bonusColor as CrystalColor] ?? 0;
+  const need = targetLum.requirements[card.bonusAffinity as StandardAffinityKey] ?? 0;
   if (need > 0) {
-    const have = player.bonuses[card.bonusColor as CrystalColor] ?? 0;
+    const have = player.bonuses[card.bonusAffinity as StandardAffinityKey] ?? 0;
     const stillNeeded = Math.max(0, need - have);
-    return 200 + stillNeeded * 20 + card.lumens * 2 + card.tier;
+    return 200 + stillNeeded * 20 + card.eminence * 2 + card.tier;
   }
-  return card.lumens;
+  return card.eminence;
 }
 
 function chooseProbeAction(
@@ -841,15 +835,15 @@ function chooseProbeAction(
   targetLum: LuminaryDef,
 ): ActionPayload {
   const playerMaybe = state.players.find((p) => p.playerId === playerId);
-  if (!playerMaybe) return { type: "take_three_crystals", crystals: {} };
+  if (!playerMaybe) return { type: "harness_three_affinities", affinities: {} };
   const player = playerMaybe;
 
-  const reqColors = CRYSTAL_COLORS.filter((c) => targetLum.requirements[c] > 0);
+  const reqColors = STANDARD_AFFINITY_KEYS.filter((c) => targetLum.requirements[c] > 0);
 
-  function effCost(card: ArtifactCard): CrystalCounts {
-    const bonuses = effectiveBonuses(state, player);
-    const result = zeroCrystals();
-    for (const color of CRYSTAL_COLORS) {
+  function effCost(card: ArtifactCard): AffinityCounts {
+    const bonuses = effectiveAffinityBonuses(state, player);
+    const result = zeroAffinities();
+    for (const color of STANDARD_AFFINITY_KEYS) {
       result[color] = Math.max(0, card.cost[color] - bonuses[color]);
     }
     return result;
@@ -857,46 +851,46 @@ function chooseProbeAction(
 
   function canAffordCard(card: ArtifactCard): boolean {
     const eff = effCost(card);
-    let fluxNeeded = 0;
-    for (const color of CRYSTAL_COLORS) {
-      fluxNeeded += Math.max(0, eff[color] - player.crystals[color]);
+    let singularityNeeded = 0;
+    for (const color of STANDARD_AFFINITY_KEYS) {
+      singularityNeeded += Math.max(0, eff[color] - player.affinities[color]);
     }
-    return fluxNeeded <= player.crystals.flux;
+    return singularityNeeded <= player.affinities.singularity;
   }
 
-  const marketIds = [...state.marketTier1, ...state.marketTier2, ...state.marketTier3];
-  const market = marketIds.map((id) => CARD_MAP.get(id)).filter(Boolean) as ArtifactCard[];
-  const reserved = player.reservedCardIds
+  const forgeIds = [...state.forgeTier1, ...state.forgeTier2, ...state.forgeTier3];
+  const forgeArtifacts = forgeIds.map((id) => CARD_MAP.get(id)).filter(Boolean) as ArtifactCard[];
+  const reserved = player.reservedArtifactIds
     .map((id) => CARD_MAP.get(id))
     .filter(Boolean) as ArtifactCard[];
-  const allCards = [...market, ...reserved];
+  const allArtifacts = [...forgeArtifacts, ...reserved];
 
-  const affordable = allCards
+  const affordable = allArtifacts
     .filter(canAffordCard)
     .sort((a, b) => probeScoreCard(b, player, targetLum) - probeScoreCard(a, player, targetLum));
 
   if (affordable.length > 0) {
     const card = affordable[0];
-    const isReserved = player.reservedCardIds.includes(card.id);
-    return { type: isReserved ? "purchase_reserved" : "purchase_card", cardId: card.id };
+    const isReserved = player.reservedArtifactIds.includes(card.id);
+    return { type: isReserved ? "forge_reserved_artifact" : "forge_artifact", cardId: card.id };
   }
 
-  if (player.reservedCardIds.length < 3) {
-    const bestUnaffordable = allCards
-      .filter((c) => !canAffordCard(c) && !player.reservedCardIds.includes(c.id))
+  if (player.reservedArtifactIds.length < 3) {
+    const bestUnaffordable = allArtifacts
+      .filter((c) => !canAffordCard(c) && !player.reservedArtifactIds.includes(c.id))
       .sort((a, b) => probeScoreCard(b, player, targetLum) - probeScoreCard(a, player, targetLum));
     if (bestUnaffordable.length > 0) {
-      return { type: "reserve_card", cardId: bestUnaffordable[0].id };
+      return { type: "reserve_artifact", cardId: bestUnaffordable[0].id };
     }
   }
 
-  const totalHeld = CRYSTAL_COLORS.reduce((s, c) => s + player.crystals[c], 0) + player.crystals.flux;
+  const totalHeld = STANDARD_AFFINITY_KEYS.reduce((s, c) => s + player.affinities[c], 0) + player.affinities.singularity;
   const remaining = 10 - totalHeld;
   if (remaining <= 0) {
     return chooseAiAction(state, playerId, "hard");
   }
 
-  const available = CRYSTAL_COLORS.filter((c) => state.crystalBank[c] > 0);
+  const available = STANDARD_AFFINITY_KEYS.filter((c) => state.affinityWell[c] > 0);
   const prioritised = [
     ...reqColors.filter((c) => available.includes(c)),
     ...available.filter((c) => !reqColors.includes(c)),
@@ -904,14 +898,14 @@ function chooseProbeAction(
   const pick = prioritised.slice(0, Math.min(3, remaining));
 
   if (pick.length > 0) {
-    const crystals: Partial<CrystalCounts> = {};
-    for (const c of pick) crystals[c] = 1;
-    return { type: "take_three_crystals", crystals };
+    const selectedAffinities: Partial<AffinityCounts> = {};
+    for (const c of pick) selectedAffinities[c] = 1;
+    return { type: "harness_three_affinities", affinities: selectedAffinities };
   }
 
   for (const c of reqColors) {
-    if (state.crystalBank[c] >= 4 && remaining >= 2) {
-      return { type: "take_two_crystals", crystal: c };
+    if (state.affinityWell[c] >= 4 && remaining >= 2) {
+      return { type: "harness_two_affinities", affinity: c };
     }
   }
 
@@ -921,7 +915,7 @@ function chooseProbeAction(
 interface ProbeGameResult {
   probeClaimed: boolean;
   claimedAtTurn: number | null;
-  finalBonuses: CrystalCounts;
+  finalBonuses: AffinityCounts;
   turns: number;
 }
 
@@ -938,7 +932,7 @@ function runProbeGame(playerCount: number, targetLum: LuminaryDef): ProbeGameRes
   const claimedByMap: Record<string, string> = {};
   const prevClaimed = new Set<string>();
   let turnsSinceLastProgress = 0;
-  let lastTotalLumens = 0;
+  let lastTotalEminence = 0;
 
   function detectNewClaims(): void {
     for (const p of state.players) {
@@ -973,11 +967,11 @@ function runProbeGame(playerCount: number, targetLum: LuminaryDef): ProbeGameRes
 
     if (!result.success) {
       let recovered = false;
-      for (const color of CRYSTAL_COLORS) {
-        if (state.crystalBank[color] > 0) {
+      for (const color of STANDARD_AFFINITY_KEYS) {
+        if (state.affinityWell[color] > 0) {
           const fb = applyAction(state, currentPlayer.playerId, {
-            type: "take_three_crystals",
-            crystals: { [color]: 1 },
+            type: "harness_three_affinities",
+            affinities: { [color]: 1 },
           });
           if (fb.success) { detectNewClaims(); recovered = true; break; }
         }
@@ -985,9 +979,9 @@ function runProbeGame(playerCount: number, targetLum: LuminaryDef): ProbeGameRes
       if (!recovered) break;
     }
 
-    const totalLumens = state.players.reduce((s, p) => s + p.lumens, 0);
-    if (totalLumens > lastTotalLumens) {
-      lastTotalLumens = totalLumens;
+    const totalEminence = state.players.reduce((s, p) => s + p.eminence, 0);
+    if (totalEminence > lastTotalEminence) {
+      lastTotalEminence = totalEminence;
       turnsSinceLastProgress = 0;
     } else {
       turnsSinceLastProgress++;
@@ -1017,12 +1011,12 @@ function printProbeReport(
   const games = results.length;
   const claimRate = claimed.length / games;
   const claimTurns = claimed.map((r) => r.claimedAtTurn!);
-  const reqColors = CRYSTAL_COLORS.filter((c) => targetLum.requirements[c] > 0);
+  const reqColors = STANDARD_AFFINITY_KEYS.filter((c) => targetLum.requirements[c] > 0);
 
   console.log(`\n${"═".repeat(64)}`);
   console.log(`  Probe: Can ${targetLum.name} be reached?`);
-  console.log(`  Requirement: ${reqSummary(targetLum)}  |  Reward: ${targetLum.lumens}L`);
-  console.log(`  Strategy: P1 exclusively builds toward required colors`);
+  console.log(`  Requirement: ${reqSummary(targetLum)}  |  Reward: ${targetLum.eminence} Eminence`);
+  console.log(`  Strategy: P1 Forges exclusively toward the required Affinities`);
   console.log(`  Games: ${games}  |  Players: ${players}  |  Other AIs: hard`);
   console.log(`${"═".repeat(64)}`);
 
@@ -1250,7 +1244,7 @@ function buildSimulationJson(allStats: DifficultyStats[]): SimulationOutput {
         avgTurns: s.avgTurns,
         minTurns: s.minTurns,
         maxTurns: s.maxTurns,
-        avgWinnerEminence: s.avgWinLumens,
+        avgWinnerEminence: s.avgWinEminence,
         avgClaimsPerGame: s.avgClaimsPerGame,
         gamesWithClaimsPct: s.games > 0 ? (s.gamesWithClaims / s.games) * 100 : 0,
       },

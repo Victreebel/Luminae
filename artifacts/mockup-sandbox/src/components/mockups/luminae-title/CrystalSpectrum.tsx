@@ -95,7 +95,7 @@ export function CrystalSpectrum() {
         A Cosmic Engine-Building Game
       </p>
 
-      {/* Affinity gem row */}
+      {/* Affinity emblem row */}
       <div style={{ display: "flex", gap: 8, alignItems: "center", position: "relative", zIndex: 1 }}>
         {LETTERS.slice(0, 6).map((l, i) => (
           <div key={i} style={{ display: "flex", flexDirection: "column", alignItems: "center", gap: 4 }}>

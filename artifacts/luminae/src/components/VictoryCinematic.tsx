@@ -12,7 +12,7 @@ export interface VictoryCinematicProps {
   civName: string;
   tier: KardashevTier;
   palette: AffinityPalette;
-  lumens: number;
+  eminence: number;
   cardsForged: number;
   accolades: Accolade[];
   onDismiss: () => void;
@@ -44,7 +44,7 @@ export function VictoryCinematic({
   civName,
   tier,
   palette,
-  lumens,
+  eminence,
   cardsForged,
   accolades,
   onDismiss,
@@ -66,7 +66,6 @@ export function VictoryCinematic({
     dismissedRef.current = true;
     onDismiss();
   };
-
   // Document-level listener for Enter / Space / Escape so the cinematic can be
   // dismissed by keyboard at any time — even before the Continue button appears
   // (when there is no focusable element inside the trap for React onKeyDown).
@@ -114,21 +113,15 @@ export function VictoryCinematic({
     : undefined;
 
   return (
-    // Outer overlay — clicking anywhere (including through the dialog content)
-    // dismisses the cinematic. stopPropagation is intentionally omitted so
-    // clicks on the scene, text, and accolade badges all bubble up here.
-    //
-    // Phase 0: starts at opacity 0.08, scale 1.05 so the board shows through
-    // and appears to zoom out. Phase 1: eases to full opacity and scale 1.
-    <motion.div
-      initial={{ opacity: 0.08, scale: 1.05 }}
-      animate={
-        phase >= 1
-          ? { opacity: 1, scale: 1 }
-          : { opacity: 0.08, scale: 1.05 }
-      }
+    // Outer overlay — clicking anywhere dismisses the cinematic. Keep this layer
+    // static: animating opacity/scale on the full-screen parent forces the entire
+    // game view and overlay stack through one expensive compositor transition.
+	    <motion.div
+	      data-testid="victory-cinematic"
+	      initial={{ opacity: 1 }}
+      animate={{ opacity: 1 }}
       exit={{ opacity: 0 }}
-      transition={{ duration: 0.7, ease: 'easeOut' }}
+      transition={{ duration: 0.18, ease: 'easeOut' }}
       className="fixed inset-0 z-[200] flex flex-col items-center justify-end overflow-hidden cursor-pointer"
       onClick={handleDismiss}
       role="presentation"
@@ -141,21 +134,24 @@ export function VictoryCinematic({
         transition={{ duration: 0.7, ease: 'easeIn' }}
       />
 
-      {/* KardashevScene — fades in at phase 2 on top of the dark veil */}
+      {/* KardashevScene — the pre-results civilization beat should remain alive,
+          but at a capped budget so it does not fight the final results overlay. */}
       <motion.div
         className="absolute inset-0"
-        initial={{ opacity: 0, scale: 1.04 }}
+        initial={{ opacity: 0 }}
         animate={
           phase >= 2
-            ? { opacity: 1, scale: 1 }
-            : { opacity: 0, scale: 1.04 }
+            ? { opacity: 1 }
+            : { opacity: 0 }
         }
-        transition={{ duration: 1.4, ease: 'easeOut' }}
+        transition={{ duration: 0.45, ease: 'easeOut' }}
       >
         <KardashevScene
           tier={tier}
           palette={palette}
           className="relative w-full h-full overflow-hidden bg-black"
+          fps={30}
+          maxDpr={1.25}
         />
       </motion.div>
 
@@ -221,7 +217,8 @@ export function VictoryCinematic({
           so that clicks on content areas also reach the outer onClick handler. */}
       <motion.div
         ref={(el) => { containerRef.current = el; }}
-        role="dialog"
+	        role="dialog"
+	        data-testid="victory-cinematic-card"
         aria-modal="true"
         aria-label={titleText}
         className="relative z-10 flex flex-col items-center w-full max-w-lg px-6 gap-4 pb-safe mb-8"
@@ -239,7 +236,7 @@ export function VictoryCinematic({
               className="text-2xl font-bold tabular-nums"
               style={{ color: palette.primary }}
             >
-              {lumens}
+              {eminence}
             </span>
             <span className="text-[10px] uppercase tracking-widest text-muted-foreground/60">
               Eminence
@@ -296,11 +293,14 @@ export function VictoryCinematic({
               className="mt-1 flex items-center gap-3"
             >
               <button
-                onClick={handleDismiss}
-                className="flex items-center gap-2 px-5 py-2 rounded-full text-sm font-semibold text-foreground/70 border border-white/10 bg-white/5 hover:bg-white/10 transition-colors focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-white/30"
+                onClick={(event) => {
+                  event.stopPropagation();
+                  handleDismiss();
+                }}
+                className="flex items-center gap-2 px-6 py-2.5 rounded-full text-sm font-bold text-white border border-white/25 bg-white/14 shadow-[0_0_24px_rgba(255,255,255,0.16)] hover:bg-white/20 hover:border-white/35 transition-colors focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-white/45"
               >
                 Continue
-                <span className="text-muted-foreground/50">→</span>
+                <span className="text-white/75">→</span>
               </button>
             </motion.div>
           )}
@@ -313,7 +313,7 @@ export function VictoryCinematic({
             animate={{ opacity: 0.35 }}
             className="text-[11px] text-muted-foreground pointer-events-none select-none"
           >
-            tap anywhere to continue
+            click/tap anywhere to continue
           </motion.p>
         )}
       </motion.div>

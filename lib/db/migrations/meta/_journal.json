@@ -29,6 +29,20 @@
       "when": 1749724800000,
       "tag": "0003_tutorial_flags",
       "breakpoints": true
+    },
+    {
+      "idx": 4,
+      "version": "7",
+      "when": 1783126800000,
+      "tag": "0004_room_victory_requirement",
+      "breakpoints": true
+    },
+    {
+      "idx": 5,
+      "version": "7",
+      "when": 1783213200000,
+      "tag": "0005_room_cinematic_mode",
+      "breakpoints": true
     }
   ]
 }

@@ -1,6 +1,6 @@
 import { useEffect, useState, useCallback, useRef } from 'react';
 import { useLocation, useSearch } from 'wouter';
-import { GEM_META, GEM_KEYS, type GemKey } from '@/lib/gemMeta';
+import { AFFINITY_META, AFFINITY_KEYS, type AffinityKey } from '@/lib/affinityMeta';
 import { useGetCardLoreCatalog } from '@workspace/api-client-react';
 import type { CardLoreEntry } from '@workspace/api-client-react';
 import cardTier1Bg from '@assets/generated_images/card_tier1.png';
@@ -17,13 +17,13 @@ for (const [path, url] of Object.entries(CARD_ART_MODULES)) {
 }
 
 const TIER_BACKDROPS: Record<number, string> = { 1: cardTier1Bg, 3: cardTier3Bg };
-const GEM_CARD_GRADIENTS: Record<string, string> = {
-  ruby:     'linear-gradient(175deg, #1a0404 0%, #3d0808 35%, #220505 70%, #100202 100%)',
-  sapphire: 'linear-gradient(175deg, #020510 0%, #071840 35%, #040a28 70%, #020510 100%)',
-  emerald:  'linear-gradient(175deg, #021005 0%, #063020 35%, #041a10 70%, #020c04 100%)',
-  onyx:     'linear-gradient(175deg, #060606 0%, #181818 35%, #0e0e0e 70%, #050505 100%)',
-  pearl:    'linear-gradient(175deg, #100c02 0%, #2a2008 35%, #1c1606 70%, #0c0a02 100%)',
-  flux:     'linear-gradient(175deg, #08080f 0%, #141428 35%, #0e0e1e 70%, #08080f 100%)',
+const AFFINITY_CARD_GRADIENTS: Record<string, string> = {
+  flare:     'linear-gradient(175deg, #1a0404 0%, #3d0808 35%, #220505 70%, #100202 100%)',
+  continuum: 'linear-gradient(175deg, #020510 0%, #071840 35%, #040a28 70%, #020510 100%)',
+  verdance:  'linear-gradient(175deg, #021005 0%, #063020 35%, #041a10 70%, #020c04 100%)',
+  abyss:     'linear-gradient(175deg, #060606 0%, #181818 35%, #0e0e0e 70%, #050505 100%)',
+  radiance:    'linear-gradient(175deg, #100c02 0%, #2a2008 35%, #1c1606 70%, #0c0a02 100%)',
+  singularity:     'linear-gradient(175deg, #08080f 0%, #141428 35%, #0e0e1e 70%, #08080f 100%)',
 };
 
 const TIER_LABELS: Record<number, string> = {
@@ -35,132 +35,132 @@ const TIER_LABELS: Record<number, string> = {
 interface CardEntry {
   id: string;
   tier: 1 | 2 | 3;
-  bonusColor: GemKey;
-  lumens: number;
-  cost: Record<GemKey, number>;
+  bonusAffinity: AffinityKey;
+  eminence: number;
+  cost: Record<AffinityKey, number>;
 }
 
-function c(ruby: number, sapphire: number, emerald: number, onyx: number, pearl: number): Record<GemKey, number> {
-  return { ruby, sapphire, emerald, onyx, pearl, flux: 0 };
+function c(flare: number, continuum: number, verdance: number, abyss: number, radiance: number): Record<AffinityKey, number> {
+  return { flare, continuum, verdance, abyss, radiance, singularity: 0 };
 }
 
 const CATALOG: CardEntry[] = [
   // ── Tier 1 · Flare ──────────────────────────────────────────────────────────
-  { id: "t1r01", tier: 1, bonusColor: "ruby",     lumens: 0, cost: c(0,0,1,1,1) },
-  { id: "t1r02", tier: 1, bonusColor: "ruby",     lumens: 0, cost: c(0,0,1,2,0) },
-  { id: "t1r03", tier: 1, bonusColor: "ruby",     lumens: 0, cost: c(0,1,1,0,1) },
-  { id: "t1r04", tier: 1, bonusColor: "ruby",     lumens: 0, cost: c(0,2,0,0,0) },
-  { id: "t1r05", tier: 1, bonusColor: "ruby",     lumens: 0, cost: c(0,0,0,2,2) },
-  { id: "t1r06", tier: 1, bonusColor: "ruby",     lumens: 0, cost: c(0,2,1,0,0) },
-  { id: "t1r07", tier: 1, bonusColor: "ruby",     lumens: 0, cost: c(0,0,2,2,0) },
-  { id: "t1r08", tier: 1, bonusColor: "ruby",     lumens: 1, cost: c(0,0,0,0,4) },
+  { id: "t1r01", tier: 1, bonusAffinity: "flare",     eminence: 0, cost: c(0,0,1,1,1) },
+  { id: "t1r02", tier: 1, bonusAffinity: "flare",     eminence: 0, cost: c(0,0,1,2,0) },
+  { id: "t1r03", tier: 1, bonusAffinity: "flare",     eminence: 0, cost: c(0,1,1,0,1) },
+  { id: "t1r04", tier: 1, bonusAffinity: "flare",     eminence: 0, cost: c(0,2,0,0,0) },
+  { id: "t1r05", tier: 1, bonusAffinity: "flare",     eminence: 0, cost: c(0,0,0,2,2) },
+  { id: "t1r06", tier: 1, bonusAffinity: "flare",     eminence: 0, cost: c(0,2,1,0,0) },
+  { id: "t1r07", tier: 1, bonusAffinity: "flare",     eminence: 0, cost: c(0,0,2,2,0) },
+  { id: "t1r08", tier: 1, bonusAffinity: "flare",     eminence: 1, cost: c(0,0,0,0,4) },
   // ── Tier 1 · Continuum ──────────────────────────────────────────────────────
-  { id: "t1s01", tier: 1, bonusColor: "sapphire", lumens: 0, cost: c(1,0,1,0,1) },
-  { id: "t1s02", tier: 1, bonusColor: "sapphire", lumens: 0, cost: c(2,0,1,0,0) },
-  { id: "t1s03", tier: 1, bonusColor: "sapphire", lumens: 0, cost: c(1,0,0,1,1) },
-  { id: "t1s04", tier: 1, bonusColor: "sapphire", lumens: 0, cost: c(1,0,0,0,2) },
-  { id: "t1s05", tier: 1, bonusColor: "sapphire", lumens: 0, cost: c(0,0,0,2,2) },
-  { id: "t1s06", tier: 1, bonusColor: "sapphire", lumens: 0, cost: c(1,0,2,0,0) },
-  { id: "t1s07", tier: 1, bonusColor: "sapphire", lumens: 0, cost: c(2,0,0,2,0) },
-  { id: "t1s08", tier: 1, bonusColor: "sapphire", lumens: 1, cost: c(0,0,4,0,0) },
+  { id: "t1s01", tier: 1, bonusAffinity: "continuum", eminence: 0, cost: c(1,0,1,0,1) },
+  { id: "t1s02", tier: 1, bonusAffinity: "continuum", eminence: 0, cost: c(2,0,1,0,0) },
+  { id: "t1s03", tier: 1, bonusAffinity: "continuum", eminence: 0, cost: c(1,0,0,1,1) },
+  { id: "t1s04", tier: 1, bonusAffinity: "continuum", eminence: 0, cost: c(1,0,0,0,2) },
+  { id: "t1s05", tier: 1, bonusAffinity: "continuum", eminence: 0, cost: c(0,0,0,2,2) },
+  { id: "t1s06", tier: 1, bonusAffinity: "continuum", eminence: 0, cost: c(1,0,2,0,0) },
+  { id: "t1s07", tier: 1, bonusAffinity: "continuum", eminence: 0, cost: c(2,0,0,2,0) },
+  { id: "t1s08", tier: 1, bonusAffinity: "continuum", eminence: 1, cost: c(0,0,4,0,0) },
   // ── Tier 1 · Verdance ───────────────────────────────────────────────────────
-  { id: "t1e01", tier: 1, bonusColor: "emerald",  lumens: 0, cost: c(1,1,0,0,1) },
-  { id: "t1e02", tier: 1, bonusColor: "emerald",  lumens: 0, cost: c(0,2,0,1,0) },
-  { id: "t1e03", tier: 1, bonusColor: "emerald",  lumens: 0, cost: c(1,1,0,1,0) },
-  { id: "t1e04", tier: 1, bonusColor: "emerald",  lumens: 0, cost: c(0,3,0,0,0) },
-  { id: "t1e05", tier: 1, bonusColor: "emerald",  lumens: 0, cost: c(2,0,0,0,2) },
-  { id: "t1e06", tier: 1, bonusColor: "emerald",  lumens: 0, cost: c(0,1,0,1,2) },
-  { id: "t1e07", tier: 1, bonusColor: "emerald",  lumens: 0, cost: c(0,0,0,2,1) },
-  { id: "t1e08", tier: 1, bonusColor: "emerald",  lumens: 1, cost: c(0,0,0,4,0) },
+  { id: "t1e01", tier: 1, bonusAffinity: "verdance",  eminence: 0, cost: c(1,1,0,0,1) },
+  { id: "t1e02", tier: 1, bonusAffinity: "verdance",  eminence: 0, cost: c(0,2,0,1,0) },
+  { id: "t1e03", tier: 1, bonusAffinity: "verdance",  eminence: 0, cost: c(1,1,0,1,0) },
+  { id: "t1e04", tier: 1, bonusAffinity: "verdance",  eminence: 0, cost: c(0,3,0,0,0) },
+  { id: "t1e05", tier: 1, bonusAffinity: "verdance",  eminence: 0, cost: c(2,0,0,0,2) },
+  { id: "t1e06", tier: 1, bonusAffinity: "verdance",  eminence: 0, cost: c(0,1,0,1,2) },
+  { id: "t1e07", tier: 1, bonusAffinity: "verdance",  eminence: 0, cost: c(0,0,0,2,1) },
+  { id: "t1e08", tier: 1, bonusAffinity: "verdance",  eminence: 1, cost: c(0,0,0,4,0) },
   // ── Tier 1 · Abyss ──────────────────────────────────────────────────────────
-  { id: "t1o01", tier: 1, bonusColor: "onyx",     lumens: 0, cost: c(0,1,1,0,1) },
-  { id: "t1o02", tier: 1, bonusColor: "onyx",     lumens: 0, cost: c(0,1,0,0,2) },
-  { id: "t1o03", tier: 1, bonusColor: "onyx",     lumens: 0, cost: c(1,0,1,0,1) },
-  { id: "t1o04", tier: 1, bonusColor: "onyx",     lumens: 0, cost: c(0,0,2,1,0) },
-  { id: "t1o05", tier: 1, bonusColor: "onyx",     lumens: 0, cost: c(2,1,0,0,0) },
-  { id: "t1o06", tier: 1, bonusColor: "onyx",     lumens: 0, cost: c(0,2,2,0,0) },
-  { id: "t1o07", tier: 1, bonusColor: "onyx",     lumens: 0, cost: c(1,0,0,1,2) },
-  { id: "t1o08", tier: 1, bonusColor: "onyx",     lumens: 1, cost: c(0,4,0,0,0) },
+  { id: "t1o01", tier: 1, bonusAffinity: "abyss",     eminence: 0, cost: c(0,1,1,0,1) },
+  { id: "t1o02", tier: 1, bonusAffinity: "abyss",     eminence: 0, cost: c(0,1,0,0,2) },
+  { id: "t1o03", tier: 1, bonusAffinity: "abyss",     eminence: 0, cost: c(1,0,1,0,1) },
+  { id: "t1o04", tier: 1, bonusAffinity: "abyss",     eminence: 0, cost: c(0,0,2,1,0) },
+  { id: "t1o05", tier: 1, bonusAffinity: "abyss",     eminence: 0, cost: c(2,1,0,0,0) },
+  { id: "t1o06", tier: 1, bonusAffinity: "abyss",     eminence: 0, cost: c(0,2,2,0,0) },
+  { id: "t1o07", tier: 1, bonusAffinity: "abyss",     eminence: 0, cost: c(1,0,0,1,2) },
+  { id: "t1o08", tier: 1, bonusAffinity: "abyss",     eminence: 1, cost: c(0,4,0,0,0) },
   // ── Tier 1 · Radiance ───────────────────────────────────────────────────────
-  { id: "t1p01", tier: 1, bonusColor: "pearl",    lumens: 0, cost: c(1,1,0,1,0) },
-  { id: "t1p02", tier: 1, bonusColor: "pearl",    lumens: 0, cost: c(0,1,0,2,0) },
-  { id: "t1p03", tier: 1, bonusColor: "pearl",    lumens: 0, cost: c(1,0,1,1,0) },
-  { id: "t1p04", tier: 1, bonusColor: "pearl",    lumens: 0, cost: c(2,0,0,0,1) },
-  { id: "t1p05", tier: 1, bonusColor: "pearl",    lumens: 0, cost: c(0,2,0,0,2) },
-  { id: "t1p06", tier: 1, bonusColor: "pearl",    lumens: 0, cost: c(1,0,1,0,2) },
-  { id: "t1p07", tier: 1, bonusColor: "pearl",    lumens: 0, cost: c(0,0,1,2,1) },
-  { id: "t1p08", tier: 1, bonusColor: "pearl",    lumens: 1, cost: c(0,0,4,0,0) },
+  { id: "t1p01", tier: 1, bonusAffinity: "radiance",    eminence: 0, cost: c(1,1,0,1,0) },
+  { id: "t1p02", tier: 1, bonusAffinity: "radiance",    eminence: 0, cost: c(0,1,0,2,0) },
+  { id: "t1p03", tier: 1, bonusAffinity: "radiance",    eminence: 0, cost: c(1,0,1,1,0) },
+  { id: "t1p04", tier: 1, bonusAffinity: "radiance",    eminence: 0, cost: c(2,0,0,0,1) },
+  { id: "t1p05", tier: 1, bonusAffinity: "radiance",    eminence: 0, cost: c(0,2,0,0,2) },
+  { id: "t1p06", tier: 1, bonusAffinity: "radiance",    eminence: 0, cost: c(1,0,1,0,2) },
+  { id: "t1p07", tier: 1, bonusAffinity: "radiance",    eminence: 0, cost: c(0,0,1,2,1) },
+  { id: "t1p08", tier: 1, bonusAffinity: "radiance",    eminence: 1, cost: c(0,0,4,0,0) },
 
   // ── Tier 2 · Flare ──────────────────────────────────────────────────────────
-  { id: "t2r01", tier: 2, bonusColor: "ruby",     lumens: 1, cost: c(0,2,0,3,2) },
-  { id: "t2r02", tier: 2, bonusColor: "ruby",     lumens: 2, cost: c(0,1,4,2,0) },
-  { id: "t2r03", tier: 2, bonusColor: "ruby",     lumens: 2, cost: c(3,0,0,0,3) },
-  { id: "t2r04", tier: 2, bonusColor: "ruby",     lumens: 1, cost: c(2,0,2,0,2) },
-  { id: "t2r05", tier: 2, bonusColor: "ruby",     lumens: 2, cost: c(0,3,0,2,2) },
-  { id: "t2r06", tier: 2, bonusColor: "ruby",     lumens: 2, cost: c(0,0,0,5,0) },
+  { id: "t2r01", tier: 2, bonusAffinity: "flare",     eminence: 1, cost: c(0,2,0,3,2) },
+  { id: "t2r02", tier: 2, bonusAffinity: "flare",     eminence: 2, cost: c(0,1,4,2,0) },
+  { id: "t2r03", tier: 2, bonusAffinity: "flare",     eminence: 2, cost: c(3,0,0,0,3) },
+  { id: "t2r04", tier: 2, bonusAffinity: "flare",     eminence: 1, cost: c(2,0,2,0,2) },
+  { id: "t2r05", tier: 2, bonusAffinity: "flare",     eminence: 2, cost: c(0,3,0,2,2) },
+  { id: "t2r06", tier: 2, bonusAffinity: "flare",     eminence: 2, cost: c(0,0,0,5,0) },
   // ── Tier 2 · Continuum ──────────────────────────────────────────────────────
-  { id: "t2s01", tier: 2, bonusColor: "sapphire", lumens: 1, cost: c(2,0,3,0,2) },
-  { id: "t2s02", tier: 2, bonusColor: "sapphire", lumens: 2, cost: c(4,0,0,2,1) },
-  { id: "t2s03", tier: 2, bonusColor: "sapphire", lumens: 2, cost: c(0,3,0,0,3) },
-  { id: "t2s04", tier: 2, bonusColor: "sapphire", lumens: 1, cost: c(0,0,2,0,3) },
-  { id: "t2s05", tier: 2, bonusColor: "sapphire", lumens: 2, cost: c(5,0,0,0,0) },
-  { id: "t2s06", tier: 2, bonusColor: "sapphire", lumens: 2, cost: c(2,0,0,3,2) },
+  { id: "t2s01", tier: 2, bonusAffinity: "continuum", eminence: 1, cost: c(2,0,3,0,2) },
+  { id: "t2s02", tier: 2, bonusAffinity: "continuum", eminence: 2, cost: c(4,0,0,2,1) },
+  { id: "t2s03", tier: 2, bonusAffinity: "continuum", eminence: 2, cost: c(0,3,0,0,3) },
+  { id: "t2s04", tier: 2, bonusAffinity: "continuum", eminence: 1, cost: c(0,0,2,0,3) },
+  { id: "t2s05", tier: 2, bonusAffinity: "continuum", eminence: 2, cost: c(5,0,0,0,0) },
+  { id: "t2s06", tier: 2, bonusAffinity: "continuum", eminence: 2, cost: c(2,0,0,3,2) },
   // ── Tier 2 · Verdance ───────────────────────────────────────────────────────
-  { id: "t2e01", tier: 2, bonusColor: "emerald",  lumens: 1, cost: c(3,2,0,0,2) },
-  { id: "t2e02", tier: 2, bonusColor: "emerald",  lumens: 2, cost: c(2,4,0,1,0) },
-  { id: "t2e03", tier: 2, bonusColor: "emerald",  lumens: 2, cost: c(0,0,3,3,0) },
-  { id: "t2e04", tier: 2, bonusColor: "emerald",  lumens: 1, cost: c(0,2,0,2,2) },
-  { id: "t2e05", tier: 2, bonusColor: "emerald",  lumens: 2, cost: c(0,5,0,0,0) },
-  { id: "t2e06", tier: 2, bonusColor: "emerald",  lumens: 2, cost: c(2,0,0,2,3) },
+  { id: "t2e01", tier: 2, bonusAffinity: "verdance",  eminence: 1, cost: c(3,2,0,0,2) },
+  { id: "t2e02", tier: 2, bonusAffinity: "verdance",  eminence: 2, cost: c(2,4,0,1,0) },
+  { id: "t2e03", tier: 2, bonusAffinity: "verdance",  eminence: 2, cost: c(0,0,3,3,0) },
+  { id: "t2e04", tier: 2, bonusAffinity: "verdance",  eminence: 1, cost: c(0,2,0,2,2) },
+  { id: "t2e05", tier: 2, bonusAffinity: "verdance",  eminence: 2, cost: c(0,5,0,0,0) },
+  { id: "t2e06", tier: 2, bonusAffinity: "verdance",  eminence: 2, cost: c(2,0,0,2,3) },
   // ── Tier 2 · Abyss ──────────────────────────────────────────────────────────
-  { id: "t2o01", tier: 2, bonusColor: "onyx",     lumens: 1, cost: c(0,2,2,0,3) },
-  { id: "t2o02", tier: 2, bonusColor: "onyx",     lumens: 2, cost: c(1,0,2,0,4) },
-  { id: "t2o03", tier: 2, bonusColor: "onyx",     lumens: 2, cost: c(3,0,0,3,0) },
-  { id: "t2o04", tier: 2, bonusColor: "onyx",     lumens: 1, cost: c(2,0,3,0,2) },
-  { id: "t2o05", tier: 2, bonusColor: "onyx",     lumens: 2, cost: c(0,0,5,0,0) },
-  { id: "t2o06", tier: 2, bonusColor: "onyx",     lumens: 2, cost: c(2,3,0,0,2) },
+  { id: "t2o01", tier: 2, bonusAffinity: "abyss",     eminence: 1, cost: c(0,2,2,0,3) },
+  { id: "t2o02", tier: 2, bonusAffinity: "abyss",     eminence: 2, cost: c(1,0,2,0,4) },
+  { id: "t2o03", tier: 2, bonusAffinity: "abyss",     eminence: 2, cost: c(3,0,0,3,0) },
+  { id: "t2o04", tier: 2, bonusAffinity: "abyss",     eminence: 1, cost: c(2,0,3,0,2) },
+  { id: "t2o05", tier: 2, bonusAffinity: "abyss",     eminence: 2, cost: c(0,0,5,0,0) },
+  { id: "t2o06", tier: 2, bonusAffinity: "abyss",     eminence: 2, cost: c(2,3,0,0,2) },
   // ── Tier 2 · Radiance ───────────────────────────────────────────────────────
-  { id: "t2p01", tier: 2, bonusColor: "pearl",    lumens: 1, cost: c(2,3,0,2,0) },
-  { id: "t2p02", tier: 2, bonusColor: "pearl",    lumens: 2, cost: c(0,2,1,4,0) },
-  { id: "t2p03", tier: 2, bonusColor: "pearl",    lumens: 2, cost: c(0,0,4,0,3) },
-  { id: "t2p04", tier: 2, bonusColor: "pearl",    lumens: 2, cost: c(0,0,0,3,4) },
-  { id: "t2p05", tier: 2, bonusColor: "pearl",    lumens: 2, cost: c(3,1,3,0,0) },
-  { id: "t2p06", tier: 2, bonusColor: "pearl",    lumens: 2, cost: c(0,3,0,0,5) },
+  { id: "t2p01", tier: 2, bonusAffinity: "radiance",    eminence: 1, cost: c(2,3,0,2,0) },
+  { id: "t2p02", tier: 2, bonusAffinity: "radiance",    eminence: 2, cost: c(0,2,1,4,0) },
+  { id: "t2p03", tier: 2, bonusAffinity: "radiance",    eminence: 2, cost: c(0,0,4,0,3) },
+  { id: "t2p04", tier: 2, bonusAffinity: "radiance",    eminence: 2, cost: c(0,0,0,3,4) },
+  { id: "t2p05", tier: 2, bonusAffinity: "radiance",    eminence: 2, cost: c(3,1,3,0,0) },
+  { id: "t2p06", tier: 2, bonusAffinity: "radiance",    eminence: 2, cost: c(0,3,0,0,5) },
 
   // ── Tier 3 · Flare ──────────────────────────────────────────────────────────
-  { id: "t3r01", tier: 3, bonusColor: "ruby",     lumens: 3, cost: c(3,3,5,3,0) },
-  { id: "t3r02", tier: 3, bonusColor: "ruby",     lumens: 4, cost: c(0,0,7,3,3) },
-  { id: "t3r03", tier: 3, bonusColor: "ruby",     lumens: 4, cost: c(6,0,0,0,6) },
-  { id: "t3r04", tier: 3, bonusColor: "ruby",     lumens: 5, cost: c(0,0,0,0,7) },
+  { id: "t3r01", tier: 3, bonusAffinity: "flare",     eminence: 3, cost: c(3,3,5,3,0) },
+  { id: "t3r02", tier: 3, bonusAffinity: "flare",     eminence: 4, cost: c(0,0,7,3,3) },
+  { id: "t3r03", tier: 3, bonusAffinity: "flare",     eminence: 4, cost: c(6,0,0,0,6) },
+  { id: "t3r04", tier: 3, bonusAffinity: "flare",     eminence: 5, cost: c(0,0,0,0,7) },
   // ── Tier 3 · Continuum ──────────────────────────────────────────────────────
-  { id: "t3s01", tier: 3, bonusColor: "sapphire", lumens: 3, cost: c(3,0,3,3,3) },
-  { id: "t3s02", tier: 3, bonusColor: "sapphire", lumens: 4, cost: c(0,0,5,0,7) },
-  { id: "t3s03", tier: 3, bonusColor: "sapphire", lumens: 4, cost: c(5,3,0,3,0) },
-  { id: "t3s04", tier: 3, bonusColor: "sapphire", lumens: 5, cost: c(0,0,0,7,0) },
+  { id: "t3s01", tier: 3, bonusAffinity: "continuum", eminence: 3, cost: c(3,0,3,3,3) },
+  { id: "t3s02", tier: 3, bonusAffinity: "continuum", eminence: 4, cost: c(0,0,5,0,7) },
+  { id: "t3s03", tier: 3, bonusAffinity: "continuum", eminence: 4, cost: c(5,3,0,3,0) },
+  { id: "t3s04", tier: 3, bonusAffinity: "continuum", eminence: 5, cost: c(0,0,0,7,0) },
   // ── Tier 3 · Verdance ───────────────────────────────────────────────────────
-  { id: "t3e01", tier: 3, bonusColor: "emerald",  lumens: 3, cost: c(0,3,3,0,5) },
-  { id: "t3e02", tier: 3, bonusColor: "emerald",  lumens: 4, cost: c(0,7,0,3,0) },
-  { id: "t3e03", tier: 3, bonusColor: "emerald",  lumens: 4, cost: c(3,0,5,0,3) },
-  { id: "t3e04", tier: 3, bonusColor: "emerald",  lumens: 5, cost: c(0,0,7,0,0) },
+  { id: "t3e01", tier: 3, bonusAffinity: "verdance",  eminence: 3, cost: c(0,3,3,0,5) },
+  { id: "t3e02", tier: 3, bonusAffinity: "verdance",  eminence: 4, cost: c(0,7,0,3,0) },
+  { id: "t3e03", tier: 3, bonusAffinity: "verdance",  eminence: 4, cost: c(3,0,5,0,3) },
+  { id: "t3e04", tier: 3, bonusAffinity: "verdance",  eminence: 5, cost: c(0,0,7,0,0) },
   // ── Tier 3 · Abyss ──────────────────────────────────────────────────────────
-  { id: "t3o01", tier: 3, bonusColor: "onyx",     lumens: 3, cost: c(3,3,0,3,3) },
-  { id: "t3o02", tier: 3, bonusColor: "onyx",     lumens: 4, cost: c(3,0,3,0,5) },
-  { id: "t3o03", tier: 3, bonusColor: "onyx",     lumens: 4, cost: c(5,3,0,0,3) },
-  { id: "t3o04", tier: 3, bonusColor: "onyx",     lumens: 5, cost: c(0,7,0,0,0) },
+  { id: "t3o01", tier: 3, bonusAffinity: "abyss",     eminence: 3, cost: c(3,3,0,3,3) },
+  { id: "t3o02", tier: 3, bonusAffinity: "abyss",     eminence: 4, cost: c(3,0,3,0,5) },
+  { id: "t3o03", tier: 3, bonusAffinity: "abyss",     eminence: 4, cost: c(5,3,0,0,3) },
+  { id: "t3o04", tier: 3, bonusAffinity: "abyss",     eminence: 5, cost: c(0,7,0,0,0) },
   // ── Tier 3 · Radiance ───────────────────────────────────────────────────────
-  { id: "t3p01", tier: 3, bonusColor: "pearl",    lumens: 3, cost: c(0,3,3,3,3) },
-  { id: "t3p02", tier: 3, bonusColor: "pearl",    lumens: 4, cost: c(0,0,3,7,0) },
-  { id: "t3p03", tier: 3, bonusColor: "pearl",    lumens: 4, cost: c(3,3,0,3,3) },
-  { id: "t3p04", tier: 3, bonusColor: "pearl",    lumens: 5, cost: c(0,0,0,0,9) },
+  { id: "t3p01", tier: 3, bonusAffinity: "radiance",    eminence: 3, cost: c(0,3,3,3,3) },
+  { id: "t3p02", tier: 3, bonusAffinity: "radiance",    eminence: 4, cost: c(0,0,3,7,0) },
+  { id: "t3p03", tier: 3, bonusAffinity: "radiance",    eminence: 4, cost: c(3,3,0,3,3) },
+  { id: "t3p04", tier: 3, bonusAffinity: "radiance",    eminence: 5, cost: c(0,0,0,0,9) },
 ];
 
 const ALL_TIERS = [1, 2, 3] as const;
-const ALL_AFFINITIES: GemKey[] = ['ruby', 'sapphire', 'emerald', 'onyx', 'pearl'];
+const ALL_AFFINITIES: AffinityKey[] = ['flare', 'continuum', 'verdance', 'abyss', 'radiance'];
 
-function CostPip({ gemKey, count }: { gemKey: GemKey; count: number }) {
-  const meta = GEM_META[gemKey];
+function CostPip({ affinityKey, count }: { affinityKey: AffinityKey; count: number }) {
+  const meta = AFFINITY_META[affinityKey];
   return (
-    <div className="flex items-center gap-1 bg-black/50 backdrop-blur-sm rounded px-1.5 py-0.5">
+    <div className="flex items-center gap-1 bg-black/50 rounded px-1.5 py-0.5">
       <span className="text-xs font-bold text-white">{count}</span>
       <img src={meta.image} alt={meta.name} className="w-3.5 h-3.5 object-contain" />
     </div>
@@ -263,7 +263,7 @@ export default function DevCardBrowser() {
   const [, setLocation] = useLocation();
 
   const [filterTier, setFilterTier] = useState<1 | 2 | 3 | null>(null);
-  const [filterAffinity, setFilterAffinity] = useState<GemKey | null>(null);
+  const [filterAffinity, setFilterAffinity] = useState<AffinityKey | null>(null);
 
   const initialIdx = useRef(() => {
     const id = new URLSearchParams(search).get('id');
@@ -279,7 +279,7 @@ export default function DevCardBrowser() {
 
   const filtered = CATALOG.filter(card => {
     if (filterTier !== null && card.tier !== filterTier) return false;
-    if (filterAffinity !== null && card.bonusColor !== filterAffinity) return false;
+    if (filterAffinity !== null && card.bonusAffinity !== filterAffinity) return false;
     return true;
   });
 
@@ -322,13 +322,13 @@ export default function DevCardBrowser() {
 
   const lore = loreData?.[card.id];
   const cardName = lore?.name ?? card.id;
-  const bonusMeta = GEM_META[card.bonusColor];
+  const bonusMeta = AFFINITY_META[card.bonusAffinity];
   const specificArt = CARD_ART[card.id];
   const artLayerStyle: React.CSSProperties = {
     backgroundImage: specificArt
       ? `url(${specificArt})`
       : card.tier === 2
-        ? (GEM_CARD_GRADIENTS[card.bonusColor] ?? GEM_CARD_GRADIENTS.pearl)
+        ? (AFFINITY_CARD_GRADIENTS[card.bonusAffinity] ?? AFFINITY_CARD_GRADIENTS.radiance)
         : `url(${TIER_BACKDROPS[card.tier] ?? cardTier1Bg})`,
     backgroundSize: 'cover',
     backgroundPosition: 'center',
@@ -387,7 +387,7 @@ export default function DevCardBrowser() {
           }}
         >All</button>
         {ALL_AFFINITIES.map(key => {
-          const m = GEM_META[key];
+          const m = AFFINITY_META[key];
           const active = filterAffinity === key;
           return (
             <button
@@ -416,7 +416,7 @@ export default function DevCardBrowser() {
         <div style={{ position: 'relative', zIndex: 10, height: '100%', padding: '10px 10px 12px', display: 'flex', flexDirection: 'column', justifyContent: 'space-between' }}>
           <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'flex-start' }}>
             <span style={{ fontSize: 26, fontFamily: 'Georgia, serif', fontWeight: 700, color: '#fff', textShadow: '0 2px 6px rgba(0,0,0,1)' }}>
-              {card.lumens > 0 ? card.lumens : ''}
+              {card.eminence > 0 ? card.eminence : ''}
             </span>
             <div style={{ width: 28, height: 28, borderRadius: '50%', overflow: 'hidden', boxShadow: '0 0 0 2px rgba(0,0,0,0.6)', background: '#000' }}>
               <img src={bonusMeta.image} alt={bonusMeta.name} style={{ width: '100%', height: '100%', objectFit: 'contain' }} />
@@ -427,10 +427,10 @@ export default function DevCardBrowser() {
               {cardName}
             </div>
             <div style={{ display: 'flex', flexWrap: 'wrap', gap: 3 }}>
-              {GEM_KEYS.map(k => {
+              {AFFINITY_KEYS.map(k => {
                 const n = card.cost[k];
                 if (!n) return null;
-                return <CostPip key={k} gemKey={k} count={n} />;
+                return <CostPip key={k} affinityKey={k} count={n} />;
               })}
             </div>
           </div>
@@ -482,9 +482,9 @@ export default function DevCardBrowser() {
           <span style={{ fontFamily: 'system-ui', fontSize: 11, color: bonusMeta.hex, background: '#10142a', padding: '2px 8px', borderRadius: 4 }}>
             {bonusMeta.name}
           </span>
-          {card.lumens > 0 && (
+          {card.eminence > 0 && (
             <span style={{ fontFamily: 'system-ui', fontSize: 11, color: '#ffd700', background: '#10142a', padding: '2px 8px', borderRadius: 4 }}>
-              {card.lumens} Eminence
+              {card.eminence} Eminence
             </span>
           )}
         </div>
@@ -498,10 +498,10 @@ export default function DevCardBrowser() {
             Cost
           </div>
           <div style={{ display: 'flex', gap: 6, flexWrap: 'wrap' }}>
-            {GEM_KEYS.map(k => {
+            {AFFINITY_KEYS.map(k => {
               const n = card.cost[k];
               if (!n) return null;
-              const m = GEM_META[k];
+              const m = AFFINITY_META[k];
               return (
                 <div key={k} style={{ display: 'flex', alignItems: 'center', gap: 4, background: '#10142a', borderRadius: 6, padding: '4px 8px' }}>
                   <img src={m.image} alt={m.name} style={{ width: 14, height: 14, objectFit: 'contain' }} />
@@ -510,7 +510,7 @@ export default function DevCardBrowser() {
                 </div>
               );
             })}
-            {GEM_KEYS.every(k => !card.cost[k]) && (
+            {AFFINITY_KEYS.every(k => !card.cost[k]) && (
               <span style={{ color: '#404870', fontFamily: 'system-ui', fontSize: 12 }}>Free</span>
             )}
           </div>

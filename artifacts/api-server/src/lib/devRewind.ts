@@ -15,9 +15,31 @@ export function captureDevSnapshot(roomId: string, state: GameStateData): void {
   snapshots.set(roomId, JSON.parse(JSON.stringify(state)) as GameStateData);
 }
 
+export function replaceDevSnapshot(roomId: string, state: GameStateData): void {
+  if (process.env.NODE_ENV === "production") return;
+  snapshots.set(roomId, JSON.parse(JSON.stringify(state)) as GameStateData);
+}
+
 export function getDevSnapshot(roomId: string): GameStateData | undefined {
   if (process.env.NODE_ENV === "production") return undefined;
   return snapshots.get(roomId);
+}
+
+export function prepareDevSequenceState(
+  roomId: string,
+  current: GameStateData,
+  repeatFromBaseline: boolean,
+): GameStateData {
+  const saved = repeatFromBaseline ? getDevSnapshot(roomId) : undefined;
+  if (!saved) {
+    replaceDevSnapshot(roomId, current);
+    return JSON.parse(JSON.stringify(current)) as GameStateData;
+  }
+
+  const repeated = JSON.parse(JSON.stringify(saved)) as GameStateData;
+  // Versions remain monotonic even when the board content is rewound.
+  repeated.version = current.version;
+  return repeated;
 }
 
 export function clearDevSnapshot(roomId: string): void {
