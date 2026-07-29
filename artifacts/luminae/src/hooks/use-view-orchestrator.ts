@@ -1,13 +1,16 @@
 /**
- * useViewOrchestrator — Smooth view preparation for multi-target Luminary cinematics.
+ * useViewOrchestrator — Smooth view preparation for Luminary cinematics.
  *
- * Before a multi-target Luminary activation cinematic plays, this hook:
- *   1. Snapshots the current view state (marketCompact + board scrollTop).
- *   2. Fades the market section, switches to Compact View, fades back in.
- *   3. Smooth-scrolls the board to center all affected zones after the layout settles.
+ * Before a Luminary activation cinematic plays, this hook:
+ *   1. Snapshots the current view state (forgeCompact + board scrollTop).
+ *   2. Keeps Full View when every Forge mold and Archive can fit together.
+ *   3. Otherwise fades the Forge, switches to Compact View, then fades back in.
+ *   4. Smooth-scrolls the board to frame the complete Forge after layout settles.
  *
- * After the cinematic completes, `restore()` reverses these changes.  Pass
- * `{ immediate: true }` to skip all animations (required on skip/fast-forward paths).
+ * A Luminary sequence may span several cinematics and aftermath effects. Call
+ * `beginSequence()` once before that chain and `endSequence()` after its final
+ * effect. Intermediate `restore()` calls then end local camera work without
+ * restoring the player's view; the original snapshot is restored exactly once.
  *
  * Manual view changes are respected with independent semantics:
  *   - `onManualToggle()` — called when the player toggles Compact View.
@@ -15,10 +18,8 @@
  *   - Non-programmatic board scroll events during orchestration — only prevent
  *     the scroll portion of restore; Compact View restoration is unaffected.
  *
- * Single-target effects skip orchestration entirely.  An effect is
- * "multi-target" when it has >1 distinct entity ID, OR contains a market-wide
- * step (marketRedraw / deckScry), OR combines a source Luminary portal with any
- * entity target.
+ * This complete-Forge rule is independent of effect target count. Luminary
+ * presentations may interrupt the normal view, but always restore it afterward.
  */
 
 import { useRef, useCallback, useState } from 'react';
@@ -27,15 +28,15 @@ import type { AnimationProcedureStep } from '@/lib/animationProcedure';
 // ─── Orchestration model ──────────────────────────────────────────────────────
 
 interface OrchestrationModel {
-  /** Unique card / player IDs from targetClaim, keywordEvent(s), scoreChange, crystalReturn. */
+  /** Unique Artifact/player IDs from claims, keyword events, Eminence changes, or Affinity returns. */
   entityIds: Set<string>;
   /** Source Luminary ID extracted from the luminaryPulse step. */
   luminaryId: string | null;
-  /** True when marketRedraw or deckScry is present — board-wide / zone-level effect. */
-  hasMarketWide: boolean;
+  /** True when a compatibility `forgeRefill` or `deckScry` step affects the full Forge. */
+  hasForgeWide: boolean;
   /**
    * True when any targetClaim step is present — indicates a brand-strike or
-   * card-condemning effect where the full market should stay in view so every
+   * card-condemning effect where the full Forge should stay in view so every
    * tier is visible during the burn animation, regardless of how many cards
    * are condemned.
    */
@@ -45,7 +46,7 @@ interface OrchestrationModel {
 function buildOrchestrationModel(procedure: AnimationProcedureStep[]): OrchestrationModel {
   const entityIds = new Set<string>();
   let luminaryId: string | null = null;
-  let hasMarketWide = false;
+  let hasForgeWide = false;
   let hasTargetClaim = false;
 
   for (const step of procedure) {
@@ -66,38 +67,20 @@ function buildOrchestrationModel(procedure: AnimationProcedureStep[]): Orchestra
       case 'keywordEvents':
         step.events.forEach(ev => ev.targetIds.forEach(id => entityIds.add(id)));
         break;
-      case 'scoreChange':
-      case 'crystalReturn':
+      case 'eminenceChange':
+      case 'affinityReturn':
         step.playerIds.forEach(id => entityIds.add(id));
         break;
-      case 'marketRedraw':
+      case 'forgeRefill':
       case 'deckScry':
-        hasMarketWide = true;
+      case 'archiveReturn':
+        hasForgeWide = true;
         break;
       default:
         break;
     }
   }
-  return { entityIds, luminaryId, hasMarketWide, hasTargetClaim };
-}
-
-/**
- * Returns true when a procedure spans multiple board zones or targets multiple
- * entities — the threshold above which view orchestration fires.
- *
- * Conditions (any one suffices):
- *   • >1 distinct entity target
- *   • marketRedraw or deckScry present (board-wide multi-slot effect)
- *   • Luminary portal source + any entity target (two distinct zones)
- */
-function isMultiTarget(model: OrchestrationModel): boolean {
-  if (model.hasMarketWide) return true;
-  if (model.entityIds.size > 1) return true;
-  if (model.luminaryId !== null && model.entityIds.size >= 1) return true;
-  // Brand-strike / card-condemning effects always need the full market in view,
-  // even when only one card is condemned.
-  if (model.hasTargetClaim) return true;
-  return false;
+  return { entityIds, luminaryId, hasForgeWide, hasTargetClaim };
 }
 
 // ─── DOM helpers ─────────────────────────────────────────────────────────────
@@ -106,9 +89,9 @@ function isMultiTarget(model: OrchestrationModel): boolean {
  * Resolves a DOM element for a target entity ID.
  *
  * Selector priority:
- *   1. [data-card-id]       — market card (UUID-like card IDs)
+ *   1. [data-card-id]       — Artifact in the Forge (UUID-like card IDs)
  *   2. [data-luminary-id]   — Luminary portal on the board
- *   3. [data-opponent-chip] — opponent score/crystal panels
+ *   3. [data-opponent-chip] — opponent Eminence/Affinity panels
  *
  * The local player's affinity well is pinned outside the scroll container
  * (always visible), so it intentionally returns null here.
@@ -147,7 +130,7 @@ function expandBounds(
  * Computes the union bounding rect (board-relative) covering:
  *   • All resolved entity targets (cards, luminary portals, opponent chips)
  *   • The source Luminary portal ([data-luminary-id])
- *   • The market section ([data-market-section]) when the effect is market-wide
+ *   • The Forge section ([data-forge-section]) when the effect is Forge-wide
  *
  * Returns null when no in-scroll-container elements are found (e.g. all targets
  * are pinned fixed panels outside the board).
@@ -174,85 +157,142 @@ function computeTargetBounds(
     if (lumEl) bounds = expandBounds(bounds, lumEl, board, boardRect, scrollTop);
   }
 
-  // Market section for board-wide effects
-  if (model.hasMarketWide) {
-    const marketEl = document.querySelector<HTMLElement>('[data-market-section]');
-    if (marketEl) bounds = expandBounds(bounds, marketEl, board, boardRect, scrollTop);
+  // Forge section for board-wide effects
+  if (model.hasForgeWide) {
+    const forgeEl = document.querySelector<HTMLElement>('[data-forge-section]');
+    if (forgeEl) bounds = expandBounds(bounds, forgeEl, board, boardRect, scrollTop);
   }
 
   // Brand-strike / card-condemning effects: expand to the 3-tier card grid
-  // ([data-market-tiers]) so the camera frames all three tiers, not the full
+  // ([data-forge-tiers]) so the camera frames all three tiers, not the full
   // Forge section (which includes the Luminary portal strip above and would
   // push Tier 1 off the bottom of the viewport).
-  if (model.hasTargetClaim && !model.hasMarketWide) {
-    const tiersEl = document.querySelector<HTMLElement>('[data-market-tiers]');
+  if (model.hasTargetClaim && !model.hasForgeWide) {
+    const tiersEl = document.querySelector<HTMLElement>('[data-forge-tiers]');
     if (tiersEl) bounds = expandBounds(bounds, tiersEl, board, boardRect, scrollTop);
   }
 
   return bounds;
 }
 
-// ─── Viewport-fit check ───────────────────────────────────────────────────────
-
-/**
- * Returns true when all target elements (entity targets + source Luminary +
- * market section if market-wide) already fit within the board's current scroll
- * viewport, meaning no compact switch or scroll adjustment is needed.
- *
- * Elements outside the scroll container (pinned panels) are ignored — they are
- * always visible and do not require scrolling.
- *
- * A small tolerance (8 px) absorbs sub-pixel rounding from `getBoundingClientRect`.
- */
-function elementsAlreadyInView(model: OrchestrationModel, board: HTMLElement): boolean {
-  const bounds = computeTargetBounds(model, board);
-  // No matching elements inside the scroll container — pinned panels are always
-  // visible, so no reframing is required.
-  if (!bounds) return true;
-  const scrollTop    = board.scrollTop;
-  const scrollBottom = scrollTop + board.clientHeight;
-  const TOLERANCE    = 8; // px — absorbs sub-pixel rounding
-  return bounds.top >= scrollTop - TOLERANCE && bounds.bottom <= scrollBottom + TOLERANCE;
+interface ForgeBounds {
+  top: number;
+  bottom: number;
+  left: number;
+  right: number;
 }
 
-// ─── Market section opacity fade ─────────────────────────────────────────────
+export function forgeBoundsFitViewport(
+  bounds: ForgeBounds,
+  viewport: { width: number; height: number },
+  safePad = 12,
+): boolean {
+  const heightFits = bounds.bottom - bounds.top <= viewport.height - 2 * safePad;
+  const widthFits = (
+    bounds.right - bounds.left <= viewport.width - 2 * safePad &&
+    bounds.left >= safePad &&
+    bounds.right <= viewport.width - safePad
+  );
+  return heightFits && widthFits;
+}
+
+export function forgeCameraScrollTop(
+  bounds: Pick<ForgeBounds, 'top' | 'bottom'>,
+  viewportHeight: number,
+  safePad = 12,
+): number {
+  const forgeHeight = bounds.bottom - bounds.top;
+  if (forgeHeight <= viewportHeight - 2 * safePad) {
+    return Math.max(0, bounds.top - (viewportHeight - forgeHeight) / 2);
+  }
+  return Math.max(0, bounds.top - safePad);
+}
+
+/**
+ * Measures all twelve Forge molds plus the three Archives as one camera subject.
+ * Empty molds still participate, so sparse rows cannot produce a false fit.
+ */
+function computeFullForgeBounds(board: HTMLElement): ForgeBounds | null {
+  const tiers = document.querySelector<HTMLElement>('[data-forge-tiers]');
+  if (!tiers || !board.contains(tiers)) return null;
+
+  const elements = Array.from(
+    tiers.querySelectorAll<HTMLElement>('[data-slot-key], [data-deck-tier]'),
+  ).filter((el) => {
+    const rect = el.getBoundingClientRect();
+    return rect.width > 0 && rect.height > 0 && el.offsetParent !== null;
+  });
+  if (elements.length === 0) return null;
+
+  const boardRect = board.getBoundingClientRect();
+  const scrollTop = board.scrollTop;
+  return elements.reduce<ForgeBounds>((bounds, el) => {
+    const rect = el.getBoundingClientRect();
+    return {
+      top: Math.min(bounds.top, rect.top - boardRect.top + scrollTop),
+      bottom: Math.max(bounds.bottom, rect.bottom - boardRect.top + scrollTop),
+      left: Math.min(bounds.left, rect.left - boardRect.left),
+      right: Math.max(bounds.right, rect.right - boardRect.left),
+    };
+  }, {
+    top: Number.POSITIVE_INFINITY,
+    bottom: Number.NEGATIVE_INFINITY,
+    left: Number.POSITIVE_INFINITY,
+    right: Number.NEGATIVE_INFINITY,
+  });
+}
+
+function fullForgeFitsIfScrolled(board: HTMLElement): boolean {
+  const bounds = computeFullForgeBounds(board);
+  if (!bounds) return false;
+  return forgeBoundsFitViewport(
+    bounds,
+    { width: board.clientWidth, height: board.clientHeight },
+  );
+}
+
+// ─── Forge section opacity fade ──────────────────────────────────────────────
 
 const FADE_FULL_MS  = 120;
 const FADE_SHORT_MS = 40;
 
 /**
- * Brief opacity cross-fade on the market section element during a Compact View
+ * Brief opacity cross-fade on the Forge section during a Compact View
  * layout switch so the snap reflow is visually softened.
  *
  * When `immediate` is true, the action fires synchronously with no animation.
  */
-function fadeMarketAndSwitch(
+function fadeForgeAndSwitch(
   action: () => void,
   fadeTo: number,
   abridged: boolean,
   immediate: boolean,
+  onComplete?: () => void,
 ): void {
   if (immediate) {
     action();
+    onComplete?.();
     return;
   }
-  const market = document.querySelector<HTMLElement>('[data-market-section]');
-  if (!market) {
+  const forge = document.querySelector<HTMLElement>('[data-forge-section]');
+  if (!forge) {
     action();
+    onComplete?.();
     return;
   }
   const durationMs = abridged ? FADE_SHORT_MS : FADE_FULL_MS;
-  market.style.transition = `opacity ${durationMs}ms ease-in-out`;
-  market.style.opacity    = String(fadeTo);
+  forge.style.transition = `opacity ${durationMs}ms ease-in-out`;
+  forge.style.opacity    = String(fadeTo);
 
   requestAnimationFrame(() => {
     action();
-    market.style.opacity = '1';
+    forge.style.opacity = '1';
     const cleanup = setTimeout(() => {
-      market.style.transition = '';
-      market.style.opacity    = '';
+      forge.style.transition = '';
+      forge.style.opacity    = '';
+      onComplete?.();
     }, durationMs + 16);
-    (market as HTMLElement & { _orchCleanup?: ReturnType<typeof setTimeout> })
+    (forge as HTMLElement & { _orchCleanup?: ReturnType<typeof setTimeout> })
       ._orchCleanup = cleanup;
   });
 }
@@ -338,6 +378,17 @@ export interface PrepareOptions {
 
 export interface ViewOrchestrator {
   /**
+   * Acquires sequence-level ownership of the camera. The first view snapshot is
+   * retained across every prepare()/restore() pair until endSequence() releases it.
+   */
+  beginSequence: () => void;
+
+  /**
+   * Releases sequence ownership and performs the one final view restoration.
+   */
+  endSequence: (options?: RestoreOptions) => void;
+
+  /**
    * Call before mounting the LuminaryActivationCinematic.
    * Snapshots current view state and, if the procedure is multi-target, switches
    * to Compact View and scrolls to center all affected zones.
@@ -366,11 +417,20 @@ export interface ViewOrchestrator {
    * scroll / layout changes.
    */
   isOrchestrating: boolean;
+
+  /** True only while the saved pre-sequence view is being restored. */
+  isRestoring: boolean;
+
+  /**
+   * True for the complete Luminary presentation chain, including pauses between
+   * individual camera moves, aftermath effects, and delayed payoffs.
+   */
+  isSequenceActive: boolean;
 }
 
 interface UseViewOrchestratorOptions {
-  marketCompact: boolean;
-  setMarketCompact: React.Dispatch<React.SetStateAction<boolean>>;
+  forgeCompact: boolean;
+  setForgeCompact: React.Dispatch<React.SetStateAction<boolean>>;
   boardRef: React.RefObject<HTMLElement | null>;
   abridgedAnims: boolean;
 }
@@ -379,21 +439,21 @@ const MEASURE_DELAY_ALREADY_COMPACT_MS = 16;
 const MEASURE_DELAY_SWITCHED_MS        = 48;
 
 interface ViewSnapshot {
-  marketCompact: boolean;
+  forgeCompact: boolean;
   scrollTop: number;
 }
 
 export function useViewOrchestrator({
-  marketCompact,
-  setMarketCompact,
+  forgeCompact,
+  setForgeCompact,
   boardRef,
   abridgedAnims,
 }: UseViewOrchestratorOptions): ViewOrchestrator {
   // Live refs — callbacks never capture stale props
-  const marketCompactRef      = useRef(marketCompact);
-  marketCompactRef.current    = marketCompact;
-  const setMarketCompactRef   = useRef(setMarketCompact);
-  setMarketCompactRef.current = setMarketCompact;
+  const forgeCompactRef      = useRef(forgeCompact);
+  forgeCompactRef.current    = forgeCompact;
+  const setForgeCompactRef   = useRef(setForgeCompact);
+  setForgeCompactRef.current = setForgeCompact;
   const boardRefRef    = useRef(boardRef);
   boardRefRef.current  = boardRef;
   const abridgedRef    = useRef(abridgedAnims);
@@ -421,28 +481,62 @@ export function useViewOrchestrator({
 
   // Exposed to callers so they can lock player actions during orchestration.
   const [isOrchestrating, setIsOrchestrating] = useState(false);
+  const [isRestoring, setIsRestoring] = useState(false);
+  const [isSequenceActive, setIsSequenceActive] = useState(false);
+  const sequenceActiveRef = useRef(false);
+  const pendingSequenceRestoreRef = useRef<RestoreOptions | null>(null);
 
   const removeScrollListener = useCallback(() => {
     scrollListenerRef.current?.();
     scrollListenerRef.current = null;
   }, []);
 
-  const resetPerCinematic = useCallback(() => {
+  const resetCameraMotion = useCallback(() => {
     if (scrollTimerRef.current !== null) {
       clearTimeout(scrollTimerRef.current);
       scrollTimerRef.current = null;
     }
     removeScrollListener();
-    snapshotRef.current            = null;
     modelRef.current               = null;
-    didSwitchCompact.current       = false;
-    playerToggledCompactRef.current = false;
-    playerScrolledRef.current       = false;
     isProgrammaticScrollRef.current = false;
   }, [removeScrollListener]);
 
+  const resetPerCinematic = useCallback(() => {
+    resetCameraMotion();
+    snapshotRef.current             = null;
+    didSwitchCompact.current        = false;
+    playerToggledCompactRef.current = false;
+    playerScrolledRef.current       = false;
+  }, [resetCameraMotion]);
+
+  const beginSequence = useCallback(() => {
+    if (sequenceActiveRef.current) return;
+    sequenceActiveRef.current = true;
+    pendingSequenceRestoreRef.current = null;
+    setIsSequenceActive(true);
+
+    // A prepare() may have acquired the camera just before React exposed the
+    // presentation state. Preserve that snapshot; otherwise capture the baseline now.
+    if (!snapshotRef.current) {
+      const board = boardRefRef.current.current;
+      if (board) {
+        snapshotRef.current = {
+          forgeCompact: forgeCompactRef.current,
+          scrollTop: board.scrollTop,
+        };
+      }
+    }
+  }, []);
+
   const prepare = useCallback((procedure: AnimationProcedureStep[], onSettled?: () => void, options?: PrepareOptions) => {
-    resetPerCinematic();
+    setIsRestoring(false);
+    if (sequenceActiveRef.current) {
+      // Keep the sequence's original snapshot and accumulated Compact restore
+      // obligation while replacing only the active camera move.
+      resetCameraMotion();
+    } else {
+      resetPerCinematic();
+    }
 
     // onSettled fires exactly once, after the view has settled (or immediately
     // on any bypass path). Callers use it to capture fresh DOM rects only after
@@ -455,42 +549,38 @@ export function useViewOrchestrator({
     };
 
     const model = buildOrchestrationModel(procedure);
-    const force = options?.forceOrchestrate ?? false;
-
-    // Single-target effects — no orchestration needed, unless forced.
-    // Brand strikes pass forceOrchestrate:true so every strike (even a single
-    // card) gets compact view + centering for the full aura duration.
-    if (!force && !isMultiTarget(model)) {
-      fireSettled();
-      return;
-    }
-
-    const currentCompact = marketCompactRef.current;
+    const currentCompact = forgeCompactRef.current;
     const board          = boardRefRef.current.current;
 
-    // Viewport-fit bypass: if all target elements are already visible in the
-    // current scroll viewport, there is nothing to reframe — skip orchestration
-    // entirely regardless of whether compact mode is on or off.
-    // Skipped when forceOrchestrate is true (brand strikes always hold compact
-    // view regardless of whether the cards are already on screen).
-    if (!force && board && elementsAlreadyInView(model, board)) {
+    if (!board) {
       fireSettled();
       return;
     }
+
+    // Full View survives only when all twelve molds and all three Archives fit
+    // together after a vertical camera move. Otherwise the cinematic borrows
+    // Compact View, regardless of how many entities the effect targets.
+    const canFrameWithoutCompact =
+      !currentCompact && fullForgeFitsIfScrolled(board);
 
     // Past all guards — take ownership of the view.
     setIsOrchestrating(true);
 
-    snapshotRef.current = {
-      marketCompact: currentCompact,
-      scrollTop:     board?.scrollTop ?? 0,
-    };
+    if (!snapshotRef.current) {
+      snapshotRef.current = {
+        forgeCompact: currentCompact,
+        scrollTop: board.scrollTop,
+      };
+    }
     modelRef.current = model;
+    // Compact reflow can clamp scrollTop and emit a synthetic scroll event.
+    // Treat the entire preparation window as camera-owned so that reflow cannot
+    // masquerade as a player override and cancel the required centering move.
+    isProgrammaticScrollRef.current = true;
 
-    // ── Attach scroll-override listener ───────────────────────────────────
-    // Non-programmatic scroll during the orchestration window: player is
-    // manually reframing → suppress scroll restore only (not compact restore).
-    if (board) {
+    // A sequence lease forbids manual camera takeover. Outside a sequence, retain
+    // the legacy independent override behavior for standalone orchestration.
+    if (board && !sequenceActiveRef.current) {
       const handleScroll = () => {
         if (!isProgrammaticScrollRef.current && snapshotRef.current !== null) {
           playerScrolledRef.current = true;
@@ -502,10 +592,11 @@ export function useViewOrchestrator({
     }
 
     // ── Switch to Compact View if needed (with opacity fade) ──────────────
-    if (!currentCompact) {
+    const shouldSwitchCompact = !currentCompact && !canFrameWithoutCompact;
+    if (shouldSwitchCompact) {
       didSwitchCompact.current = true;
-      fadeMarketAndSwitch(
-        () => setMarketCompactRef.current(true),
+      fadeForgeAndSwitch(
+        () => setForgeCompactRef.current(true),
         0.45,
         abridgedRef.current,
         false, // never immediate on entry
@@ -517,14 +608,14 @@ export function useViewOrchestrator({
       // THIS session's restore() will un-compact at the end — as if we had
       // initiated the compact switch ourselves.
       didSwitchCompact.current = true;
-      snapshotRef.current!.marketCompact = false;
+      snapshotRef.current!.forgeCompact = false;
     }
 
     // ── Deferred scroll-centering ─────────────────────────────────────────
     // Fires after the layout settles. Full mode: smooth scroll.
     // Abridged mode: instant scroll (still centers — no skip).
     if (board) {
-      const delayMs = currentCompact
+      const delayMs = currentCompact || !shouldSwitchCompact
         ? MEASURE_DELAY_ALREADY_COMPACT_MS
         : MEASURE_DELAY_SWITCHED_MS;
       scrollTimerRef.current = setTimeout(() => {
@@ -535,80 +626,22 @@ export function useViewOrchestrator({
           fireSettled();
           return;
         }
-        const bounds = computeTargetBounds(modelRef.current, board);
+        const forgeBounds = computeFullForgeBounds(board);
+        const targetBounds = computeTargetBounds(modelRef.current, board);
+        const bounds = forgeBounds ?? (
+          targetBounds
+            ? { ...targetBounds, left: 0, right: board.clientWidth }
+            : null
+        );
         const behavior: ScrollBehavior = abridgedRef.current ? 'instant' : 'smooth';
         if (!bounds) {
-          // All targets are pinned outside the scroll container — show market top.
+          // The Forge has not mounted yet; preserve the safest deterministic view.
           programmaticScrollTo(board, { top: 0, behavior }, isProgrammaticScrollRef, fireSettled);
           return;
         }
-        const boardHeight  = board.clientHeight;
-        const targetHeight = bounds.bottom - bounds.top;
-        // px of breathing room between the forge section edge and the viewport edge
-        // when content is too tall to center cleanly.
-        const SAFE_PAD = 12;
-
-        let idealScrollTop: number;
-
-        if (modelRef.current?.hasTargetClaim) {
-          // Brand-strike / card-condemning effect: top-align to the 3-tier card
-          // grid ([data-market-tiers]) so Tier 3 appears at the top of the
-          // viewport and all three tiers stay fully visible.  Centering would
-          // keep the Forge header partially on-screen and clip Tier 1 off the
-          // bottom; top-aligning scrolls the header above the viewport edge.
-          // bounds.top == top of [data-market-tiers] because computeTargetBounds
-          // already expanded to that element for hasTargetClaim procedures.
-          idealScrollTop = bounds.top - SAFE_PAD;
-        } else if (targetHeight <= boardHeight - 2 * SAFE_PAD) {
-          // Everything fits with breathing room — center it.
-          idealScrollTop = bounds.top - (boardHeight - targetHeight) / 2;
-        } else if (modelRef.current?.hasMarketWide) {
-          // Combined range (portal + full market) is taller than the viewport.
-          // Re-center on just [data-market-section] so every forge card stays
-          // fully in view, even if the source Luminary portal is partially
-          // clipped above the viewport top.
-          const boardRect  = board.getBoundingClientRect();
-          const marketEl   = document.querySelector<HTMLElement>('[data-market-section]');
-          if (marketEl && board.contains(marketEl)) {
-            const mr          = marketEl.getBoundingClientRect();
-            const marketTopAbs = mr.top - boardRect.top + board.scrollTop;
-            const marketH      = mr.height;
-            if (marketH <= boardHeight - 2 * SAFE_PAD) {
-              // Market section alone fits — center it.
-              idealScrollTop = marketTopAbs - (boardHeight - marketH) / 2;
-            } else {
-              // Market section itself taller than viewport — show from its top.
-              idealScrollTop = marketTopAbs - SAFE_PAD;
-            }
-          } else {
-            // Market element not found — top-align the full bounds.
-            idealScrollTop = bounds.top - SAFE_PAD;
-          }
-        } else {
-          // Non-market-wide content (e.g. many condemned cards spanning all
-          // three tiers) is taller than the viewport.  Top-aligning cuts off
-          // the lower tiers.  Fall back to the same market-section centering
-          // strategy used for market-wide effects: center on the forge card
-          // area so every condemned card stays visible, accepting that the
-          // source Luminary portal may be partially above the viewport top.
-          const boardRect2   = board.getBoundingClientRect();
-          const marketEl2    = document.querySelector<HTMLElement>('[data-market-section]');
-          if (marketEl2 && board.contains(marketEl2)) {
-            const mr2           = marketEl2.getBoundingClientRect();
-            const marketTopAbs2 = mr2.top - boardRect2.top + board.scrollTop;
-            const marketH2      = mr2.height;
-            if (marketH2 <= boardHeight - 2 * SAFE_PAD) {
-              // Market section alone fits — center it.
-              idealScrollTop = marketTopAbs2 - (boardHeight - marketH2) / 2;
-            } else {
-              // Market section itself taller than viewport — show from its top.
-              idealScrollTop = marketTopAbs2 - SAFE_PAD;
-            }
-          } else {
-            // Market element not found — top-align the entity bounds.
-            idealScrollTop = bounds.top - SAFE_PAD;
-          }
-        }
+        // Center a fitting Forge; on extremely constrained Compact View, anchor
+        // Tier III at the top rather than presenting an unstable partial center.
+        const idealScrollTop = forgeCameraScrollTop(bounds, board.clientHeight);
 
         programmaticScrollTo(
           board,
@@ -621,13 +654,10 @@ export function useViewOrchestrator({
       // No board ref — nothing to reframe; settle immediately.
       fireSettled();
     }
-  }, [resetPerCinematic]);
+  }, [resetCameraMotion, resetPerCinematic]);
 
-  const restore = useCallback((options?: RestoreOptions) => {
+  const restoreNow = useCallback((options?: RestoreOptions) => {
     const immediate = options?.immediate ?? false;
-
-    // Always release the action lock, even on double-call / no-snapshot paths.
-    setIsOrchestrating(false);
 
     removeScrollListener();
     if (scrollTimerRef.current !== null) {
@@ -635,11 +665,15 @@ export function useViewOrchestrator({
       scrollTimerRef.current = null;
     }
 
-    if (!snapshotRef.current) return;
+    if (!snapshotRef.current) {
+      setIsOrchestrating(false);
+      setIsRestoring(false);
+      return;
+    }
 
     const playerToggledCompact = playerToggledCompactRef.current;
     const playerScrolled       = playerScrolledRef.current;
-    const { marketCompact: wasCompact, scrollTop: savedScroll } = snapshotRef.current;
+    const { forgeCompact: wasCompact, scrollTop: savedScroll } = snapshotRef.current;
 
     // Clear per-cinematic state before async effects fire below
     snapshotRef.current             = null;
@@ -647,14 +681,31 @@ export function useViewOrchestrator({
     playerToggledCompactRef.current = false;
     playerScrolledRef.current       = false;
 
+    let pendingRestoreOperations = 0;
+    let operationsScheduled = false;
+    const startRestoreOperation = () => {
+      pendingRestoreOperations += 1;
+      setIsOrchestrating(true);
+      setIsRestoring(true);
+    };
+    const finishRestoreOperation = () => {
+      pendingRestoreOperations = Math.max(0, pendingRestoreOperations - 1);
+      if (operationsScheduled && pendingRestoreOperations === 0) {
+        setIsOrchestrating(false);
+        setIsRestoring(false);
+      }
+    };
+
     // Restore Compact View — suppressed only by explicit compact toggle, not by scroll.
     if (didSwitchCompact.current && !wasCompact && !playerToggledCompact) {
+      startRestoreOperation();
       didSwitchCompact.current = false;
-      fadeMarketAndSwitch(
-        () => setMarketCompactRef.current(false),
+      fadeForgeAndSwitch(
+        () => setForgeCompactRef.current(false),
         0.45,
         abridgedRef.current,
         immediate,
+        finishRestoreOperation,
       );
     }
 
@@ -662,20 +713,67 @@ export function useViewOrchestrator({
     if (!playerScrolled) {
       const board = boardRefRef.current.current;
       if (board) {
+        startRestoreOperation();
         const behavior: ScrollBehavior = immediate ? 'instant'
           : abridgedRef.current        ? 'instant'
           : 'smooth';
-        programmaticScrollTo(board, { top: savedScroll, behavior }, isProgrammaticScrollRef);
+        programmaticScrollTo(
+          board,
+          { top: savedScroll, behavior },
+          isProgrammaticScrollRef,
+          finishRestoreOperation,
+        );
       }
+    }
+    operationsScheduled = true;
+    if (pendingRestoreOperations === 0) {
+      setIsOrchestrating(false);
+      setIsRestoring(false);
     }
   }, [removeScrollListener]);
 
+  const restore = useCallback((options?: RestoreOptions) => {
+    if (sequenceActiveRef.current) {
+      pendingSequenceRestoreRef.current = {
+        immediate:
+          (pendingSequenceRestoreRef.current?.immediate ?? false) ||
+          (options?.immediate ?? false),
+      };
+      setIsOrchestrating(false);
+      resetCameraMotion();
+      return;
+    }
+    restoreNow(options);
+  }, [resetCameraMotion, restoreNow]);
+
+  const endSequence = useCallback((options?: RestoreOptions) => {
+    if (!sequenceActiveRef.current) return;
+
+    sequenceActiveRef.current = false;
+    setIsSequenceActive(false);
+    const pending = pendingSequenceRestoreRef.current;
+    pendingSequenceRestoreRef.current = null;
+    restoreNow({
+      immediate: (options?.immediate ?? false) || (pending?.immediate ?? false),
+    });
+  }, [restoreNow]);
+
   const onManualToggle = useCallback(() => {
+    if (sequenceActiveRef.current) return;
     // Only suppress compact restore — does not affect scroll restoration.
     if (snapshotRef.current !== null) {
       playerToggledCompactRef.current = true;
     }
   }, []);
 
-  return { prepare, restore, onManualToggle, isOrchestrating };
+  return {
+    beginSequence,
+    endSequence,
+    prepare,
+    restore,
+    onManualToggle,
+    isOrchestrating,
+    isRestoring,
+    isSequenceActive,
+  };
 }

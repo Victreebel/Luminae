@@ -1,0 +1,5 @@
+#!/bin/zsh
+
+export PATH="/opt/homebrew/bin:/usr/local/bin:/usr/bin:/bin:/usr/sbin:/sbin"
+cd "/Users/chaoscalligraphy/Documents/Lumiane" || exit 1
+exec pnpm desktop >> /tmp/luminae-desktop.log 2>&1

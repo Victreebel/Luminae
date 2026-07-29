@@ -42,6 +42,8 @@ import type {
   QuitRoomBody,
   RegisterBody,
   RejoinRoomBody,
+  RematchBody,
+  RematchVoteResponse,
   RoomInfo,
   RoomPlayer,
   RoomWithPlayer,
@@ -731,7 +733,7 @@ export const useStartGame = <
 };
 
 /**
- * @summary Restart the game with the same players (host only)
+ * @summary Vote to restart the game, optionally replaying the same opening board
  */
 export const getRematchUrl = (roomId: string) => {
   return `/api/rooms/${roomId}/rematch`;
@@ -739,14 +741,14 @@ export const getRematchUrl = (roomId: string) => {
 
 export const rematch = async (
   roomId: string,
-  hostActionBody: HostActionBody,
+  rematchBody: RematchBody,
   options?: RequestInit,
-): Promise<GameState> => {
-  return customFetch<GameState>(getRematchUrl(roomId), {
+): Promise<RematchVoteResponse> => {
+  return customFetch<RematchVoteResponse>(getRematchUrl(roomId), {
     ...options,
     method: "POST",
     headers: { "Content-Type": "application/json", ...options?.headers },
-    body: JSON.stringify(hostActionBody),
+    body: JSON.stringify(rematchBody),
   });
 };
 
@@ -757,14 +759,14 @@ export const getRematchMutationOptions = <
   mutation?: UseMutationOptions<
     Awaited<ReturnType<typeof rematch>>,
     TError,
-    { roomId: string; data: BodyType<HostActionBody> },
+    { roomId: string; data: BodyType<RematchBody> },
     TContext
   >;
   request?: SecondParameter<typeof customFetch>;
 }): UseMutationOptions<
   Awaited<ReturnType<typeof rematch>>,
   TError,
-  { roomId: string; data: BodyType<HostActionBody> },
+  { roomId: string; data: BodyType<RematchBody> },
   TContext
 > => {
   const mutationKey = ["rematch"];
@@ -778,7 +780,7 @@ export const getRematchMutationOptions = <
 
   const mutationFn: MutationFunction<
     Awaited<ReturnType<typeof rematch>>,
-    { roomId: string; data: BodyType<HostActionBody> }
+    { roomId: string; data: BodyType<RematchBody> }
   > = (props) => {
     const { roomId, data } = props ?? {};
 
@@ -791,11 +793,11 @@ export const getRematchMutationOptions = <
 export type RematchMutationResult = NonNullable<
   Awaited<ReturnType<typeof rematch>>
 >;
-export type RematchMutationBody = BodyType<HostActionBody>;
+export type RematchMutationBody = BodyType<RematchBody>;
 export type RematchMutationError = ErrorType<void>;
 
 /**
- * @summary Restart the game with the same players (host only)
+ * @summary Vote to restart the game, optionally replaying the same opening board
  */
 export const useRematch = <
   TError = ErrorType<void>,
@@ -804,14 +806,14 @@ export const useRematch = <
   mutation?: UseMutationOptions<
     Awaited<ReturnType<typeof rematch>>,
     TError,
-    { roomId: string; data: BodyType<HostActionBody> },
+    { roomId: string; data: BodyType<RematchBody> },
     TContext
   >;
   request?: SecondParameter<typeof customFetch>;
 }): UseMutationResult<
   Awaited<ReturnType<typeof rematch>>,
   TError,
-  { roomId: string; data: BodyType<HostActionBody> },
+  { roomId: string; data: BodyType<RematchBody> },
   TContext
 > => {
   return useMutation(getRematchMutationOptions(options));

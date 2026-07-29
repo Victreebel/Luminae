@@ -217,7 +217,7 @@ Sorted by tier then affinity. Cards marked ⚠️TEXT also have baked-in text (r
 
 Given that all T2 and T3 cards need regen (50 cards) plus 20 T1 cards, a suggested batch priority:
 
-1. **T1 scale failures** (20 cards) — same tier as acceptable cards already in play; fixes most visible contrast between good and bad art in the live market.
+1. **T1 scale failures** (20 cards) — same tier as acceptable cards already in play; fixes the most visible contrast between good and bad art in the live Forge.
 2. **T2 scale failures** (30 cards) — mid-game cards players see most often.
 3. **T3 scale failures** (20 cards) — endgame cards; least frequently seen but most prestigious.
 4. **Inpainting** (t1r03, t1p02) — quick wins, any time.

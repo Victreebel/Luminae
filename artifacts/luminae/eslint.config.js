@@ -305,6 +305,7 @@ const noDropdownCheckboxItemRule = {
 
 export default [
   {
+    files: ['**/*.{js,ts,tsx}'],
     plugins: {
       'react-hooks': reactHooks,
       '@typescript-eslint': tsPlugin,

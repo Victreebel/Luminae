@@ -5,4 +5,4 @@ Place artwork files here:
 - `entity.png` — freed entity, transparent background, 2:3 portrait
 - `aura.png` — optional portal aura, transparent bg, screen-blend safe
 
-Affinity: Verdance + Continuum (emerald/sapphire)
+Affinity: Verdance + Continuum (verdance/continuum)

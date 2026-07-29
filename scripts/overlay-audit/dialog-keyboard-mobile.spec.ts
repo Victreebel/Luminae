@@ -410,7 +410,7 @@ test.describe('C. Card action sheet — /game/:id — mobile keyboard nav', () =
     await dismissTurnAnnouncement(page);
 
     const dialog = await openCardSheet(page);
-    expect(dialog, 'card action sheet must open when clicking a market card').not.toBeNull();
+    expect(dialog, 'Artifact action sheet must open when clicking a Forge Artifact').not.toBeNull();
 
     await page.screenshot({ path: `${OUT}/C1-card-sheet-open.png` });
     expect(await dialog!.getAttribute('role')).toBe('dialog');
@@ -422,7 +422,7 @@ test.describe('C. Card action sheet — /game/:id — mobile keyboard nav', () =
     await dismissTurnAnnouncement(page);
 
     const dialog = await openCardSheet(page);
-    expect(dialog, 'card action sheet must open when clicking a market card').not.toBeNull();
+    expect(dialog, 'Artifact action sheet must open when clicking a Forge Artifact').not.toBeNull();
 
     expect(await dialog!.getAttribute('aria-modal')).toBe('true');
   });
@@ -433,7 +433,7 @@ test.describe('C. Card action sheet — /game/:id — mobile keyboard nav', () =
     await dismissTurnAnnouncement(page);
 
     const dialog = await openCardSheet(page);
-    expect(dialog, 'card action sheet must open when clicking a market card').not.toBeNull();
+    expect(dialog, 'Artifact action sheet must open when clicking a Forge Artifact').not.toBeNull();
 
     await assertTabWraps(page, dialog!, 'Card action sheet');
     await page.screenshot({ path: `${OUT}/C2-card-sheet-tab-trap.png` });
@@ -445,7 +445,7 @@ test.describe('C. Card action sheet — /game/:id — mobile keyboard nav', () =
     await dismissTurnAnnouncement(page);
 
     const dialog = await openCardSheet(page);
-    expect(dialog, 'card action sheet must open when clicking a market card').not.toBeNull();
+    expect(dialog, 'Artifact action sheet must open when clicking a Forge Artifact').not.toBeNull();
 
     await assertShiftTabWraps(page, dialog!, 'Card action sheet');
   });
@@ -456,7 +456,7 @@ test.describe('C. Card action sheet — /game/:id — mobile keyboard nav', () =
     await dismissTurnAnnouncement(page);
 
     const dialog = await openCardSheet(page);
-    expect(dialog, 'card action sheet must open when clicking a market card').not.toBeNull();
+    expect(dialog, 'Artifact action sheet must open when clicking a Forge Artifact').not.toBeNull();
 
     await assertArrowKeysStayInDialog(page, dialog!, 'Card action sheet');
     await page.screenshot({ path: `${OUT}/C3-card-sheet-arrow-keys.png` });
@@ -468,7 +468,7 @@ test.describe('C. Card action sheet — /game/:id — mobile keyboard nav', () =
     await dismissTurnAnnouncement(page);
 
     const dialog = await openCardSheet(page);
-    expect(dialog, 'card action sheet must open when clicking a market card').not.toBeNull();
+    expect(dialog, 'Artifact action sheet must open when clicking a Forge Artifact').not.toBeNull();
 
     await page.keyboard.press('Escape');
     await page.waitForTimeout(500);
@@ -481,7 +481,7 @@ test.describe('C. Card action sheet — /game/:id — mobile keyboard nav', () =
 // D. Remaining game dialogs — /game/:id
 //
 // Covers four more game-page dialogs not tested in Section C:
-//   D1. Reserved cards overlay  — click [data-singularity-well] (flux crystal)
+//   D1. Reserved Artifacts overlay — click [data-singularity-well] (Singularity Affinity)
 //   D2. Deck reserve sheet      — click [data-deck-tier]:not([disabled])
 //   D3. Rules sheet             — header ⋮ menu → Rules
 //   D4. Win overlay             — API surrender action ends the game
@@ -560,7 +560,7 @@ async function dismissTurnAnnouncementD(page: Page): Promise<void> {
 
 test.describe('D1. Reserved cards overlay — /game/:id — mobile keyboard nav', () => {
   /**
-   * The Singularity (flux) crystal cell always calls onOpenReserved() when clicked,
+   * The Singularity Affinity cell always calls onOpenReserved() when clicked,
    * regardless of whose turn it is or how many cards are reserved.
    * It carries data-singularity-well so we can target it precisely.
    *
@@ -580,13 +580,13 @@ test.describe('D1. Reserved cards overlay — /game/:id — mobile keyboard nav'
     // Blind-reserve a tier-1 card via the API — this is the player's core action
     // and will advance the turn to the AI after submission.
     await apiPost(`/api/rooms/${room.id}/actions`, {
-      type: 'reserve_card',
+      type: 'reserve_artifact',
       tier: 1,
       sessionToken,
     });
     await page.waitForTimeout(300); // allow WebSocket state delivery
 
-    // Open the reserved cards overlay — the flux crystal is always clickable.
+    // Open the reserved Artifacts overlay; the Singularity Affinity is always clickable.
     const singularityCell = page.locator('[data-singularity-well]').first();
     await expect(singularityCell).toBeVisible({ timeout: 10_000 });
     await singularityCell.click();

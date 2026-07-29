@@ -1,10 +1,10 @@
 /**
  * Overlay Centering Audit — Task #297
  *
- * Verifies that fixed overlays (turn announcement, gem harvest burst, reserve burst)
+ * Verifies that fixed overlays (turn announcement, Affinity Harness burst, reserve burst)
  * are correctly centered on a 390×844 mobile viewport.
  *
- * The card-action burst uses window.innerWidth at animation runtime to compute its
+ * The Artifact-forge burst uses window.innerWidth at animation runtime to compute its
  * left position; this test also verifies window.innerWidth equals the viewport width
  * and documents that the formula produces a centered result.
  *
@@ -242,13 +242,13 @@ async function main() {
     });
     await sleep(300);
 
-    // ── OVERLAY 2: Gem Harvest Burst ───────────────────────────────────────
-    console.log('\n--- Gem Harvest Burst ---');
-    // Gem burst fires OPTIMISTICALLY (immediately) when Harness is clicked.
+    // ── OVERLAY 2: Affinity Harness Burst ──────────────────────────────────
+    console.log('\n--- Affinity Harness Burst ---');
+    // The Affinity burst fires optimistically when Harness is clicked.
     // Overlay CSS: "pointer-events-none fixed inset-0 z-50 flex items-center justify-center"
     // Inner content: div "relative h-72 w-[18rem]" (288px wide, centered via parent flex)
 
-    let harvestAttempted = false;
+    let harnessAttempted = false;
     // Wait for "AFFINITY WELL" section to confirm we're on the board with actions available
     const wellVisible = await page.locator('text=AFFINITY WELL').count() > 0;
     if (!wellVisible) {
@@ -259,24 +259,24 @@ async function main() {
     const myTurnIndicator = await page.locator('text=Your turn, text=your turn').count();
     console.log(`  My-turn indicators found: ${myTurnIndicator}`);
 
-    // Click 3 different gem crystal buttons in the Affinity Well.
+    // Click 3 different Affinity buttons in the Well.
     // These are motion.button elements in a grid-cols-5 grid, with type="button" and rounded-xl.
-    // We click 3 unique ones (for a take3 harvest).
+    // We click 3 unique ones for the take-three Harness action.
     try {
-      // Find the gem buttons — they are button[type="button"][class*="rounded-xl"] in the affinity well
-      const gemButtons = page.locator('button[type="button"][class*="rounded-xl"]').filter({ hasNotText: /RESERVE|Forge|Hand|Log|Back/ });
-      const count = await gemButtons.count();
-      console.log(`  Found ${count} gem-like buttons`);
+      // Affinity buttons use rounded-xl inside the Affinity Well.
+      const affinityButtons = page.locator('button[type="button"][class*="rounded-xl"]').filter({ hasNotText: /RESERVE|Forge|Hand|Log|Back/ });
+      const count = await affinityButtons.count();
+      console.log(`  Found ${count} Affinity buttons`);
 
       if (count >= 3) {
-        await gemButtons.nth(0).click();
+        await affinityButtons.nth(0).click();
         await sleep(150);
-        await gemButtons.nth(1).click();
+        await affinityButtons.nth(1).click();
         await sleep(150);
-        await gemButtons.nth(2).click();
+        await affinityButtons.nth(2).click();
         await sleep(150);
       } else if (count >= 1) {
-        await gemButtons.nth(0).click();
+        await affinityButtons.nth(0).click();
         await sleep(150);
       }
 
@@ -291,42 +291,42 @@ async function main() {
       if (harnessCount > 0) {
         // Click the Harness div — burst fires immediately (optimistic)
         await harnessSpan.click();
-        harvestAttempted = true;
+        harnessAttempted = true;
         console.log('  Clicked Harness — burst should fire immediately');
       }
     } catch (e) {
-      console.log(`  Gem/Harness click failed: ${e.message}`);
+      console.log(`  Affinity/Harness click failed: ${e.message}`);
     }
 
     // Screenshot immediately after clicking Harness (burst is optimistic / fires on click)
     await sleep(350);
-    await page.screenshot({ path: `${OUT_DIR}/02-gem-burst-immediate.png` });
-    console.log(`  Screenshot (immediate): ${OUT_DIR}/02-gem-burst-immediate.png`);
+    await page.screenshot({ path: `${OUT_DIR}/02-affinity-burst-immediate.png` });
+    console.log(`  Screenshot (immediate): ${OUT_DIR}/02-affinity-burst-immediate.png`);
 
     // Wait 1 more second and screenshot again — burst lasts ~3.5s
     await sleep(1000);
-    await page.screenshot({ path: `${OUT_DIR}/03-gem-burst-1s.png` });
-    console.log(`  Screenshot (+1s):       ${OUT_DIR}/03-gem-burst-1s.png`);
+    await page.screenshot({ path: `${OUT_DIR}/03-affinity-burst-1s.png` });
+    console.log(`  Screenshot (+1s):       ${OUT_DIR}/03-affinity-burst-1s.png`);
 
-    // Measure the gem burst overlay content box
+    // Measure the Affinity burst overlay content box.
     // Overlay: "pointer-events-none fixed inset-0 z-50 flex items-center justify-center"
     // Content: the first non-absolute child div inside the flex-center container
-    const gemBurstOverlay = page.locator('.pointer-events-none.fixed.inset-0[class*="z-50"][class*="flex"][class*="justify-center"]').first();
-    const gemBurstVisible = await gemBurstOverlay.count() > 0;
+    const affinityBurstOverlay = page.locator('.pointer-events-none.fixed.inset-0[class*="z-50"][class*="flex"][class*="justify-center"]').first();
+    const affinityBurstVisible = await affinityBurstOverlay.count() > 0;
 
-    if (gemBurstVisible) {
+    if (affinityBurstVisible) {
       // The inner content div: "relative h-72 w-[18rem]"
-      const innerContent = gemBurstOverlay.locator('div.relative').first();
+      const innerContent = affinityBurstOverlay.locator('div.relative').first();
       const box = await innerContent.boundingBox().catch(() => null);
-      const pass = checkCentered('Gem harvest burst content (w-[18rem])', box, VIEWPORT);
-      results.push({ overlay: 'gem-harvest-burst', pass, box });
+      const pass = checkCentered('Affinity Harness burst content (w-[18rem])', box, VIEWPORT);
+      results.push({ overlay: 'affinity-harness-burst', pass, box });
     } else {
-      console.log(`  Gem burst overlay not currently visible (harvestAttempted=${harvestAttempted}). Check screenshots.`);
+      console.log(`  Affinity burst overlay not currently visible (harnessAttempted=${harnessAttempted}). Check screenshots.`);
       // Try measuring from screenshot file info (static analysis fallback)
       // w-[18rem] = 288px; centered at 390/2 = 195, so box.x should be (390-288)/2 = 51px
-      console.log(`  Static analysis: gem burst inner div is w-[18rem]=288px → at 390px viewport,`);
+      console.log(`  Static analysis: Affinity burst inner div is w-[18rem]=288px → at 390px viewport,`);
       console.log(`    expected box.x = (390-288)/2 = 51px, box.center = 195px (screen center) ✓`);
-      results.push({ overlay: 'gem-harvest-burst', pass: null, note: `harvestAttempted=${harvestAttempted}, overlay not visible during measurement window` });
+      results.push({ overlay: 'affinity-harness-burst', pass: null, note: `harnessAttempted=${harnessAttempted}, overlay not visible during measurement window` });
     }
 
     // Wait for burst to complete before next action
@@ -345,7 +345,7 @@ async function main() {
     // Then burst fires after WebSocket state update (~0.3-1.5s).
 
     // Wait for the NEXT turn announcement for "AuditBot" to confirm a full turn cycle:
-    //   our harvest → AI turn → back to AuditBot (new turn announcement fires)
+    //   our Harness action → AI turn → back to AuditBot (new turn announcement fires)
     // This is the most reliable indicator that coreActionSubmitted has reset and
     // isMyTurnForCoreAction will be true.
     console.log('  Waiting for the next "AuditBot" turn announcement...');
@@ -473,7 +473,7 @@ async function main() {
     } else {
       console.log(`  Reserve burst overlay not detected (reserveAttempted=${reserveAttempted}). Check screenshots.`);
       // Static analysis: the container is "flex items-center gap-8" inside flex-center parent.
-      // Total content width depends on CardBack (~112px) + gap (32px) + optional flux token.
+      // Total content width depends on CardBack (~112px) + gap (32px) + optional singularity token.
       // With just CardBack (~112px): box.x ≈ (390-112)/2 = 139px, center ≈ 195px (screen center) ✓
       console.log(`  Static analysis: reserve burst inner content is flex-centered by parent "fixed inset-0 flex justify-center".`);
       console.log(`    Content (CardBack ~112px) would be at x≈139px, center≈195px (screen center) ✓`);
@@ -507,8 +507,8 @@ async function main() {
   console.log('\nScreenshots:');
   [
     '01-turn-announcement.png',
-    '02-gem-burst-immediate.png',
-    '03-gem-burst-1s.png',
+    '02-affinity-burst-immediate.png',
+    '03-affinity-burst-1s.png',
     '04-reserve-burst-immediate.png',
     '05-reserve-burst-1s.png',
     '06-final-state.png',
@@ -520,9 +520,9 @@ async function main() {
   console.log('\n=== CSS CENTERING ANALYSIS ===');
   console.log('All four overlays use Tailwind CSS centering — NOT runtime JS positioning:');
   console.log('  turn-announcement : "fixed inset-0 z-50 flex items-center justify-center cursor-pointer"');
-  console.log('  gem-harvest-burst : "pointer-events-none fixed inset-0 z-50 flex items-center justify-center"');
+  console.log('  affinity-harness-burst : "pointer-events-none fixed inset-0 z-50 flex items-center justify-center"');
   console.log('  reserve-burst     : "pointer-events-none fixed inset-0 z-50 flex items-center justify-center"');
-  console.log('  card-action burst : "pointer-events-none fixed inset-0 z-50" (no flex)');
+  console.log('  Artifact-forge burst : "pointer-events-none fixed inset-0 z-50" (no flex)');
   console.log('    └─ card element : inline style left: window.innerWidth/2 - cardWidth/2');
   console.log('    └─ label/avatar : "fixed left-0 right-0 flex flex-col items-center" → CSS centered');
   console.log('');

@@ -1,51 +1,49 @@
 import { describe, it, expect } from 'vitest';
 import { deriveAccolades } from '@/lib/accolades';
-import type { GameState, GamePlayerState, ArtifactCard, CrystalCounts } from '@workspace/api-client-react';
+import type { GameState, GamePlayerState, ArtifactCard, AffinityCounts } from '@workspace/api-client-react';
 
 // ─── Minimal mock helpers ─────────────────────────────────────────────────────
 //
-// deriveAccolades() only reads: players[*].playerId, .purchasedCards,
-// .claimedLuminaryIds, .bonuses, .lumens.  All other GameState/GamePlayerState
+// deriveAccolades() only reads: players[*].playerId, .forgedArtifacts,
+// compatibility fields `.claimedLuminaryIds`, `.bonuses`, and `.eminence`. Other state
 // fields are irrelevant to the function under test, so the mocks populate only
 // what is needed and suppress the double-cast lint rule inline.
 
-const ZERO_CRYSTALS: CrystalCounts = {
-  ruby: 0, sapphire: 0, emerald: 0, onyx: 0, pearl: 0, flux: 0,
+const ZERO_AFFINITIES: AffinityCounts = {
+  flare: 0, continuum: 0, verdance: 0, abyss: 0, radiance: 0, singularity: 0,
 };
 
 let _cardSeq = 0;
 function makeCard(tier: number): ArtifactCard {
-  // eslint-disable-next-line no-restricted-syntax
   return {
     id: `card-t${tier}-${++_cardSeq}`,
     tier,
-    bonusColor: 'ruby',
-    lumens: tier,
+    bonusAffinity: 'flare',
+    eminence: tier,
     name: `Tier ${tier} card`,
     flavorText: '',
-    cost: { ...ZERO_CRYSTALS },
+    cost: { ...ZERO_AFFINITIES },
   } as ArtifactCard;
 }
 
 function makePlayer(
   id: string,
   overrides: Partial<{
-    lumens: number;
-    purchasedCards: ArtifactCard[];
+    eminence: number;
+    forgedArtifacts: ArtifactCard[];
     claimedLuminaryIds: string[];
-    bonuses: Partial<CrystalCounts>;
+    bonuses: Partial<AffinityCounts>;
   }> = {},
 ): GamePlayerState {
-  // eslint-disable-next-line no-restricted-syntax
   return {
     playerId: id,
     name: id,
-    lumens: overrides.lumens ?? 15,
-    purchasedCards: overrides.purchasedCards ?? [],
+    eminence: overrides.eminence ?? 15,
+    forgedArtifacts: overrides.forgedArtifacts ?? [],
     claimedLuminaryIds: overrides.claimedLuminaryIds ?? [],
-    bonuses: { ...ZERO_CRYSTALS, ...(overrides.bonuses ?? {}) },
-    reservedCards: [],
-    crystals: { ...ZERO_CRYSTALS },
+    bonuses: { ...ZERO_AFFINITIES, ...(overrides.bonuses ?? {}) },
+    reservedArtifacts: [],
+    affinities: { ...ZERO_AFFINITIES },
     aiDifficulty: 'none',
     isAi: false,
     plannedAction: null,
@@ -54,18 +52,17 @@ function makePlayer(
 }
 
 function makeState(players: GamePlayerState[]): GameState {
-  // eslint-disable-next-line no-restricted-syntax
   return {
     players,
     status: 'finished',
     turn: 0,
     turnCount: 0,
     currentPlayerId: players[0]?.playerId ?? '',
-    marketTier1: [],
-    marketTier2: [],
-    marketTier3: [],
+    forgeTier1: [],
+    forgeTier2: [],
+    forgeTier3: [],
     deckCounts: { tier1: 0, tier2: 0, tier3: 0 },
-    crystalBank: { ...ZERO_CRYSTALS },
+    affinityWell: { ...ZERO_AFFINITIES },
     luminaries: [],
     actionLog: [],
     lastAction: null,
@@ -89,16 +86,16 @@ describe('deriveAccolades — guard against unknown winner', () => {
 describe('deriveAccolades — standard win badge set', () => {
   it('awards the expected badges for a dominant winner', () => {
     const winner = makePlayer('alice', {
-      lumens: 17,
-      purchasedCards: [makeCard(1), makeCard(2), makeCard(3)],
+      eminence: 17,
+      forgedArtifacts: [makeCard(1), makeCard(2), makeCard(3)],
       claimedLuminaryIds: ['lum_ember', 'lum_forge'],
-      bonuses: { ruby: 3, sapphire: 2 },
+      bonuses: { flare: 3, continuum: 2 },
     });
     const loser = makePlayer('bob', {
-      lumens: 12,
-      purchasedCards: [makeCard(1)],
+      eminence: 12,
+      forgedArtifacts: [makeCard(1)],
       claimedLuminaryIds: ['lum_verdant'],
-      bonuses: { ruby: 1 },
+      bonuses: { flare: 1 },
     });
     const state = makeState([winner, loser]);
 
@@ -111,12 +108,12 @@ describe('deriveAccolades — standard win badge set', () => {
 
   it('every accolade in the standard set has a non-empty icon and label', () => {
     const winner = makePlayer('alice', {
-      lumens: 18,
-      purchasedCards: [makeCard(1), makeCard(2), makeCard(3)],
+      eminence: 18,
+      forgedArtifacts: [makeCard(1), makeCard(2), makeCard(3)],
       claimedLuminaryIds: ['lum_ember', 'lum_forge'],
-      bonuses: { ruby: 3, sapphire: 2 },
+      bonuses: { flare: 3, continuum: 2 },
     });
-    const loser = makePlayer('bob', { lumens: 12, purchasedCards: [], bonuses: {} });
+    const loser = makePlayer('bob', { eminence: 12, forgedArtifacts: [], bonuses: {} });
     const state = makeState([winner, loser]);
 
     const badges = deriveAccolades(state, 'alice');
@@ -139,16 +136,16 @@ describe('deriveAccolades — standard win badge set', () => {
 describe('deriveAccolades — defeat badge set', () => {
   it('returns no accolades for a losing player who trails on every metric', () => {
     const winner = makePlayer('alice', {
-      lumens: 17,
-      purchasedCards: [makeCard(1), makeCard(2), makeCard(3)],
+      eminence: 17,
+      forgedArtifacts: [makeCard(1), makeCard(2), makeCard(3)],
       claimedLuminaryIds: ['lum_ember', 'lum_forge'],
-      bonuses: { ruby: 3, sapphire: 2, emerald: 1 },
+      bonuses: { flare: 3, continuum: 2, verdance: 1 },
     });
     const loser = makePlayer('bob', {
-      lumens: 12,
-      purchasedCards: [makeCard(1)],
+      eminence: 12,
+      forgedArtifacts: [makeCard(1)],
       claimedLuminaryIds: ['lum_verdant'],
-      bonuses: { ruby: 1 },
+      bonuses: { flare: 1 },
     });
     const state = makeState([winner, loser]);
 
@@ -156,16 +153,16 @@ describe('deriveAccolades — defeat badge set', () => {
   });
 
   it('can award accolades to a player who lost but still led on a metric', () => {
-    // Bob lost on lumens but forged more artifacts than Alice
+    // Bob lost on Eminence but forged more Artifacts than Alice.
     const winner = makePlayer('alice', {
-      lumens: 15,
-      purchasedCards: [makeCard(1)],
+      eminence: 15,
+      forgedArtifacts: [makeCard(1)],
       claimedLuminaryIds: [],
       bonuses: {},
     });
     const loser = makePlayer('bob', {
-      lumens: 14,
-      purchasedCards: [makeCard(1), makeCard(2), makeCard(2)],
+      eminence: 14,
+      forgedArtifacts: [makeCard(1), makeCard(2), makeCard(2)],
       claimedLuminaryIds: [],
       bonuses: {},
     });
@@ -178,24 +175,24 @@ describe('deriveAccolades — defeat badge set', () => {
 
 // ─── Accolade tie-break: fewest cards ─────────────────────────────────────────
 //
-// The game's win tie-break rule (same lumens → fewest purchased cards wins)
-// can produce a game winner who has FEWER purchased cards than an opponent.
+// The game's tie-break rule (same Eminence, then fewest forged Artifacts)
+// can produce a winner with fewer forged Artifacts than an opponent.
 // deriveAccolades must not award "Most artifacts forged" to a winner who has
 // fewer (or equal) forged cards than the field, even when they won the game
 // legitimately by tie-break.
 
 describe('deriveAccolades — fewest-cards tie-break winner', () => {
   it('does NOT award "Most artifacts forged" when the winner won by fewest-cards tie-break', () => {
-    // Same lumens, alice wins by tie-break (1 card vs 3), but has fewer cards
+    // Same Eminence: Alice wins the 1-Artifact vs 3-Artifact tie-break.
     const winner = makePlayer('alice', {
-      lumens: 15,
-      purchasedCards: [makeCard(1)],
+      eminence: 15,
+      forgedArtifacts: [makeCard(1)],
       claimedLuminaryIds: [],
       bonuses: {},
     });
     const loser = makePlayer('bob', {
-      lumens: 15,
-      purchasedCards: [makeCard(1), makeCard(2), makeCard(2)],
+      eminence: 15,
+      forgedArtifacts: [makeCard(1), makeCard(2), makeCard(2)],
       claimedLuminaryIds: [],
       bonuses: {},
     });
@@ -206,8 +203,8 @@ describe('deriveAccolades — fewest-cards tie-break winner', () => {
   });
 
   it('does NOT award "Most artifacts forged" when tied on card count', () => {
-    const winner = makePlayer('alice', { purchasedCards: [makeCard(1), makeCard(2)] });
-    const loser  = makePlayer('bob',   { purchasedCards: [makeCard(1), makeCard(2)] });
+    const winner = makePlayer('alice', { forgedArtifacts: [makeCard(1), makeCard(2)] });
+    const loser  = makePlayer('bob',   { forgedArtifacts: [makeCard(1), makeCard(2)] });
     const state  = makeState([winner, loser]);
 
     const labels = deriveAccolades(state, 'alice').map((b) => b.label);
@@ -215,18 +212,18 @@ describe('deriveAccolades — fewest-cards tie-break winner', () => {
   });
 
   it('CAN award other accolades to a fewest-cards tie-break winner who led on other metrics', () => {
-    // Alice wins by fewest cards (1 vs 3 at same lumens), but holds more Luminaries
+    // Alice wins by fewest Artifacts at equal Eminence and also holds more Luminaries.
     const winner = makePlayer('alice', {
-      lumens: 15,
-      purchasedCards: [makeCard(1)],
+      eminence: 15,
+      forgedArtifacts: [makeCard(1)],
       claimedLuminaryIds: ['lum_ember', 'lum_forge'],
-      bonuses: { ruby: 3, sapphire: 2 },
+      bonuses: { flare: 3, continuum: 2 },
     });
     const loser = makePlayer('bob', {
-      lumens: 15,
-      purchasedCards: [makeCard(1), makeCard(2), makeCard(2)],
+      eminence: 15,
+      forgedArtifacts: [makeCard(1), makeCard(2), makeCard(2)],
       claimedLuminaryIds: ['lum_verdant'],
-      bonuses: { ruby: 1 },
+      bonuses: { flare: 1 },
     });
     const state = makeState([winner, loser]);
 
@@ -241,16 +238,16 @@ describe('deriveAccolades — fewest-cards tie-break winner', () => {
 
 describe('deriveAccolades — "Most artifacts forged"', () => {
   it('awards badge when winner has strictly more forged cards than all opponents', () => {
-    const winner = makePlayer('alice', { purchasedCards: [makeCard(1), makeCard(1)] });
-    const loser  = makePlayer('bob',   { purchasedCards: [makeCard(1)] });
+    const winner = makePlayer('alice', { forgedArtifacts: [makeCard(1), makeCard(1)] });
+    const loser  = makePlayer('bob',   { forgedArtifacts: [makeCard(1)] });
     const state  = makeState([winner, loser]);
 
     expect(deriveAccolades(state, 'alice').map((b) => b.label)).toContain('Most artifacts forged');
   });
 
   it('does NOT award badge when an opponent has more forged cards', () => {
-    const winner = makePlayer('alice', { purchasedCards: [makeCard(1)] });
-    const loser  = makePlayer('bob',   { purchasedCards: [makeCard(1), makeCard(2)] });
+    const winner = makePlayer('alice', { forgedArtifacts: [makeCard(1)] });
+    const loser  = makePlayer('bob',   { forgedArtifacts: [makeCard(1), makeCard(2)] });
     const state  = makeState([winner, loser]);
 
     expect(deriveAccolades(state, 'alice').map((b) => b.label)).not.toContain('Most artifacts forged');
@@ -268,13 +265,13 @@ describe('deriveAccolades — Luminary badges', () => {
     expect(deriveAccolades(state, 'alice').map((b) => b.label)).toContain('Most Luminaries claimed');
   });
 
-  it('awards "Cosmic patron" when winner ties for most Luminaries', () => {
+  it('awards "Luminary steward" when winner ties for most Luminaries', () => {
     const winner = makePlayer('alice', { claimedLuminaryIds: ['lum_ember'] });
     const loser  = makePlayer('bob',   { claimedLuminaryIds: ['lum_forge'] });
     const state  = makeState([winner, loser]);
 
     const labels = deriveAccolades(state, 'alice').map((b) => b.label);
-    expect(labels).toContain('Cosmic patron');
+    expect(labels).toContain('Luminary steward');
     expect(labels).not.toContain('Most Luminaries claimed');
   });
 
@@ -285,7 +282,7 @@ describe('deriveAccolades — Luminary badges', () => {
 
     const labels = deriveAccolades(state, 'alice').map((b) => b.label);
     expect(labels).not.toContain('Most Luminaries claimed');
-    expect(labels).not.toContain('Cosmic patron');
+    expect(labels).not.toContain('Luminary steward');
   });
 
   it('awards no Luminary badge when winner claimed fewer than an opponent', () => {
@@ -295,7 +292,7 @@ describe('deriveAccolades — Luminary badges', () => {
 
     const labels = deriveAccolades(state, 'alice').map((b) => b.label);
     expect(labels).not.toContain('Most Luminaries claimed');
-    expect(labels).not.toContain('Cosmic patron');
+    expect(labels).not.toContain('Luminary steward');
   });
 });
 
@@ -303,16 +300,16 @@ describe('deriveAccolades — Luminary badges', () => {
 
 describe('deriveAccolades — "Strongest affinity engine"', () => {
   it('awards badge when winner has a strictly higher total bonus', () => {
-    const winner = makePlayer('alice', { bonuses: { ruby: 3, sapphire: 2 } });
-    const loser  = makePlayer('bob',   { bonuses: { ruby: 1 } });
+    const winner = makePlayer('alice', { bonuses: { flare: 3, continuum: 2 } });
+    const loser  = makePlayer('bob',   { bonuses: { flare: 1 } });
     const state  = makeState([winner, loser]);
 
     expect(deriveAccolades(state, 'alice').map((b) => b.label)).toContain('Strongest affinity engine');
   });
 
   it('does NOT award badge when tied with an opponent', () => {
-    const winner = makePlayer('alice', { bonuses: { ruby: 2 } });
-    const loser  = makePlayer('bob',   { bonuses: { sapphire: 2 } });
+    const winner = makePlayer('alice', { bonuses: { flare: 2 } });
+    const loser  = makePlayer('bob',   { bonuses: { continuum: 2 } });
     const state  = makeState([winner, loser]);
 
     expect(deriveAccolades(state, 'alice').map((b) => b.label)).not.toContain('Strongest affinity engine');
@@ -323,24 +320,24 @@ describe('deriveAccolades — "Strongest affinity engine"', () => {
 
 describe('deriveAccolades — "Tier III pioneer"', () => {
   it('awards badge when winner has more tier-3 cards than all opponents', () => {
-    const winner = makePlayer('alice', { purchasedCards: [makeCard(3), makeCard(3)] });
-    const loser  = makePlayer('bob',   { purchasedCards: [makeCard(3)] });
+    const winner = makePlayer('alice', { forgedArtifacts: [makeCard(3), makeCard(3)] });
+    const loser  = makePlayer('bob',   { forgedArtifacts: [makeCard(3)] });
     const state  = makeState([winner, loser]);
 
     expect(deriveAccolades(state, 'alice').map((b) => b.label)).toContain('Tier III pioneer');
   });
 
   it('does NOT award badge when winner has zero tier-3 cards', () => {
-    const winner = makePlayer('alice', { purchasedCards: [makeCard(1), makeCard(2)] });
-    const loser  = makePlayer('bob',   { purchasedCards: [] });
+    const winner = makePlayer('alice', { forgedArtifacts: [makeCard(1), makeCard(2)] });
+    const loser  = makePlayer('bob',   { forgedArtifacts: [] });
     const state  = makeState([winner, loser]);
 
     expect(deriveAccolades(state, 'alice').map((b) => b.label)).not.toContain('Tier III pioneer');
   });
 
   it('does NOT award badge when tied on tier-3 count', () => {
-    const winner = makePlayer('alice', { purchasedCards: [makeCard(3)] });
-    const loser  = makePlayer('bob',   { purchasedCards: [makeCard(3)] });
+    const winner = makePlayer('alice', { forgedArtifacts: [makeCard(3)] });
+    const loser  = makePlayer('bob',   { forgedArtifacts: [makeCard(3)] });
     const state  = makeState([winner, loser]);
 
     expect(deriveAccolades(state, 'alice').map((b) => b.label)).not.toContain('Tier III pioneer');
@@ -351,24 +348,24 @@ describe('deriveAccolades — "Tier III pioneer"', () => {
 
 describe('deriveAccolades — "Versatile engineer"', () => {
   it('awards badge when winner has ≥3 bonus colors and strictly more than all opponents', () => {
-    const winner = makePlayer('alice', { bonuses: { ruby: 1, sapphire: 1, emerald: 1 } });
-    const loser  = makePlayer('bob',   { bonuses: { ruby: 1, sapphire: 1 } });
+    const winner = makePlayer('alice', { bonuses: { flare: 1, continuum: 1, verdance: 1 } });
+    const loser  = makePlayer('bob',   { bonuses: { flare: 1, continuum: 1 } });
     const state  = makeState([winner, loser]);
 
     expect(deriveAccolades(state, 'alice').map((b) => b.label)).toContain('Versatile engineer');
   });
 
   it('does NOT award badge when winner has fewer than 3 bonus colors even if more than opponents', () => {
-    const winner = makePlayer('alice', { bonuses: { ruby: 5, sapphire: 5 } });
-    const loser  = makePlayer('bob',   { bonuses: { ruby: 1 } });
+    const winner = makePlayer('alice', { bonuses: { flare: 5, continuum: 5 } });
+    const loser  = makePlayer('bob',   { bonuses: { flare: 1 } });
     const state  = makeState([winner, loser]);
 
     expect(deriveAccolades(state, 'alice').map((b) => b.label)).not.toContain('Versatile engineer');
   });
 
   it('does NOT award badge when tied on bonus color count', () => {
-    const winner = makePlayer('alice', { bonuses: { ruby: 1, sapphire: 1, emerald: 1 } });
-    const loser  = makePlayer('bob',   { bonuses: { ruby: 1, sapphire: 1, onyx: 1 } });
+    const winner = makePlayer('alice', { bonuses: { flare: 1, continuum: 1, verdance: 1 } });
+    const loser  = makePlayer('bob',   { bonuses: { flare: 1, continuum: 1, abyss: 1 } });
     const state  = makeState([winner, loser]);
 
     expect(deriveAccolades(state, 'alice').map((b) => b.label)).not.toContain('Versatile engineer');
@@ -378,25 +375,25 @@ describe('deriveAccolades — "Versatile engineer"', () => {
 // ─── Ascended badge ───────────────────────────────────────────────────────────
 
 describe('deriveAccolades — "Ascended to N Eminence"', () => {
-  it('awards badge when winner lumens ≥ 20', () => {
-    const winner = makePlayer('alice', { lumens: 20 });
-    const loser  = makePlayer('bob',   { lumens: 14 });
+  it('awards badge when winner Eminence is at least 20', () => {
+    const winner = makePlayer('alice', { eminence: 20 });
+    const loser  = makePlayer('bob',   { eminence: 14 });
     const state  = makeState([winner, loser]);
 
     expect(deriveAccolades(state, 'alice').map((b) => b.label)).toContain('Ascended to 20 Eminence');
   });
 
-  it('includes the actual lumen count in the label', () => {
-    const winner = makePlayer('alice', { lumens: 25 });
-    const loser  = makePlayer('bob',   { lumens: 14 });
+  it('includes the actual Eminence total in the label', () => {
+    const winner = makePlayer('alice', { eminence: 25 });
+    const loser  = makePlayer('bob',   { eminence: 14 });
     const state  = makeState([winner, loser]);
 
     expect(deriveAccolades(state, 'alice').map((b) => b.label)).toContain('Ascended to 25 Eminence');
   });
 
-  it('does NOT award badge when winner lumens === 19', () => {
-    const winner = makePlayer('alice', { lumens: 19 });
-    const loser  = makePlayer('bob',   { lumens: 14 });
+  it('does NOT award badge when winner Eminence is 19', () => {
+    const winner = makePlayer('alice', { eminence: 19 });
+    const loser  = makePlayer('bob',   { eminence: 14 });
     const state  = makeState([winner, loser]);
 
     expect(deriveAccolades(state, 'alice').map((b) => b.label).some((l) => l.startsWith('Ascended'))).toBe(false);
@@ -408,16 +405,16 @@ describe('deriveAccolades — "Ascended to N Eminence"', () => {
 describe('deriveAccolades — zero-accolade case', () => {
   it('returns empty array when winner does not lead on any metric and has no Luminaries', () => {
     const winner = makePlayer('alice', {
-      lumens: 15,
-      purchasedCards: [],
+      eminence: 15,
+      forgedArtifacts: [],
       claimedLuminaryIds: [],
       bonuses: {},
     });
     const loser = makePlayer('bob', {
-      lumens: 14,
-      purchasedCards: [makeCard(1), makeCard(2), makeCard(3)],
+      eminence: 14,
+      forgedArtifacts: [makeCard(1), makeCard(2), makeCard(3)],
       claimedLuminaryIds: ['lum_ember'],
-      bonuses: { ruby: 3, sapphire: 2, emerald: 1, onyx: 1 },
+      bonuses: { flare: 3, continuum: 2, verdance: 1, abyss: 1 },
     });
     const state = makeState([winner, loser]);
 
@@ -430,16 +427,16 @@ describe('deriveAccolades — zero-accolade case', () => {
 describe('deriveAccolades — result is capped at 4', () => {
   it('returns at most 4 accolades even when winner dominates every category', () => {
     const winner = makePlayer('alice', {
-      lumens: 22,
-      purchasedCards: [makeCard(1), makeCard(2), makeCard(3), makeCard(3)],
+      eminence: 22,
+      forgedArtifacts: [makeCard(1), makeCard(2), makeCard(3), makeCard(3)],
       claimedLuminaryIds: ['lum_ember', 'lum_forge'],
-      bonuses: { ruby: 3, sapphire: 2, emerald: 2, onyx: 1 },
+      bonuses: { flare: 3, continuum: 2, verdance: 2, abyss: 1 },
     });
     const loser = makePlayer('bob', {
-      lumens: 15,
-      purchasedCards: [makeCard(1)],
+      eminence: 15,
+      forgedArtifacts: [makeCard(1)],
       claimedLuminaryIds: ['lum_verdant'],
-      bonuses: { ruby: 1 },
+      bonuses: { flare: 1 },
     });
     const state = makeState([winner, loser]);
 
@@ -451,17 +448,17 @@ describe('deriveAccolades — result is capped at 4', () => {
 
 describe('deriveAccolades — solo game (single player)', () => {
   it('awards forged badge when winner is the only player with forged cards', () => {
-    const winner = makePlayer('alice', { purchasedCards: [makeCard(1)] });
+    const winner = makePlayer('alice', { forgedArtifacts: [makeCard(1)] });
     expect(deriveAccolades(makeState([winner]), 'alice').map((b) => b.label)).toContain('Most artifacts forged');
   });
 
   it('does NOT award forged badge when winner has zero forged cards in a solo game', () => {
-    const winner = makePlayer('alice', { purchasedCards: [] });
+    const winner = makePlayer('alice', { forgedArtifacts: [] });
     expect(deriveAccolades(makeState([winner]), 'alice').map((b) => b.label)).not.toContain('Most artifacts forged');
   });
 
-  it('awards Ascended badge in a solo game when lumens ≥ 20', () => {
-    const winner = makePlayer('alice', { lumens: 21 });
+  it('awards Ascended badge in a solo game at 20 or more Eminence', () => {
+    const winner = makePlayer('alice', { eminence: 21 });
     expect(deriveAccolades(makeState([winner]), 'alice').map((b) => b.label)).toContain('Ascended to 21 Eminence');
   });
 });

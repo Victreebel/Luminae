@@ -18,13 +18,13 @@ export function deriveAccolades(
 
   const accolades: Accolade[] = [];
 
-  const winnerForged = (winner.purchasedCards ?? []).length;
+  const winnerForged = (winner.forgedArtifacts ?? []).length;
   const winnerClaimed = (winner.claimedLuminaryIds ?? []).length;
 
   const others = state.players.filter((p) => p.playerId !== winnerId);
 
   const maxOtherForged = others.reduce(
-    (max, p) => Math.max(max, (p.purchasedCards ?? []).length),
+    (max, p) => Math.max(max, (p.forgedArtifacts ?? []).length),
     0,
   );
   const maxOtherClaimed = others.reduce(
@@ -44,11 +44,11 @@ export function deriveAccolades(
     return Math.max(max, t);
   }, 0);
 
-  const winnerTier3Count = (winner.purchasedCards ?? []).filter(
+  const winnerTier3Count = (winner.forgedArtifacts ?? []).filter(
     (c) => c.tier === 3,
   ).length;
   const maxOtherTier3Count = others.reduce(
-    (max, p) => Math.max(max, (p.purchasedCards ?? []).filter((c) => c.tier === 3).length),
+    (max, p) => Math.max(max, (p.forgedArtifacts ?? []).filter((c) => c.tier === 3).length),
     0,
   );
 
@@ -71,7 +71,7 @@ export function deriveAccolades(
   if (winnerClaimed > 0 && winnerClaimed > maxOtherClaimed) {
     accolades.push({ label: 'Most Luminaries claimed', icon: '✦' });
   } else if (winnerClaimed > 0 && winnerClaimed === maxOtherClaimed) {
-    accolades.push({ label: 'Cosmic patron', icon: '✦' });
+    accolades.push({ label: 'Luminary steward', icon: '✦' });
   }
 
   if (winnerBonusTotal > maxOtherBonusTotal) {
@@ -86,8 +86,8 @@ export function deriveAccolades(
     accolades.push({ label: 'Versatile engineer', icon: '◇' });
   }
 
-  if (winner.lumens >= 20) {
-    accolades.push({ label: `Ascended to ${winner.lumens} Eminence`, icon: '◆' });
+  if (winner.eminence >= 20) {
+    accolades.push({ label: `Ascended to ${winner.eminence} Eminence`, icon: '◆' });
   }
 
   return accolades.slice(0, 4);

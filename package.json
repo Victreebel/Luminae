@@ -1,21 +1,41 @@
 {
   "name": "workspace",
   "version": "0.0.0",
+  "main": "desktop/main.cjs",
   "license": "MIT",
   "scripts": {
     "preinstall": "sh -c 'rm -f package-lock.json yarn.lock; case \"$npm_config_user_agent\" in pnpm/*) ;; *) echo \"Use pnpm instead\" >&2; exit 1 ;; esac'",
     "build": "pnpm run typecheck && pnpm -r --if-present run build",
-    "normalize:gems": "pnpm --filter @workspace/scripts run normalize:gems",
+    "build:web": "pnpm --filter @workspace/luminae run build && pnpm --filter @workspace/api-server run build",
+    "desktop": "electron desktop/main.cjs",
+    "desktop:package": "electron-builder --mac dir",
+    "normalize:affinities": "pnpm --filter @workspace/scripts run normalize:affinities",
     "lint:version-stamps": "pnpm --filter @workspace/scripts run test:version-stamps && pnpm --filter @workspace/scripts run lint:version-stamps",
+    "lint:terminology": "pnpm --filter @workspace/scripts run lint:terminology",
     "lint:summon-colors": "pnpm --filter @workspace/scripts run lint:summon-colors",
     "lint:luminary-files": "pnpm --filter @workspace/scripts run lint:luminary-files",
     "test:summon-colors": "pnpm --filter @workspace/scripts run test:summon-colors",
+    "start:web": "pnpm --filter @workspace/api-server run start",
     "test:luminary-files": "pnpm --filter @workspace/scripts run test:luminary-files",
+    "verify:coordination": "pnpm --filter @workspace/luminae run verify:coordination && pnpm --filter @workspace/api-server run verify:coordination",
     "typecheck:libs": "tsc --build",
-    "typecheck": "pnpm run normalize:gems && pnpm run lint:version-stamps && pnpm run lint:summon-colors && pnpm run lint:luminary-files && pnpm run typecheck:libs && pnpm -r --filter \"./artifacts/**\" --filter \"./scripts\" --if-present run typecheck"
+    "typecheck": "pnpm run normalize:affinities && pnpm run lint:terminology && pnpm run lint:version-stamps && pnpm run lint:summon-colors && pnpm run lint:luminary-files && pnpm run typecheck:libs && pnpm -r --filter \"./artifacts/**\" --filter \"./scripts\" --if-present run typecheck"
   },
   "private": true,
+  "build": {
+    "appId": "com.luminae.local",
+    "productName": "Luminae",
+    "files": [
+      "desktop/main.cjs",
+      "package.json"
+    ],
+    "mac": {
+      "category": "public.app-category.games"
+    }
+  },
   "devDependencies": {
+    "electron": "^37.2.6",
+    "electron-builder": "^26.0.12",
     "prettier": "^3.8.1",
     "sharp": "^0.34.5",
     "typescript": "~5.9.2"

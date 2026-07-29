@@ -17,11 +17,16 @@
 
 import { motion } from 'framer-motion';
 import { useEffect, useState } from 'react';
+import type { ReactNode } from 'react';
 import type { ArtifactCard } from '@workspace/api-client-react';
-import { ArtifactCardView } from './game-card';
-import { GEM_META, type GemKey } from '@/lib/gemMeta';
+import { ArtifactCardView, EminenceSigil } from './game-card';
+import { AFFINITY_META, type AffinityKey } from '@/lib/affinityMeta';
 import { gameAudio } from '@/lib/audio';
-import { Sparkles } from 'lucide-react';
+import {
+  BrandStampSVG,
+  STAMP_VIEWBOX_HEIGHT,
+  STAMP_VIEWBOX_WIDTH,
+} from './game-brand-stamp';
 
 // ── Timing (seconds) — ForgeAnimation ────────────────────────────────────────
 const LIFT_END    = 0.18;
@@ -29,6 +34,10 @@ const STREAMS_END = 0.44;
 const STAMP_HIT   = 0.60;
 const STAMP_HOLD  = 0.80;
 const ARC_END     = 1.15;
+const EMINENCE_SEAL_APPEAR = 0.66;
+const EMINENCE_SEAL_LAUNCH = 0.94;
+const EMINENCE_SEAL_LAND   = 1.52;
+const EMINENCE_SEAL_END    = 1.88;
 
 // OpponentForgeAnimation shares all timing constants with ForgeAnimation — no separate OP_* needed.
 
@@ -57,6 +66,75 @@ function arcPath(fx: number, fy: number, tx: number, ty: number, sign = 1): stri
   return `M ${fx},${fy} Q ${mx + (-dy / len) * len * 0.42 * sign},${my + (dx / len) * len * 0.42 * sign} ${tx},${ty}`;
 }
 
+type ViewportRect = { x: number; y: number; w: number; h: number };
+
+const PLAYER_EMINENCE_SIGIL_SELECTOR = '[data-eminence-sigil="player"]';
+const PLAYER_EMINENCE_PANEL_SELECTOR = '[data-eminence-panel="player"]';
+
+function readViewportRect(selector?: string | null): ViewportRect | null {
+  if (!selector || typeof document === 'undefined') return null;
+  const selectors = selector.split(',').map(part => part.trim()).filter(Boolean);
+  for (const item of selectors) {
+    const el = document.querySelector<HTMLElement>(item);
+    const r = el?.getBoundingClientRect();
+    if (r && r.width > 0 && r.height > 0) return { x: r.left, y: r.top, w: r.width, h: r.height };
+  }
+  return null;
+}
+
+function readEminenceTargetRect(selector?: string | null): ViewportRect | null {
+  const target = readViewportRect(selector ?? PLAYER_EMINENCE_SIGIL_SELECTOR);
+  if (target) return target;
+  if (!selector || selector === PLAYER_EMINENCE_SIGIL_SELECTOR) return readViewportRect(PLAYER_EMINENCE_PANEL_SELECTOR);
+  return null;
+}
+
+function artifactCardMetaMetrics() {
+  const width = typeof window !== 'undefined' ? window.innerWidth : 1200;
+  const height = typeof window !== 'undefined' ? window.innerHeight : 800;
+  if (width <= 940 && height <= 520 && width > height) return { pad: 4, size: 24 };
+  if (width <= 680) return { pad: 5, size: 28 };
+  if (width >= 960) return { pad: 8, size: 36 };
+  return { pad: 6, size: 30 };
+}
+
+function cardEminenceMarkerCenter({
+  x,
+  y,
+  w,
+  h,
+  contentScale = 1,
+  visualScale = 1,
+}: {
+  x: number;
+  y: number;
+  w: number;
+  h: number;
+  contentScale?: number;
+  visualScale?: number;
+}) {
+  const { pad, size } = artifactCardMetaMetrics();
+  const localX = (pad + size / 2) * contentScale;
+  const localY = (pad + size / 2) * contentScale;
+  return {
+    x: x + w / 2 + (localX - w / 2) * visualScale,
+    y: y + h / 2 + (localY - h / 2) * visualScale,
+  };
+}
+
+type EminenceSealTiming = 'full' | 'fast';
+
+function getEminenceSealTiming(timing: EminenceSealTiming) {
+  return timing === 'fast'
+    ? { appear: 0.08, launch: 0.20, land: 0.48, end: 0.78 }
+    : {
+        appear: EMINENCE_SEAL_APPEAR,
+        launch: EMINENCE_SEAL_LAUNCH,
+        land: EMINENCE_SEAL_LAND,
+        end: EMINENCE_SEAL_END,
+      };
+}
+
 // ── Hex color helpers ─────────────────────────────────────────────────────────
 function darkenHex(hex: string, factor: number): string {
   const h = hex.replace('#', '');
@@ -71,13 +149,13 @@ const AMBER_ACCENT = '#CC7C08';
 const AMBER_GLOW   = '#FFD080';
 const AMBER_DARK   = '#A06010';
 
-function resolveAccent(bonusColor?: string | null): {
+function resolveAccent(bonusAffinity?: string | null): {
   accent: string; accentGlow: string; accentDark: string;
 } {
-  if (!bonusColor || bonusColor === 'flux') {
+  if (!bonusAffinity || bonusAffinity === 'singularity') {
     return { accent: AMBER_ACCENT, accentGlow: AMBER_GLOW, accentDark: AMBER_DARK };
   }
-  const meta = GEM_META[bonusColor as GemKey];
+  const meta = AFFINITY_META[bonusAffinity as AffinityKey];
   if (!meta) {
     return { accent: AMBER_ACCENT, accentGlow: AMBER_GLOW, accentDark: AMBER_DARK };
   }
@@ -88,10 +166,55 @@ function resolveAccent(bonusColor?: string | null): {
   };
 }
 
-// ── StampSVG ──────────────────────────────────────────────────────────────────
-const VBOX_W = 220;
-const VBOX_H = 100;
+function ForgottenForgeApparition({ compact = false }: { compact?: boolean }) {
+  return (
+    <motion.div
+      className="pointer-events-none absolute inset-0 grid place-items-center rounded-[7px]"
+      style={{
+        zIndex: 36,
+        background: 'radial-gradient(ellipse 74% 58% at 50% 46%, rgba(17, 24, 39, 0.58), rgba(30, 27, 75, 0.24) 54%, transparent 78%)',
+        boxShadow: 'inset 0 0 24px rgba(129, 140, 248, 0.18)',
+        overflow: 'hidden',
+      }}
+      initial={{ opacity: 0 }}
+      animate={{ opacity: [0, 0.72, 0.42, 0] }}
+      transition={{
+        delay: compact ? 0.04 : 0.28,
+        duration: compact ? 0.54 : 0.82,
+        times: [0, 0.26, 0.68, 1],
+        ease: 'easeInOut',
+      }}
+    >
+      <motion.span
+        style={{
+          color: 'rgba(228, 233, 255, 0.92)',
+          fontFamily: 'var(--app-font-serif)',
+          fontSize: compact ? '1.05rem' : 'clamp(1.7rem, 7.6vw, 3.2rem)',
+          fontWeight: 800,
+          letterSpacing: compact ? '0.08em' : '0.16em',
+          lineHeight: 1,
+          textShadow: [
+            '0 1px 2px rgba(0, 0, 0, 1)',
+            '0 0 10px rgba(129, 140, 248, 0.84)',
+            '0 0 22px rgba(59, 130, 246, 0.42)',
+          ].join(', '),
+        }}
+        initial={{ opacity: 0, scale: 0.86, y: compact ? 1 : 4 }}
+        animate={{ opacity: [0, 1, 0.72, 0], scale: [0.86, 1.04, 1.01, 1.10], y: [compact ? 1 : 4, 0, 0, compact ? -2 : -6] }}
+        transition={{
+          delay: compact ? 0.04 : 0.28,
+          duration: compact ? 0.54 : 0.82,
+          times: [0, 0.24, 0.68, 1],
+          ease: 'easeInOut',
+        }}
+      >
+        ???
+      </motion.span>
+    </motion.div>
+  );
+}
 
+// ── StampSVG ──────────────────────────────────────────────────────────────────
 function StampSVG({
   width, height,
   accent, accentGlow, accentDark,
@@ -99,72 +222,20 @@ function StampSVG({
   width: number; height: number;
   accent: string; accentGlow: string; accentDark: string;
 }) {
-  const cx = VBOX_W / 2;
-  const hammerY = 32;
-  const textY   = 83;
-
   return (
-    <svg
+    <BrandStampSVG
       width={width}
       height={height}
-      viewBox={`0 0 ${VBOX_W} ${VBOX_H}`}
-      preserveAspectRatio="xMidYMid meet"
-      style={{ overflow: 'visible', display: 'block' }}
-    >
-      <defs>
-        <filter id="stGlow" x="-30%" y="-30%" width="160%" height="160%">
-          <feGaussianBlur stdDeviation="3" result="b" />
-          <feMerge><feMergeNode in="b" /><feMergeNode in="SourceGraphic" /></feMerge>
-        </filter>
-        <filter id="stTextGlow" x="-20%" y="-40%" width="140%" height="180%">
-          <feGaussianBlur stdDeviation="4.5" result="b" />
-          <feMerge><feMergeNode in="b" /><feMergeNode in="SourceGraphic" /></feMerge>
-        </filter>
-      </defs>
-
-      <rect x="4" y="4" width={VBOX_W - 8} height={VBOX_H - 8} rx="4" fill="rgba(0,0,0,0.62)" />
-      <rect x="4" y="4" width={VBOX_W - 8} height={VBOX_H - 8} rx="4"
-            fill="none" stroke={accent} strokeWidth="4.5" filter="url(#stGlow)" />
-      <rect x="9" y="9" width={VBOX_W - 18} height={VBOX_H - 18} rx="2.5"
-            fill="none" stroke={accent} strokeWidth="1.2" opacity="0.45" />
-      <line x1="20" y1="50" x2={VBOX_W - 20} y2="50"
-            stroke={accent} strokeWidth="1.5" opacity="0.5" />
-
-      <g filter="url(#stGlow)">
-        <g transform={`translate(${cx},${hammerY}) rotate(-45)`}>
-          <rect x="-14" y="-26" width="28" height="15" rx="3" fill={accent} />
-          <rect x="-11" y="-22" width="10" height="7"  rx="1.5" fill={accentGlow} opacity="0.38" />
-          <rect x="-4.5" y="-11" width="9" height="29" rx="2.5" fill={accentDark} />
-          <rect x="-2"   y="-9"  width="3" height="18" rx="1"   fill={accentGlow} opacity="0.28" />
-        </g>
-        <g transform={`translate(${cx},${hammerY}) rotate(45)`}>
-          <rect x="-14" y="-26" width="28" height="15" rx="3" fill={accent} />
-          <rect x="-11" y="-22" width="10" height="7"  rx="1.5" fill={accentGlow} opacity="0.38" />
-          <rect x="-4.5" y="-11" width="9" height="29" rx="2.5" fill={accentDark} />
-          <rect x="-2"   y="-9"  width="3" height="18" rx="1"   fill={accentGlow} opacity="0.28" />
-        </g>
-      </g>
-
-      <text x={cx} y={textY}
-            fontFamily='"Cinzel Decorative", "Cinzel", Georgia, serif'
-            fontWeight="900" fontSize="30" fill={accent}
-            textAnchor="middle" letterSpacing="5"
-            filter="url(#stTextGlow)">
-        FORGED
-      </text>
-      <text x={cx} y={textY}
-            fontFamily='"Cinzel Decorative", "Cinzel", Georgia, serif'
-            fontWeight="900" fontSize="30" fill={accentGlow} fillOpacity="0.40"
-            textAnchor="middle" letterSpacing="5">
-        FORGED
-      </text>
-    </svg>
+      accent={accent}
+      accentGlow={accentGlow}
+      accentDark={accentDark}
+    />
   );
 }
 
 // ── Types ─────────────────────────────────────────────────────────────────────
 
-interface StreamData { color: GemKey; d: string; }
+interface StreamData { color: AffinityKey; d: string; }
 
 export interface ForgeAnimationProps {
   animKey: number;
@@ -172,12 +243,17 @@ export interface ForgeAnimationProps {
   tier: number;
   startRect: { x: number; y: number; w: number; h: number };
   destPos?: { x: number; y: number };
-  spentColors: GemKey[];
-  lumens: number;
-  gotFlux: boolean;
+  destinationKind?: 'civilization' | 'tab';
+  spentColors: AffinityKey[];
+  eminence: number;
+  gotSingularity: boolean;
   playerName?: string;
-  /** When true (compact market view) skip the lift-to-centre step; stamp descends directly onto the card at its current position. */
+  eminenceTotal?: number;
+  eminenceTargetSelector?: string | null;
+  onEminenceImpact?: (amount: number) => void;
+  /** In compact Forge view, skip the lift-to-center step and stamp the card in place. */
   isCompact?: boolean;
+  isForgottenForge?: boolean;
 }
 
 export interface OpponentForgeAnimationProps {
@@ -187,10 +263,15 @@ export interface OpponentForgeAnimationProps {
   startRect: { x: number; y: number; w: number; h: number };
   chipCenter: { x: number; y: number };
   ownerName?: string;
-  /** Affinity colors spent by the opponent. Falls back to card.bonusColor if omitted. */
-  spentColors?: GemKey[];
+  eminence?: number;
+  eminenceTotal?: number;
+  /** Affinity colors spent by the opponent. Falls back to card.bonusAffinity if omitted. */
+  spentColors?: AffinityKey[];
+  eminenceTargetSelector?: string | null;
+  onEminenceImpact?: (amount: number) => void;
   /** When true, skip the lift-to-centre; stamp lands directly on the chip. */
   isCompact?: boolean;
+  isForgottenForge?: boolean;
 }
 
 // ── ForgeAnimation (local player) ─────────────────────────────────────────────
@@ -201,13 +282,18 @@ export function ForgeAnimation({
   tier,
   startRect,
   destPos,
+  destinationKind,
   spentColors,
-  lumens,
+  eminence,
+  eminenceTotal,
+  eminenceTargetSelector,
+  onEminenceImpact,
   playerName,
   isCompact,
+  isForgottenForge = false,
 }: ForgeAnimationProps) {
   const { x: sx, y: sy, w, h } = startRect;
-  const { accent, accentGlow, accentDark } = resolveAccent(card.bonusColor);
+  const { accent, accentGlow, accentDark } = resolveAccent(card.bonusAffinity);
 
   // Full card dimensions from CSS variables (clamp-based, must read at runtime).
   const fullCardW = isCompact
@@ -231,14 +317,23 @@ export function ForgeAnimation({
   const dY = finalY - h / 2;
 
   const tattooW    = Math.max(55, Math.round(w * 0.75));
-  const tattooH    = Math.round(tattooW * VBOX_H / VBOX_W);
+  const tattooH    = Math.round(tattooW * STAMP_VIEWBOX_HEIGHT / STAMP_VIEWBOX_WIDTH);
   const tattooLeft = (w - tattooW) / 2;
   const tattooTop  = h / 2 - tattooH / 2;
 
   const stampW    = Math.max(70, Math.round(w * 1.28 * 0.78));
-  const stampH    = Math.round(stampW * VBOX_H / VBOX_W);
+  const stampH    = Math.round(stampW * STAMP_VIEWBOX_HEIGHT / STAMP_VIEWBOX_WIDTH);
   const stampLeft = midX - stampW / 2;
   const stampTop  = midY - stampH / 2;
+  const sealSize  = Math.max(34, Math.min(56, w * 0.36));
+  const sealStart = cardEminenceMarkerCenter({
+    x: cx,
+    y: cy,
+    w,
+    h,
+    contentScale: isCompact ? chipScale : 1,
+    visualScale: isCompact ? 1 : 1.28,
+  });
 
   const SK = Math.round(w * 0.07);
 
@@ -256,15 +351,24 @@ export function ForgeAnimation({
 
   useEffect(() => {
     gameAudio.playForgeAnimation();
-  // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, []);
+    if (!isForgottenForge) return;
+    const id = setTimeout(() => gameAudio.playForgottenForge(), (isCompact ? 60 : 280));
+    return () => clearTimeout(id);
+  }, [animKey, isCompact, isForgottenForge]);
 
   const [stamped, setStamped] = useState(false);
   useEffect(() => {
     const id = setTimeout(() => setStamped(true), STAMP_HIT * 1000);
     return () => clearTimeout(id);
-  // eslint-disable-next-line react-hooks/exhaustive-deps
   }, []);
+
+  const [eminenceSeparated, setEminenceSeparated] = useState(false);
+  useEffect(() => {
+    setEminenceSeparated(false);
+    if (eminence <= 0) return;
+    const id = setTimeout(() => setEminenceSeparated(true), EMINENCE_SEAL_APPEAR * 1000);
+    return () => clearTimeout(id);
+  }, [animKey, eminence]);
 
   const subDur  = ARC_END - STAMP_HIT;
   const tSpring = 0.040 / subDur;
@@ -272,11 +376,11 @@ export function ForgeAnimation({
 
   const [streams, setStreams] = useState<StreamData[]>([]);
   useEffect(() => {
-    const seen = new Set<GemKey>();
+    const seen = new Set<AffinityKey>();
     const result: StreamData[] = [];
     let sign = 1;
     for (const color of spentColors) {
-      if (seen.has(color) || color === 'flux') continue;
+      if (seen.has(color) || color === 'singularity') continue;
       seen.add(color);
       const el = document.querySelector(`[data-affinity-well="${color}"]`);
       if (el) {
@@ -286,7 +390,7 @@ export function ForgeAnimation({
       }
     }
     setStreams(result);
-  // eslint-disable-next-line react-hooks/exhaustive-deps
+  // eslint-disable-next-line react-hooks/exhaustive-deps -- capture stream origins once per animation instance
   }, []);
 
   const accentA0  = accent  + '00';
@@ -334,11 +438,11 @@ export function ForgeAnimation({
               transform: `scale(${chipScale})`,
               transformOrigin: 'top left',
             }}>
-              <ArtifactCardView card={card} tier={tier} />
+              <ArtifactCardView card={card} tier={tier} hideEminence={eminenceSeparated} />
             </div>
           </div>
         ) : (
-          <ArtifactCardView card={card} tier={tier} />
+          <ArtifactCardView card={card} tier={tier} hideEminence={eminenceSeparated} />
         )}
 
         <motion.div
@@ -360,6 +464,8 @@ export function ForgeAnimation({
           animate={{ opacity: [0, 0, 0.55, 0.55, 0] }}
           transition={{ duration: ARC_END, times: [0, t2, t3, t6, 1.0] }}
         />
+
+        {isForgottenForge && <ForgottenForgeApparition compact={isCompact} />}
 
         {stamped && (
           <motion.div
@@ -406,7 +512,7 @@ export function ForgeAnimation({
             </filter>
           </defs>
           {streams.map(({ color, d }, idx) => {
-            const m    = GEM_META[color];
+            const m    = AFFINITY_META[color];
             const del  = LIFT_END + idx * 0.04;
             const dur  = STREAMS_END - LIFT_END + 0.12;
             // Wipe head travels independently: short bright segment races source→target.
@@ -538,23 +644,34 @@ export function ForgeAnimation({
         />
       ))}
 
-      {lumens > 0 && (
+      {destPos && destinationKind === 'civilization' && (
         <motion.div
-          className="pointer-events-none fixed flex items-center gap-2 font-bold select-none"
+          className="pointer-events-none fixed rounded-[28px] border"
           style={{
-            left: midX + w * 0.58,
-            top:  midY - h * 0.20,
-            color: accentGlow,
-            fontSize: Math.max(20, Math.round(vmin(0.040))),
-            textShadow: `0 0 20px ${accent}BB, 0 2px 0 ${accentDark}`,
+            left: destPos.x,
+            top: destPos.y,
+            translateX: '-50%',
+            translateY: '-50%',
+            borderColor: accentGlow,
+            boxShadow: `0 0 34px 8px ${accent88}, inset 0 0 38px 4px ${accentG88}`,
           }}
-          initial={{ opacity: 0, y: 0 }}
-          animate={{ opacity: [0, 0, 1, 1, 0], y: [0, 0, 0, -28, -48] }}
-          transition={{ duration: ARC_END, times: [0, 0.24, 0.40, 0.84, 1] }}
-        >
-          <Sparkles className="h-5 w-5" />
-          +{lumens}
-        </motion.div>
+          initial={{ width: 22, height: 22, opacity: 0.95, scale: 0.65 }}
+          animate={{ width: 210, height: 128, opacity: 0, scale: 1 }}
+          transition={{ delay: ARC_END - 0.06, duration: 0.78, ease: 'easeOut' }}
+        />
+      )}
+
+      {eminence > 0 && (
+        <EminenceSealFlight
+          animKey={animKey}
+          amount={eminence}
+          eminenceAfter={eminenceTotal}
+          start={sealStart}
+          size={sealSize}
+          fallbackDest={destPos}
+          targetSelector={eminenceTargetSelector}
+          onImpact={onEminenceImpact}
+        />
       )}
 
       {playerName && (
@@ -570,12 +687,9 @@ export function ForgeAnimation({
           transition={{ duration: ARC_END, times: [0, t1, t_se, t6, 1.0] }}
         >
           <span
-            className="px-2.5 py-0.5 rounded-full text-[9px] font-semibold tracking-wide whitespace-nowrap"
+            className="animation-readable-pill animation-readable-pill--cool text-[9px] font-semibold tracking-wide whitespace-nowrap"
             style={{
-              color: 'rgba(200,238,255,0.90)',
-              background: 'rgba(20,40,80,0.72)',
-              border: '1px solid rgba(120,200,255,0.25)',
-              backdropFilter: 'blur(4px)',
+              color: 'rgba(218,244,255,0.96)',
             }}
           >
             {playerName}
@@ -586,6 +700,113 @@ export function ForgeAnimation({
   );
 }
 
+function EminenceSealFlight({
+  animKey,
+  amount,
+  eminenceAfter,
+  start,
+  size,
+  fallbackDest,
+  targetSelector = PLAYER_EMINENCE_SIGIL_SELECTOR,
+  timing = 'full',
+  onImpact,
+}: {
+  animKey: number;
+  amount: number;
+  eminenceAfter?: number;
+  start: { x: number; y: number };
+  size: number;
+  fallbackDest?: { x: number; y: number };
+  targetSelector?: string | null;
+  timing?: EminenceSealTiming;
+  onImpact?: (amount: number) => void;
+}) {
+  const sealTiming = getEminenceSealTiming(timing);
+  const [target, setTarget] = useState<ViewportRect | null>(() => readEminenceTargetRect(targetSelector));
+
+  useEffect(() => {
+    const raf = requestAnimationFrame(() => setTarget(readEminenceTargetRect(targetSelector)));
+    gameAudio.playEminenceSeal(amount, eminenceAfter);
+    const impactTimer = setTimeout(() => onImpact?.(amount), sealTiming.land * 1000);
+    return () => {
+      cancelAnimationFrame(raf);
+      clearTimeout(impactTimer);
+    };
+  }, [animKey, amount, eminenceAfter, onImpact, targetSelector, sealTiming.land]);
+
+  const targetX = target ? target.x + target.w / 2 : (fallbackDest?.x ?? window.innerWidth - 80);
+  const targetY = target ? target.y + target.h / 2 : (fallbackDest?.y ?? 80);
+  const dx = targetX - start.x;
+  const dy = targetY - start.y;
+  const arcLift = Math.min(120, Math.max(42, Math.abs(dx) * 0.08 + Math.abs(dy) * 0.05));
+  const targetScale = target ? Math.max(0.24, Math.min(0.78, Math.max(target.w, target.h) / size)) : 0.5;
+  const total = sealTiming.end;
+  const appear = sealTiming.appear / total;
+  const launch = sealTiming.launch / total;
+  const preLand = Math.max(launch, (sealTiming.land - 0.12) / total);
+  const land = sealTiming.land / total;
+  const displayEminence = Math.max(amount, Math.min(15, eminenceAfter ?? amount));
+
+  return (
+    <>
+      <motion.div
+        className="pointer-events-none fixed select-none"
+        style={{
+          left: start.x - size / 2,
+          top: start.y - size / 2,
+          width: size,
+          height: size,
+          zIndex: 9070,
+          transformStyle: 'preserve-3d',
+          perspective: 800,
+          filter: 'drop-shadow(0 0 9px rgba(255, 218, 118, 0.42)) drop-shadow(0 2px 8px rgba(0, 0, 0, 0.82))',
+        }}
+        initial={{ opacity: 0, scale: 0.38, rotateY: -92, rotateZ: -9, x: 0, y: 0 }}
+        animate={{
+          opacity: [0, 0, 1, 1, 1, 0],
+          scale: [0.38, 0.38, 1.18, Math.max(targetScale * 1.22, 0.44), targetScale, 0.08],
+          rotateY: [-92, -92, 0, 560, 720, 720],
+          rotateZ: [-9, -9, 0, 7, 0, 0],
+          x: [0, 0, 0, dx * 0.88, dx, dx],
+          y: [0, 0, -arcLift, dy - Math.max(8, size * 0.18), dy, dy],
+        }}
+        transition={{
+          duration: total,
+          times: [0, appear, launch, preLand, land, 1],
+          ease: ['easeOut', 'easeOut', 'easeInOut', 'easeOut'],
+        }}
+      >
+        <div className="relative grid h-full w-full place-items-center">
+          <EminenceSigil size={size} value={displayEminence} />
+          <motion.span
+            className="animation-readable-pill absolute -bottom-1 px-1.5 py-0.5 font-serif text-[10px] font-black leading-none text-[#fff4c5]"
+            initial={{ opacity: 0, y: 4 }}
+            animate={{ opacity: [0, 0, 1, 1, 0], y: [4, 4, 0, 0, -4] }}
+            transition={{ duration: total * 0.92, times: [0, appear, launch, 0.84, 1] }}
+          >
+            +{amount}
+          </motion.span>
+        </div>
+      </motion.div>
+
+      <motion.div
+        className="pointer-events-none fixed rounded-full border-2 border-[#f4cf78]"
+        style={{
+          left: targetX,
+          top: targetY,
+          translateX: '-50%',
+          translateY: '-50%',
+          zIndex: 9069,
+          boxShadow: '0 0 0 1px rgba(255,255,255,0.16), inset 0 0 18px rgba(255, 232, 160, 0.18)',
+        }}
+        initial={{ width: 18, height: 18, opacity: 0 }}
+        animate={{ width: [18, 58, 28, 138], height: [18, 58, 28, 138], opacity: [0, 1, 0.9, 0] }}
+        transition={{ delay: sealTiming.land, duration: timing === 'fast' ? 0.34 : 0.52, ease: 'easeOut' }}
+      />
+    </>
+  );
+}
+
 // ── AbridgedForgeAnimation ────────────────────────────────────────────────────
 // Fast path: card shrinks directly from startRect to destPos — no stamp, no streams.
 // Used when the player has enabled "Abridged animations" in the header menu.
@@ -593,21 +814,34 @@ export function ForgeAnimation({
 export interface AbridgedForgeAnimationProps {
   animKey: number;
   card: ArtifactCard;
+  cardFace?: ReactNode;
   tier: number;
   startRect: { x: number; y: number; w: number; h: number };
   /** Center of the destination pill (hand tab or opponent chip). */
   destPos?: { x: number; y: number };
+  destinationKind?: 'civilization' | 'tab';
   ownerName?: string;
+  eminence?: number;
+  eminenceTotal?: number;
+  eminenceTargetSelector?: string | null;
+  onEminenceImpact?: (amount: number) => void;
   /** Called when the card finishes shrinking into the destination. */
   onComplete?: () => void;
+  isForgottenForge?: boolean;
 }
 
 export function AbridgedForgeAnimation({
-  animKey, card, tier, startRect, destPos, ownerName, onComplete,
+  animKey, card, cardFace, tier, startRect, destPos, destinationKind, ownerName, eminence = 0, eminenceTotal, eminenceTargetSelector, onEminenceImpact, onComplete, isForgottenForge = false,
 }: AbridgedForgeAnimationProps) {
   const { x: sx, y: sy, w, h } = startRect;
   const dx = destPos ? destPos.x - sx - w / 2 : 0;
   const dy = destPos ? destPos.y - sy - h / 2 : 0;
+
+  useEffect(() => {
+    if (!isForgottenForge) return;
+    const id = setTimeout(() => gameAudio.playForgottenForge(), 40);
+    return () => clearTimeout(id);
+  }, [animKey, isForgottenForge]);
 
   return (
     <motion.div
@@ -615,7 +849,7 @@ export function AbridgedForgeAnimation({
       className="pointer-events-none fixed z-[52]"
       initial={{ opacity: 1 }}
       exit={{ opacity: 0 }}
-      transition={{ duration: 0.08, delay: 0.38 }}
+      transition={{ duration: 0.08, delay: 0.62 }}
     >
       <motion.div
         style={{ position: 'fixed', left: sx, top: sy, width: w, height: h }}
@@ -627,36 +861,63 @@ export function AbridgedForgeAnimation({
           y: dy,
         }}
         transition={{
-          duration: 0.38,
+          duration: 0.62,
           ease: [0.4, 0, 1, 1],
-          opacity: { duration: 0.38, times: [0, 0.70, 1], ease: 'linear' },
-          scale: { duration: 0.38, ease: [0.4, 0, 1, 1] },
+          opacity: { duration: 0.62, times: [0, 0.78, 1], ease: 'linear' },
+          scale: { duration: 0.62, ease: [0.4, 0, 1, 1] },
         }}
         onAnimationComplete={() => onComplete?.()}
       >
-        <ArtifactCardView card={card} tier={tier} />
+        {cardFace ?? <ArtifactCardView card={card} tier={tier} hideEminence={eminence > 0} />}
+        {isForgottenForge && <ForgottenForgeApparition compact />}
       </motion.div>
+
+      {destPos && destinationKind === 'civilization' && (
+        <motion.div
+          className="pointer-events-none fixed rounded-[22px] border"
+          style={{
+            left: destPos.x,
+            top: destPos.y,
+            translateX: '-50%',
+            translateY: '-50%',
+            borderColor: resolveAccent(card.bonusAffinity).accentGlow,
+          }}
+          initial={{ width: 12, height: 12, opacity: 0.75 }}
+          animate={{ width: 132, height: 84, opacity: 0 }}
+          transition={{ delay: 0.26, duration: 0.44, ease: 'easeOut' }}
+        />
+      )}
 
       {ownerName && (
         <motion.div
           className="pointer-events-none fixed"
           style={{ left: sx + w / 2, top: sy - 26, translateX: '-50%' }}
           initial={{ opacity: 0, y: 4 }}
-          animate={{ opacity: [0, 1, 1, 0], y: [4, 0, 0, -4] }}
-          transition={{ duration: 0.38, times: [0, 0.12, 0.65, 1.0] }}
+          animate={{ opacity: [0, 1, 1, 1, 0], y: [4, 0, 0, 0, -4] }}
+          transition={{ duration: 0.7, times: [0, 0.1, 0.72, 0.88, 1.0] }}
         >
           <span
-            className="px-2.5 py-0.5 rounded-full text-[9px] font-semibold tracking-wide whitespace-nowrap"
+            className="animation-readable-pill animation-readable-pill--cool text-[9px] font-semibold tracking-wide whitespace-nowrap"
             style={{
-              color: 'rgba(200,238,255,0.90)',
-              background: 'rgba(20,40,80,0.72)',
-              border: '1px solid rgba(120,200,255,0.25)',
-              backdropFilter: 'blur(4px)',
+              color: 'rgba(218,244,255,0.96)',
             }}
           >
             {ownerName}
           </span>
         </motion.div>
+      )}
+      {eminence > 0 && (
+        <EminenceSealFlight
+          animKey={animKey}
+          amount={eminence}
+          eminenceAfter={eminenceTotal}
+          start={cardEminenceMarkerCenter({ x: sx, y: sy, w, h })}
+          size={Math.max(30, Math.min(46, w * 0.55))}
+          fallbackDest={destPos}
+          targetSelector={eminenceTargetSelector}
+          timing="fast"
+          onImpact={onEminenceImpact}
+        />
       )}
     </motion.div>
   );
@@ -668,10 +929,10 @@ export function AbridgedForgeAnimation({
 // destination differs: chipCenter (opponent avatar pill) instead of destPos.
 
 export function OpponentForgeAnimation({
-  animKey, card, tier, startRect, chipCenter, ownerName, spentColors: spentColorsProp, isCompact,
+  animKey, card, tier, startRect, chipCenter, ownerName, eminence: eminenceProp, eminenceTotal, spentColors: spentColorsProp, eminenceTargetSelector, onEminenceImpact, isCompact, isForgottenForge = false,
 }: OpponentForgeAnimationProps) {
   const { x: sx, y: sy, w, h } = startRect;
-  const { accent, accentGlow, accentDark } = resolveAccent(card.bonusColor);
+  const { accent, accentGlow, accentDark } = resolveAccent(card.bonusAffinity);
 
   // Full card dimensions from CSS variables (clamp-based, must read at runtime).
   const fullCardW = isCompact
@@ -693,12 +954,12 @@ export function OpponentForgeAnimation({
   const dY = chipCenter.y - h / 2;
 
   const tattooW    = Math.max(55, Math.round(w * 0.75));
-  const tattooH    = Math.round(tattooW * VBOX_H / VBOX_W);
+  const tattooH    = Math.round(tattooW * STAMP_VIEWBOX_HEIGHT / STAMP_VIEWBOX_WIDTH);
   const tattooLeft = (w - tattooW) / 2;
   const tattooTop  = h / 2 - tattooH / 2;
 
   const stampW    = Math.max(70, Math.round(w * 1.28 * 0.78));
-  const stampH    = Math.round(stampW * VBOX_H / VBOX_W);
+  const stampH    = Math.round(stampW * STAMP_VIEWBOX_HEIGHT / STAMP_VIEWBOX_WIDTH);
   const stampLeft = midX - stampW / 2;
   const stampTop  = midY - stampH / 2;
 
@@ -718,31 +979,32 @@ export function OpponentForgeAnimation({
 
   useEffect(() => {
     gameAudio.playForgeAnimation();
-  // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, []);
+    if (!isForgottenForge) return;
+    const id = setTimeout(() => gameAudio.playForgottenForge(), (isCompact ? 60 : 280));
+    return () => clearTimeout(id);
+  }, [animKey, isCompact, isForgottenForge]);
 
   const [stamped, setStamped] = useState(false);
   useEffect(() => {
     const id = setTimeout(() => setStamped(true), STAMP_HIT * 1000);
     return () => clearTimeout(id);
-  // eslint-disable-next-line react-hooks/exhaustive-deps
   }, []);
 
   const subDur  = ARC_END - STAMP_HIT;
   const tSpring = 0.040 / subDur;
   const tHold   = (STAMP_HOLD - STAMP_HIT) / subDur;
 
-  // spentColors: use prop if provided, else fall back to card's bonusColor
-  const effectiveSpent: GemKey[] =
+  // spentColors: use prop if provided, else fall back to card's bonusAffinity
+  const effectiveSpent: AffinityKey[] =
     spentColorsProp && spentColorsProp.length > 0
       ? spentColorsProp
-      : card.bonusColor
-        ? [card.bonusColor as GemKey]
+      : card.bonusAffinity
+        ? [card.bonusAffinity as AffinityKey]
         : [];
 
   // Streams originate from the opponent's chip/avatar, not the local affinity wells.
   const streams: StreamData[] = (() => {
-    const seen = new Set<GemKey>();
+    const seen = new Set<AffinityKey>();
     const result: StreamData[] = [];
     let sign = 1;
     for (const color of effectiveSpent) {
@@ -754,7 +1016,14 @@ export function OpponentForgeAnimation({
     return result;
   })();
 
-  const lumens = card.lumens ?? 0;
+  const eminence = eminenceProp ?? card.eminence ?? 0;
+  const [eminenceSeparated, setEminenceSeparated] = useState(false);
+  useEffect(() => {
+    setEminenceSeparated(false);
+    if (eminence <= 0) return;
+    const id = setTimeout(() => setEminenceSeparated(true), EMINENCE_SEAL_APPEAR * 1000);
+    return () => clearTimeout(id);
+  }, [animKey, eminence]);
 
   const accentA0  = accent  + '00';
   const accentAA  = accent  + 'AA';
@@ -799,11 +1068,11 @@ export function OpponentForgeAnimation({
               transform: `scale(${chipScale})`,
               transformOrigin: 'top left',
             }}>
-              <ArtifactCardView card={card} tier={tier} />
+              <ArtifactCardView card={card} tier={tier} hideEminence={eminenceSeparated} />
             </div>
           </div>
         ) : (
-          <ArtifactCardView card={card} tier={tier} />
+          <ArtifactCardView card={card} tier={tier} hideEminence={eminenceSeparated} />
         )}
 
         {/* Affinity aura glow */}
@@ -827,6 +1096,8 @@ export function OpponentForgeAnimation({
           animate={{ opacity: [0, 0, 0.55, 0.55, 0] }}
           transition={{ duration: ARC_END, times: [0, t2, t3, t6, 1.0] }}
         />
+
+        {isForgottenForge && <ForgottenForgeApparition compact={isCompact} />}
 
         {/* Tattoo — position:absolute inside card div (same as ForgeAnimation) */}
         {stamped && (
@@ -875,7 +1146,7 @@ export function OpponentForgeAnimation({
             </filter>
           </defs>
           {streams.map(({ color, d }, idx) => {
-            const m    = GEM_META[color];
+            const m    = AFFINITY_META[color];
             const del  = LIFT_END + idx * 0.04;
             const dur  = STREAMS_END - LIFT_END + 0.12;
             const WIPE = 0.17;
@@ -1008,24 +1279,24 @@ export function OpponentForgeAnimation({
         />
       ))}
 
-      {/* ── Eminence counter ─────────────────────────────────────────────── */}
-      {lumens > 0 && (
-        <motion.div
-          className="pointer-events-none fixed flex items-center gap-2 font-bold select-none"
-          style={{
-            left: midX + w * 0.58,
-            top:  midY - h * 0.20,
-            color: accentGlow,
-            fontSize: Math.max(20, Math.round(vmin(0.040))),
-            textShadow: `0 0 20px ${accent}BB, 0 2px 0 ${accentDark}`,
-          }}
-          initial={{ opacity: 0, y: 0 }}
-          animate={{ opacity: [0, 0, 1, 1, 0], y: [0, 0, 0, -28, -48] }}
-          transition={{ duration: ARC_END, times: [0, 0.24, 0.40, 0.84, 1] }}
-        >
-          <Sparkles className="h-5 w-5" />
-          +{lumens}
-        </motion.div>
+      {eminence > 0 && (
+        <EminenceSealFlight
+          animKey={animKey}
+          amount={eminence}
+          eminenceAfter={eminenceTotal}
+          start={cardEminenceMarkerCenter({
+            x: cx,
+            y: cy,
+            w,
+            h,
+            contentScale: isCompact ? chipScale : 1,
+            visualScale: isCompact ? 1 : 1.28,
+          })}
+          size={Math.max(34, Math.min(56, w * 0.36))}
+          fallbackDest={chipCenter}
+          targetSelector={eminenceTargetSelector}
+          onImpact={onEminenceImpact}
+        />
       )}
 
       {/* ── Owner name label ─────────────────────────────────────────────── */}
@@ -1042,12 +1313,9 @@ export function OpponentForgeAnimation({
           transition={{ duration: ARC_END, times: [0, t1, t_se, t6, 1.0] }}
         >
           <span
-            className="px-2.5 py-0.5 rounded-full text-[9px] font-semibold tracking-wide whitespace-nowrap"
+            className="animation-readable-pill animation-readable-pill--cool text-[9px] font-semibold tracking-wide whitespace-nowrap"
             style={{
-              color: 'rgba(200,238,255,0.90)',
-              background: 'rgba(20,40,80,0.72)',
-              border: '1px solid rgba(120,200,255,0.25)',
-              backdropFilter: 'blur(4px)',
+              color: 'rgba(218,244,255,0.96)',
             }}
           >
             {ownerName}

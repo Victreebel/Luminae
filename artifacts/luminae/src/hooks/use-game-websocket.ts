@@ -2,6 +2,7 @@ import { useEffect, useRef, useState, useCallback } from 'react';
 
 export interface RematchVoteUpdate {
   voterIds: string[];
+  sameBoard: boolean;
   countdownEndsAt: number | null;
   sessionStats: Record<string, { wins: number; losses: number; ties: number; playerName: string }>;
 }
@@ -21,6 +22,7 @@ type WebSocketHookParams = {
   onPlayerJoined?: (player: any) => void;
   onPlayerLeft?: (playerId: string) => void;
   onPlayerKicked?: (playerId: string) => void;
+  onRoomUpdated?: () => void;
   onNavigate?: (path: string) => void;
   onRematchVoteUpdate?: (data: RematchVoteUpdate) => void;
   onRematchStarted?: (state: any, sessionStats: RematchVoteUpdate['sessionStats']) => void;
@@ -37,6 +39,7 @@ export function useGameWebsocket({
   onPlayerJoined,
   onPlayerLeft,
   onPlayerKicked,
+  onRoomUpdated,
   onNavigate,
   onRematchVoteUpdate,
   onRematchStarted,
@@ -58,6 +61,7 @@ export function useGameWebsocket({
   const onPlayerJoinedRef = useRef(onPlayerJoined);
   const onPlayerLeftRef = useRef(onPlayerLeft);
   const onPlayerKickedRef = useRef(onPlayerKicked);
+  const onRoomUpdatedRef = useRef(onRoomUpdated);
   const onNavigateRef = useRef(onNavigate);
   const onRematchVoteUpdateRef = useRef(onRematchVoteUpdate);
   const onRematchStartedRef = useRef(onRematchStarted);
@@ -71,6 +75,7 @@ export function useGameWebsocket({
     onPlayerJoinedRef.current = onPlayerJoined;
     onPlayerLeftRef.current = onPlayerLeft;
     onPlayerKickedRef.current = onPlayerKicked;
+    onRoomUpdatedRef.current = onRoomUpdated;
     onNavigateRef.current = onNavigate;
     onRematchVoteUpdateRef.current = onRematchVoteUpdate;
     onRematchStartedRef.current = onRematchStarted;
@@ -137,9 +142,13 @@ export function useGameWebsocket({
             onPlayerKickedRef.current?.(data.playerId);
             onPlayerLeftRef.current?.(data.playerId);
             break;
+          case 'room_updated':
+            onRoomUpdatedRef.current?.();
+            break;
           case 'rematch_vote_update':
             onRematchVoteUpdateRef.current?.({
               voterIds: data.voterIds ?? [],
+              sameBoard: data.sameBoard === true,
               countdownEndsAt: data.countdownEndsAt ?? null,
               sessionStats: data.sessionStats ?? {},
             });

@@ -4,13 +4,15 @@
   "private": true,
   "type": "module",
   "scripts": {
-    "dev": "export NODE_ENV=development && pnpm run build && pnpm run start",
+    "dev": "export NODE_ENV=development && node --env-file=../../.env --watch --import tsx ./src/index.ts",
+    "dev:compiled": "export NODE_ENV=development && pnpm run build && pnpm run start",
     "build": "node ./build.mjs",
-    "start": "node --enable-source-maps ./dist/index.mjs",
+    "start": "node --env-file-if-exists=../../.env --enable-source-maps ./dist/index.mjs",
     "typecheck": "pnpm run lint && tsc -p tsconfig.json --noEmit",
     "lint": "eslint src --ext .ts",
     "simulate": "tsx ./src/scripts/simulate.ts",
-    "test": "vitest run --config vitest.config.ts"
+    "test": "vitest run --config vitest.config.ts",
+    "verify:coordination": "vitest run --config vitest.config.ts src/lib/devRewind.test.ts src/lib/turnPresentationGate.test.ts src/lib/stateProjection.test.ts && tsc -p tsconfig.json --noEmit"
   },
   "dependencies": {
     "@types/ws": "^8.18.1",

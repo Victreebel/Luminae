@@ -205,7 +205,7 @@ paths:
     post:
       operationId: rematch
       tags: [rooms]
-      summary: Restart the game with the same players (host only)
+      summary: Vote to restart the game, optionally replaying the same opening board
       parameters:
         - name: roomId
           in: path
@@ -217,14 +217,14 @@ paths:
         content:
           application/json:
             schema:
-              $ref: "#/components/schemas/HostActionBody"
+              $ref: "#/components/schemas/RematchBody"
       responses:
         "200":
-          description: Game restarted
+          description: Rematch vote recorded
           content:
             application/json:
               schema:
-                $ref: "#/components/schemas/GameState"
+                $ref: "#/components/schemas/RematchVoteResponse"
         "400":
           description: Game is not finished
         "403":
@@ -829,7 +829,7 @@ components:
           enum: [win, loss, tie]
         eminenceEarned:
           type: integer
-          description: Eminence (lumens) earned by the player in this game
+          description: Eminence (eminence) earned by the player in this game
         totalPlayers:
           type: integer
           description: Number of human players in the game
@@ -987,6 +987,14 @@ components:
           type: integer
           minimum: 2
           maximum: 4
+        victoryRequirement:
+          type: integer
+          enum: [15, 20, 25]
+          description: Eminence required to trigger the final round
+        cinematicMode:
+          type: string
+          enum: [standard, epic]
+          description: Luminary cinematic presentation mode
         turnTimerSeconds:
           type: ["integer", "null"]
       required:
@@ -1080,6 +1088,14 @@ components:
           type: integer
           minimum: 2
           maximum: 4
+        victoryRequirement:
+          type: integer
+          enum: [15, 20, 25]
+          description: Eminence required to trigger the final round
+        cinematicMode:
+          type: string
+          enum: [standard, epic]
+          description: Luminary cinematic presentation mode
         turnTimerSeconds:
           type: ["integer", "null"]
           description: Optional per-turn time limit in seconds (null = no timer)
@@ -1116,6 +1132,52 @@ components:
           type: string
       required:
         - sessionToken
+
+    RematchBody:
+      type: object
+      properties:
+        sessionToken:
+          type: string
+        sameBoard:
+          type: boolean
+          description: When true, the next rematch reuses the original opening Forge, deck, Luminary, and first-player setup when available.
+      required:
+        - sessionToken
+
+    RematchVoteResponse:
+      type: object
+      properties:
+        voterIds:
+          type: array
+          items:
+            type: string
+        sameBoard:
+          type: boolean
+        countdownEndsAt:
+          type: ["integer", "null"]
+        sessionStats:
+          type: object
+          additionalProperties:
+            type: object
+            properties:
+              wins:
+                type: integer
+              losses:
+                type: integer
+              ties:
+                type: integer
+              playerName:
+                type: string
+            required:
+              - wins
+              - losses
+              - ties
+              - playerName
+      required:
+        - voterIds
+        - sameBoard
+        - countdownEndsAt
+        - sessionStats
 
     AddAiPlayerBody:
       type: object
@@ -1169,6 +1231,12 @@ components:
           enum: [lobby, playing, finished]
         maxPlayers:
           type: integer
+        victoryRequirement:
+          type: integer
+          description: Eminence required to trigger the final round
+        cinematicMode:
+          type: string
+          enum: [standard, epic]
         turnTimerSeconds:
           type: ["integer", "null"]
         players:
@@ -1180,6 +1248,8 @@ components:
         - inviteCode
         - status
         - maxPlayers
+        - victoryRequirement
+        - cinematicMode
         - players
 
     RoomWithPlayer:
@@ -1196,28 +1266,29 @@ components:
         - player
         - sessionToken
 
-    CrystalCounts:
+    AffinityCounts:
       type: object
+      description: A complete set of Luminae Affinity counts.
       properties:
-        ruby:
+        flare:
           type: integer
-        sapphire:
+        continuum:
           type: integer
-        emerald:
+        verdance:
           type: integer
-        onyx:
+        abyss:
           type: integer
-        pearl:
+        radiance:
           type: integer
-        flux:
+        singularity:
           type: integer
       required:
-        - ruby
-        - sapphire
-        - emerald
-        - onyx
-        - pearl
-        - flux
+        - flare
+        - continuum
+        - verdance
+        - abyss
+        - radiance
+        - singularity
 
     ArtifactCard:
       type: object
@@ -1226,48 +1297,71 @@ components:
           type: string
         tier:
           type: integer
-        bonusColor:
+        bonusAffinity:
           type: string
-          enum: [ruby, sapphire, emerald, onyx, pearl]
-        lumens:
+          enum: [flare, continuum, verdance, abyss, radiance]
+        eminence:
           type: integer
         cost:
-          $ref: "#/components/schemas/CrystalCounts"
+          $ref: "#/components/schemas/AffinityCounts"
         name:
           type: string
         flavor:
           type: string
         bonusesAtForge:
-          $ref: "#/components/schemas/CrystalCounts"
-          description: "Snapshot of the player's effective bonuses at the moment this card was forged. Present only on purchased cards; absent on market/reserved cards and on cards forged before this feature was added."
+          $ref: "#/components/schemas/AffinityCounts"
+          description: "Snapshot of the player's effective Affinity bonuses at the moment this Artifact was forged. Present only on forged Artifacts; absent on Forge or reserved Artifacts and on Artifacts forged before this feature was added."
       required:
         - id
         - tier
-        - bonusColor
-        - lumens
+        - bonusAffinity
+        - eminence
         - cost
         - name
         - flavor
 
     BurnEvent:
       type: object
-      description: A single Artifact card removed from the market by a Luminary burn effect
+      description: A single Artifact Burned by a Luminary effect, including its final destination
       properties:
+        eventId:
+          type: string
+          description: Stable event identifier used to correlate one Burn across state updates and animation
         cardId:
           type: string
+        artifactName:
+          type: string
+          description: Artifact name captured when the Burn resolved
         tier:
           type: integer
           enum: [1, 2, 3]
+        sourceType:
+          type: string
+          enum: [luminary, action, system]
+        sourceLuminaryId:
+          type: string
+        sourceName:
+          type: string
+        ownerPlayerId:
+          type: string
+        triggeredByPlayerId:
+          type: string
+        destination:
+          type: string
+          enum: [burn_pile, archive]
+          description: Final destination after the Burn resolves; Eternal Recurrence redirects to archive
         turn:
           type: integer
           description: turnCount at the time of the burn
-        sourceLuminaryId:
-          type: string
       required:
+        - eventId
         - cardId
+        - artifactName
         - tier
-        - turn
+        - sourceType
         - sourceLuminaryId
+        - destination
+        - turn
 
     ActionLogEntry:
       type: object
@@ -1296,16 +1390,16 @@ components:
         domain:
           type: string
           description: Cosmic domain or element of this Luminary (e.g. Flame, Time, Stars)
-        lumens:
+        eminence:
           type: integer
         oblivion:
           type: integer
           description: >
             Oblivion penalty — when this Luminary is claimed, ALL players lose this
-            many Eminence. Mutually exclusive with a positive lumens award.
+            many Eminence. Mutually exclusive with a positive eminence award.
             Omitted (or 0) on normal Eminence Luminaries.
         requirements:
-          $ref: "#/components/schemas/CrystalCounts"
+          $ref: "#/components/schemas/AffinityCounts"
         flavor:
           type: string
           description: Short lore/flavor text shown on the Luminary card
@@ -1328,7 +1422,7 @@ components:
         - id
         - name
         - domain
-        - lumens
+        - eminence
         - requirements
         - flavor
         - summonColor
@@ -1351,17 +1445,17 @@ components:
           type: ["string", "null"]
           enum: [easy, medium, hard, null]
           description: AI difficulty level, null for human players or easy AI that never toggles
-        crystals:
-          $ref: "#/components/schemas/CrystalCounts"
+        affinities:
+          $ref: "#/components/schemas/AffinityCounts"
         bonuses:
-          $ref: "#/components/schemas/CrystalCounts"
-        lumens:
+          $ref: "#/components/schemas/AffinityCounts"
+        eminence:
           type: integer
-        reservedCards:
+        reservedArtifacts:
           type: array
           items:
             $ref: "#/components/schemas/ArtifactCard"
-        purchasedCardIds:
+        forgedArtifactIds:
           type: array
           items:
             type: string
@@ -1369,8 +1463,8 @@ components:
           type: array
           items:
             type: string
-          description: Card IDs that were forged with zero crystals spent (fully covered by bonuses at forge time)
-        purchasedCards:
+          description: Artifact IDs forged with zero Affinities spent (fully covered by bonuses at forge time)
+        forgedArtifacts:
           type: array
           items:
             $ref: "#/components/schemas/ArtifactCard"
@@ -1397,13 +1491,13 @@ components:
         - avatarId
         - isAi
         - aiDifficulty
-        - crystals
+        - affinities
         - bonuses
-        - lumens
-        - reservedCards
-        - purchasedCardIds
+        - eminence
+        - reservedArtifacts
+        - forgedArtifactIds
         - discountedForgeIds
-        - purchasedCards
+        - forgedArtifacts
         - isConnected
         - claimedLuminaryIds
         - plannedAction
@@ -1419,12 +1513,12 @@ components:
           type: string
         activeAffinity:
           type: string
-          enum: [ruby, sapphire, emerald, onyx, pearl]
+          enum: [flare, continuum, verdance, abyss, radiance]
         eligibleAffinities:
           type: array
           items:
             type: string
-            enum: [ruby, sapphire, emerald, onyx, pearl]
+            enum: [flare, continuum, verdance, abyss, radiance]
         summonedAtTurnCount:
           type: integer
       required:
@@ -1473,20 +1567,23 @@ components:
           type: array
           items:
             type: string
-          description: Card IDs targeted by this activation (e.g. condemned cards for start_of_turn burn). Captured server-side before state mutations clear marketMarkers.
+          description: Artifact IDs targeted by this activation (e.g. condemned Artifacts for start_of_turn burn). Captured server-side before state mutations clear artifactMarkers.
       required:
         - eventId
         - luminaryId
         - effectType
         - triggeringPlayerId
 
-    CardMarker:
+    ArtifactMarkerType:
+      type: string
+      enum: [forgotten, condemned, nullified, avatar_seed]
+
+    ArtifactBrand:
       type: object
-      description: A marker placed on a market card by a Luminary effect (v0.8)
+      description: One persistent Luminary brand carried by an Artifact
       properties:
         type:
-          type: string
-          enum: [forgotten, condemned, nullified, avatar_seed]
+          $ref: "#/components/schemas/ArtifactMarkerType"
         ownerId:
           type: string
         summonedAtTurnCount:
@@ -1496,6 +1593,17 @@ components:
         - ownerId
         - summonedAtTurnCount
 
+    ArtifactMarker:
+      allOf:
+        - $ref: "#/components/schemas/ArtifactBrand"
+        - type: object
+          description: Persistent brands carried by an Artifact. Top-level fields mirror the newest brand for backward compatibility.
+          properties:
+            brands:
+              type: array
+              items:
+                $ref: "#/components/schemas/ArtifactBrand"
+
     GameState:
       type: object
       properties:
@@ -1504,6 +1612,31 @@ components:
         status:
           type: string
           enum: [lobby, playing, finished]
+        startedAt:
+          type: integer
+          description: Unix timestamp (ms) when this game instance was initialized
+        openingTurnOrder:
+          type: ["object", "null"]
+          description: First-player selection for this game instance; persists so clients can animate it once
+          properties:
+            id:
+              type: string
+            startedAt:
+              type: integer
+            firstPlayerId:
+              type: string
+            playerIds:
+              type: array
+              items:
+                type: string
+          required:
+            - id
+            - startedAt
+            - firstPlayerId
+            - playerIds
+        canReplaySameBoard:
+          type: boolean
+          description: True when the original opening board snapshot is available for same-board rematches.
         currentPlayerIndex:
           type: integer
         roundNumber:
@@ -1511,17 +1644,23 @@ components:
         turnCount:
           type: integer
           description: Monotonically increasing counter incremented each time any player's turn ends
-        crystalBank:
-          $ref: "#/components/schemas/CrystalCounts"
-        marketTier1:
+        victoryRequirement:
+          type: integer
+          description: Eminence required to trigger the final round
+        cinematicMode:
+          type: string
+          enum: [standard, epic]
+        affinityWell:
+          $ref: "#/components/schemas/AffinityCounts"
+        forgeTier1:
           type: array
           items:
             $ref: "#/components/schemas/ArtifactCard"
-        marketTier2:
+        forgeTier2:
           type: array
           items:
             $ref: "#/components/schemas/ArtifactCard"
-        marketTier3:
+        forgeTier3:
           type: array
           items:
             $ref: "#/components/schemas/ArtifactCard"
@@ -1580,11 +1719,45 @@ components:
           description: Activation events queued for the short (~4s) per-effect cinematic overlay
           items:
             $ref: "#/components/schemas/PendingLuminaryActivationEvent"
-        marketMarkers:
+        pendingTurnTransition:
+          type: object
+          nullable: true
+          description: Durable turn-resolution cursor held until all Luminary presentation events are acknowledged
+          properties:
+            stage:
+              type: string
+              enum:
+                - after_action
+                - after_end_effects
+                - after_start_effects
+            endingPlayerId:
+              type: string
+            nextPlayerIndex:
+              type: integer
+          required:
+            - stage
+            - endingPlayerId
+        devLuminarySequenceActive:
+          type: boolean
+          description: Development-only lease held while the in-game Luminary Sequence Lab still has staged presentations to resolve
+        artifactMarkers:
           type: object
           additionalProperties:
-            $ref: "#/components/schemas/CardMarker"
-          description: Active card markers keyed by cardId (v0.8 — Forgotten/Condemned/Nullified/AvatarSeed)
+            $ref: "#/components/schemas/ArtifactMarker"
+          description: Active Artifact markers keyed by cardId (v0.8 — Forgotten/Condemned/Nullified/AvatarSeed)
+        forgottenHourCycle:
+          type: object
+          additionalProperties:
+            type: object
+            properties:
+              lastAppliedTurnCount:
+                type: integer
+              cooldownOwnerTurnsRemaining:
+                type: ["integer", "null"]
+            required:
+              - lastAppliedTurnCount
+              - cooldownOwnerTurnsRemaining
+          description: Owner-relative Forgotten Hour timing keyed by source playerId
         avatarSeedDeckSeeds:
           type: array
           items:
@@ -1595,7 +1768,7 @@ components:
           description: Player ID who owns Avatar Seeds; null if inactive (v0.8)
         firstHungerAvailable:
           type: ["string", "null"]
-          description: Player ID if First Hunger Assimilation is available this turn (v0.8)
+          description: Player ID if Final Hunger Assimilation is available this turn (v0.8)
         catalystBloomBurnCount:
           type: integer
           description: Burn count accumulator for Catalyst Bloom since owner's last turn (v0.8)
@@ -1609,15 +1782,15 @@ components:
           type: array
           items:
             type: string
-          description: Ordered list of card IDs removed from the market by Luminary burn effects (never reused)
+          description: Ordered list of Burned Artifact IDs awaiting an effect that may return them to their Archives
         burnEvents:
           type: array
           items:
             $ref: "#/components/schemas/BurnEvent"
-          description: Ordered list of individual burn events (one per card burned) including tier and source Luminary
+          description: Ordered list of individual Burn events, including source Luminary and final destination
         coreActionUsed:
           type: boolean
-          description: True once the current player has used their core action this turn (harvest, forge, or reserve); resets to false on advanceTurn
+          description: True once the current player has used their core action this turn (Harness, Forge, or reserve); resets only when the staged Luminary resolution pipeline releases the next turn
         pendingLuminaryChoice:
           type: object
           nullable: true
@@ -1638,13 +1811,18 @@ components:
       required:
         - roomId
         - status
+        - startedAt
+        - openingTurnOrder
+        - canReplaySameBoard
         - currentPlayerIndex
         - roundNumber
         - turnCount
-        - crystalBank
-        - marketTier1
-        - marketTier2
-        - marketTier3
+        - victoryRequirement
+        - cinematicMode
+        - affinityWell
+        - forgeTier1
+        - forgeTier2
+        - forgeTier3
         - deckCounts
         - luminaries
         - luminaryAffinities
@@ -1658,6 +1836,7 @@ components:
         - version
         - pendingSummonEvents
         - pendingLuminaryActivationEvents
+        - pendingTurnTransition
 
     ActionRequest:
       type: object
@@ -1667,56 +1846,54 @@ components:
         type:
           type: string
           enum:
-            - take_three_crystals
-            - take_two_crystals
-            - reserve_card
-            - purchase_card
-            - purchase_reserved
+            - harness_three_affinities
+            - harness_two_affinities
+            - reserve_artifact
+            - forge_artifact
+            - forge_reserved_artifact
             - pass
             - surrender
             - toggle_luminary_affinity
             - resolve_summon
             - resolve_luminary_activation
             - plan_action
+            - execute_plan
             - cancel_plan
             - tutorial_fast_forward
             - set_civ_name
             - choose_luminary_order
             - assimilate
-        crystals:
-          $ref: "#/components/schemas/CrystalCounts"
-        crystal:
+        affinities:
+          $ref: "#/components/schemas/AffinityCounts"
+        affinity:
           type: string
-          enum: [ruby, sapphire, emerald, onyx, pearl]
+          enum: [flare, continuum, verdance, abyss, radiance]
+          description: Affinity selected for a same-Affinity Harness; legacy Luminary toggle requests are rejected
         cardId:
           type: string
         tier:
           type: integer
         luminaryId:
           type: string
-          description: Luminary ID for toggle_luminary_affinity action
-        affinity:
-          type: string
-          enum: [ruby, sapphire, emerald, onyx, pearl]
-          description: Target affinity for toggle_luminary_affinity action
+          description: Luminary ID for Luminary-specific action payloads
         eventId:
           type: string
           description: Event ID for resolve_summon action
-        returnCrystals:
+        returnAffinities:
           type: object
-          description: Crystals to return when a harvest or reserve would exceed the 10-crystal hand limit (sparse map — only include colors being returned; for reserve_card use exactly 1 total when hand is full)
+          description: Affinities to return when a Harness or reserve would exceed the 10-Affinity holding limit (sparse map — include only the Affinities being returned; for reserve_artifact use exactly 1 total when the holding limit is reached)
           properties:
-            ruby:
+            flare:
               type: integer
-            sapphire:
+            continuum:
               type: integer
-            emerald:
+            verdance:
               type: integer
-            onyx:
+            abyss:
               type: integer
-            pearl:
+            radiance:
               type: integer
-            flux:
+            singularity:
               type: integer
         plannedActionData:
           type: object

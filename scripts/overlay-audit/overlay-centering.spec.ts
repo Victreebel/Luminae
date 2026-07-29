@@ -5,9 +5,9 @@
  * (columns 130–260 of a 390 px wide viewport) on a 390×844 mobile screen:
  *
  *   1. Turn announcement
- *   2. Gem harvest burst
+ *   2. Affinity Harness burst
  *   3. Reserve burst (blind deck reserve)
- *   4. Card-action (forge) burst — the overlay that uses window.innerWidth at runtime
+ *   4. Artifact-forge burst — the overlay that uses window.innerWidth at runtime
  *
  * Run:
  *   pnpm --filter @workspace/scripts exec playwright test \
@@ -147,24 +147,24 @@ test('all four overlays are centered in the middle third of a 390 px viewport', 
     await closePanels(page);
   });
 
-  // ── OVERLAY 2: Gem Harvest Burst ───────────────────────────────────────────
-  await test.step('gem harvest burst overlay is centered', async () => {
-    // Select 3 different affinity crystals in the well, then click Harness.
+  // ── OVERLAY 2: Affinity Harness Burst ──────────────────────────────────────
+  await test.step('Affinity Harness burst overlay is centered', async () => {
+    // Select 3 different Affinities in the Well, then click Harness.
     // The burst fires optimistically on click (before server response).
     await expect(page.locator('text=AFFINITY WELL').first()).toBeVisible({ timeout: 8_000 });
 
-    // Gem buttons: rounded-xl type=button inside the affinity well grid
-    const gemBtns = page
+    // Affinity buttons: rounded-xl type=button inside the Affinity Well grid
+    const affinityButtons = page
       .locator('button[type="button"][class*="rounded-xl"]')
       .filter({ hasNotText: /RESERVE|Forge|Hand|Log|Back/ });
 
-    await expect(gemBtns.first()).toBeVisible({ timeout: 5_000 });
-    const count = await gemBtns.count();
-    expect(count, 'must find at least 3 affinity gem buttons in the well').toBeGreaterThanOrEqual(3);
+    await expect(affinityButtons.first()).toBeVisible({ timeout: 5_000 });
+    const count = await affinityButtons.count();
+    expect(count, 'must find at least 3 Affinity buttons in the Well').toBeGreaterThanOrEqual(3);
 
-    await gemBtns.nth(0).click(); await page.waitForTimeout(120);
-    await gemBtns.nth(1).click(); await page.waitForTimeout(120);
-    await gemBtns.nth(2).click(); await page.waitForTimeout(120);
+    await affinityButtons.nth(0).click(); await page.waitForTimeout(120);
+    await affinityButtons.nth(1).click(); await page.waitForTimeout(120);
+    await affinityButtons.nth(2).click(); await page.waitForTimeout(120);
 
     // Click Harness — burst fires immediately (optimistic render)
     const harness = page.getByText('Harness', { exact: true }).first();
@@ -172,20 +172,20 @@ test('all four overlays are centered in the middle third of a 390 px viewport', 
     await harness.click();
 
     // Burst overlay: "pointer-events-none fixed inset-0 z-50 flex items-center justify-center"
-    const gemOverlay = page.locator(
+    const affinityOverlay = page.locator(
       '.pointer-events-none.fixed.inset-0[class*="z-50"][class*="flex"][class*="justify-center"]',
     );
-    await gemOverlay.waitFor({ state: 'visible', timeout: 3_000 });
+    await affinityOverlay.waitFor({ state: 'visible', timeout: 3_000 });
 
     // Inner content: "relative h-72 w-[18rem]" — 288 px wide, centered by parent flex
-    const content = gemOverlay.locator('div.relative').first();
+    const content = affinityOverlay.locator('div.relative').first();
     await content.waitFor({ state: 'visible', timeout: 2_000 });
     const box = await content.boundingBox();
-    expect(box, 'gem-harvest-burst inner content bounding box must exist').not.toBeNull();
+    expect(box, 'affinity-harness-burst inner content bounding box must exist').not.toBeNull();
 
-    await page.screenshot({ path: `${OUT}/02-gem-burst.png` });
+    await page.screenshot({ path: `${OUT}/02-affinity-burst.png` });
 
-    assertCenterX(box!.x + box!.width / 2, 'gem-harvest-burst content');
+    assertCenterX(box!.x + box!.width / 2, 'affinity-harness-burst content');
 
     // Wait for burst to finish before proceeding
     await page.waitForTimeout(3_600);
@@ -232,22 +232,23 @@ test('all four overlays are centered in the middle third of a 390 px viewport', 
     await closePanels(page);
   });
 
-  // ── OVERLAY 4: Card-Action (Forge) Burst ───────────────────────────────────
-  await test.step('card-action (forge) burst animated card is centered', async () => {
-    // The card-action burst uses window.innerWidth at runtime:
+  // ── OVERLAY 4: Artifact-Forge Burst ────────────────────────────────────────
+  await test.step('Artifact-forge burst animated card is centered', async () => {
+    // The Artifact-forge burst uses window.innerWidth at runtime:
     //   animate.x = window.innerWidth / 2 - cardWidth / 2
     // We verify centering by measuring the card's actual getBoundingClientRect() during animation.
 
-    // Accumulate crystals over 1–3 harvest turns until a market card is affordable.
-    // After the gem burst (turn 1) we have 1+1+1 crystals; after the reserve (turn 3) still 3.
-    // One more harness gives us 2+2+2 = 6 crystals → sufficient for most Tier-1 cards.
+    // Accumulate Affinities over 1–3 Harness turns until a Forge Artifact is affordable.
+    // After the Affinity burst (turn 1) we hold 1+1+1 Affinities; after the reserve
+    // (turn 3) we still hold 3. One more Harness gives us 2+2+2 = 6 Affinities,
+    // sufficient for most Tier I Artifacts.
     let forged = false;
 
     for (let attempt = 0; attempt < 4 && !forged; attempt++) {
       await awaitAndDismissTurnAnnouncement(page, 25_000);
       await page.waitForTimeout(800);
 
-      // Try to forge any visible market card: click it → check forge button
+      // Try to forge any visible Artifact: click it, then check the Forge button.
       const cardEls = page.locator('[data-card-id]');
       const cardCount = await cardEls.count();
 
@@ -289,29 +290,29 @@ test('all four overlays are centered in the middle third of a 390 px viewport', 
       }
 
       if (!forged) {
-        // No affordable card found — harvest crystals and wait for next cycle
+        // No affordable Artifact found: Harness Affinities and wait for the next cycle.
         await closePanels(page);
         await expect(page.locator('text=AFFINITY WELL').first()).toBeVisible({ timeout: 8_000 });
 
-        const gemBtns = page
+        const affinityButtons = page
           .locator('button[type="button"][class*="rounded-xl"]')
           .filter({ hasNotText: /RESERVE|Forge|Hand|Log|Back/ });
-        const gCount = await gemBtns.count();
-        if (gCount >= 3) {
-          await gemBtns.nth(0).click(); await page.waitForTimeout(100);
-          await gemBtns.nth(1).click(); await page.waitForTimeout(100);
-          await gemBtns.nth(2).click(); await page.waitForTimeout(100);
+        const affinityCount = await affinityButtons.count();
+        if (affinityCount >= 3) {
+          await affinityButtons.nth(0).click(); await page.waitForTimeout(100);
+          await affinityButtons.nth(1).click(); await page.waitForTimeout(100);
+          await affinityButtons.nth(2).click(); await page.waitForTimeout(100);
         }
         const harness = page.getByText('Harness', { exact: true }).first();
         if (await harness.count() > 0) {
           await harness.click();
-          await page.waitForTimeout(3_600); // let gem burst finish
+          await page.waitForTimeout(3_600); // let the Affinity burst finish
         }
         await closePanels(page);
       }
     }
 
-    expect(forged, 'must successfully forge a card within 4 harvest–attempt cycles').toBe(true);
+    expect(forged, 'must successfully forge an Artifact within 4 Harness-attempt cycles').toBe(true);
 
     // The card element animates via framer-motion:
     //   style={{ position:'fixed', left:0, top:0, width:startRect.w, height:startRect.h }}
@@ -329,7 +330,7 @@ test('all four overlays are centered in the middle third of a 390 px viewport', 
 
     // ── Measurement A: animated card (runtime window.innerWidth path) ──────
     const cardBurstBox = await page.evaluate((): { x: number; y: number; width: number; height: number } | null => {
-      // The card-action burst container has no flex/justify-center (unlike gem/reserve burst).
+      // The Artifact-forge burst container has no flex/justify-center (unlike the Affinity/reserve bursts).
       // Its animated card is inside a <div style="perspective:900px"> sibling of the avatar section.
       // Find it: fixed, position:fixed, left=0px, small width (< 250 px to exclude full-screen elements).
       const bursts = Array.from(document.querySelectorAll('.pointer-events-none.fixed.inset-0'));

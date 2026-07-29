@@ -9,7 +9,7 @@
  *  luminaryId        — engine ID, matches LUMINARY_VISUALS and gameEngine.ts
  *  displayName       — human-readable Luminary name
  *  domain            — thematic domain, matches engine's LUMINARIES[].domain
- *  affinities        — CrystalColor keys for this Luminary's eligible affinities
+ *  affinities        — stable Affinity keys eligible for this Luminary
  *  primaryColor      — mirrors LUMINARY_VISUALS[id].summonColor (API contract; update both if changed)
  *  secondaryColor    — mirrors LUMINARY_VISUALS[id].summonSecondaryColor (API contract; update both if changed)
  *  animationArchetype — high-level animation identity category
@@ -19,7 +19,7 @@
  *  residueType       — persistent keyword marker placed on cards after the cinematic, if any
  *  flavorLine        — one or two atmospheric sentences
  *
- * Mechanics, costs, scoring, card data: unchanged — this is UI-only metadata.
+ * Mechanics, costs, Eminence rules, and Artifact data are unchanged; this is UI-only metadata.
  */
 
 import type { AnimationTimelineStep, KeywordMarker } from '@/lib/animationProcedure';
@@ -27,17 +27,18 @@ import type { AnimationTimelineStep, KeywordMarker } from '@/lib/animationProced
 // ─── Archetype union ─────────────────────────────────────────────────────────
 
 export type AnimationArchetype =
-  | 'burn'             // one-shot or selective Burn of target cards + market refresh
+  | 'burn'             // one-shot or selective Burn of target Artifacts + Forge refresh
   | 'revealUntil'      // sequential reveal-until: one card at a time, resolve immediately
-  | 'scry'             // deck scry + market reorder shimmer
+  | 'recurrence'       // Burned Artifacts return to their tier Archives
+  | 'scry'             // deck scry + Forge reorder shimmer
   | 'passiveBoon'      // persistent passive bonus on owner (no card residue)
-  | 'globalDisruption' // board-wide negative scoreChange affecting all players
-  | 'thresholdPayoff'  // conditional owner scoreChange when threshold or count met
-  | 'suppression'      // Forgotten or Nullified residue on market cards
-  | 'seeded'           // Seeded residue deferred to deck; badge on market entry
-  | 'replication'      // card copy boon (no direct score delta)
-  | 'crystalReturn'    // crystalReturn from players above threshold
-  | 'condemned'        // two-path: arrival → Condemned residue; start_of_turn → Burn
+  | 'globalDisruption' // board-wide victory requirement or state pressure
+  | 'thresholdPayoff'  // conditional owner eminenceChange when threshold or count met
+  | 'suppression'      // Forgotten or Nullified residue on Forge Artifacts
+  | 'seeded'           // Seeded residue deferred to deck; badge on Forge entry
+  | 'replication'      // Artifact copy boon (no direct Eminence delta)
+  | 'affinityReturn'    // compatibility step for returning Affinities above the limit
+  | 'condemned'        // two-path: arrival → Condemned residue; end_of_turn → Burn
   | 'assimilate';      // pendingAction replaces core action for one turn
 
 // ─── Config type ─────────────────────────────────────────────────────────────
@@ -47,7 +48,7 @@ export interface LuminaryAnimationConfig {
   displayName: string;
   /** Matches the `domain` field in the engine's LUMINARIES array. */
   domain: string;
-  /** CrystalColor keys for this Luminary's eligible affinities (e.g. 'ruby', 'sapphire'). */
+  /** Stable Affinity keys eligible for this Luminary (for example, `flare` or `continuum`). */
   affinities: string[];
   /** Cinematic flash / glow primary color. Mirrors LUMINARY_VISUALS[id].summonColor (API contract). */
   primaryColor: string;
@@ -79,7 +80,7 @@ export const LUMINARY_ANIMATION_CONFIG: Record<string, LuminaryAnimationConfig> 
     luminaryId: 'lum_moth',
     displayName: 'Red Moth',
     domain: 'Rupture',
-    affinities: ['ruby'],
+    affinities: ['flare'],
     primaryColor: '#ef4444',
     secondaryColor: '#7f1d1d',
     animationArchetype: 'burn',
@@ -88,9 +89,9 @@ export const LUMINARY_ANIMATION_CONFIG: Record<string, LuminaryAnimationConfig> 
       { type: 'luminaryPulse', luminaryId: 'lum_moth' },
       { type: 'targetClaim', targetIds: [], keyword: 'burn' },
       { type: 'keywordEvents', events: [{ keyword: 'burn', targetIds: [] }] },
-      { type: 'marketRedraw', slotIds: [] },
+      { type: 'forgeRefill', slotIds: [] },
     ],
-    flavorLine: 'A red wing-shadow sweeps across Tier II and III before the rupture fires — targeted cards split along a fracture line, before and after the burn both briefly visible.',
+    flavorLine: 'A red wing-shadow sweeps across Tier III before the rupture fires — Artifacts costing 4 or less Flare split along a fracture line, then their slots redraw.',
   },
 
   // 2. Tide Architect — The Observer Effect
@@ -98,17 +99,17 @@ export const LUMINARY_ANIMATION_CONFIG: Record<string, LuminaryAnimationConfig> 
     luminaryId: 'lum_tide',
     displayName: 'Tide Architect',
     domain: 'Tides',
-    affinities: ['sapphire'],
+    affinities: ['continuum'],
     primaryColor: '#60a5fa',
     secondaryColor: '#e2e8f0',
     animationArchetype: 'scry',
     effectName: 'The Observer Effect',
     procedureSteps: [
       { type: 'luminaryPulse', luminaryId: 'lum_tide' },
-      { type: 'deckScry', tierIds: ['tier2', 'tier3'], affinityBias: 'sapphire' },
-      { type: 'marketRedraw', slotIds: [] },
+      { type: 'deckScry', tierIds: ['tier2', 'tier3'], affinityBias: 'continuum' },
+      { type: 'forgeRefill', slotIds: [] },
     ],
-    flavorLine: 'Continuum-affinity cards surface through pale blue-white shimmer as the tide looks ahead; the market reorders with quiet inevitability, unhurried.',
+    flavorLine: 'Continuum-affinity Artifacts surface through pale blue-white shimmer as the tide looks ahead; The Forge reorders with quiet inevitability, unhurried.',
   },
 
   // 3. Verdant Oracle — Early Bloom
@@ -116,7 +117,7 @@ export const LUMINARY_ANIMATION_CONFIG: Record<string, LuminaryAnimationConfig> 
     luminaryId: 'lum_verdant',
     displayName: 'Verdant Oracle',
     domain: 'Verdance',
-    affinities: ['emerald'],
+    affinities: ['verdance'],
     primaryColor: '#4ade80',
     secondaryColor: '#166534',
     animationArchetype: 'passiveBoon',
@@ -125,7 +126,7 @@ export const LUMINARY_ANIMATION_CONFIG: Record<string, LuminaryAnimationConfig> 
     procedureSteps: [
       { type: 'luminaryPulse', luminaryId: 'lum_verdant' },
     ],
-    flavorLine: 'A living root-pulse extends quietly around purchase affordances — patient and never explosive; the affinity bonus takes hold the following turn.',
+    flavorLine: 'A living root-pulse extends quietly around forge affordances — patient and never explosive; the affinity bonus takes hold the following turn.',
   },
 
   // 4. Void Warden — Oblivion
@@ -133,7 +134,7 @@ export const LUMINARY_ANIMATION_CONFIG: Record<string, LuminaryAnimationConfig> 
     luminaryId: 'lum_void',
     displayName: 'Void Warden',
     domain: 'Void',
-    affinities: ['onyx'],
+    affinities: ['abyss'],
     primaryColor: '#4c1d95',
     secondaryColor: '#0a0a14',
     animationArchetype: 'globalDisruption',
@@ -141,9 +142,9 @@ export const LUMINARY_ANIMATION_CONFIG: Record<string, LuminaryAnimationConfig> 
     procedureSteps: [
       { type: 'luminaryPulse', luminaryId: 'lum_void' },
       { type: 'targetClaim', targetIds: [] },
-      { type: 'scoreChange', playerIds: [], amount: -4 },
+      { type: 'victoryRequirementChange', amount: 5 },
     ],
-    flavorLine: 'A silent dark ripple spreads board-wide — the warden watches from a distance, and Eminence counters begin falling as if swallowed by the emptiness between stars.',
+    flavorLine: 'A silent dark ripple spreads board-wide — the warden watches from a distance, and the victory line recedes into the emptiness between stars.',
   },
 
   // 5. Concordance Mandala — Perfect Coherence
@@ -151,7 +152,7 @@ export const LUMINARY_ANIMATION_CONFIG: Record<string, LuminaryAnimationConfig> 
     luminaryId: 'lum_radiant',
     displayName: 'Concordance Mandala',
     domain: 'Coherence',
-    affinities: ['pearl'],
+    affinities: ['radiance'],
     primaryColor: '#fef9c3',
     secondaryColor: '#2ecc71',
     animationArchetype: 'thresholdPayoff',
@@ -159,35 +160,27 @@ export const LUMINARY_ANIMATION_CONFIG: Record<string, LuminaryAnimationConfig> 
     procedureSteps: [
       { type: 'luminaryPulse', luminaryId: 'lum_radiant' },
       { type: 'targetClaim', targetIds: [] },
-      { type: 'scoreChange', playerIds: [], amount: 2 },
+      { type: 'eminenceChange', playerIds: [], amount: 2 },
     ],
     flavorLine: 'Radiance artifacts briefly align into geometric mandala light before the coherence payoff resolves — the once-used marker appears small and elegant at the center.',
   },
 
-  // 6. Phoenix Paradox — Ash-Seeking Recurrence
+  // 6. Phoenix Paradox — Eternal Recurrence
   lum_astral: {
     luminaryId: 'lum_astral',
     displayName: 'Phoenix Paradox',
     domain: 'Recurrence',
-    affinities: ['ruby', 'sapphire'],
+    affinities: ['flare', 'continuum'],
     primaryColor: '#f43f5e',
     secondaryColor: '#3d6bff',
-    animationArchetype: 'revealUntil',
-    effectName: 'Ash-Seeking Recurrence',
+    animationArchetype: 'recurrence',
+    effectName: 'Eternal Recurrence',
     procedureSteps: [
       { type: 'luminaryPulse', luminaryId: 'lum_astral' },
-      // Sequential reveal-until: each non-matching card is revealed and burned
-      // immediately, one by one, until a Flare/Continuum card is found.
-      // The resolver emits [reveal, burn, reveal, burn, ...] pairs from live state.
-      { type: 'reveal', cardIds: [], tier: 3, stopCondition: 'Flare or Continuum' },
-      { type: 'keywordEvent', keyword: 'burn', targetIds: [] },
-      { type: 'reveal', cardIds: [], tier: 2, stopCondition: 'Flare or Continuum' },
-      { type: 'keywordEvent', keyword: 'burn', targetIds: [] },
-      // Final survivor pulse: the matching card locks into place
-      { type: 'targetClaim', targetIds: [] },
-      { type: 'marketRedraw', slotIds: [] },
+      { type: 'archiveReturn', cardIds: [] },
+      { type: 'forgeRefill', slotIds: [] },
     ],
-    flavorLine: 'Cards are revealed one by one from Tier III then Tier II. Each non-Flare/Continuum card burns immediately and the next is revealed. When a matching card appears, it pulses red-blue and locks into place — the suspense is in the one-by-one check, not the batch.',
+    flavorLine: 'Flare consumes without erasing; Continuum bends the ashes backward. Burned Artifacts rise from the pile and stream into their corresponding Archive spires before the restored Forge positions awaken.',
   },
 
   // 7. Catalyst Bloom — Aftergrowth
@@ -195,7 +188,7 @@ export const LUMINARY_ANIMATION_CONFIG: Record<string, LuminaryAnimationConfig> 
     luminaryId: 'lum_bloom',
     displayName: 'Catalyst Bloom',
     domain: 'Aftergrowth',
-    affinities: ['ruby', 'emerald'],
+    affinities: ['flare', 'verdance'],
     primaryColor: '#86efac',
     secondaryColor: '#7f1d1d',
     animationArchetype: 'thresholdPayoff',
@@ -203,12 +196,12 @@ export const LUMINARY_ANIMATION_CONFIG: Record<string, LuminaryAnimationConfig> 
     procedureSteps: [
       { type: 'luminaryPulse', luminaryId: 'lum_bloom' },
       { type: 'targetClaim', targetIds: [] },
-      // amount is dynamic (burnPile.length at payout time); scoreChange is omitted
+      // amount is dynamic (the engine's Burn accumulator at payout time); the step is omitted
       // entirely when burnCount === 0 (see resolveBloom in luminaryAnimationProcedures.ts)
-      // to avoid showing "+0 EMN" when the Burn Pile is empty.
-      { type: 'scoreChange', playerIds: [], amount: 0 },
+      // to avoid showing "+0 EMN" when no Burns were tracked.
+      { type: 'eminenceChange', playerIds: [], amount: 0 },
     ],
-    flavorLine: 'Prior burn cinders transform into green growth sparks — the owner gains Eminence proportional to the accumulated burn pile without replaying individual burns.',
+    flavorLine: 'Prior burn cinders transform into green growth sparks — the owner gains Eminence from the tracked Burns without replaying them individually.',
   },
 
   // 8. Iron Harbinger — Impact Extinction
@@ -216,7 +209,7 @@ export const LUMINARY_ANIMATION_CONFIG: Record<string, LuminaryAnimationConfig> 
     luminaryId: 'lum_forge',
     displayName: 'Iron Harbinger',
     domain: 'Ruin',
-    affinities: ['ruby', 'onyx'],
+    affinities: ['flare', 'abyss'],
     primaryColor: '#f97316',
     secondaryColor: '#1c1917',
     animationArchetype: 'burn',
@@ -225,18 +218,18 @@ export const LUMINARY_ANIMATION_CONFIG: Record<string, LuminaryAnimationConfig> 
       { type: 'luminaryPulse', luminaryId: 'lum_forge' },
       { type: 'targetClaim', targetIds: [], keyword: 'burn' },
       { type: 'keywordEvents', events: [{ keyword: 'burn', targetIds: [] }] },
-      { type: 'marketRedraw', slotIds: [] },
+      { type: 'forgeRefill', slotIds: [] },
     ],
-    flavorLine: 'A hammer-shadow descends across the Tier III row before the Burn fires — every card falls in the same moment; the mass extinction is fast and unambiguous.',
+    flavorLine: 'A hammer-shadow descends across the Tier III row before the Burn fires — every Artifact falls in the same moment; the mass extinction is fast and unambiguous.',
   },
 
-  // 9. The Hourless Compass — The Forgotten Hour
+  // 9. ??? — The Forgotten Hour
   lum_compass: {
     luminaryId: 'lum_compass',
-    displayName: 'The Hourless Compass',
+    displayName: '???',
     domain: 'Erasure',
-    affinities: ['sapphire', 'onyx'],
-    primaryColor: '#38bdf8',
+    affinities: ['continuum', 'abyss'],
+    primaryColor: '#2563eb',
     secondaryColor: '#0a0a14',
     animationArchetype: 'suppression',
     effectName: 'The Forgotten Hour',
@@ -244,10 +237,10 @@ export const LUMINARY_ANIMATION_CONFIG: Record<string, LuminaryAnimationConfig> 
       { type: 'luminaryPulse', luminaryId: 'lum_compass' },
       { type: 'deckScry', tierIds: ['tier1', 'tier2', 'tier3'] },
       { type: 'targetClaim', targetIds: [] },
-      { type: 'residue', keyword: 'forgotten', targetIds: [] },
+      { type: 'residue', keyword: 'forgotten', targetIds: [], victoryRequirementChange: 1 },
     ],
     residueType: 'forgotten',
-    flavorLine: 'A compass-needle sweep scans all tiers before the broken hour-ring descends — Eminence icons on every market card fade into blue-black haze, not destroyed, just lost in time.',
+    flavorLine: 'The broken hour-ring descends with the Forgotten brand — the victory requirement rises by 1 as every face-up Artifact loses its Eminence.',
   },
 
   // 10. Seed Beyond Seasons — Avatar Seeds
@@ -255,7 +248,7 @@ export const LUMINARY_ANIMATION_CONFIG: Record<string, LuminaryAnimationConfig> 
     luminaryId: 'lum_seed',
     displayName: 'Seed Beyond Seasons',
     domain: 'Propagation',
-    affinities: ['sapphire', 'emerald'],
+    affinities: ['continuum', 'verdance'],
     primaryColor: '#38bdf8',
     secondaryColor: '#4ade80',
     animationArchetype: 'seeded',
@@ -266,7 +259,7 @@ export const LUMINARY_ANIMATION_CONFIG: Record<string, LuminaryAnimationConfig> 
       { type: 'residue', keyword: 'seeded', targetIds: [] },
     ],
     residueType: 'seeded',
-    flavorLine: 'Blue-green seed glyphs plant silently onto deck tops across all tiers; when a seeded card surfaces into the market, the seed marker quietly wakes.',
+    flavorLine: 'Blue-green seed glyphs settle into every Archive; when a seeded Artifact manifests in The Forge, the marker quietly wakes.',
   },
 
   // 11. Glass Orchard — Perfect Replication
@@ -274,12 +267,12 @@ export const LUMINARY_ANIMATION_CONFIG: Record<string, LuminaryAnimationConfig> 
     luminaryId: 'lum_orchard',
     displayName: 'Glass Orchard',
     domain: 'Replication',
-    affinities: ['emerald', 'pearl'],
+    affinities: ['verdance', 'radiance'],
     primaryColor: '#4ade80',
     secondaryColor: '#fef9c3',
     animationArchetype: 'replication',
     effectName: 'Perfect Replication',
-    // No scoreChange — +0 EMN was misleading; CLAIM + boon ConsequenceSnap communicates the copy
+    // No eminenceChange — +0 EMN was misleading; CLAIM + boon ConsequenceSnap communicates the copy
     procedureSteps: [
       { type: 'luminaryPulse', luminaryId: 'lum_orchard' },
       { type: 'targetClaim', targetIds: [] },
@@ -292,27 +285,27 @@ export const LUMINARY_ANIMATION_CONFIG: Record<string, LuminaryAnimationConfig> 
     luminaryId: 'lum_pale',
     displayName: 'Pale Merchant',
     domain: 'Balance',
-    affinities: ['onyx', 'pearl'],
+    affinities: ['abyss', 'radiance'],
     primaryColor: '#cbd5e1',
     secondaryColor: '#0a0a14',
-    animationArchetype: 'crystalReturn',
+    animationArchetype: 'affinityReturn',
     effectName: 'Balance Due',
     procedureSteps: [
       { type: 'luminaryPulse', luminaryId: 'lum_pale' },
       { type: 'targetClaim', targetIds: [] },
-      { type: 'crystalReturn', playerIds: [] },
+      { type: 'affinityReturn', playerIds: [] },
     ],
-    flavorLine: 'Pale scales briefly appear over overloaded crystal pools; excess crystals visibly return to the bank — the debt is settled cleanly, without negotiation.',
+    flavorLine: 'Pale scales briefly appear over overloaded Affinity channels; excess Affinity visibly returns to the Well — the debt is settled cleanly, without negotiation.',
   },
 
   // 13. Ember Sovereign — Cinder Mandate
   // Primary path (arrival): marks non-immune cards as Condemned.
-  // Secondary path (start_of_turn): Condemned cards burn — handled by the resolver.
+  // Secondary path (end_of_turn): Condemned cards burn — handled by the resolver.
   lum_ember: {
     luminaryId: 'lum_ember',
     displayName: 'Ember Sovereign',
     domain: 'Flame',
-    affinities: ['ruby', 'onyx', 'pearl'],
+    affinities: ['flare', 'abyss', 'radiance'],
     primaryColor: '#ff5a3c',
     secondaryColor: '#7b1fa2',
     animationArchetype: 'condemned',
@@ -323,15 +316,15 @@ export const LUMINARY_ANIMATION_CONFIG: Record<string, LuminaryAnimationConfig> 
       { type: 'residue', keyword: 'condemned', targetIds: [] },
     ],
     residueType: 'condemned',
-    flavorLine: 'An ember mandate brands each Artifact whose forge cost lacks 3 or more Flare, Abyss, or Radiance — the Condemned mark pulses with deferred menace; at the start of the appointed turn, the sentence executes without appeal.',
+    flavorLine: 'An ember mandate brands each Artifact whose forge cost lacks 3 or more Flare, Abyss, or Radiance — the Condemned mark pulses with deferred menace; at the end of the appointed turn, the sentence executes without appeal.',
   },
 
-  // 14. First Hunger — Assimilation
+  // 14. Final Hunger — Assimilation
   lum_hunger: {
     luminaryId: 'lum_hunger',
-    displayName: 'First Hunger',
+    displayName: 'Final Hunger',
     domain: 'Assimilation',
-    affinities: ['ruby', 'emerald', 'pearl'],
+    affinities: ['flare', 'verdance', 'radiance'],
     primaryColor: '#fbbf24',
     secondaryColor: '#4ade80',
     animationArchetype: 'assimilate',
@@ -349,7 +342,7 @@ export const LUMINARY_ANIMATION_CONFIG: Record<string, LuminaryAnimationConfig> 
     luminaryId: 'lum_null',
     displayName: 'Null Sovereign',
     domain: 'Transcendence',
-    affinities: ['sapphire', 'onyx', 'pearl'],
+    affinities: ['continuum', 'abyss', 'radiance'],
     primaryColor: '#ffffff',
     secondaryColor: '#0a0a14',
     animationArchetype: 'suppression',
@@ -360,7 +353,7 @@ export const LUMINARY_ANIMATION_CONFIG: Record<string, LuminaryAnimationConfig> 
       { type: 'residue', keyword: 'nullified', targetIds: [] },
     ],
     residueType: 'nullified',
-    flavorLine: 'Cold black-white domain seals descend onto Tier III cards — Eminence icons feel silenced, not destroyed; the authority is absolute and arrives without ceremony.',
+    flavorLine: 'Cold black-white domain seals descend onto Tier III Artifacts — Eminence icons feel silenced, not destroyed; the authority is absolute and arrives without ceremony.',
   },
 
 };

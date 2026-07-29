@@ -1,26 +1,58 @@
-import { useState, useEffect, useRef } from 'react';
-import { useLocation } from 'wouter';
-import { AnimatePresence, motion } from 'framer-motion';
+import { useState, useEffect, useRef, type CSSProperties } from "react";
+import { useLocation } from "wouter";
+import { AnimatePresence, motion } from "framer-motion";
 import {
   LuminaryArrivalCutscene,
-  LuminaryIdleOverlay,
   getLuminaryVisuals,
-} from '@/lib/luminaryAssets';
-import { LuminaryActivationCinematic } from '@/components/LuminaryActivationCinematic';
-import { CipherApertureAnimation, PHASE_DUR } from '@/components/CipherApertureAnimation';
-import { ForgeAnimation, OpponentForgeAnimation, FORGE_PHASE_MS } from './game-forge-animation';
-import { BurnPileParticle, CardMarkerBadge, BurnFlash, CardKeywordOverlay, ArrivalBrandStrike } from './game-luminary-effects';
-import type { BrandStrikeTarget } from './game-luminary-effects';
-import { CIPHER_MODE_TOTAL_MS, type CipherApertureMode, DEAL_ANIM_MS } from './game-constants';
-import { ArtifactCardView, EminenceDiamond } from './game-card';
-import { CardBackTier1, CardBackTier2, CardBackTier3 } from '@/components/ArtifactCardBack';
-import { GEM_META, GEM_KEYS, type GemKey } from '@/lib/gemMeta';
-import { type ArtifactCard, type GameState, ArtifactCardBonusColor } from '@workspace/api-client-react';
-import { gameAudio } from '@/lib/audio';
-import { resolveLuminaryProcedure } from '@/lib/luminaryAnimationProcedures';
-import { LUMINARY_ANIMATION_CONFIG } from '@/lib/luminaryAnimationConfig';
-import type { AnimationTimelineStep } from '@/lib/animationProcedure';
-import { MOCK_PROCEDURE_STATES } from './mockProcedureStates';
+} from "@/lib/luminaryAssets";
+import { LuminaryActivationCinematic } from "@/components/LuminaryActivationCinematic";
+import {
+  CipherApertureAnimation,
+  PHASE_DUR,
+} from "@/components/CipherApertureAnimation";
+import {
+  ForgeAnimation,
+  OpponentForgeAnimation,
+  FORGE_PHASE_MS,
+} from "./game-forge-animation";
+import {
+  BurnPileParticle,
+  BurnFlash,
+  CardKeywordOverlay,
+  ArrivalBrandStrike,
+} from "./game-luminary-effects";
+import type { BrandStrikeTarget } from "./game-luminary-effects";
+import {
+  CIPHER_MODE_TOTAL_MS,
+  type CipherApertureMode,
+  DEAL_ANIM_MS,
+} from "./game-constants";
+import { ArtifactCardView, EminenceDiamond } from "./game-card";
+import { LuminaryCard } from "./game-luminary";
+import {
+  CardBackTier1,
+  CardBackTier2,
+  CardBackTier3,
+} from "@/components/ArtifactCardBack";
+import {
+  AFFINITY_META,
+  AFFINITY_KEYS,
+  type AffinityKey,
+} from "@/lib/affinityMeta";
+import {
+  type ArtifactCard,
+  type AffinityCounts,
+  type GamePlayerState,
+  type GameState,
+  type Luminary,
+  type LuminaryActiveState,
+  ArtifactCardBonusAffinity,
+} from "@workspace/api-client-react";
+import { gameAudio } from "@/lib/audio";
+import { resolveLuminaryProcedure } from "@/lib/luminaryAnimationProcedures";
+import { LUMINARY_ANIMATION_CONFIG } from "@/lib/luminaryAnimationConfig";
+import type { AnimationTimelineStep } from "@/lib/animationProcedure";
+import { MOCK_PROCEDURE_STATES } from "./mockProcedureStates";
 
 // ─── Sandbox Luminary Catalog ─────────────────────────────────────────────────
 
@@ -28,106 +60,344 @@ interface SandboxLuminary {
   id: string;
   name: string;
   domain: string;
-  lumens: number;
+  eminence: number;
   flavor: string;
 }
 
 const SANDBOX_LUMINARIES: SandboxLuminary[] = [
-  { id: 'lum_ember',   name: 'The Ember Sovereign',     domain: 'Flame',        lumens: 4, flavor: 'What cannot survive the fire is granted the mercy of disappearance.' },
-  { id: 'lum_tide',    name: 'The Tide Architect',      domain: 'Tides',        lumens: 2, flavor: 'Possibility collapses to its bias.' },
-  { id: 'lum_verdant', name: 'The Verdant Oracle',      domain: 'Verdance',     lumens: 2, flavor: 'It answers only after the question has taken root.' },
-  { id: 'lum_void',    name: 'The Void Warden',         domain: 'Void',         lumens: 0, flavor: 'In the space between stars, something watches without eyes.' },
-  { id: 'lum_radiant', name: 'Concordance Mandala',     domain: 'Coherence',    lumens: 2, flavor: 'Truth is not revealed. It is aligned.' },
-  { id: 'lum_astral',  name: 'Phoenix Paradox',         domain: 'Recurrence',   lumens: 3, flavor: 'Every ending becomes fuel. Every return comes back less innocent.' },
-  { id: 'lum_bloom',   name: 'Catalyst Bloom',          domain: 'Aftergrowth',  lumens: 3, flavor: 'It waits for the nova to wound the world, then flowers in the scar.' },
-  { id: 'lum_forge',   name: 'The Iron Harbinger',      domain: 'Ruin',         lumens: 3, flavor: 'The hammer falls only after the future has already broken.' },
-  { id: 'lum_compass', name: '???',                     domain: 'Erasure',      lumens: 3, flavor: 'Everyone remembered something happened, but no one can recall what was lost.' },
-  { id: 'lum_pale',    name: 'The Pale Merchant',       domain: 'Balance',      lumens: 3, flavor: 'Every bargain reveals one truth and buries another.' },
-  { id: 'lum_oracle',  name: 'The Cosmic Oracle',       domain: 'Prophecy',     lumens: 4, flavor: 'She sees what will be, and what might have been, and cannot tell the difference.' },
-  { id: 'lum_null',    name: 'The Null Sovereign',      domain: 'Transcendence',lumens: 0, flavor: 'Past the last observable star, entire futures fall silent without being destroyed.' },
-  { id: 'lum_hunger',  name: 'The First Hunger',        domain: 'Assimilation', lumens: 2, flavor: 'Its first act is consumption. Its second is perfect repetition.' },
-  { id: 'lum_moth',    name: 'Red Moth',                domain: 'Rupture',      lumens: 2, flavor: 'Where it passes, the universe is divided into before and after.' },
-  { id: 'lum_seed',    name: 'The Seed Beyond Seasons', domain: 'Propagation',  lumens: 3, flavor: 'It leaves its avatars where tomorrow has already begun to remember.' },
-  { id: 'lum_orchard', name: 'The Glass Orchard',        domain: 'Replication',  lumens: 3, flavor: 'It learned to copy itself perfectly, and called the absence of error peace.' },
+  {
+    id: "lum_ember",
+    name: "The Ember Sovereign",
+    domain: "Flame",
+    eminence: 4,
+    flavor:
+      "What cannot survive the fire is granted the mercy of disappearance.",
+  },
+  {
+    id: "lum_tide",
+    name: "The Tide Architect",
+    domain: "Tides",
+    eminence: 2,
+    flavor: "Possibility collapses to its bias.",
+  },
+  {
+    id: "lum_verdant",
+    name: "The Verdant Oracle",
+    domain: "Verdance",
+    eminence: 1,
+    flavor: "It answers only after the question has taken root.",
+  },
+  {
+    id: "lum_void",
+    name: "The Void Warden",
+    domain: "Void",
+    eminence: 0,
+    flavor: "In the space between stars, something watches without eyes.",
+  },
+  {
+    id: "lum_radiant",
+    name: "Concordance Mandala",
+    domain: "Coherence",
+    eminence: 3,
+    flavor: "Truth is not revealed. It is aligned.",
+  },
+  {
+    id: "lum_astral",
+    name: "Phoenix Paradox",
+    domain: "Recurrence",
+    eminence: 4,
+    flavor: "Every ending becomes fuel. Every return comes back less innocent.",
+  },
+  {
+    id: "lum_bloom",
+    name: "Catalyst Bloom",
+    domain: "Aftergrowth",
+    eminence: 4,
+    flavor:
+      "It waits for the nova to wound the world, then flowers in the scar.",
+  },
+  {
+    id: "lum_forge",
+    name: "The Iron Harbinger",
+    domain: "Ruin",
+    eminence: 3,
+    flavor: "The hammer falls only after the future has already broken.",
+  },
+  {
+    id: "lum_compass",
+    name: "???",
+    domain: "Erasure",
+    eminence: 0,
+    flavor:
+      "Everyone remembers something happened, but no one recalls what was lost.",
+  },
+  {
+    id: "lum_pale",
+    name: "The Pale Merchant",
+    domain: "Balance",
+    eminence: 3,
+    flavor: "Every bargain reveals one truth and buries another.",
+  },
+  {
+    id: "lum_oracle",
+    name: "The Cosmic Oracle",
+    domain: "Prophecy",
+    eminence: 4,
+    flavor:
+      "She sees what will be, and what might have been, and cannot tell the difference.",
+  },
+  {
+    id: "lum_null",
+    name: "The Null Sovereign",
+    domain: "Transcendence",
+    eminence: 0,
+    flavor:
+      "Past the last observable star, entire futures fall silent without being destroyed.",
+  },
+  {
+    id: "lum_hunger",
+    name: "The Final Hunger",
+    domain: "Assimilation",
+    eminence: 2,
+    flavor: "Its first act is consumption. Its second is perfect repetition.",
+  },
+  {
+    id: "lum_moth",
+    name: "Red Moth",
+    domain: "Rupture",
+    eminence: 2,
+    flavor: "Where it passes, the universe is divided into before and after.",
+  },
+  {
+    id: "lum_seed",
+    name: "The Seed Beyond Seasons",
+    domain: "Propagation",
+    eminence: 3,
+    flavor:
+      "It leaves its avatars where tomorrow has already begun to remember.",
+  },
+  {
+    id: "lum_orchard",
+    name: "The Glass Orchard",
+    domain: "Replication",
+    eminence: 3,
+    flavor:
+      "It learned to copy itself perfectly, and called the absence of error peace.",
+  },
 ];
+
+type LuminaryAffinityKey = Exclude<AffinityKey, "singularity">;
+
+const EMPTY_COUNTS: AffinityCounts = {
+  flare: 0,
+  continuum: 0,
+  verdance: 0,
+  abyss: 0,
+  radiance: 0,
+  singularity: 0,
+};
+
+const SANDBOX_LUMINARY_AFFINITY: Record<string, LuminaryAffinityKey> = {
+  lum_ember: "flare",
+  lum_tide: "continuum",
+  lum_verdant: "verdance",
+  lum_void: "abyss",
+  lum_radiant: "radiance",
+  lum_astral: "flare",
+  lum_bloom: "verdance",
+  lum_forge: "flare",
+  lum_compass: "continuum",
+  lum_pale: "radiance",
+  lum_oracle: "radiance",
+  lum_null: "abyss",
+  lum_hunger: "abyss",
+  lum_moth: "flare",
+  lum_seed: "verdance",
+  lum_orchard: "verdance",
+};
+
+function makeSandboxClaimedLuminary(lum: SandboxLuminary): Luminary {
+  const vis = getLuminaryVisuals(lum.id);
+  const activeAffinity = SANDBOX_LUMINARY_AFFINITY[lum.id] ?? "radiance";
+  return {
+    id: lum.id,
+    name: lum.name,
+    domain: lum.domain,
+    eminence: lum.eminence,
+    requirements: {
+      ...EMPTY_COUNTS,
+      [activeAffinity]: Math.max(1, Math.min(4, lum.eminence || 2)),
+    },
+    flavor: lum.flavor,
+    summonColor: vis.primaryColor,
+    summonSecondaryColor: vis.glowColor,
+    auraStyle: vis.auraStyle,
+    effectName: lum.domain,
+    effectDescription: lum.flavor,
+  };
+}
+
+function makeSandboxLuminaryAffinity(
+  lum: SandboxLuminary,
+): LuminaryActiveState {
+  const activeAffinity = SANDBOX_LUMINARY_AFFINITY[lum.id] ?? "radiance";
+  return {
+    luminaryId: lum.id,
+    ownerId: "preview-player",
+    activeAffinity,
+    eligibleAffinities: [activeAffinity],
+    summonedAtTurnCount: 0,
+  };
+}
+
+const SANDBOX_PLAYER: GamePlayerState = {
+  playerId: "preview-player",
+  playerName: "Preview Player",
+  avatarId: null,
+  isAi: false,
+  aiDifficulty: null,
+  affinities: { ...EMPTY_COUNTS },
+  bonuses: { ...EMPTY_COUNTS },
+  eminence: 0,
+  reservedArtifacts: [],
+  forgedArtifactIds: [],
+  discountedForgeIds: [],
+  forgedArtifacts: [],
+  isConnected: true,
+  claimedLuminaryIds: [],
+  plannedAction: null,
+  plannedActionCancelReason: null,
+  civName: "Preview Civilization",
+};
 
 // ─── Luminary Mode ────────────────────────────────────────────────────────────
 
-type SandboxMode = 'arrival' | 'idle' | 'activation';
+type SandboxMode = "arrival" | "idle" | "activation";
 
 const MODES: { id: SandboxMode; label: string }[] = [
-  { id: 'activation', label: 'Activation' },
-  { id: 'idle',       label: 'Idle Portal' },
-  { id: 'arrival',     label: 'Arrival Flash' },
+  { id: "activation", label: "Activation Effect" },
+  { id: "idle", label: "Summoned Luminary" },
+  { id: "arrival", label: "Summon Cutscene" },
 ];
+
+const LUMINARY_PRODUCTION_PATHS: Record<SandboxMode, string> = {
+  arrival: "Production path: LuminaryArrivalCutscene",
+  activation: "Production path: LuminaryActivationCinematic",
+  idle: "Production path: LuminaryClaimedPortal",
+};
+
+function formatBuildStamp(stamp: string) {
+  const timestamp = Date.parse(stamp);
+  if (Number.isNaN(timestamp)) return stamp;
+
+  return new Intl.DateTimeFormat(undefined, {
+    month: "2-digit",
+    day: "2-digit",
+    hour: "2-digit",
+    minute: "2-digit",
+    second: "2-digit",
+  }).format(new Date(timestamp));
+}
+
+const SANDBOX_BUILD_LABEL =
+  __LUMINAE_BUILD_LABEL__ === __LUMINAE_BUILD_STAMP__
+    ? formatBuildStamp(__LUMINAE_BUILD_STAMP__)
+    : `${__LUMINAE_BUILD_LABEL__} · ${formatBuildStamp(__LUMINAE_BUILD_STAMP__)}`;
 
 // ─── Card FX Mode ─────────────────────────────────────────────────────────────
 
-type CardFxMode = 'cipher_reserve' | 'forge_burst' | 'opponent_forge' | 'reserved_forge_ring' | 'market_deal_flip' | 'burn_pile_particle';
+type CardFxMode =
+  | "cipher_reserve"
+  | "forge_burst"
+  | "opponent_forge"
+  | "reserved_forge_ring"
+  | "forge_refill_flip"
+  | "burn_pile_particle";
 
 const CARD_FX_MODES: { id: CardFxMode; label: string }[] = [
-  { id: 'cipher_reserve',       label: 'Cipher Reserve' },
-  { id: 'forge_burst',          label: 'Forge Burst' },
-  { id: 'opponent_forge',       label: 'Opponent Forge' },
-  { id: 'reserved_forge_ring',  label: 'Reserved Ring' },
-  { id: 'market_deal_flip',     label: 'Market Flip' },
-  { id: 'burn_pile_particle',   label: 'Burn → Pile' },
+  { id: "cipher_reserve", label: "Cipher Encrypt" },
+  { id: "forge_burst", label: "Forge Burst" },
+  { id: "opponent_forge", label: "Opponent Forge" },
+  { id: "reserved_forge_ring", label: "Encrypted Forge Ring" },
+  { id: "forge_refill_flip", label: "Forge Refill Flip" },
+  { id: "burn_pile_particle", label: "Burn → Pile" },
 ];
 
 // ─── Keyword FX Mode ──────────────────────────────────────────────────────────
 
-type KeywordFxMode = 'burn_flash' | 'keyword_states' | 'brand_strike';
+type KeywordFxMode = "burn_flash" | "keyword_states" | "brand_strike";
 
 const KEYWORD_FX_MODES: { id: KeywordFxMode; label: string }[] = [
-  { id: 'brand_strike',   label: 'Brand Strike' },
-  { id: 'burn_flash',     label: 'BurnFlash' },
-  { id: 'keyword_states', label: 'Keyword States' },
+  { id: "brand_strike", label: "Brand Strike" },
+  { id: "burn_flash", label: "BurnFlash" },
+  { id: "keyword_states", label: "Keyword States" },
 ];
 
 // ─── Card FX Helpers ──────────────────────────────────────────────────────────
 
-const AFFINITY_OPTIONS: { key: GemKey; label: string }[] = GEM_KEYS.map(k => ({
-  key: k,
-  label: GEM_META[k].name,
-}));
+const AFFINITY_OPTIONS: { key: AffinityKey; label: string }[] =
+  AFFINITY_KEYS.map((k) => ({
+    key: k,
+    label: AFFINITY_META[k].name,
+  }));
 
-function makeMockCard(tier: 1 | 2 | 3, affinity: GemKey): ArtifactCard {
-  const names: Record<GemKey, string> = {
-    ruby:     'Ember Conduit',
-    pearl:    'Crystal Lens',
-    emerald:  'Root Nexus',
-    sapphire: 'Time Lattice',
-    onyx:     'Void Shard',
-    flux:     'Singularity Node',
+function makeMockCard(tier: 1 | 2 | 3, affinity: AffinityKey): ArtifactCard {
+  const names: Record<AffinityKey, string> = {
+    flare: "Ember Conduit",
+    radiance: "Crystal Lens",
+    verdance: "Root Nexus",
+    continuum: "Time Lattice",
+    abyss: "Void Shard",
+    singularity: "Singularity Node",
   };
-  const cost: Record<GemKey, number> = { ruby: 0, pearl: 0, emerald: 0, sapphire: 0, onyx: 0, flux: 0 };
-  if (affinity === 'flux') { cost.flux = 1; cost.ruby = tier; }
-  else { cost[affinity] = 2 + tier; }
+  const cost: Record<AffinityKey, number> = {
+    flare: 0,
+    radiance: 0,
+    verdance: 0,
+    continuum: 0,
+    abyss: 0,
+    singularity: 0,
+  };
+  if (affinity === "singularity") {
+    cost.singularity = 1;
+    cost.flare = tier;
+  } else {
+    cost[affinity] = 2 + tier;
+  }
 
-  // flux is not a valid ArtifactCardBonusColor (cards can't give flux as a bonus);
-  // fall back to ruby for the mock so the card renders correctly.
-  const bonusColor = affinity === 'flux'
-    ? ArtifactCardBonusColor.ruby
-    : ArtifactCardBonusColor[affinity as keyof typeof ArtifactCardBonusColor];
+  // singularity is not a valid ArtifactCardBonusAffinity (cards can't give singularity as a bonus);
+  // fall back to flare for the mock so the card renders correctly.
+  const bonusAffinity =
+    affinity === "singularity"
+      ? ArtifactCardBonusAffinity.flare
+      : ArtifactCardBonusAffinity[
+          affinity as keyof typeof ArtifactCardBonusAffinity
+        ];
 
   return {
     id: `mock-${affinity}-t${tier}`,
     tier,
-    bonusColor,
-    lumens: tier,
+    bonusAffinity,
+    eminence: tier,
     cost,
     name: names[affinity],
-    flavor: 'A mock artifact for sandbox testing.',
+    flavor: "A mock artifact for sandbox testing.",
   };
 }
 
 // ─── Shared control primitives ────────────────────────────────────────────────
 
-function AffinityPicker({ value, onChange }: { value: GemKey; onChange: (k: GemKey) => void }) {
+function AffinityPicker({
+  value,
+  onChange,
+}: {
+  value: AffinityKey;
+  onChange: (k: AffinityKey) => void;
+}) {
   return (
     <div className="flex flex-wrap gap-1.5 items-center">
       {AFFINITY_OPTIONS.map(({ key, label }) => {
-        const meta = GEM_META[key];
+        const meta = AFFINITY_META[key];
         const active = value === key;
         return (
           <button
@@ -137,10 +407,10 @@ function AffinityPicker({ value, onChange }: { value: GemKey; onChange: (k: GemK
             className="text-[10px] font-mono px-2 py-0.5 rounded transition-colors"
             style={{
               borderWidth: 1,
-              borderStyle: 'solid',
-              borderColor: active ? meta.hex : 'rgba(255,255,255,0.15)',
-              background:  active ? `${meta.hex}22` : 'transparent',
-              color:       active ? meta.hex : '#64748b',
+              borderStyle: "solid",
+              borderColor: active ? meta.hex : "rgba(255,255,255,0.15)",
+              background: active ? `${meta.hex}22` : "transparent",
+              color: active ? meta.hex : "#64748b",
             }}
           >
             {label}
@@ -151,19 +421,25 @@ function AffinityPicker({ value, onChange }: { value: GemKey; onChange: (k: GemK
   );
 }
 
-function TierPicker({ value, onChange }: { value: 1 | 2 | 3; onChange: (t: 1 | 2 | 3) => void }) {
+function TierPicker({
+  value,
+  onChange,
+}: {
+  value: 1 | 2 | 3;
+  onChange: (t: 1 | 2 | 3) => void;
+}) {
   return (
     <div className="flex gap-1.5 items-center">
-      {([1, 2, 3] as const).map(t => (
+      {([1, 2, 3] as const).map((t) => (
         <button
           key={t}
           type="button"
           onClick={() => onChange(t)}
           className="text-[10px] font-mono px-2.5 py-0.5 rounded border transition-colors"
           style={{
-            borderColor: value === t ? '#a78bfa' : 'rgba(255,255,255,0.15)',
-            background:  value === t ? 'rgba(167,139,250,0.12)' : 'transparent',
-            color:       value === t ? '#a78bfa' : '#64748b',
+            borderColor: value === t ? "#a78bfa" : "rgba(255,255,255,0.15)",
+            background: value === t ? "rgba(167,139,250,0.12)" : "transparent",
+            color: value === t ? "#a78bfa" : "#64748b",
           }}
         >
           T{t}
@@ -173,30 +449,50 @@ function TierPicker({ value, onChange }: { value: 1 | 2 | 3; onChange: (t: 1 | 2
   );
 }
 
-function ReplayButton({ onClick, accentHex }: { onClick: () => void; accentHex?: string }) {
-  const color = accentHex ?? '#a78bfa';
+function ReplayButton({
+  onClick,
+  accentHex,
+}: {
+  onClick: () => void;
+  accentHex?: string;
+}) {
+  const color = accentHex ?? "#a78bfa";
   return (
     <button
       type="button"
       onClick={onClick}
       className="text-[11px] font-mono px-4 py-1.5 rounded border transition-colors"
       style={{
-        background:  'rgba(255,255,255,0.04)',
+        background: "rgba(255,255,255,0.04)",
         borderColor: `${color}60`,
         color,
       }}
-      onMouseEnter={e => { (e.currentTarget as HTMLButtonElement).style.background = 'rgba(255,255,255,0.09)'; }}
-      onMouseLeave={e => { (e.currentTarget as HTMLButtonElement).style.background = 'rgba(255,255,255,0.04)'; }}
+      onMouseEnter={(e) => {
+        (e.currentTarget as HTMLButtonElement).style.background =
+          "rgba(255,255,255,0.09)";
+      }}
+      onMouseLeave={(e) => {
+        (e.currentTarget as HTMLButtonElement).style.background =
+          "rgba(255,255,255,0.04)";
+      }}
     >
       ▶ Play
     </button>
   );
 }
 
-function ControlRow({ label, children }: { label: string; children: React.ReactNode }) {
+function ControlRow({
+  label,
+  children,
+}: {
+  label: string;
+  children: React.ReactNode;
+}) {
   return (
     <div className="flex flex-wrap items-center gap-x-4 gap-y-2">
-      <span className="text-[10px] font-mono text-muted-foreground/60 uppercase tracking-widest min-w-[72px]">{label}</span>
+      <span className="text-[10px] font-mono text-muted-foreground/60 uppercase tracking-widest min-w-[72px]">
+        {label}
+      </span>
       {children}
     </div>
   );
@@ -215,7 +511,12 @@ interface PhaseSegment {
 }
 
 const TIMING_COLORS = [
-  '#818cf8', '#a78bfa', '#c084fc', '#e879f9', '#f472b6', '#fb7185',
+  "#818cf8",
+  "#a78bfa",
+  "#c084fc",
+  "#e879f9",
+  "#f472b6",
+  "#fb7185",
 ];
 
 function TimingBar({
@@ -259,7 +560,6 @@ function TimingBar({
         rafRef.current = null;
       }
     };
-  // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [playing, playKey, totalMs]);
 
   const cursorPct = totalMs > 0 ? (elapsed / totalMs) * 100 : 0;
@@ -283,12 +583,18 @@ function TimingBar({
   return (
     <div className="flex flex-col gap-1.5 pt-3 border-t border-border/10">
       <div className="flex items-center justify-between">
-        <span className="text-[9px] font-mono text-muted-foreground/40 uppercase tracking-widest">timing</span>
+        <span className="text-[9px] font-mono text-muted-foreground/40 uppercase tracking-widest">
+          timing
+        </span>
         <span className="text-[10px] font-mono text-muted-foreground/60 tabular-nums">
-          {playing
-            ? <span>{Math.round(elapsed)}&thinsp;<span className="opacity-40">/</span>&thinsp;{totalMs} ms</span>
-            : `${totalMs} ms total`
-          }
+          {playing ? (
+            <span>
+              {Math.round(elapsed)}&thinsp;<span className="opacity-40">/</span>
+              &thinsp;{totalMs} ms
+            </span>
+          ) : (
+            `${totalMs} ms total`
+          )}
         </span>
       </div>
       {/* Proportional phase bar with live cursor */}
@@ -304,10 +610,10 @@ function TimingBar({
                 background: TIMING_COLORS[i % TIMING_COLORS.length],
                 opacity: playing ? (isActive ? 1 : 0.22) : 0.65,
                 minWidth: 1,
-                transition: playing ? 'opacity 80ms linear' : 'opacity 0.3s',
+                transition: playing ? "opacity 80ms linear" : "opacity 0.3s",
                 boxShadow: isActive
                   ? `0 0 6px 1px ${TIMING_COLORS[i % TIMING_COLORS.length]}99`
-                  : 'none',
+                  : "none",
               }}
             />
           );
@@ -316,16 +622,16 @@ function TimingBar({
         {playing && (
           <div
             style={{
-              position: 'absolute',
+              position: "absolute",
               top: 0,
               bottom: 0,
               left: `${cursorPct}%`,
               width: 2,
-              background: 'rgba(255,255,255,0.95)',
-              transform: 'translateX(-50%)',
+              background: "rgba(255,255,255,0.95)",
+              transform: "translateX(-50%)",
               borderRadius: 1,
-              boxShadow: '0 0 5px rgba(255,255,255,0.7)',
-              pointerEvents: 'none',
+              boxShadow: "0 0 5px rgba(255,255,255,0.7)",
+              pointerEvents: "none",
             }}
           />
         )}
@@ -342,7 +648,7 @@ function TimingBar({
                 color: TIMING_COLORS[i % TIMING_COLORS.length],
                 opacity: playing ? (isActive ? 1 : 0.3) : 0.85,
                 fontWeight: isActive ? 700 : 400,
-                transition: 'opacity 80ms linear, font-weight 0ms',
+                transition: "opacity 80ms linear, font-weight 0ms",
               }}
             >
               {p.label}&nbsp;{p.ms}ms
@@ -376,12 +682,14 @@ function CardFxPreviewShell({
       {/* Bounded preview area */}
       <div
         className="rounded-xl border border-border/15 overflow-hidden"
-        style={{ background: 'rgba(5,5,15,0.7)', minHeight: 200 }}
+        style={{ background: "rgba(5,5,15,0.7)", minHeight: 200 }}
       >
         {previewArea}
       </div>
       {note && (
-        <p className="text-[10px] text-muted-foreground/35 text-center px-4">{note}</p>
+        <p className="text-[10px] text-muted-foreground/35 text-center px-4">
+          {note}
+        </p>
       )}
     </div>
   );
@@ -419,21 +727,21 @@ function ScaledViewportContainer({
   return (
     <div
       style={{
-        position: 'relative',
-        width: '100%',
+        position: "relative",
+        width: "100%",
         maxWidth: PREVIEW_W,
         height: PREVIEW_H,
-        overflow: 'hidden',
-        background: 'rgba(3,4,12,0.95)',
+        overflow: "hidden",
+        background: "rgba(3,4,12,0.95)",
         borderRadius: 12,
-        margin: '0 auto',
+        margin: "0 auto",
       }}
     >
       {/* Idle label */}
       {!playing && (
         <div className="absolute inset-0 flex items-center justify-center pointer-events-none">
           <span className="text-[10px] font-mono text-muted-foreground/30 uppercase tracking-widest">
-            {idleLabel ?? 'Press Play to preview'}
+            {idleLabel ?? "Press Play to preview"}
           </span>
         </div>
       )}
@@ -441,14 +749,14 @@ function ScaledViewportContainer({
       {playing && (
         <div
           style={{
-            position: 'absolute',
+            position: "absolute",
             top: 0,
             left: 0,
             width: window.innerWidth,
             height: window.innerHeight,
             transform: `scale(${scale})`,
-            transformOrigin: 'top left',
-            pointerEvents: 'none',
+            transformOrigin: "top left",
+            pointerEvents: "none",
           }}
         >
           {children}
@@ -458,23 +766,23 @@ function ScaledViewportContainer({
   );
 }
 
-// ─── Cipher Reserve Preview ───────────────────────────────────────────────────
+// ─── Cipher Encrypt Preview ───────────────────────────────────────────────────
 
-type CipherDestSide = 'left' | 'center' | 'right';
+type CipherDestSide = "left" | "center" | "right";
 
 function CipherReservePreview() {
-  const [affinity, setAffinity]         = useState<GemKey>('ruby');
+  const [affinity, setAffinity] = useState<AffinityKey>("flare");
   const [tier, setTier]                 = useState<1 | 2 | 3>(1);
-  const [destSide, setDestSide]         = useState<CipherDestSide>('center');
-  const [cipherMode, setCipherMode]     = useState<CipherApertureMode>('game');
+  const [destSide, setDestSide] = useState<CipherDestSide>("center");
+  const [cipherMode, setCipherMode] = useState<CipherApertureMode>("game");
   const [animKey, setAnimKey]           = useState(0);
   const [playing, setPlaying]           = useState(false);
 
-  const meta = GEM_META[affinity];
+  const meta = AFFINITY_META[affinity];
   const card = makeMockCard(tier, affinity);
 
   function play() {
-    setAnimKey(k => k + 1);
+    setAnimKey((k) => k + 1);
     setPlaying(true);
   }
 
@@ -483,34 +791,50 @@ function CipherReservePreview() {
   const sourceRect = {
     x: Math.round(window.innerWidth / 2 - 56),
     y: Math.round(window.innerHeight * 0.32),
-    w: 112, h: 160,
+    w: 112,
+    h: 160,
   };
   const destPosMap: Record<CipherDestSide, { x: number; y: number }> = {
-    left:   { x: Math.round(window.innerWidth * 0.15), y: Math.round(window.innerHeight * 0.88) },
-    center: { x: Math.round(window.innerWidth / 2),    y: Math.round(window.innerHeight * 0.88) },
-    right:  { x: Math.round(window.innerWidth * 0.85), y: Math.round(window.innerHeight * 0.88) },
+    left: {
+      x: Math.round(window.innerWidth * 0.15),
+      y: Math.round(window.innerHeight * 0.88),
+    },
+    center: {
+      x: Math.round(window.innerWidth / 2),
+      y: Math.round(window.innerHeight * 0.88),
+    },
+    right: {
+      x: Math.round(window.innerWidth * 0.85),
+      y: Math.round(window.innerHeight * 0.88),
+    },
   };
 
   const modeTotalMs = CIPHER_MODE_TOTAL_MS[cipherMode];
 
   return (
     <CardFxPreviewShell
-      note="Cipher sigil forms over the card then collapses to the chosen hand slot. Contained in the preview area below via CSS stacking-context scaling."
+      note="White circuits branch inward from the Artifact edges, continue directly into the completed cipher, then the card compresses into the seal and travels to the encrypted-pile target."
       controls={
         <>
-          <ControlRow label="Affinity"><AffinityPicker value={affinity} onChange={setAffinity} /></ControlRow>
-          <ControlRow label="Tier"><TierPicker value={tier} onChange={setTier} /></ControlRow>
+          <ControlRow label="Affinity">
+            <AffinityPicker value={affinity} onChange={setAffinity} />
+          </ControlRow>
+          <ControlRow label="Tier">
+            <TierPicker value={tier} onChange={setTier} />
+          </ControlRow>
           <ControlRow label="Mode">
-            {(['game', 'tutorial'] as CipherApertureMode[]).map(m => (
+            {(["game", "tutorial"] as CipherApertureMode[]).map((m) => (
               <button
                 key={m}
                 type="button"
                 onClick={() => setCipherMode(m)}
                 className="text-[10px] font-mono px-3 py-0.5 rounded border transition-colors capitalize"
                 style={{
-                  borderColor: cipherMode === m ? meta.hex : 'rgba(255,255,255,0.15)',
-                  background:  cipherMode === m ? `${meta.hex}18` : 'transparent',
-                  color:       cipherMode === m ? meta.hex : '#64748b',
+                  borderColor:
+                    cipherMode === m ? meta.hex : "rgba(255,255,255,0.15)",
+                  background:
+                    cipherMode === m ? `${meta.hex}18` : "transparent",
+                  color: cipherMode === m ? meta.hex : "#64748b",
                 }}
               >
                 {m}
@@ -518,16 +842,17 @@ function CipherReservePreview() {
             ))}
           </ControlRow>
           <ControlRow label="Destination">
-            {(['left', 'center', 'right'] as CipherDestSide[]).map(s => (
+            {(["left", "center", "right"] as CipherDestSide[]).map((s) => (
               <button
                 key={s}
                 type="button"
                 onClick={() => setDestSide(s)}
                 className="text-[10px] font-mono px-3 py-0.5 rounded border transition-colors"
                 style={{
-                  borderColor: destSide === s ? meta.hex : 'rgba(255,255,255,0.15)',
-                  background:  destSide === s ? `${meta.hex}18` : 'transparent',
-                  color:       destSide === s ? meta.hex : '#64748b',
+                  borderColor:
+                    destSide === s ? meta.hex : "rgba(255,255,255,0.15)",
+                  background: destSide === s ? `${meta.hex}18` : "transparent",
+                  color: destSide === s ? meta.hex : "#64748b",
                 }}
               >
                 {s}
@@ -540,11 +865,11 @@ function CipherReservePreview() {
           <TimingBar
             totalMs={modeTotalMs}
             phases={[
-              { label: 'forefront', ms: PHASE_DUR[cipherMode].forefront },
-              { label: 'circuit',   ms: PHASE_DUR[cipherMode].circuit   },
-              { label: 'compress',  ms: PHASE_DUR[cipherMode].compress  },
-              { label: 'travel',    ms: PHASE_DUR[cipherMode].travel    },
-              { label: 'arrive',    ms: PHASE_DUR[cipherMode].arrive    },
+              { label: "release", ms: PHASE_DUR[cipherMode].release },
+              { label: "conceal", ms: PHASE_DUR[cipherMode].conceal },
+              { label: "lock", ms: PHASE_DUR[cipherMode].lock },
+              { label: "transfer", ms: PHASE_DUR[cipherMode].transfer },
+              { label: "arrive", ms: PHASE_DUR[cipherMode].arrive },
             ]}
             playing={playing}
             playKey={animKey}
@@ -552,7 +877,10 @@ function CipherReservePreview() {
         </>
       }
       previewArea={
-        <ScaledViewportContainer playing={playing} idleLabel="Select affinity & destination, then press Play">
+        <ScaledViewportContainer
+          playing={playing}
+          idleLabel="Select affinity & destination, then press Play"
+        >
           <CipherApertureAnimation
             key={animKey}
             animKey={animKey}
@@ -574,17 +902,17 @@ function CipherReservePreview() {
 // ─── Forge Burst Preview ──────────────────────────────────────────────────────
 
 function ForgeBurstPreview() {
-  const [affinity, setAffinity]   = useState<GemKey>('ruby');
+  const [affinity, setAffinity] = useState<AffinityKey>("flare");
   const [tier, setTier]           = useState<1 | 2 | 3>(1);
   const [eminence, setEminence]   = useState(2);
   // cardName is user-editable; seeded from affinity/tier but never overwritten by Play
-  const [cardName, setCardName]   = useState(() => makeMockCard(1, 'ruby').name);
+  const [cardName, setCardName] = useState(() => makeMockCard(1, "flare").name);
   const [animKey, setAnimKey]     = useState(0);
   const [playing, setPlaying]     = useState(false);
   const dismissTimerRef = useRef<ReturnType<typeof setTimeout> | null>(null);
 
   // Update default name when affinity/tier changes but only if user hasn't typed a custom value
-  const lastAutoNameRef = useRef(makeMockCard(1, 'ruby').name);
+  const lastAutoNameRef = useRef(makeMockCard(1, "flare").name);
   useEffect(() => {
     const autoName = makeMockCard(tier, affinity).name;
     if (cardName === lastAutoNameRef.current) {
@@ -597,42 +925,64 @@ function ForgeBurstPreview() {
   const FORGE_FULL_MS = 1150;
 
   function play() {
-    setAnimKey(k => k + 1);
+    setAnimKey((k) => k + 1);
     setPlaying(true);
     if (dismissTimerRef.current) clearTimeout(dismissTimerRef.current);
-    dismissTimerRef.current = setTimeout(() => setPlaying(false), FORGE_FULL_MS + 400);
+    dismissTimerRef.current = setTimeout(
+      () => setPlaying(false),
+      FORGE_FULL_MS + 400,
+    );
   }
-  useEffect(() => () => { if (dismissTimerRef.current) clearTimeout(dismissTimerRef.current); }, []);
+  useEffect(
+    () => () => {
+      if (dismissTimerRef.current) clearTimeout(dismissTimerRef.current);
+    },
+    [],
+  );
 
-  const card = { ...makeMockCard(tier, affinity), lumens: eminence, name: cardName };
-  const meta = GEM_META[affinity];
+  const card = {
+    ...makeMockCard(tier, affinity),
+    eminence: eminence,
+    name: cardName,
+  };
+  const meta = AFFINITY_META[affinity];
 
   const startRect = {
     x: Math.round(window.innerWidth / 2 - 56),
     y: Math.round(window.innerHeight * 0.32),
-    w: 112, h: 160,
+    w: 112,
+    h: 160,
   };
-  const destPos = { x: Math.round(window.innerWidth * 0.85), y: Math.round(window.innerHeight * 0.88) };
+  const destPos = {
+    x: Math.round(window.innerWidth * 0.85),
+    y: Math.round(window.innerHeight * 0.88),
+  };
 
   return (
     <CardFxPreviewShell
-      note="Stamp + affinity streams → card arcs to civilization tab. Affinity streams require in-game wells (empty in sandbox)."
+      note="Stamp + affinity streams → Artifact arcs to civilization tab. Affinity streams require in-game wells (empty in sandbox)."
       controls={
         <>
-          <ControlRow label="Affinity"><AffinityPicker value={affinity} onChange={setAffinity} /></ControlRow>
-          <ControlRow label="Tier"><TierPicker value={tier} onChange={setTier} /></ControlRow>
+          <ControlRow label="Affinity">
+            <AffinityPicker value={affinity} onChange={setAffinity} />
+          </ControlRow>
+          <ControlRow label="Tier">
+            <TierPicker value={tier} onChange={setTier} />
+          </ControlRow>
           <ControlRow label="Eminence">
             <div className="flex gap-1.5 items-center">
-              {[0, 1, 2, 3, 4].map(v => (
+              {[0, 1, 2, 3, 4].map((v) => (
                 <button
                   key={v}
                   type="button"
                   onClick={() => setEminence(v)}
                   className="text-[10px] font-mono w-7 h-6 rounded border transition-colors"
                   style={{
-                    borderColor: eminence === v ? '#fbbf24' : 'rgba(255,255,255,0.15)',
-                    background:  eminence === v ? 'rgba(251,191,36,0.15)' : 'transparent',
-                    color:       eminence === v ? '#fbbf24' : '#64748b',
+                    borderColor:
+                      eminence === v ? "#fbbf24" : "rgba(255,255,255,0.15)",
+                    background:
+                      eminence === v ? "rgba(251,191,36,0.15)" : "transparent",
+                    color: eminence === v ? "#fbbf24" : "#64748b",
                   }}
                 >
                   {v}
@@ -640,13 +990,13 @@ function ForgeBurstPreview() {
               ))}
             </div>
           </ControlRow>
-          <ControlRow label="Card Name">
+          <ControlRow label="Artifact Name">
             <input
               type="text"
               value={cardName}
-              onChange={e => setCardName(e.target.value)}
+              onChange={(e) => setCardName(e.target.value)}
               className="text-[11px] font-mono px-2 py-0.5 rounded border bg-transparent text-foreground"
-              style={{ borderColor: 'rgba(255,255,255,0.15)', width: 160 }}
+              style={{ borderColor: "rgba(255,255,255,0.15)", width: 160 }}
             />
           </ControlRow>
           <div className="flex justify-center pt-1">
@@ -655,11 +1005,11 @@ function ForgeBurstPreview() {
           <TimingBar
             totalMs={FORGE_PHASE_MS.total}
             phases={[
-              { label: 'lift',    ms: FORGE_PHASE_MS.lift    },
-              { label: 'streams', ms: FORGE_PHASE_MS.streams },
-              { label: 'stamp',   ms: FORGE_PHASE_MS.stamp   },
-              { label: 'hold',    ms: FORGE_PHASE_MS.hold    },
-              { label: 'arc',     ms: FORGE_PHASE_MS.arc     },
+              { label: "lift", ms: FORGE_PHASE_MS.lift },
+              { label: "streams", ms: FORGE_PHASE_MS.streams },
+              { label: "stamp", ms: FORGE_PHASE_MS.stamp },
+              { label: "hold", ms: FORGE_PHASE_MS.hold },
+              { label: "arc", ms: FORGE_PHASE_MS.arc },
             ]}
             playing={playing}
             playKey={animKey}
@@ -667,7 +1017,10 @@ function ForgeBurstPreview() {
         </>
       }
       previewArea={
-        <ScaledViewportContainer playing={playing} idleLabel="Select affinity & eminence, then press Play">
+        <ScaledViewportContainer
+          playing={playing}
+          idleLabel="Select affinity & eminence, then press Play"
+        >
           <AnimatePresence>
             <ForgeAnimation
               key={animKey}
@@ -677,8 +1030,8 @@ function ForgeBurstPreview() {
               startRect={startRect}
               destPos={destPos}
               spentColors={[affinity]}
-              lumens={eminence}
-              gotFlux={false}
+              eminence={eminence}
+              gotSingularity={false}
               playerName="Sandbox Player"
             />
           </AnimatePresence>
@@ -690,12 +1043,12 @@ function ForgeBurstPreview() {
 
 // ─── Opponent Forge Preview ───────────────────────────────────────────────────
 
-type DestSide = 'left' | 'center' | 'right';
+type DestSide = "left" | "center" | "right";
 
 function OpponentForgePreview() {
-  const [affinity, setAffinity]   = useState<GemKey>('sapphire');
+  const [affinity, setAffinity] = useState<AffinityKey>("continuum");
   const [tier, setTier]           = useState<1 | 2 | 3>(1);
-  const [destSide, setDestSide]   = useState<DestSide>('center');
+  const [destSide, setDestSide] = useState<DestSide>("center");
   const [animKey, setAnimKey]     = useState(0);
   const [playing, setPlaying]     = useState(false);
   const dismissTimerRef = useRef<ReturnType<typeof setTimeout> | null>(null);
@@ -703,45 +1056,68 @@ function OpponentForgePreview() {
   const FORGE_FULL_MS = 1150;
 
   function play() {
-    setAnimKey(k => k + 1);
+    setAnimKey((k) => k + 1);
     setPlaying(true);
     if (dismissTimerRef.current) clearTimeout(dismissTimerRef.current);
-    dismissTimerRef.current = setTimeout(() => setPlaying(false), FORGE_FULL_MS + 400);
+    dismissTimerRef.current = setTimeout(
+      () => setPlaying(false),
+      FORGE_FULL_MS + 400,
+    );
   }
-  useEffect(() => () => { if (dismissTimerRef.current) clearTimeout(dismissTimerRef.current); }, []);
+  useEffect(
+    () => () => {
+      if (dismissTimerRef.current) clearTimeout(dismissTimerRef.current);
+    },
+    [],
+  );
 
   const card = makeMockCard(tier, affinity);
-  const meta = GEM_META[affinity];
+  const meta = AFFINITY_META[affinity];
 
   const startRect = {
     x: Math.round(window.innerWidth / 2 - 56),
     y: Math.round(window.innerHeight * 0.32),
-    w: 112, h: 160,
+    w: 112,
+    h: 160,
   };
   const chipCenterMap: Record<DestSide, { x: number; y: number }> = {
-    left:   { x: Math.round(window.innerWidth * 0.18), y: Math.round(window.innerHeight * 0.12) },
-    center: { x: Math.round(window.innerWidth * 0.50), y: Math.round(window.innerHeight * 0.12) },
-    right:  { x: Math.round(window.innerWidth * 0.82), y: Math.round(window.innerHeight * 0.12) },
+    left: {
+      x: Math.round(window.innerWidth * 0.18),
+      y: Math.round(window.innerHeight * 0.12),
+    },
+    center: {
+      x: Math.round(window.innerWidth * 0.5),
+      y: Math.round(window.innerHeight * 0.12),
+    },
+    right: {
+      x: Math.round(window.innerWidth * 0.82),
+      y: Math.round(window.innerHeight * 0.12),
+    },
   };
 
   return (
     <CardFxPreviewShell
-      note="Stamp animation — card arcs to the chosen opponent avatar chip (top of preview area)."
+      note="Stamp animation — Artifact arcs to the chosen opponent avatar chip (top of preview area)."
       controls={
         <>
-          <ControlRow label="Affinity"><AffinityPicker value={affinity} onChange={setAffinity} /></ControlRow>
-          <ControlRow label="Tier"><TierPicker value={tier} onChange={setTier} /></ControlRow>
+          <ControlRow label="Affinity">
+            <AffinityPicker value={affinity} onChange={setAffinity} />
+          </ControlRow>
+          <ControlRow label="Tier">
+            <TierPicker value={tier} onChange={setTier} />
+          </ControlRow>
           <ControlRow label="Destination">
-            {(['left', 'center', 'right'] as DestSide[]).map(s => (
+            {(["left", "center", "right"] as DestSide[]).map((s) => (
               <button
                 key={s}
                 type="button"
                 onClick={() => setDestSide(s)}
                 className="text-[10px] font-mono px-3 py-0.5 rounded border transition-colors"
                 style={{
-                  borderColor: destSide === s ? meta.hex : 'rgba(255,255,255,0.15)',
-                  background:  destSide === s ? `${meta.hex}18` : 'transparent',
-                  color:       destSide === s ? meta.hex : '#64748b',
+                  borderColor:
+                    destSide === s ? meta.hex : "rgba(255,255,255,0.15)",
+                  background: destSide === s ? `${meta.hex}18` : "transparent",
+                  color: destSide === s ? meta.hex : "#64748b",
                 }}
               >
                 {s}
@@ -754,11 +1130,11 @@ function OpponentForgePreview() {
           <TimingBar
             totalMs={FORGE_PHASE_MS.total}
             phases={[
-              { label: 'lift',    ms: FORGE_PHASE_MS.lift    },
-              { label: 'streams', ms: FORGE_PHASE_MS.streams },
-              { label: 'stamp',   ms: FORGE_PHASE_MS.stamp   },
-              { label: 'hold',    ms: FORGE_PHASE_MS.hold    },
-              { label: 'arc',     ms: FORGE_PHASE_MS.arc     },
+              { label: "lift", ms: FORGE_PHASE_MS.lift },
+              { label: "streams", ms: FORGE_PHASE_MS.streams },
+              { label: "stamp", ms: FORGE_PHASE_MS.stamp },
+              { label: "hold", ms: FORGE_PHASE_MS.hold },
+              { label: "arc", ms: FORGE_PHASE_MS.arc },
             ]}
             playing={playing}
             playKey={animKey}
@@ -766,7 +1142,10 @@ function OpponentForgePreview() {
         </>
       }
       previewArea={
-        <ScaledViewportContainer playing={playing} idleLabel="Select affinity & destination, then press Play">
+        <ScaledViewportContainer
+          playing={playing}
+          idleLabel="Select affinity & destination, then press Play"
+        >
           <AnimatePresence>
             <OpponentForgeAnimation
               key={animKey}
@@ -802,30 +1181,40 @@ function ReservedForgeRingPreview() {
   const dismissTimerRef = useRef<ReturnType<typeof setTimeout> | null>(null);
 
   function play() {
-    setAnimKey(k => k + 1);
+    setAnimKey((k) => k + 1);
     setPlaying(true);
     if (dismissTimerRef.current) clearTimeout(dismissTimerRef.current);
-    dismissTimerRef.current = setTimeout(() => setPlaying(false), RING_DISMISS_MS);
+    dismissTimerRef.current = setTimeout(
+      () => setPlaying(false),
+      RING_DISMISS_MS,
+    );
   }
-  useEffect(() => () => { if (dismissTimerRef.current) clearTimeout(dismissTimerRef.current); }, []);
+  useEffect(
+    () => () => {
+      if (dismissTimerRef.current) clearTimeout(dismissTimerRef.current);
+    },
+    [],
+  );
 
   return (
     <CardFxPreviewShell
-      note="Expanding-ring 'Forged!' overlay shown when a reserved card is purchased. Contained within the preview area below."
+      note="Expanding-ring 'Forged!' overlay shown when an encrypted Artifact is forged. Contained within the preview area below."
       controls={
         <>
           <ControlRow label="Eminence">
             <div className="flex gap-1.5 items-center">
-              {[0, 1, 2, 3, 4].map(v => (
+              {[0, 1, 2, 3, 4].map((v) => (
                 <button
                   key={v}
                   type="button"
                   onClick={() => setEminence(v)}
                   className="text-[10px] font-mono w-7 h-6 rounded border transition-colors"
                   style={{
-                    borderColor: eminence === v ? '#fbbf24' : 'rgba(255,255,255,0.15)',
-                    background:  eminence === v ? 'rgba(251,191,36,0.15)' : 'transparent',
-                    color:       eminence === v ? '#fbbf24' : '#64748b',
+                    borderColor:
+                      eminence === v ? "#fbbf24" : "rgba(255,255,255,0.15)",
+                    background:
+                      eminence === v ? "rgba(251,191,36,0.15)" : "transparent",
+                    color: eminence === v ? "#fbbf24" : "#64748b",
                   }}
                 >
                   {v}
@@ -839,11 +1228,11 @@ function ReservedForgeRingPreview() {
           <TimingBar
             totalMs={RING_DISMISS_MS}
             phases={[
-              { label: 'outer ring', ms: RING_OUTER_MS   },
-              { label: 'inner ring', ms: RING_INNER_MS   },
-              { label: 'label float',ms: RING_LABEL_MS   },
-              { label: 'fade',       ms: RING_FADE_MS    },
-              { label: 'guard',      ms: RING_DISMISS_MS - RING_FADE_MS },
+              { label: "outer ring", ms: RING_OUTER_MS },
+              { label: "inner ring", ms: RING_INNER_MS },
+              { label: "label float", ms: RING_LABEL_MS },
+              { label: "fade", ms: RING_FADE_MS },
+              { label: "guard", ms: RING_DISMISS_MS - RING_FADE_MS },
             ]}
             playing={playing}
             playKey={animKey}
@@ -869,33 +1258,36 @@ function ReservedForgeRingPreview() {
                 className="absolute inset-0 flex items-center justify-center"
                 initial={{ opacity: 1 }}
                 animate={{ opacity: 0 }}
-                transition={{ duration: 1.3, ease: 'easeOut' }}
+                transition={{ duration: 1.3, ease: "easeOut" }}
               >
                 {/* Rings — sized to fit in the 260px-tall container */}
                 <motion.div
                   className="absolute rounded-full border-2 border-primary"
                   initial={{ width: 40, height: 40, opacity: 0.9 }}
                   animate={{ width: 220, height: 220, opacity: 0 }}
-                  transition={{ duration: 0.8, ease: 'easeOut' }}
+                  transition={{ duration: 0.8, ease: "easeOut" }}
                 />
                 <motion.div
                   className="absolute rounded-full border border-primary/50"
                   initial={{ width: 24, height: 24, opacity: 0.7 }}
                   animate={{ width: 160, height: 160, opacity: 0 }}
-                  transition={{ duration: 0.65, ease: 'easeOut', delay: 0.08 }}
+                  transition={{ duration: 0.65, ease: "easeOut", delay: 0.08 }}
                 />
                 {/* Label */}
                 <motion.div
                   className="flex flex-col items-center gap-1"
                   initial={{ y: 0, opacity: 1, scale: 0.8 }}
                   animate={{ y: -60, opacity: 0, scale: 1.1 }}
-                  transition={{ duration: 1.1, ease: 'easeOut' }}
+                  transition={{ duration: 1.1, ease: "easeOut" }}
                 >
                   <span className="text-2xl font-serif font-black text-amber-300 drop-shadow-[0_0_12px_rgba(251,191,36,0.8)]">
                     Forged!
                   </span>
                   {eminence > 0 && (
-                    <span className="flex items-center gap-1 text-base font-bold" style={{ color: GEM_META.flux.hex }}>
+                    <span
+                      className="flex items-center gap-1 text-base font-bold"
+                      style={{ color: AFFINITY_META.singularity.hex }}
+                    >
                       <EminenceDiamond size={14} /> +{eminence} eminence
                     </span>
                   )}
@@ -909,7 +1301,7 @@ function ReservedForgeRingPreview() {
   );
 }
 
-// ─── Market Deal Flip Preview ─────────────────────────────────────────────────
+// ─── Forge Deal Flip Preview ──────────────────────────────────────────────────
 
 // Flip animation durations (ms) — extracted so TimingBar and setTimeout share the same source.
 const FLIP_SETTLE_MS = 60;    // brief settle before the rotateY starts
@@ -917,49 +1309,59 @@ const FLIP_DUR_MS    = 1500;  // rotateY duration (1.5 s)
 // DEAL_ANIM_MS (imported from game-constants) is the full game-side lock (1700 ms),
 // which includes FLIP_SETTLE_MS + FLIP_DUR_MS plus a trailing settle buffer.
 
-function MarketDealFlipPreview() {
+function ForgeRefillFlipPreview() {
   const [tier, setTier]       = useState<1 | 2 | 3>(1);
   const [flipKey, setFlipKey] = useState(0);
-  const [phase, setPhase]     = useState<'back' | 'flipping' | 'face'>('back');
+  const [phase, setPhase] = useState<"back" | "flipping" | "face">("back");
   const [playing, setPlaying] = useState(false);
   const timerRef = useRef<ReturnType<typeof setTimeout> | null>(null);
 
   function play() {
     if (timerRef.current) clearTimeout(timerRef.current);
-    setPhase('back');
+    setPhase("back");
     setPlaying(true);
-    setFlipKey(k => k + 1);
+    setFlipKey((k) => k + 1);
     timerRef.current = setTimeout(() => {
-      setPhase('flipping');
+      setPhase("flipping");
       // Pair the Card draw.mp3 flip SFX with the in-place rotateY flip.
       gameAudio.playCardFlip();
       timerRef.current = setTimeout(() => {
-        setPhase('face');
+        setPhase("face");
         setPlaying(false);
       }, FLIP_DUR_MS);
     }, FLIP_SETTLE_MS);
   }
-  useEffect(() => () => { if (timerRef.current) clearTimeout(timerRef.current); }, []);
+  useEffect(
+    () => () => {
+      if (timerRef.current) clearTimeout(timerRef.current);
+    },
+    [],
+  );
 
-  const card = makeMockCard(tier, 'ruby');
+  const card = makeMockCard(tier, "flare");
   const CARD_W = 112;
   const CARD_H = 160;
 
   return (
     <CardFxPreviewShell
-      note="rotateY flip from card back to card face — the same animation used when the market refills after a purchase."
+      note="rotateY flip from Artifact reverse to Artifact face — the same animation used when The Forge refills after a forge."
       controls={
         <>
-          <ControlRow label="Tier"><TierPicker value={tier} onChange={setTier} /></ControlRow>
+          <ControlRow label="Tier">
+            <TierPicker value={tier} onChange={setTier} />
+          </ControlRow>
           <div className="flex justify-center pt-1">
             <ReplayButton onClick={play} accentHex="#a78bfa" />
           </div>
           <TimingBar
             totalMs={DEAL_ANIM_MS}
             phases={[
-              { label: 'settle',       ms: FLIP_SETTLE_MS },
-              { label: 'flip',         ms: FLIP_DUR_MS    },
-              { label: 'trail buffer', ms: DEAL_ANIM_MS - FLIP_SETTLE_MS - FLIP_DUR_MS },
+              { label: "settle", ms: FLIP_SETTLE_MS },
+              { label: "flip", ms: FLIP_DUR_MS },
+              {
+                label: "trail buffer",
+                ms: DEAL_ANIM_MS - FLIP_SETTLE_MS - FLIP_DUR_MS,
+              },
             ]}
             playing={playing}
             playKey={flipKey}
@@ -969,37 +1371,45 @@ function MarketDealFlipPreview() {
       previewArea={
         <div className="flex flex-col items-center gap-3 py-6 px-4">
           <p className="text-[10px] font-mono text-muted-foreground/40 uppercase tracking-widest">
-            {phase === 'back' ? 'card back' : phase === 'flipping' ? 'flipping…' : 'card face revealed'}
+            {phase === "back"
+              ? "Artifact reverse"
+              : phase === "flipping"
+                ? "flipping…"
+                : "Artifact face revealed"}
           </p>
           <div
             style={{
               width: CARD_W,
               height: CARD_H,
-              perspective: '800px',
+              perspective: "800px",
             }}
           >
             <motion.div
               key={flipKey}
               style={{
-                width: '100%',
-                height: '100%',
-                position: 'relative',
-                transformStyle: 'preserve-3d',
+                width: "100%",
+                height: "100%",
+                position: "relative",
+                transformStyle: "preserve-3d",
               }}
               initial={{ rotateY: 0 }}
-              animate={{ rotateY: phase === 'back' ? 0 : phase === 'flipping' ? 180 : 180 }}
+              animate={{
+                rotateY:
+                  phase === "back" ? 0 : phase === "flipping" ? 180 : 180,
+              }}
               transition={{
-                duration: phase === 'flipping' ? 1.5 : 0,
-                ease: 'easeInOut',
+                duration: phase === "flipping" ? 1.5 : 0,
+                ease: "easeInOut",
               }}
             >
               {/* Card back face */}
               <div
                 style={{
-                  position: 'absolute', inset: 0,
-                  backfaceVisibility: 'hidden',
-                  WebkitBackfaceVisibility: 'hidden',
-                  overflow: 'hidden',
+                  position: "absolute",
+                  inset: 0,
+                  backfaceVisibility: "hidden",
+                  WebkitBackfaceVisibility: "hidden",
+                  overflow: "hidden",
                   borderRadius: 10,
                 }}
               >
@@ -1012,11 +1422,12 @@ function MarketDealFlipPreview() {
               {/* Card face */}
               <div
                 style={{
-                  position: 'absolute', inset: 0,
-                  backfaceVisibility: 'hidden',
-                  WebkitBackfaceVisibility: 'hidden',
-                  transform: 'rotateY(180deg)',
-                  overflow: 'hidden',
+                  position: "absolute",
+                  inset: 0,
+                  backfaceVisibility: "hidden",
+                  WebkitBackfaceVisibility: "hidden",
+                  transform: "rotateY(180deg)",
+                  overflow: "hidden",
                   borderRadius: 10,
                 }}
               >
@@ -1032,7 +1443,7 @@ function MarketDealFlipPreview() {
 
 // ─── Burn Pile Particle Preview ───────────────────────────────────────────────
 // Uses ScaledViewportContainer because BurnPileParticle renders via a fixed-
-// position body portal.  Source rect = simulated market slot (center-upper
+// position body portal. Source rect = simulated Forge slot (center-upper
 // viewport); destination rect = simulated burn-pile chip (lower-right viewport).
 
 // Self-destructs after 950 ms (matches the setTimeout in BurnPileParticle).
@@ -1045,16 +1456,24 @@ function BurnPileParticlePreview() {
 
   function play() {
     if (timerRef.current) clearTimeout(timerRef.current);
-    setAnimKey(k => k + 1);
+    setAnimKey((k) => k + 1);
     setPlaying(true);
-    timerRef.current = setTimeout(() => setPlaying(false), BURN_PILE_PARTICLE_MS + 100);
+    timerRef.current = setTimeout(
+      () => setPlaying(false),
+      BURN_PILE_PARTICLE_MS + 100,
+    );
   }
-  useEffect(() => () => { if (timerRef.current) clearTimeout(timerRef.current); }, []);
+  useEffect(
+    () => () => {
+      if (timerRef.current) clearTimeout(timerRef.current);
+    },
+    [],
+  );
 
   // All coordinates in window.innerWidth/Height space — ScaledViewportContainer
   // scales them to fit correctly inside the preview area.
   const fromRect = {
-    left:   Math.round(window.innerWidth  * 0.50 - 56),
+    left: Math.round(window.innerWidth * 0.5 - 56),
     top:    Math.round(window.innerHeight * 0.35),
     width:  112,
     height: 160,
@@ -1062,14 +1481,14 @@ function BurnPileParticlePreview() {
 
   const toRect = {
     left:   Math.round(window.innerWidth  * 0.74 - 16),
-    top:    Math.round(window.innerHeight * 0.70 - 16),
+    top: Math.round(window.innerHeight * 0.7 - 16),
     width:  32,
     height: 32,
   } as DOMRect;
 
   return (
     <CardFxPreviewShell
-      note="Charred card fragment that arcs from the burned market slot (center) to the burn-pile chip (lower-right) after BurnFlash completes. Contained via CSS stacking-context scaling."
+      note="Charred Artifact fragment that arcs from the burned Forge slot (center) to the burn-pile chip (lower-right) after BurnFlash completes. Contained via CSS stacking-context scaling."
       controls={
         <>
           <div className="flex justify-center pt-1">
@@ -1078,8 +1497,8 @@ function BurnPileParticlePreview() {
           <TimingBar
             totalMs={BURN_PILE_PARTICLE_MS}
             phases={[
-              { label: 'flight', ms: 780 },
-              { label: 'guard',  ms: BURN_PILE_PARTICLE_MS - 780 },
+              { label: "flight", ms: 780 },
+              { label: "guard", ms: BURN_PILE_PARTICLE_MS - 780 },
             ]}
             playing={playing}
             playKey={animKey}
@@ -1087,7 +1506,10 @@ function BurnPileParticlePreview() {
         </>
       }
       previewArea={
-        <ScaledViewportContainer playing={playing} idleLabel="Press Play to preview">
+        <ScaledViewportContainer
+          playing={playing}
+          idleLabel="Press Play to preview"
+        >
           {playing && (
             <BurnPileParticle
               key={animKey}
@@ -1116,25 +1538,30 @@ function BurnFlashPreview() {
 
   function play() {
     if (timerRef.current) clearTimeout(timerRef.current);
-    setAnimKey(k => k + 1);
+    setAnimKey((k) => k + 1);
     setPlaying(true);
     gameAudio.playCardBurn();
     timerRef.current = setTimeout(() => setPlaying(false), BURN_FLASH_MS + 150);
   }
-  useEffect(() => () => { if (timerRef.current) clearTimeout(timerRef.current); }, []);
+  useEffect(
+    () => () => {
+      if (timerRef.current) clearTimeout(timerRef.current);
+    },
+    [],
+  );
 
   // Slot rect in window.innerWidth/Height coordinates — ScaledViewportContainer
   // scales these so they land correctly inside the preview area.
   const slotRect = {
-    left:   Math.round(window.innerWidth  * 0.50 - 56),
-    top:    Math.round(window.innerHeight * 0.30),
+    left: Math.round(window.innerWidth * 0.5 - 56),
+    top: Math.round(window.innerHeight * 0.3),
     width:  112,
     height: 160,
   } as DOMRect;
 
   return (
     <CardFxPreviewShell
-      note="Bottom-up burn: ash overlay grows bottom→top (scaleY, no blur), flame edge travels upward, cinders spawn at the flame front, top sparks burst when the card is consumed."
+      note="Bottom-up burn: ash overlay grows bottom→top (scaleY, no blur), flame edge travels upward, cinders spawn at the flame front, top sparks burst when the Artifact is consumed."
       controls={
         <>
           <div className="flex justify-center pt-1">
@@ -1143,12 +1570,12 @@ function BurnFlashPreview() {
           <TimingBar
             totalMs={BURN_FLASH_MS}
             phases={[
-              { label: 'target ring',    ms: 300 },
-              { label: 'bottom ignite',  ms: 300 },
-              { label: 'upward burn',    ms: 1400 },
-              { label: 'top sparks',     ms: 150 },
-              { label: 'smoke',          ms: 250 },
-              { label: 'scorch fade',    ms: 400 },
+              { label: "target ring", ms: 300 },
+              { label: "bottom ignite", ms: 300 },
+              { label: "upward burn", ms: 1400 },
+              { label: "top sparks", ms: 150 },
+              { label: "smoke", ms: 250 },
+              { label: "scorch fade", ms: 400 },
             ]}
             playing={playing}
             playKey={animKey}
@@ -1156,22 +1583,26 @@ function BurnFlashPreview() {
         </>
       }
       previewArea={
-        <ScaledViewportContainer playing={playing} idleLabel="Press Play to preview BurnFlash">
+        <ScaledViewportContainer
+          playing={playing}
+          idleLabel="Press Play to preview BurnFlash"
+        >
           {/* Faint mock card silhouette so the overlay has context */}
           {playing && (
             <div
               key={`slot-${animKey}`}
               style={{
-                position: 'fixed',
+                position: "fixed",
                 left:   slotRect.left,
                 top:    slotRect.top,
                 width:  slotRect.width,
                 height: slotRect.height,
                 borderRadius: 10,
-                background: 'linear-gradient(160deg, #1a1a2e 0%, #16213e 60%, #0f3460 100%)',
-                border: '1px solid rgba(255,255,255,0.12)',
+                background:
+                  "linear-gradient(160deg, #1a1a2e 0%, #16213e 60%, #0f3460 100%)",
+                border: "1px solid rgba(255,255,255,0.12)",
                 zIndex: 1,
-                pointerEvents: 'none',
+                pointerEvents: "none",
               }}
             />
           )}
@@ -1189,29 +1620,47 @@ function BurnFlashPreview() {
 }
 
 // ─── Keyword States Preview ────────────────────────────────────────────────────
-// Shows CardKeywordOverlay and CardMarkerBadge side-by-side on mock card slots
-// for all persistent keyword states: condemned, forgotten, nullified, seeded.
+// Shows the persistent cross-card keyword treatment for every brand state.
 
-type KwStateType = 'condemned' | 'forgotten' | 'nullified' | 'avatar_seed';
+type KwStateType = "condemned" | "forgotten" | "nullified" | "avatar_seed";
 
-const KW_STATE_META: Record<KwStateType, { label: string; accent: string; desc: string }> = {
-  condemned:  { label: 'Condemned',  accent: '#ef4444', desc: 'Ember-red vignette — burning imminence' },
-  forgotten:  { label: 'Forgotten',  accent: '#9988ee', desc: 'Blue-black haze + desaturation' },
-  nullified:  { label: 'Nullified',  accent: '#64748b', desc: 'Full greyscale desaturation' },
-  avatar_seed:{ label: 'Seeded',     accent: '#2ecc71', desc: 'Soft green edge shimmer' },
+const KW_STATE_META: Record<
+  KwStateType,
+  { label: string; accent: string; desc: string }
+> = {
+  condemned: {
+    label: "Condemned",
+    accent: "#ef4444",
+    desc: "Ember-red vignette — burning imminence",
+  },
+  forgotten: {
+    label: "Forgotten",
+    accent: "#9988ee",
+    desc: "Blue-black haze + desaturation",
+  },
+  nullified: {
+    label: "Nullified",
+    accent: "#64748b",
+    desc: "Full greyscale desaturation",
+  },
+  avatar_seed: {
+    label: "Seeded",
+    accent: "#2ecc71",
+    desc: "Soft green edge shimmer",
+  },
 };
 
 function KeywordStatePreview() {
-  const [selected, setSelected] = useState<KwStateType>('condemned');
+  const [selected, setSelected] = useState<KwStateType>("condemned");
   const meta = KW_STATE_META[selected];
 
   return (
     <CardFxPreviewShell
-      note="Persistent keyword overlays that sit on a card throughout its marked state. CardKeywordOverlay (aura) + CardMarkerBadge (corner badge) shown together."
+      note="Persistent centered keyword brands with their Artifact-level aura, shown beside an unmarked Artifact."
       controls={
         <ControlRow label="Keyword">
           <div className="flex flex-wrap gap-1.5">
-            {(Object.keys(KW_STATE_META) as KwStateType[]).map(kw => {
+            {(Object.keys(KW_STATE_META) as KwStateType[]).map((kw) => {
               const m = KW_STATE_META[kw];
               const active = selected === kw;
               return (
@@ -1221,9 +1670,9 @@ function KeywordStatePreview() {
                   onClick={() => setSelected(kw)}
                   className="text-[10px] font-mono px-2.5 py-1 rounded border transition-colors"
                   style={{
-                    borderColor: active ? m.accent : 'rgba(255,255,255,0.15)',
-                    background:  active ? `${m.accent}22` : 'transparent',
-                    color:       active ? m.accent : '#64748b',
+                    borderColor: active ? m.accent : "rgba(255,255,255,0.15)",
+                    background: active ? `${m.accent}22` : "transparent",
+                    color: active ? m.accent : "#64748b",
                   }}
                 >
                   {m.label}
@@ -1236,7 +1685,11 @@ function KeywordStatePreview() {
       previewArea={
         <div
           className="flex items-center justify-center gap-8 px-6"
-          style={{ minHeight: 260, background: 'rgba(3,4,12,0.95)', borderRadius: 12 }}
+          style={{
+            minHeight: 260,
+            background: "rgba(3,4,12,0.95)",
+            borderRadius: 12,
+          }}
         >
           {/* Without overlay — baseline */}
           <div className="flex flex-col items-center gap-3">
@@ -1245,35 +1698,33 @@ function KeywordStatePreview() {
                 width: MOCK_CARD_W,
                 height: MOCK_CARD_H,
                 borderRadius: 10,
-                background: 'linear-gradient(160deg, #1a1a2e 0%, #16213e 60%, #0f3460 100%)',
-                border: '1px solid rgba(255,255,255,0.12)',
-                position: 'relative',
+                background:
+                  "linear-gradient(160deg, #1a1a2e 0%, #16213e 60%, #0f3460 100%)",
+                border: "1px solid rgba(255,255,255,0.12)",
+                position: "relative",
                 flexShrink: 0,
               }}
             />
-            <span className="text-[9px] font-mono text-muted-foreground/30 uppercase tracking-widest">clean</span>
+            <span className="text-[9px] font-mono text-muted-foreground/30 uppercase tracking-widest">
+              clean
+            </span>
           </div>
 
-          {/* With overlay + badge */}
+          {/* With persistent keyword brand */}
           <div className="flex flex-col items-center gap-3">
             <div
               style={{
                 width: MOCK_CARD_W,
                 height: MOCK_CARD_H,
                 borderRadius: 10,
-                background: 'linear-gradient(160deg, #1a1a2e 0%, #16213e 60%, #0f3460 100%)',
-                border: '1px solid rgba(255,255,255,0.12)',
-                position: 'relative',
+                background:
+                  "linear-gradient(160deg, #1a1a2e 0%, #16213e 60%, #0f3460 100%)",
+                border: "1px solid rgba(255,255,255,0.12)",
+                position: "relative",
                 flexShrink: 0,
               }}
             >
               <CardKeywordOverlay type={selected} />
-              <div style={{ position: 'absolute', top: 4, left: 4, zIndex: 20 }}>
-                <CardMarkerBadge
-                  type={selected === 'avatar_seed' ? 'avatar_seed' : selected}
-                  isNew={false}
-                />
-              </div>
             </div>
             <span
               className="text-[9px] font-mono uppercase tracking-widest"
@@ -1289,49 +1740,96 @@ function KeywordStatePreview() {
 }
 
 // ─── Brand Strike Preview ───────────────────────────────────────────────────
-// Shows the full ArrivalBrandStrike animation: source pulse + beam + impact flash
-// + large brand symbol. Also demonstrates the interactive CardMarkerBadge.
+// Shows the full ArrivalBrandStrike animation: source pulse + beam + impact
+// flash + keyword stamp, followed by the persistent keyword brand.
 
-type BrandMarkerType = 'condemned' | 'forgotten' | 'nullified' | 'avatar_seed';
+type BrandMarkerType = "condemned" | "forgotten" | "nullified" | "avatar_seed";
 
 const BRAND_STRIKE_META: Record<
   BrandMarkerType,
   { label: string; accent: string; desc: string; lumId: string }
 > = {
-  condemned: { label: 'Condemned', accent: '#ef4444', desc: 'Ember Sovereign', lumId: 'lum_ember' },
-  forgotten: { label: 'Forgotten', accent: '#9988ee', desc: 'The Hourless Compass', lumId: 'lum_compass' },
-  nullified: { label: 'Nullified', accent: '#64748b', desc: 'Null Sovereign', lumId: 'lum_null' },
-  avatar_seed: { label: 'Seeded', accent: '#2ecc71', desc: 'The Seed Beyond Seasons', lumId: 'lum_seed' },
+  condemned: {
+    label: "Condemned",
+    accent: "#ef4444",
+    desc: "Ember Sovereign",
+    lumId: "lum_ember",
+  },
+  forgotten: {
+    label: "Forgotten",
+    accent: "#9988ee",
+    desc: "???",
+    lumId: "lum_compass",
+  },
+  nullified: {
+    label: "Nullified",
+    accent: "#64748b",
+    desc: "Null Sovereign",
+    lumId: "lum_null",
+  },
+  avatar_seed: {
+    label: "Seeded",
+    accent: "#2ecc71",
+    desc: "The Seed Beyond Seasons",
+    lumId: "lum_seed",
+  },
 };
 
-const BRAND_STRIKE_TOTAL_MS = 1200;
+const BRAND_STRIKE_TOTAL_MS = 1900;
 
 function BrandStrikePreview() {
-  const [selected, setSelected] = useState<BrandMarkerType>('condemned');
+  const [selected, setSelected] = useState<BrandMarkerType>("condemned");
   const [animKey, setAnimKey] = useState(0);
   const [playing, setPlaying] = useState(false);
+  const [showMarkedCards, setShowMarkedCards] = useState(false);
   const timerRef = useRef<ReturnType<typeof setTimeout> | null>(null);
+  const markerTimerRef = useRef<ReturnType<typeof setTimeout> | null>(null);
   const meta = BRAND_STRIKE_META[selected];
   const lum = getLuminaryVisuals(meta.lumId);
 
   function play() {
     if (timerRef.current) clearTimeout(timerRef.current);
-    setAnimKey(k => k + 1);
+    if (markerTimerRef.current) clearTimeout(markerTimerRef.current);
+    setAnimKey((k) => k + 1);
     setPlaying(true);
-    timerRef.current = setTimeout(() => setPlaying(false), BRAND_STRIKE_TOTAL_MS + 150);
+    setShowMarkedCards(true);
+    timerRef.current = setTimeout(
+      () => setPlaying(false),
+      BRAND_STRIKE_TOTAL_MS + 80,
+    );
+    markerTimerRef.current = setTimeout(
+      () => setShowMarkedCards(false),
+      BRAND_STRIKE_TOTAL_MS + 80,
+    );
   }
-  useEffect(() => () => { if (timerRef.current) clearTimeout(timerRef.current); }, []);
+  useEffect(
+    () => () => {
+      if (timerRef.current) clearTimeout(timerRef.current);
+      if (markerTimerRef.current) clearTimeout(markerTimerRef.current);
+    },
+    [],
+  );
 
   const scale = PREVIEW_W / window.innerWidth;
   const cardW = 112;
   const cardH = 160;
   const cardY = Math.round(window.innerHeight * 0.35);
   const cardRects = [
-    { x: Math.round(window.innerWidth * 0.40 - cardW / 2), y: cardY, w: cardW, h: cardH },
-    { x: Math.round(window.innerWidth * 0.60 - cardW / 2), y: cardY, w: cardW, h: cardH },
+    {
+      x: Math.round(window.innerWidth * 0.4 - cardW / 2),
+      y: cardY,
+      w: cardW,
+      h: cardH,
+    },
+    {
+      x: Math.round(window.innerWidth * 0.6 - cardW / 2),
+      y: cardY,
+      w: cardW,
+      h: cardH,
+    },
   ];
   const sourceRect = {
-    x: Math.round(window.innerWidth * 0.50 - cardW / 2),
+    x: Math.round(window.innerWidth * 0.5 - cardW / 2),
     y: Math.round(window.innerHeight * 0.12),
     w: cardW,
     h: cardH,
@@ -1347,12 +1845,13 @@ function BrandStrikePreview() {
 
   return (
     <CardFxPreviewShell
-      note={`Arrival Brand Strike: source pulse (${meta.desc}) + lightning beam + impact flash + large brand symbol. Hover the badge to see the trace-back glow.`}
+      note={`Arrival Brand Strike: source pulse (${meta.desc}) + lightning beam + impact flash + keyword stamp, then a held card-bound keyword until the card leaves.`}
       controls={
         <>
           <ControlRow label="Luminary">
             <div className="flex flex-wrap gap-1.5">
-              {(Object.keys(BRAND_STRIKE_META) as BrandMarkerType[]).map(b => {
+              {(Object.keys(BRAND_STRIKE_META) as BrandMarkerType[]).map(
+                (b) => {
                 const m = BRAND_STRIKE_META[b];
                 const active = selected === b;
                 return (
@@ -1362,15 +1861,18 @@ function BrandStrikePreview() {
                     onClick={() => setSelected(b)}
                     className="text-[10px] font-mono px-2.5 py-1 rounded border transition-colors"
                     style={{
-                      borderColor: active ? m.accent : 'rgba(255,255,255,0.15)',
-                      background:  active ? `${m.accent}22` : 'transparent',
-                      color:       active ? m.accent : '#64748b',
+                        borderColor: active
+                          ? m.accent
+                          : "rgba(255,255,255,0.15)",
+                        background: active ? `${m.accent}22` : "transparent",
+                        color: active ? m.accent : "#64748b",
                     }}
                   >
                     {m.label}
                   </button>
                 );
-              })}
+                },
+              )}
             </div>
           </ControlRow>
           <div className="flex justify-center pt-1">
@@ -1379,10 +1881,10 @@ function BrandStrikePreview() {
           <TimingBar
             totalMs={BRAND_STRIKE_TOTAL_MS}
             phases={[
-              { label: 'source pulse', ms: 300 },
-              { label: 'beam 1',       ms: 380 },
-              { label: 'beam 2',       ms: 380 },
-              { label: 'brand fade',   ms: 140 },
+              { label: "source pulse", ms: 300 },
+              { label: "beam travel", ms: 420 },
+              { label: "brand stamp", ms: 150 },
+              { label: "held brand", ms: 1030 },
             ]}
             playing={playing}
             playKey={animKey}
@@ -1392,14 +1894,14 @@ function BrandStrikePreview() {
       previewArea={
         <div
           style={{
-            position: 'relative',
-            width: '100%',
+            position: "relative",
+            width: "100%",
             maxWidth: PREVIEW_W,
             height: PREVIEW_H,
-            overflow: 'hidden',
-            background: 'rgba(3,4,12,0.95)',
+            overflow: "hidden",
+            background: "rgba(3,4,12,0.95)",
             borderRadius: 12,
-            margin: '0 auto',
+            margin: "0 auto",
           }}
         >
           {!playing && (
@@ -1409,58 +1911,79 @@ function BrandStrikePreview() {
               </span>
             </div>
           )}
-          {playing && (
+          {(playing || showMarkedCards) && (
             <div
               style={{
-                position: 'absolute',
-                top: 0, left: 0,
+                position: "absolute",
+                top: 0,
+                left: 0,
                 width: window.innerWidth,
                 height: window.innerHeight,
                 transform: `scale(${scale})`,
-                transformOrigin: 'top left',
-                pointerEvents: 'none',
+                transformOrigin: "top left",
+                pointerEvents: "none",
               }}
             >
               {/* Mock card silhouettes so the beam has context */}
-              {cardRects.map((r, i) => (
+              {cardRects.map((r, i) => {
+                const markerDelay = 260 + i * 90 + 570;
+                return (
                 <div
                   key={`card-${i}`}
                   style={{
-                    position: 'fixed',
-                    left: r.x, top: r.y,
-                    width: r.w, height: r.h,
+                      position: "fixed",
+                      left: r.x,
+                      top: r.y,
+                      width: r.w,
+                      height: r.h,
                     borderRadius: 10,
-                    background: 'linear-gradient(160deg, #1a1a2e 0%, #16213e 60%, #0f3460 100%)',
-                    border: '1px solid rgba(255,255,255,0.12)',
+                      overflow: "hidden",
+                      background:
+                        "linear-gradient(160deg, #1a1a2e 0%, #16213e 60%, #0f3460 100%)",
+                      border: "1px solid rgba(255,255,255,0.12)",
                     zIndex: 1,
-                    pointerEvents: 'none',
+                      pointerEvents: "none",
                   }}
+                  >
+                    {showMarkedCards && (
+                      <CardKeywordOverlay
+                        type={selected}
+                        brandDelay={markerDelay}
                 />
-              ))}
+                    )}
+                  </div>
+                );
+              })}
               {/* Mock source portal silhouette */}
               <div
                 style={{
-                  position: 'fixed',
-                  left: sourceRect.x, top: sourceRect.y,
-                  width: sourceRect.w, height: sourceRect.h,
+                  position: "fixed",
+                  left: sourceRect.x,
+                  top: sourceRect.y,
+                  width: sourceRect.w,
+                  height: sourceRect.h,
                   borderRadius: 10,
-                  background: 'linear-gradient(160deg, #2a1a2e 0%, #26133e 60%, #1f1a60 100%)',
-                  border: '1px solid rgba(255,255,255,0.12)',
+                  background:
+                    "linear-gradient(160deg, #2a1a2e 0%, #26133e 60%, #1f1a60 100%)",
+                  border: "1px solid rgba(255,255,255,0.12)",
                   zIndex: 1,
-                  pointerEvents: 'none',
+                  pointerEvents: "none",
                 }}
               />
 
+              {playing && (
               <ArrivalBrandStrike
                 key={animKey}
                 strikes={brandStrikes}
                 source={{
                   rect: sourceRect,
-                  primary: lum.summonColor ?? '#a78bfa',
-                  secondary: lum.summonSecondaryColor ?? lum.summonColor ?? '#f0abfc',
+                    primary: lum.summonColor ?? "#a78bfa",
+                    secondary:
+                      lum.summonSecondaryColor ?? lum.summonColor ?? "#f0abfc",
                 }}
                 onDone={() => setPlaying(false)}
               />
+              )}
             </div>
           )}
         </div>
@@ -1474,11 +1997,11 @@ function BrandStrikePreview() {
 // constants used by each preview component's TimingBar so they stay in sync.
 
 const CARD_FX_TOTALS: Record<CardFxMode, number> = {
-  cipher_reserve:      CIPHER_MODE_TOTAL_MS['game'],
+  cipher_reserve: CIPHER_MODE_TOTAL_MS["game"],
   forge_burst:         FORGE_PHASE_MS.total,
   opponent_forge:      FORGE_PHASE_MS.total,
   reserved_forge_ring: RING_DISMISS_MS,
-  market_deal_flip:    DEAL_ANIM_MS,
+  forge_refill_flip: DEAL_ANIM_MS,
   burn_pile_particle:  BURN_PILE_PARTICLE_MS,
 };
 
@@ -1487,83 +2010,77 @@ const CARD_FX_TOTALS: Record<CardFxMode, number> = {
 const MOCK_CARD_W = 112;
 const MOCK_CARD_H = 160;
 
-// ─── Idle Portal Preview ──────────────────────────────────────────────────────
+// ─── Summoned Card Preview ────────────────────────────────────────────────────
 
-function IdlePortalPreview({ lum, idleKey }: { lum: SandboxLuminary; idleKey: number }) {
+function IdlePortalPreview({
+  lum,
+  idleKey,
+}: {
+  lum: SandboxLuminary;
+  idleKey: number;
+}) {
   const vis = getLuminaryVisuals(lum.id);
-  const [replayKey, setReplayKey] = useState(0);
-
-  useEffect(() => { setReplayKey(0); }, [idleKey]);
+  const claimedLuminary = makeSandboxClaimedLuminary(lum);
+  const claimedAffinity = makeSandboxLuminaryAffinity(lum);
 
   return (
     <div className="flex flex-col items-center gap-4 px-4 py-6">
-      <p className="text-[10px] font-mono text-muted-foreground/50 uppercase tracking-widest">
-        Entity returns to card · idle aura pulses after 1.2 s
+      <p className="sr-only">
+        Settled Terminus card · summoned Luminary remains alive
       </p>
 
       <div
-        style={{
-          width: MOCK_CARD_W,
-          height: MOCK_CARD_H,
-          position: 'relative',
-          borderRadius: 8,
-          background: '#0d0d1a',
-          border: `1px solid ${vis.primaryColor}40`,
-          boxShadow: `0 0 18px ${vis.glowColor}22`,
-          flexShrink: 0,
-        }}
+        key={`${idleKey}-${lum.id}`}
+        className="game-shell vortex-preview-shell"
+        data-board-presentation="celestial"
+        style={{ marginTop: 36, overflow: "visible" }}
       >
         <div
-          data-luminary-id={lum.id}
-          style={{ position: 'absolute', inset: 0, borderRadius: 8 }}
-        />
-        <div
-          style={{
-            position: 'absolute', bottom: 0, left: 0, right: 0,
-            padding: '4px 6px',
-            borderBottomLeftRadius: 8, borderBottomRightRadius: 8,
-            background: 'linear-gradient(to top, rgba(0,0,0,0.85) 0%, transparent 100%)',
-          }}
+          className="board-terminus vortex-preview-terminus"
+          style={{ overflow: "visible" }}
         >
-          <div style={{ fontSize: 9, fontWeight: 600, color: '#e2e8f0', lineHeight: 1.2, whiteSpace: 'nowrap', overflow: 'hidden', textOverflow: 'ellipsis' }}>
-            {lum.name}
+        <div
+            className="board-terminus-card-stage board-terminus-card-stage--awakened"
+            data-state-label="Breakthrough"
+            style={
+              {
+                "--terminus-affinity": vis.glowColor,
+                "--terminus-affinity-core": vis.primaryColor,
+              } as CSSProperties
+            }
+        >
+            <LuminaryCard
+              luminary={claimedLuminary}
+              claimedByNames={[SANDBOX_PLAYER.playerName]}
+              isReleased
+              luminaryAffinity={claimedAffinity}
+              claimedByPlayer={SANDBOX_PLAYER}
+              isOwnedByMe
+              isLive
+              showActiveAffinity
+              showClaimedIdentity
+              showClaimedPresence={false}
+            />
           </div>
-          <div style={{ fontSize: 8, color: vis.primaryColor, marginTop: 1 }}>{lum.domain}</div>
         </div>
       </div>
 
-      <LuminaryIdleOverlay key={`${idleKey}-${replayKey}`} luminaryId={lum.id} />
-
-      <button
-        type="button"
-        onClick={() => setReplayKey(k => k + 1)}
-        className="text-[11px] font-mono px-3 py-1.5 rounded border transition-colors"
-        style={{
-          background: 'rgba(255,255,255,0.04)',
-          borderColor: `${vis.primaryColor}50`,
-          color: vis.primaryColor,
-        }}
-        onMouseEnter={e => { (e.currentTarget as HTMLButtonElement).style.background = 'rgba(255,255,255,0.09)'; }}
-        onMouseLeave={e => { (e.currentTarget as HTMLButtonElement).style.background = 'rgba(255,255,255,0.04)'; }}
-      >
-        ↺ Replay
-      </button>
-
-      <p className="text-[10px] text-muted-foreground/40 text-center max-w-xs">{lum.flavor}</p>
+      <p className="text-[10px] text-muted-foreground/40 text-center max-w-xs">
+        {lum.flavor}
+      </p>
     </div>
   );
 }
-
 
 // ─── Board Effect Preview ─────────────────────────────────────────────────────
 // Types, sequencer hook, and card tile components for the inline board preview
 // rendered below the Play/Replay/Skip controls in Procedure Review.
 
-type BoardBadgeType = 'forgotten' | 'condemned' | 'nullified' | 'avatar_seed';
+type BoardBadgeType = "forgotten" | "condemned" | "nullified" | "avatar_seed";
 
 interface CardSlotEffect {
   highlighted: boolean;
-  highlightKeyword?: 'burn' | 'condemned';
+  highlightKeyword?: "burn" | "condemned";
   badge?: BoardBadgeType;
   badgeIsNew: boolean;
   burning: boolean;
@@ -1579,21 +2096,32 @@ interface ActiveBurn {
 type SlotEffectMap = Record<string, CardSlotEffect>;
 
 function defaultSlotEffect(): CardSlotEffect {
-  return { highlighted: false, badgeIsNew: false, burning: false, burned: false, refilling: false };
+  return {
+    highlighted: false,
+    badgeIsNew: false,
+    burning: false,
+    burned: false,
+    refilling: false,
+  };
 }
 
-// Detect whether the procedure steps contain any market-card targeting
+// Detect whether the procedure steps target any Forge Artifacts.
 // (as opposed to player-panel targeting). Player IDs are 'mock-p...' in all mock states.
-function stepsHaveMarketEffect(steps: AnimationTimelineStep[]): boolean {
+function stepsHaveForgeEffect(steps: AnimationTimelineStep[]): boolean {
   for (const step of steps) {
-    if (step.type === 'targetClaim' && step.targetIds.some(id => !id.startsWith('mock-p'))) return true;
-    if (step.type === 'residue' && step.targetIds.length > 0) return true;
-    if (step.type === 'keywordEvents') {
+    if (
+      step.type === "targetClaim" &&
+      step.targetIds.some((id) => !id.startsWith("mock-p"))
+    )
+      return true;
+    if (step.type === "residue" && step.targetIds.length > 0) return true;
+    if (step.type === "keywordEvents") {
       for (const ev of step.events) {
-        if (ev.targetIds.some(id => !id.startsWith('mock-p'))) return true;
+        if (ev.targetIds.some((id) => !id.startsWith("mock-p"))) return true;
       }
     }
-    if (step.type === 'marketRedraw') return true;
+    if (step.type === "forgeRefill" || step.type === "archiveReturn")
+      return true;
   }
   return false;
 }
@@ -1611,14 +2139,14 @@ function useBoardEffectSequencer(
   effects: SlotEffectMap;
   activeBurns: ActiveBurn[];
   onBurnDone: (key: string) => void;
-  hasMarketEffect: boolean;
+  hasForgeEffect: boolean;
 } {
   const [effects, setEffects] = useState<SlotEffectMap>({});
   const [activeBurns, setActiveBurns] = useState<ActiveBurn[]>([]);
   const timerRefs = useRef<ReturnType<typeof setTimeout>[]>([]);
 
   function clearTimers() {
-    timerRefs.current.forEach(t => clearTimeout(t));
+    timerRefs.current.forEach((t) => clearTimeout(t));
     timerRefs.current = [];
   }
 
@@ -1637,36 +2165,50 @@ function useBoardEffectSequencer(
 
     for (const step of steps) {
       switch (step.type) {
-
-        case 'luminaryPulse':
+        case "luminaryPulse":
           cursor += 50;
           break;
 
-        case 'targetClaim': {
-          const ids = step.targetIds.filter(id => !id.startsWith('mock-p'));
-          if (ids.length === 0) { cursor += 50; break; }
-          const kw: CardSlotEffect['highlightKeyword'] =
-            step.keyword === 'burn' ? 'burn' :
-            step.keyword === 'condemned' ? 'condemned' : undefined;
+        case "targetClaim": {
+          const ids = step.targetIds.filter((id) => !id.startsWith("mock-p"));
+          if (ids.length === 0) {
+            cursor += 50;
+            break;
+          }
+          const kw: CardSlotEffect["highlightKeyword"] =
+            step.keyword === "burn"
+              ? "burn"
+              : step.keyword === "condemned"
+                ? "condemned"
+                : undefined;
           const hStart = cursor;
           const hEnd = cursor + 700;
           cursor = hEnd;
 
           schedule(() => {
-            setEffects(prev => {
+            setEffects((prev) => {
               const next = { ...prev };
               for (const id of ids) {
-                next[id] = { ...(next[id] ?? defaultSlotEffect()), highlighted: true, highlightKeyword: kw };
+                next[id] = {
+                  ...(next[id] ?? defaultSlotEffect()),
+                  highlighted: true,
+                  highlightKeyword: kw,
+                };
               }
               return next;
             });
           }, hStart);
 
           schedule(() => {
-            setEffects(prev => {
+            setEffects((prev) => {
               const next = { ...prev };
               for (const id of ids) {
-                if (next[id]) next[id] = { ...next[id], highlighted: false, highlightKeyword: undefined };
+                if (next[id])
+                  next[id] = {
+                    ...next[id],
+                    highlighted: false,
+                    highlightKeyword: undefined,
+                  };
               }
               return next;
             });
@@ -1674,62 +2216,77 @@ function useBoardEffectSequencer(
           break;
         }
 
-        case 'residue': {
+        case "residue": {
           const ids = step.targetIds;
-          // 'seeded' is the procedure keyword for The Seed Beyond Seasons;
-          // CardMarkerBadge uses 'avatar_seed' — map explicitly rather than casting.
+          // 'seeded' is the procedure keyword; the persistent marker key is
+          // 'avatar_seed', so map it explicitly rather than casting.
           const kw: BoardBadgeType =
-            step.keyword === 'seeded' ? 'avatar_seed' : step.keyword;
+            step.keyword === "seeded" ? "avatar_seed" : step.keyword;
           const start = cursor;
           cursor += 300;
           schedule(() => {
-            setEffects(prev => {
+            setEffects((prev) => {
               const next = { ...prev };
               for (const id of ids) {
-                next[id] = { ...(next[id] ?? defaultSlotEffect()), badge: kw, badgeIsNew: true };
+                next[id] = {
+                  ...(next[id] ?? defaultSlotEffect()),
+                  badge: kw,
+                  badgeIsNew: true,
+                };
               }
               return next;
             });
-            timerRefs.current.push(setTimeout(() => {
-              setEffects(prev => {
+            timerRefs.current.push(
+              setTimeout(() => {
+                setEffects((prev) => {
                 const next = { ...prev };
                 for (const id of ids) {
                   if (next[id]) next[id] = { ...next[id], badgeIsNew: false };
                 }
                 return next;
               });
-            }, 600));
+              }, 600),
+            );
           }, start);
           break;
         }
 
-        case 'keywordEvents': {
+        case "keywordEvents": {
           for (const ev of step.events) {
-            if (ev.keyword !== 'burn') continue;
-            const ids = ev.targetIds.filter(id => !id.startsWith('mock-p'));
+            if (ev.keyword !== "burn") continue;
+            const ids = ev.targetIds.filter((id) => !id.startsWith("mock-p"));
             if (ids.length === 0) continue;
 
             const burnStart = cursor;
             cursor += 1400;
 
             ids.forEach((id, i) => {
-              schedule(() => {
+              schedule(
+                () => {
                 const el = slotRefs.current.get(id);
                 if (!el) return;
                 const rect = el.getBoundingClientRect();
                 const burnKey = `burn-${id}-${burnStart}-${i}`;
-                setActiveBurns(prev => [...prev, { key: burnKey, rect }]);
-              }, burnStart + i * 90);
+                  setActiveBurns((prev) => [...prev, { key: burnKey, rect }]);
+                },
+                burnStart + i * 90,
+              );
             });
 
-            for (const id of ids) { burnedCards.add(id); }
+            for (const id of ids) {
+              burnedCards.add(id);
+            }
 
             const markBurnedAt = cursor;
             schedule(() => {
-              setEffects(prev => {
+              setEffects((prev) => {
                 const next = { ...prev };
                 for (const id of ids) {
-                  next[id] = { ...(next[id] ?? defaultSlotEffect()), burned: true, highlighted: false };
+                  next[id] = {
+                    ...(next[id] ?? defaultSlotEffect()),
+                    burned: true,
+                    highlighted: false,
+                  };
                 }
                 return next;
               });
@@ -1738,30 +2295,40 @@ function useBoardEffectSequencer(
           break;
         }
 
-        case 'marketRedraw': {
+        case "forgeRefill": {
           const redrawnIds = [...burnedCards];
           const start = cursor;
           cursor += 900;
           schedule(() => {
-            setEffects(prev => {
+            setEffects((prev) => {
               const next = { ...prev };
               for (const id of redrawnIds) {
-                next[id] = { ...(next[id] ?? defaultSlotEffect()), refilling: true, burned: false };
+                next[id] = {
+                  ...(next[id] ?? defaultSlotEffect()),
+                  refilling: true,
+                  burned: false,
+                };
               }
               return next;
             });
-            timerRefs.current.push(setTimeout(() => {
-              setEffects(prev => {
+            timerRefs.current.push(
+              setTimeout(() => {
+                setEffects((prev) => {
                 const next = { ...prev };
                 for (const id of redrawnIds) {
                   if (next[id]) next[id] = { ...next[id], refilling: false };
                 }
                 return next;
               });
-            }, 700));
+              }, 700),
+            );
           }, start);
           break;
         }
+
+        case "archiveReturn":
+          cursor += 900;
+          break;
 
         default:
           cursor += 50;
@@ -1773,16 +2340,16 @@ function useBoardEffectSequencer(
   }, [seqKey]);
 
   function onBurnDone(key: string) {
-    setActiveBurns(prev => prev.filter(b => b.key !== key));
+    setActiveBurns((prev) => prev.filter((b) => b.key !== key));
   }
 
-  const hasMarketEffect = steps ? stepsHaveMarketEffect(steps) : false;
-  return { effects, activeBurns, onBurnDone, hasMarketEffect };
+  const hasForgeEffect = steps ? stepsHaveForgeEffect(steps) : false;
+  return { effects, activeBurns, onBurnDone, hasForgeEffect };
 }
 
-// ─── MockMarketTile ───────────────────────────────────────────────────────────
+// ─── MockForgeSlot ───────────────────────────────────────────────────────────
 
-function MockMarketTile({
+function MockForgeSlot({
   card,
   effect,
   slotRef,
@@ -1791,26 +2358,35 @@ function MockMarketTile({
   effect: CardSlotEffect;
   slotRef: (el: HTMLElement | null) => void;
 }) {
-  // Reverse-map bonusColor enum value → GemKey for affinity hex lookup
-  const affinityKey = GEM_KEYS.find(
-    k => k !== 'flux' && (ArtifactCardBonusColor as Record<string, string>)[k] === card.bonusColor
-  ) as GemKey | undefined;
-  const affHex = affinityKey ? GEM_META[affinityKey].hex : '#64748b';
-  const tierLabel = ['', 'I', 'II', 'III'][card.tier] ?? '';
+  // Reverse-map bonusAffinity enum value → AffinityKey for affinity hex lookup
+  const affinityKey = AFFINITY_KEYS.find(
+    (k) =>
+      k !== "singularity" &&
+      (ArtifactCardBonusAffinity as Record<string, string>)[k] ===
+        card.bonusAffinity,
+  ) as AffinityKey | undefined;
+  const affHex = affinityKey ? AFFINITY_META[affinityKey].hex : "#64748b";
+  const tierLabel = ["", "I", "II", "III"][card.tier] ?? "";
 
   const hlColor = effect.highlighted
-    ? effect.highlightKeyword === 'burn'      ? '#ff6820'
-    : effect.highlightKeyword === 'condemned' ? '#ef4444'
+    ? effect.highlightKeyword === "burn"
+      ? "#ff6820"
+      : effect.highlightKeyword === "condemned"
+        ? "#ef4444"
     : affHex
     : undefined;
 
-  const bgColor = effect.refilling ? 'rgba(8,30,8,0.85)' : effect.burned ? 'rgba(20,6,4,0.7)' : '#0d0d1a';
+  const bgColor = effect.refilling
+    ? "rgba(8,30,8,0.85)"
+    : effect.burned
+      ? "rgba(20,6,4,0.7)"
+      : "#0d0d1a";
 
   return (
     <div
       ref={slotRef}
       style={{
-        position: 'relative',
+        position: "relative",
         width: 68,
         height: 90,
         borderRadius: 7,
@@ -1821,8 +2397,8 @@ function MockMarketTile({
         boxShadow: hlColor
           ? `0 0 10px ${hlColor}55, inset 0 0 6px ${hlColor}18`
           : undefined,
-        transition: 'border-color 0.18s, box-shadow 0.18s, background 0.28s',
-        overflow: 'visible',
+        transition: "border-color 0.18s, box-shadow 0.18s, background 0.28s",
+        overflow: "visible",
         flexShrink: 0,
       }}
     >
@@ -1831,21 +2407,21 @@ function MockMarketTile({
         style={{
           height: 3,
           background: affHex,
-          borderRadius: '7px 7px 0 0',
+          borderRadius: "7px 7px 0 0",
           opacity: effect.burned ? 0.18 : 1,
-          transition: 'opacity 0.3s',
+          transition: "opacity 0.3s",
         }}
       />
 
       {/* Tier badge */}
       <div
         style={{
-          position: 'absolute',
+          position: "absolute",
           top: 6,
           right: 4,
           fontSize: 8,
           fontWeight: 700,
-          fontFamily: 'monospace',
+          fontFamily: "monospace",
           color: affHex,
           opacity: effect.burned ? 0.2 : 0.75,
           lineHeight: 1,
@@ -1857,21 +2433,21 @@ function MockMarketTile({
       {/* Card name */}
       <div
         style={{
-          position: 'absolute',
+          position: "absolute",
           bottom: 5,
           left: 4,
           right: 4,
           fontSize: 7,
           fontWeight: 500,
-          color: effect.burned ? '#334155' : '#94a3b8',
+          color: effect.burned ? "#334155" : "#94a3b8",
           lineHeight: 1.2,
-          whiteSpace: 'nowrap',
-          overflow: 'hidden',
-          textOverflow: 'ellipsis',
-          transition: 'color 0.3s',
+          whiteSpace: "nowrap",
+          overflow: "hidden",
+          textOverflow: "ellipsis",
+          transition: "color 0.3s",
         }}
       >
-        {effect.burned ? '—' : card.name}
+        {effect.burned ? "—" : card.name}
       </div>
 
       {/* Refill pulse */}
@@ -1880,41 +2456,37 @@ function MockMarketTile({
           <motion.div
             key="refill"
             style={{
-              position: 'absolute',
+              position: "absolute",
               inset: 0,
               borderRadius: 7,
-              display: 'flex',
-              alignItems: 'center',
-              justifyContent: 'center',
+              display: "flex",
+              alignItems: "center",
+              justifyContent: "center",
               fontSize: 14,
-              color: '#4ade80',
+              color: "#4ade80",
             }}
             initial={{ opacity: 0, scale: 0.7 }}
             animate={{ opacity: [0, 1, 0.85, 0], scale: [0.7, 1.1, 1.05, 0.9] }}
-            transition={{ duration: 0.7, ease: 'easeOut' }}
+            transition={{ duration: 0.7, ease: "easeOut" }}
           >
             ↺
           </motion.div>
         )}
       </AnimatePresence>
 
-      {/* Keyword badge */}
+      {/* Persistent keyword brand */}
       <AnimatePresence>
         {effect.badge && !effect.burned && (
-          <CardMarkerBadge
-            key={effect.badge}
-            type={effect.badge}
-            isNew={effect.badgeIsNew}
-          />
+          <CardKeywordOverlay key={effect.badge} type={effect.badge} compact />
         )}
       </AnimatePresence>
     </div>
   );
 }
 
-// ─── MockMarketBoard ──────────────────────────────────────────────────────────
+// ─── MockForgeBoard ───────────────────────────────────────────────────────────
 
-function MockMarketBoard({
+function MockForgeBoard({
   state,
   effects,
   slotRefs,
@@ -1924,10 +2496,10 @@ function MockMarketBoard({
   slotRefs: React.MutableRefObject<Map<string, HTMLElement>>;
 }) {
   const tiers: Array<{ label: string; cards: ArtifactCard[] }> = [
-    { label: 'Tier III', cards: state.marketTier3 ?? [] },
-    { label: 'Tier II',  cards: state.marketTier2 ?? [] },
-    { label: 'Tier I',   cards: state.marketTier1 ?? [] },
-  ].filter(t => t.cards.length > 0);
+    { label: "Tier III", cards: state.forgeTier3 ?? [] },
+    { label: "Tier II", cards: state.forgeTier2 ?? [] },
+    { label: "Tier I", cards: state.forgeTier1 ?? [] },
+  ].filter((t) => t.cards.length > 0);
 
   if (tiers.length === 0) return null;
 
@@ -1938,10 +2510,10 @@ function MockMarketBoard({
           <span
             style={{
               fontSize: 8,
-              fontFamily: 'monospace',
-              color: '#475569',
+              fontFamily: "monospace",
+              color: "#475569",
               width: 38,
-              textAlign: 'right',
+              textAlign: "right",
               flexShrink: 0,
               marginTop: 6,
               lineHeight: 1,
@@ -1950,12 +2522,12 @@ function MockMarketBoard({
             {label}
           </span>
           <div className="flex gap-1.5 flex-wrap">
-            {cards.map(card => (
-              <MockMarketTile
+            {cards.map((card) => (
+              <MockForgeSlot
                 key={card.id}
                 card={card}
                 effect={effects[card.id] ?? defaultSlotEffect()}
-                slotRef={el => {
+                slotRef={(el) => {
                   if (el) slotRefs.current.set(card.id, el);
                   else slotRefs.current.delete(card.id);
                 }}
@@ -1979,65 +2551,103 @@ function describeAftermath(steps: AnimationTimelineStep[]): AftermathLine[] {
   const lines: AftermathLine[] = [];
   for (const step of steps) {
     switch (step.type) {
-      case 'luminaryPulse':
+      case "luminaryPulse":
         break;
-      case 'targetClaim': {
+      case "targetClaim": {
         const n = step.targetIds.length;
         if (n === 0) break;
-        const kwNote = step.keyword ? ` · ${step.keyword} pre-tint` : '';
-        lines.push({ label: `${n} target${n !== 1 ? 's' : ''} claimed${kwNote}`, color: '#e2e8f0' });
+        const kwNote = step.keyword ? ` · ${step.keyword} pre-tint` : "";
+        lines.push({
+          label: `${n} target${n !== 1 ? "s" : ""} claimed${kwNote}`,
+          color: "#e2e8f0",
+        });
         break;
       }
-      case 'keywordEvents': {
+      case "keywordEvents": {
         for (const ev of step.events) {
           const n = ev.targetIds.length;
-          const kwColor = ev.keyword === 'burn' ? '#ef4444' : '#6366f1';
-          lines.push({ label: `${ev.keyword.toUpperCase()}: ${n} card${n !== 1 ? 's' : ''}`, color: kwColor });
+          const kwColor = ev.keyword === "burn" ? "#ef4444" : "#6366f1";
+          lines.push({
+            label: `${ev.keyword.toUpperCase()}: ${n} card${n !== 1 ? "s" : ""}`,
+            color: kwColor,
+          });
         }
         break;
       }
-      case 'keywordEvent': {
+      case "keywordEvent": {
         const n = step.targetIds.length;
-        const kwColor = step.keyword === 'burn' ? '#ef4444' : '#6366f1';
-        lines.push({ label: `${step.keyword.toUpperCase()}: ${n} card${n !== 1 ? 's' : ''}`, color: kwColor });
+        const kwColor = step.keyword === "burn" ? "#ef4444" : "#6366f1";
+        lines.push({
+          label: `${step.keyword.toUpperCase()}: ${n} card${n !== 1 ? "s" : ""}`,
+          color: kwColor,
+        });
         break;
       }
-      case 'residue': {
+      case "residue": {
         const n = step.targetIds.length;
-        const target = n > 0 ? `${n} card${n !== 1 ? 's' : ''}` : 'deck tops (deferred)';
+        const target =
+          n > 0 ? `${n} card${n !== 1 ? "s" : ""}` : "deck tops (deferred)";
         const kwColors: Record<string, string> = {
-          condemned: '#ef4444',
-          forgotten:  '#6366f1',
-          nullified:  '#94a3b8',
-          seeded:     '#22c55e',
+          condemned: "#ef4444",
+          forgotten: "#6366f1",
+          nullified: "#94a3b8",
+          seeded: "#22c55e",
         };
-        lines.push({ label: `${step.keyword.toUpperCase()} residue → ${target}`, color: kwColors[step.keyword] ?? '#94a3b8' });
+        lines.push({
+          label: `${step.keyword.toUpperCase()} residue → ${target}${step.victoryRequirementChange !== undefined ? ` · victory +${step.victoryRequirementChange}` : ""}`,
+          color: kwColors[step.keyword] ?? "#94a3b8",
+        });
         break;
       }
-      case 'marketRedraw':
-        lines.push({ label: 'Market refreshes', color: '#94a3b8' });
+      case "forgeRefill":
+        lines.push({ label: "The Forge refreshes", color: "#94a3b8" });
         break;
-      case 'scoreChange': {
+      case "archiveReturn": {
+        const n = step.cardIds.length;
+        lines.push({
+          label: `${n} Burned Artifact${n === 1 ? "" : "s"} return to the Archives`,
+          color: "#60a5fa",
+        });
+        break;
+      }
+      case "eminenceChange": {
         const n = step.playerIds.length;
-        const sign = step.amount >= 0 ? '+' : '';
-        const who = n > 1 ? 'all players' : 'owner';
-        const col = step.amount >= 0 ? '#fbbf24' : '#ef4444';
-        lines.push({ label: `${sign}${step.amount} Eminence → ${who}`, color: col });
+        const sign = step.amount >= 0 ? "+" : "";
+        const who = n > 1 ? "all players" : "owner";
+        const col = step.amount >= 0 ? "#fbbf24" : "#ef4444";
+        lines.push({
+          label: `${sign}${step.amount} Eminence → ${who}`,
+          color: col,
+        });
         break;
       }
-      case 'crystalReturn': {
+      case "victoryRequirementChange": {
+        const sign = step.amount >= 0 ? "+" : "";
+        lines.push({
+          label: `Victory requirement ${sign}${step.amount}`,
+          color: "#a78bfa",
+        });
+        break;
+      }
+      case "affinityReturn": {
         const n = step.playerIds.length;
-        lines.push({ label: `Crystals returned from ${n} player${n !== 1 ? 's' : ''}`, color: '#60a5fa' });
+        lines.push({
+          label: `Affinity returned from ${n} player${n !== 1 ? "s" : ""}`,
+          color: "#60a5fa",
+        });
         break;
       }
-      case 'deckScry': {
-        const tiers = step.tierIds.map(t => t.replace('tier', 'T')).join('+');
-        const bias = step.affinityBias ? ` · ${step.affinityBias} bias` : '';
-        lines.push({ label: `Deck scry — ${tiers}${bias}`, color: '#a78bfa' });
+      case "deckScry": {
+        const tiers = step.tierIds.map((t) => t.replace("tier", "T")).join("+");
+        const bias = step.affinityBias ? ` · ${step.affinityBias} bias` : "";
+        lines.push({ label: `Deck scry — ${tiers}${bias}`, color: "#a78bfa" });
         break;
       }
-      case 'pendingAction':
-        lines.push({ label: 'Assimilate pending action granted to owner', color: '#fb923c' });
+      case "pendingAction":
+        lines.push({
+          label: "Assimilate pending action granted to owner",
+          color: "#fb923c",
+        });
         break;
       default:
         break;
@@ -2064,48 +2674,69 @@ function computeSnapshotAt(
   for (let i = 0; i <= stepIndex && i < steps.length; i++) {
     const step = steps[i];
     switch (step.type) {
-      case 'targetClaim': {
-        const ids = step.targetIds.filter(id => !id.startsWith('mock-p'));
-        const kw: CardSlotEffect['highlightKeyword'] =
-          step.keyword === 'burn' ? 'burn' :
-          step.keyword === 'condemned' ? 'condemned' : undefined;
+      case "targetClaim": {
+        const ids = step.targetIds.filter((id) => !id.startsWith("mock-p"));
+        const kw: CardSlotEffect["highlightKeyword"] =
+          step.keyword === "burn"
+            ? "burn"
+            : step.keyword === "condemned"
+              ? "condemned"
+              : undefined;
         for (const id of ids) {
-          effects[id] = { ...(effects[id] ?? defaultSlotEffect()), highlighted: true, highlightKeyword: kw };
+          effects[id] = {
+            ...(effects[id] ?? defaultSlotEffect()),
+            highlighted: true,
+            highlightKeyword: kw,
+          };
         }
         break;
       }
-      case 'keywordEvent': {
-        const ids = step.targetIds.filter(id => !id.startsWith('mock-p'));
-        if (step.keyword === 'burn') {
+      case "keywordEvent": {
+        const ids = step.targetIds.filter((id) => !id.startsWith("mock-p"));
+        if (step.keyword === "burn") {
           for (const id of ids) {
             burnedIds.add(id);
-            effects[id] = { ...(effects[id] ?? defaultSlotEffect()), burned: true, highlighted: false };
+            effects[id] = {
+              ...(effects[id] ?? defaultSlotEffect()),
+              burned: true,
+              highlighted: false,
+            };
           }
         }
         break;
       }
-      case 'keywordEvents': {
+      case "keywordEvents": {
         for (const ev of step.events) {
-          const ids = ev.targetIds.filter(id => !id.startsWith('mock-p'));
-          if (ev.keyword === 'burn') {
+          const ids = ev.targetIds.filter((id) => !id.startsWith("mock-p"));
+          if (ev.keyword === "burn") {
             for (const id of ids) {
               burnedIds.add(id);
-              effects[id] = { ...(effects[id] ?? defaultSlotEffect()), burned: true, highlighted: false };
+              effects[id] = {
+                ...(effects[id] ?? defaultSlotEffect()),
+                burned: true,
+                highlighted: false,
+              };
             }
           }
         }
         break;
       }
-      case 'residue': {
-        const kw: BoardBadgeType = step.keyword === 'seeded' ? 'avatar_seed' : step.keyword;
+      case "residue": {
+        const kw: BoardBadgeType =
+          step.keyword === "seeded" ? "avatar_seed" : step.keyword;
         for (const id of step.targetIds) {
-          effects[id] = { ...(effects[id] ?? defaultSlotEffect()), badge: kw, badgeIsNew: false };
+          effects[id] = {
+            ...(effects[id] ?? defaultSlotEffect()),
+            badge: kw,
+            badgeIsNew: false,
+          };
         }
         break;
       }
-      case 'marketRedraw': {
+      case "forgeRefill": {
         for (const id of [...burnedIds]) {
-          if (effects[id]) effects[id] = { ...effects[id], burned: false, refilling: false };
+          if (effects[id])
+            effects[id] = { ...effects[id], burned: false, refilling: false };
         }
         burnedIds.clear();
         break;
@@ -2121,62 +2752,88 @@ function computeSnapshotAt(
 
 function describeStep(step: AnimationTimelineStep): string {
   switch (step.type) {
-    case 'luminaryPulse':
+    case "luminaryPulse":
       return `luminaryPulse · ${step.luminaryId}`;
-    case 'targetClaim': {
+    case "targetClaim": {
       const n = step.targetIds.length;
-      const kw = step.keyword ? ` [${step.keyword}]` : '';
-      return `targetClaim · ${n} target${n !== 1 ? 's' : ''}${kw}`;
+      const kw = step.keyword ? ` [${step.keyword}]` : "";
+      return `targetClaim · ${n} target${n !== 1 ? "s" : ""}${kw}`;
     }
-    case 'keywordEvent': {
+    case "keywordEvent": {
       const n = step.targetIds.length;
-      return `${step.keyword} · ${n} card${n !== 1 ? 's' : ''}`;
+      return `${step.keyword} · ${n} card${n !== 1 ? "s" : ""}`;
     }
-    case 'keywordEvents': {
-      const parts = step.events.map(ev => `${ev.keyword}×${ev.targetIds.length}`).join(', ');
-      return `keywordEvents · ${parts || 'empty'}`;
+    case "keywordEvents": {
+      const parts = step.events
+        .map((ev) => `${ev.keyword}×${ev.targetIds.length}`)
+        .join(", ");
+      return `keywordEvents · ${parts || "empty"}`;
     }
-    case 'residue': {
+    case "residue": {
       const n = step.targetIds.length;
-      return `residue:${step.keyword} · ${n > 0 ? `${n} card${n !== 1 ? 's' : ''}` : 'deck tops'}`;
+      const threshold = step.victoryRequirementChange !== undefined
+        ? ` · victory +${step.victoryRequirementChange}`
+        : "";
+      return `residue:${step.keyword} · ${n > 0 ? `${n} card${n !== 1 ? "s" : ""}` : "deck tops"}${threshold}`;
     }
-    case 'marketRedraw': {
+    case "forgeRefill": {
       const n = step.slotIds.length;
-      return `marketRedraw · ${n} slot${n !== 1 ? 's' : ''}`;
+      return `forgeRefill · ${n} slot${n !== 1 ? "s" : ""}`;
     }
-    case 'scoreChange': {
-      const sign = step.amount >= 0 ? '+' : '';
-      return `scoreChange · ${sign}${step.amount} Eminence × ${step.playerIds.length} player${step.playerIds.length !== 1 ? 's' : ''}`;
+    case "archiveReturn": {
+      const n = step.cardIds.length;
+      return `archiveReturn · ${n} Artifact${n !== 1 ? "s" : ""}`;
     }
-    case 'crystalReturn': {
-      const t = step.crystalType ? ` (${step.crystalType})` : '';
-      return `crystalReturn${t} · ${step.playerIds.length} player${step.playerIds.length !== 1 ? 's' : ''}`;
+    case "eminenceChange": {
+      const sign = step.amount >= 0 ? "+" : "";
+      return `eminenceChange · ${sign}${step.amount} Eminence × ${step.playerIds.length} player${step.playerIds.length !== 1 ? "s" : ""}`;
     }
-    case 'deckScry': {
-      const tiers = step.tierIds.map(t => t.replace('tier', 'T')).join('+');
-      const bias = step.affinityBias ? ` · ${step.affinityBias} bias` : '';
+    case "victoryRequirementChange": {
+      const sign = step.amount >= 0 ? "+" : "";
+      return `victoryRequirementChange · ${sign}${step.amount} to win`;
+    }
+    case "affinityReturn": {
+      const t = step.affinityType ? ` (${step.affinityType})` : "";
+      return `affinityReturn${t} · ${step.playerIds.length} player${step.playerIds.length !== 1 ? "s" : ""}`;
+    }
+    case "deckScry": {
+      const tiers = step.tierIds.map((t) => t.replace("tier", "T")).join("+");
+      const bias = step.affinityBias ? ` · ${step.affinityBias} bias` : "";
       return `deckScry · ${tiers}${bias}`;
     }
-    case 'pendingAction':
+    case "pendingAction":
       return `pendingAction · assimilate → ${step.ownerId}`;
     default:
-      return 'unknown step';
+      return "unknown step";
   }
 }
 
 function stepPipColor(step: AnimationTimelineStep): string {
   switch (step.type) {
-    case 'luminaryPulse':   return '#a78bfa';
-    case 'targetClaim':     return '#38bdf8';
-    case 'keywordEvent':    return '#ef4444';
-    case 'keywordEvents':   return '#ef4444';
-    case 'residue':         return '#22c55e';
-    case 'marketRedraw':    return '#64748b';
-    case 'scoreChange':     return '#fbbf24';
-    case 'crystalReturn':   return '#60a5fa';
-    case 'deckScry':        return '#c084fc';
-    case 'pendingAction':   return '#fb923c';
-    default:                return '#475569';
+    case "luminaryPulse":
+      return "#a78bfa";
+    case "targetClaim":
+      return "#38bdf8";
+    case "keywordEvent":
+      return "#ef4444";
+    case "keywordEvents":
+      return "#ef4444";
+    case "residue":
+      return "#22c55e";
+    case "forgeRefill":
+      return "#64748b";
+    case "archiveReturn":
+      return "#60a5fa";
+    case "eminenceChange":
+      return "#fbbf24";
+    case "affinityReturn":
+      return "#60a5fa";
+    case "deckScry":
+      return "#c084fc";
+    case "pendingAction":
+      return "#fb923c";
+    default:
+      return "#475569";
   }
 }
 
@@ -2189,32 +2846,41 @@ interface StepScrubBarProps {
   primaryColor: string;
 }
 
-function StepScrubBar({ steps, activeIndex, onScrub, primaryColor }: StepScrubBarProps) {
-  const [tooltipEl, setTooltipEl] = useState<{ text: string; x: number; y: number } | null>(null);
+function StepScrubBar({
+  steps,
+  activeIndex,
+  onScrub,
+  primaryColor,
+}: StepScrubBarProps) {
+  const [tooltipEl, setTooltipEl] = useState<{
+    text: string;
+    x: number;
+    y: number;
+  } | null>(null);
 
   if (steps.length === 0) return null;
 
   return (
-    <div style={{ position: 'relative' }}>
+    <div style={{ position: "relative" }}>
       {/* Floating tooltip rendered at fixed coords */}
       {tooltipEl && (
         <div
           style={{
-            position: 'fixed',
+            position: "fixed",
             left: tooltipEl.x,
             top: tooltipEl.y - 6,
-            transform: 'translate(-50%, -100%)',
-            background: '#0f172a',
-            border: '1px solid rgba(255,255,255,0.14)',
+            transform: "translate(-50%, -100%)",
+            background: "#0f172a",
+            border: "1px solid rgba(255,255,255,0.14)",
             borderRadius: 5,
-            padding: '4px 9px',
+            padding: "4px 9px",
             fontSize: 9,
-            fontFamily: 'monospace',
-            color: '#e2e8f0',
-            whiteSpace: 'nowrap',
-            pointerEvents: 'none',
+            fontFamily: "monospace",
+            color: "#e2e8f0",
+            whiteSpace: "nowrap",
+            pointerEvents: "none",
             zIndex: 9999,
-            boxShadow: '0 4px 14px rgba(0,0,0,0.65)',
+            boxShadow: "0 4px 14px rgba(0,0,0,0.65)",
           }}
         >
           {tooltipEl.text}
@@ -2222,22 +2888,53 @@ function StepScrubBar({ steps, activeIndex, onScrub, primaryColor }: StepScrubBa
       )}
 
       {/* Header row */}
-      <div style={{ display: 'flex', alignItems: 'center', gap: 8, marginBottom: 7 }}>
-        <span style={{ fontSize: 9, fontFamily: 'monospace', color: '#475569', textTransform: 'uppercase', letterSpacing: '0.08em' }}>
+      <div
+        style={{
+          display: "flex",
+          alignItems: "center",
+          gap: 8,
+          marginBottom: 7,
+        }}
+      >
+        <span
+          style={{
+            fontSize: 9,
+            fontFamily: "monospace",
+            color: "#475569",
+            textTransform: "uppercase",
+            letterSpacing: "0.08em",
+          }}
+        >
           step scrub
         </span>
-        <span style={{ fontSize: 9, fontFamily: 'monospace', color: '#334155' }}>
-          {steps.length} step{steps.length !== 1 ? 's' : ''}
+        <span
+          style={{ fontSize: 9, fontFamily: "monospace", color: "#334155" }}
+        >
+          {steps.length} step{steps.length !== 1 ? "s" : ""}
         </span>
         {activeIndex !== null && (
-          <span style={{ fontSize: 9, fontFamily: 'monospace', color: primaryColor }}>
-            · {activeIndex + 1} / {steps.length} — {describeStep(steps[activeIndex])}
+          <span
+            style={{
+              fontSize: 9,
+              fontFamily: "monospace",
+              color: primaryColor,
+            }}
+          >
+            · {activeIndex + 1} / {steps.length} —{" "}
+            {describeStep(steps[activeIndex])}
           </span>
         )}
       </div>
 
       {/* Pip strip */}
-      <div style={{ display: 'flex', gap: 4, flexWrap: 'wrap', alignItems: 'center' }}>
+      <div
+        style={{
+          display: "flex",
+          gap: 4,
+          flexWrap: "wrap",
+          alignItems: "center",
+        }}
+      >
         {steps.map((step, i) => {
           const isActive = activeIndex === i;
           const baseColor = stepPipColor(step);
@@ -2249,8 +2946,10 @@ function StepScrubBar({ steps, activeIndex, onScrub, primaryColor }: StepScrubBa
               key={i}
               type="button"
               onClick={() => onScrub(i)}
-              onMouseEnter={e => {
-                const rect = (e.currentTarget as HTMLButtonElement).getBoundingClientRect();
+              onMouseEnter={(e) => {
+                const rect = (
+                  e.currentTarget as HTMLButtonElement
+                ).getBoundingClientRect();
                 setTooltipEl({
                   text: `${i + 1} · ${describeStep(step)}`,
                   x: rect.left + rect.width / 2,
@@ -2261,30 +2960,30 @@ function StepScrubBar({ steps, activeIndex, onScrub, primaryColor }: StepScrubBa
               style={{
                 width: 18,
                 height: 18,
-                borderRadius: '50%',
+                borderRadius: "50%",
                 border: isActive
                   ? `2px solid ${pipColor}`
                   : `1px solid ${pipColor}66`,
                 background: isActive ? `${pipColor}50` : `${pipColor}20`,
-                cursor: 'pointer',
+                cursor: "pointer",
                 padding: 0,
-                transition: 'border-color 0.12s, background 0.12s',
+                transition: "border-color 0.12s, background 0.12s",
                 flexShrink: 0,
-                position: 'relative',
-                display: 'flex',
-                alignItems: 'center',
-                justifyContent: 'center',
+                position: "relative",
+                display: "flex",
+                alignItems: "center",
+                justifyContent: "center",
               }}
             >
               {showLabel && (
                 <span
                   style={{
                     fontSize: 7,
-                    fontFamily: 'monospace',
+                    fontFamily: "monospace",
                     color: isActive ? pipColor : `${pipColor}99`,
                     lineHeight: 1,
-                    pointerEvents: 'none',
-                    userSelect: 'none',
+                    pointerEvents: "none",
+                    userSelect: "none",
                   }}
                 >
                   {i + 1}
@@ -2309,24 +3008,36 @@ function ProcedureReviewSection() {
   const [procKey, setProcKey]           = useState(0);
   const [seqKey, setSeqKey]             = useState(0);
   const [isActive, setIsActive]         = useState(false);
-  const [effectType, setEffectType]     = useState<'summon' | 'end_of_turn' | 'start_of_turn'>('summon'); // API enum 'summon' = arrival effect
-  const [currentSteps, setCurrentSteps] = useState<AnimationTimelineStep[] | null>(null);
+  const [effectType, setEffectType] = useState<
+    "summon" | "end_of_turn" | "start_of_turn"
+  >("summon"); // API enum 'summon' = arrival effect
+  const [currentSteps, setCurrentSteps] = useState<
+    AnimationTimelineStep[] | null
+  >(null);
   const [aftermath, setAftermath]       = useState<AftermathLine[] | null>(null);
 
   // Board effect refs and board steps (resolved separately from cinematic steps).
   const slotRefs = useRef<Map<string, HTMLElement>>(new Map());
-  const [boardSteps, setBoardSteps] = useState<AnimationTimelineStep[] | null>(null);
+  const [boardSteps, setBoardSteps] = useState<AnimationTimelineStep[] | null>(
+    null,
+  );
 
   // Scrub bar: which step the user has pinned for static inspection (null = live animation).
   const [scrubIndex, setScrubIndex] = useState<number | null>(null);
 
   const config    = selectedId ? LUMINARY_ANIMATION_CONFIG[selectedId]  : null;
   const mockEntry = selectedId ? MOCK_PROCEDURE_STATES[selectedId]      : null;
-  const sandbox   = selectedId ? SANDBOX_LUMINARIES.find(l => l.id === selectedId) : null;
+  const sandbox = selectedId
+    ? SANDBOX_LUMINARIES.find((l) => l.id === selectedId)
+    : null;
   const vis       = selectedId ? getLuminaryVisuals(selectedId)         : null;
 
-  const { effects: boardEffects, activeBurns, onBurnDone, hasMarketEffect } =
-    useBoardEffectSequencer(boardSteps, seqKey, slotRefs);
+  const {
+    effects: boardEffects,
+    activeBurns,
+    onBurnDone,
+    hasForgeEffect,
+  } = useBoardEffectSequencer(boardSteps, seqKey, slotRefs);
 
   // When a pip is selected, override live animation effects with a static snapshot.
   const displayEffects: SlotEffectMap =
@@ -2334,22 +3045,35 @@ function ProcedureReviewSection() {
       ? computeSnapshotAt(boardSteps, scrubIndex)
       : boardEffects;
 
-  // Check if mock state has any market cards to display
-  const hasAnyMarketCards = mockEntry
-    ? (mockEntry.state.marketTier1 ?? []).length > 0 ||
-      (mockEntry.state.marketTier2 ?? []).length > 0 ||
-      (mockEntry.state.marketTier3 ?? []).length > 0
+  // Check whether the mock state has Forge Artifacts to display.
+  const hasAnyForgeArtifacts = mockEntry
+    ? (mockEntry.state.forgeTier1 ?? []).length > 0 ||
+      (mockEntry.state.forgeTier2 ?? []).length > 0 ||
+      (mockEntry.state.forgeTier3 ?? []).length > 0
     : false;
 
   function triggerPlay(forceReducedMotion: boolean) {
     if (!selectedId || !mockEntry) return;
-    const steps = resolveLuminaryProcedure(selectedId, effectType, mockEntry.state, mockEntry.ownerId);
+    const steps = resolveLuminaryProcedure(
+      selectedId,
+      effectType,
+      mockEntry.state,
+      mockEntry.ownerId,
+      {
+        targetCardIds:
+          selectedId === "lum_astral" && effectType === "start_of_turn"
+            ? (mockEntry.state.burnPile ?? [])
+            : selectedId === "lum_moth" && effectType === "summon"
+              ? (mockEntry.state.forgeTier3 ?? []).map((card) => card.id)
+            : undefined,
+      },
+    );
     setCurrentSteps(steps);
-    setBoardSteps(steps);
+    setBoardSteps(forceReducedMotion ? steps : null);
     setAftermath(null);
     setScrubIndex(null);   // clear any pinned step so live animation shows
-    setProcKey(k => k + 1);
-    setSeqKey(k => k + 1);
+    setProcKey((k) => k + 1);
+    setSeqKey((k) => k + 1);
     setIsActive(true);
     // Store reducedMotion in a ref so the cinematic reads it at mount.
     // We pass it as a prop directly via the active flag state below.
@@ -2374,14 +3098,13 @@ function ProcedureReviewSection() {
   // We read the ref at render time so it reflects the value set during triggerPlay.
   const mountedReducedMotion = _reducedMotionForNextRun.current || undefined;
 
-  const primaryColor = vis?.primaryColor ?? '#a78bfa';
+  const primaryColor = vis?.primaryColor ?? "#a78bfa";
 
   return (
     <div className="max-w-3xl mx-auto">
-
       {/* ── Luminary selector grid ─────────────────────────────────────────── */}
       <div className="grid grid-cols-2 sm:grid-cols-3 md:grid-cols-4 gap-2 mb-6">
-        {PROCEDURE_REVIEW_LUMINARIES.map(cfg => {
+        {PROCEDURE_REVIEW_LUMINARIES.map((cfg) => {
           const v = getLuminaryVisuals(cfg.luminaryId);
           const isSelected = selectedId === cfg.luminaryId;
           return (
@@ -2395,24 +3118,34 @@ function ProcedureReviewSection() {
                 setBoardSteps(null);
                 setSeqKey(0);
                 setScrubIndex(null);
-                setEffectType('summon'); // API enum 'summon' = arrival effect
+                setEffectType("summon"); // API enum 'summon' = arrival effect
                 slotRefs.current.clear();
               }}
               className="relative rounded-lg overflow-hidden border transition-colors text-left"
               style={{
-                background:  '#0a0a14',
-                borderColor: isSelected ? v.primaryColor : 'rgba(255,255,255,0.12)',
+                background: "#0a0a14",
+                borderColor: isSelected
+                  ? v.primaryColor
+                  : "rgba(255,255,255,0.12)",
               }}
             >
-              <div className="h-1 w-full" style={{ background: v.primaryColor }} />
+              <div
+                className="h-1 w-full"
+                style={{ background: v.primaryColor }}
+              />
               <div className="p-2.5 flex flex-col gap-0.5">
-                <span className="text-[9px] font-mono" style={{ color: v.primaryColor, opacity: 0.7 }}>
+                <span
+                  className="text-[9px] font-mono"
+                  style={{ color: v.primaryColor, opacity: 0.7 }}
+                >
                   {cfg.luminaryId}
                 </span>
                 <span className="text-[11px] font-semibold text-foreground leading-tight line-clamp-2">
                   {cfg.displayName}
                 </span>
-                <span className="text-[9px] text-muted-foreground/60">{cfg.animationArchetype}</span>
+                <span className="text-[9px] text-muted-foreground/60">
+                  {cfg.animationArchetype}
+                </span>
               </div>
               {isSelected && (
                 <div
@@ -2428,13 +3161,16 @@ function ProcedureReviewSection() {
       {/* ── Selected Luminary detail panel ─────────────────────────────────── */}
       {selectedId && config && sandbox && mockEntry && vis ? (
         <div className="rounded-xl border border-border/20 bg-black/30 p-5 flex flex-col gap-4">
-
           {/* Header */}
           <div className="flex flex-col gap-1">
             <div className="flex items-center gap-2 flex-wrap">
               <span
                 className="text-xs font-mono px-2 py-0.5 rounded"
-                style={{ background: `${primaryColor}22`, color: primaryColor, border: `1px solid ${primaryColor}44` }}
+                style={{
+                  background: `${primaryColor}22`,
+                  color: primaryColor,
+                  border: `1px solid ${primaryColor}44`,
+                }}
               >
                 {config.effectName}
               </span>
@@ -2464,21 +3200,29 @@ function ProcedureReviewSection() {
               Effect type
             </span>
             <div className="flex gap-1">
-              {(['summon', 'end_of_turn', 'start_of_turn'] as const).map(et => ( // API enum 'summon' = arrival effect
+              {(["summon", "end_of_turn", "start_of_turn"] as const).map(
+                (
+                  et, // API enum 'summon' = arrival effect
+                ) => (
                 <button
                   key={et}
                   type="button"
                   onClick={() => setEffectType(et)}
                   className="text-[10px] font-mono px-2 py-0.5 rounded border transition-colors"
                   style={{
-                    borderColor: effectType === et ? primaryColor : 'rgba(255,255,255,0.12)',
-                    background:  effectType === et ? `${primaryColor}18` : 'transparent',
-                    color:       effectType === et ? primaryColor : '#64748b',
+                      borderColor:
+                        effectType === et
+                          ? primaryColor
+                          : "rgba(255,255,255,0.12)",
+                      background:
+                        effectType === et ? `${primaryColor}18` : "transparent",
+                      color: effectType === et ? primaryColor : "#64748b",
                   }}
                 >
                   {et}
                 </button>
-              ))}
+                ),
+              )}
             </div>
           </div>
 
@@ -2494,8 +3238,14 @@ function ProcedureReviewSection() {
                 borderColor: `${primaryColor}60`,
                 color:       primaryColor,
               }}
-              onMouseEnter={e => { (e.currentTarget as HTMLButtonElement).style.background = `${primaryColor}38`; }}
-              onMouseLeave={e => { (e.currentTarget as HTMLButtonElement).style.background = `${primaryColor}22`; }}
+              onMouseEnter={(e) => {
+                (e.currentTarget as HTMLButtonElement).style.background =
+                  `${primaryColor}38`;
+              }}
+              onMouseLeave={(e) => {
+                (e.currentTarget as HTMLButtonElement).style.background =
+                  `${primaryColor}22`;
+              }}
             >
               ▶ Play
             </button>
@@ -2506,12 +3256,18 @@ function ProcedureReviewSection() {
               onClick={() => triggerPlay(false)}
               className="text-[11px] font-mono px-4 py-1.5 rounded border transition-colors"
               style={{
-                background:  'rgba(255,255,255,0.04)',
+                background: "rgba(255,255,255,0.04)",
                 borderColor: `${primaryColor}44`,
                 color:       primaryColor,
               }}
-              onMouseEnter={e => { (e.currentTarget as HTMLButtonElement).style.background = 'rgba(255,255,255,0.09)'; }}
-              onMouseLeave={e => { (e.currentTarget as HTMLButtonElement).style.background = 'rgba(255,255,255,0.04)'; }}
+              onMouseEnter={(e) => {
+                (e.currentTarget as HTMLButtonElement).style.background =
+                  "rgba(255,255,255,0.09)";
+              }}
+              onMouseLeave={(e) => {
+                (e.currentTarget as HTMLButtonElement).style.background =
+                  "rgba(255,255,255,0.04)";
+              }}
             >
               ↺ Replay
             </button>
@@ -2523,13 +3279,23 @@ function ProcedureReviewSection() {
               disabled={!isActive}
               className="text-[11px] font-mono px-4 py-1.5 rounded border transition-colors"
               style={{
-                background:  isActive ? 'rgba(239,68,68,0.12)' : 'transparent',
-                borderColor: isActive ? 'rgba(239,68,68,0.45)' : 'rgba(255,255,255,0.10)',
-                color:       isActive ? '#ef4444' : '#334155',
-                cursor:      isActive ? 'pointer' : 'default',
+                background: isActive ? "rgba(239,68,68,0.12)" : "transparent",
+                borderColor: isActive
+                  ? "rgba(239,68,68,0.45)"
+                  : "rgba(255,255,255,0.10)",
+                color: isActive ? "#ef4444" : "#334155",
+                cursor: isActive ? "pointer" : "default",
               }}
-              onMouseEnter={e => { if (isActive) (e.currentTarget as HTMLButtonElement).style.background = 'rgba(239,68,68,0.22)'; }}
-              onMouseLeave={e => { if (isActive) (e.currentTarget as HTMLButtonElement).style.background = 'rgba(239,68,68,0.12)'; }}
+              onMouseEnter={(e) => {
+                if (isActive)
+                  (e.currentTarget as HTMLButtonElement).style.background =
+                    "rgba(239,68,68,0.22)";
+              }}
+              onMouseLeave={(e) => {
+                if (isActive)
+                  (e.currentTarget as HTMLButtonElement).style.background =
+                    "rgba(239,68,68,0.12)";
+              }}
             >
               ✕ Skip
             </button>
@@ -2540,12 +3306,18 @@ function ProcedureReviewSection() {
               onClick={() => triggerPlay(true)}
               className="text-[11px] font-mono px-4 py-1.5 rounded border transition-colors"
               style={{
-                background:  'rgba(148,163,184,0.08)',
-                borderColor: 'rgba(148,163,184,0.30)',
-                color:       '#94a3b8',
+                background: "rgba(148,163,184,0.08)",
+                borderColor: "rgba(148,163,184,0.30)",
+                color: "#94a3b8",
               }}
-              onMouseEnter={e => { (e.currentTarget as HTMLButtonElement).style.background = 'rgba(148,163,184,0.16)'; }}
-              onMouseLeave={e => { (e.currentTarget as HTMLButtonElement).style.background = 'rgba(148,163,184,0.08)'; }}
+              onMouseEnter={(e) => {
+                (e.currentTarget as HTMLButtonElement).style.background =
+                  "rgba(148,163,184,0.16)";
+              }}
+              onMouseLeave={(e) => {
+                (e.currentTarget as HTMLButtonElement).style.background =
+                  "rgba(148,163,184,0.08)";
+              }}
               title="Play with prefers-reduced-motion override enabled"
             >
               ♿ Reduced Motion Preview
@@ -2564,7 +3336,9 @@ function ProcedureReviewSection() {
                 </span>
               </div>
               {aftermath.length === 0 ? (
-                <span className="text-[10px] text-muted-foreground/40 italic">No resolved targets (empty mock state for this path)</span>
+                <span className="text-[10px] text-muted-foreground/40 italic">
+                  No resolved targets (empty mock state for this path)
+                </span>
               ) : (
                 <div className="flex flex-wrap gap-x-4 gap-y-1">
                   {aftermath.map((line, i) => (
@@ -2589,9 +3363,13 @@ function ProcedureReviewSection() {
               </span>
               {boardSteps !== null && (
                 <span className="text-[9px] font-mono text-muted-foreground/30">
-                  {hasMarketEffect ? 'market targeting active' : 'no market card effects'}
+                  {hasForgeEffect
+                    ? "Forge targeting active"
+                    : "no Forge Artifact effects"}
                   {scrubIndex !== null && (
-                    <span style={{ color: primaryColor, marginLeft: 8 }}>· scrub mode</span>
+                    <span style={{ color: primaryColor, marginLeft: 8 }}>
+                      · scrub mode
+                    </span>
                   )}
                 </span>
               )}
@@ -2601,23 +3379,28 @@ function ProcedureReviewSection() {
             {boardSteps !== null && boardSteps.length > 0 && (
               <div
                 style={{
-                  padding: '10px 12px',
+                  padding: "10px 12px",
                   borderRadius: 8,
-                  background: 'rgba(0,0,0,0.3)',
-                  border: `1px solid ${scrubIndex !== null ? `${primaryColor}44` : 'rgba(255,255,255,0.07)'}`,
-                  transition: 'border-color 0.2s',
+                  background: "rgba(0,0,0,0.3)",
+                  border: `1px solid ${scrubIndex !== null ? `${primaryColor}44` : "rgba(255,255,255,0.07)"}`,
+                  transition: "border-color 0.2s",
                 }}
               >
                 <StepScrubBar
                   steps={boardSteps}
                   activeIndex={scrubIndex}
-                  onScrub={i => setScrubIndex(prev => prev === i ? null : i)}
+                  onScrub={(i) =>
+                    setScrubIndex((prev) => (prev === i ? null : i))
+                  }
                   primaryColor={primaryColor}
                 />
 
                 {/* Step inspector — partial aftermath up to the selected step */}
-                {scrubIndex !== null && (() => {
-                  const partialLines = describeAftermath(boardSteps.slice(0, scrubIndex + 1));
+                {scrubIndex !== null &&
+                  (() => {
+                    const partialLines = describeAftermath(
+                      boardSteps.slice(0, scrubIndex + 1),
+                    );
                   const stepDesc = describeStep(boardSteps[scrubIndex]);
                   return (
                     <div
@@ -2628,14 +3411,21 @@ function ProcedureReviewSection() {
                       }}
                     >
                       {/* Step label */}
-                      <div style={{ display: 'flex', alignItems: 'center', gap: 8, marginBottom: 6 }}>
+                        <div
+                          style={{
+                            display: "flex",
+                            alignItems: "center",
+                            gap: 8,
+                            marginBottom: 6,
+                          }}
+                        >
                         <span
                           style={{
                             fontSize: 9,
-                            fontFamily: 'monospace',
-                            color: '#334155',
-                            textTransform: 'uppercase',
-                            letterSpacing: '0.07em',
+                              fontFamily: "monospace",
+                              color: "#334155",
+                              textTransform: "uppercase",
+                              letterSpacing: "0.07em",
                           }}
                         >
                           step {scrubIndex + 1}
@@ -2643,7 +3433,7 @@ function ProcedureReviewSection() {
                         <span
                           style={{
                             fontSize: 10,
-                            fontFamily: 'monospace',
+                              fontFamily: "monospace",
                             color: primaryColor,
                           }}
                         >
@@ -2652,14 +3442,21 @@ function ProcedureReviewSection() {
                       </div>
 
                       {/* Partial aftermath */}
-                      <div style={{ display: 'flex', alignItems: 'center', gap: 8, marginBottom: 5 }}>
+                        <div
+                          style={{
+                            display: "flex",
+                            alignItems: "center",
+                            gap: 8,
+                            marginBottom: 5,
+                          }}
+                        >
                         <span
                           style={{
                             fontSize: 9,
-                            fontFamily: 'monospace',
-                            color: '#334155',
-                            textTransform: 'uppercase',
-                            letterSpacing: '0.07em',
+                              fontFamily: "monospace",
+                              color: "#334155",
+                              textTransform: "uppercase",
+                              letterSpacing: "0.07em",
                           }}
                         >
                           aftermath so far
@@ -2667,16 +3464,31 @@ function ProcedureReviewSection() {
                       </div>
                       {partialLines.length === 0 ? (
                         <span
-                          style={{ fontSize: 10, fontFamily: 'monospace', color: '#334155', fontStyle: 'italic' }}
+                            style={{
+                              fontSize: 10,
+                              fontFamily: "monospace",
+                              color: "#334155",
+                              fontStyle: "italic",
+                            }}
                         >
-                          no scoreable events yet
+                            no Eminence events yet
                         </span>
                       ) : (
-                        <div style={{ display: 'flex', flexWrap: 'wrap', gap: '2px 16px' }}>
+                          <div
+                            style={{
+                              display: "flex",
+                              flexWrap: "wrap",
+                              gap: "2px 16px",
+                            }}
+                          >
                           {partialLines.map((line, i) => (
                             <span
                               key={i}
-                              style={{ fontSize: 10, fontFamily: 'monospace', color: line.color }}
+                                style={{
+                                  fontSize: 10,
+                                  fontFamily: "monospace",
+                                  color: line.color,
+                                }}
                             >
                               {line.label}
                             </span>
@@ -2689,19 +3501,23 @@ function ProcedureReviewSection() {
               </div>
             )}
 
-            {hasAnyMarketCards ? (
+            {hasAnyForgeArtifacts ? (
               <>
                 {boardSteps === null && (
                   <p className="text-[10px] font-mono text-muted-foreground/30 italic">
-                    Press ▶ Play to animate board effects against the mock market.
+                    Press ▶ Play to animate board effects against the mock
+                    Forge.
                   </p>
                 )}
-                {boardSteps !== null && !hasMarketEffect && scrubIndex === null && (
+                {boardSteps !== null &&
+                  !hasForgeEffect &&
+                  scrubIndex === null && (
                   <p className="text-[10px] font-mono text-muted-foreground/40 italic">
-                    This effect targets player panels or decks — no card-level market effects.
+                      This effect targets player panels or decks — no card-level
+                      Forge effects.
                   </p>
                 )}
-                <MockMarketBoard
+                <MockForgeBoard
                   state={mockEntry.state}
                   effects={displayEffects}
                   slotRefs={slotRefs}
@@ -2711,9 +3527,10 @@ function ProcedureReviewSection() {
               <>
                 {boardSteps === null && (
                   <p className="text-[10px] font-mono text-muted-foreground/35 italic">
-                    {config.animationArchetype === 'scry' || config.animationArchetype === 'seeded'
-                      ? 'Deck scry / seed effect — targets deck tops, not face-up market cards.'
-                      : 'No market cards in mock state for this effect path.'}
+                    {config.animationArchetype === "scry" ||
+                    config.animationArchetype === "seeded"
+                      ? "Archive scry / seed effect — targets Archive tops, not face-up Forge Artifacts."
+                      : "No Forge Artifacts in mock state for this effect path."}
                   </p>
                 )}
               </>
@@ -2735,13 +3552,17 @@ function ProcedureReviewSection() {
           luminaryName={sandbox.name}
           triggeringPlayerName="Procedure Review"
           procedure={currentSteps}
+          onResolutionStart={() => {
+            setBoardSteps(currentSteps);
+            setSeqKey((k) => k + 1);
+          }}
           reducedMotion={mountedReducedMotion}
           onComplete={handleComplete}
         />
       )}
 
       {/* ── Board BurnFlash portals (document.body, position:fixed) ────────── */}
-      {activeBurns.map(burn => (
+      {activeBurns.map((burn) => (
         <BurnFlash
           key={burn.key}
           slotRect={burn.rect}
@@ -2756,9 +3577,15 @@ function ProcedureReviewSection() {
 // ─── Luminary Grid Card ───────────────────────────────────────────────────────
 
 function LuminaryGridCard({
-  lum, isActive, mode, onClick,
+  lum,
+  isActive,
+  mode,
+  onClick,
 }: {
-  lum: SandboxLuminary; isActive: boolean; mode: SandboxMode; onClick: () => void;
+  lum: SandboxLuminary;
+  isActive: boolean;
+  mode: SandboxMode;
+  onClick: () => void;
 }) {
   const vis = getLuminaryVisuals(lum.id);
 
@@ -2767,29 +3594,50 @@ function LuminaryGridCard({
       type="button"
       onClick={onClick}
       className="relative rounded-lg overflow-hidden border border-border/30 hover:border-border/60 transition-colors text-left group"
-      style={{ background: '#0a0a14' }}
+      style={{ background: "#0a0a14" }}
     >
-      <div className="h-1.5 w-full" style={{ background: mode === 'arrival' ? vis.summonColor : vis.primaryColor }} />
+      <div
+        className="h-1.5 w-full"
+        style={{
+          background: mode === "arrival" ? vis.summonColor : vis.primaryColor,
+        }}
+      />
 
       <div className="p-3 flex flex-col gap-1">
         <div className="flex items-center gap-2">
           <span
             className="inline-block w-2.5 h-2.5 rounded-full shrink-0"
-            style={{ background: vis.primaryColor, boxShadow: `0 0 6px ${vis.glowColor}` }}
+            style={{
+              background: vis.primaryColor,
+              boxShadow: `0 0 6px ${vis.glowColor}`,
+            }}
           />
-          <span className="text-[10px] font-mono text-muted-foreground/60 leading-none">{lum.id}</span>
+          <span className="text-[10px] font-mono text-muted-foreground/60 leading-none">
+            {lum.id}
+          </span>
         </div>
         <span className="text-xs font-semibold text-foreground leading-tight line-clamp-2 group-hover:text-white transition-colors">
           {lum.name}
         </span>
         <div className="flex items-center justify-between mt-0.5">
-          <span className="text-[10px] text-muted-foreground">{lum.domain}</span>
-          {lum.lumens > 0 && <span className="text-[10px] font-mono text-amber-400">{lum.lumens}✦</span>}
+          <span className="text-[10px] text-muted-foreground">
+            {lum.domain}
+          </span>
+          {lum.eminence > 0 && (
+            <span className="text-[10px] font-mono text-amber-400">
+              {lum.eminence}✦
+            </span>
+          )}
         </div>
-        {mode === 'arrival' && (
+        {mode === "arrival" && (
           <div className="flex items-center gap-1.5 mt-1">
-            <span className="inline-block w-3 h-3 rounded-sm shrink-0 border border-white/10" style={{ background: vis.summonColor }} />
-            <span className="text-[9px] font-mono text-muted-foreground/50">{vis.summonColor}</span>
+            <span
+              className="inline-block w-3 h-3 rounded-sm shrink-0 border border-white/10"
+              style={{ background: vis.summonColor }}
+            />
+            <span className="text-[9px] font-mono text-muted-foreground/50">
+              {vis.summonColor}
+            </span>
           </div>
         )}
       </div>
@@ -2797,7 +3645,9 @@ function LuminaryGridCard({
       {isActive && (
         <div
           className="absolute inset-0 pointer-events-none rounded-lg"
-          style={{ boxShadow: `inset 0 0 0 2px ${mode === 'arrival' ? vis.summonColor : vis.primaryColor}` }}
+          style={{
+            boxShadow: `inset 0 0 0 2px ${mode === "arrival" ? vis.summonColor : vis.primaryColor}`,
+          }}
         />
       )}
     </button>
@@ -2806,127 +3656,162 @@ function LuminaryGridCard({
 
 // ─── DevAnimSandbox ───────────────────────────────────────────────────────────
 
-type SandboxGroup = 'luminary' | 'cardFx' | 'keywordFx' | 'sfx' | 'procedure';
+type SandboxGroup = "luminary" | "cardFx" | "keywordFx" | "sfx" | "procedure";
 
 export default function DevAnimSandbox() {
   const [, setLocation] = useLocation();
 
   // ── Group selection ────────────────────────────────────────────────────────
-  const [group, setGroup] = useState<SandboxGroup>('luminary');
+  const [group, setGroup] = useState<SandboxGroup>("luminary");
 
   // ── Luminary group state ───────────────────────────────────────────────────
   const [active, setActive] = useState<SandboxLuminary | null>(null);
   const [arrivalKey, setArrivalKey] = useState(0);
   const [activationKey, setActivationKey] = useState(0);
-  const [activationEffectType, setActivationEffectType] = useState<'summon' | 'end_of_turn' | 'start_of_turn'>('summon'); // API enum 'summon' = arrival effect
-  const [mode, setMode] = useState<SandboxMode>('arrival');
+  const [activationEffectType, setActivationEffectType] = useState<
+    "summon" | "end_of_turn" | "start_of_turn"
+  >("summon"); // API enum 'summon' = arrival effect
+  const [mode, setMode] = useState<SandboxMode>("arrival");
   const [selected, setSelected] = useState<SandboxLuminary | null>(null);
   const [idleKey, setIdleKey] = useState(0);
 
   // ── Card FX group state ────────────────────────────────────────────────────
-  const [cardFxMode, setCardFxMode] = useState<CardFxMode>('cipher_reserve');
+  const [cardFxMode, setCardFxMode] = useState<CardFxMode>("cipher_reserve");
 
   // ── Keyword FX group state ─────────────────────────────────────────────────
-  const [keywordFxMode, setKeywordFxMode] = useState<KeywordFxMode>('burn_flash');
+  const [keywordFxMode, setKeywordFxMode] =
+    useState<KeywordFxMode>("burn_flash");
 
   // ── SFX group state ────────────────────────────────────────────────────────
-  const [sfxHarvestAffinity, setSfxHarvestAffinity] = useState<GemKey>('ruby');
-  const [sfxFanfareAffinity, setSfxFanfareAffinity] = useState<GemKey>('ruby');
+  const [sfxHarnessAffinity, setSfxHarnessAffinity] =
+    useState<AffinityKey>("flare");
+  const [sfxFanfareAffinity, setSfxFanfareAffinity] =
+    useState<AffinityKey>("flare");
 
-  // One representative arrival-color hex per GemKey that maps through FANFARE_COLOR_MAP.
-  // Any hex not in the map falls back to 'flux' inside playLuminaryFanfare().
-  const FANFARE_PRESET_COLORS: Record<GemKey, string> = {
-    ruby:     '#ff5a3c',
-    sapphire: '#60a5fa',
-    emerald:  '#2ecc71',
-    onyx:     '#4c1d95',
-    pearl:    '#cbd5e1',
-    flux:     '#888888', // not in map → falls back to flux tuning
+  // One representative arrival-color hex per AffinityKey that maps through FANFARE_COLOR_MAP.
+  // Any hex not in the map falls back to 'singularity' inside playLuminaryFanfare().
+  const FANFARE_PRESET_COLORS: Record<AffinityKey, string> = {
+    flare: "#ff5a3c",
+    continuum: "#60a5fa",
+    verdance: "#2ecc71",
+    abyss: "#4c1d95",
+    radiance: "#cbd5e1",
+    singularity: "#888888", // not in map → falls back to singularity tuning
   };
 
   // ── Shared UI state ────────────────────────────────────────────────────────
   const [collapsed, setCollapsed] = useState(false);
 
   function handleGridClick(lum: SandboxLuminary) {
-    if (mode === 'arrival') {
+    if (mode === "arrival") {
       setActive(lum);
-      setArrivalKey(k => k + 1);
-    } else if (mode === 'activation') {
+      setArrivalKey((k) => k + 1);
+    } else if (mode === "activation") {
       setActive(lum);
-      setActivationKey(k => k + 1);
+      setActivationKey((k) => k + 1);
     } else {
       setSelected(lum);
-      setIdleKey(k => k + 1);
+      setIdleKey((k) => k + 1);
     }
   }
 
-  function handleArrivalComplete() { setActive(null); }
+  function handleArrivalComplete() {
+    setActive(null);
+  }
 
   const luminaryInstructions: Record<SandboxMode, string> = {
-    arrival:     'Click any Luminary to preview its full arrival cutscene with its correct flash tint.',
-    activation: 'Click any Luminary to preview the ~4 s activation cinematic (arrival / end-of-turn / start-of-turn effect).',
-    idle:       'Click any Luminary to preview its idle portal overlay — entity return-flight + looping aura glow.',
+    arrival:
+      "Click any Luminary to preview the full summon cutscene used when it breaks through The Terminus.",
+    activation:
+      "Click any Luminary to preview the ~4 s activation cinematic (arrival / end-of-turn / start-of-turn effect).",
+    idle: "Click any Luminary to preview the summoned state that remains alive in The Terminus.",
   };
 
   const cardFxInstructions: Record<CardFxMode, string> = {
-    cipher_reserve:      'Press Play to preview the Cipher Reserve animation (sigil forms on card → arcs to hand).',
-    forge_burst:         'Press Play to preview the Forge animation (stamp + affinity streams → arcs to civilization tab).',
-    opponent_forge:      'Press Play to preview the Opponent Forge animation (stamp + streams from chip → arcs to avatar).',
-    reserved_forge_ring: 'Press Play to preview the expanding-ring "Forged!" overlay shown for reserved-card purchases.',
-    market_deal_flip:    'Press Play to preview the card-back → card-face flip when the market refills after a purchase.',
-    burn_pile_particle:  'Press Play to preview the BurnPileParticle — a charred fragment that arcs from the burned slot to the burn-pile chip.',
+    cipher_reserve:
+      "Press Play to preview Cipher Encrypt (branching circuits -> completed cipher -> card compression -> encrypted-pile receipt).",
+    forge_burst:
+      "Press Play to preview the Forge animation (stamp + affinity streams → arcs to civilization tab).",
+    opponent_forge:
+      "Press Play to preview the Opponent Forge animation (stamp + streams from chip → arcs to avatar).",
+    reserved_forge_ring:
+      'Press Play to preview the expanding-ring "Forged!" overlay shown when an encrypted Artifact is forged.',
+    forge_refill_flip:
+      "Press Play to preview the Artifact-reverse → Artifact-face flip when The Forge refills after a forge.",
+    burn_pile_particle:
+      "Press Play to preview the BurnPileParticle — a charred fragment that arcs from the burned slot to the burn-pile chip.",
   };
 
   return (
     <div className="dark min-h-[100dvh] bg-background text-foreground flex flex-col">
-
       {/* ── Header ────────────────────────────────────────────────────────── */}
       <div className="flex items-center gap-3 px-4 py-3 border-b border-border/40 bg-card/60 shrink-0 flex-wrap gap-y-2">
         <button
           type="button"
-          onClick={() => setLocation('/')}
+          onClick={() => setLocation("/")}
           className="text-xs font-mono text-muted-foreground hover:text-foreground transition-colors px-2 py-1 rounded border border-border/30 hover:border-border/60"
         >
           ← home
         </button>
-        <span className="text-sm font-semibold tracking-wide">DevAnimSandbox</span>
+        <span className="text-sm font-semibold tracking-wide">
+          DevAnimSandbox
+        </span>
 
         {!collapsed && (
           <>
             {/* Group selector */}
             <div className="flex items-center gap-1 ml-2 bg-black/30 rounded-md p-0.5 border border-border/20">
-              {(['luminary', 'cardFx', 'keywordFx', 'sfx', 'procedure'] as SandboxGroup[]).map(g => (
+              {(
+                [
+                  "luminary",
+                  "cardFx",
+                  "keywordFx",
+                  "sfx",
+                  "procedure",
+                ] as SandboxGroup[]
+              ).map((g) => (
                 <button
                   key={g}
                   type="button"
                   onClick={() => setGroup(g)}
                   className="text-[11px] font-mono px-2.5 py-1 rounded transition-colors"
                   style={{
-                    background: group === g ? 'rgba(255,255,255,0.13)' : 'transparent',
-                    color:      group === g ? '#e2e8f0' : '#64748b',
+                    background:
+                      group === g ? "rgba(255,255,255,0.13)" : "transparent",
+                    color: group === g ? "#e2e8f0" : "#64748b",
                   }}
                 >
-                  {g === 'luminary'   ? 'Luminary FX'
-                    : g === 'cardFx'  ? 'Card FX'
-                    : g === 'keywordFx' ? 'Keyword FX'
-                    : g === 'sfx'     ? 'Audio SFX'
-                    : 'Procedure Review'}
+                  {g === "luminary"
+                    ? "Luminary FX"
+                    : g === "cardFx"
+                      ? "Artifact FX"
+                      : g === "keywordFx"
+                        ? "Keyword FX"
+                        : g === "sfx"
+                          ? "Audio SFX"
+                          : "Procedure Review"}
                 </button>
               ))}
             </div>
 
             {/* Mode tabs — different per group */}
-            {group === 'luminary' && (
+            {group === "luminary" && (
               <div className="flex items-center gap-1 bg-black/20 rounded-md p-0.5 border border-border/15">
-                {MODES.map(m => (
+                {MODES.map((m) => (
                   <button
                     key={m.id}
                     type="button"
-                    onClick={() => { setMode(m.id); setSelected(null); }}
+                    onClick={() => {
+                      setMode(m.id);
+                      setSelected(null);
+                    }}
                     className="text-[11px] font-mono px-2.5 py-1 rounded transition-colors"
                     style={{
-                      background: mode === m.id ? 'rgba(255,255,255,0.10)' : 'transparent',
-                      color:      mode === m.id ? '#e2e8f0' : '#64748b',
+                      background:
+                        mode === m.id
+                          ? "rgba(255,255,255,0.10)"
+                          : "transparent",
+                      color: mode === m.id ? "#e2e8f0" : "#64748b",
                     }}
                   >
                     {m.label}
@@ -2935,17 +3820,20 @@ export default function DevAnimSandbox() {
               </div>
             )}
 
-            {group === 'cardFx' && (
+            {group === "cardFx" && (
               <div className="flex items-center gap-1 bg-black/20 rounded-md p-0.5 border border-border/15">
-                {CARD_FX_MODES.map(m => (
+                {CARD_FX_MODES.map((m) => (
                   <button
                     key={m.id}
                     type="button"
                     onClick={() => setCardFxMode(m.id)}
                     className="text-[11px] font-mono px-2.5 py-1 rounded transition-colors"
                     style={{
-                      background: cardFxMode === m.id ? 'rgba(255,255,255,0.10)' : 'transparent',
-                      color:      cardFxMode === m.id ? '#e2e8f0' : '#64748b',
+                      background:
+                        cardFxMode === m.id
+                          ? "rgba(255,255,255,0.10)"
+                          : "transparent",
+                      color: cardFxMode === m.id ? "#e2e8f0" : "#64748b",
                     }}
                   >
                     {m.label}
@@ -2954,17 +3842,20 @@ export default function DevAnimSandbox() {
               </div>
             )}
 
-            {group === 'keywordFx' && (
+            {group === "keywordFx" && (
               <div className="flex items-center gap-1 bg-black/20 rounded-md p-0.5 border border-border/15">
-                {KEYWORD_FX_MODES.map(m => (
+                {KEYWORD_FX_MODES.map((m) => (
                   <button
                     key={m.id}
                     type="button"
                     onClick={() => setKeywordFxMode(m.id)}
                     className="text-[11px] font-mono px-2.5 py-1 rounded transition-colors"
                     style={{
-                      background: keywordFxMode === m.id ? 'rgba(255,255,255,0.10)' : 'transparent',
-                      color:      keywordFxMode === m.id ? '#e2e8f0' : '#64748b',
+                      background:
+                        keywordFxMode === m.id
+                          ? "rgba(255,255,255,0.10)"
+                          : "transparent",
+                      color: keywordFxMode === m.id ? "#e2e8f0" : "#64748b",
                     }}
                   >
                     {m.label}
@@ -2977,112 +3868,167 @@ export default function DevAnimSandbox() {
 
         <button
           type="button"
-          onClick={() => setCollapsed(c => !c)}
+          onClick={() => setCollapsed((c) => !c)}
           className="text-[11px] font-mono px-2 py-1 rounded border border-border/30 hover:border-border/60 transition-colors"
-          style={{ color: '#64748b' }}
-          title={collapsed ? 'Expand panel' : 'Collapse panel'}
+          style={{ color: "#64748b" }}
+          title={collapsed ? "Expand panel" : "Collapse panel"}
         >
-          {collapsed ? '▶ expand' : '▼ collapse'}
+          {collapsed ? "▶ expand" : "▼ collapse"}
         </button>
 
-        <span className="ml-auto text-[10px] font-mono text-muted-foreground/50 uppercase tracking-widest">DEV ONLY</span>
+        <div className="ml-auto flex items-center gap-2 text-[10px] font-mono uppercase tracking-widest text-muted-foreground/50">
+          {group === "luminary" && (
+            <span className="normal-case tracking-normal text-muted-foreground/60">
+              {LUMINARY_PRODUCTION_PATHS[mode]}
+            </span>
+          )}
+          <span title={`Luminae build stamp: ${__LUMINAE_BUILD_STAMP__}`}>
+            build {SANDBOX_BUILD_LABEL}
+          </span>
+          <span>DEV ONLY</span>
+        </div>
       </div>
 
       {/* ── Instructions ──────────────────────────────────────────────────── */}
-      {!collapsed && group !== 'sfx' && group !== 'procedure' && group !== 'keywordFx' && (
+      {!collapsed &&
+        group !== "sfx" &&
+        group !== "procedure" &&
+        group !== "keywordFx" && (
         <p className="text-xs text-muted-foreground text-center pt-4 pb-2 px-4">
-          {group === 'luminary' ? luminaryInstructions[mode] : cardFxInstructions[cardFxMode]}
+            {group === "luminary"
+              ? luminaryInstructions[mode]
+              : cardFxInstructions[cardFxMode]}
         </p>
       )}
-      {!collapsed && group === 'keywordFx' && (
+      {!collapsed && group === "keywordFx" && (
         <p className="text-xs text-muted-foreground text-center pt-4 pb-2 px-4">
-          {keywordFxMode === 'burn_flash'
-            ? 'Press Play to preview the standalone BurnFlash animation — crisp ember burst with no blur layers.'
-            : 'Select a keyword state to preview the persistent card overlay (aura + corner badge) for each keyword.'}
+          {keywordFxMode === "burn_flash"
+            ? "Press Play to preview the standalone BurnFlash animation — crisp ember burst with no blur layers."
+            : "Select a keyword state to preview its persistent aura and centered cross-Artifact brand."}
         </p>
       )}
-      {!collapsed && group === 'procedure' && (
+      {!collapsed && group === "procedure" && (
         <p className="text-xs text-muted-foreground text-center pt-4 pb-2 px-4">
-          Select a Luminary to preview its full animation procedure with mock GameState. Play / Replay / Skip / Reduced Motion controls are available after selecting.
+          Select a Luminary to preview its full animation procedure with mock
+          GameState. Play / Replay / Skip / Reduced Motion controls are
+          available after selecting.
         </p>
       )}
 
       {/* ── Content ───────────────────────────────────────────────────────── */}
       {!collapsed && (
         <div className="flex-1 overflow-y-auto px-4 py-3">
-
           {/* ════════════════ LUMINARY FX GROUP ════════════════ */}
-          {group === 'luminary' && (
+          {group === "luminary" && (
             <>
+              {mode === "idle" && selected && (
+                <div className="max-w-3xl mx-auto mb-5 border-b border-border/20 pb-4">
+                  <IdlePortalPreview lum={selected} idleKey={idleKey} />
+                </div>
+              )}
+              {mode === "idle" && !selected && (
+                <p className="text-center text-[11px] text-muted-foreground/30 mb-4">
+                  ↓ select a Luminary below to preview its summoned Terminus
+                  card
+                </p>
+              )}
+
               {/* Luminary Grid */}
               <div className="grid grid-cols-2 sm:grid-cols-3 md:grid-cols-4 gap-2 max-w-3xl mx-auto">
-                {SANDBOX_LUMINARIES.map(lum => (
+                {SANDBOX_LUMINARIES.map((lum) => (
                   <LuminaryGridCard
                     key={lum.id}
                     lum={lum}
-                    isActive={mode === 'arrival' ? active?.id === lum.id : selected?.id === lum.id}
+                    isActive={
+                      mode === "arrival"
+                        ? active?.id === lum.id
+                        : selected?.id === lum.id
+                    }
                     mode={mode}
                     onClick={() => handleGridClick(lum)}
                   />
                 ))}
               </div>
-
-              {mode === 'idle' && selected && (
-                <div className="max-w-3xl mx-auto mt-6 border-t border-border/20 pt-4">
-                  <IdlePortalPreview lum={selected} idleKey={idleKey} />
-                </div>
-              )}
-              {mode === 'idle' && !selected && (
-                <p className="text-center text-[11px] text-muted-foreground/30 mt-8">
-                  ↑ select a Luminary above to preview its idle portal
-                </p>
-              )}
-
             </>
           )}
 
           {/* ════════════════ AUDIO SFX GROUP ════════════════ */}
-          {group === 'sfx' && (
+          {group === "sfx" && (
             <div className="max-w-xl mx-auto py-6 space-y-6">
-
               {/* ── Card actions ─────────────────────────────────── */}
               <div>
                 <p className="text-[11px] font-mono text-muted-foreground/50 uppercase tracking-widest mb-3">
                   Card Actions
                 </p>
                 <div className="flex flex-wrap gap-3">
-                  {/* Purchase */}
+                  {/* Forge */}
                   <button
                     type="button"
-                    onClick={() => { void gameAudio.playCardPurchased(); }}
+                    onClick={() => {
+                      void gameAudio.playArtifactForged();
+                    }}
                     className="text-sm font-mono px-4 py-2 rounded border transition-colors"
-                    style={{ background: 'rgba(234,179,8,0.08)', borderColor: 'rgba(234,179,8,0.35)', color: '#eab308' }}
-                    onMouseEnter={e => { (e.currentTarget as HTMLButtonElement).style.background = 'rgba(234,179,8,0.16)'; }}
-                    onMouseLeave={e => { (e.currentTarget as HTMLButtonElement).style.background = 'rgba(234,179,8,0.08)'; }}
+                    style={{
+                      background: "rgba(234,179,8,0.08)",
+                      borderColor: "rgba(234,179,8,0.35)",
+                      color: "#eab308",
+                    }}
+                    onMouseEnter={(e) => {
+                      (e.currentTarget as HTMLButtonElement).style.background =
+                        "rgba(234,179,8,0.16)";
+                    }}
+                    onMouseLeave={(e) => {
+                      (e.currentTarget as HTMLButtonElement).style.background =
+                        "rgba(234,179,8,0.08)";
+                    }}
                   >
-                    ✨ Purchase
+                    ✨ Forge
                   </button>
 
-                  {/* Reserve */}
+                  {/* Encrypt */}
                   <button
                     type="button"
-                    onClick={() => { void gameAudio.playCardReserved(); }}
+                    onClick={() => {
+                      void gameAudio.playArtifactReserved();
+                    }}
                     className="text-sm font-mono px-4 py-2 rounded border transition-colors"
-                    style={{ background: 'rgba(99,102,241,0.08)', borderColor: 'rgba(99,102,241,0.35)', color: '#818cf8' }}
-                    onMouseEnter={e => { (e.currentTarget as HTMLButtonElement).style.background = 'rgba(99,102,241,0.16)'; }}
-                    onMouseLeave={e => { (e.currentTarget as HTMLButtonElement).style.background = 'rgba(99,102,241,0.08)'; }}
+                    style={{
+                      background: "rgba(99,102,241,0.08)",
+                      borderColor: "rgba(99,102,241,0.35)",
+                      color: "#818cf8",
+                    }}
+                    onMouseEnter={(e) => {
+                      (e.currentTarget as HTMLButtonElement).style.background =
+                        "rgba(99,102,241,0.16)";
+                    }}
+                    onMouseLeave={(e) => {
+                      (e.currentTarget as HTMLButtonElement).style.background =
+                        "rgba(99,102,241,0.08)";
+                    }}
                   >
-                    📌 Reserve
+                    📌 Encrypt
                   </button>
 
                   {/* Card Draw */}
                   <button
                     type="button"
-                    onClick={() => { void gameAudio.playCardDraw(); }}
+                    onClick={() => {
+                      void gameAudio.playCardDraw();
+                    }}
                     className="text-sm font-mono px-4 py-2 rounded border transition-colors"
-                    style={{ background: 'rgba(148,163,184,0.08)', borderColor: 'rgba(148,163,184,0.3)', color: '#94a3b8' }}
-                    onMouseEnter={e => { (e.currentTarget as HTMLButtonElement).style.background = 'rgba(148,163,184,0.16)'; }}
-                    onMouseLeave={e => { (e.currentTarget as HTMLButtonElement).style.background = 'rgba(148,163,184,0.08)'; }}
+                    style={{
+                      background: "rgba(148,163,184,0.08)",
+                      borderColor: "rgba(148,163,184,0.3)",
+                      color: "#94a3b8",
+                    }}
+                    onMouseEnter={(e) => {
+                      (e.currentTarget as HTMLButtonElement).style.background =
+                        "rgba(148,163,184,0.16)";
+                    }}
+                    onMouseLeave={(e) => {
+                      (e.currentTarget as HTMLButtonElement).style.background =
+                        "rgba(148,163,184,0.08)";
+                    }}
                   >
                     🃏 Card Draw
                   </button>
@@ -3090,75 +4036,132 @@ export default function DevAnimSandbox() {
                   {/* Burn */}
                   <button
                     type="button"
-                    onClick={() => { void gameAudio.playCardBurn(); }}
+                    onClick={() => {
+                      void gameAudio.playCardBurn();
+                    }}
                     className="text-sm font-mono px-4 py-2 rounded border transition-colors"
-                    style={{ background: 'rgba(251,146,60,0.08)', borderColor: 'rgba(251,146,60,0.35)', color: '#fb923c' }}
-                    onMouseEnter={e => { (e.currentTarget as HTMLButtonElement).style.background = 'rgba(251,146,60,0.16)'; }}
-                    onMouseLeave={e => { (e.currentTarget as HTMLButtonElement).style.background = 'rgba(251,146,60,0.08)'; }}
+                    style={{
+                      background: "rgba(251,146,60,0.08)",
+                      borderColor: "rgba(251,146,60,0.35)",
+                      color: "#fb923c",
+                    }}
+                    onMouseEnter={(e) => {
+                      (e.currentTarget as HTMLButtonElement).style.background =
+                        "rgba(251,146,60,0.16)";
+                    }}
+                    onMouseLeave={(e) => {
+                      (e.currentTarget as HTMLButtonElement).style.background =
+                        "rgba(251,146,60,0.08)";
+                    }}
                   >
                     🔥 Burn
                   </button>
                 </div>
               </div>
 
-              {/* ── Harvest sounds (affinity-pitched) ────────────── */}
+              {/* ── Harness sounds (Affinity-pitched) ────────────── */}
               <div>
                 <p className="text-[11px] font-mono text-muted-foreground/50 uppercase tracking-widest mb-2">
-                  Harvest Sounds
+                  Harness Sounds
                 </p>
                 {/* Affinity pill selector */}
                 <div className="flex flex-wrap gap-1.5 mb-3">
-                  {GEM_KEYS.map(k => (
+                  {AFFINITY_KEYS.map((k) => (
                     <button
                       key={k}
                       type="button"
-                      onClick={() => setSfxHarvestAffinity(k)}
+                      onClick={() => setSfxHarnessAffinity(k)}
                       className="text-[10px] font-mono px-2 py-0.5 rounded border transition-colors"
                       style={{
-                        borderColor: sfxHarvestAffinity === k ? GEM_META[k].hex : 'rgba(255,255,255,0.12)',
-                        color:       sfxHarvestAffinity === k ? GEM_META[k].hex : '#64748b',
-                        background:  sfxHarvestAffinity === k ? `${GEM_META[k].hex}22` : 'transparent',
+                        borderColor:
+                          sfxHarnessAffinity === k
+                            ? AFFINITY_META[k].hex
+                            : "rgba(255,255,255,0.12)",
+                        color:
+                          sfxHarnessAffinity === k
+                            ? AFFINITY_META[k].hex
+                            : "#64748b",
+                        background:
+                          sfxHarnessAffinity === k
+                            ? `${AFFINITY_META[k].hex}22`
+                            : "transparent",
                       }}
                     >
-                      {GEM_META[k].name}
+                      {AFFINITY_META[k].name}
                     </button>
                   ))}
                 </div>
                 <div className="flex flex-wrap gap-3">
-                  {/* Harvest Land */}
+                  {/* Harness Land */}
                   <button
                     type="button"
-                    onClick={() => { void gameAudio.playHarvestLand(sfxHarvestAffinity); }}
+                    onClick={() => {
+                      void gameAudio.playHarnessLand(sfxHarnessAffinity);
+                    }}
                     className="text-sm font-mono px-4 py-2 rounded border transition-colors"
-                    style={{ background: 'rgba(52,211,153,0.08)', borderColor: 'rgba(52,211,153,0.35)', color: '#34d399' }}
-                    onMouseEnter={e => { (e.currentTarget as HTMLButtonElement).style.background = 'rgba(52,211,153,0.16)'; }}
-                    onMouseLeave={e => { (e.currentTarget as HTMLButtonElement).style.background = 'rgba(52,211,153,0.08)'; }}
+                    style={{
+                      background: "rgba(52,211,153,0.08)",
+                      borderColor: "rgba(52,211,153,0.35)",
+                      color: "#34d399",
+                    }}
+                    onMouseEnter={(e) => {
+                      (e.currentTarget as HTMLButtonElement).style.background =
+                        "rgba(52,211,153,0.16)";
+                    }}
+                    onMouseLeave={(e) => {
+                      (e.currentTarget as HTMLButtonElement).style.background =
+                        "rgba(52,211,153,0.08)";
+                    }}
                   >
-                    💎 Harvest Land
+                    💎 Harness Land
                   </button>
 
-                  {/* Crystal Picked */}
+                  {/* Affinity Picked */}
                   <button
                     type="button"
-                    onClick={() => { void gameAudio.playCrystalPicked(sfxHarvestAffinity); }}
+                    onClick={() => {
+                      void gameAudio.playAffinitySelected(sfxHarnessAffinity);
+                    }}
                     className="text-sm font-mono px-4 py-2 rounded border transition-colors"
-                    style={{ background: 'rgba(34,211,238,0.08)', borderColor: 'rgba(34,211,238,0.35)', color: '#22d3ee' }}
-                    onMouseEnter={e => { (e.currentTarget as HTMLButtonElement).style.background = 'rgba(34,211,238,0.16)'; }}
-                    onMouseLeave={e => { (e.currentTarget as HTMLButtonElement).style.background = 'rgba(34,211,238,0.08)'; }}
+                    style={{
+                      background: "rgba(34,211,238,0.08)",
+                      borderColor: "rgba(34,211,238,0.35)",
+                      color: "#22d3ee",
+                    }}
+                    onMouseEnter={(e) => {
+                      (e.currentTarget as HTMLButtonElement).style.background =
+                        "rgba(34,211,238,0.16)";
+                    }}
+                    onMouseLeave={(e) => {
+                      (e.currentTarget as HTMLButtonElement).style.background =
+                        "rgba(34,211,238,0.08)";
+                    }}
                   >
-                    🔮 Crystal Picked
+                    🔮 Affinity Picked
                   </button>
 
-                  {/* Harvest Blocked */}
+                  {/* Harness blocked */}
                   <button
                     type="button"
-                    onClick={() => { void gameAudio.playHarvestBlocked(sfxHarvestAffinity); }}
+                    onClick={() => {
+                      void gameAudio.playHarnessBlocked(sfxHarnessAffinity);
+                    }}
                     className="text-sm font-mono px-4 py-2 rounded border transition-colors"
-                    style={{ background: 'rgba(239,68,68,0.08)', borderColor: 'rgba(239,68,68,0.3)', color: '#f87171' }}
-                    onMouseEnter={e => { (e.currentTarget as HTMLButtonElement).style.background = 'rgba(239,68,68,0.16)'; }}
-                    onMouseLeave={e => { (e.currentTarget as HTMLButtonElement).style.background = 'rgba(239,68,68,0.08)'; }}
+                    style={{
+                      background: "rgba(239,68,68,0.08)",
+                      borderColor: "rgba(239,68,68,0.3)",
+                      color: "#f87171",
+                    }}
+                    onMouseEnter={(e) => {
+                      (e.currentTarget as HTMLButtonElement).style.background =
+                        "rgba(239,68,68,0.16)";
+                    }}
+                    onMouseLeave={(e) => {
+                      (e.currentTarget as HTMLButtonElement).style.background =
+                        "rgba(239,68,68,0.08)";
+                    }}
                   >
-                    🚫 Harvest Blocked
+                    Harness Blocked
                   </button>
                 </div>
                 <p className="text-[10px] text-muted-foreground/30 mt-2">
@@ -3175,11 +4178,23 @@ export default function DevAnimSandbox() {
                   {/* Your Turn Start */}
                   <button
                     type="button"
-                    onClick={() => { void gameAudio.playTurnStart(); }}
+                    onClick={() => {
+                      void gameAudio.playTurnStart();
+                    }}
                     className="text-sm font-mono px-4 py-2 rounded border transition-colors"
-                    style={{ background: 'rgba(99,202,241,0.08)', borderColor: 'rgba(99,202,241,0.35)', color: '#63caf1' }}
-                    onMouseEnter={e => { (e.currentTarget as HTMLButtonElement).style.background = 'rgba(99,202,241,0.16)'; }}
-                    onMouseLeave={e => { (e.currentTarget as HTMLButtonElement).style.background = 'rgba(99,202,241,0.08)'; }}
+                    style={{
+                      background: "rgba(99,202,241,0.08)",
+                      borderColor: "rgba(99,202,241,0.35)",
+                      color: "#63caf1",
+                    }}
+                    onMouseEnter={(e) => {
+                      (e.currentTarget as HTMLButtonElement).style.background =
+                        "rgba(99,202,241,0.16)";
+                    }}
+                    onMouseLeave={(e) => {
+                      (e.currentTarget as HTMLButtonElement).style.background =
+                        "rgba(99,202,241,0.08)";
+                    }}
                   >
                     🔔 Your Turn Start
                   </button>
@@ -3187,11 +4202,23 @@ export default function DevAnimSandbox() {
                   {/* Opponent Turn Start */}
                   <button
                     type="button"
-                    onClick={() => { void gameAudio.playOpponentTurnStart(); }}
+                    onClick={() => {
+                      void gameAudio.playOpponentTurnStart();
+                    }}
                     className="text-sm font-mono px-4 py-2 rounded border transition-colors"
-                    style={{ background: 'rgba(100,116,139,0.08)', borderColor: 'rgba(100,116,139,0.35)', color: '#94a3b8' }}
-                    onMouseEnter={e => { (e.currentTarget as HTMLButtonElement).style.background = 'rgba(100,116,139,0.16)'; }}
-                    onMouseLeave={e => { (e.currentTarget as HTMLButtonElement).style.background = 'rgba(100,116,139,0.08)'; }}
+                    style={{
+                      background: "rgba(100,116,139,0.08)",
+                      borderColor: "rgba(100,116,139,0.35)",
+                      color: "#94a3b8",
+                    }}
+                    onMouseEnter={(e) => {
+                      (e.currentTarget as HTMLButtonElement).style.background =
+                        "rgba(100,116,139,0.16)";
+                    }}
+                    onMouseLeave={(e) => {
+                      (e.currentTarget as HTMLButtonElement).style.background =
+                        "rgba(100,116,139,0.08)";
+                    }}
                   >
                     🔕 Opponent Turn
                   </button>
@@ -3199,11 +4226,23 @@ export default function DevAnimSandbox() {
                   {/* Win Fanfare */}
                   <button
                     type="button"
-                    onClick={() => { void gameAudio.playWin(); }}
+                    onClick={() => {
+                      void gameAudio.playWin();
+                    }}
                     className="text-sm font-mono px-4 py-2 rounded border transition-colors"
-                    style={{ background: 'rgba(234,179,8,0.10)', borderColor: 'rgba(234,179,8,0.45)', color: '#fbbf24' }}
-                    onMouseEnter={e => { (e.currentTarget as HTMLButtonElement).style.background = 'rgba(234,179,8,0.20)'; }}
-                    onMouseLeave={e => { (e.currentTarget as HTMLButtonElement).style.background = 'rgba(234,179,8,0.10)'; }}
+                    style={{
+                      background: "rgba(234,179,8,0.10)",
+                      borderColor: "rgba(234,179,8,0.45)",
+                      color: "#fbbf24",
+                    }}
+                    onMouseEnter={(e) => {
+                      (e.currentTarget as HTMLButtonElement).style.background =
+                        "rgba(234,179,8,0.20)";
+                    }}
+                    onMouseLeave={(e) => {
+                      (e.currentTarget as HTMLButtonElement).style.background =
+                        "rgba(234,179,8,0.10)";
+                    }}
                   >
                     🏆 Win Fanfare
                   </button>
@@ -3217,34 +4256,53 @@ export default function DevAnimSandbox() {
                 </p>
                 {/* Affinity pill selector */}
                 <div className="flex flex-wrap gap-1.5 mb-3">
-                  {GEM_KEYS.map(k => (
+                  {AFFINITY_KEYS.map((k) => (
                     <button
                       key={k}
                       type="button"
                       onClick={() => setSfxFanfareAffinity(k)}
                       className="text-[10px] font-mono px-2 py-0.5 rounded border transition-colors"
                       style={{
-                        borderColor: sfxFanfareAffinity === k ? GEM_META[k].hex : 'rgba(255,255,255,0.12)',
-                        color:       sfxFanfareAffinity === k ? GEM_META[k].hex : '#64748b',
-                        background:  sfxFanfareAffinity === k ? `${GEM_META[k].hex}22` : 'transparent',
+                        borderColor:
+                          sfxFanfareAffinity === k
+                            ? AFFINITY_META[k].hex
+                            : "rgba(255,255,255,0.12)",
+                        color:
+                          sfxFanfareAffinity === k
+                            ? AFFINITY_META[k].hex
+                            : "#64748b",
+                        background:
+                          sfxFanfareAffinity === k
+                            ? `${AFFINITY_META[k].hex}22`
+                            : "transparent",
                       }}
                     >
-                      {GEM_META[k].name}
+                      {AFFINITY_META[k].name}
                     </button>
                   ))}
                 </div>
                 <div className="flex flex-wrap gap-3">
                   <button
                     type="button"
-                    onClick={() => { void gameAudio.playLuminaryFanfare(FANFARE_PRESET_COLORS[sfxFanfareAffinity]); }}
+                    onClick={() => {
+                      void gameAudio.playLuminaryFanfare(
+                        FANFARE_PRESET_COLORS[sfxFanfareAffinity],
+                      );
+                    }}
                     className="text-sm font-mono px-4 py-2 rounded border transition-colors"
                     style={{
-                      background:   `${GEM_META[sfxFanfareAffinity].hex}14`,
-                      borderColor:  `${GEM_META[sfxFanfareAffinity].hex}55`,
-                      color:        GEM_META[sfxFanfareAffinity].hex,
+                      background: `${AFFINITY_META[sfxFanfareAffinity].hex}14`,
+                      borderColor: `${AFFINITY_META[sfxFanfareAffinity].hex}55`,
+                      color: AFFINITY_META[sfxFanfareAffinity].hex,
                     }}
-                    onMouseEnter={e => { (e.currentTarget as HTMLButtonElement).style.background = `${GEM_META[sfxFanfareAffinity].hex}28`; }}
-                    onMouseLeave={e => { (e.currentTarget as HTMLButtonElement).style.background = `${GEM_META[sfxFanfareAffinity].hex}14`; }}
+                    onMouseEnter={(e) => {
+                      (e.currentTarget as HTMLButtonElement).style.background =
+                        `${AFFINITY_META[sfxFanfareAffinity].hex}28`;
+                    }}
+                    onMouseLeave={(e) => {
+                      (e.currentTarget as HTMLButtonElement).style.background =
+                        `${AFFINITY_META[sfxFanfareAffinity].hex}14`;
+                    }}
                   >
                     ✨ Luminary Fanfare
                   </button>
@@ -3260,8 +4318,8 @@ export default function DevAnimSandbox() {
                   Bonus Sounds
                 </p>
                 <div className="flex flex-wrap gap-3">
-                  {GEM_KEYS.map(k => {
-                    const hex = GEM_META[k].hex;
+                  {AFFINITY_KEYS.map((k) => {
+                    const hex = AFFINITY_META[k].hex;
                     const bg    = `${hex}14`;
                     const bgHov = `${hex}28`;
                     const border = `${hex}55`;
@@ -3270,75 +4328,101 @@ export default function DevAnimSandbox() {
                         key={k}
                         type="button"
                         onClick={() => {
-                          if (k === 'flux') { void gameAudio.playFluxCoin(); }
-                          else { gameAudio.playBonusSound(k); }
+                          if (k === "singularity") {
+                            void gameAudio.playSingularityToken();
+                          } else {
+                            gameAudio.playBonusSound(k);
+                          }
                         }}
                         className="text-sm font-mono px-4 py-2 rounded border transition-colors"
-                        style={{ background: bg, borderColor: border, color: hex }}
-                        onMouseEnter={e => { (e.currentTarget as HTMLButtonElement).style.background = bgHov; }}
-                        onMouseLeave={e => { (e.currentTarget as HTMLButtonElement).style.background = bg; }}
+                        style={{
+                          background: bg,
+                          borderColor: border,
+                          color: hex,
+                        }}
+                        onMouseEnter={(e) => {
+                          (
+                            e.currentTarget as HTMLButtonElement
+                          ).style.background = bgHov;
+                        }}
+                        onMouseLeave={(e) => {
+                          (
+                            e.currentTarget as HTMLButtonElement
+                          ).style.background = bg;
+                        }}
                       >
-                        {GEM_META[k].name}
+                        {AFFINITY_META[k].name}
                       </button>
                     );
                   })}
                 </div>
                 <p className="text-[10px] text-muted-foreground/30 mt-2">
-                  Fires <span className="font-mono">playBonusSound(key)</span> for each affinity; Singularity calls <span className="font-mono">playFluxCoin()</span>.
+                  Fires <span className="font-mono">playBonusSound(key)</span>{" "}
+                  for each affinity; Singularity calls{" "}
+                  <span className="font-mono">playSingularityToken()</span>.
                 </p>
               </div>
 
               <p className="text-[10px] text-muted-foreground/30">
-                All calls go to <span className="font-mono">gameAudio</span> directly — no game state required.
+                All calls go to <span className="font-mono">gameAudio</span>{" "}
+                directly — no game state required.
               </p>
             </div>
           )}
 
           {/* ════════════════ CARD FX GROUP ════════════════ */}
-          {group === 'cardFx' && (
+          {group === "cardFx" && (
             <>
               {/* ── Comparison strip ────────────────────────────────────────── */}
               <div className="flex flex-wrap items-center gap-x-1 gap-y-1 mb-5 px-1">
                 {CARD_FX_MODES.map((m, i) => (
                   <span key={m.id} className="flex items-center gap-x-1">
                     {i > 0 && (
-                      <span className="text-[10px] font-mono text-muted-foreground/25 select-none mx-0.5">·</span>
+                      <span className="text-[10px] font-mono text-muted-foreground/25 select-none mx-0.5">
+                        ·
+                      </span>
                     )}
                     <button
                       type="button"
                       onClick={() => setCardFxMode(m.id)}
                       className="text-[10px] font-mono tabular-nums transition-colors"
                       style={{
-                        color:      cardFxMode === m.id ? '#e2e8f0' : '#64748b',
+                        color: cardFxMode === m.id ? "#e2e8f0" : "#64748b",
                         fontWeight: cardFxMode === m.id ? 600 : 400,
                       }}
                     >
-                      {m.label}&nbsp;<span style={{ opacity: 0.7 }}>{CARD_FX_TOTALS[m.id]}ms</span>
+                      {m.label}&nbsp;
+                      <span style={{ opacity: 0.7 }}>
+                        {CARD_FX_TOTALS[m.id]}ms
+                      </span>
                     </button>
                   </span>
                 ))}
               </div>
 
-              {cardFxMode === 'cipher_reserve'       && <CipherReservePreview />}
-              {cardFxMode === 'forge_burst'           && <ForgeBurstPreview />}
-              {cardFxMode === 'opponent_forge'        && <OpponentForgePreview />}
-              {cardFxMode === 'reserved_forge_ring'   && <ReservedForgeRingPreview />}
-              {cardFxMode === 'market_deal_flip'      && <MarketDealFlipPreview />}
-              {cardFxMode === 'burn_pile_particle'    && <BurnPileParticlePreview />}
+              {cardFxMode === "cipher_reserve" && <CipherReservePreview />}
+              {cardFxMode === "forge_burst" && <ForgeBurstPreview />}
+              {cardFxMode === "opponent_forge" && <OpponentForgePreview />}
+              {cardFxMode === "reserved_forge_ring" && (
+                <ReservedForgeRingPreview />
+              )}
+              {cardFxMode === "forge_refill_flip" && <ForgeRefillFlipPreview />}
+              {cardFxMode === "burn_pile_particle" && (
+                <BurnPileParticlePreview />
+              )}
             </>
           )}
           {/* ════════════════ KEYWORD FX GROUP ════════════════ */}
-          {group === 'keywordFx' && (
+          {group === "keywordFx" && (
             <>
-              {keywordFxMode === 'brand_strike'   && <BrandStrikePreview />}
-              {keywordFxMode === 'burn_flash'     && <BurnFlashPreview />}
-              {keywordFxMode === 'keyword_states' && <KeywordStatePreview />}
+              {keywordFxMode === "brand_strike" && <BrandStrikePreview />}
+              {keywordFxMode === "burn_flash" && <BurnFlashPreview />}
+              {keywordFxMode === "keyword_states" && <KeywordStatePreview />}
             </>
           )}
 
           {/* ════════════════ PROCEDURE REVIEW GROUP ════════════════ */}
-          {group === 'procedure' && <ProcedureReviewSection />}
-
+          {group === "procedure" && <ProcedureReviewSection />}
         </div>
       )}
 
@@ -3360,36 +4444,48 @@ export default function DevAnimSandbox() {
       )}
 
       {/* ── Activation effect-type selector (luminary / activation mode only) ── */}
-      {!collapsed && group === 'luminary' && mode === 'activation' && (
+      {!collapsed && group === "luminary" && mode === "activation" && (
         <div className="flex items-center justify-center gap-2 px-4 pb-2">
-          <span className="text-[10px] font-mono text-muted-foreground/50 uppercase tracking-widest">Effect type:</span>
-          {(['summon', 'end_of_turn', 'start_of_turn'] as const).map(et => ( // API enum 'summon' = arrival effect
+          <span className="text-[10px] font-mono text-muted-foreground/50 uppercase tracking-widest">
+            Effect type:
+          </span>
+          {(["summon", "end_of_turn", "start_of_turn"] as const).map(
+            (
+              et, // API enum 'summon' = arrival effect
+            ) => (
             <button
               key={et}
               type="button"
               onClick={() => setActivationEffectType(et)}
               className="text-[10px] font-mono px-2 py-0.5 rounded border transition-colors"
               style={{
-                borderColor: activationEffectType === et ? '#a78bfa' : 'rgba(255,255,255,0.12)',
-                color:       activationEffectType === et ? '#a78bfa' : '#64748b',
-                background:  activationEffectType === et ? 'rgba(167,139,250,0.12)' : 'transparent',
+                  borderColor:
+                    activationEffectType === et
+                      ? "#a78bfa"
+                      : "rgba(255,255,255,0.12)",
+                  color: activationEffectType === et ? "#a78bfa" : "#64748b",
+                  background:
+                    activationEffectType === et
+                      ? "rgba(167,139,250,0.12)"
+                      : "transparent",
               }}
             >
               {et}
             </button>
-          ))}
+            ),
+          )}
         </div>
       )}
 
       {/* ── Arrival Cutscene (overlay) ─────────────────────────────────────── */}
       <AnimatePresence>
-        {group === 'luminary' && mode === 'arrival' && active && (
+        {group === "luminary" && mode === "arrival" && active && (
           <div key={arrivalKey} className="fixed inset-0 z-50">
             <LuminaryArrivalCutscene
               luminaryId={active.id}
               luminaryName={active.name}
               domain={active.domain}
-              lumens={active.lumens}
+              eminence={active.eminence}
               flavor={active.flavor}
               overrideColor={getLuminaryVisuals(active.id).summonColor}
               onComplete={handleArrivalComplete}
@@ -3400,7 +4496,7 @@ export default function DevAnimSandbox() {
       </AnimatePresence>
 
       {/* ── Activation Cinematic (overlay) ─────────────────────────────────── */}
-      {group === 'luminary' && mode === 'activation' && active && (
+      {group === "luminary" && mode === "activation" && active && (
         <LuminaryActivationCinematic
           key={activationKey}
           luminaryId={active.id}

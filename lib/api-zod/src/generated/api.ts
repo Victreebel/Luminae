@@ -45,6 +45,14 @@ export const CreateRoomBody = zod.object({
     .number()
     .min(createRoomBodyMaxPlayersMin)
     .max(createRoomBodyMaxPlayersMax),
+  victoryRequirement: zod
+    .union([zod.literal(15), zod.literal(20), zod.literal(25)])
+    .optional()
+    .describe("Eminence required to trigger the final round"),
+  cinematicMode: zod
+    .enum(["standard", "epic"])
+    .optional()
+    .describe("Luminary cinematic presentation mode"),
   turnTimerSeconds: zod
     .number()
     .nullish()
@@ -67,6 +75,10 @@ export const GetRoomByInviteCodeResponse = zod.object({
   inviteCode: zod.string(),
   status: zod.enum(["lobby", "playing", "finished"]),
   maxPlayers: zod.number(),
+  victoryRequirement: zod
+    .number()
+    .describe("Eminence required to trigger the final round"),
+  cinematicMode: zod.enum(["standard", "epic"]),
   turnTimerSeconds: zod.number().nullish(),
   players: zod.array(
     zod.object({
@@ -110,6 +122,10 @@ export const JoinRoomResponse = zod.object({
     inviteCode: zod.string(),
     status: zod.enum(["lobby", "playing", "finished"]),
     maxPlayers: zod.number(),
+    victoryRequirement: zod
+      .number()
+      .describe("Eminence required to trigger the final round"),
+    cinematicMode: zod.enum(["standard", "epic"]),
     turnTimerSeconds: zod.number().nullish(),
     players: zod.array(
       zod.object({
@@ -168,6 +184,10 @@ export const RejoinRoomResponse = zod.object({
     inviteCode: zod.string(),
     status: zod.enum(["lobby", "playing", "finished"]),
     maxPlayers: zod.number(),
+    victoryRequirement: zod
+      .number()
+      .describe("Eminence required to trigger the final round"),
+    cinematicMode: zod.enum(["standard", "epic"]),
     turnTimerSeconds: zod.number().nullish(),
     players: zod.array(
       zod.object({
@@ -253,6 +273,25 @@ export const StartGameBody = zod.object({
 export const StartGameResponse = zod.object({
   roomId: zod.string(),
   status: zod.enum(["lobby", "playing", "finished"]),
+  startedAt: zod
+    .number()
+    .describe("Unix timestamp (ms) when this game instance was initialized"),
+  openingTurnOrder: zod
+    .object({
+      id: zod.string(),
+      startedAt: zod.number(),
+      firstPlayerId: zod.string(),
+      playerIds: zod.array(zod.string()),
+    })
+    .nullable()
+    .describe(
+      "First-player selection for this game instance; persists so clients can animate it once",
+    ),
+  canReplaySameBoard: zod
+    .boolean()
+    .describe(
+      "True when the original opening board snapshot is available for same-board rematches.",
+    ),
   currentPlayerIndex: zod.number(),
   roundNumber: zod.number(),
   turnCount: zod
@@ -260,104 +299,134 @@ export const StartGameResponse = zod.object({
     .describe(
       "Monotonically increasing counter incremented each time any player's turn ends",
     ),
-  crystalBank: zod.object({
-    ruby: zod.number(),
-    sapphire: zod.number(),
-    emerald: zod.number(),
-    onyx: zod.number(),
-    pearl: zod.number(),
-    flux: zod.number(),
-  }),
-  marketTier1: zod.array(
+  victoryRequirement: zod
+    .number()
+    .describe("Eminence required to trigger the final round"),
+  cinematicMode: zod.enum(["standard", "epic"]),
+  affinityWell: zod
+    .object({
+      flare: zod.number(),
+      continuum: zod.number(),
+      verdance: zod.number(),
+      abyss: zod.number(),
+      radiance: zod.number(),
+      singularity: zod.number(),
+    })
+    .describe("A complete set of Luminae Affinity counts."),
+  forgeTier1: zod.array(
     zod.object({
       id: zod.string(),
       tier: zod.number(),
-      bonusColor: zod.enum(["ruby", "sapphire", "emerald", "onyx", "pearl"]),
-      lumens: zod.number(),
-      cost: zod.object({
-        ruby: zod.number(),
-        sapphire: zod.number(),
-        emerald: zod.number(),
-        onyx: zod.number(),
-        pearl: zod.number(),
-        flux: zod.number(),
-      }),
+      bonusAffinity: zod.enum([
+        "flare",
+        "continuum",
+        "verdance",
+        "abyss",
+        "radiance",
+      ]),
+      eminence: zod.number(),
+      cost: zod
+        .object({
+          flare: zod.number(),
+          continuum: zod.number(),
+          verdance: zod.number(),
+          abyss: zod.number(),
+          radiance: zod.number(),
+          singularity: zod.number(),
+        })
+        .describe("A complete set of Luminae Affinity counts."),
       name: zod.string(),
       flavor: zod.string(),
       bonusesAtForge: zod
         .object({
-          ruby: zod.number(),
-          sapphire: zod.number(),
-          emerald: zod.number(),
-          onyx: zod.number(),
-          pearl: zod.number(),
-          flux: zod.number(),
+          flare: zod.number(),
+          continuum: zod.number(),
+          verdance: zod.number(),
+          abyss: zod.number(),
+          radiance: zod.number(),
+          singularity: zod.number(),
         })
         .optional()
         .describe(
-          "Snapshot of the player's effective bonuses at the moment this card was forged. Present only on purchased cards; absent on market\/reserved cards and on cards forged before this feature was added.",
+          "Snapshot of the player's effective Affinity bonuses at the moment this Artifact was forged. Present only on forged Artifacts; absent on Forge or reserved Artifacts and on Artifacts forged before this feature was added.",
         ),
     }),
   ),
-  marketTier2: zod.array(
+  forgeTier2: zod.array(
     zod.object({
       id: zod.string(),
       tier: zod.number(),
-      bonusColor: zod.enum(["ruby", "sapphire", "emerald", "onyx", "pearl"]),
-      lumens: zod.number(),
-      cost: zod.object({
-        ruby: zod.number(),
-        sapphire: zod.number(),
-        emerald: zod.number(),
-        onyx: zod.number(),
-        pearl: zod.number(),
-        flux: zod.number(),
-      }),
+      bonusAffinity: zod.enum([
+        "flare",
+        "continuum",
+        "verdance",
+        "abyss",
+        "radiance",
+      ]),
+      eminence: zod.number(),
+      cost: zod
+        .object({
+          flare: zod.number(),
+          continuum: zod.number(),
+          verdance: zod.number(),
+          abyss: zod.number(),
+          radiance: zod.number(),
+          singularity: zod.number(),
+        })
+        .describe("A complete set of Luminae Affinity counts."),
       name: zod.string(),
       flavor: zod.string(),
       bonusesAtForge: zod
         .object({
-          ruby: zod.number(),
-          sapphire: zod.number(),
-          emerald: zod.number(),
-          onyx: zod.number(),
-          pearl: zod.number(),
-          flux: zod.number(),
+          flare: zod.number(),
+          continuum: zod.number(),
+          verdance: zod.number(),
+          abyss: zod.number(),
+          radiance: zod.number(),
+          singularity: zod.number(),
         })
         .optional()
         .describe(
-          "Snapshot of the player's effective bonuses at the moment this card was forged. Present only on purchased cards; absent on market\/reserved cards and on cards forged before this feature was added.",
+          "Snapshot of the player's effective Affinity bonuses at the moment this Artifact was forged. Present only on forged Artifacts; absent on Forge or reserved Artifacts and on Artifacts forged before this feature was added.",
         ),
     }),
   ),
-  marketTier3: zod.array(
+  forgeTier3: zod.array(
     zod.object({
       id: zod.string(),
       tier: zod.number(),
-      bonusColor: zod.enum(["ruby", "sapphire", "emerald", "onyx", "pearl"]),
-      lumens: zod.number(),
-      cost: zod.object({
-        ruby: zod.number(),
-        sapphire: zod.number(),
-        emerald: zod.number(),
-        onyx: zod.number(),
-        pearl: zod.number(),
-        flux: zod.number(),
-      }),
+      bonusAffinity: zod.enum([
+        "flare",
+        "continuum",
+        "verdance",
+        "abyss",
+        "radiance",
+      ]),
+      eminence: zod.number(),
+      cost: zod
+        .object({
+          flare: zod.number(),
+          continuum: zod.number(),
+          verdance: zod.number(),
+          abyss: zod.number(),
+          radiance: zod.number(),
+          singularity: zod.number(),
+        })
+        .describe("A complete set of Luminae Affinity counts."),
       name: zod.string(),
       flavor: zod.string(),
       bonusesAtForge: zod
         .object({
-          ruby: zod.number(),
-          sapphire: zod.number(),
-          emerald: zod.number(),
-          onyx: zod.number(),
-          pearl: zod.number(),
-          flux: zod.number(),
+          flare: zod.number(),
+          continuum: zod.number(),
+          verdance: zod.number(),
+          abyss: zod.number(),
+          radiance: zod.number(),
+          singularity: zod.number(),
         })
         .optional()
         .describe(
-          "Snapshot of the player's effective bonuses at the moment this card was forged. Present only on purchased cards; absent on market\/reserved cards and on cards forged before this feature was added.",
+          "Snapshot of the player's effective Affinity bonuses at the moment this Artifact was forged. Present only on forged Artifacts; absent on Forge or reserved Artifacts and on Artifacts forged before this feature was added.",
         ),
     }),
   ),
@@ -375,21 +444,23 @@ export const StartGameResponse = zod.object({
         .describe(
           "Cosmic domain or element of this Luminary (e.g. Flame, Time, Stars)",
         ),
-      lumens: zod.number(),
+      eminence: zod.number(),
       oblivion: zod
         .number()
         .optional()
         .describe(
-          "Oblivion penalty — when this Luminary is claimed, ALL players lose this many Eminence. Mutually exclusive with a positive lumens award. Omitted (or 0) on normal Eminence Luminaries.\n",
+          "Oblivion penalty — when this Luminary is claimed, ALL players lose this many Eminence. Mutually exclusive with a positive eminence award. Omitted (or 0) on normal Eminence Luminaries.\n",
         ),
-      requirements: zod.object({
-        ruby: zod.number(),
-        sapphire: zod.number(),
-        emerald: zod.number(),
-        onyx: zod.number(),
-        pearl: zod.number(),
-        flux: zod.number(),
-      }),
+      requirements: zod
+        .object({
+          flare: zod.number(),
+          continuum: zod.number(),
+          verdance: zod.number(),
+          abyss: zod.number(),
+          radiance: zod.number(),
+          singularity: zod.number(),
+        })
+        .describe("A complete set of Luminae Affinity counts."),
       flavor: zod
         .string()
         .describe("Short lore\/flavor text shown on the Luminary card"),
@@ -420,14 +491,14 @@ export const StartGameResponse = zod.object({
         luminaryId: zod.string(),
         ownerId: zod.string(),
         activeAffinity: zod.enum([
-          "ruby",
-          "sapphire",
-          "emerald",
-          "onyx",
-          "pearl",
+          "flare",
+          "continuum",
+          "verdance",
+          "abyss",
+          "radiance",
         ]),
         eligibleAffinities: zod.array(
-          zod.enum(["ruby", "sapphire", "emerald", "onyx", "pearl"]),
+          zod.enum(["flare", "continuum", "verdance", "abyss", "radiance"]),
         ),
         summonedAtTurnCount: zod.number(),
       }),
@@ -450,100 +521,108 @@ export const StartGameResponse = zod.object({
         .describe(
           "AI difficulty level, null for human players or easy AI that never toggles",
         ),
-      crystals: zod.object({
-        ruby: zod.number(),
-        sapphire: zod.number(),
-        emerald: zod.number(),
-        onyx: zod.number(),
-        pearl: zod.number(),
-        flux: zod.number(),
-      }),
-      bonuses: zod.object({
-        ruby: zod.number(),
-        sapphire: zod.number(),
-        emerald: zod.number(),
-        onyx: zod.number(),
-        pearl: zod.number(),
-        flux: zod.number(),
-      }),
-      lumens: zod.number(),
-      reservedCards: zod.array(
+      affinities: zod
+        .object({
+          flare: zod.number(),
+          continuum: zod.number(),
+          verdance: zod.number(),
+          abyss: zod.number(),
+          radiance: zod.number(),
+          singularity: zod.number(),
+        })
+        .describe("A complete set of Luminae Affinity counts."),
+      bonuses: zod
+        .object({
+          flare: zod.number(),
+          continuum: zod.number(),
+          verdance: zod.number(),
+          abyss: zod.number(),
+          radiance: zod.number(),
+          singularity: zod.number(),
+        })
+        .describe("A complete set of Luminae Affinity counts."),
+      eminence: zod.number(),
+      reservedArtifacts: zod.array(
         zod.object({
           id: zod.string(),
           tier: zod.number(),
-          bonusColor: zod.enum([
-            "ruby",
-            "sapphire",
-            "emerald",
-            "onyx",
-            "pearl",
+          bonusAffinity: zod.enum([
+            "flare",
+            "continuum",
+            "verdance",
+            "abyss",
+            "radiance",
           ]),
-          lumens: zod.number(),
-          cost: zod.object({
-            ruby: zod.number(),
-            sapphire: zod.number(),
-            emerald: zod.number(),
-            onyx: zod.number(),
-            pearl: zod.number(),
-            flux: zod.number(),
-          }),
+          eminence: zod.number(),
+          cost: zod
+            .object({
+              flare: zod.number(),
+              continuum: zod.number(),
+              verdance: zod.number(),
+              abyss: zod.number(),
+              radiance: zod.number(),
+              singularity: zod.number(),
+            })
+            .describe("A complete set of Luminae Affinity counts."),
           name: zod.string(),
           flavor: zod.string(),
           bonusesAtForge: zod
             .object({
-              ruby: zod.number(),
-              sapphire: zod.number(),
-              emerald: zod.number(),
-              onyx: zod.number(),
-              pearl: zod.number(),
-              flux: zod.number(),
+              flare: zod.number(),
+              continuum: zod.number(),
+              verdance: zod.number(),
+              abyss: zod.number(),
+              radiance: zod.number(),
+              singularity: zod.number(),
             })
             .optional()
             .describe(
-              "Snapshot of the player's effective bonuses at the moment this card was forged. Present only on purchased cards; absent on market\/reserved cards and on cards forged before this feature was added.",
+              "Snapshot of the player's effective Affinity bonuses at the moment this Artifact was forged. Present only on forged Artifacts; absent on Forge or reserved Artifacts and on Artifacts forged before this feature was added.",
             ),
         }),
       ),
-      purchasedCardIds: zod.array(zod.string()),
+      forgedArtifactIds: zod.array(zod.string()),
       discountedForgeIds: zod
         .array(zod.string())
         .describe(
-          "Card IDs that were forged with zero crystals spent (fully covered by bonuses at forge time)",
+          "Artifact IDs forged with zero Affinities spent (fully covered by bonuses at forge time)",
         ),
-      purchasedCards: zod.array(
+      forgedArtifacts: zod.array(
         zod.object({
           id: zod.string(),
           tier: zod.number(),
-          bonusColor: zod.enum([
-            "ruby",
-            "sapphire",
-            "emerald",
-            "onyx",
-            "pearl",
+          bonusAffinity: zod.enum([
+            "flare",
+            "continuum",
+            "verdance",
+            "abyss",
+            "radiance",
           ]),
-          lumens: zod.number(),
-          cost: zod.object({
-            ruby: zod.number(),
-            sapphire: zod.number(),
-            emerald: zod.number(),
-            onyx: zod.number(),
-            pearl: zod.number(),
-            flux: zod.number(),
-          }),
+          eminence: zod.number(),
+          cost: zod
+            .object({
+              flare: zod.number(),
+              continuum: zod.number(),
+              verdance: zod.number(),
+              abyss: zod.number(),
+              radiance: zod.number(),
+              singularity: zod.number(),
+            })
+            .describe("A complete set of Luminae Affinity counts."),
           name: zod.string(),
           flavor: zod.string(),
           bonusesAtForge: zod
             .object({
-              ruby: zod.number(),
-              sapphire: zod.number(),
-              emerald: zod.number(),
-              onyx: zod.number(),
-              pearl: zod.number(),
-              flux: zod.number(),
+              flare: zod.number(),
+              continuum: zod.number(),
+              verdance: zod.number(),
+              abyss: zod.number(),
+              radiance: zod.number(),
+              singularity: zod.number(),
             })
             .optional()
             .describe(
-              "Snapshot of the player's effective bonuses at the moment this card was forged. Present only on purchased cards; absent on market\/reserved cards and on cards forged before this feature was added.",
+              "Snapshot of the player's effective Affinity bonuses at the moment this Artifact was forged. Present only on forged Artifacts; absent on Forge or reserved Artifacts and on Artifacts forged before this feature was added.",
             ),
         }),
       ),
@@ -632,7 +711,7 @@ export const StartGameResponse = zod.object({
             .array(zod.string())
             .optional()
             .describe(
-              "Card IDs targeted by this activation (e.g. condemned cards for start_of_turn burn). Captured server-side before state mutations clear marketMarkers.",
+              "Artifact IDs targeted by this activation (e.g. condemned Artifacts for start_of_turn burn). Captured server-side before state mutations clear artifactMarkers.",
             ),
         })
         .describe(
@@ -642,7 +721,27 @@ export const StartGameResponse = zod.object({
     .describe(
       "Activation events queued for the short (~4s) per-effect cinematic overlay",
     ),
-  marketMarkers: zod
+  pendingTurnTransition: zod
+    .object({
+      stage: zod.enum([
+        "after_action",
+        "after_end_effects",
+        "after_start_effects",
+      ]),
+      endingPlayerId: zod.string(),
+      nextPlayerIndex: zod.number().optional(),
+    })
+    .nullable()
+    .describe(
+      "Durable turn-resolution cursor held until all Luminary presentation events are acknowledged",
+    ),
+  devLuminarySequenceActive: zod
+    .boolean()
+    .optional()
+    .describe(
+      "Development-only lease held while the in-game Luminary Sequence Lab still has staged presentations to resolve",
+    ),
+  artifactMarkers: zod
     .record(
       zod.string(),
       zod
@@ -656,14 +755,48 @@ export const StartGameResponse = zod.object({
           ownerId: zod.string(),
           summonedAtTurnCount: zod.number(),
         })
-        .describe(
-          "A marker placed on a market card by a Luminary effect (v0.8)",
+        .describe("One persistent Luminary brand carried by an Artifact")
+        .and(
+          zod
+            .object({
+              brands: zod
+                .array(
+                  zod
+                    .object({
+                      type: zod.enum([
+                        "forgotten",
+                        "condemned",
+                        "nullified",
+                        "avatar_seed",
+                      ]),
+                      ownerId: zod.string(),
+                      summonedAtTurnCount: zod.number(),
+                    })
+                    .describe(
+                      "One persistent Luminary brand carried by an Artifact",
+                    ),
+                )
+                .optional(),
+            })
+            .describe(
+              "Persistent brands carried by an Artifact. Top-level fields mirror the newest brand for backward compatibility.",
+            ),
         ),
     )
     .optional()
     .describe(
-      "Active card markers keyed by cardId (v0.8 — Forgotten\/Condemned\/Nullified\/AvatarSeed)",
+      "Active Artifact markers keyed by cardId (v0.8 — Forgotten\/Condemned\/Nullified\/AvatarSeed)",
     ),
+  forgottenHourCycle: zod
+    .record(
+      zod.string(),
+      zod.object({
+        lastAppliedTurnCount: zod.number(),
+        cooldownOwnerTurnsRemaining: zod.number().nullable(),
+      }),
+    )
+    .optional()
+    .describe("Owner-relative Forgotten Hour timing keyed by source playerId"),
   avatarSeedDeckSeeds: zod
     .array(zod.string())
     .optional()
@@ -676,7 +809,7 @@ export const StartGameResponse = zod.object({
     .string()
     .nullish()
     .describe(
-      "Player ID if First Hunger Assimilation is available this turn (v0.8)",
+      "Player ID if Final Hunger Assimilation is available this turn (v0.8)",
     ),
   catalystBloomBurnCount: zod
     .number()
@@ -700,30 +833,47 @@ export const StartGameResponse = zod.object({
     .array(zod.string())
     .optional()
     .describe(
-      "Ordered list of card IDs removed from the market by Luminary burn effects (never reused)",
+      "Ordered list of Burned Artifact IDs awaiting an effect that may return them to their Archives",
     ),
   burnEvents: zod
     .array(
       zod
         .object({
+          eventId: zod
+            .string()
+            .describe(
+              "Stable event identifier used to correlate one Burn across state updates and animation",
+            ),
           cardId: zod.string(),
+          artifactName: zod
+            .string()
+            .describe("Artifact name captured when the Burn resolved"),
           tier: zod.union([zod.literal(1), zod.literal(2), zod.literal(3)]),
-          turn: zod.number().describe("turnCount at the time of the burn"),
+          sourceType: zod.enum(["luminary", "action", "system"]),
           sourceLuminaryId: zod.string(),
+          sourceName: zod.string().optional(),
+          ownerPlayerId: zod.string().optional(),
+          triggeredByPlayerId: zod.string().optional(),
+          destination: zod
+            .enum(["burn_pile", "archive"])
+            .describe(
+              "Final destination after the Burn resolves; Eternal Recurrence redirects to archive",
+            ),
+          turn: zod.number().describe("turnCount at the time of the burn"),
         })
         .describe(
-          "A single Artifact card removed from the market by a Luminary burn effect",
+          "A single Artifact Burned by a Luminary effect, including its final destination",
         ),
     )
     .optional()
     .describe(
-      "Ordered list of individual burn events (one per card burned) including tier and source Luminary",
+      "Ordered list of individual Burn events, including source Luminary and final destination",
     ),
   coreActionUsed: zod
     .boolean()
     .optional()
     .describe(
-      "True once the current player has used their core action this turn (harvest, forge, or reserve); resets to false on advanceTurn",
+      "True once the current player has used their core action this turn (Harness, Forge, or reserve); resets only when the staged Luminary resolution pipeline releases the next turn",
     ),
   pendingLuminaryChoice: zod
     .object({
@@ -738,7 +888,7 @@ export const StartGameResponse = zod.object({
 });
 
 /**
- * @summary Restart the game with the same players (host only)
+ * @summary Vote to restart the game, optionally replaying the same opening board
  */
 export const RematchParams = zod.object({
   roomId: zod.coerce.string(),
@@ -746,493 +896,27 @@ export const RematchParams = zod.object({
 
 export const RematchBody = zod.object({
   sessionToken: zod.string(),
+  sameBoard: zod
+    .boolean()
+    .optional()
+    .describe(
+      "When true, the next rematch reuses the original opening Forge, deck, Luminary, and first-player setup when available.",
+    ),
 });
 
 export const RematchResponse = zod.object({
-  roomId: zod.string(),
-  status: zod.enum(["lobby", "playing", "finished"]),
-  currentPlayerIndex: zod.number(),
-  roundNumber: zod.number(),
-  turnCount: zod
-    .number()
-    .describe(
-      "Monotonically increasing counter incremented each time any player's turn ends",
-    ),
-  crystalBank: zod.object({
-    ruby: zod.number(),
-    sapphire: zod.number(),
-    emerald: zod.number(),
-    onyx: zod.number(),
-    pearl: zod.number(),
-    flux: zod.number(),
-  }),
-  marketTier1: zod.array(
+  voterIds: zod.array(zod.string()),
+  sameBoard: zod.boolean(),
+  countdownEndsAt: zod.number().nullable(),
+  sessionStats: zod.record(
+    zod.string(),
     zod.object({
-      id: zod.string(),
-      tier: zod.number(),
-      bonusColor: zod.enum(["ruby", "sapphire", "emerald", "onyx", "pearl"]),
-      lumens: zod.number(),
-      cost: zod.object({
-        ruby: zod.number(),
-        sapphire: zod.number(),
-        emerald: zod.number(),
-        onyx: zod.number(),
-        pearl: zod.number(),
-        flux: zod.number(),
-      }),
-      name: zod.string(),
-      flavor: zod.string(),
-      bonusesAtForge: zod
-        .object({
-          ruby: zod.number(),
-          sapphire: zod.number(),
-          emerald: zod.number(),
-          onyx: zod.number(),
-          pearl: zod.number(),
-          flux: zod.number(),
-        })
-        .optional()
-        .describe(
-          "Snapshot of the player's effective bonuses at the moment this card was forged. Present only on purchased cards; absent on market\/reserved cards and on cards forged before this feature was added.",
-        ),
-    }),
-  ),
-  marketTier2: zod.array(
-    zod.object({
-      id: zod.string(),
-      tier: zod.number(),
-      bonusColor: zod.enum(["ruby", "sapphire", "emerald", "onyx", "pearl"]),
-      lumens: zod.number(),
-      cost: zod.object({
-        ruby: zod.number(),
-        sapphire: zod.number(),
-        emerald: zod.number(),
-        onyx: zod.number(),
-        pearl: zod.number(),
-        flux: zod.number(),
-      }),
-      name: zod.string(),
-      flavor: zod.string(),
-      bonusesAtForge: zod
-        .object({
-          ruby: zod.number(),
-          sapphire: zod.number(),
-          emerald: zod.number(),
-          onyx: zod.number(),
-          pearl: zod.number(),
-          flux: zod.number(),
-        })
-        .optional()
-        .describe(
-          "Snapshot of the player's effective bonuses at the moment this card was forged. Present only on purchased cards; absent on market\/reserved cards and on cards forged before this feature was added.",
-        ),
-    }),
-  ),
-  marketTier3: zod.array(
-    zod.object({
-      id: zod.string(),
-      tier: zod.number(),
-      bonusColor: zod.enum(["ruby", "sapphire", "emerald", "onyx", "pearl"]),
-      lumens: zod.number(),
-      cost: zod.object({
-        ruby: zod.number(),
-        sapphire: zod.number(),
-        emerald: zod.number(),
-        onyx: zod.number(),
-        pearl: zod.number(),
-        flux: zod.number(),
-      }),
-      name: zod.string(),
-      flavor: zod.string(),
-      bonusesAtForge: zod
-        .object({
-          ruby: zod.number(),
-          sapphire: zod.number(),
-          emerald: zod.number(),
-          onyx: zod.number(),
-          pearl: zod.number(),
-          flux: zod.number(),
-        })
-        .optional()
-        .describe(
-          "Snapshot of the player's effective bonuses at the moment this card was forged. Present only on purchased cards; absent on market\/reserved cards and on cards forged before this feature was added.",
-        ),
-    }),
-  ),
-  deckCounts: zod.object({
-    tier1: zod.number(),
-    tier2: zod.number(),
-    tier3: zod.number(),
-  }),
-  luminaries: zod.array(
-    zod.object({
-      id: zod.string(),
-      name: zod.string(),
-      domain: zod
-        .string()
-        .describe(
-          "Cosmic domain or element of this Luminary (e.g. Flame, Time, Stars)",
-        ),
-      lumens: zod.number(),
-      oblivion: zod
-        .number()
-        .optional()
-        .describe(
-          "Oblivion penalty — when this Luminary is claimed, ALL players lose this many Eminence. Mutually exclusive with a positive lumens award. Omitted (or 0) on normal Eminence Luminaries.\n",
-        ),
-      requirements: zod.object({
-        ruby: zod.number(),
-        sapphire: zod.number(),
-        emerald: zod.number(),
-        onyx: zod.number(),
-        pearl: zod.number(),
-        flux: zod.number(),
-      }),
-      flavor: zod
-        .string()
-        .describe("Short lore\/flavor text shown on the Luminary card"),
-      summonColor: zod
-        .string()
-        .describe("Primary hex color used for glow and aura effects"),
-      summonSecondaryColor: zod
-        .string()
-        .describe("Secondary hex color used for aura gradient"),
-      auraStyle: zod
-        .string()
-        .describe("Named aura style for the summoning cutscene"),
-      effectName: zod
-        .string()
-        .optional()
-        .describe("Short display name for this Luminary's special effect"),
-      effectDescription: zod
-        .string()
-        .optional()
-        .describe(
-          "Plain-English description of this Luminary's special effect for players",
-        ),
-    }),
-  ),
-  luminaryAffinities: zod
-    .array(
-      zod.object({
-        luminaryId: zod.string(),
-        ownerId: zod.string(),
-        activeAffinity: zod.enum([
-          "ruby",
-          "sapphire",
-          "emerald",
-          "onyx",
-          "pearl",
-        ]),
-        eligibleAffinities: zod.array(
-          zod.enum(["ruby", "sapphire", "emerald", "onyx", "pearl"]),
-        ),
-        summonedAtTurnCount: zod.number(),
-      }),
-    )
-    .describe("Active affinity state for each claimed Luminary"),
-  players: zod.array(
-    zod.object({
-      playerId: zod.string(),
+      wins: zod.number(),
+      losses: zod.number(),
+      ties: zod.number(),
       playerName: zod.string(),
-      avatarId: zod.string().nullable(),
-      isAi: zod.boolean().describe("Whether this player is an AI"),
-      aiDifficulty: zod
-        .union([
-          zod.literal("easy"),
-          zod.literal("medium"),
-          zod.literal("hard"),
-          zod.literal(null),
-        ])
-        .nullable()
-        .describe(
-          "AI difficulty level, null for human players or easy AI that never toggles",
-        ),
-      crystals: zod.object({
-        ruby: zod.number(),
-        sapphire: zod.number(),
-        emerald: zod.number(),
-        onyx: zod.number(),
-        pearl: zod.number(),
-        flux: zod.number(),
-      }),
-      bonuses: zod.object({
-        ruby: zod.number(),
-        sapphire: zod.number(),
-        emerald: zod.number(),
-        onyx: zod.number(),
-        pearl: zod.number(),
-        flux: zod.number(),
-      }),
-      lumens: zod.number(),
-      reservedCards: zod.array(
-        zod.object({
-          id: zod.string(),
-          tier: zod.number(),
-          bonusColor: zod.enum([
-            "ruby",
-            "sapphire",
-            "emerald",
-            "onyx",
-            "pearl",
-          ]),
-          lumens: zod.number(),
-          cost: zod.object({
-            ruby: zod.number(),
-            sapphire: zod.number(),
-            emerald: zod.number(),
-            onyx: zod.number(),
-            pearl: zod.number(),
-            flux: zod.number(),
-          }),
-          name: zod.string(),
-          flavor: zod.string(),
-          bonusesAtForge: zod
-            .object({
-              ruby: zod.number(),
-              sapphire: zod.number(),
-              emerald: zod.number(),
-              onyx: zod.number(),
-              pearl: zod.number(),
-              flux: zod.number(),
-            })
-            .optional()
-            .describe(
-              "Snapshot of the player's effective bonuses at the moment this card was forged. Present only on purchased cards; absent on market\/reserved cards and on cards forged before this feature was added.",
-            ),
-        }),
-      ),
-      purchasedCardIds: zod.array(zod.string()),
-      discountedForgeIds: zod
-        .array(zod.string())
-        .describe(
-          "Card IDs that were forged with zero crystals spent (fully covered by bonuses at forge time)",
-        ),
-      purchasedCards: zod.array(
-        zod.object({
-          id: zod.string(),
-          tier: zod.number(),
-          bonusColor: zod.enum([
-            "ruby",
-            "sapphire",
-            "emerald",
-            "onyx",
-            "pearl",
-          ]),
-          lumens: zod.number(),
-          cost: zod.object({
-            ruby: zod.number(),
-            sapphire: zod.number(),
-            emerald: zod.number(),
-            onyx: zod.number(),
-            pearl: zod.number(),
-            flux: zod.number(),
-          }),
-          name: zod.string(),
-          flavor: zod.string(),
-          bonusesAtForge: zod
-            .object({
-              ruby: zod.number(),
-              sapphire: zod.number(),
-              emerald: zod.number(),
-              onyx: zod.number(),
-              pearl: zod.number(),
-              flux: zod.number(),
-            })
-            .optional()
-            .describe(
-              "Snapshot of the player's effective bonuses at the moment this card was forged. Present only on purchased cards; absent on market\/reserved cards and on cards forged before this feature was added.",
-            ),
-        }),
-      ),
-      isConnected: zod.boolean(),
-      claimedLuminaryIds: zod
-        .array(zod.string())
-        .describe("IDs of luminaries this player has claimed"),
-      plannedAction: zod
-        .record(zod.string(), zod.unknown())
-        .nullable()
-        .describe(
-          "Pre-committed action to auto-execute when this player's turn arrives",
-        ),
-      plannedActionCancelReason: zod
-        .string()
-        .nullable()
-        .describe(
-          "Reason the last planned action was auto-cancelled, if applicable",
-        ),
-      civName: zod
-        .string()
-        .nullable()
-        .describe("Player-chosen civilization name; null if not set"),
     }),
   ),
-  winnerId: zod.string().nullable(),
-  winTriggerLuminaryId: zod
-    .string()
-    .nullable()
-    .describe(
-      "ID of the Luminary whose summon sealed the win; null if the win was sealed by a card forge",
-    ),
-  lastAction: zod.record(zod.string(), zod.unknown()).nullable(),
-  actionLog: zod.array(
-    zod.object({
-      playerId: zod.string(),
-      playerName: zod.string(),
-      summary: zod.string(),
-      turn: zod.number(),
-    }),
-  ),
-  turnTimerSeconds: zod.number().nullable(),
-  turnDeadline: zod
-    .number()
-    .nullable()
-    .describe(
-      "Unix timestamp (ms) when the current turn auto-passes; null if no timer",
-    ),
-  version: zod.number(),
-  pendingSummonEvents: zod
-    .array(
-      zod.object({
-        eventId: zod.string(),
-        luminaryId: zod.string(),
-        claimedByPlayerId: zod.string(),
-        createdAt: zod
-          .number()
-          .optional()
-          .describe(
-            "Unix ms timestamp when this event was created; optional for backward compat",
-          ),
-      }),
-    )
-    .describe(
-      "Summon events awaiting client acknowledgement (resolve_summon action)",
-    ),
-  pendingLuminaryActivationEvents: zod
-    .array(
-      zod
-        .object({
-          eventId: zod.string(),
-          luminaryId: zod.string(),
-          effectType: zod
-            .enum(["summon", "end_of_turn", "start_of_turn"])
-            .describe("Which hook fired this event"),
-          triggeringPlayerId: zod
-            .string()
-            .describe("Player ID who owns the Luminary"),
-          createdAt: zod
-            .number()
-            .optional()
-            .describe(
-              "Unix ms timestamp when this event was created; optional for backward compat",
-            ),
-          targetCardIds: zod
-            .array(zod.string())
-            .optional()
-            .describe(
-              "Card IDs targeted by this activation (e.g. condemned cards for start_of_turn burn). Captured server-side before state mutations clear marketMarkers.",
-            ),
-        })
-        .describe(
-          "An activation event queued for the short (~4s) per-effect cinematic overlay",
-        ),
-    )
-    .describe(
-      "Activation events queued for the short (~4s) per-effect cinematic overlay",
-    ),
-  marketMarkers: zod
-    .record(
-      zod.string(),
-      zod
-        .object({
-          type: zod.enum([
-            "forgotten",
-            "condemned",
-            "nullified",
-            "avatar_seed",
-          ]),
-          ownerId: zod.string(),
-          summonedAtTurnCount: zod.number(),
-        })
-        .describe(
-          "A marker placed on a market card by a Luminary effect (v0.8)",
-        ),
-    )
-    .optional()
-    .describe(
-      "Active card markers keyed by cardId (v0.8 — Forgotten\/Condemned\/Nullified\/AvatarSeed)",
-    ),
-  avatarSeedDeckSeeds: zod
-    .array(zod.string())
-    .optional()
-    .describe("Card IDs currently in deck with Avatar Seed markers (v0.8)"),
-  avatarSeedOwnerId: zod
-    .string()
-    .nullish()
-    .describe("Player ID who owns Avatar Seeds; null if inactive (v0.8)"),
-  firstHungerAvailable: zod
-    .string()
-    .nullish()
-    .describe(
-      "Player ID if First Hunger Assimilation is available this turn (v0.8)",
-    ),
-  catalystBloomBurnCount: zod
-    .number()
-    .optional()
-    .describe(
-      "Burn count accumulator for Catalyst Bloom since owner's last turn (v0.8)",
-    ),
-  concordanceMandalaTriggered: zod
-    .boolean()
-    .optional()
-    .describe(
-      "True once Concordance Mandala Perfect Coherence has fired (v0.8)",
-    ),
-  glassOrchardTriggered: zod
-    .boolean()
-    .optional()
-    .describe(
-      "True once The Glass Orchard Perfect Replication has fired (v0.8)",
-    ),
-  burnPile: zod
-    .array(zod.string())
-    .optional()
-    .describe(
-      "Ordered list of card IDs removed from the market by Luminary burn effects (never reused)",
-    ),
-  burnEvents: zod
-    .array(
-      zod
-        .object({
-          cardId: zod.string(),
-          tier: zod.union([zod.literal(1), zod.literal(2), zod.literal(3)]),
-          turn: zod.number().describe("turnCount at the time of the burn"),
-          sourceLuminaryId: zod.string(),
-        })
-        .describe(
-          "A single Artifact card removed from the market by a Luminary burn effect",
-        ),
-    )
-    .optional()
-    .describe(
-      "Ordered list of individual burn events (one per card burned) including tier and source Luminary",
-    ),
-  coreActionUsed: zod
-    .boolean()
-    .optional()
-    .describe(
-      "True once the current player has used their core action this turn (harvest, forge, or reserve); resets to false on advanceTurn",
-    ),
-  pendingLuminaryChoice: zod
-    .object({
-      playerId: zod.string(),
-      candidates: zod.array(zod.string()),
-      createdAt: zod.number(),
-    })
-    .nullish()
-    .describe(
-      "Set when the current player must choose the order to claim multiple simultaneous Luminaries",
-    ),
 });
 
 /**
@@ -1249,6 +933,25 @@ export const GetGameStateQueryParams = zod.object({
 export const GetGameStateResponse = zod.object({
   roomId: zod.string(),
   status: zod.enum(["lobby", "playing", "finished"]),
+  startedAt: zod
+    .number()
+    .describe("Unix timestamp (ms) when this game instance was initialized"),
+  openingTurnOrder: zod
+    .object({
+      id: zod.string(),
+      startedAt: zod.number(),
+      firstPlayerId: zod.string(),
+      playerIds: zod.array(zod.string()),
+    })
+    .nullable()
+    .describe(
+      "First-player selection for this game instance; persists so clients can animate it once",
+    ),
+  canReplaySameBoard: zod
+    .boolean()
+    .describe(
+      "True when the original opening board snapshot is available for same-board rematches.",
+    ),
   currentPlayerIndex: zod.number(),
   roundNumber: zod.number(),
   turnCount: zod
@@ -1256,104 +959,134 @@ export const GetGameStateResponse = zod.object({
     .describe(
       "Monotonically increasing counter incremented each time any player's turn ends",
     ),
-  crystalBank: zod.object({
-    ruby: zod.number(),
-    sapphire: zod.number(),
-    emerald: zod.number(),
-    onyx: zod.number(),
-    pearl: zod.number(),
-    flux: zod.number(),
-  }),
-  marketTier1: zod.array(
+  victoryRequirement: zod
+    .number()
+    .describe("Eminence required to trigger the final round"),
+  cinematicMode: zod.enum(["standard", "epic"]),
+  affinityWell: zod
+    .object({
+      flare: zod.number(),
+      continuum: zod.number(),
+      verdance: zod.number(),
+      abyss: zod.number(),
+      radiance: zod.number(),
+      singularity: zod.number(),
+    })
+    .describe("A complete set of Luminae Affinity counts."),
+  forgeTier1: zod.array(
     zod.object({
       id: zod.string(),
       tier: zod.number(),
-      bonusColor: zod.enum(["ruby", "sapphire", "emerald", "onyx", "pearl"]),
-      lumens: zod.number(),
-      cost: zod.object({
-        ruby: zod.number(),
-        sapphire: zod.number(),
-        emerald: zod.number(),
-        onyx: zod.number(),
-        pearl: zod.number(),
-        flux: zod.number(),
-      }),
+      bonusAffinity: zod.enum([
+        "flare",
+        "continuum",
+        "verdance",
+        "abyss",
+        "radiance",
+      ]),
+      eminence: zod.number(),
+      cost: zod
+        .object({
+          flare: zod.number(),
+          continuum: zod.number(),
+          verdance: zod.number(),
+          abyss: zod.number(),
+          radiance: zod.number(),
+          singularity: zod.number(),
+        })
+        .describe("A complete set of Luminae Affinity counts."),
       name: zod.string(),
       flavor: zod.string(),
       bonusesAtForge: zod
         .object({
-          ruby: zod.number(),
-          sapphire: zod.number(),
-          emerald: zod.number(),
-          onyx: zod.number(),
-          pearl: zod.number(),
-          flux: zod.number(),
+          flare: zod.number(),
+          continuum: zod.number(),
+          verdance: zod.number(),
+          abyss: zod.number(),
+          radiance: zod.number(),
+          singularity: zod.number(),
         })
         .optional()
         .describe(
-          "Snapshot of the player's effective bonuses at the moment this card was forged. Present only on purchased cards; absent on market\/reserved cards and on cards forged before this feature was added.",
+          "Snapshot of the player's effective Affinity bonuses at the moment this Artifact was forged. Present only on forged Artifacts; absent on Forge or reserved Artifacts and on Artifacts forged before this feature was added.",
         ),
     }),
   ),
-  marketTier2: zod.array(
+  forgeTier2: zod.array(
     zod.object({
       id: zod.string(),
       tier: zod.number(),
-      bonusColor: zod.enum(["ruby", "sapphire", "emerald", "onyx", "pearl"]),
-      lumens: zod.number(),
-      cost: zod.object({
-        ruby: zod.number(),
-        sapphire: zod.number(),
-        emerald: zod.number(),
-        onyx: zod.number(),
-        pearl: zod.number(),
-        flux: zod.number(),
-      }),
+      bonusAffinity: zod.enum([
+        "flare",
+        "continuum",
+        "verdance",
+        "abyss",
+        "radiance",
+      ]),
+      eminence: zod.number(),
+      cost: zod
+        .object({
+          flare: zod.number(),
+          continuum: zod.number(),
+          verdance: zod.number(),
+          abyss: zod.number(),
+          radiance: zod.number(),
+          singularity: zod.number(),
+        })
+        .describe("A complete set of Luminae Affinity counts."),
       name: zod.string(),
       flavor: zod.string(),
       bonusesAtForge: zod
         .object({
-          ruby: zod.number(),
-          sapphire: zod.number(),
-          emerald: zod.number(),
-          onyx: zod.number(),
-          pearl: zod.number(),
-          flux: zod.number(),
+          flare: zod.number(),
+          continuum: zod.number(),
+          verdance: zod.number(),
+          abyss: zod.number(),
+          radiance: zod.number(),
+          singularity: zod.number(),
         })
         .optional()
         .describe(
-          "Snapshot of the player's effective bonuses at the moment this card was forged. Present only on purchased cards; absent on market\/reserved cards and on cards forged before this feature was added.",
+          "Snapshot of the player's effective Affinity bonuses at the moment this Artifact was forged. Present only on forged Artifacts; absent on Forge or reserved Artifacts and on Artifacts forged before this feature was added.",
         ),
     }),
   ),
-  marketTier3: zod.array(
+  forgeTier3: zod.array(
     zod.object({
       id: zod.string(),
       tier: zod.number(),
-      bonusColor: zod.enum(["ruby", "sapphire", "emerald", "onyx", "pearl"]),
-      lumens: zod.number(),
-      cost: zod.object({
-        ruby: zod.number(),
-        sapphire: zod.number(),
-        emerald: zod.number(),
-        onyx: zod.number(),
-        pearl: zod.number(),
-        flux: zod.number(),
-      }),
+      bonusAffinity: zod.enum([
+        "flare",
+        "continuum",
+        "verdance",
+        "abyss",
+        "radiance",
+      ]),
+      eminence: zod.number(),
+      cost: zod
+        .object({
+          flare: zod.number(),
+          continuum: zod.number(),
+          verdance: zod.number(),
+          abyss: zod.number(),
+          radiance: zod.number(),
+          singularity: zod.number(),
+        })
+        .describe("A complete set of Luminae Affinity counts."),
       name: zod.string(),
       flavor: zod.string(),
       bonusesAtForge: zod
         .object({
-          ruby: zod.number(),
-          sapphire: zod.number(),
-          emerald: zod.number(),
-          onyx: zod.number(),
-          pearl: zod.number(),
-          flux: zod.number(),
+          flare: zod.number(),
+          continuum: zod.number(),
+          verdance: zod.number(),
+          abyss: zod.number(),
+          radiance: zod.number(),
+          singularity: zod.number(),
         })
         .optional()
         .describe(
-          "Snapshot of the player's effective bonuses at the moment this card was forged. Present only on purchased cards; absent on market\/reserved cards and on cards forged before this feature was added.",
+          "Snapshot of the player's effective Affinity bonuses at the moment this Artifact was forged. Present only on forged Artifacts; absent on Forge or reserved Artifacts and on Artifacts forged before this feature was added.",
         ),
     }),
   ),
@@ -1371,21 +1104,23 @@ export const GetGameStateResponse = zod.object({
         .describe(
           "Cosmic domain or element of this Luminary (e.g. Flame, Time, Stars)",
         ),
-      lumens: zod.number(),
+      eminence: zod.number(),
       oblivion: zod
         .number()
         .optional()
         .describe(
-          "Oblivion penalty — when this Luminary is claimed, ALL players lose this many Eminence. Mutually exclusive with a positive lumens award. Omitted (or 0) on normal Eminence Luminaries.\n",
+          "Oblivion penalty — when this Luminary is claimed, ALL players lose this many Eminence. Mutually exclusive with a positive eminence award. Omitted (or 0) on normal Eminence Luminaries.\n",
         ),
-      requirements: zod.object({
-        ruby: zod.number(),
-        sapphire: zod.number(),
-        emerald: zod.number(),
-        onyx: zod.number(),
-        pearl: zod.number(),
-        flux: zod.number(),
-      }),
+      requirements: zod
+        .object({
+          flare: zod.number(),
+          continuum: zod.number(),
+          verdance: zod.number(),
+          abyss: zod.number(),
+          radiance: zod.number(),
+          singularity: zod.number(),
+        })
+        .describe("A complete set of Luminae Affinity counts."),
       flavor: zod
         .string()
         .describe("Short lore\/flavor text shown on the Luminary card"),
@@ -1416,14 +1151,14 @@ export const GetGameStateResponse = zod.object({
         luminaryId: zod.string(),
         ownerId: zod.string(),
         activeAffinity: zod.enum([
-          "ruby",
-          "sapphire",
-          "emerald",
-          "onyx",
-          "pearl",
+          "flare",
+          "continuum",
+          "verdance",
+          "abyss",
+          "radiance",
         ]),
         eligibleAffinities: zod.array(
-          zod.enum(["ruby", "sapphire", "emerald", "onyx", "pearl"]),
+          zod.enum(["flare", "continuum", "verdance", "abyss", "radiance"]),
         ),
         summonedAtTurnCount: zod.number(),
       }),
@@ -1446,100 +1181,108 @@ export const GetGameStateResponse = zod.object({
         .describe(
           "AI difficulty level, null for human players or easy AI that never toggles",
         ),
-      crystals: zod.object({
-        ruby: zod.number(),
-        sapphire: zod.number(),
-        emerald: zod.number(),
-        onyx: zod.number(),
-        pearl: zod.number(),
-        flux: zod.number(),
-      }),
-      bonuses: zod.object({
-        ruby: zod.number(),
-        sapphire: zod.number(),
-        emerald: zod.number(),
-        onyx: zod.number(),
-        pearl: zod.number(),
-        flux: zod.number(),
-      }),
-      lumens: zod.number(),
-      reservedCards: zod.array(
+      affinities: zod
+        .object({
+          flare: zod.number(),
+          continuum: zod.number(),
+          verdance: zod.number(),
+          abyss: zod.number(),
+          radiance: zod.number(),
+          singularity: zod.number(),
+        })
+        .describe("A complete set of Luminae Affinity counts."),
+      bonuses: zod
+        .object({
+          flare: zod.number(),
+          continuum: zod.number(),
+          verdance: zod.number(),
+          abyss: zod.number(),
+          radiance: zod.number(),
+          singularity: zod.number(),
+        })
+        .describe("A complete set of Luminae Affinity counts."),
+      eminence: zod.number(),
+      reservedArtifacts: zod.array(
         zod.object({
           id: zod.string(),
           tier: zod.number(),
-          bonusColor: zod.enum([
-            "ruby",
-            "sapphire",
-            "emerald",
-            "onyx",
-            "pearl",
+          bonusAffinity: zod.enum([
+            "flare",
+            "continuum",
+            "verdance",
+            "abyss",
+            "radiance",
           ]),
-          lumens: zod.number(),
-          cost: zod.object({
-            ruby: zod.number(),
-            sapphire: zod.number(),
-            emerald: zod.number(),
-            onyx: zod.number(),
-            pearl: zod.number(),
-            flux: zod.number(),
-          }),
+          eminence: zod.number(),
+          cost: zod
+            .object({
+              flare: zod.number(),
+              continuum: zod.number(),
+              verdance: zod.number(),
+              abyss: zod.number(),
+              radiance: zod.number(),
+              singularity: zod.number(),
+            })
+            .describe("A complete set of Luminae Affinity counts."),
           name: zod.string(),
           flavor: zod.string(),
           bonusesAtForge: zod
             .object({
-              ruby: zod.number(),
-              sapphire: zod.number(),
-              emerald: zod.number(),
-              onyx: zod.number(),
-              pearl: zod.number(),
-              flux: zod.number(),
+              flare: zod.number(),
+              continuum: zod.number(),
+              verdance: zod.number(),
+              abyss: zod.number(),
+              radiance: zod.number(),
+              singularity: zod.number(),
             })
             .optional()
             .describe(
-              "Snapshot of the player's effective bonuses at the moment this card was forged. Present only on purchased cards; absent on market\/reserved cards and on cards forged before this feature was added.",
+              "Snapshot of the player's effective Affinity bonuses at the moment this Artifact was forged. Present only on forged Artifacts; absent on Forge or reserved Artifacts and on Artifacts forged before this feature was added.",
             ),
         }),
       ),
-      purchasedCardIds: zod.array(zod.string()),
+      forgedArtifactIds: zod.array(zod.string()),
       discountedForgeIds: zod
         .array(zod.string())
         .describe(
-          "Card IDs that were forged with zero crystals spent (fully covered by bonuses at forge time)",
+          "Artifact IDs forged with zero Affinities spent (fully covered by bonuses at forge time)",
         ),
-      purchasedCards: zod.array(
+      forgedArtifacts: zod.array(
         zod.object({
           id: zod.string(),
           tier: zod.number(),
-          bonusColor: zod.enum([
-            "ruby",
-            "sapphire",
-            "emerald",
-            "onyx",
-            "pearl",
+          bonusAffinity: zod.enum([
+            "flare",
+            "continuum",
+            "verdance",
+            "abyss",
+            "radiance",
           ]),
-          lumens: zod.number(),
-          cost: zod.object({
-            ruby: zod.number(),
-            sapphire: zod.number(),
-            emerald: zod.number(),
-            onyx: zod.number(),
-            pearl: zod.number(),
-            flux: zod.number(),
-          }),
+          eminence: zod.number(),
+          cost: zod
+            .object({
+              flare: zod.number(),
+              continuum: zod.number(),
+              verdance: zod.number(),
+              abyss: zod.number(),
+              radiance: zod.number(),
+              singularity: zod.number(),
+            })
+            .describe("A complete set of Luminae Affinity counts."),
           name: zod.string(),
           flavor: zod.string(),
           bonusesAtForge: zod
             .object({
-              ruby: zod.number(),
-              sapphire: zod.number(),
-              emerald: zod.number(),
-              onyx: zod.number(),
-              pearl: zod.number(),
-              flux: zod.number(),
+              flare: zod.number(),
+              continuum: zod.number(),
+              verdance: zod.number(),
+              abyss: zod.number(),
+              radiance: zod.number(),
+              singularity: zod.number(),
             })
             .optional()
             .describe(
-              "Snapshot of the player's effective bonuses at the moment this card was forged. Present only on purchased cards; absent on market\/reserved cards and on cards forged before this feature was added.",
+              "Snapshot of the player's effective Affinity bonuses at the moment this Artifact was forged. Present only on forged Artifacts; absent on Forge or reserved Artifacts and on Artifacts forged before this feature was added.",
             ),
         }),
       ),
@@ -1628,7 +1371,7 @@ export const GetGameStateResponse = zod.object({
             .array(zod.string())
             .optional()
             .describe(
-              "Card IDs targeted by this activation (e.g. condemned cards for start_of_turn burn). Captured server-side before state mutations clear marketMarkers.",
+              "Artifact IDs targeted by this activation (e.g. condemned Artifacts for start_of_turn burn). Captured server-side before state mutations clear artifactMarkers.",
             ),
         })
         .describe(
@@ -1638,7 +1381,27 @@ export const GetGameStateResponse = zod.object({
     .describe(
       "Activation events queued for the short (~4s) per-effect cinematic overlay",
     ),
-  marketMarkers: zod
+  pendingTurnTransition: zod
+    .object({
+      stage: zod.enum([
+        "after_action",
+        "after_end_effects",
+        "after_start_effects",
+      ]),
+      endingPlayerId: zod.string(),
+      nextPlayerIndex: zod.number().optional(),
+    })
+    .nullable()
+    .describe(
+      "Durable turn-resolution cursor held until all Luminary presentation events are acknowledged",
+    ),
+  devLuminarySequenceActive: zod
+    .boolean()
+    .optional()
+    .describe(
+      "Development-only lease held while the in-game Luminary Sequence Lab still has staged presentations to resolve",
+    ),
+  artifactMarkers: zod
     .record(
       zod.string(),
       zod
@@ -1652,14 +1415,48 @@ export const GetGameStateResponse = zod.object({
           ownerId: zod.string(),
           summonedAtTurnCount: zod.number(),
         })
-        .describe(
-          "A marker placed on a market card by a Luminary effect (v0.8)",
+        .describe("One persistent Luminary brand carried by an Artifact")
+        .and(
+          zod
+            .object({
+              brands: zod
+                .array(
+                  zod
+                    .object({
+                      type: zod.enum([
+                        "forgotten",
+                        "condemned",
+                        "nullified",
+                        "avatar_seed",
+                      ]),
+                      ownerId: zod.string(),
+                      summonedAtTurnCount: zod.number(),
+                    })
+                    .describe(
+                      "One persistent Luminary brand carried by an Artifact",
+                    ),
+                )
+                .optional(),
+            })
+            .describe(
+              "Persistent brands carried by an Artifact. Top-level fields mirror the newest brand for backward compatibility.",
+            ),
         ),
     )
     .optional()
     .describe(
-      "Active card markers keyed by cardId (v0.8 — Forgotten\/Condemned\/Nullified\/AvatarSeed)",
+      "Active Artifact markers keyed by cardId (v0.8 — Forgotten\/Condemned\/Nullified\/AvatarSeed)",
     ),
+  forgottenHourCycle: zod
+    .record(
+      zod.string(),
+      zod.object({
+        lastAppliedTurnCount: zod.number(),
+        cooldownOwnerTurnsRemaining: zod.number().nullable(),
+      }),
+    )
+    .optional()
+    .describe("Owner-relative Forgotten Hour timing keyed by source playerId"),
   avatarSeedDeckSeeds: zod
     .array(zod.string())
     .optional()
@@ -1672,7 +1469,7 @@ export const GetGameStateResponse = zod.object({
     .string()
     .nullish()
     .describe(
-      "Player ID if First Hunger Assimilation is available this turn (v0.8)",
+      "Player ID if Final Hunger Assimilation is available this turn (v0.8)",
     ),
   catalystBloomBurnCount: zod
     .number()
@@ -1696,30 +1493,47 @@ export const GetGameStateResponse = zod.object({
     .array(zod.string())
     .optional()
     .describe(
-      "Ordered list of card IDs removed from the market by Luminary burn effects (never reused)",
+      "Ordered list of Burned Artifact IDs awaiting an effect that may return them to their Archives",
     ),
   burnEvents: zod
     .array(
       zod
         .object({
+          eventId: zod
+            .string()
+            .describe(
+              "Stable event identifier used to correlate one Burn across state updates and animation",
+            ),
           cardId: zod.string(),
+          artifactName: zod
+            .string()
+            .describe("Artifact name captured when the Burn resolved"),
           tier: zod.union([zod.literal(1), zod.literal(2), zod.literal(3)]),
-          turn: zod.number().describe("turnCount at the time of the burn"),
+          sourceType: zod.enum(["luminary", "action", "system"]),
           sourceLuminaryId: zod.string(),
+          sourceName: zod.string().optional(),
+          ownerPlayerId: zod.string().optional(),
+          triggeredByPlayerId: zod.string().optional(),
+          destination: zod
+            .enum(["burn_pile", "archive"])
+            .describe(
+              "Final destination after the Burn resolves; Eternal Recurrence redirects to archive",
+            ),
+          turn: zod.number().describe("turnCount at the time of the burn"),
         })
         .describe(
-          "A single Artifact card removed from the market by a Luminary burn effect",
+          "A single Artifact Burned by a Luminary effect, including its final destination",
         ),
     )
     .optional()
     .describe(
-      "Ordered list of individual burn events (one per card burned) including tier and source Luminary",
+      "Ordered list of individual Burn events, including source Luminary and final destination",
     ),
   coreActionUsed: zod
     .boolean()
     .optional()
     .describe(
-      "True once the current player has used their core action this turn (harvest, forge, or reserve); resets to false on advanceTurn",
+      "True once the current player has used their core action this turn (Harness, Forge, or reserve); resets only when the staged Luminary resolution pipeline releases the next turn",
     ),
   pendingLuminaryChoice: zod
     .object({
@@ -1743,62 +1557,63 @@ export const SubmitActionParams = zod.object({
 export const SubmitActionBody = zod.object({
   sessionToken: zod.string(),
   type: zod.enum([
-    "take_three_crystals",
-    "take_two_crystals",
-    "reserve_card",
-    "purchase_card",
-    "purchase_reserved",
+    "harness_three_affinities",
+    "harness_two_affinities",
+    "reserve_artifact",
+    "forge_artifact",
+    "forge_reserved_artifact",
     "pass",
     "surrender",
     "toggle_luminary_affinity",
     "resolve_summon",
     "resolve_luminary_activation",
     "plan_action",
+    "execute_plan",
     "cancel_plan",
     "tutorial_fast_forward",
     "set_civ_name",
     "choose_luminary_order",
     "assimilate",
   ]),
-  crystals: zod
+  affinities: zod
     .object({
-      ruby: zod.number(),
-      sapphire: zod.number(),
-      emerald: zod.number(),
-      onyx: zod.number(),
-      pearl: zod.number(),
-      flux: zod.number(),
+      flare: zod.number(),
+      continuum: zod.number(),
+      verdance: zod.number(),
+      abyss: zod.number(),
+      radiance: zod.number(),
+      singularity: zod.number(),
     })
-    .optional(),
-  crystal: zod
-    .enum(["ruby", "sapphire", "emerald", "onyx", "pearl"])
-    .optional(),
+    .optional()
+    .describe("A complete set of Luminae Affinity counts."),
+  affinity: zod
+    .enum(["flare", "continuum", "verdance", "abyss", "radiance"])
+    .optional()
+    .describe(
+      "Affinity selected for a same-Affinity Harness; legacy Luminary toggle requests are rejected",
+    ),
   cardId: zod.string().optional(),
   tier: zod.number().optional(),
   luminaryId: zod
     .string()
     .optional()
-    .describe("Luminary ID for toggle_luminary_affinity action"),
-  affinity: zod
-    .enum(["ruby", "sapphire", "emerald", "onyx", "pearl"])
-    .optional()
-    .describe("Target affinity for toggle_luminary_affinity action"),
+    .describe("Luminary ID for Luminary-specific action payloads"),
   eventId: zod
     .string()
     .optional()
     .describe("Event ID for resolve_summon action"),
-  returnCrystals: zod
+  returnAffinities: zod
     .object({
-      ruby: zod.number().optional(),
-      sapphire: zod.number().optional(),
-      emerald: zod.number().optional(),
-      onyx: zod.number().optional(),
-      pearl: zod.number().optional(),
-      flux: zod.number().optional(),
+      flare: zod.number().optional(),
+      continuum: zod.number().optional(),
+      verdance: zod.number().optional(),
+      abyss: zod.number().optional(),
+      radiance: zod.number().optional(),
+      singularity: zod.number().optional(),
     })
     .optional()
     .describe(
-      "Crystals to return when a harvest or reserve would exceed the 10-crystal hand limit (sparse map — only include colors being returned; for reserve_card use exactly 1 total when hand is full)",
+      "Affinities to return when a Harness or reserve would exceed the 10-Affinity holding limit (sparse map — include only the Affinities being returned; for reserve_artifact use exactly 1 total when the holding limit is reached)",
     ),
   plannedActionData: zod
     .record(zod.string(), zod.unknown())
@@ -1817,6 +1632,25 @@ export const SubmitActionBody = zod.object({
 export const SubmitActionResponse = zod.object({
   roomId: zod.string(),
   status: zod.enum(["lobby", "playing", "finished"]),
+  startedAt: zod
+    .number()
+    .describe("Unix timestamp (ms) when this game instance was initialized"),
+  openingTurnOrder: zod
+    .object({
+      id: zod.string(),
+      startedAt: zod.number(),
+      firstPlayerId: zod.string(),
+      playerIds: zod.array(zod.string()),
+    })
+    .nullable()
+    .describe(
+      "First-player selection for this game instance; persists so clients can animate it once",
+    ),
+  canReplaySameBoard: zod
+    .boolean()
+    .describe(
+      "True when the original opening board snapshot is available for same-board rematches.",
+    ),
   currentPlayerIndex: zod.number(),
   roundNumber: zod.number(),
   turnCount: zod
@@ -1824,104 +1658,134 @@ export const SubmitActionResponse = zod.object({
     .describe(
       "Monotonically increasing counter incremented each time any player's turn ends",
     ),
-  crystalBank: zod.object({
-    ruby: zod.number(),
-    sapphire: zod.number(),
-    emerald: zod.number(),
-    onyx: zod.number(),
-    pearl: zod.number(),
-    flux: zod.number(),
-  }),
-  marketTier1: zod.array(
+  victoryRequirement: zod
+    .number()
+    .describe("Eminence required to trigger the final round"),
+  cinematicMode: zod.enum(["standard", "epic"]),
+  affinityWell: zod
+    .object({
+      flare: zod.number(),
+      continuum: zod.number(),
+      verdance: zod.number(),
+      abyss: zod.number(),
+      radiance: zod.number(),
+      singularity: zod.number(),
+    })
+    .describe("A complete set of Luminae Affinity counts."),
+  forgeTier1: zod.array(
     zod.object({
       id: zod.string(),
       tier: zod.number(),
-      bonusColor: zod.enum(["ruby", "sapphire", "emerald", "onyx", "pearl"]),
-      lumens: zod.number(),
-      cost: zod.object({
-        ruby: zod.number(),
-        sapphire: zod.number(),
-        emerald: zod.number(),
-        onyx: zod.number(),
-        pearl: zod.number(),
-        flux: zod.number(),
-      }),
+      bonusAffinity: zod.enum([
+        "flare",
+        "continuum",
+        "verdance",
+        "abyss",
+        "radiance",
+      ]),
+      eminence: zod.number(),
+      cost: zod
+        .object({
+          flare: zod.number(),
+          continuum: zod.number(),
+          verdance: zod.number(),
+          abyss: zod.number(),
+          radiance: zod.number(),
+          singularity: zod.number(),
+        })
+        .describe("A complete set of Luminae Affinity counts."),
       name: zod.string(),
       flavor: zod.string(),
       bonusesAtForge: zod
         .object({
-          ruby: zod.number(),
-          sapphire: zod.number(),
-          emerald: zod.number(),
-          onyx: zod.number(),
-          pearl: zod.number(),
-          flux: zod.number(),
+          flare: zod.number(),
+          continuum: zod.number(),
+          verdance: zod.number(),
+          abyss: zod.number(),
+          radiance: zod.number(),
+          singularity: zod.number(),
         })
         .optional()
         .describe(
-          "Snapshot of the player's effective bonuses at the moment this card was forged. Present only on purchased cards; absent on market\/reserved cards and on cards forged before this feature was added.",
+          "Snapshot of the player's effective Affinity bonuses at the moment this Artifact was forged. Present only on forged Artifacts; absent on Forge or reserved Artifacts and on Artifacts forged before this feature was added.",
         ),
     }),
   ),
-  marketTier2: zod.array(
+  forgeTier2: zod.array(
     zod.object({
       id: zod.string(),
       tier: zod.number(),
-      bonusColor: zod.enum(["ruby", "sapphire", "emerald", "onyx", "pearl"]),
-      lumens: zod.number(),
-      cost: zod.object({
-        ruby: zod.number(),
-        sapphire: zod.number(),
-        emerald: zod.number(),
-        onyx: zod.number(),
-        pearl: zod.number(),
-        flux: zod.number(),
-      }),
+      bonusAffinity: zod.enum([
+        "flare",
+        "continuum",
+        "verdance",
+        "abyss",
+        "radiance",
+      ]),
+      eminence: zod.number(),
+      cost: zod
+        .object({
+          flare: zod.number(),
+          continuum: zod.number(),
+          verdance: zod.number(),
+          abyss: zod.number(),
+          radiance: zod.number(),
+          singularity: zod.number(),
+        })
+        .describe("A complete set of Luminae Affinity counts."),
       name: zod.string(),
       flavor: zod.string(),
       bonusesAtForge: zod
         .object({
-          ruby: zod.number(),
-          sapphire: zod.number(),
-          emerald: zod.number(),
-          onyx: zod.number(),
-          pearl: zod.number(),
-          flux: zod.number(),
+          flare: zod.number(),
+          continuum: zod.number(),
+          verdance: zod.number(),
+          abyss: zod.number(),
+          radiance: zod.number(),
+          singularity: zod.number(),
         })
         .optional()
         .describe(
-          "Snapshot of the player's effective bonuses at the moment this card was forged. Present only on purchased cards; absent on market\/reserved cards and on cards forged before this feature was added.",
+          "Snapshot of the player's effective Affinity bonuses at the moment this Artifact was forged. Present only on forged Artifacts; absent on Forge or reserved Artifacts and on Artifacts forged before this feature was added.",
         ),
     }),
   ),
-  marketTier3: zod.array(
+  forgeTier3: zod.array(
     zod.object({
       id: zod.string(),
       tier: zod.number(),
-      bonusColor: zod.enum(["ruby", "sapphire", "emerald", "onyx", "pearl"]),
-      lumens: zod.number(),
-      cost: zod.object({
-        ruby: zod.number(),
-        sapphire: zod.number(),
-        emerald: zod.number(),
-        onyx: zod.number(),
-        pearl: zod.number(),
-        flux: zod.number(),
-      }),
+      bonusAffinity: zod.enum([
+        "flare",
+        "continuum",
+        "verdance",
+        "abyss",
+        "radiance",
+      ]),
+      eminence: zod.number(),
+      cost: zod
+        .object({
+          flare: zod.number(),
+          continuum: zod.number(),
+          verdance: zod.number(),
+          abyss: zod.number(),
+          radiance: zod.number(),
+          singularity: zod.number(),
+        })
+        .describe("A complete set of Luminae Affinity counts."),
       name: zod.string(),
       flavor: zod.string(),
       bonusesAtForge: zod
         .object({
-          ruby: zod.number(),
-          sapphire: zod.number(),
-          emerald: zod.number(),
-          onyx: zod.number(),
-          pearl: zod.number(),
-          flux: zod.number(),
+          flare: zod.number(),
+          continuum: zod.number(),
+          verdance: zod.number(),
+          abyss: zod.number(),
+          radiance: zod.number(),
+          singularity: zod.number(),
         })
         .optional()
         .describe(
-          "Snapshot of the player's effective bonuses at the moment this card was forged. Present only on purchased cards; absent on market\/reserved cards and on cards forged before this feature was added.",
+          "Snapshot of the player's effective Affinity bonuses at the moment this Artifact was forged. Present only on forged Artifacts; absent on Forge or reserved Artifacts and on Artifacts forged before this feature was added.",
         ),
     }),
   ),
@@ -1939,21 +1803,23 @@ export const SubmitActionResponse = zod.object({
         .describe(
           "Cosmic domain or element of this Luminary (e.g. Flame, Time, Stars)",
         ),
-      lumens: zod.number(),
+      eminence: zod.number(),
       oblivion: zod
         .number()
         .optional()
         .describe(
-          "Oblivion penalty — when this Luminary is claimed, ALL players lose this many Eminence. Mutually exclusive with a positive lumens award. Omitted (or 0) on normal Eminence Luminaries.\n",
+          "Oblivion penalty — when this Luminary is claimed, ALL players lose this many Eminence. Mutually exclusive with a positive eminence award. Omitted (or 0) on normal Eminence Luminaries.\n",
         ),
-      requirements: zod.object({
-        ruby: zod.number(),
-        sapphire: zod.number(),
-        emerald: zod.number(),
-        onyx: zod.number(),
-        pearl: zod.number(),
-        flux: zod.number(),
-      }),
+      requirements: zod
+        .object({
+          flare: zod.number(),
+          continuum: zod.number(),
+          verdance: zod.number(),
+          abyss: zod.number(),
+          radiance: zod.number(),
+          singularity: zod.number(),
+        })
+        .describe("A complete set of Luminae Affinity counts."),
       flavor: zod
         .string()
         .describe("Short lore\/flavor text shown on the Luminary card"),
@@ -1984,14 +1850,14 @@ export const SubmitActionResponse = zod.object({
         luminaryId: zod.string(),
         ownerId: zod.string(),
         activeAffinity: zod.enum([
-          "ruby",
-          "sapphire",
-          "emerald",
-          "onyx",
-          "pearl",
+          "flare",
+          "continuum",
+          "verdance",
+          "abyss",
+          "radiance",
         ]),
         eligibleAffinities: zod.array(
-          zod.enum(["ruby", "sapphire", "emerald", "onyx", "pearl"]),
+          zod.enum(["flare", "continuum", "verdance", "abyss", "radiance"]),
         ),
         summonedAtTurnCount: zod.number(),
       }),
@@ -2014,100 +1880,108 @@ export const SubmitActionResponse = zod.object({
         .describe(
           "AI difficulty level, null for human players or easy AI that never toggles",
         ),
-      crystals: zod.object({
-        ruby: zod.number(),
-        sapphire: zod.number(),
-        emerald: zod.number(),
-        onyx: zod.number(),
-        pearl: zod.number(),
-        flux: zod.number(),
-      }),
-      bonuses: zod.object({
-        ruby: zod.number(),
-        sapphire: zod.number(),
-        emerald: zod.number(),
-        onyx: zod.number(),
-        pearl: zod.number(),
-        flux: zod.number(),
-      }),
-      lumens: zod.number(),
-      reservedCards: zod.array(
+      affinities: zod
+        .object({
+          flare: zod.number(),
+          continuum: zod.number(),
+          verdance: zod.number(),
+          abyss: zod.number(),
+          radiance: zod.number(),
+          singularity: zod.number(),
+        })
+        .describe("A complete set of Luminae Affinity counts."),
+      bonuses: zod
+        .object({
+          flare: zod.number(),
+          continuum: zod.number(),
+          verdance: zod.number(),
+          abyss: zod.number(),
+          radiance: zod.number(),
+          singularity: zod.number(),
+        })
+        .describe("A complete set of Luminae Affinity counts."),
+      eminence: zod.number(),
+      reservedArtifacts: zod.array(
         zod.object({
           id: zod.string(),
           tier: zod.number(),
-          bonusColor: zod.enum([
-            "ruby",
-            "sapphire",
-            "emerald",
-            "onyx",
-            "pearl",
+          bonusAffinity: zod.enum([
+            "flare",
+            "continuum",
+            "verdance",
+            "abyss",
+            "radiance",
           ]),
-          lumens: zod.number(),
-          cost: zod.object({
-            ruby: zod.number(),
-            sapphire: zod.number(),
-            emerald: zod.number(),
-            onyx: zod.number(),
-            pearl: zod.number(),
-            flux: zod.number(),
-          }),
+          eminence: zod.number(),
+          cost: zod
+            .object({
+              flare: zod.number(),
+              continuum: zod.number(),
+              verdance: zod.number(),
+              abyss: zod.number(),
+              radiance: zod.number(),
+              singularity: zod.number(),
+            })
+            .describe("A complete set of Luminae Affinity counts."),
           name: zod.string(),
           flavor: zod.string(),
           bonusesAtForge: zod
             .object({
-              ruby: zod.number(),
-              sapphire: zod.number(),
-              emerald: zod.number(),
-              onyx: zod.number(),
-              pearl: zod.number(),
-              flux: zod.number(),
+              flare: zod.number(),
+              continuum: zod.number(),
+              verdance: zod.number(),
+              abyss: zod.number(),
+              radiance: zod.number(),
+              singularity: zod.number(),
             })
             .optional()
             .describe(
-              "Snapshot of the player's effective bonuses at the moment this card was forged. Present only on purchased cards; absent on market\/reserved cards and on cards forged before this feature was added.",
+              "Snapshot of the player's effective Affinity bonuses at the moment this Artifact was forged. Present only on forged Artifacts; absent on Forge or reserved Artifacts and on Artifacts forged before this feature was added.",
             ),
         }),
       ),
-      purchasedCardIds: zod.array(zod.string()),
+      forgedArtifactIds: zod.array(zod.string()),
       discountedForgeIds: zod
         .array(zod.string())
         .describe(
-          "Card IDs that were forged with zero crystals spent (fully covered by bonuses at forge time)",
+          "Artifact IDs forged with zero Affinities spent (fully covered by bonuses at forge time)",
         ),
-      purchasedCards: zod.array(
+      forgedArtifacts: zod.array(
         zod.object({
           id: zod.string(),
           tier: zod.number(),
-          bonusColor: zod.enum([
-            "ruby",
-            "sapphire",
-            "emerald",
-            "onyx",
-            "pearl",
+          bonusAffinity: zod.enum([
+            "flare",
+            "continuum",
+            "verdance",
+            "abyss",
+            "radiance",
           ]),
-          lumens: zod.number(),
-          cost: zod.object({
-            ruby: zod.number(),
-            sapphire: zod.number(),
-            emerald: zod.number(),
-            onyx: zod.number(),
-            pearl: zod.number(),
-            flux: zod.number(),
-          }),
+          eminence: zod.number(),
+          cost: zod
+            .object({
+              flare: zod.number(),
+              continuum: zod.number(),
+              verdance: zod.number(),
+              abyss: zod.number(),
+              radiance: zod.number(),
+              singularity: zod.number(),
+            })
+            .describe("A complete set of Luminae Affinity counts."),
           name: zod.string(),
           flavor: zod.string(),
           bonusesAtForge: zod
             .object({
-              ruby: zod.number(),
-              sapphire: zod.number(),
-              emerald: zod.number(),
-              onyx: zod.number(),
-              pearl: zod.number(),
-              flux: zod.number(),
+              flare: zod.number(),
+              continuum: zod.number(),
+              verdance: zod.number(),
+              abyss: zod.number(),
+              radiance: zod.number(),
+              singularity: zod.number(),
             })
             .optional()
             .describe(
-              "Snapshot of the player's effective bonuses at the moment this card was forged. Present only on purchased cards; absent on market\/reserved cards and on cards forged before this feature was added.",
+              "Snapshot of the player's effective Affinity bonuses at the moment this Artifact was forged. Present only on forged Artifacts; absent on Forge or reserved Artifacts and on Artifacts forged before this feature was added.",
             ),
         }),
       ),
@@ -2196,7 +2070,7 @@ export const SubmitActionResponse = zod.object({
             .array(zod.string())
             .optional()
             .describe(
-              "Card IDs targeted by this activation (e.g. condemned cards for start_of_turn burn). Captured server-side before state mutations clear marketMarkers.",
+              "Artifact IDs targeted by this activation (e.g. condemned Artifacts for start_of_turn burn). Captured server-side before state mutations clear artifactMarkers.",
             ),
         })
         .describe(
@@ -2206,7 +2080,27 @@ export const SubmitActionResponse = zod.object({
     .describe(
       "Activation events queued for the short (~4s) per-effect cinematic overlay",
     ),
-  marketMarkers: zod
+  pendingTurnTransition: zod
+    .object({
+      stage: zod.enum([
+        "after_action",
+        "after_end_effects",
+        "after_start_effects",
+      ]),
+      endingPlayerId: zod.string(),
+      nextPlayerIndex: zod.number().optional(),
+    })
+    .nullable()
+    .describe(
+      "Durable turn-resolution cursor held until all Luminary presentation events are acknowledged",
+    ),
+  devLuminarySequenceActive: zod
+    .boolean()
+    .optional()
+    .describe(
+      "Development-only lease held while the in-game Luminary Sequence Lab still has staged presentations to resolve",
+    ),
+  artifactMarkers: zod
     .record(
       zod.string(),
       zod
@@ -2220,14 +2114,48 @@ export const SubmitActionResponse = zod.object({
           ownerId: zod.string(),
           summonedAtTurnCount: zod.number(),
         })
-        .describe(
-          "A marker placed on a market card by a Luminary effect (v0.8)",
+        .describe("One persistent Luminary brand carried by an Artifact")
+        .and(
+          zod
+            .object({
+              brands: zod
+                .array(
+                  zod
+                    .object({
+                      type: zod.enum([
+                        "forgotten",
+                        "condemned",
+                        "nullified",
+                        "avatar_seed",
+                      ]),
+                      ownerId: zod.string(),
+                      summonedAtTurnCount: zod.number(),
+                    })
+                    .describe(
+                      "One persistent Luminary brand carried by an Artifact",
+                    ),
+                )
+                .optional(),
+            })
+            .describe(
+              "Persistent brands carried by an Artifact. Top-level fields mirror the newest brand for backward compatibility.",
+            ),
         ),
     )
     .optional()
     .describe(
-      "Active card markers keyed by cardId (v0.8 — Forgotten\/Condemned\/Nullified\/AvatarSeed)",
+      "Active Artifact markers keyed by cardId (v0.8 — Forgotten\/Condemned\/Nullified\/AvatarSeed)",
     ),
+  forgottenHourCycle: zod
+    .record(
+      zod.string(),
+      zod.object({
+        lastAppliedTurnCount: zod.number(),
+        cooldownOwnerTurnsRemaining: zod.number().nullable(),
+      }),
+    )
+    .optional()
+    .describe("Owner-relative Forgotten Hour timing keyed by source playerId"),
   avatarSeedDeckSeeds: zod
     .array(zod.string())
     .optional()
@@ -2240,7 +2168,7 @@ export const SubmitActionResponse = zod.object({
     .string()
     .nullish()
     .describe(
-      "Player ID if First Hunger Assimilation is available this turn (v0.8)",
+      "Player ID if Final Hunger Assimilation is available this turn (v0.8)",
     ),
   catalystBloomBurnCount: zod
     .number()
@@ -2264,30 +2192,47 @@ export const SubmitActionResponse = zod.object({
     .array(zod.string())
     .optional()
     .describe(
-      "Ordered list of card IDs removed from the market by Luminary burn effects (never reused)",
+      "Ordered list of Burned Artifact IDs awaiting an effect that may return them to their Archives",
     ),
   burnEvents: zod
     .array(
       zod
         .object({
+          eventId: zod
+            .string()
+            .describe(
+              "Stable event identifier used to correlate one Burn across state updates and animation",
+            ),
           cardId: zod.string(),
+          artifactName: zod
+            .string()
+            .describe("Artifact name captured when the Burn resolved"),
           tier: zod.union([zod.literal(1), zod.literal(2), zod.literal(3)]),
-          turn: zod.number().describe("turnCount at the time of the burn"),
+          sourceType: zod.enum(["luminary", "action", "system"]),
           sourceLuminaryId: zod.string(),
+          sourceName: zod.string().optional(),
+          ownerPlayerId: zod.string().optional(),
+          triggeredByPlayerId: zod.string().optional(),
+          destination: zod
+            .enum(["burn_pile", "archive"])
+            .describe(
+              "Final destination after the Burn resolves; Eternal Recurrence redirects to archive",
+            ),
+          turn: zod.number().describe("turnCount at the time of the burn"),
         })
         .describe(
-          "A single Artifact card removed from the market by a Luminary burn effect",
+          "A single Artifact Burned by a Luminary effect, including its final destination",
         ),
     )
     .optional()
     .describe(
-      "Ordered list of individual burn events (one per card burned) including tier and source Luminary",
+      "Ordered list of individual Burn events, including source Luminary and final destination",
     ),
   coreActionUsed: zod
     .boolean()
     .optional()
     .describe(
-      "True once the current player has used their core action this turn (harvest, forge, or reserve); resets to false on advanceTurn",
+      "True once the current player has used their core action this turn (Harness, Forge, or reserve); resets only when the staged Luminary resolution pipeline releases the next turn",
     ),
   pendingLuminaryChoice: zod
     .object({
@@ -2423,7 +2368,7 @@ export const GetMyStatsResponse = zod.object({
         result: zod.enum(["win", "loss", "tie"]),
         eminenceEarned: zod
           .number()
-          .describe("Eminence (lumens) earned by the player in this game"),
+          .describe("Eminence (eminence) earned by the player in this game"),
         totalPlayers: zod
           .number()
           .describe("Number of human players in the game"),
@@ -2516,6 +2461,14 @@ export const CreateChallengeBody = zod.object({
     .min(createChallengeBodyMaxPlayersMin)
     .max(createChallengeBodyMaxPlayersMax)
     .optional(),
+  victoryRequirement: zod
+    .union([zod.literal(15), zod.literal(20), zod.literal(25)])
+    .optional()
+    .describe("Eminence required to trigger the final round"),
+  cinematicMode: zod
+    .enum(["standard", "epic"])
+    .optional()
+    .describe("Luminary cinematic presentation mode"),
   turnTimerSeconds: zod.number().nullish(),
 });
 

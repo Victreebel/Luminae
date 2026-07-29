@@ -142,7 +142,7 @@ export interface ForgeButtonProps {
 
 export function ForgeButton({
   onClick, disabled, isPending, isSent,
-  label, subtitle = 'Manifest Artifact',
+  label, subtitle = 'Forge Artifact',
   confirmGlow = '#f59e0b', darkText, isPlan,
 }: ForgeButtonProps) {
   const isMobile  = useIsMobile();
@@ -382,7 +382,7 @@ export interface EncryptButtonProps {
 
 export function EncryptButton({
   onClick, disabled, isPending, isSent,
-  label, subtitle = 'Reserve Pattern', sigilId = 9001, isPlan,
+  label, subtitle = 'Encrypt Artifact', sigilId = 9001, isPlan,
 }: EncryptButtonProps) {
   const isMobile = useIsMobile();
   return (
@@ -539,7 +539,7 @@ export function EncryptButton({
 }
 
 // ─────────────────────────────────────────────────────────────────────────────
-// ASSIMILATE — First Hunger / Consuming Crimson
+// ASSIMILATE — Final Hunger / Consuming Crimson
 // ─────────────────────────────────────────────────────────────────────────────
 
 const ASSIM_BG_IDLE = [
@@ -613,7 +613,7 @@ export interface AssimilateButtonProps {
   isSent?: boolean;
   label: string;
   subtitle?: string;
-  /** Eminence reward shown in the medallion (printed lumens + 2). */
+  /** Eminence reward shown in the medallion (printed Eminence + 2). */
   eminenceReward?: number;
 }
 

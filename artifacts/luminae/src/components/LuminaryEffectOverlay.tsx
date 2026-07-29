@@ -16,7 +16,7 @@ export type LuminaryEffectTarget =
   | 'player'
   | 'artifact'
   | 'affinityRow'
-  | 'score'
+  | 'eminence'
   | 'board'
   | 'pendingAction';
 
@@ -31,13 +31,13 @@ export interface LuminaryEffectAnimation {
 
 // ─── Affinity color map ───────────────────────────────────────────────────────
 
-const GEM_COLORS: Record<string, string> = {
-  ruby:    '#ef4444',
-  sapphire:'#3d6bff',
-  emerald: '#22c55e',
-  onyx:    '#8b5cf6',
-  pearl:   '#e2e8f0',
-  flux:    '#f59e0b',
+const AFFINITY_COLORS: Record<string, string> = {
+  flare:    '#ef4444',
+  continuum:'#3d6bff',
+  verdance: '#22c55e',
+  abyss:    '#8b5cf6',
+  radiance:   '#e2e8f0',
+  singularity:    '#f59e0b',
 };
 
 // ─── Tone visual config ───────────────────────────────────────────────────────
@@ -79,8 +79,8 @@ export const TONE_CONFIG: Record<LuminaryEffectTone, LuminaryToneConfig> = {
 // ─── Target labels ────────────────────────────────────────────────────────────
 
 const TARGET_LABELS: Record<LuminaryEffectTarget, string> = {
-  score:         'EMINENCE',
-  artifact:      'MARKET ARTIFACTS',
+  eminence:      'EMINENCE',
+  artifact:      'FORGE ARTIFACTS',
   player:        'ALL PLAYERS',
   board:         'ENTIRE BOARD',
   affinityRow:   'AFFINITIES',
@@ -92,22 +92,22 @@ const TARGET_LABELS: Record<LuminaryEffectTarget, string> = {
 // This is a UI-only annotation — mechanics live exclusively in gameEngine.ts.
 
 export const LUMINARY_EFFECT_MAP: Record<string, Omit<LuminaryEffectAnimation, 'luminaryId'>> = {
-  lum_ember:   { affinities: ['ruby', 'onyx', 'pearl'],     tone: 'global',      target: 'artifact',      isLingering: true  },
-  lum_tide:    { affinities: ['sapphire'],                  tone: 'global',      target: 'artifact',      isLingering: false },
-  lum_verdant: { affinities: ['emerald'],                   tone: 'boon',        target: 'affinityRow',   isLingering: false },
-  lum_void:    { affinities: ['onyx'],                      tone: 'curse',       target: 'score',         isLingering: false },
-  lum_radiant: { affinities: ['pearl'],                     tone: 'boon',        target: 'score',         isLingering: false },
-  lum_astral:  { affinities: ['ruby', 'sapphire'],          tone: 'global',      target: 'artifact',      isLingering: false },
-  lum_bloom:   { affinities: ['ruby', 'emerald'],           tone: 'boon',        target: 'score',         isLingering: false },
-  lum_forge:   { affinities: ['ruby', 'onyx'],              tone: 'global',      target: 'artifact',      isLingering: false },
-  lum_compass: { affinities: ['sapphire', 'onyx'],          tone: 'negation',    target: 'artifact',      isLingering: true  },
-  lum_seed:    { affinities: ['sapphire', 'emerald'],       tone: 'boon',        target: 'board',         isLingering: true  },
-  lum_orchard: { affinities: ['emerald', 'pearl'],          tone: 'boon',        target: 'artifact',      isLingering: false },
-  lum_pale:    { affinities: ['onyx', 'pearl'],             tone: 'curse',       target: 'player',        isLingering: false },
-  lum_null:    { affinities: ['sapphire', 'onyx', 'pearl'], tone: 'negation',    target: 'artifact',      isLingering: true  },
-  lum_hunger:  { affinities: ['ruby', 'emerald', 'pearl'],  tone: 'consumption', target: 'pendingAction', isLingering: true  },
-  lum_moth:    { affinities: ['ruby'],                      tone: 'global',      target: 'artifact',      isLingering: false },
-  lum_scholar: { affinities: ['sapphire', 'pearl'],         tone: 'global',      target: 'artifact',      isLingering: false },
+  lum_ember:   { affinities: ['flare', 'abyss', 'radiance'],     tone: 'global',      target: 'artifact',      isLingering: true  },
+  lum_tide:    { affinities: ['continuum'],                  tone: 'global',      target: 'artifact',      isLingering: false },
+  lum_verdant: { affinities: ['verdance'],                   tone: 'boon',        target: 'affinityRow',   isLingering: false },
+  lum_void:    { affinities: ['abyss'],                      tone: 'curse',       target: 'board',         isLingering: false },
+  lum_radiant: { affinities: ['radiance'],                     tone: 'boon',        target: 'eminence',      isLingering: false },
+  lum_astral:  { affinities: ['flare', 'continuum'],          tone: 'global',      target: 'artifact',      isLingering: true  },
+  lum_bloom:   { affinities: ['flare', 'verdance'],           tone: 'boon',        target: 'eminence',      isLingering: false },
+  lum_forge:   { affinities: ['flare', 'abyss'],              tone: 'global',      target: 'artifact',      isLingering: false },
+  lum_compass: { affinities: ['continuum', 'abyss'],          tone: 'negation',    target: 'artifact',      isLingering: true  },
+  lum_seed:    { affinities: ['continuum', 'verdance'],       tone: 'boon',        target: 'board',         isLingering: true  },
+  lum_orchard: { affinities: ['verdance', 'radiance'],          tone: 'boon',        target: 'artifact',      isLingering: false },
+  lum_pale:    { affinities: ['abyss', 'radiance'],             tone: 'curse',       target: 'player',        isLingering: false },
+  lum_null:    { affinities: ['continuum', 'abyss', 'radiance'], tone: 'negation',    target: 'artifact',      isLingering: true  },
+  lum_hunger:  { affinities: ['flare', 'verdance', 'radiance'],  tone: 'consumption', target: 'pendingAction', isLingering: true  },
+  lum_moth:    { affinities: ['flare'],                      tone: 'global',      target: 'artifact',      isLingering: false },
+  lum_scholar: { affinities: ['continuum', 'radiance'],         tone: 'global',      target: 'artifact',      isLingering: false },
 };
 
 // ─── Beat 3: Aura expansion ───────────────────────────────────────────────────
@@ -128,7 +128,7 @@ export function AuraExpansion({
   visible: boolean;
 }) {
   const isMobile = useIsMobile();
-  const colors = affinities.slice(0, 3).map(a => GEM_COLORS[a] ?? primaryColor);
+  const colors = affinities.slice(0, 3).map(a => AFFINITY_COLORS[a] ?? primaryColor);
   const c1 = colors[0] ?? primaryColor;
   const c2 = colors[1] ?? c1;
 
@@ -147,9 +147,9 @@ export function AuraExpansion({
           height: isMobile ? '100vmin' : '140vmin',
           background: `radial-gradient(ellipse at center,
             ${c1}10 0%,
-            ${c2}08 38%,
-            transparent 62%)`,
-          filter: isMobile ? undefined : 'blur(24px)',
+            ${c2}0a 46%,
+            transparent 72%)`,
+          boxShadow: isMobile ? undefined : `0 0 42px ${c1}12`,
         }}
         initial={{ scale: 0.3, opacity: 0 }}
         animate={{
@@ -170,9 +170,9 @@ export function AuraExpansion({
           height: '72vmin',
           background: `radial-gradient(ellipse at center,
             ${c1}30 0%,
-            ${c1}14 44%,
-            transparent 70%)`,
-          filter: isMobile ? undefined : 'blur(18px)',
+            ${c1}18 48%,
+            transparent 76%)`,
+          boxShadow: isMobile ? undefined : `0 0 32px ${c1}18`,
         }}
         initial={{ scale: 0.2, opacity: 0 }}
         animate={{
@@ -201,7 +201,6 @@ export function TargetBadge({
   target: LuminaryEffectTarget;
   isLingering: boolean;
 }) {
-  const isMobile = useIsMobile();
   const conf = TONE_CONFIG[tone];
   return (
     <motion.div
@@ -214,7 +213,7 @@ export function TargetBadge({
         background: `${conf.snapColor}18`,
         border: `1px solid ${conf.snapColor}44`,
         color: conf.snapColor,
-        backdropFilter: isMobile ? undefined : 'blur(4px)',
+        boxShadow: `0 0 10px ${conf.snapColor}18`,
       }}
       // Drifts in from entity (above), expands outward toward board (below).
       // No scale-shrink on entry or exit — only directional flow.

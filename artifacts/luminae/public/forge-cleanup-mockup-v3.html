@@ -1,0 +1,593 @@
+<!doctype html>
+<html>
+<head>
+  <meta charset="utf-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1" />
+  <title>Luminae Forge Concept v3</title>
+  <style>
+    :root {
+      color-scheme: dark;
+      --void: #03040a;
+      --forge: #d8ad57;
+      --forge-bright: #f2d992;
+      --forge-line: rgba(216, 173, 87, .34);
+      --forge-dim: rgba(216, 173, 87, .13);
+      --smoke: rgba(12, 11, 14, .88);
+      --text: #f8efd8;
+      --muted: rgba(239, 226, 196, .54);
+    }
+
+    * { box-sizing: border-box; }
+
+    body {
+      margin: 0;
+      min-height: 100vh;
+      display: grid;
+      place-items: center;
+      background:
+        radial-gradient(circle at 50% 48%, rgba(169, 104, 27, .16), transparent 36%),
+        radial-gradient(circle at 18% 88%, rgba(52, 70, 112, .13), transparent 42%),
+        #02040a;
+      color: var(--text);
+      font-family: Inter, ui-sans-serif, system-ui, -apple-system, BlinkMacSystemFont, "Segoe UI", sans-serif;
+    }
+
+    .forge {
+      width: min(1220px, calc(100vw - 28px));
+      height: min(730px, calc(100vh - 28px));
+      min-height: 640px;
+      display: grid;
+      grid-template-rows: 68px 1fr;
+      overflow: hidden;
+      border: 1px solid rgba(216, 173, 87, .46);
+      background:
+        radial-gradient(ellipse 48% 46% at 13% 50%, rgba(216, 125, 39, .14), transparent 68%),
+        linear-gradient(180deg, rgba(45, 25, 7, .48), rgba(5, 6, 12, .97) 18%),
+        #04050b;
+      box-shadow:
+        inset 0 1px 0 rgba(255, 239, 190, .13),
+        inset 0 0 0 1px rgba(0,0,0,.76),
+        0 28px 84px rgba(0,0,0,.64);
+    }
+
+    .forge-header {
+      display: grid;
+      grid-template-columns: minmax(0, 1fr) auto;
+      align-items: center;
+      gap: 20px;
+      padding: 11px 18px 10px;
+      border-bottom: 1px solid rgba(216, 173, 87, .24);
+      background:
+        linear-gradient(90deg, rgba(98, 56, 13, .38), transparent 54%),
+        rgba(0,0,0,.16);
+    }
+
+    .title {
+      display: flex;
+      align-items: center;
+      gap: 12px;
+      min-width: 0;
+    }
+
+    .sigil {
+      width: 32px;
+      height: 32px;
+      display: grid;
+      place-items: center;
+      border: 1px solid rgba(216, 173, 87, .42);
+      border-radius: 6px;
+      background:
+        radial-gradient(circle, rgba(216, 173, 87, .18), transparent 66%),
+        rgba(216, 173, 87, .055);
+      color: var(--forge-bright);
+      font-size: 18px;
+      box-shadow: inset 0 0 18px rgba(216, 173, 87, .08);
+    }
+
+    .copy {
+      display: grid;
+      grid-template-columns: auto auto;
+      grid-template-rows: auto auto;
+      column-gap: 14px;
+      align-items: end;
+      min-width: 0;
+    }
+
+    .copy small {
+      grid-column: 1;
+      color: rgba(216, 173, 87, .58);
+      font-size: 8px;
+      font-weight: 950;
+      letter-spacing: .28em;
+      text-transform: uppercase;
+      line-height: 1;
+    }
+
+    .copy h1 {
+      grid-column: 1;
+      margin: 0;
+      color: var(--forge);
+      font-family: Georgia, "Times New Roman", serif;
+      font-size: 29px;
+      line-height: .92;
+      letter-spacing: .09em;
+      text-transform: uppercase;
+      text-shadow: 0 0 18px rgba(216, 173, 87, .27);
+    }
+
+    .copy span {
+      grid-column: 2;
+      grid-row: 2;
+      margin-bottom: 2px;
+      color: rgba(239, 226, 196, .56);
+      font-size: 10px;
+      font-weight: 900;
+      letter-spacing: .17em;
+      text-transform: uppercase;
+      white-space: nowrap;
+    }
+
+    .controls {
+      display: flex;
+      align-items: center;
+      gap: 8px;
+      color: rgba(239, 226, 196, .46);
+      font-size: 10px;
+      font-weight: 950;
+      letter-spacing: .15em;
+      text-transform: uppercase;
+    }
+
+    .seg {
+      display: flex;
+      gap: 3px;
+      padding: 3px;
+      border: 1px solid rgba(216, 173, 87, .16);
+      border-radius: 999px;
+      background: rgba(0,0,0,.38);
+    }
+
+    .seg button {
+      border: 0;
+      border-radius: 999px;
+      background: transparent;
+      color: rgba(239, 226, 196, .64);
+      padding: 4px 10px;
+      font: inherit;
+      font-size: 11px;
+      font-weight: 850;
+      letter-spacing: 0;
+      text-transform: none;
+    }
+
+    .seg button.active {
+      color: #0c0904;
+      background: linear-gradient(180deg, #f2d992, #b98835);
+      box-shadow: 0 0 14px rgba(216, 173, 87, .20);
+    }
+
+    .body {
+      min-height: 0;
+      display: grid;
+      grid-template-rows: repeat(3, minmax(0, 1fr));
+      gap: 9px;
+      padding: 10px;
+    }
+
+    .tier {
+      position: relative;
+      min-height: 0;
+      display: grid;
+      grid-template-columns: 152px minmax(0, 1fr);
+      gap: 14px;
+      align-items: stretch;
+      overflow: hidden;
+      background:
+        linear-gradient(90deg, rgba(216, 173, 87, .10), transparent 38%),
+        linear-gradient(180deg, rgba(255,255,255,.027), rgba(0,0,0,.12)),
+        rgba(6, 7, 13, .91);
+      border: 1px solid rgba(216, 173, 87, .20);
+      box-shadow: inset 0 1px 0 rgba(255, 239, 190, .045);
+    }
+
+    .tier::before {
+      content: "";
+      position: absolute;
+      left: 145px;
+      top: 50%;
+      right: 18px;
+      height: 2px;
+      transform: translateY(-50%);
+      background:
+        linear-gradient(90deg, rgba(216,173,87,.62), rgba(216,173,87,.16) 18%, rgba(216,173,87,.10) 82%, transparent);
+      box-shadow: 0 0 18px rgba(216,173,87,.12);
+      pointer-events: none;
+    }
+
+    .mouth {
+      position: relative;
+      display: grid;
+      grid-template-rows: auto 1fr;
+      min-height: 0;
+      padding: 12px 12px 10px;
+      background:
+        radial-gradient(ellipse at 68% 52%, rgba(236, 155, 58, .18), transparent 62%),
+        linear-gradient(90deg, rgba(0,0,0,.34), transparent);
+      border-right: 1px solid rgba(216, 173, 87, .18);
+    }
+
+    .tier-name {
+      position: relative;
+      z-index: 2;
+      display: grid;
+      grid-template-columns: 36px minmax(0, 1fr);
+      gap: 8px;
+      align-items: center;
+    }
+
+    .roman {
+      width: 36px;
+      height: 28px;
+      display: grid;
+      place-items: center;
+      border-radius: 5px;
+      border: 1px solid rgba(216, 173, 87, .48);
+      background: rgba(216, 173, 87, .09);
+      color: #f2da95;
+      font-family: Georgia, "Times New Roman", serif;
+      font-size: 17px;
+      font-weight: 900;
+      letter-spacing: .04em;
+    }
+
+    .tier-label {
+      display: grid;
+      gap: 1px;
+      line-height: 1;
+      min-width: 0;
+    }
+
+    .tier-label b {
+      color: rgba(216, 173, 87, .52);
+      font-size: 8px;
+      font-weight: 950;
+      letter-spacing: .18em;
+      text-transform: uppercase;
+    }
+
+    .tier-label span {
+      color: var(--forge);
+      font-size: 13px;
+      font-weight: 950;
+      letter-spacing: .12em;
+      text-transform: uppercase;
+      white-space: nowrap;
+    }
+
+    .deck-wrap {
+      align-self: center;
+      justify-self: center;
+      position: relative;
+      width: 82px;
+      aspect-ratio: .68;
+      border-radius: 9px;
+      background:
+        radial-gradient(circle at 50% 50%, rgba(255, 201, 92, .20), transparent 72%),
+        linear-gradient(135deg, rgba(236,205,128,.76), rgba(236,205,128,.08));
+      padding: 2px;
+      box-shadow:
+        0 0 0 1px rgba(0,0,0,.72),
+        0 12px 24px rgba(0,0,0,.42);
+    }
+
+    .deck-wrap::before {
+      content: "";
+      position: absolute;
+      inset: -16px -14px;
+      z-index: -1;
+      border-radius: 48%;
+      background:
+        radial-gradient(ellipse, rgba(216, 117, 36, .20), transparent 62%);
+      border: 1px solid rgba(216, 173, 87, .12);
+    }
+
+    .deck-wrap::after {
+      content: attr(data-count);
+      position: absolute;
+      top: -9px;
+      right: -11px;
+      min-width: 26px;
+      height: 26px;
+      display: grid;
+      place-items: center;
+      border-radius: 50%;
+      background: rgba(0,0,0,.88);
+      border: 1px solid rgba(239, 216, 146, .45);
+      color: var(--text);
+      font-size: 13px;
+      font-weight: 950;
+    }
+
+    .deck-wrap img,
+    .card img {
+      width: 100%;
+      height: 100%;
+      display: block;
+      object-fit: cover;
+      border-radius: inherit;
+    }
+
+    .channel {
+      position: relative;
+      min-width: 0;
+      display: grid;
+      grid-template-columns: repeat(5, minmax(94px, 1fr));
+      align-items: center;
+      gap: clamp(10px, 1.55vw, 22px);
+      padding: 18px 22px 18px 0;
+      overflow: hidden;
+      mask-image: linear-gradient(90deg, #000 0%, #000 94%, transparent 100%);
+    }
+
+    .station {
+      position: relative;
+      justify-self: center;
+      width: min(110px, 100%);
+      aspect-ratio: .68;
+      display: grid;
+      place-items: center;
+    }
+
+    .station::before {
+      content: "";
+      position: absolute;
+      left: 8px;
+      right: 8px;
+      bottom: -8px;
+      height: 11px;
+      border-radius: 50%;
+      background: radial-gradient(ellipse, rgba(216, 173, 87, .25), transparent 72%);
+      opacity: .78;
+    }
+
+    .card {
+      position: relative;
+      width: 100%;
+      height: 100%;
+      overflow: hidden;
+      border-radius: 11px;
+      background: #08080e;
+      box-shadow:
+        0 0 0 1px rgba(0,0,0,.78),
+        0 12px 22px rgba(0,0,0,.35);
+    }
+
+    .card::after {
+      content: "";
+      position: absolute;
+      inset: 0;
+      pointer-events: none;
+      background:
+        linear-gradient(180deg, rgba(0,0,0,.04), transparent 44%, rgba(0,0,0,.80)),
+        linear-gradient(90deg, rgba(255,255,255,.055), transparent 19%, transparent 82%, rgba(0,0,0,.24));
+    }
+
+    .station.ready .card {
+      box-shadow:
+        0 0 0 1px rgba(0,0,0,.78),
+        0 0 0 2px rgba(242, 217, 146, .82),
+        0 0 24px rgba(216, 173, 87, .18);
+    }
+
+    .station.ready::after {
+      content: "ready";
+      position: absolute;
+      top: -12px;
+      left: 50%;
+      transform: translateX(-50%);
+      color: rgba(242, 217, 146, .78);
+      font-size: 8px;
+      font-weight: 950;
+      letter-spacing: .20em;
+      text-transform: uppercase;
+    }
+
+    .badge {
+      position: absolute;
+      z-index: 2;
+      display: grid;
+      place-items: center;
+      font-weight: 950;
+      text-shadow: 0 1px 2px #000;
+    }
+
+    .cost {
+      top: 6px;
+      left: 6px;
+      min-width: 24px;
+      height: 24px;
+      padding-inline: 5px;
+      border-radius: 7px;
+      border: 1px solid rgba(255,255,255,.14);
+      background: rgba(0,0,0,.77);
+      color: #f7efd9;
+      font-size: 15px;
+    }
+
+    .em {
+      top: 5px;
+      right: 6px;
+      width: 25px;
+      height: 31px;
+      clip-path: polygon(50% 0, 92% 25%, 86% 77%, 50% 100%, 14% 77%, 8% 25%);
+      background: linear-gradient(180deg, #f5dd8d, #79561d);
+      color: #fff7c9;
+      font-family: Georgia, "Times New Roman", serif;
+      font-size: 17px;
+    }
+
+    .bonus {
+      top: 6px;
+      right: 7px;
+      width: 28px;
+      height: 28px;
+      border-radius: 50%;
+      border: 1px solid rgba(125, 255, 179, .43);
+      background:
+        radial-gradient(circle, #78efad 0 30%, rgba(27, 91, 57, .94) 33% 68%, rgba(8, 24, 17, .9));
+      box-shadow: 0 0 13px rgba(80, 231, 139, .34);
+    }
+
+    .name {
+      position: absolute;
+      z-index: 2;
+      left: 7px;
+      right: 7px;
+      bottom: 34px;
+      color: rgba(255,255,255,.93);
+      font-size: 11px;
+      line-height: 1.05;
+      font-weight: 850;
+      text-shadow: 0 1px 3px #000;
+    }
+
+    .costs {
+      position: absolute;
+      z-index: 2;
+      right: 6px;
+      bottom: 6px;
+      display: flex;
+      gap: 3px;
+    }
+
+    .affinity {
+      width: 17px;
+      height: 17px;
+      display: grid;
+      place-items: center;
+      border-radius: 5px;
+      border: 1px solid rgba(255,255,255,.12);
+      background: rgba(0,0,0,.78);
+      font-size: 10px;
+      font-weight: 950;
+    }
+
+    .red { color: #ff7069; }
+    .gold { color: #ffd86a; }
+    .green { color: #67eea1; }
+    .blue { color: #6faeff; }
+    .purple { color: #d16fff; }
+
+    @media (max-width: 940px) {
+      .forge {
+        height: auto;
+      }
+      .copy span { display: none; }
+      .forge-header {
+        grid-template-columns: 1fr;
+        align-items: start;
+        gap: 8px;
+      }
+      .controls {
+        justify-self: start;
+      }
+      .tier {
+        grid-template-columns: 112px minmax(0, 1fr);
+      }
+      .tier::before {
+        left: 110px;
+      }
+      .mouth {
+        padding-inline: 8px;
+      }
+      .tier-name {
+        grid-template-columns: 30px 1fr;
+      }
+      .roman {
+        width: 30px;
+        height: 25px;
+      }
+      .tier-label span {
+        font-size: 11px;
+      }
+      .deck-wrap {
+        width: 62px;
+      }
+      .channel {
+        grid-template-columns: repeat(5, minmax(54px, 1fr));
+        gap: 8px;
+        padding-right: 8px;
+      }
+      .name {
+        display: none;
+      }
+    }
+  </style>
+</head>
+<body>
+  <section class="forge">
+    <header class="forge-header">
+      <div class="title">
+        <div class="sigil">⌁</div>
+        <div class="copy">
+          <small>The</small>
+          <h1>Forge</h1>
+          <span>Artifacts cooling in tiered channels</span>
+        </div>
+      </div>
+      <div class="controls">
+        <span>Cost View</span>
+        <div class="seg">
+          <button>Full</button>
+          <button>Discounted</button>
+          <button class="active">Needed</button>
+        </div>
+      </div>
+    </header>
+
+    <main class="body">
+      <section class="tier">
+        <aside class="mouth">
+          <div class="tier-name"><div class="roman">III</div><div class="tier-label"><b>Tier 3</b><span>Galactic</span></div></div>
+          <div class="deck-wrap" data-count="16"><img src="/src/assets/cards/t3o01.png" /></div>
+        </aside>
+        <div class="channel">
+          <div class="station ready"><article class="card"><img src="/src/assets/cards/t3o03.png" /><div class="badge cost">4</div><div class="badge bonus"></div><div class="name">Extinction Furnace Veto</div><div class="costs"><span class="affinity red">3</span><span class="affinity green">3</span><span class="affinity purple">6</span></div></article></div>
+          <div class="station"><article class="card"><img src="/src/assets/cards/t3e01.png" /><div class="badge cost">3</div><div class="badge bonus"></div><div class="name">Cryptobiotic Root Key</div><div class="costs"><span class="affinity gold">3</span><span class="affinity green">3</span><span class="affinity blue">5</span></div></article></div>
+          <div class="station"><article class="card"><img src="/src/assets/cards/t3r03.png" /><div class="badge cost">5</div><div class="badge em">5</div><div class="name">Species-Rights Witness Prism</div><div class="costs"><span class="affinity gold">7</span><span class="affinity blue">3</span><span class="affinity purple">3</span></div></article></div>
+          <div class="station"><article class="card"><img src="/src/assets/cards/t3s03.png" /><div class="badge cost">5</div><div class="badge bonus"></div><div class="name">Star-River Propulsion Core</div><div class="costs"><span class="affinity red">3</span><span class="affinity blue">5</span></div></article></div>
+          <div class="station"><article class="card"><img src="/src/assets/cards/t3p04.png" /><div class="badge cost">3</div><div class="badge em">3</div><div class="name">Mycelial Throne</div><div class="costs"><span class="affinity gold">3</span><span class="affinity blue">3</span><span class="affinity purple">5</span></div></article></div>
+        </div>
+      </section>
+
+      <section class="tier">
+        <aside class="mouth">
+          <div class="tier-name"><div class="roman">II</div><div class="tier-label"><b>Tier 2</b><span>Stellar</span></div></div>
+          <div class="deck-wrap" data-count="25"><img src="/src/assets/cards/t2o01.png" /></div>
+        </aside>
+        <div class="channel">
+          <div class="station"><article class="card"><img src="/src/assets/cards/t2e04.png" /><div class="badge cost">1</div><div class="badge bonus"></div><div class="name">Stellar Crucible</div><div class="costs"><span class="affinity gold">2</span><span class="affinity blue">2</span><span class="affinity purple">3</span></div></article></div>
+          <div class="station"><article class="card"><img src="/src/assets/cards/t2r03.png" /><div class="badge cost">2</div><div class="badge bonus"></div><div class="name">Null-Convergence Prism</div><div class="costs"><span class="affinity green">1</span><span class="affinity blue">2</span><span class="affinity purple">4</span></div></article></div>
+          <div class="station"><article class="card"><img src="/src/assets/cards/t2p04.png" /><div class="badge cost">1</div><div class="badge bonus"></div><div class="name">Extinction Forge Die</div><div class="costs"><span class="affinity red">2</span><span class="affinity gold">2</span><span class="affinity green">3</span></div></article></div>
+          <div class="station"><article class="card"><img src="/src/assets/cards/t2o05.png" /><div class="badge cost">2</div><div class="badge bonus"></div><div class="name">Epoch Graft Ledger</div><div class="costs"><span class="affinity green">2</span><span class="affinity blue">4</span></div></article></div>
+          <div class="station"><article class="card"><img src="/src/assets/cards/t2s05.png" /><div class="badge cost">2</div><div class="badge em">2</div><div class="name">Verdant Emergence</div><div class="costs"><span class="affinity green">3</span><span class="affinity purple">3</span></div></article></div>
+        </div>
+      </section>
+
+      <section class="tier">
+        <aside class="mouth">
+          <div class="tier-name"><div class="roman">I</div><div class="tier-label"><b>Tier 1</b><span>Planetary</span></div></div>
+          <div class="deck-wrap" data-count="36"><img src="/src/assets/cards/t1o01.png" /></div>
+        </aside>
+        <div class="channel">
+          <div class="station"><article class="card"><img src="/src/assets/cards/t1e02.png" /><div class="badge cost">1</div><div class="badge bonus"></div><div class="name">Undergrowth Silencer</div><div class="costs"><span class="affinity green">2</span><span class="affinity purple">1</span></div></article></div>
+          <div class="station"><article class="card"><img src="/src/assets/cards/t1r03.png" /><div class="badge cost">1</div><div class="badge bonus"></div><div class="name">Ignition Kernel</div><div class="costs"><span class="affinity gold">1</span><span class="affinity green">1</span><span class="affinity purple">1</span></div></article></div>
+          <div class="station"><article class="card"><img src="/src/assets/cards/t1o05.png" /><div class="badge cost">1</div><div class="badge bonus"></div><div class="name">Char Tendril</div><div class="costs"><span class="affinity red">1</span><span class="affinity blue">1</span><span class="affinity purple">1</span></div></article></div>
+          <div class="station"><article class="card"><img src="/src/assets/cards/t1s06.png" /><div class="badge cost">1</div><div class="badge bonus"></div><div class="name">Echo Splinter</div><div class="costs"><span class="affinity red">1</span><span class="affinity blue">1</span></div></article></div>
+          <div class="station"><article class="card"><img src="/src/assets/cards/t1p02.png" /><div class="badge cost">2</div><div class="badge em">1</div><div class="name">Root Lattice</div><div class="costs"><span class="affinity red">1</span><span class="affinity gold">1</span><span class="affinity blue">1</span></div></article></div>
+        </div>
+      </section>
+    </main>
+  </section>
+</body>
+</html>

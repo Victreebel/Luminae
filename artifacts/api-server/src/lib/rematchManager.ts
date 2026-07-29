@@ -12,7 +12,10 @@ import { eq } from "drizzle-orm";
 import {
   initializeGame,
   formatGameState,
+  getReplayBoardSnapshot,
+  normalizeState,
   parseAiDifficulty,
+  type InitialBoardSnapshot,
 } from "./gameEngine";
 import {
   broadcastToRoom,
@@ -38,6 +41,7 @@ interface PlayerSessionRecord {
 
 interface RematchState {
   voterIds: Set<string>;
+  sameBoard: boolean;
   countdownEndsAt: number | null; // null means waiting (2-player mode)
   countdownTimer: NodeJS.Timeout | null;
   // How many total players were in the game when the first vote was cast.
@@ -93,9 +97,14 @@ export function clearRematch(roomId: string): void {
 
 interface RematchVoteInfo {
   voterIds: string[];
+  sameBoard: boolean;
   /** ms timestamp; null means no countdown (2-player: waiting for partner). */
   countdownEndsAt: number | null;
   sessionStats: Record<string, PlayerSessionRecord>;
+}
+
+interface RematchVoteOptions {
+  sameBoard?: boolean;
 }
 
 /**
@@ -111,10 +120,12 @@ export async function castVote(
   roomId: string,
   playerId: string,
   allRoomPlayers: ReadonlyArray<{ id: string; name: string; isAi: boolean }>,
+  options: RematchVoteOptions = {},
 ): Promise<RematchVoteInfo> {
   if (!_votes.has(roomId)) {
     _votes.set(roomId, {
       voterIds: new Set(),
+      sameBoard: options.sameBoard === true,
       countdownEndsAt: null,
       countdownTimer: null,
       totalPlayerCount: allRoomPlayers.length,
@@ -124,6 +135,9 @@ export async function castVote(
 
   // Record this player's vote
   state.voterIds.add(playerId);
+  if (options.sameBoard === true) {
+    state.sameBoard = true;
+  }
 
   // AI players always want to play again
   for (const p of allRoomPlayers) {
@@ -151,9 +165,23 @@ export async function castVote(
 
   return {
     voterIds: Array.from(state.voterIds),
+    sameBoard: state.sameBoard,
     countdownEndsAt: state.countdownEndsAt,
     sessionStats: getSessionStats(roomId),
   };
+}
+
+async function loadReplayBoardSnapshot(roomId: string): Promise<InitialBoardSnapshot | null> {
+  const [savedState] = await db
+    .select()
+    .from(gameStatesTable)
+    .where(eq(gameStatesTable.roomId, roomId))
+    .limit(1);
+
+  if (!savedState?.state) return null;
+  const state = normalizeState(savedState.state);
+  if (!state.initialBoard) return null;
+  return getReplayBoardSnapshot(state);
 }
 
 // ── Internal: execute rematch when countdown fires ────────────────────────────
@@ -194,6 +222,9 @@ async function _executeRematch(roomId: string): Promise<void> {
     }
 
     const sessionStatsData = getSessionStats(roomId);
+    const replayBoard = state.sameBoard
+      ? await loadReplayBoardSnapshot(roomId)
+      : null;
 
     // Notify declined players before removing them
     for (const p of declined) {
@@ -230,6 +261,9 @@ async function _executeRematch(roomId: string): Promise<void> {
     const gameData = initializeGame(
       confirmed.map((p) => ({ id: p.id, name: p.name })),
       confirmed.length,
+      room.victoryRequirement,
+      room.cinematicMode === "epic" ? "epic" : "standard",
+      { replayBoard },
     );
     gameData.turnTimerSeconds = room.turnTimerSeconds ?? null;
     updateTurnDeadline(gameData);
@@ -288,6 +322,7 @@ async function _executeRematch(roomId: string): Promise<void> {
         type: "rematch_started",
         state: filterStateForPlayer(formatted, p.id),
         sessionStats: sessionStatsData,
+        sameBoard: state.sameBoard && replayBoard !== null,
       });
     }
 

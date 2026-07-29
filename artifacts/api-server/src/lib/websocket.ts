@@ -6,6 +6,7 @@ import { playersTable } from "@workspace/db";
 import type { Player } from "@workspace/db";
 import { eq } from "drizzle-orm";
 import { logger } from "./logger";
+export { filterStateForPlayer } from "./stateProjection";
 
 // roomId → Map<playerId, ws>
 const connections = new Map<string, Map<string, WebSocket>>();
@@ -34,29 +35,6 @@ export function sendToPlayer(roomId: string, playerId: string, payload: unknown)
   if (ws && ws.readyState === WebSocket.OPEN) {
     ws.send(JSON.stringify(payload));
   }
-}
-
-// Strip plannedAction / plannedActionCancelReason for all players except the
-// viewer.  Generic over any formatted state object whose players array carries
-// those fields.  Call this before sending state to a specific client so that
-// players cannot read each other's planned moves via REST or WebSocket.
-export function filterStateForPlayer<
-  T extends {
-    players: Array<{
-      playerId: string;
-      plannedAction: unknown;
-      plannedActionCancelReason: unknown;
-    }>;
-  },
->(state: T, viewerPlayerId: string): T {
-  return {
-    ...state,
-    players: state.players.map((p) =>
-      p.playerId === viewerPlayerId
-        ? p
-        : { ...p, plannedAction: null, plannedActionCancelReason: null },
-    ),
-  };
 }
 
 export function setupWebSocket(server: Server): void {

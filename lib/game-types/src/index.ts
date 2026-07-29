@@ -8,6 +8,9 @@
  * include a matching value.
  */
 
+/** Duration of the opening first-player selector shared by client and server. */
+export const OPENING_TURN_ORDER_PRESENTATION_MS = 3400;
+
 /**
  * Canonical set of Luminary ID string literals.  This is the authoritative
  * list — both the backend LuminaryDef interface and the frontend
@@ -75,3 +78,125 @@ export const KNOWN_AURA_STYLES = [
 ] as const;
 
 export type AuraStyle = (typeof KNOWN_AURA_STYLES)[number];
+
+/**
+ * Canonical Luminae affinity vocabulary.
+ *
+ * The string values are stable transport/storage identifiers used by existing
+ * games and clients. Application code should treat them as opaque keys and use
+ * AFFINITY_NAMES whenever a player-facing name is needed.
+ */
+export const AFFINITY_KEYS = [
+  'flare',
+  'radiance',
+  'verdance',
+  'continuum',
+  'abyss',
+  'singularity',
+] as const;
+
+export type AffinityKey = (typeof AFFINITY_KEYS)[number];
+
+export const STANDARD_AFFINITY_KEYS = [
+  'flare',
+  'radiance',
+  'verdance',
+  'continuum',
+  'abyss',
+] as const satisfies readonly AffinityKey[];
+
+export type StandardAffinityKey = (typeof STANDARD_AFFINITY_KEYS)[number];
+
+export type AffinityCounts = Record<AffinityKey, number>;
+
+export const AFFINITY_NAMES: Record<AffinityKey, string> = {
+  flare: 'Flare',
+  radiance: 'Radiance',
+  verdance: 'Verdance',
+  continuum: 'Continuum',
+  abyss: 'Abyss',
+  singularity: 'Singularity',
+};
+
+export interface VictoryArtifactSummary {
+  tier: number;
+  bonusAffinity: string;
+}
+
+export interface VictoryStandingSummary {
+  eminence: number;
+  reservedArtifactCount: number;
+  forgedArtifacts: ReadonlyArray<VictoryArtifactSummary>;
+}
+
+/** Tier counts ordered from the strongest tie-break value to the weakest. */
+export type ArtifactTierCounts = [
+  tier3: number,
+  tier2: number,
+  tier1: number,
+];
+
+export function getArtifactTierCounts(
+  artifacts: ReadonlyArray<VictoryArtifactSummary>,
+): ArtifactTierCounts {
+  const counts: ArtifactTierCounts = [0, 0, 0];
+  for (const artifact of artifacts) {
+    if (artifact.tier === 3) counts[0]++;
+    else if (artifact.tier === 2) counts[1]++;
+    else if (artifact.tier === 1) counts[2]++;
+  }
+  return counts;
+}
+
+function compareArtifactTierCounts(
+  a: ArtifactTierCounts,
+  b: ArtifactTierCounts,
+): number {
+  for (let index = 0; index < a.length; index++) {
+    if (a[index] !== b[index]) return b[index] - a[index];
+  }
+  return 0;
+}
+
+export function getStrongestAffinityTierCounts(
+  artifacts: ReadonlyArray<VictoryArtifactSummary>,
+): ArtifactTierCounts {
+  const byAffinity = new Map<string, VictoryArtifactSummary[]>();
+  for (const artifact of artifacts) {
+    const affinityArtifacts = byAffinity.get(artifact.bonusAffinity) ?? [];
+    affinityArtifacts.push(artifact);
+    byAffinity.set(artifact.bonusAffinity, affinityArtifacts);
+  }
+
+  let strongest: ArtifactTierCounts = [0, 0, 0];
+  for (const affinityArtifacts of byAffinity.values()) {
+    const counts = getArtifactTierCounts(affinityArtifacts);
+    if (compareArtifactTierCounts(counts, strongest) < 0) strongest = counts;
+  }
+  return strongest;
+}
+
+/**
+ * Sort comparator for final standings. A negative result means `a` ranks ahead
+ * of `b`. Exact ties retain the game's existing stable player order.
+ */
+export function compareVictoryStandings(
+  a: VictoryStandingSummary,
+  b: VictoryStandingSummary,
+): number {
+  if (a.eminence !== b.eminence) return b.eminence - a.eminence;
+  if (a.reservedArtifactCount !== b.reservedArtifactCount) {
+    return a.reservedArtifactCount - b.reservedArtifactCount;
+  }
+
+  const overallTierComparison = compareArtifactTierCounts(
+    getArtifactTierCounts(a.forgedArtifacts),
+    getArtifactTierCounts(b.forgedArtifacts),
+  );
+  if (overallTierComparison !== 0) return overallTierComparison;
+
+  return compareArtifactTierCounts(
+    getStrongestAffinityTierCounts(a.forgedArtifacts),
+    getStrongestAffinityTierCounts(b.forgedArtifacts),
+  );
+}

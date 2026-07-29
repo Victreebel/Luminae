@@ -16,7 +16,7 @@ export default defineConfig({
     alias: {
       '@': path.resolve(__dirname, './src'),
       // Matches the @assets alias in vite.config.ts so tests that
-      // transitively import from gemMeta.ts can resolve image paths.
+      // transitively import from affinityMeta.ts can resolve image paths.
       '@assets': path.resolve(__dirname, '../../attached_assets'),
     },
   },

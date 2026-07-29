@@ -10,6 +10,13 @@ export interface GameKeyboardShortcutOptions {
   onToggleRules: () => void;
 }
 
+function isTextEntryElement(target: EventTarget | null): boolean {
+  if (!(target instanceof HTMLElement)) return false;
+  return !!target.closest(
+    'input, textarea, select, [contenteditable="true"], [data-chat-composer]',
+  );
+}
+
 /**
  * Registers document-level keyboard shortcuts for navigating the main game panels.
  *
@@ -38,18 +45,11 @@ export function useGameKeyboardShortcuts({
   useEffect(() => {
     const handleKeyDown = (e: KeyboardEvent) => {
       if (e.ctrlKey || e.altKey || e.metaKey) return;
+      if (isTextEntryElement(e.target)) return;
 
       const active = document.activeElement as HTMLElement | null;
       if (active) {
-        const tag = active.tagName.toLowerCase();
-        if (
-          tag === 'input' ||
-          tag === 'textarea' ||
-          tag === 'select' ||
-          active.isContentEditable
-        ) {
-          return;
-        }
+        if (isTextEntryElement(active)) return;
       }
 
       if (isAnyOverlayOpen) return;

@@ -8,7 +8,10 @@ import {
   BEAT_TARGET_MS,
   BEAT_SNAP_MS,
   BEAT_DONE_MS,
+  BURN_RESOLUTION_MIN_MS,
+  getVisibleProcedureSteps,
 } from '@/components/LuminaryActivationCinematic';
+import type { AnimationProcedureStep } from '@/lib/animationProcedure';
 
 // ─── Tests ────────────────────────────────────────────────────────────────────
 //
@@ -111,5 +114,33 @@ describe('LuminaryActivationCinematic — beat sequence timing invariants', () =
 
   it(`BEAT_DONE_MS is at least ${MIN_BEAT_GAP_MS}ms after BEAT_SNAP_MS (done and snap can't collapse)`, () => {
     expect(BEAT_DONE_MS - BEAT_SNAP_MS).toBeGreaterThanOrEqual(MIN_BEAT_GAP_MS);
+  });
+});
+
+describe('LuminaryActivationCinematic — readable procedure timeline', () => {
+  it('turns a multi-card Burn into an explicit target, action, and result sequence', () => {
+    const procedure: AnimationProcedureStep[] = [
+      { type: 'luminaryPulse', luminaryId: 'lum_moth' },
+      { type: 'targetClaim', targetIds: ['a', 'b', 'c'], keyword: 'burn' },
+      {
+        type: 'keywordEvents',
+        events: [{ keyword: 'burn', targetIds: ['a', 'b', 'c'] }],
+      },
+      { type: 'forgeRefill', slotIds: [] },
+    ];
+
+    expect(getVisibleProcedureSteps(procedure).map(step => step.label)).toEqual([
+      'TARGET 3',
+      'BURN 3',
+      'REFILL FORGE',
+    ]);
+  });
+
+  it('holds Burn resolution through the Forge replacement animation', () => {
+    const REFILL_START_MS = 1520;
+    const REFILL_ANIMATION_MS = 700;
+    expect(BURN_RESOLUTION_MIN_MS).toBeGreaterThanOrEqual(
+      REFILL_START_MS + REFILL_ANIMATION_MS,
+    );
   });
 });

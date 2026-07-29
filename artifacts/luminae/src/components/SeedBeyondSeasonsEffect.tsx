@@ -162,7 +162,6 @@ function EnergyBeam({ cx, deckTop, deckH }: { cx: number; deckTop: number; deckH
             ${SEED_GREEN}ff 80%,
             transparent 100%)`,
           borderRadius: 4,
-          filter: `blur(1.5px)`,
           transformOrigin: 'top center',
         }}
         initial={{ scaleY: 0, opacity: 0 }}
@@ -187,7 +186,6 @@ function ImpactSpark({ cx, y }: { cx: number; y: number }) {
         height: 36,
         borderRadius: '50%',
         background: `radial-gradient(circle, ${SEED_GREEN}ff 0%, ${SEED_TEAL}88 50%, transparent 80%)`,
-        filter: 'blur(4px)',
       }}
       initial={{ scale: 0, opacity: 0 }}
       animate={{
@@ -296,7 +294,7 @@ export function SeedBeyondSeasonsEffect({ onComplete }: { onComplete: () => void
     timers.push(setTimeout(() => onCompleteRef.current(), SEED_EFFECT_TOTAL_MS));
 
     return () => timers.forEach(clearTimeout);
-  }, []); // eslint-disable-line react-hooks/exhaustive-deps
+  }, []);
 
   return (
     <div className="fixed inset-0 pointer-events-none" style={{ zIndex: 300 }}>

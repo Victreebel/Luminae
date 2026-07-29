@@ -7,6 +7,7 @@ interface Session {
   isHost: boolean;
   avatarId?: string;
   isTutorial?: boolean;
+  isGuidedMatch?: boolean;
 }
 
 const SESSION_KEY = "luminae_session";

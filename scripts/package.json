@@ -5,10 +5,11 @@
   "type": "module",
   "scripts": {
     "hello": "tsx ./src/hello.ts",
-    "normalize:gems": "python3 ./src/normalize-gem-tokens.py",
+    "normalize:affinities": "python3 ./src/normalize-affinity-tokens.py",
     "compress:art": "python3 ./src/compress-art-assets.py",
     "typecheck": "tsc -p tsconfig.json --noEmit",
     "lint:version-stamps": "tsx ./src/check-version-stamps.ts",
+    "lint:terminology": "tsx ./src/check-luminae-terminology.ts",
     "lint:summon-colors": "tsx ./src/check-summon-colors.ts",
     "lint:luminary-files": "tsx ./src/check-luminary-files.ts",
     "test:version-stamps": "tsx ./src/check-version-stamps.test.ts",

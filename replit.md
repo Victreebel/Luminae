@@ -2,11 +2,11 @@
 
 ## Overview
 
-**Luminae** is an original browser-based multiplayer tabletop engine-building game. It draws inspiration from gem-market tableau mechanics, focusing on collecting colored crystals, acquiring Artifact cards for permanent bonuses, and racing to 15 Eminence. Players also compete for Luminary patron bonuses. The project aims to deliver a polished, real-time multiplayer experience with unique artwork and game mechanics.
+**Luminae** is an original browser-based multiplayer tabletop engine-building game. Players harness cosmic Affinities, Forge Artifacts for permanent Affinity bonuses and Eminence, reserve future Artifacts, and draw the attention of Luminaries. The project aims to deliver a polished, real-time multiplayer experience with unique artwork and game mechanics.
 
 ## User Preferences
 
-The user prefers that all development and communication adhere to the established terminology for game mechanics (e.g., "affinities" instead of "gems," "Eminence" instead of "prestige"). The user also wants to ensure that all generated images are properly compressed and integrated, and that new art and lore for cards are correctly injected server-side. Additionally, the user wants to prioritize robust animation sequencing and error handling, particularly for state updates and game events. The user prefers that all development-only features, such as the animation sandbox, are fully tree-shaken from production builds.
+The user prefers all development and communication to use established Luminae terminology, including Affinities, the Affinity Well, Harness, the Forge, Artifacts, Eminence, Luminaries, and Singularity. The user also wants generated images compressed and integrated, new Artifact art and lore injected server-side, and animation sequencing and state-event error handling kept robust. Development-only features such as the animation sandbox must be fully tree-shaken from production builds.
 
 ## Luminary Art Direction (canonical brief — apply to all future generation passes)
 
@@ -48,7 +48,7 @@ The Luminary is trapped *behind or within a massive crystal wall / faceted cryst
 - **Facet planes must be large and irregular.** Big triangular and trapezoidal planes — like a cut gemstone face or natural mineral cleavage plane, not a uniform net of small cells.
 
 ### Overall thematic direction
-Luminaries are cosmic survival intelligences and post-civilizational archetypes — not generic fantasy patrons, Splendor-style nobles, or TCG heroes. Use scientifically inspired myth and cosmic speculative mythology.
+Luminaries are cosmic survival intelligences and post-civilizational archetypes, not generic fantasy patrons, aristocratic tableau figures, or TCG heroes. Use scientifically inspired myth and cosmic speculative mythology.
 
 ### Affinity existence framing
 - **Flare** — energy consciousness, ignition minds, stellar or plasma entities.
@@ -91,7 +91,7 @@ All 12 Luminary panels and entities are accepted and locked. Do not regenerate a
 **Frontend:**
 -   Developed with React and Vite, located at `/` (artifacts/luminae).
 -   UI/UX features include AI-generated cosmic affinity art, per-card art, and lore. All art assets are compressed PNGs and loaded efficiently.
--   Animations are critical, including card market animations (purchase/reserve bursts, card flips), turn announcement overlays, affinity bonus sounds, and affinity harvesting animations. These are managed with a state update queue to ensure proper sequencing and prevent conflicts.
+-   Animations are critical, including Forge animations (forge/reserve bursts and card flips), turn announcement overlays, Affinity bonus sounds, and Affinity Harness animations. These are managed with a state update queue to ensure proper sequencing and prevent conflicts.
 -   A `DevAnimSandbox` component allows triggering animations for testing, gated behind `import.meta.env.DEV` for production tree-shaking.
 
 **Backend:**
@@ -102,13 +102,13 @@ All 12 Luminary panels and entities are accepted and locked. Do not regenerate a
 -   Session management stores player data in `localStorage` and validates it against the server, with auto-clearing for invalid sessions.
 
 **Game Mechanics & Features:**
--   **Affinities:** 6 types (Radiance, Flare, Continuum, Verdance, Abyss, Singularity). Internal keys (`ruby/sapphire/emerald/onyx/pearl/flux`) are consistent across the stack.
--   **Card Market:** 3 tiers of Artifact cards (20/15/10 cards per deck, 4 face-up per tier).
--   **Eminence:** The victory currency, replacing "prestige" (internal key `lumens`).
--   **Luminaries:** 12 unique patron entities (expanded from 5), `playerCount+1` active per game, awarding tiered Eminence bonuses (2/3/4 lumens). Each Luminary has full metadata: id, name, domain, flavor text, summonColor, summonSecondaryColor, auraStyle. Pool divided into mono-color (2L), dual-color (3L), and triple-color (4L) tiers. Procedural SVG entity art in `luminaryAssets.tsx`. Backward compat: old lum01-lum05 IDs filtered out in `normalizeState`.
--   **Living Luminary Affinity:** When a Luminary is claimed, the engine assigns a default active affinity (first eligible) stored in `GameState.luminaryAffinities` (`LuminaryActiveState[]`). Starting the *next* turn after summoning, the owner gains +1 bonus toward that affinity on every card purchase. Owners can toggle the active affinity anytime (even off-turn) via the `toggle_luminary_affinity` action — clicking the claimed Luminary portal card cycles to the next eligible affinity. Single-eligible Luminaries always use that affinity; multi-eligible ones show selector dots + a `↻` badge. `turnCount` (monotonically incrementing per `advanceTurn`) gates activation. The engine helper `effectiveBonuses()` merges card bonuses + living luminary bonuses for `effectiveCost`/`payForCard`.
--   **Actions:** Harvest affinities, reserve cards (from market or deck), forge cards, toggle luminary affinity (non-turn action).
--   **Win Condition:** First to 15 Eminence; tie-break by fewest purchased cards.
+-   **Affinities:** 6 types with matching canonical serialized keys: `radiance`, `flare`, `continuum`, `verdance`, `abyss`, and `singularity`.
+-   **Forge:** 3 tiers of Artifact cards (20/15/10 cards per deck, 4 face-up per tier).
+-   **Eminence:** The victory measure, serialized as `eminence`.
+-   **Luminaries:** 12 unique cosmic entities (expanded from 5), `playerCount+1` active per game, awarding tiered Eminence bonuses. Each Luminary has full metadata: id, name, domain, flavor text, summonColor, summonSecondaryColor, and auraStyle. Backward compatibility: old `lum01`-`lum05` IDs are filtered out in `normalizeState`.
+-   **Living Luminary Affinity:** When a Luminary is claimed, the engine assigns a default active Affinity stored in `GameState.luminaryAffinities`. Starting the next turn after summoning, the owner gains +1 toward that Affinity when calculating Artifact Forge costs. Owners can toggle it at any time via `toggle_luminary_affinity`. The engine helper `effectiveAffinityBonuses()` merges Artifact bonuses with Living Luminary Affinities.
+-   **Core Actions:** Harness 3 different Affinities, Harness 2 of the same Affinity, Forge an Artifact, or reserve an Artifact from the Forge or a deck.
+-   **Win Condition:** Reaching the Eminence target starts the final round. The game also ends immediately after a turn if the Forge and all Archives are empty. Highest Eminence wins; ties resolve by fewest encrypted Artifacts, then most Tier III forged Artifacts, followed by Tier II and Tier I, then the same tier comparison within the strongest single affinity.
 -   **Turn Timer:** Optional per-room timer that automatically passes turns on expiry.
 -   **Action Log:** Capped 20-entry array within `GameState.actionLog` for tracking player actions.
 -   **Lobby State Sync:** Critical reconciliation of lobby player data from TanStack Query and WebSocket events, ensuring `isHost` status is accurately reflected.
@@ -135,7 +135,7 @@ All 12 Luminary panels and entities are accepted and locked. Do not regenerate a
 4. Top-edge spark burst — crisp sparks radiate from the top of the card as the last portion burns away.
 5. Ash arc fragments scatter from the consumed card.
 6. Burn Pile count increments (🔥 chip) — handled by state update.
-7. Scorch residue fades — brief dark char overlay on the empty slot; market redraw fires only after burn animation is complete.
+7. Scorch residue fades — brief dark char overlay on the empty slot; the Forge refill begins only after the Burn animation completes.
 
 **Multi-card burns:** Stagger individual BurnFlash calls 80–120 ms apart in the procedure — do not play full animations one-by-one.
 
@@ -168,20 +168,20 @@ useFocusTrap(containerRef, isOpen, onClose);
 <div ref={(el) => { containerRef.current = el; }} role="dialog" aria-modal="true">
 ```
 
-### Gem Token Normalization
-All six affinity gem token PNGs are automatically normalized to a consistent 512×512 canvas whenever `pnpm run typecheck` is run. The normalization step (`pnpm run normalize:gems`) runs first, before any TypeScript checks, via `scripts/src/normalize-gem-tokens.py`. If you add or regenerate gem art in `attached_assets/`, simply run `pnpm run typecheck` (or the dedicated `pnpm run normalize:gems`) and the files will be cropped, scaled to 78% fill, and centered in-place.
+### Affinity Token Normalization
+All Affinity token PNGs are automatically normalized to a consistent 512x512 canvas whenever `pnpm run typecheck` is run. The normalization step (`pnpm run normalize:affinities`) runs first, before any TypeScript checks, via `scripts/src/normalize-affinity-tokens.py`. When Affinity art in `attached_assets/` changes, the files are cropped, scaled to 78% fill, and centered in place.
 
-### Protected Gem Token Assets — DO NOT REGENERATE
+### Protected Affinity Token Assets — DO NOT REGENERATE
 The following six files are locked and must not be replaced, overwritten, or regenerated in any asset-generation pass. They were restored from commit `4758e88` after multiple inadvertent replacements destroyed their content (singularity dropped to 3% pixel coverage / 33 KB at worst). The normalization script will refuse to process any of these files if their visible pixel coverage drops below 28%, printing a PROTECTED warning instead of locking in degraded art.
 
 | File | Key | Source commit | Locked size |
 |---|---|---|---|
-| `attached_assets/luminae_radiance_emblem_v2.png` | Radiance (pearl) | `b846aea` (1254×1254 original) | ~327 KB |
-| `attached_assets/luminae_singularity_emblem_v1.png` | Singularity (flux) | `e10f40b` (512×512 original) | ~437 KB |
-| `attached_assets/generated_images/gem_flare.png` | Flare (ruby) | `41b9cf2` (1024×1024 original) | ~252 KB |
-| `attached_assets/generated_images/gem_continuum.png` | Continuum (sapphire) | `41b9cf2` (1024×1024 original) | ~259 KB |
-| `attached_assets/generated_images/gem_verdance.png` | Verdance (emerald) | `41b9cf2` (1024×1024 original) | ~289 KB |
-| `attached_assets/generated_images/gem_abyss.png` | Abyss (onyx) | `41b9cf2` (1024×1024 original) | ~268 KB |
+| `attached_assets/luminae_radiance_emblem_v2.png` | Radiance | `b846aea` (1254×1254 original) | ~327 KB |
+| `attached_assets/luminae_singularity_emblem_v1.png` | Singularity | `e10f40b` (512×512 original) | ~437 KB |
+| `attached_assets/generated_images/affinity_flare.png` | Flare | `41b9cf2` (1024×1024 original) | ~252 KB |
+| `attached_assets/generated_images/affinity_continuum.png` | Continuum | `41b9cf2` (1024×1024 original) | ~259 KB |
+| `attached_assets/generated_images/affinity_verdance.png` | Verdance | `41b9cf2` (1024×1024 original) | ~289 KB |
+| `attached_assets/generated_images/affinity_abyss.png` | Abyss | `41b9cf2` (1024×1024 original) | ~268 KB |
 
 If you need to replace a token with new art, do so deliberately and verify the new file has ≥30% visible pixel coverage before committing.
 

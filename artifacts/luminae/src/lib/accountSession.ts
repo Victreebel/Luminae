@@ -185,7 +185,7 @@ export async function apiListChallenges(token: string): Promise<Challenge[]> {
 
 export async function apiCreateChallenge(
   token: string,
-  data: { challengedUsername: string; maxPlayers?: number; turnTimerSeconds?: number | null },
+  data: { challengedUsername: string; maxPlayers?: number; victoryRequirement?: 15 | 20 | 25; cinematicMode?: "standard" | "epic"; turnTimerSeconds?: number | null },
 ): Promise<ChallengeCreated> {
   const res = await fetch(apiUrl("/challenges"), {
     method: "POST",
@@ -324,6 +324,8 @@ export interface ChallengeAccepted {
     inviteCode: string;
     status: string;
     maxPlayers: number;
+    victoryRequirement: number;
+    cinematicMode?: "standard" | "epic";
     turnTimerSeconds: number | null;
   };
   player: { id: string; name: string; isHost: boolean };

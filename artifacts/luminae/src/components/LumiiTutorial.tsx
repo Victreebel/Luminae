@@ -5,7 +5,7 @@ import { useLocation } from "wouter";
 import { X, ArrowRight, ChevronDown, ChevronLeft, ChevronUp } from "lucide-react";
 import type { GameState } from "@workspace/api-client-react";
 import { clearSession } from "@/lib/session";
-import type { GemKey } from "@/lib/gemMeta";
+import type { AffinityKey } from "@/lib/affinityMeta";
 import { renderKeywords } from "@/lib/tutorialKeywords";
 import { useFocusTrap } from "@/hooks/use-focus-trap";
 import { useIsMobile } from "@/hooks/use-mobile";
@@ -30,22 +30,22 @@ const WISP_COLORS = ["#f97316", "#3b82f6", "#22c55e", "#a855f7", "#e2e8f0", "#fb
 // Zone-tinted palettes — each row is the 6 node colors subtly shifted toward the zone's affinity theme.
 // "none" restores the default full-spectrum WISP_COLORS palette.
 // Pulse ring accent colors per tutorial zone (idle and excited variants)
-const ZONE_PULSE_COLOR: Record<"harvest" | "market" | "filters" | "luminaries" | "none", { idle: string; excited: string }> = {
+const ZONE_PULSE_COLOR: Record<"well" | "forge" | "filters" | "luminaries" | "none", { idle: string; excited: string }> = {
   none:       { idle: "rgba(168,85,247,0.7)", excited: "#fbbf24" },
-  harvest:    { idle: "#f97316",              excited: "#fbbf24" },
+  well:    { idle: "#f97316",              excited: "#fbbf24" },
   luminaries: { idle: "#c084fc",              excited: "#d4b8f5" },
-  market:     { idle: "#fbbf24",              excited: "#fbbf24" },
+  forge:     { idle: "#fbbf24",              excited: "#fbbf24" },
   filters:    { idle: "#fbbf24",              excited: "#fbbf24" },
 };
 
-const ZONE_PALETTE: Record<"harvest" | "market" | "filters" | "luminaries" | "none", readonly string[]> = {
+const ZONE_PALETTE: Record<"well" | "forge" | "filters" | "luminaries" | "none", readonly string[]> = {
   none:       ["#f97316", "#3b82f6", "#22c55e", "#a855f7", "#e2e8f0", "#fbbf24"],
-  // harvest → Flare/Continuum warmth: orange stays, blue brightens, others warm toward amber
-  harvest:    ["#f97316", "#60a5fa", "#86c874", "#cb7c40", "#fde8b0", "#f5a332"],
+  // Affinity Well: Flare/Continuum warmth; orange stays and blue brightens.
+  well:    ["#f97316", "#60a5fa", "#86c874", "#cb7c40", "#fde8b0", "#f5a332"],
   // luminaries → Abyss/Radiance: purple/silver stay, others shift toward deep rose/indigo/teal/lavender
   luminaries: ["#d97b9a", "#818cf8", "#6fc4b0", "#a855f7", "#e2e8f0", "#d4b8f5"],
-  // market / filters → Singularity gold dominant: all nodes tinted toward warm amber-gold
-  market:     ["#f5a832", "#90b8e8", "#98c87a", "#c48cd4", "#f0e4c0", "#fbbf24"],
+  // Forge and filters: Singularity-dominant warm gold.
+  forge:     ["#f5a832", "#90b8e8", "#98c87a", "#c48cd4", "#f0e4c0", "#fbbf24"],
   filters:    ["#f5a832", "#90b8e8", "#98c87a", "#c48cd4", "#f0e4c0", "#fbbf24"],
 };
 
@@ -115,13 +115,13 @@ function makeScatterPositions(): [number, number][] {
 
 let _wispInstanceCount = 0;
 
-// Burst palette per action type — harvest=amber, reserve=teal, forge=indigo
+// Burst palette per action type: Harness amber, reserve teal, Forge indigo.
 const BURST_COLOR_BY_ACTION: Record<string, string> = {
-  take_three_crystals: "#f97316",
-  take_two_crystals:   "#f97316",
-  reserve_card:        "#34d399",
-  purchase_card:       "#818cf8",
-  purchase_reserved:   "#818cf8",
+  harness_three_affinities: "#f97316",
+  harness_two_affinities:   "#f97316",
+  reserve_artifact:        "#34d399",
+  forge_artifact:       "#818cf8",
+  forge_reserved_artifact:   "#818cf8",
 };
 
 // Burst intensity presets per named game event type.
@@ -134,41 +134,41 @@ const BURST_INTENSITY: Record<string, number> = {
 const BURST_INTENSITY_DEFAULT = 1.15;
 
 // Maps action type → the affinity key whose palette should drive the burst.
-// Harvest → Flare (energy collection), reserve → Verdance (growth/holding),
+// Harness -> Flare (energy collection), reserve -> Verdance (growth/holding),
 // forge → Continuum (crystallizing permanence).
-const BURST_GEM_KEY_BY_ACTION: Partial<Record<string, GemKey>> = {
-  take_three_crystals: "ruby",
-  take_two_crystals:   "ruby",
-  reserve_card:        "emerald",
-  purchase_card:       "sapphire",
-  purchase_reserved:   "sapphire",
+const BURST_AFFINITY_KEY_BY_ACTION: Partial<Record<string, AffinityKey>> = {
+  harness_three_affinities: "flare",
+  harness_two_affinities:   "flare",
+  reserve_artifact:        "verdance",
+  forge_artifact:       "continuum",
+  forge_reserved_artifact:   "continuum",
 };
 
 // Per-affinity particle color palettes.
 // ring1: 6 colors used for the close-scatter ring (replaces the single-color tint).
 // ring2: 5 colors used for the wide shockwave ring (replaces the hardcoded indigo/cyan).
-const AFFINITY_BURST_PALETTE: Record<GemKey, { ring1: readonly string[]; ring2: readonly string[] }> = {
-  pearl:    {
+const AFFINITY_BURST_PALETTE: Record<AffinityKey, { ring1: readonly string[]; ring2: readonly string[] }> = {
+  radiance:    {
     ring1: ["#F2F5FF", "#E8EEFF", "#A8B8E8", "#D8E4FF", "#FFFFFF", "#C8D4F4"],
     ring2: ["#A8B8E8", "#D8E4FF", "#7090D8", "#F2F5FF", "#B0C4F0"],
   },
-  ruby:     {
+  flare:     {
     ring1: ["#FF5A3C", "#FF8A6A", "#FFB347", "#FF4500", "#FF7043", "#FFCC80"],
     ring2: ["#FF5A3C", "#FF8A6A", "#FFB347", "#FF6B35", "#FF4500"],
   },
-  sapphire: {
+  continuum: {
     ring1: ["#3D6BFF", "#7090FF", "#4F8EFF", "#A0B8FF", "#2952CC", "#93A4FF"],
     ring2: ["#3D6BFF", "#7090FF", "#A0B8FF", "#2952CC", "#C5D0FF"],
   },
-  emerald:  {
+  verdance:  {
     ring1: ["#2ECC71", "#5BE197", "#27AE60", "#7CFC00", "#00C853", "#A8F0C0"],
     ring2: ["#2ECC71", "#5BE197", "#27AE60", "#00C853", "#A8F0C0"],
   },
-  onyx:     {
+  abyss:     {
     ring1: ["#7B1FA2", "#B14FD8", "#9C27B0", "#CE93D8", "#4A0072", "#E040FB"],
     ring2: ["#7B1FA2", "#B14FD8", "#CE93D8", "#E040FB", "#9C27B0"],
   },
-  flux:     {
+  singularity:     {
     ring1: ["#FFC43D", "#FFE08A", "#FFD700", "#FFAB40", "#FFF176", "#FFB300"],
     ring2: ["#FFC43D", "#FFE08A", "#FFD700", "#FFAB40", "#FFF9C4"],
   },
@@ -199,7 +199,7 @@ function LumiiOrb({
   burstColor?: string;
   tetheredDirection?: "down" | "up" | "left";
   onNearestNode?: (offset: { x: number; y: number }) => void;
-  highlightZone?: "harvest" | "market" | "filters" | "luminaries" | null;
+  highlightZone?: "well" | "forge" | "filters" | "luminaries" | null;
   beatKey?: string | number;
 }) {
   // Stable unique ID for SVG filter defs — safe across StrictMode double-invoke
@@ -756,7 +756,6 @@ function TetherBeam({
             ? `linear-gradient(${gradDir}, rgba(251,191,36,0.65), rgba(249,115,22,0.32), transparent)`
             : `linear-gradient(${gradDir}, rgba(168,85,247,0.55), rgba(59,130,246,0.28), transparent)`,
           borderRadius: 10,
-          filter: isMobile ? undefined : "blur(4px)",
         }}
       />
       {/* Sharper centre line */}
@@ -919,7 +918,6 @@ interface BubbleProps {
 }
 
 function LumiiBubble({ text, isActionBeat, isLastLine, isFfBeat, phase, objective, onClick }: BubbleProps) {
-  const isMobile = useIsMobile();
   const showNext = !isActionBeat || !isLastLine;
   const actionPrompt = isLastLine && isActionBeat ? "Go ahead — do it!" : null;
 
@@ -935,7 +933,6 @@ function LumiiBubble({ text, isActionBeat, isLastLine, isFfBeat, phase, objectiv
       className="pointer-events-auto text-left max-w-[240px] rounded-2xl border border-white/20 shadow-xl focus:outline-none"
       style={{
         background: phase === 2 ? "rgba(20, 12, 36, 0.97)" : "rgba(10, 16, 36, 0.97)",
-        backdropFilter: isMobile ? undefined : "blur(14px)",
         padding: "12px 14px 10px",
       }}
     >
@@ -1013,7 +1010,7 @@ function LumiiBubble({ text, isActionBeat, isLastLine, isFfBeat, phase, objectiv
 
 // ─── Beat Script ──────────────────────────────────────────────────────────────
 
-type BeatPosition = "center" | "harvest" | "market" | "filters" | "luminaries";
+type BeatPosition = "center" | "well" | "forge" | "filters" | "luminaries";
 type BeatAdvance =
   | { type: "click" }
   | { type: "action"; actions: string[] }
@@ -1023,7 +1020,7 @@ interface Beat {
   position: BeatPosition;
   lines: string[];
   advance: BeatAdvance;
-  highlightZone?: "harvest" | "market" | "filters" | "luminaries";
+  highlightZone?: "well" | "forge" | "filters" | "luminaries";
   objective?: string;
   phase: 1 | 2;
 }
@@ -1042,9 +1039,9 @@ const BEATS: Beat[] = [
   },
   // 1 — Affinity Well intro
   {
-    position: "harvest",
+    position: "well",
     phase: 1,
-    highlightZone: "harvest",
+    highlightZone: "well",
     lines: [
       "This flowing band is the Affinity Well — the raw cosmic substrate your civilization draws from each turn.",
       "Each current is a distinct mode of existence: Flare 🔴, Continuum 🔵, Verdance 🟢, Abyss 🟣, Radiance ⚪ — each a survival philosophy that shapes the cosmos.",
@@ -1052,35 +1049,35 @@ const BEATS: Beat[] = [
     ],
     advance: { type: "click" },
   },
-  // 2 — First harvest (wait for action)
+  // 2: First Harness action (wait for action).
   {
-    position: "harvest",
+    position: "well",
     phase: 1,
-    highlightZone: "harvest",
+    highlightZone: "well",
     objective: "Objective: gather affinity",
     lines: [
       "Your turn! Tap 3 different affinity currents from the Well to draw them into your civilization, then tap Harness to claim them.",
     ],
-    advance: { type: "action", actions: ["take_three_crystals", "take_two_crystals"] },
+    advance: { type: "action", actions: ["harness_three_affinities", "harness_two_affinities"] },
   },
-  // 3 — Second harvest
+  // 3: Second Harness action.
   {
-    position: "harvest",
+    position: "well",
     phase: 1,
-    highlightZone: "harvest",
+    highlightZone: "well",
     objective: "Objective: gather affinity",
     lines: [
       "Your civilization deepens its reach. Do it again — draw 3 different currents, or 2 of the same if there are 4 or more of that current available in the Well.",
     ],
-    advance: { type: "action", actions: ["take_three_crystals", "take_two_crystals"] },
+    advance: { type: "action", actions: ["harness_three_affinities", "harness_two_affinities"] },
   },
-  // 4 — Market intro + cost explanation
+  // 4: Forge introduction and cost explanation.
   {
-    position: "market",
+    position: "forge",
     phase: 1,
-    highlightZone: "market",
+    highlightZone: "forge",
     lines: [
-      "These are Artifact cards — relic technologies in three tiers. Each shows an affinity cost: the currents needed to Forge it into your civilization.",
+      "These are Artifacts — relic technologies in three tiers. Each shows an affinity cost: the currents needed to Forge it into your civilization.",
       "When all cost pips appear green, you can afford that Artifact right now. Orange means you're short — the exact gap is shown so you always know how close you are.",
       "Every Artifact you Forge builds permanent affinity depth. That depth automatically discounts future Artifacts of the same type — so each Forge makes the next one cheaper.",
     ],
@@ -1092,7 +1089,7 @@ const BEATS: Beat[] = [
     phase: 1,
     highlightZone: "filters",
     lines: [
-      "Above the market, three filters control how costs are displayed: Full, Discounted, and Needed.",
+      "Above The Forge, three filters control how costs are displayed: Full, Discounted, and Needed.",
       "Discounted applies your built affinity depth as automatic discounts. Forge two Flare Artifacts and every Flare cost here drops by 2. This is your real cost after civilization depth.",
       "Needed strips away any cost already covered by your depth — only what you still lack appears. Switch to Needed to instantly spot which Artifacts are within reach this turn.",
     ],
@@ -1100,38 +1097,38 @@ const BEATS: Beat[] = [
   },
   // 6 — Reserve instruction (wait for action)
   {
-    position: "market",
+    position: "forge",
     phase: 1,
-    highlightZone: "market",
+    highlightZone: "forge",
     objective: "Objective: encrypt an Artifact",
     lines: [
       "Tap any Artifact to examine it. You can Forge it into your civilization now, or Encrypt it — securing it and receiving a Singularity current as the cosmos rewards your foresight.",
-      "Encrypt one now. Tap any Artifact in the market and hit Encrypt.",
+      "Encrypt one now. Tap any Artifact in The Forge and hit Encrypt.",
     ],
-    advance: { type: "action", actions: ["reserve_card"] },
+    advance: { type: "action", actions: ["reserve_artifact"] },
   },
   // 7 — Post-reserve + bonus explanation
   {
-    position: "market",
+    position: "forge",
     phase: 1,
     lines: [
-      "Good. That Artifact is secured — no other civilization can claim it. It waits in your Hand panel until your affinity currents are sufficient to Forge it.",
+      "Good. That Artifact is secured — no other civilization can claim it. It waits in your Singularity panel until your affinity currents are sufficient to Forge it.",
       "You also received one Singularity current — the gold affinity. Singularity acts as a wildcard: it substitutes for any affinity when Forging, stretching whatever you hold.",
-      "Every Artifact you Forge adds a permanent bonus to that affinity. These bonuses appear in your Hand panel and automatically reduce all future costs of that type, every turn.",
+      "Every Artifact you Forge adds a permanent bonus to that affinity. These bonuses appear in your civilization and automatically reduce all future costs of that type, every turn.",
     ],
     advance: { type: "click" },
   },
   // 8 — Forge instruction (wait for action)
   {
-    position: "market",
+    position: "forge",
     phase: 1,
-    highlightZone: "market",
+    highlightZone: "forge",
     objective: "Objective: forge an Artifact",
     lines: [
       "Now Forge. Tap any Artifact with green costs — those are within reach right now. Hit Forge Artifact to claim it permanently.",
       "Try switching to Discounted view to see your depth discounts at work, or Needed to see only what you're still short on. Both help you find a good target fast.",
     ],
-    advance: { type: "action", actions: ["purchase_card"] },
+    advance: { type: "action", actions: ["forge_artifact"] },
   },
   // 9 — Luminaries + Eminence intro
   {
@@ -1140,8 +1137,8 @@ const BEATS: Beat[] = [
     highlightZone: "luminaries",
     lines: [
       "Look up — those are the Luminaries. Each one stirs when your civilization expresses enough affinity depth of its required types. When it answers, you receive Eminence and a living bonus.",
-      "Eminence is your civilization's ascension score. Check your Hand panel for your current total — it's shown prominently at the top. Reach 15 Eminence first and you win.",
-      "Single-affinity Luminaries bring 2 Eminence; dual bring 3; triple bring 4. Stack multiple Luminaries and compound your ascension — they are the turning points of legend.",
+      "Eminence measures your civilization's ascension. Check the Eminence display for your current total. Reach 15 Eminence first and you win.",
+      "Different Luminaries bring different Eminence rewards and effects. Stack multiple Luminaries and compound your ascension — they are the turning points of legend.",
     ],
     advance: { type: "click" },
   },
@@ -1160,22 +1157,22 @@ const BEATS: Beat[] = [
     phase: 2,
     lines: [
       "Here. Several turns forward. Your civilization has taken the Verdance path — life becoming infrastructure, growth woven into every component.",
-      "You carry 5 Verdance depth and 13 Eminence. One more Verdance Artifact will call forth the Verdant Oracle — the archetype of life that has made itself eternal.",
-      "The Verdant Oracle brings 2 Eminence. 13 + 2 = 15. That is the threshold where a civilization crosses from survival into legend. You are one move away.",
+      "You carry 5 Verdance depth and 14 Eminence. One more Verdance Artifact will call forth the Verdant Oracle — the archetype of life that has made itself eternal.",
+      "The Verdant Oracle brings 1 Eminence. 14 + 1 = 15. That is the threshold where a civilization crosses from survival into legend. You are one move away.",
     ],
     advance: { type: "click" },
   },
   // 12 — Endgame forge instruction (wait for action)
   {
-    position: "market",
+    position: "forge",
     phase: 2,
-    highlightZone: "market",
+    highlightZone: "forge",
     objective: "Objective: forge your encrypted Artifact",
     lines: [
       "You have a Verdance Artifact encrypted — it costs Abyss and Radiance currents, and your civilization holds both.",
-      "Tap the Hand panel, find your encrypted card, and Forge it. The Verdant Oracle is waiting — and 15 Eminence is one step away.",
+      "Tap the Singularity panel, find your encrypted Artifact, and Forge it. The Verdant Oracle is waiting — and 15 Eminence is one step away.",
     ],
-    advance: { type: "action", actions: ["purchase_reserved"] },
+    advance: { type: "action", actions: ["forge_reserved_artifact"] },
   },
   // 13 — Completion celebration
   {
@@ -1195,31 +1192,31 @@ export const LUMII_BEAT_COUNT = BEATS.length;
 export const LUMII_BEAT_GATES: Record<number, string[]> = {
   0:  [],
   1:  [],
-  2:  ["take_three_crystals", "take_two_crystals"],
-  3:  ["take_three_crystals", "take_two_crystals"],
+  2:  ["harness_three_affinities", "harness_two_affinities"],
+  3:  ["harness_three_affinities", "harness_two_affinities"],
   4:  [],
   5:  [],
-  6:  ["reserve_card"],
+  6:  ["reserve_artifact"],
   7:  [],
-  8:  ["purchase_card"],
+  8:  ["forge_artifact"],
   9:  [],
   10: ["tutorial_fast_forward"],
   11: [],
-  12: ["purchase_reserved"],
+  12: ["forge_reserved_artifact"],
   13: [],
 };
 
-export const LUMII_ZONE_HIGHLIGHTS: Partial<Record<number, "harvest" | "market" | "filters" | "luminaries">> = {
-  1:  "harvest",
-  2:  "harvest",
-  3:  "harvest",
-  4:  "market",
+export const LUMII_ZONE_HIGHLIGHTS: Partial<Record<number, "well" | "forge" | "filters" | "luminaries">> = {
+  1:  "well",
+  2:  "well",
+  3:  "well",
+  4:  "forge",
   5:  "filters",
-  6:  "market",
-  7:  "market",
-  8:  "market",
+  6:  "forge",
+  7:  "forge",
+  8:  "forge",
   9:  "luminaries",
-  12: "market",
+  12: "forge",
 };
 
 // ─── Tutorial attention states ────────────────────────────────────────────────
@@ -1248,10 +1245,10 @@ export const LUMII_ATTENTION: Record<number, LumiiAttentionState> = {
 const NUDGE_MESSAGES: Partial<Record<number, string>> = {
   2:  "Tap affinity currents in the Well below to select them, then tap Harness.",
   3:  "Draw more currents from the Affinity Well, then tap Harness.",
-  5:  "Tap Discounted or Needed above the market to try the filters, then tap Lumii to continue.",
-  6:  "Tap any Artifact card in the market, then tap Encrypt to hold it.",
+  5:  "Tap Discounted or Needed above The Forge to try the filters, then tap Lumii to continue.",
+  6:  "Tap any Artifact in The Forge, then tap Encrypt to hold it.",
   8:  "Tap an Artifact with green costs and hit Forge Artifact.",
-  12: "Open your Hand panel, find your encrypted card, and tap Forge Artifact.",
+  12: "Open your Singularity panel, find your encrypted Artifact, and tap Forge Artifact.",
 };
 
 // ─── Position helpers ─────────────────────────────────────────────────────────
@@ -1275,9 +1272,9 @@ interface PositionStyle {
 
 function getPositionStyle(pos: BeatPosition, vpH: number): PositionStyle {
   switch (pos) {
-    case "harvest":
+    case "well":
       return { fixed: { bottom: 168, left: 14 }, layout: "above", tether: "down" };
-    case "market":
+    case "forge":
     case "filters":
       return {
         fixed: { top: Math.round(vpH * 0.44) - 36, right: 14 },
@@ -1385,7 +1382,6 @@ export function LumiiTutorial({
 }: Props) {
   const [, setLocation] = useLocation();
   const vpH = useViewportH();
-  const isMobile = useIsMobile();
   const [lineIdx, setLineIdx] = useState(0);
   const [isFastForwarding, setIsFastForwarding] = useState(false);
   const [showSkipConfirm, setShowSkipConfirm] = useState(false);
@@ -1400,7 +1396,7 @@ export function LumiiTutorial({
   // reference named event types instead of raw literals.
   const [currentBurstIntensity, setCurrentBurstIntensity] = useState<number>(burstIntensity);
   // Affinity key for the current burst — drives per-affinity particle palettes when set.
-  const [burstGemKey, setBurstGemKey] = useState<GemKey | null>(null);
+  const [burstAffinityKey, setBurstAffinityKey] = useState<AffinityKey | null>(null);
   // Nearest constellation node for tether origin alignment
   const [tetherNodeOffset, setTetherNodeOffset] = useState<{ x: number; y: number }>({ x: 0, y: 0 });
   const prevLogLenRef = useRef(0);
@@ -1409,9 +1405,9 @@ export function LumiiTutorial({
   const prevClaimedLumCountRef = useRef(
     state?.players?.find((p) => p.playerId === sessionPlayerId)?.claimedLuminaryIds?.length ?? 0
   );
-  // Track lumens so a forge action that grants Eminence can fire the eminence_milestone preset.
-  const prevLumensRef = useRef(
-    state?.players?.find((p) => p.playerId === sessionPlayerId)?.lumens ?? 0
+  // Track Eminence so a Forge action that grants it can fire the eminence_milestone preset.
+  const prevEminenceRef = useRef(
+    state?.players?.find((p) => p.playerId === sessionPlayerId)?.eminence ?? 0
   );
   const ffTriggeredRef = useRef(false);
   const nudgeTimerRef = useRef<ReturnType<typeof setTimeout> | null>(null);
@@ -1467,12 +1463,12 @@ export function LumiiTutorial({
   // opts.color: flash palette color (default gold #fbbf24; use Luminary summonColor (API contract) for claims).
   // opts.intensity: scale peak from BURST_INTENSITY map (default BURST_INTENSITY_DEFAULT).
   //   Values >= 1.35 also fire the wide-ring shockwave (ring 2).
-  // opts.gemKey: affinity key that drives the per-affinity particle palettes (both rings).
-  const triggerCelebrationBurst = useCallback((onComplete: () => void, opts?: { duration?: number; color?: string; intensity?: number; gemKey?: GemKey }) => {
+  // opts.affinityKey: affinity key that drives the per-affinity particle palettes (both rings).
+  const triggerCelebrationBurst = useCallback((onComplete: () => void, opts?: { duration?: number; color?: string; intensity?: number; affinityKey?: AffinityKey }) => {
     if (burstTimerRef.current) clearTimeout(burstTimerRef.current);
     setBurstColor(opts?.color ?? "#fbbf24");
     setCurrentBurstIntensity(opts?.intensity ?? BURST_INTENSITY_DEFAULT);
-    setBurstGemKey(opts?.gemKey ?? null);
+    setBurstAffinityKey(opts?.affinityKey ?? null);
     setBurstActive(true);
     burstTimerRef.current = setTimeout(() => {
       setBurstActive(false);
@@ -1512,7 +1508,7 @@ export function LumiiTutorial({
       prevClaimedLumCountRef.current = currentClaimedCount;
       if (prevCount === 0 && currentClaimedCount === 1) {
         // First Luminary claimed — use its summonColor (API contract), a longer epic burst, and elevated
-        // intensity. No single gemKey applies; summonColor drives the palette for this moment.
+        // intensity. No single affinityKey applies; summonColor drives the palette for this moment.
         const newLumId = myPlayer?.claimedLuminaryIds?.[0];
         const lumData = (state.luminaries ?? []).find((l) => l.id === newLumId);
         const color = (lumData as { summonColor?: string } | undefined)?.summonColor ?? "#fbbf24";
@@ -1523,16 +1519,16 @@ export function LumiiTutorial({
         });
       } else {
         // Standard action beat — use per-action palette color, affinity key, and intensity.
-        // Forge actions that also grant Eminence (lumens increased) get the elevated
+        // Forge actions that also grant Eminence get the elevated
         // eminence_milestone preset (1.6, ring 2); plain forges get card_forged (1.15).
-        const isForgingAction = lastAction.type === "purchase_card" || lastAction.type === "purchase_reserved";
-        const currentLumens = myPlayer?.lumens ?? 0;
-        const prevLumens = prevLumensRef.current;
-        prevLumensRef.current = currentLumens;
-        const earnedEminence = isForgingAction && currentLumens > prevLumens;
+        const isForgingAction = lastAction.type === "forge_artifact" || lastAction.type === "forge_reserved_artifact";
+        const currentEminence = myPlayer?.eminence ?? 0;
+        const previousEminence = prevEminenceRef.current;
+        prevEminenceRef.current = currentEminence;
+        const earnedEminence = isForgingAction && currentEminence > previousEminence;
         triggerCelebrationBurst(advanceBeat, {
           color: BURST_COLOR_BY_ACTION[lastAction.type] ?? "#fbbf24",
-          gemKey: BURST_GEM_KEY_BY_ACTION[lastAction.type],
+          affinityKey: BURST_AFFINITY_KEY_BY_ACTION[lastAction.type],
           intensity: earnedEminence
             ? BURST_INTENSITY.eminence_milestone
             : isForgingAction
@@ -1559,7 +1555,7 @@ export function LumiiTutorial({
   useEffect(() => {
     if (!isFastForwarding) return undefined;
     const myPlayer = state?.players?.find((p) => p.playerId === sessionPlayerId);
-    if ((myPlayer?.lumens ?? 0) >= 13) {
+    if ((myPlayer?.eminence ?? 0) >= 13) {
       const timer = setTimeout(() => {
         setIsFastForwarding(false);
         ffTriggeredRef.current = false;
@@ -1835,8 +1831,8 @@ export function LumiiTutorial({
                                 const rad = (deg * Math.PI) / 180;
                                 const tx = Math.round(Math.cos(rad) * 52 * currentBurstIntensity);
                                 const ty = Math.round(Math.sin(rad) * 52 * currentBurstIntensity);
-                                const ring1Palette = burstGemKey
-                                  ? AFFINITY_BURST_PALETTE[burstGemKey].ring1
+                                const ring1Palette = burstAffinityKey
+                                  ? AFFINITY_BURST_PALETTE[burstAffinityKey].ring1
                                   : (() => {
                                       const hex = burstColor.replace("#", "");
                                       const br = parseInt(hex.substring(0, 2), 16);
@@ -1861,7 +1857,6 @@ export function LumiiTutorial({
                                           height: 18,
                                           borderRadius: "50%",
                                           background: color,
-                                          filter: isMobile ? undefined : "blur(4px)",
                                           pointerEvents: "none",
                                           zIndex: 1,
                                         }}
@@ -1897,8 +1892,8 @@ export function LumiiTutorial({
                                 const radius = (88 + (i % 2) * 8) * currentBurstIntensity;
                                 const tx = Math.round(Math.cos(rad) * radius);
                                 const ty = Math.round(Math.sin(rad) * radius);
-                                const ring2Palette = burstGemKey
-                                  ? AFFINITY_BURST_PALETTE[burstGemKey].ring2
+                                const ring2Palette = burstAffinityKey
+                                  ? AFFINITY_BURST_PALETTE[burstAffinityKey].ring2
                                   : (["#f0abfc", "#67e8f9", "#fde68a", "#a5f3fc", "#d8b4fe"] as const);
                                 const color = ring2Palette[i % ring2Palette.length];
                                 const delay = 0.12 + i * 0.006;
@@ -1916,7 +1911,6 @@ export function LumiiTutorial({
                                           height: 16,
                                           borderRadius: "50%",
                                           background: color,
-                                          filter: isMobile ? undefined : "blur(4px)",
                                           pointerEvents: "none",
                                           zIndex: 1,
                                         }}
@@ -2001,7 +1995,6 @@ export function LumiiTutorial({
                                 style={{
                                   background: "rgba(168,85,247,0.18)",
                                   border: "1px solid rgba(168,85,247,0.38)",
-                                  backdropFilter: isMobile ? undefined : "blur(8px)",
                                   color: "rgba(255,255,255,0.82)",
                                 }}
                               >
@@ -2042,7 +2035,7 @@ export function LumiiTutorial({
                 exit={{ opacity: 0 }}
                 className="fixed top-3 left-1/2 -translate-x-1/2 z-[500] pointer-events-none"
               >
-                <div className="flex items-center gap-1.5 px-3 py-1 rounded-full bg-emerald-950/80 border border-emerald-500/30 text-[11px] text-emerald-300 font-semibold backdrop-blur-sm">
+                <div className="flex items-center gap-1.5 px-3 py-1 rounded-full bg-emerald-950/80 border border-emerald-500/30 text-[11px] text-emerald-300 font-semibold">
                   <div className="w-1.5 h-1.5 rounded-full bg-emerald-400 animate-pulse" />
                   Civilization on the Edge of Legend
                 </div>
@@ -2053,5 +2046,109 @@ export function LumiiTutorial({
         document.body
       )}
     </>
+  );
+}
+
+type GuidedHint = {
+  key: string;
+  text: string;
+};
+
+/**
+ * A real match companion, distinct from the scripted fast-forward tutorial
+ * above. It never blocks play: Lumii explains each system after the player
+ * encounters it in a normal game against the passive guided opponent.
+ */
+export function LumiiGuidedMatch({
+  state,
+  sessionPlayerId,
+}: {
+  state: GameState | null | undefined;
+  sessionPlayerId: string;
+}) {
+  const [hint, setHint] = useState<GuidedHint | null>(null);
+  const shownRef = useRef(new Set<string>());
+  const claimedCountRef = useRef<number | null>(null);
+
+  const showHint = useCallback((key: string, text: string) => {
+    if (shownRef.current.has(key)) return;
+    shownRef.current.add(key);
+    setHint({ key, text });
+  }, []);
+
+  useEffect(() => {
+    const timer = setTimeout(() => {
+      showHint(
+        "welcome",
+        "This is a full guided match. I will pass while you learn. Begin with the Affinity Well.",
+      );
+    }, 500);
+    return () => clearTimeout(timer);
+  }, [showHint]);
+
+  useEffect(() => {
+    if (!state || !sessionPlayerId) return;
+    const action = state.lastAction as { type?: string; playerId?: string } | null;
+    if (action?.playerId === sessionPlayerId) {
+      if (action.type === "harness_three_affinities" || action.type === "harness_two_affinities") {
+        showHint(
+          "first-harness",
+          "Good. A Harness takes up to 3 different Affinities, or 2 of the same. The Forge shows what an Artifact still needs.",
+        );
+      } else if (action.type === "reserve_artifact") {
+        showHint(
+          "first-encryption",
+          "Encryption keeps that Artifact from rival civilizations. It waits in the Singularity panel and grants 1 Singularity to cover a missing Affinity.",
+        );
+      } else if (action.type === "forge_artifact" || action.type === "forge_reserved_artifact") {
+        showHint(
+          "first-forge",
+          "A forged Artifact stays with your civilization. Its bonus lowers matching future costs automatically.",
+        );
+      }
+    }
+
+    const player = state.players.find((candidate) => candidate.playerId === sessionPlayerId);
+    const claimedCount = player?.claimedLuminaryIds?.length ?? 0;
+    if (claimedCountRef.current === null) {
+      claimedCountRef.current = claimedCount;
+    } else if (claimedCount > claimedCountRef.current) {
+      claimedCountRef.current = claimedCount;
+      showHint(
+        "first-luminary",
+        "A Luminary has answered your civilization. Its living bonus joins your civilization on your next turn.",
+      );
+    }
+  }, [state?.version, state, sessionPlayerId, showHint]);
+
+  if (!hint) return null;
+
+  return (
+    <AnimatePresence>
+      <motion.div
+        key={hint.key}
+        initial={{ opacity: 0, y: -10, scale: 0.96 }}
+        animate={{ opacity: 1, y: 0, scale: 1 }}
+        exit={{ opacity: 0, y: -8, scale: 0.96 }}
+        transition={{ type: "spring", stiffness: 320, damping: 26 }}
+        className="fixed right-4 top-20 z-[130] flex max-w-[min(21rem,calc(100vw-2rem))] items-start gap-2 rounded-lg border border-indigo-300/30 bg-[#09091c]/95 p-3 shadow-2xl shadow-black/50"
+      >
+        <div className="shrink-0 pt-0.5">
+          <LumiiOrb size={38} speaking highlightZone={null} beatKey={hint.key} />
+        </div>
+        <div className="min-w-0 pr-4">
+          <div className="mb-1 text-[9px] font-bold uppercase text-indigo-200/65">Lumii</div>
+          <p className="text-xs leading-relaxed text-white/90">{hint.text}</p>
+        </div>
+        <button
+          type="button"
+          onClick={() => setHint(null)}
+          aria-label="Dismiss Lumii's guidance"
+          className="absolute right-2 top-2 grid h-6 w-6 place-items-center rounded-md text-white/45 transition-colors hover:bg-white/10 hover:text-white"
+        >
+          <X className="h-3.5 w-3.5" />
+        </button>
+      </motion.div>
+    </AnimatePresence>
   );
 }

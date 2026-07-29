@@ -17,7 +17,7 @@ import { clearTutorialProgress, clearIntroSeen } from "@/lib/tutorialProgress";
 function deriveCameraFocus(
   beatId: string,
   subStep: number,
-): "market" | "well" | "storage" | "forge" | "tier1" | "cinematic" {
+): "overview" | "well" | "storage" | "forge" | "tier1" | "cinematic" {
   if (beatId === "b6b_root_lattice" || beatId === "b7_artifact_cost" || beatId === "b7b_cost_bridge")
     return "tier1";
   if (beatId === "b8_first_harness") return "well";
@@ -27,15 +27,15 @@ function deriveCameraFocus(
   if (beatId === "b9b_forge_complete" || beatId === "b9c_transition" || beatId === "b14_win_condition")
     return "storage";
   if (beatId === "b10_reserve" || beatId === "b10b_reserve_granted") return "forge";
-  return "market";
+  return "overview";
 }
 
 // ─── Known bug annotations keyed by beat id ──────────────────────────────────
 const BEAT_BUGS: Record<string, string[]> = {
-  "b9b_forge_complete":   ["BUG-01: camera='storage' has no scroll handler → scrolls to market top", "BUG-11: isForgeHighlighted persists after forge"],
-  "b9c_transition":       ["BUG-01: camera='storage' has no scroll handler → scrolls to market top"],
-  "b10_reserve":          ["BUG-08: no card highlighted at subStep=0 — 'reserve this one' has no visual referent"],
-  "b10b_reserve_granted": ["BUG-05: PlayerHand highlighted but off-screen (camera=forge shows market top)"],
+  "b9b_forge_complete":   ["BUG-01: camera='storage' has no scroll handler → scrolls to board top", "BUG-11: isForgeHighlighted persists after forge"],
+  "b9c_transition":       ["BUG-01: camera='storage' has no scroll handler → scrolls to board top"],
+  "b10_reserve":          ["BUG-08: no Artifact highlighted at subStep=0 — 'reserve this one' has no visual referent"],
+  "b10b_reserve_granted": ["BUG-05: PlayerHand highlighted but off-screen (camera=forge shows board top)"],
   "b11_forge_reserved":   ["BUG-06: camera=tier1 shows two ghost slots at subStep=0; PlayerHand off-screen"],
   "b12_tier2":            ["BUG-03 P1 SOFT-LOCK: view='needed' arrives from b11; subStep=0 requires re-clicking already-active Needed tab"],
   "b14_win_condition":    ["BUG-01: camera='storage' scrolls to top (Eminence ok — pinned panel — but storage section missed)"],
@@ -47,7 +47,7 @@ function detectRuntimeWarnings(s: TutState, beatId: string): string[] {
   if (beatId === "b12_tier2" && s.subStep === 0 && s.view === "needed")
     warns.push("LIVE SOFT-LOCK: view is already 'needed' — player cannot advance without re-clicking active tab");
   if ((beatId === "b9b_forge_complete" || beatId === "b9c_transition") && s.forged.length === 0)
-    warns.push("No forged cards: PlayerStorage not rendered (hidden by conditional)");
+    warns.push("No forged Artifacts: PlayerStorage not rendered (hidden by conditional)");
   return warns;
 }
 
@@ -214,21 +214,21 @@ export function TutorialDebugOverlay({ s }: { s: TutState; dispatch: Dispatch<TA
 
   const animStr = s.animTrigger
     ? s.animTrigger.type === "forge"
-      ? `forge: ${s.animTrigger.cardId} (+${s.animTrigger.lumens} eminence)`
-      : `harvest: [${(s.animTrigger as Extract<typeof s.animTrigger, { type: "harvest" }>).gems.join(", ")}]`
+      ? `forge: ${s.animTrigger.cardId} (+${s.animTrigger.eminence} eminence)`
+      : `harness: [${(s.animTrigger as Extract<typeof s.animTrigger, { type: "harness" }>).affinities.join(", ")}]`
     : "none";
 
   const cardFlipStr = (() => {
     const b6Idx  = BEAT_INDEX["b6_forge_appears"]  ?? 10;
     const b6bIdx = BEAT_INDEX["b6b_root_lattice"]  ?? 11;
-    if (s.beat < b6Idx)  return "pre-mount (market not yet shown)";
+    if (s.beat < b6Idx)  return "pre-mount (Forge not yet shown)";
     if (s.beat === b6Idx)  return "back face shown — awaiting flip at next beat";
     if (s.beat === b6bIdx) return "flipping now (CardFlipReveal fresh-mount, shouldAnimate=true)";
     return "post-flip (irrelevant)";
   })();
   const cardFlipWarn = false;
 
-  const crystalStr = Object.entries(s.crystals).filter(([, v]) => v > 0).map(([k, v]) => `${k}:${v}`).join(" ") || "none";
+  const heldAffinityStr = Object.entries(s.affinities).filter(([, v]) => v > 0).map(([k, v]) => `${k}:${v}`).join(" ") || "none";
   const bonusStr   = Object.entries(s.bonuses).filter(([, v]) => v > 0).map(([k, v]) => `${k}:${v}`).join(" ") || "none";
   const wellSelStr = Object.entries(s.wellSel).filter(([, v]) => (v ?? 0) > 0).map(([k, v]) => `${k}:${v}`).join(" ") || "none";
 
@@ -350,7 +350,7 @@ export function TutorialDebugOverlay({ s }: { s: TutState; dispatch: Dispatch<TA
             <Row label="cameraFocus"     value={cameraFocus} warn={cameraWarn} />
             {cameraWarn && (
               <div style={{ ...C.warn, fontSize: 10, paddingLeft: 4 }}>
-                BUG-01: no scroll handler for 'storage' — scrolls to market top
+                BUG-01: no scroll handler for 'storage' — scrolls to board top
               </div>
             )}
             <Row label="lumiiZone"       value={beat.lumiiZone} />
@@ -368,7 +368,7 @@ export function TutorialDebugOverlay({ s }: { s: TutState; dispatch: Dispatch<TA
 
           {/* ── GAME STATE ────────────────────────────────────────────────── */}
           <Section id="state" title="GAME STATE">
-            <Row label="crystals" value={crystalStr} dim={crystalStr === "none"} />
+            <Row label="heldAffinities" value={heldAffinityStr} dim={heldAffinityStr === "none"} />
             <Row label="bonuses"  value={bonusStr}   dim={bonusStr === "none"} />
             <Row label="forged"   value={s.forged.length   ? s.forged.join(", ")   : "none"} dim={!s.forged.length} />
             <Row label="reserved" value={s.reserved.length ? s.reserved.join(", ") : "none"} dim={!s.reserved.length} />

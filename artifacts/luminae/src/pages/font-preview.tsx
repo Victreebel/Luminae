@@ -40,7 +40,7 @@ function VariantA() {
       fontFamily: "'Cinzel Decorative', 'Cinzel', serif",
       position: "relative", overflow: "hidden",
     }}>
-      <Label>A · Crystal Spectrum</Label>
+      <Label>A · Affinity Spectrum</Label>
 
       {/* Stars */}
       <div style={{ position: "absolute", inset: 0, overflow: "hidden", pointerEvents: "none" }}>
@@ -114,7 +114,7 @@ function VariantB() {
 
       <div style={{
         position: "absolute", bottom: "18%", left: "50%", transform: "translateX(-50%)",
-        width: "75%", height: 3, background: GRADIENT, opacity: 0.35, borderRadius: 2, filter: "blur(2px)",
+        width: "75%", height: 3, background: GRADIENT, opacity: 0.35, borderRadius: 2,
       }} />
 
       <div style={{ width: "55%", height: 1, background: "linear-gradient(90deg, transparent, rgba(255,196,61,0.4), transparent)", position: "relative", zIndex: 1 }} />

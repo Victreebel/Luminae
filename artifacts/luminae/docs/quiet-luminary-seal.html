@@ -1,0 +1,435 @@
+<!doctype html>
+<html lang="en">
+<head>
+  <meta charset="utf-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1" />
+  <title>Luminae Quiet Luminary Seal Mockup</title>
+  <style>
+    :root {
+      --bg: #03040a;
+      --panel: #080815;
+      --ink: #e8e3ff;
+      --muted: rgba(224, 218, 255, 0.58);
+      --gold: #d6b45d;
+      --ember: #ff6546;
+      --violet: #9b63ff;
+      --cyan: #79d8ff;
+    }
+
+    * { box-sizing: border-box; }
+
+    body {
+      margin: 0;
+      min-height: 100vh;
+      background:
+        radial-gradient(circle at 15% 18%, rgba(115, 80, 255, 0.12), transparent 27rem),
+        radial-gradient(circle at 82% 38%, rgba(255, 120, 64, 0.12), transparent 24rem),
+        linear-gradient(180deg, #050511 0%, #020208 100%);
+      color: var(--ink);
+      font-family: Inter, ui-sans-serif, system-ui, -apple-system, BlinkMacSystemFont, "Segoe UI", sans-serif;
+      display: grid;
+      place-items: center;
+      padding: 36px;
+    }
+
+    .board {
+      width: min(1160px, 100%);
+      border: 1px solid rgba(180, 158, 255, 0.22);
+      border-radius: 18px;
+      background:
+        linear-gradient(180deg, rgba(8, 8, 20, 0.95), rgba(5, 5, 13, 0.98)),
+        radial-gradient(circle at 50% 0%, rgba(214, 180, 93, 0.10), transparent 34%);
+      box-shadow: 0 22px 70px rgba(0, 0, 0, 0.56), inset 0 0 0 1px rgba(255, 255, 255, 0.035);
+      overflow: hidden;
+    }
+
+    .terminus-header {
+      display: flex;
+      align-items: center;
+      gap: 14px;
+      padding: 22px 28px 14px;
+      border-bottom: 1px solid rgba(255, 255, 255, 0.05);
+    }
+
+    .terminus-mark {
+      width: 12px;
+      height: 36px;
+      border-radius: 8px 8px 2px 2px;
+      background: linear-gradient(180deg, #d6c2ff, #7b5bd6);
+      clip-path: polygon(50% 0%, 92% 20%, 92% 100%, 8% 100%, 8% 20%);
+      box-shadow: 0 0 18px rgba(171, 139, 255, 0.45);
+    }
+
+    .title-block {
+      min-width: 220px;
+    }
+
+    .eyebrow {
+      font-size: 12px;
+      font-weight: 800;
+      letter-spacing: 0.28em;
+      text-transform: uppercase;
+      color: #b99cff;
+    }
+
+    h1 {
+      margin: -2px 0 0;
+      font-size: 31px;
+      line-height: 0.96;
+      letter-spacing: 0.04em;
+      color: #cab7ff;
+      text-transform: uppercase;
+    }
+
+    .subtitle {
+      margin-top: 6px;
+      color: rgba(209, 198, 255, 0.62);
+      font-size: 12px;
+      font-weight: 700;
+      letter-spacing: 0.22em;
+      text-transform: uppercase;
+    }
+
+    .header-rule {
+      height: 1px;
+      flex: 1;
+      background: linear-gradient(90deg, rgba(214, 180, 93, 0.68), transparent);
+    }
+
+    .cards {
+      display: grid;
+      grid-template-columns: repeat(3, minmax(0, 1fr));
+      gap: 30px;
+      padding: 38px 38px 42px;
+      background:
+        radial-gradient(ellipse 70% 42% at 50% 36%, rgba(214, 180, 93, 0.13), transparent 65%),
+        radial-gradient(ellipse 100% 70% at 50% 100%, rgba(18, 24, 40, 0.62), transparent 66%);
+    }
+
+    .state {
+      display: grid;
+      justify-items: center;
+      gap: 14px;
+    }
+
+    .label {
+      width: 100%;
+      display: flex;
+      align-items: baseline;
+      justify-content: space-between;
+      gap: 12px;
+      color: rgba(228, 221, 255, 0.7);
+      font-size: 12px;
+      font-weight: 800;
+      letter-spacing: 0.14em;
+      text-transform: uppercase;
+    }
+
+    .label span:last-child {
+      color: rgba(214, 180, 93, 0.72);
+      letter-spacing: 0.1em;
+    }
+
+    .card-shell {
+      position: relative;
+      width: 238px;
+      aspect-ratio: 112 / 160;
+      border-radius: 18px;
+      isolation: isolate;
+      overflow: hidden;
+      background: #020207;
+      box-shadow:
+        0 16px 34px rgba(0, 0, 0, 0.78),
+        inset 0 0 0 1px rgba(255, 255, 255, 0.06);
+    }
+
+    .card-shell::before {
+      content: "";
+      position: absolute;
+      inset: 0;
+      z-index: 3;
+      border-radius: inherit;
+      pointer-events: none;
+      box-shadow:
+        inset 0 0 0 1px rgba(214, 180, 93, 0.52),
+        inset 0 0 0 2px rgba(23, 18, 9, 0.8),
+        inset 0 0 44px rgba(0, 0, 0, 0.55);
+    }
+
+    .art {
+      position: absolute;
+      inset: 0;
+      background-image: var(--art);
+      background-size: cover;
+      background-position: center;
+      opacity: 0.64;
+      transform: scale(1.02);
+      filter: saturate(0.88) contrast(1.05) brightness(0.82);
+    }
+
+    .seal-vignette {
+      position: absolute;
+      inset: 0;
+      z-index: 2;
+      background:
+        radial-gradient(ellipse 78% 54% at 50% 42%, transparent 0%, transparent 38%, rgba(0, 0, 0, 0.46) 70%, rgba(0, 0, 0, 0.86) 100%),
+        linear-gradient(180deg, rgba(0, 0, 0, 0.08) 0%, rgba(0, 0, 0, 0.18) 42%, rgba(0, 0, 0, 0.92) 100%);
+    }
+
+    .seal-core {
+      position: absolute;
+      z-index: 4;
+      left: 50%;
+      top: 39%;
+      width: 54%;
+      aspect-ratio: 1;
+      border-radius: 999px;
+      transform: translate(-50%, -50%);
+      background:
+        radial-gradient(circle, rgba(255, 255, 255, 0.58) 0 4%, var(--accent) 5% 8%, transparent 9%),
+        radial-gradient(circle, rgba(255, 255, 255, 0.08) 0 15%, rgba(255, 255, 255, 0.02) 16% 33%, transparent 34%),
+        conic-gradient(from 18deg, transparent, color-mix(in srgb, var(--accent) 70%, white) 18%, transparent 28%, transparent 49%, var(--secondary) 60%, transparent 72%, transparent);
+      opacity: 0.34;
+      mask-image: radial-gradient(circle, transparent 0 18%, black 20% 100%);
+    }
+
+    .settled .seal-core {
+      opacity: 0.26;
+    }
+
+    .wake .seal-core {
+      opacity: 0.56;
+      box-shadow: 0 0 20px rgba(255, 126, 78, 0.18);
+    }
+
+    .effect .seal-core {
+      opacity: 0.72;
+      box-shadow: 0 0 30px rgba(255, 126, 78, 0.28);
+    }
+
+    .seal-line {
+      position: absolute;
+      z-index: 5;
+      left: 17%;
+      right: 17%;
+      top: 44%;
+      height: 1px;
+      background: linear-gradient(90deg, transparent, rgba(255,255,255,0.7), var(--accent), transparent);
+      opacity: 0.22;
+    }
+
+    .crack {
+      position: absolute;
+      z-index: 5;
+      inset: 10px;
+      opacity: 0;
+      pointer-events: none;
+    }
+
+    .wake .crack {
+      opacity: 0.32;
+    }
+
+    .effect .crack {
+      opacity: 0.84;
+    }
+
+    .crack svg {
+      width: 100%;
+      height: 100%;
+      overflow: visible;
+    }
+
+    .crack path {
+      fill: none;
+      stroke-linecap: round;
+      stroke-linejoin: round;
+      stroke-width: 1.1;
+      stroke: rgba(255, 255, 255, 0.72);
+      filter: drop-shadow(0 0 3px var(--accent));
+    }
+
+    .affinity-emblem {
+      position: absolute;
+      z-index: 8;
+      right: 12px;
+      top: 12px;
+      width: 34px;
+      aspect-ratio: 1;
+      border-radius: 999px;
+      border: 1px solid rgba(255, 255, 255, 0.28);
+      background:
+        radial-gradient(circle at 36% 34%, white 0 7%, var(--accent) 8% 34%, rgba(0, 0, 0, 0.9) 72%),
+        #05050c;
+      box-shadow: 0 0 13px color-mix(in srgb, var(--accent) 70%, transparent);
+    }
+
+    .eminence {
+      position: absolute;
+      z-index: 8;
+      left: 12px;
+      top: 12px;
+      width: 36px;
+      height: 42px;
+      display: grid;
+      place-items: center;
+      font: 900 22px/1 Georgia, serif;
+      color: #fff4ba;
+      background:
+        linear-gradient(135deg, rgba(255,255,255,0.20), rgba(214,180,93,0.18) 40%, rgba(0,0,0,0.66)),
+        #0a0906;
+      clip-path: polygon(50% 0%, 90% 20%, 90% 78%, 50% 100%, 10% 78%, 10% 20%);
+      box-shadow:
+        inset 0 0 0 1px rgba(255, 244, 186, 0.62),
+        0 0 12px rgba(214, 180, 93, 0.22);
+    }
+
+    .card-title {
+      position: absolute;
+      z-index: 8;
+      left: 14px;
+      right: 14px;
+      bottom: 35px;
+      color: white;
+      font-size: 14px;
+      font-weight: 800;
+      line-height: 1.08;
+      text-shadow: 0 1px 5px black;
+    }
+
+    .alliance {
+      position: absolute;
+      z-index: 8;
+      left: 14px;
+      right: 14px;
+      bottom: 13px;
+      display: flex;
+      align-items: center;
+      gap: 6px;
+      color: rgba(255, 255, 255, 0.64);
+      font-size: 10px;
+      font-weight: 700;
+      white-space: nowrap;
+      overflow: hidden;
+      text-overflow: ellipsis;
+    }
+
+    .avatar {
+      width: 16px;
+      aspect-ratio: 1;
+      border-radius: 999px;
+      background: radial-gradient(circle at 50% 45%, #7edcff, #1a245d 65%, #080815);
+      border: 1px solid rgba(125, 216, 255, 0.55);
+      box-shadow: 0 0 9px rgba(125, 216, 255, 0.32);
+      flex: none;
+    }
+
+    .quiet-notes {
+      padding: 0 38px 34px;
+      display: grid;
+      grid-template-columns: repeat(3, minmax(0, 1fr));
+      gap: 30px;
+      color: var(--muted);
+      font-size: 13px;
+      line-height: 1.45;
+    }
+
+    .note {
+      border-top: 1px solid rgba(255, 255, 255, 0.07);
+      padding-top: 12px;
+    }
+
+    .note strong {
+      color: rgba(255, 244, 186, 0.92);
+    }
+
+    @media (max-width: 840px) {
+      body { padding: 18px; }
+      .cards, .quiet-notes { grid-template-columns: 1fr; }
+      .header-rule { display: none; }
+    }
+  </style>
+</head>
+<body>
+  <main class="board" aria-label="Quiet Luminary seal concept">
+    <header class="terminus-header">
+      <div class="terminus-mark"></div>
+      <div class="title-block">
+        <div class="eyebrow">The</div>
+        <h1>Terminus</h1>
+        <div class="subtitle">Edge of the observable universe</div>
+      </div>
+      <div class="header-rule"></div>
+    </header>
+
+    <section class="cards">
+      <div class="state">
+        <div class="label"><span>Settled</span><span>Idle board state</span></div>
+        <article class="card-shell settled" style="--art: url('../src/assets/luminaries/lum_ember/panel.webp'); --accent: #ff6546; --secondary: #8a4cff;">
+          <div class="art"></div>
+          <div class="seal-vignette"></div>
+          <div class="seal-core"></div>
+          <div class="seal-line"></div>
+          <div class="crack">
+            <svg viewBox="0 0 112 160"><path d="M56 6 L51 28 L59 43 L52 66 L61 88 L55 122 L60 154" /></svg>
+          </div>
+          <div class="eminence">3</div>
+          <div class="affinity-emblem"></div>
+          <div class="card-title">The Ember Sovereign</div>
+          <div class="alliance"><span>Alliance with</span><span class="avatar"></span><span>Recalcalescence</span></div>
+        </article>
+      </div>
+
+      <div class="state">
+        <div class="label"><span>Wake</span><span>Hover or selected</span></div>
+        <article class="card-shell wake" style="--art: url('../src/assets/luminaries/lum_ember/panel.webp'); --accent: #ff6546; --secondary: #8a4cff;">
+          <div class="art"></div>
+          <div class="seal-vignette"></div>
+          <div class="seal-core"></div>
+          <div class="seal-line"></div>
+          <div class="crack">
+            <svg viewBox="0 0 112 160">
+              <path d="M56 2 L50 25 L61 42 L52 67 L63 91 L56 122 L61 158" />
+              <path d="M54 68 L32 58 L14 66" />
+              <path d="M58 72 L82 63 L102 72" />
+            </svg>
+          </div>
+          <div class="eminence">3</div>
+          <div class="affinity-emblem"></div>
+          <div class="card-title">The Ember Sovereign</div>
+          <div class="alliance"><span>Alliance with</span><span class="avatar"></span><span>Recalcalescence</span></div>
+        </article>
+      </div>
+
+      <div class="state">
+        <div class="label"><span>Effect pulse</span><span>Short burst only</span></div>
+        <article class="card-shell effect" style="--art: url('../src/assets/luminaries/lum_ember/panel.webp'); --accent: #ff6546; --secondary: #8a4cff;">
+          <div class="art"></div>
+          <div class="seal-vignette"></div>
+          <div class="seal-core"></div>
+          <div class="seal-line"></div>
+          <div class="crack">
+            <svg viewBox="0 0 112 160">
+              <path d="M56 0 L50 18 L60 35 L52 55 L64 78 L55 101 L62 128 L57 160" />
+              <path d="M54 58 L31 45 L8 49" />
+              <path d="M57 69 L33 76 L10 72" />
+              <path d="M60 60 L81 44 L103 36" />
+              <path d="M59 82 L84 93 L111 88" />
+            </svg>
+          </div>
+          <div class="eminence">3</div>
+          <div class="affinity-emblem"></div>
+          <div class="card-title">The Ember Sovereign</div>
+          <div class="alliance"><span>Alliance with</span><span class="avatar"></span><span>Recalcalescence</span></div>
+        </article>
+      </div>
+    </section>
+
+    <section class="quiet-notes">
+      <div class="note"><strong>Idle:</strong> no spinning portal, no drifting motes, no constant blur. The card remains special through seal geometry, rim light, and dark containment.</div>
+      <div class="note"><strong>Wake:</strong> hover, selection, or fresh summon gets a stronger seal and faint cracks. This is where a cheap 300-600ms pulse can happen.</div>
+      <div class="note"><strong>Effect:</strong> when the Luminary acts, the rupture briefly reopens. This should be eventful, then settle back down.</div>
+    </section>
+  </main>
+</body>
+</html>

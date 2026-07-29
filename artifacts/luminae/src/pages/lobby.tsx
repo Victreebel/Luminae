@@ -21,16 +21,16 @@ import { getSession, clearSession, saveSession } from "@/lib/session";
 import { useGameWebsocket } from "@/hooks/use-game-websocket";
 import { useToast } from "@/hooks/use-toast";
 import { motion, AnimatePresence } from "framer-motion";
-import { Copy, Crown, X, Wifi, WifiOff, Bot, Plus, ArrowLeft, Timer, CheckCircle, Users, UserPlus, Send } from "lucide-react";
+import { Copy, Crown, X, Wifi, WifiOff, Bot, Plus, ArrowLeft, Timer, CheckCircle, Users, UserPlus, Send, SlidersHorizontal, ChevronDown } from "lucide-react";
 import { gameAudio } from "@/lib/audio";
 import { FriendsPanel } from "@/components/FriendsPanel";
 import { ChallengeInbox } from "@/components/ChallengeInbox";
 import { useAccount } from "@/contexts/AccountContext";
 import { apiListFriends, apiInviteFriendToRoom, getAccountToken, type Friend } from "@/lib/accountSession";
 import { AccountLoadingScreen } from "@/components/AccountLoadingScreen";
+import { AffinityReservoirSymbol } from "@/components/AffinityReservoirSymbol";
 import backgroundCosmos from "@assets/generated_images/background_cosmos.png";
 import logoLuminae from "@assets/generated_images/logo_luminae.png";
-const gemIcon = "/icon_gem.svg";
 
 type AiDifficulty = "easy" | "medium" | "hard";
 
@@ -69,6 +69,7 @@ export default function Lobby() {
   const [abridgedAnims, setAbridgedAnimsState] = useState(() => getAbridgedAnims());
   const [hintsEnabled, setHintsEnabledState] = useState(() => getHintsEnabled());
   const [muted, setMutedState] = useState(() => getMuted());
+  const [advancedSettingsOpen, setAdvancedSettingsOpen] = useState(false);
 
   useEffect(() => {
     const token = getAccountToken();
@@ -142,7 +143,7 @@ export default function Lobby() {
   };
 
   const lookupKey = session?.inviteCode ?? roomId ?? "";
-  const { data: roomInfo } = useGetRoomByInviteCode(lookupKey, {
+  const { data: roomInfo, refetch: refetchRoomInfo } = useGetRoomByInviteCode(lookupKey, {
     query: { enabled: !!lookupKey, queryKey: getGetRoomByInviteCodeQueryKey(lookupKey) },
   });
 
@@ -190,6 +191,7 @@ export default function Lobby() {
         setPlayers((prev) => prev.filter((p) => p.id !== playerId));
       }
     },
+    onRoomUpdated: () => { void refetchRoomInfo(); },
     onStateUpdate: (state) => { if (state.status === "playing") setLocation(`/game/${roomId}`); },
   });
 
@@ -296,12 +298,12 @@ export default function Lobby() {
       />
 
       {/* Header */}
-      <header className="shrink-0 h-14 px-4 flex items-center justify-between bg-card/60 backdrop-blur border-b border-border z-10 relative">
+      <header className="shrink-0 h-14 px-4 flex items-center justify-between bg-card/60 border-b border-border z-10 relative">
         <button type="button" onClick={handleLeave} className="flex items-center gap-1.5 text-sm text-muted-foreground hover:text-foreground transition-colors">
           <ArrowLeft className="h-4 w-4" /> Leave
         </button>
         <div className="flex items-center gap-2">
-          <img src={gemIcon} alt="" className="h-7 w-7 drop-shadow-[0_0_10px_rgba(80,130,255,0.5)]" draggable={false} />
+          <AffinityReservoirSymbol className="drop-shadow-[0_0_10px_rgba(80,130,255,0.5)]" />
           <img src={logoLuminae} alt="Luminae" className="h-6 w-auto drop-shadow-[0_0_12px_rgba(255,196,61,0.3)]" draggable={false} />
         </div>
         {account ? (
@@ -322,7 +324,7 @@ export default function Lobby() {
       <main className="relative z-10 flex-1 overflow-y-auto px-4 py-5 flex flex-col gap-4 max-w-sm mx-auto w-full">
 
         {/* Invite code card */}
-        <div className="rounded-2xl bg-card/80 border border-border/60 backdrop-blur p-5 text-center">
+        <div className="rounded-2xl bg-card/80 border border-border/60 p-5 text-center">
           <p className="text-[10px] font-semibold uppercase tracking-widest text-muted-foreground mb-3">Invite Code</p>
           <div className="flex items-center justify-center gap-3 mb-3">
             <span className="text-4xl font-mono tracking-[0.25em] text-foreground font-bold select-all">
@@ -345,18 +347,20 @@ export default function Lobby() {
               </motion.p>
             )}
           </AnimatePresence>
-          {roomInfo?.turnTimerSeconds ? (
-            <div className="flex items-center justify-center gap-1.5 text-xs text-muted-foreground">
+          <div className="mt-2 flex flex-wrap items-center justify-center gap-x-3 gap-y-1 text-xs text-muted-foreground">
+            <div className="flex items-center gap-1.5">
               <Timer className="h-3 w-3" />
-              <span>{roomInfo.turnTimerSeconds}s per turn</span>
+              <span>{roomInfo?.turnTimerSeconds ? `${roomInfo.turnTimerSeconds}s per turn` : "No turn timer"}</span>
             </div>
-          ) : (
-            <div className="text-xs text-muted-foreground">No turn timer</div>
-          )}
+            <div className="flex items-center gap-1.5">
+              <Crown className="h-3 w-3 text-amber-300" />
+              <span>{roomInfo?.victoryRequirement ?? 15} Eminence to win</span>
+            </div>
+          </div>
         </div>
 
         {/* Players list */}
-        <div className="rounded-2xl bg-card/70 border border-border/60 backdrop-blur overflow-hidden">
+        <div className="rounded-2xl bg-card/70 border border-border/60 overflow-hidden">
           <div className="px-4 py-3 border-b border-border/40 flex items-center justify-between">
             <span className="text-sm font-semibold">Players</span>
             <span className="text-xs text-muted-foreground font-mono">{players.length} / {maxPlayers}</span>
@@ -419,7 +423,7 @@ export default function Lobby() {
 
         {/* Invite Friends */}
         {account && friends.length > 0 && canAddMore && (
-          <div className="rounded-2xl bg-card/60 border border-border/50 backdrop-blur overflow-hidden">
+          <div className="rounded-2xl bg-card/60 border border-border/50 overflow-hidden">
             <div className="px-4 py-3 border-b border-border/40 flex items-center gap-2">
               <UserPlus className="h-4 w-4 text-primary/70 shrink-0" />
               <span className="text-sm font-semibold">Invite Friends</span>
@@ -480,7 +484,7 @@ export default function Lobby() {
 
         {/* Add AI (host only) */}
         {isHost && canAddMore && (
-          <div className="rounded-2xl bg-card/60 border border-border/50 backdrop-blur p-4 flex items-center gap-3">
+          <div className="rounded-2xl bg-card/60 border border-border/50 p-4 flex items-center gap-3">
             <Bot className="h-4 w-4 text-purple-300 shrink-0" />
             <Select value={aiDifficulty} onValueChange={(v) => setAiDifficulty(v as AiDifficulty)}>
               <SelectTrigger className="flex-1">
@@ -505,34 +509,67 @@ export default function Lobby() {
           </div>
         )}
 
-        {/* My preferences */}
-        <div className="rounded-2xl bg-card/60 border border-border/50 backdrop-blur divide-y divide-border/40 overflow-hidden">
-          {(
-            [
-              { label: "Skip cinematics", desc: "Skip intro animations during play", value: skipCinematics, onToggle: handleToggleSkipCinematics },
-              { label: "Reduced animations", desc: "Compact Luminary effects and shorter card animations", value: abridgedAnims, onToggle: handleToggleAbridgedAnims },
-              { label: "Mute audio", desc: "Silence all in-game sounds", value: muted, onToggle: handleToggleMuted },
-              { label: "Hints", desc: "Show gameplay hints and tooltips", value: hintsEnabled, onToggle: handleToggleHints },
-            ] as const
-          ).map(({ label, desc, value, onToggle }) => (
-            <div key={label} className="px-4 py-3 flex items-center justify-between">
-              <div>
-                <p className="text-sm font-semibold">{label}</p>
-                <p className="text-[11px] text-muted-foreground mt-0.5">{desc}</p>
-              </div>
-              <button
-                type="button"
-                role="switch"
-                aria-checked={value}
-                onClick={onToggle}
-                className={`relative h-6 w-11 rounded-full transition-colors focus-visible:outline focus-visible:outline-2 focus-visible:outline-ring shrink-0 ${value ? "bg-primary" : "bg-muted-foreground/30"}`}
+        {/* Advanced preferences */}
+        <div className="rounded-2xl bg-card/45 border border-border/40 overflow-hidden">
+          <button
+            type="button"
+            onClick={() => setAdvancedSettingsOpen((open) => !open)}
+            className="w-full px-4 py-3 flex items-center justify-between gap-3 text-left transition-colors hover:bg-white/[0.03] focus-visible:outline focus-visible:outline-2 focus-visible:outline-ring"
+            aria-expanded={advancedSettingsOpen}
+          >
+            <span className="flex items-center gap-3 min-w-0">
+              <span className="h-8 w-8 rounded-xl bg-secondary/60 border border-border/40 flex items-center justify-center shrink-0">
+                <SlidersHorizontal className="h-4 w-4 text-muted-foreground" />
+              </span>
+              <span className="min-w-0">
+                <span className="block text-sm font-semibold">Advanced settings</span>
+                <span className="block text-[11px] text-muted-foreground truncate">Animations, audio, and hints</span>
+              </span>
+            </span>
+            <ChevronDown className={`h-4 w-4 text-muted-foreground transition-transform shrink-0 ${advancedSettingsOpen ? "rotate-180" : ""}`} />
+          </button>
+
+          <AnimatePresence initial={false}>
+            {advancedSettingsOpen && (
+              <motion.div
+                key="advanced-settings"
+                initial={{ height: 0, opacity: 0 }}
+                animate={{ height: "auto", opacity: 1 }}
+                exit={{ height: 0, opacity: 0 }}
+                transition={{ duration: 0.2, ease: "easeOut" }}
+                className="overflow-hidden border-t border-border/35"
               >
-                <span
-                  className={`absolute top-0.5 left-0.5 h-5 w-5 rounded-full bg-white shadow-sm transition-transform ${value ? "translate-x-5" : "translate-x-0"}`}
-                />
-              </button>
-            </div>
-          ))}
+                <div className="divide-y divide-border/35">
+                  {(
+                    [
+                      { label: "Skip cinematics", desc: "Skip intro animations during play", value: skipCinematics, onToggle: handleToggleSkipCinematics },
+                      { label: "Reduced animations", desc: "Compact Luminary effects and shorter Artifact animations", value: abridgedAnims, onToggle: handleToggleAbridgedAnims },
+                      { label: "Mute audio", desc: "Silence all in-game sounds", value: muted, onToggle: handleToggleMuted },
+                      { label: "Hints", desc: "Show gameplay hints and tooltips", value: hintsEnabled, onToggle: handleToggleHints },
+                    ] as const
+                  ).map(({ label, desc, value, onToggle }) => (
+                    <div key={label} className="px-4 py-3 flex items-center justify-between gap-3">
+                      <div className="min-w-0">
+                        <p className="text-sm font-semibold">{label}</p>
+                        <p className="text-[11px] text-muted-foreground mt-0.5">{desc}</p>
+                      </div>
+                      <button
+                        type="button"
+                        role="switch"
+                        aria-checked={value}
+                        onClick={onToggle}
+                        className={`relative h-6 w-11 rounded-full transition-colors focus-visible:outline focus-visible:outline-2 focus-visible:outline-ring shrink-0 ${value ? "bg-primary" : "bg-muted-foreground/30"}`}
+                      >
+                        <span
+                          className={`absolute top-0.5 left-0.5 h-5 w-5 rounded-full bg-white shadow-sm transition-transform ${value ? "translate-x-5" : "translate-x-0"}`}
+                        />
+                      </button>
+                    </div>
+                  ))}
+                </div>
+              </motion.div>
+            )}
+          </AnimatePresence>
         </div>
       </main>
 

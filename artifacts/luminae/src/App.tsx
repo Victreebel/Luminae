@@ -101,6 +101,9 @@ function Router() {
 }
 
 function App() {
+  const isDesktopShell =
+    typeof navigator !== "undefined" && navigator.userAgent.includes("Electron");
+
   return (
     <ErrorBoundary>
       <QueryClientProvider client={queryClient}>
@@ -112,7 +115,7 @@ function App() {
               </div>
             </WouterRouter>
             <Toaster />
-            <PwaUpdatePrompt />
+            {!isDesktopShell && <PwaUpdatePrompt />}
           </TooltipProvider>
         </AccountProvider>
       </QueryClientProvider>

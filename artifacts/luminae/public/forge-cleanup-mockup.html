@@ -1,0 +1,393 @@
+<!doctype html>
+<html>
+<head>
+  <meta charset="utf-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1" />
+  <title>Luminae Forge Cleanup Mockup</title>
+  <style>
+    :root {
+      color-scheme: dark;
+      --bg: #05050b;
+      --panel: #090910;
+      --panel2: #11100d;
+      --gold: #d8b86a;
+      --gold2: #8e6f33;
+      --muted: #958f82;
+      --line: rgba(216, 184, 106, 0.26);
+      --soft: rgba(216, 184, 106, 0.08);
+    }
+    * { box-sizing: border-box; }
+    body {
+      margin: 0;
+      min-height: 100vh;
+      display: grid;
+      place-items: center;
+      background:
+        radial-gradient(circle at 62% 38%, rgba(83, 56, 18, .18), transparent 32%),
+        radial-gradient(circle at 28% 78%, rgba(34, 49, 86, .16), transparent 36%),
+        #03040a;
+      font-family: Inter, ui-sans-serif, system-ui, -apple-system, BlinkMacSystemFont, "Segoe UI", sans-serif;
+      color: #f5efe0;
+    }
+    .forge {
+      width: min(1180px, calc(100vw - 36px));
+      height: min(720px, calc(100vh - 36px));
+      overflow: hidden;
+      border: 1px solid rgba(216, 184, 106, .42);
+      background:
+        linear-gradient(180deg, rgba(40, 25, 10, .54), rgba(6, 7, 12, .95) 18%),
+        var(--panel);
+      box-shadow:
+        inset 0 1px 0 rgba(255, 239, 184, .16),
+        0 0 0 1px rgba(0,0,0,.85),
+        0 22px 70px rgba(0,0,0,.62);
+    }
+    .forge-header {
+      height: 74px;
+      display: grid;
+      grid-template-columns: 1fr auto;
+      align-items: center;
+      padding: 14px 22px 12px;
+      border-bottom: 1px solid rgba(216, 184, 106, .25);
+      background: linear-gradient(90deg, rgba(72, 42, 12, .34), rgba(7, 7, 13, .16) 52%, transparent);
+    }
+    .title-row {
+      display: flex;
+      align-items: center;
+      gap: 14px;
+      min-width: 0;
+    }
+    .hammer {
+      width: 30px;
+      height: 30px;
+      display: grid;
+      place-items: center;
+      color: var(--gold);
+      border: 1px solid rgba(216,184,106,.32);
+      background: rgba(216,184,106,.065);
+      border-radius: 7px;
+    }
+    .title-block {
+      display: grid;
+      gap: 3px;
+      min-width: 0;
+    }
+    .kicker {
+      font-size: 10px;
+      font-weight: 800;
+      text-transform: uppercase;
+      letter-spacing: .28em;
+      color: rgba(216,184,106,.55);
+      line-height: 1;
+    }
+    h1 {
+      margin: 0;
+      font-family: Georgia, "Times New Roman", serif;
+      font-size: 28px;
+      line-height: .9;
+      letter-spacing: .085em;
+      color: var(--gold);
+      text-transform: uppercase;
+      text-shadow: 0 0 18px rgba(216,184,106,.22);
+    }
+    .descriptor {
+      margin-left: 4px;
+      color: rgba(223, 213, 190, .55);
+      font-size: 12px;
+      letter-spacing: .13em;
+      text-transform: uppercase;
+      align-self: end;
+      white-space: nowrap;
+    }
+    .view-control {
+      display: flex;
+      align-items: center;
+      gap: 7px;
+      padding: 4px;
+      border: 1px solid rgba(216,184,106,.18);
+      border-radius: 999px;
+      background: rgba(0,0,0,.28);
+    }
+    .pill {
+      border: 0;
+      color: rgba(232, 226, 212, .62);
+      font-weight: 700;
+      font-size: 12px;
+      padding: 5px 11px;
+      border-radius: 999px;
+      background: transparent;
+    }
+    .pill.active {
+      color: #07080d;
+      background: linear-gradient(180deg, #e5c779, #b98d36);
+      box-shadow: 0 0 14px rgba(216,184,106,.20);
+    }
+    .rows {
+      height: calc(100% - 74px);
+      display: grid;
+      grid-template-rows: repeat(3, 1fr);
+      gap: 10px;
+      padding: 12px;
+    }
+    .tier {
+      position: relative;
+      min-height: 0;
+      display: grid;
+      grid-template-columns: 148px 1fr;
+      gap: 18px;
+      align-items: center;
+      padding: 18px 18px 14px 18px;
+      border: 1px solid rgba(216,184,106,.22);
+      background:
+        linear-gradient(90deg, rgba(216,184,106,.075), transparent 42%),
+        linear-gradient(180deg, rgba(255,255,255,.025), rgba(0,0,0,.08));
+    }
+    .tier::before {
+      content: "";
+      position: absolute;
+      top: 18px;
+      left: 18px;
+      right: 18px;
+      border-top: 1px solid rgba(216,184,106,.20);
+    }
+    .tier-label {
+      position: absolute;
+      top: 8px;
+      left: 22px;
+      display: flex;
+      align-items: center;
+      gap: 10px;
+      padding-right: 13px;
+      background: linear-gradient(90deg, #17120b 82%, transparent);
+      color: var(--gold);
+      text-transform: uppercase;
+      letter-spacing: .16em;
+      font-weight: 900;
+      font-size: 13px;
+    }
+    .tier-chip {
+      width: 38px;
+      height: 28px;
+      display: grid;
+      place-items: center;
+      border: 1px solid rgba(216,184,106,.45);
+      border-radius: 6px;
+      background: rgba(216,184,106,.10);
+      font-family: Georgia, "Times New Roman", serif;
+      letter-spacing: .04em;
+      color: #f1dc97;
+    }
+    .deck-source {
+      position: relative;
+      justify-self: center;
+      width: 98px;
+      aspect-ratio: .68;
+      border-radius: 8px;
+      background:
+        linear-gradient(135deg, rgba(216,184,106,.55), rgba(216,184,106,.06)),
+        #0d0c10;
+      padding: 3px;
+      box-shadow: 0 0 0 1px rgba(0,0,0,.8), 0 10px 28px rgba(0,0,0,.42);
+    }
+    .deck-source::after {
+      content: attr(data-left);
+      position: absolute;
+      top: -7px;
+      right: -8px;
+      min-width: 28px;
+      height: 28px;
+      display: grid;
+      place-items: center;
+      border-radius: 999px;
+      background: rgba(0,0,0,.82);
+      border: 1px solid rgba(216,184,106,.42);
+      font-weight: 900;
+      color: #efe5ca;
+    }
+    .deck-source img, .card img {
+      width: 100%;
+      height: 100%;
+      object-fit: cover;
+      display: block;
+      border-radius: 6px;
+    }
+    .forge-grid {
+      display: grid;
+      grid-template-columns: repeat(4, minmax(96px, 1fr));
+      gap: clamp(12px, 2.1vw, 28px);
+      align-items: center;
+      min-width: 0;
+    }
+    .card {
+      position: relative;
+      justify-self: center;
+      width: min(128px, 100%);
+      aspect-ratio: .68;
+      border-radius: 13px;
+      overflow: hidden;
+      background: #09090f;
+      box-shadow: 0 0 0 1px rgba(0,0,0,.72), 0 12px 26px rgba(0,0,0,.36);
+    }
+    .card.available {
+      outline: 2px solid rgba(216,184,106,.62);
+      outline-offset: 3px;
+    }
+    .card::after {
+      content: "";
+      position: absolute;
+      inset: 0;
+      background: linear-gradient(180deg, rgba(0,0,0,.02), transparent 42%, rgba(0,0,0,.72));
+      pointer-events: none;
+    }
+    .cost, .em, .bonus {
+      position: absolute;
+      z-index: 2;
+      display: grid;
+      place-items: center;
+      font-weight: 950;
+      text-shadow: 0 1px 2px #000;
+    }
+    .cost {
+      top: 7px;
+      left: 7px;
+      min-width: 25px;
+      height: 25px;
+      border-radius: 7px;
+      background: rgba(0,0,0,.72);
+      border: 1px solid rgba(255,255,255,.16);
+      font-size: 16px;
+      color: #f5ecd3;
+    }
+    .em {
+      top: 6px;
+      right: 7px;
+      width: 27px;
+      height: 34px;
+      clip-path: polygon(50% 0, 94% 24%, 88% 78%, 50% 100%, 12% 78%, 6% 24%);
+      background: linear-gradient(180deg, rgba(240,214,135,.96), rgba(105,75,24,.95));
+      color: #fff4bd;
+      font-family: Georgia, "Times New Roman", serif;
+      font-size: 18px;
+    }
+    .bonus {
+      top: 8px;
+      right: 7px;
+      width: 30px;
+      height: 30px;
+      border-radius: 999px;
+      background: radial-gradient(circle, rgba(83, 233, 143, .95), rgba(17, 72, 46, .88));
+      border: 1px solid rgba(151,255,188,.44);
+      font-size: 0;
+    }
+    .bonus::before {
+      content: "";
+      width: 15px;
+      height: 15px;
+      border-radius: 50%;
+      background: #60e69e;
+      box-shadow: 0 0 12px rgba(96,230,158,.9);
+    }
+    .name {
+      position: absolute;
+      z-index: 2;
+      left: 9px;
+      right: 9px;
+      bottom: 38px;
+      font-size: 12px;
+      line-height: 1.05;
+      font-weight: 750;
+      color: rgba(255,255,255,.92);
+      text-shadow: 0 1px 3px #000;
+    }
+    .cost-row {
+      position: absolute;
+      z-index: 2;
+      left: 8px;
+      right: 8px;
+      bottom: 8px;
+      display: flex;
+      gap: 4px;
+      justify-content: flex-end;
+    }
+    .affinity {
+      width: 19px;
+      height: 19px;
+      border-radius: 6px;
+      display: grid;
+      place-items: center;
+      background: rgba(0,0,0,.78);
+      border: 1px solid rgba(255,255,255,.14);
+      font-size: 11px;
+      font-weight: 900;
+    }
+    .g-red { color: #ff7168; }
+    .g-gold { color: #ffd96a; }
+    .g-green { color: #65e99d; }
+    .g-blue { color: #69a9ff; }
+    .g-purple { color: #d16cff; }
+    @media (max-width: 860px) {
+      .forge { height: auto; min-height: calc(100vh - 28px); }
+      .rows { grid-template-rows: none; }
+      .tier { grid-template-columns: 92px 1fr; }
+      .forge-grid { grid-template-columns: repeat(4, minmax(58px, 1fr)); gap: 10px; }
+      .card { border-radius: 9px; }
+      .name { display: none; }
+      .descriptor { display: none; }
+    }
+  </style>
+</head>
+<body>
+  <section class="forge">
+    <header class="forge-header">
+      <div class="title-row">
+        <div class="hammer">⌁</div>
+        <div class="title-block">
+          <div class="kicker">The</div>
+          <h1>Forge</h1>
+        </div>
+        <div class="descriptor">Artifacts awaiting civilization</div>
+      </div>
+      <div class="view-control">
+        <button class="pill">Full</button>
+        <button class="pill">Discounted</button>
+        <button class="pill active">Needed</button>
+      </div>
+    </header>
+
+    <main class="rows">
+      <section class="tier">
+        <div class="tier-label"><span class="tier-chip">III</span> Tier 3 · Galactic</div>
+        <div class="deck-source" data-left="16"><img src="/src/assets/cards/t3o01.png" /></div>
+        <div class="forge-grid">
+          <article class="card available"><img src="/src/assets/cards/t3e01.png" /><div class="cost">4</div><div class="bonus"></div><div class="name">Extinction Furnace Veto</div><div class="cost-row"><span class="affinity g-red">3</span><span class="affinity g-green">3</span><span class="affinity g-purple">6</span></div></article>
+          <article class="card"><img src="/src/assets/cards/t3o03.png" /><div class="cost">3</div><div class="bonus"></div><div class="name">Cryptobiotic Root Key</div><div class="cost-row"><span class="affinity g-gold">3</span><span class="affinity g-green">3</span><span class="affinity g-blue">5</span></div></article>
+          <article class="card"><img src="/src/assets/cards/t3r03.png" /><div class="cost">5</div><div class="em">5</div><div class="name">Species-Rights Witness Prism</div><div class="cost-row"><span class="affinity g-gold">7</span><span class="affinity g-blue">3</span><span class="affinity g-purple">3</span></div></article>
+          <article class="card"><img src="/src/assets/cards/t3s03.png" /><div class="cost">5</div><div class="bonus"></div><div class="name">Star-River Propulsion Core</div><div class="cost-row"><span class="affinity g-red">3</span><span class="affinity g-blue">5</span></div></article>
+        </div>
+      </section>
+
+      <section class="tier">
+        <div class="tier-label"><span class="tier-chip">II</span> Tier 2 · Stellar</div>
+        <div class="deck-source" data-left="25"><img src="/src/assets/cards/t2o01.png" /></div>
+        <div class="forge-grid">
+          <article class="card"><img src="/src/assets/cards/t2e04.png" /><div class="cost">1</div><div class="bonus"></div><div class="name">Stellar Crucible</div><div class="cost-row"><span class="affinity g-gold">2</span><span class="affinity g-blue">2</span><span class="affinity g-purple">3</span></div></article>
+          <article class="card"><img src="/src/assets/cards/t2r03.png" /><div class="cost">2</div><div class="bonus"></div><div class="name">Null-Convergence Prism</div><div class="cost-row"><span class="affinity g-green">1</span><span class="affinity g-blue">2</span><span class="affinity g-purple">4</span></div></article>
+          <article class="card"><img src="/src/assets/cards/t2p04.png" /><div class="cost">1</div><div class="bonus"></div><div class="name">Extinction Forge Die</div><div class="cost-row"><span class="affinity g-red">2</span><span class="affinity g-gold">2</span><span class="affinity g-green">3</span></div></article>
+          <article class="card"><img src="/src/assets/cards/t2o05.png" /><div class="cost">2</div><div class="bonus"></div><div class="name">Epoch Graft Ledger</div><div class="cost-row"><span class="affinity g-green">2</span><span class="affinity g-blue">4</span></div></article>
+        </div>
+      </section>
+
+      <section class="tier">
+        <div class="tier-label"><span class="tier-chip">I</span> Tier 1 · Planetary</div>
+        <div class="deck-source" data-left="36"><img src="/src/assets/cards/t1o01.png" /></div>
+        <div class="forge-grid">
+          <article class="card"><img src="/src/assets/cards/t1e02.png" /><div class="cost">1</div><div class="bonus"></div><div class="name">Undergrowth Silencer</div><div class="cost-row"><span class="affinity g-green">2</span><span class="affinity g-purple">1</span></div></article>
+          <article class="card"><img src="/src/assets/cards/t1r03.png" /><div class="cost">1</div><div class="bonus"></div><div class="name">Ignition Kernel</div><div class="cost-row"><span class="affinity g-gold">1</span><span class="affinity g-green">1</span><span class="affinity g-purple">1</span></div></article>
+          <article class="card"><img src="/src/assets/cards/t1o05.png" /><div class="cost">1</div><div class="bonus"></div><div class="name">Char Tendril</div><div class="cost-row"><span class="affinity g-red">1</span><span class="affinity g-blue">1</span><span class="affinity g-purple">1</span></div></article>
+          <article class="card"><img src="/src/assets/cards/t1s06.png" /><div class="cost">1</div><div class="bonus"></div><div class="name">Echo Splinter</div><div class="cost-row"><span class="affinity g-red">1</span><span class="affinity g-blue">1</span></div></article>
+        </div>
+      </section>
+    </main>
+  </section>
+</body>
+</html>

@@ -1,6 +1,6 @@
 # Luminae — Complete Card Reference
 
-> **Engine-building race to 15 Eminence.** Collect colored Affinities, forge Artifact cards for permanent bonuses, and summon Luminary patrons. First player to 15 Eminence (Lumens) wins; ties break on fewest purchased cards.
+> **Engine-building race to 15 Eminence.** Collect colored Affinities, forge Artifacts for permanent bonuses, and summon Luminaries. First player to 15 Eminence wins; ties break on fewest forged Artifacts.
 
 ---
 
@@ -14,9 +14,9 @@
 | **Abyss** | Onyx affinity (internal key `onyx`) |
 | **Radiance** | Pearl affinity (internal key `pearl`) |
 | **Singularity** | Flux affinity (internal key `flux`) — wild, appears in Luminary bonuses only |
-| **Em** | Eminence awarded upon forging the card |
-| **Bonus** | Permanent affinity bonus granted (reduces future card costs by 1 of that colour) |
-| **Cost** | Affinities spent from your supply to forge the card (bonuses count as discounts) |
+| **Em** | Eminence awarded upon forging the Artifact |
+| **Bonus** | Permanent affinity bonus granted (reduces future Artifact costs by 1 of that colour) |
+| **Cost** | Affinities spent from your supply to forge the Artifact (bonuses count as discounts) |
 
 ---
 
@@ -157,7 +157,7 @@ Tier 1 cards cost 2–4 total Affinity crystals. All award 0 Eminence except the
 | ID | Name | Em | Cost | Flavor |
 |----|------|----|------|--------|
 | t1p01 | **Auroral Mote** | 0 | 1 Flare, 1 Continuum, 1 Abyss | *Cut from a curtain of polar sky.* |
-| t1p02 | **Lumen Veil** | 0 | 1 Continuum, 2 Abyss | *Folded twice; opens onto morning.* |
+| t1p02 | **Still-Point Shard** | 0 | 1 Continuum, 2 Abyss | *It holds one point stable while the world argues around it.* |
 | t1p03 | **Skyglass Tear** | 0 | 1 Flare, 1 Verdance, 1 Abyss | *Wept by a constellation seeking ground.* |
 | t1p04 | **Halo Petal** | 0 | 2 Flare, 1 Radiance | *Falls from the rim of unseen suns.* |
 | t1p05 | **Zenith Sliver** | 0 | 2 Continuum, 2 Radiance | *Broken off from the highest point in the sky.* |
@@ -231,7 +231,7 @@ Tier 2 cards cost 5–7 total Affinity crystals and award **1 or 2 Eminence**. E
 |----|------|----|------|--------|
 | t2p01 | **Skyweaver's Loom** | 1 | 2 Flare, 3 Continuum, 2 Abyss | *Threads of dawn pulled taut across the dark.* |
 | t2p02 | **Aurora Reliquary** | 2 | 2 Continuum, 1 Verdance, 4 Abyss | *A jar of the color between two stars.* |
-| t2p03 | **Lumen Crucible** | 2 | 3 Verdance, 3 Radiance | *Distills morning into a single drop.* |
+| t2p03 | **Living Treaty Organ** | 2 | 3 Verdance, 3 Radiance | *The most trustworthy contract is one that cannot be forged.* |
 | t2p04 | **Zodiacal Compass** | 1 | 3 Flare, 2 Continuum, 2 Radiance | *Navigates by signs that shift each century.* |
 | t2p05 | **Solstice Lantern** | 2 | 5 Radiance | *Burns longest on the shortest night.* |
 | t2p06 | **Meridian Sceptre** | 2 | 2 Continuum, 3 Verdance, 2 Abyss | *Command ends where the horizon begins.* |
@@ -299,13 +299,13 @@ Tier 3 cards cost 11–13 total Affinity crystals and award **3, 4, or 5 Eminenc
 
 ---
 
-## Part V — Luminaries *(12 patron entities)*
+## Part V — Luminaries
 
 **Setup:** Each game activates `playerCount + 1` Luminaries drawn from the available pool.
 
 **Claiming:** On your turn, if the total permanent bonuses across your forged cards meets a Luminary's requirements (one or more affinity thresholds), you may claim it — gaining the Eminence listed immediately.
 
-**Living Affinity Bonus:** Starting the turn *after* you claim a Luminary, you gain +1 bonus toward your Luminary's active affinity on every card purchase. You can toggle the active affinity at any time (even off-turn) by clicking the Luminary portal card. Single-eligible Luminaries use their one affinity permanently; multi-eligible ones cycle with a ↻ badge.
+**Living Affinity Bonus:** When a Luminary arrives, one of its required affinity types is chosen at random as its active affinity. Starting the turn *after* you claim it, you gain +1 bonus toward that active affinity on every Artifact you forge. The arrival choice cannot normally be decided or changed by the player.
 
 ---
 
@@ -320,7 +320,7 @@ These require 4–5 bonuses of a single affinity.
 | lum_void | **The Void Warden** | Void | 2 | 4 Abyss | *In the space between stars, something watches without eyes.* |
 | lum_radiant | **The Radiant Keeper** | Light | 2 | 4 Radiance | *She holds back the dark not with fire, but with patience.* |
 
-> **Living Affinity:** Each of these Luminaries has exactly one eligible affinity — no toggling needed.
+> **Living Affinity:** Each of these Luminaries has exactly one required affinity, so its active affinity is fixed automatically.
 
 ---
 
@@ -336,7 +336,7 @@ These require at least 3 bonuses in each of two affinities (or 4 of one pair).
 | lum_compass | **The Stellar Guide** | Navigation | 3 | 4 Continuum + 4 Verdance | *The shortest path between two stars is a story.* |
 | lum_forge | **The Iron Harbinger** | Ruin | 3 | 4 Verdance + 4 Abyss | *What he builds he eventually unmakes. Creation and ruin are the same song played in different keys.* |
 
-> **Living Affinity:** Owners of dual-affinity Luminaries toggle between the two eligible affinities with each click.
+> **Living Affinity:** One of the two required affinity types is chosen at random when the Luminary arrives.
 
 ---
 
@@ -350,7 +350,7 @@ These require meaningful bonuses in three distinct affinities.
 | lum_null | **The Null Sovereign** | Transcendence | 4 | 4 Continuum + 4 Abyss + 4 Radiance | *Beyond the final star, past the edge of the last dark, something waits that was never born and cannot die.* |
 | lum_oracle | **The Cosmic Oracle** | Prophecy | 4 | 3 Flare + 3 Continuum + 3 Verdance | *She sees what will be, and what might have been, and cannot tell the difference.* |
 
-> **Living Affinity:** Owners of triple-affinity Luminaries cycle through all three eligible affinities.
+> **Living Affinity:** One of the three required affinity types is chosen at random when the Luminary arrives.
 
 ---
 
