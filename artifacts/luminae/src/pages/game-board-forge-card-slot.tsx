@@ -8,6 +8,7 @@ import { ArtifactCardView, EminenceBadge, AffinityToken, PendingActionOverlay } 
 import { ForgeMarkerLayer } from './game-board-forge-markers';
 import { getArtifactBrandTypes } from '@/lib/artifactBrands';
 import type { BoardForgeProps } from './game-board-forge';
+import { CARD_ART } from './game-constants';
 
 interface ForgeCardSlotProps extends Pick<BoardForgeProps,
   'brandDelayMap' | 'burstGhostCards' | 'cardDetailDiscovered' | 'computeCosts' | 'costMode' |
@@ -15,7 +16,7 @@ interface ForgeCardSlotProps extends Pick<BoardForgeProps,
   'hiddenSlots' | 'isTutorial' | 'forgeCompact' | 'newlyMarkedCardIds' | 'plannedCardId' |
   'plannedCardLabel' | 'refillingSlots' | 'revealBlueprintText' | 'selectedCard' |
   'setTracedSourceLumId' | 'state' | 'strikeAuraMap' | 'suppressedBrandTypesByCardId' |
-  'suppressedMarkerIds' | 'tutorialStep'
+  'suppressedMarkerIds' | 'tutorialStep' | 'ironHarbingerGhostIds'
 > {
   c: ArtifactCard | null;
   row: { tier: number; cards: (ArtifactCard | null)[]; deck: number; tierIdx: number };
@@ -111,6 +112,7 @@ export function ForgeCardSlot({
   flippingCards,
   getCardFocusProps,
   ghostArtifactMarkerTypesRef,
+  ironHarbingerGhostIds,
   handleCancelPlan,
   handleCardTap,
   hiddenSlots,
@@ -187,6 +189,42 @@ export function ForgeCardSlot({
             suppressedMarkerTypes={[...(suppressedBrandTypesByCardId.get(ghostCard.id) ?? [])]}
           />
         </div>
+      </div>
+    );
+  }
+
+  const ironHeldCardId = ironHarbingerGhostIds[slotKey];
+  if (ironHeldCardId) {
+    return (
+      <div
+        data-testid="forge-card-slot"
+        data-card-id={ironHeldCardId}
+        data-slot-key={slotKey}
+        className={`forge-foundry-mold relative shrink-0 overflow-hidden rounded-xl ${
+          forgeCompact ? 'board-forge-compact-chip' : 'forge-foundry-slot'
+        }`}
+        style={forgeCompact ? compactSlotStyle : undefined}
+        aria-hidden="true"
+      >
+        {CARD_ART[ironHeldCardId] ? (
+          <img
+            src={CARD_ART[ironHeldCardId]}
+            alt=""
+            className="h-full w-full object-cover"
+            draggable={false}
+          />
+        ) : (
+          <span className="grid h-full w-full place-items-center text-[9px] font-bold text-amber-100/70">
+            TIER {row.tier}
+          </span>
+        )}
+        <span
+          className="pointer-events-none absolute inset-0 rounded-[inherit]"
+          style={{
+            border: '1px solid rgba(212,180,111,0.48)',
+            boxShadow: 'inset 0 0 12px rgba(249,115,22,0.12)',
+          }}
+        />
       </div>
     );
   }

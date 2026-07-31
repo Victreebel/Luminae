@@ -173,7 +173,7 @@ export default function Lobby() {
   useGameWebsocket({
     roomId: roomId!,
     sessionToken: session?.sessionToken ?? "",
-    onGameStarted: () => { gameAudio.playTurnStart(); setLocation(`/game/${roomId}`); },
+    onGameStarted: () => { setLocation(`/game/${roomId}`); },
     onPlayerJoined: (player) => {
       if (!player?.id) return;
       setPlayers((prev) => {

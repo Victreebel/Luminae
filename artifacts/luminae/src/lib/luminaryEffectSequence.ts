@@ -37,6 +37,8 @@ export interface LuminaryEffectSequenceOptions {
 
 export interface LuminaryEffectSequenceController {
   start: () => void;
+  /** Finish only the active causal phase and continue with the next one. */
+  advance: () => void;
   skip: () => void;
   cancel: () => void;
   currentPhase: () => LuminaryEffectPhaseId | null;
@@ -121,20 +123,12 @@ export function createLuminaryEffectSequence(
   let finished = false;
   let cancelled = false;
   let activePhase: LuminaryEffectPhaseId | null = null;
+  let activePhaseController: AbortController | null = null;
 
   const finish = (skipped: boolean) => {
     if (finished || cancelled) return;
     finished = true;
     options.onComplete(skipped);
-  };
-
-  const context: LuminaryEffectPhaseContext = {
-    signal: abortController.signal,
-    reducedMotion,
-    wait: (durationMs) => abortableWait(durationMs, abortController.signal),
-    waitFor: (register, fallbackMs) => (
-      abortableWaitFor(register, fallbackMs, abortController.signal)
-    ),
   };
 
   const run = async () => {
@@ -143,12 +137,30 @@ export function createLuminaryEffectSequence(
         if (abortController.signal.aborted) return;
         activePhase = phase.id;
         options.onPhaseChange?.(phase.id);
+        const phaseController = new AbortController();
+        activePhaseController = phaseController;
+        const abortPhase = () => phaseController.abort();
+        abortController.signal.addEventListener('abort', abortPhase, {
+          once: true,
+        });
+        const context: LuminaryEffectPhaseContext = {
+          signal: phaseController.signal,
+          reducedMotion,
+          wait: (durationMs) => abortableWait(durationMs, phaseController.signal),
+          waitFor: (register, fallbackMs) => (
+            abortableWaitFor(register, fallbackMs, phaseController.signal)
+          ),
+        };
         await phase.run?.(context);
         if (abortController.signal.aborted) return;
         const durationMs = reducedMotion
           ? (phase.reducedDurationMs ?? phase.durationMs ?? 0)
           : (phase.durationMs ?? 0);
         await context.wait(durationMs);
+        abortController.signal.removeEventListener('abort', abortPhase);
+        if (activePhaseController === phaseController) {
+          activePhaseController = null;
+        }
       }
       if (!abortController.signal.aborted) finish(false);
     } catch (error) {
@@ -163,6 +175,10 @@ export function createLuminaryEffectSequence(
       if (started || finished || cancelled) return;
       started = true;
       void run();
+    },
+    advance: () => {
+      if (!started || finished || cancelled) return;
+      activePhaseController?.abort();
     },
     skip: () => {
       if (finished || cancelled) return;

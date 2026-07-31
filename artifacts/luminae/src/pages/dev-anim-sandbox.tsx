@@ -784,6 +784,7 @@ function CipherReservePreview() {
   function play() {
     setAnimKey((k) => k + 1);
     setPlaying(true);
+    gameAudio.playCipherSeal();
   }
 
   // All coordinates in window.innerWidth/Height space — ScaledViewportContainer
@@ -3687,6 +3688,9 @@ export default function DevAnimSandbox() {
     useState<AffinityKey>("flare");
   const [sfxFanfareAffinity, setSfxFanfareAffinity] =
     useState<AffinityKey>("flare");
+  const [sfxMusicPlaying, setSfxMusicPlaying] = useState(
+    gameAudio.isMusicPlaying(),
+  );
 
   // One representative arrival-color hex per AffinityKey that maps through FANFARE_COLOR_MAP.
   // Any hex not in the map falls back to 'singularity' inside playLuminaryFanfare().
@@ -3955,6 +3959,99 @@ export default function DevAnimSandbox() {
           {/* ════════════════ AUDIO SFX GROUP ════════════════ */}
           {group === "sfx" && (
             <div className="max-w-xl mx-auto py-6 space-y-6">
+              <div>
+                <p className="text-[11px] font-mono text-muted-foreground/50 uppercase tracking-widest mb-3">
+                  Marketing Signatures
+                </p>
+                <div className="flex flex-wrap gap-2">
+                  <button
+                    type="button"
+                    onClick={() => gameAudio.playBrandMnemonic()}
+                    className="text-sm font-mono px-3 py-2 rounded border border-cyan-200/30 bg-cyan-200/5 text-cyan-100 transition-colors hover:bg-cyan-200/10"
+                  >
+                    Luminae Mnemonic
+                  </button>
+                  <button
+                    type="button"
+                    onClick={() => {
+                      gameAudio.playForgeAnimation();
+                      gameAudio.playAffinityPayment([
+                        "flare",
+                        "continuum",
+                        "verdance",
+                      ]);
+                    }}
+                    className="text-sm font-mono px-3 py-2 rounded border border-amber-300/30 bg-amber-300/5 text-amber-100 transition-colors hover:bg-amber-300/10"
+                  >
+                    Forge Signature
+                  </button>
+                  <button
+                    type="button"
+                    onClick={() => gameAudio.playCipherSeal()}
+                    className="text-sm font-mono px-3 py-2 rounded border border-indigo-300/30 bg-indigo-300/5 text-indigo-100 transition-colors hover:bg-indigo-300/10"
+                  >
+                    Encryption Signature
+                  </button>
+                  <button
+                    type="button"
+                    onClick={() => gameAudio.playLuminaryEligibility(2)}
+                    className="text-sm font-mono px-3 py-2 rounded border border-fuchsia-300/30 bg-fuchsia-300/5 text-fuchsia-100 transition-colors hover:bg-fuchsia-300/10"
+                  >
+                    Luminary Eligibility
+                  </button>
+                  <button
+                    type="button"
+                    onClick={() => gameAudio.playArrivalCutscene("radiant")}
+                    className="text-sm font-mono px-3 py-2 rounded border border-violet-300/30 bg-violet-300/5 text-violet-100 transition-colors hover:bg-violet-300/10"
+                  >
+                    Luminary Breakthrough
+                  </button>
+                  <button
+                    type="button"
+                    onClick={() => gameAudio.stopArrivalCutscene()}
+                    className="text-sm font-mono px-3 py-2 rounded border border-white/15 bg-white/5 text-white/65 transition-colors hover:bg-white/10"
+                  >
+                    Stop Breakthrough
+                  </button>
+                  <button
+                    type="button"
+                    onClick={() => gameAudio.playEminenceSeal(2, 15, 15)}
+                    className="text-sm font-mono px-3 py-2 rounded border border-yellow-200/30 bg-yellow-200/5 text-yellow-100 transition-colors hover:bg-yellow-200/10"
+                  >
+                    Eminence Ascension
+                  </button>
+                  <button
+                    type="button"
+                    onClick={() => {
+                      let elapsed = 0;
+                      for (let step = 0; step < 10; step += 1) {
+                        elapsed += 52 + step * 14;
+                        setTimeout(() => gameAudio.playTurnOrderTick(step), elapsed);
+                      }
+                      setTimeout(() => gameAudio.playTurnOrderResolved(), elapsed + 150);
+                    }}
+                    className="text-sm font-mono px-3 py-2 rounded border border-sky-200/30 bg-sky-200/5 text-sky-100 transition-colors hover:bg-sky-200/10"
+                  >
+                    Turn Order Roulette
+                  </button>
+                  <button
+                    type="button"
+                    onClick={() => {
+                      if (gameAudio.isMusicPlaying()) {
+                        gameAudio.stopMusic();
+                        setSfxMusicPlaying(false);
+                      } else {
+                        gameAudio.startMusic();
+                        setSfxMusicPlaying(true);
+                      }
+                    }}
+                    className="text-sm font-mono px-3 py-2 rounded border border-emerald-200/30 bg-emerald-200/5 text-emerald-100 transition-colors hover:bg-emerald-200/10"
+                  >
+                    {sfxMusicPlaying ? "Stop Ambient Mix" : "Start Ambient Mix"}
+                  </button>
+                </div>
+              </div>
+
               {/* ── Card actions ─────────────────────────────────── */}
               <div>
                 <p className="text-[11px] font-mono text-muted-foreground/50 uppercase tracking-widest mb-3">
@@ -3989,7 +4086,7 @@ export default function DevAnimSandbox() {
                   <button
                     type="button"
                     onClick={() => {
-                      void gameAudio.playArtifactReserved();
+                      void gameAudio.playCipherSeal();
                     }}
                     className="text-sm font-mono px-4 py-2 rounded border transition-colors"
                     style={{
@@ -4162,6 +4259,24 @@ export default function DevAnimSandbox() {
                     }}
                   >
                     Harness Blocked
+                  </button>
+                  <button
+                    type="button"
+                    onClick={() => {
+                      void gameAudio.playAffinitySwitch(sfxHarnessAffinity);
+                    }}
+                    className="text-sm font-mono px-4 py-2 rounded border border-violet-300/30 bg-violet-300/5 text-violet-100 transition-colors hover:bg-violet-300/10"
+                  >
+                    Affinity Switch
+                  </button>
+                  <button
+                    type="button"
+                    onClick={() => {
+                      void gameAudio.playAffinityPayment([sfxHarnessAffinity]);
+                    }}
+                    className="text-sm font-mono px-4 py-2 rounded border border-amber-300/30 bg-amber-300/5 text-amber-100 transition-colors hover:bg-amber-300/10"
+                  >
+                    Affinity Payment
                   </button>
                 </div>
                 <p className="text-[10px] text-muted-foreground/30 mt-2">

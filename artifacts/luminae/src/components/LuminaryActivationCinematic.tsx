@@ -20,6 +20,11 @@ import {
   type LuminaryEffectSequenceController,
 } from '@/lib/luminaryEffectSequence';
 import { getLuminaryAnnouncementCopy } from '@/lib/luminaryEffectAnnouncements';
+import {
+  luminaryPacedDuration,
+  luminaryReadDuration,
+  type LuminaryPlaybackMode,
+} from '@/lib/luminaryPresentationPacing';
 import { useIsMobile } from '@/hooks/use-mobile';
 
 // ─── Types ────────────────────────────────────────────────────────────────────
@@ -59,6 +64,15 @@ interface LuminaryActivationCinematicProps {
    * prefers-reduced-motion independently triggers this path.
    */
   reducedMotion?: boolean;
+  /**
+   * Speeds up the logical phase clock without selecting the reduced-motion
+   * presentation. The Sequence Lab uses this for Fast/Instant playback so the
+   * same activation beats remain visible at a shorter duration.
+   */
+  timelinePlaybackRate?: number;
+  /** Use only the source reveal; a named director owns the live consequence. */
+  sourceOnly?: boolean;
+  playbackMode?: LuminaryPlaybackMode;
   /**
    * Called when the cinematic ends (normally or via skip).
    * `skipped` is true when the player held-to-skip or the reduced-motion timer
@@ -152,22 +166,25 @@ function ProcedureTimeline({
   procedure,
   active,
   reducedMotion,
+  stepDurationMs = RESOLUTION_STEP_MS,
 }: {
   procedure: AnimationProcedureStep[];
   active: boolean;
   reducedMotion: boolean;
+  stepDurationMs?: number;
 }) {
   const visible = getVisibleProcedureSteps(procedure);
+  const visibleStepCount = visible.length;
   const [activeIndex, setActiveIndex] = useState(0);
 
   useEffect(() => {
     setActiveIndex(0);
-    if (!active || reducedMotion || visible.length < 2) return;
-    const timers = visible.slice(1).map((_, index) => (
-      setTimeout(() => setActiveIndex(index + 1), (index + 1) * RESOLUTION_STEP_MS)
+    if (!active || reducedMotion || visibleStepCount < 2) return;
+    const timers = Array.from({ length: visibleStepCount - 1 }, (_, index) => (
+      setTimeout(() => setActiveIndex(index + 1), (index + 1) * stepDurationMs)
     ));
     return () => timers.forEach(clearTimeout);
-  }, [active, reducedMotion, visible.length]);
+  }, [active, reducedMotion, stepDurationMs, visibleStepCount]);
 
   if (visible.length === 0) return null;
   return (
@@ -231,10 +248,12 @@ function VictoryRequirementCue({
   procedure,
   active,
   reducedMotion,
+  stepDurationMs = RESOLUTION_STEP_MS,
 }: {
   procedure: AnimationProcedureStep[];
   active: boolean;
   reducedMotion: boolean;
+  stepDurationMs?: number;
 }) {
   const changeIndex = procedure.findIndex(step => (
     step.type === 'victoryRequirementChange' ||
@@ -255,24 +274,24 @@ function VictoryRequirementCue({
 
   useEffect(() => {
     setVisible(false);
-    if (!active || !change) return;
+    if (!active || changeIndex < 0) return;
     if (reducedMotion) {
       setVisible(true);
       return;
     }
     const showTimer = setTimeout(
       () => setVisible(true),
-      Math.max(0, visibleIndex) * RESOLUTION_STEP_MS,
+      Math.max(0, visibleIndex) * stepDurationMs,
     );
     const hideTimer = setTimeout(
       () => setVisible(false),
-      Math.max(0, visibleIndex) * RESOLUTION_STEP_MS + 1550,
+      Math.max(0, visibleIndex) * stepDurationMs + 1550,
     );
     return () => {
       clearTimeout(showTimer);
       clearTimeout(hideTimer);
     };
-  }, [active, changeAmount, reducedMotion, visibleIndex]);
+  }, [active, changeAmount, changeIndex, reducedMotion, stepDurationMs, visibleIndex]);
 
   if (!change || !visible) return null;
   const sign = changeAmount >= 0 ? '+' : '';
@@ -329,8 +348,10 @@ export const HOLD_MS       = 550;   // 0.55–1.10s
 export const PAN_OUT_MS    = 860;   // 1.10–1.96s  — lingering fade-out
 // Total: 1960ms
 
-// Reduced-motion / abridged: compact overlay duration
-const REDUCED_HOLD_MS = 380;
+// Reduced motion removes the large travel reveal, not the causal beat itself.
+// Keep enough time for the source art to register before the effect director
+// takes over, even when the Sequence Lab is accelerating the wider timeline.
+const REDUCED_MIN_PRESENTATION_MS = 1_500;
 
 /** Readable hold for each causal step after the source cinematic clears. */
 export const RESOLUTION_STEP_MS = 500;
@@ -365,8 +386,6 @@ export const BURN_RESOLUTION_MIN_MS = 2520;
 //     spring-back window = 449 − 362 = ~87ms → visible arch-back motion.
 //   The intermediate keyframes (index[1]=0.088, index[2]=0.175) give the entity
 //   enough time in the shadowy descent phase that the dip reads clearly.
-
-const ENTITY_DUR_S = (REVEAL_MS + HOLD_MS + PAN_OUT_MS) / 1000; // 1.81
 
 // Steeper fade-in: entity materialises quickly from nothing.
 const ENTITY_OPACITY = [0,    0.35, 0.75, 1.0,  1.0,  0   ];
@@ -422,6 +441,9 @@ export function LuminaryActivationCinematic({
   procedure,
   onResolutionStart,
   reducedMotion: reducedMotionProp,
+  timelinePlaybackRate: timelinePlaybackRateProp = 1,
+  sourceOnly = false,
+  playbackMode = 'standard',
   onComplete,
 }: LuminaryActivationCinematicProps) {
   const onCompleteRef = useRef(onComplete);
@@ -430,6 +452,14 @@ export function LuminaryActivationCinematic({
   // Respect system prefers-reduced-motion OR the caller's abridgedAnims flag.
   const systemPrefersReduced = useReducedMotion();
   const isReduced = reducedMotionProp || !!systemPrefersReduced;
+  const timelinePlaybackRate = Number.isFinite(timelinePlaybackRateProp)
+    ? Math.max(1, timelinePlaybackRateProp)
+    : 1;
+  const atTimelineRate = (durationMs: number) => luminaryPacedDuration(
+    durationMs,
+    playbackMode,
+    timelinePlaybackRate,
+  );
   const isDesktopShell =
     typeof navigator !== 'undefined' && navigator.userAgent.includes('Electron');
 
@@ -477,19 +507,34 @@ export function LuminaryActivationCinematic({
     effectType,
   );
   const visibleProcedureSteps = getVisibleProcedureSteps(procedure ?? []);
+  const sourceHoldMs = luminaryReadDuration(
+    sourceOnly ? effectName : sourceAnnouncementCopy,
+    playbackMode,
+    timelinePlaybackRate,
+  );
+  const resolutionStepMs = atTimelineRate(RESOLUTION_STEP_MS);
   const hasBurnProcedure = (procedure ?? []).some(step => (
     (step.type === 'keywordEvent' && step.keyword === 'burn') ||
     (step.type === 'keywordEvents' && step.events.some(event => event.keyword === 'burn'))
   ));
   const resolutionDurationMs = Math.max(
-    MIN_RESOLUTION_MS,
-    hasBurnProcedure ? BURN_RESOLUTION_MIN_MS : 0,
-    visibleProcedureSteps.length * RESOLUTION_STEP_MS + RESOLUTION_SETTLE_MS,
+    luminaryReadDuration(
+      resolutionAnnouncementCopy,
+      playbackMode,
+      timelinePlaybackRate,
+    ),
+    atTimelineRate(MIN_RESOLUTION_MS),
+    hasBurnProcedure ? atTimelineRate(BURN_RESOLUTION_MIN_MS) : 0,
+    visibleProcedureSteps.length * resolutionStepMs +
+      atTimelineRate(RESOLUTION_SETTLE_MS),
   );
-  const reducedHoldMs = Math.max(
-    REDUCED_HOLD_MS,
-    600 + visibleProcedureSteps.length * 180,
+  const reducedPresentationDurationMs = Math.max(
+    atTimelineRate(REDUCED_MIN_PRESENTATION_MS),
+    sourceHoldMs,
   );
+  const entityDurationS = (
+    atTimelineRate(REVEAL_MS) + sourceHoldMs + atTimelineRate(PAN_OUT_MS)
+  ) / 1000;
   const queueLabel = queueTotal > 1
     ? `${label} · ${queuePosition} OF ${queueTotal}`
     : label;
@@ -503,13 +548,14 @@ export function LuminaryActivationCinematic({
   // directors. The source reveal remains bespoke, but queue advancement and
   // skipping are owned by the shared exactly-once sequence controller.
   useEffect(() => {
-    const targetHoldMs = Math.max(0, resolutionDurationMs - 340);
+    const resolutionTailMs = atTimelineRate(340);
+    const targetHoldMs = Math.max(0, resolutionDurationMs - resolutionTailMs);
     const phases = isReduced
       ? [
           {
             id: 'announce' as const,
-            durationMs: reducedHoldMs,
-            reducedDurationMs: reducedHoldMs,
+            durationMs: reducedPresentationDurationMs,
+            reducedDurationMs: reducedPresentationDurationMs,
             run: () => {
               setPhase('hold');
               setEffectBeat('idle');
@@ -519,21 +565,29 @@ export function LuminaryActivationCinematic({
             id: 'frame' as const,
             run: startResolutionOnce,
           },
-          {
-            id: 'target' as const,
-            run: () => {
-              setPhase('resolve');
-              setEffectBeat(effectDef ? 'target' : 'idle');
+          ...(!sourceOnly ? [
+            {
+              id: 'target' as const,
+              durationMs: targetHoldMs,
+              reducedDurationMs: targetHoldMs,
+              run: () => {
+                setPhase('resolve');
+                setEffectBeat(effectDef ? 'target' : 'idle');
+              },
             },
-          },
-          {
-            id: 'resolve' as const,
-            run: () => setEffectBeat(effectDef ? 'snap' : 'idle'),
-          },
-          {
-            id: 'reveal' as const,
-            run: () => setEffectBeat('done'),
-          },
+            {
+              id: 'resolve' as const,
+              durationMs: atTimelineRate(250),
+              reducedDurationMs: atTimelineRate(250),
+              run: () => setEffectBeat(effectDef ? 'snap' : 'idle'),
+            },
+            {
+              id: 'reveal' as const,
+              durationMs: atTimelineRate(90),
+              reducedDurationMs: atTimelineRate(90),
+              run: () => setEffectBeat('done'),
+            },
+          ] : []),
           { id: 'aftermath' as const },
         ]
       : [
@@ -542,50 +596,60 @@ export function LuminaryActivationCinematic({
             run: async ({ wait }: { wait: (durationMs: number) => Promise<void> }) => {
               setPhase('anticipate');
               setEffectBeat('idle');
-              await wait(ANTICIPATE_MS);
+              await wait(atTimelineRate(ANTICIPATE_MS));
               setPhase('reveal');
-              await wait(REVEAL_MS);
+              await wait(atTimelineRate(REVEAL_MS));
               setPhase('hold');
-              await wait(HOLD_MS);
+              await wait(sourceHoldMs);
             },
           },
           {
             id: 'frame' as const,
             run: async ({ wait }: { wait: (durationMs: number) => Promise<void> }) => {
               setPhase('pan_out');
-              await wait(PAN_OUT_MS);
+              await wait(atTimelineRate(PAN_OUT_MS));
               startResolutionOnce();
             },
           },
-          {
-            id: 'target' as const,
-            durationMs: targetHoldMs,
-            run: () => {
-              setPhase('resolve');
-              setEffectBeat(effectDef ? 'target' : 'idle');
+          ...(!sourceOnly ? [
+            {
+              id: 'target' as const,
+              durationMs: targetHoldMs,
+              run: () => {
+                setPhase('resolve');
+                setEffectBeat(effectDef ? 'target' : 'idle');
+              },
             },
-          },
-          {
-            id: 'resolve' as const,
-            durationMs: 250,
-            run: () => setEffectBeat(effectDef ? 'snap' : 'idle'),
-          },
-          {
-            id: 'reveal' as const,
-            durationMs: 90,
-            run: () => setEffectBeat('done'),
-          },
+            {
+              id: 'resolve' as const,
+              durationMs: atTimelineRate(250),
+              run: () => setEffectBeat(effectDef ? 'snap' : 'idle'),
+            },
+            {
+              id: 'reveal' as const,
+              durationMs: atTimelineRate(90),
+              run: () => setEffectBeat('done'),
+            },
+          ] : []),
           { id: 'aftermath' as const },
         ];
 
-    if (!isReduced) {
-      const activationFade = {
-        fadeInMs:       ANTICIPATE_MS,
-        fadeOutStartMs: ANTICIPATE_MS + REVEAL_MS + HOLD_MS,
-        fadeOutMs:      Math.round(PAN_OUT_MS * 0.65),
+    const activationFade = isReduced
+      ? {
+          fadeInMs: atTimelineRate(120),
+          fadeOutStartMs: Math.max(
+            atTimelineRate(360),
+            reducedPresentationDurationMs - atTimelineRate(320),
+          ),
+          fadeOutMs: atTimelineRate(260),
+        }
+      : {
+        fadeInMs:       atTimelineRate(ANTICIPATE_MS),
+        fadeOutStartMs:
+          atTimelineRate(ANTICIPATE_MS + REVEAL_MS) + sourceHoldMs,
+        fadeOutMs:      atTimelineRate(Math.round(PAN_OUT_MS * 0.65)),
       };
-      gameAudio.playActivationSting(effectType, primaryColor, activationFade);
-    }
+    gameAudio.playActivationSting(effectType, primaryColor, activationFade);
 
     const sequence = createLuminaryEffectSequence({
       phases,
@@ -612,6 +676,7 @@ export function LuminaryActivationCinematic({
     };
   }, []); // eslint-disable-line react-hooks/exhaustive-deps
 
+  const handleAdvance = () => sequenceRef.current?.advance();
   const handleSkip = () => sequenceRef.current?.skip();
 
   // ── Derived state ─────────────────────────────────────────────────────────
@@ -626,23 +691,28 @@ export function LuminaryActivationCinematic({
   if (phase === 'done') return null;
 
   // ── Reduced-motion render ─────────────────────────────────────────────────
-  // Compact overlay: dim + effect label + procedure timeline/badge + name.
-  // No entity, no board zoom, no slow phases. Single click/tap to dismiss early.
+  // Compact overlay: a brief source pulse, effect label, procedure timeline,
+  // and name. It omits board zoom and slow travel but never erases activation.
   if (isReduced) {
+    const showingSource = directorPhase === 'announce' || sourceOnly;
     const reducedContent = (
       <div
         data-testid="luminary-activation-cinematic"
         data-luminary-id={luminaryId}
         data-effect-type={effectType}
         data-effect-phase={directorPhase}
+        data-presentation-mode="compact"
+        data-playback-mode={playbackMode}
+        data-timeline-playback-rate={timelinePlaybackRate}
         className="fixed inset-0"
         style={{ zIndex: 8900, pointerEvents: 'auto', cursor: 'pointer', userSelect: 'none' }}
-        onClick={handleSkip}
+        onClick={handleAdvance}
       >
-        {/* Dim overlay — appears instantly, no transition */}
+        {/* Dim overlay — appears instantly so the visual sting and source pulse
+            share a clear first frame. */}
         <div
           className="absolute inset-0"
-          style={{ background: 'rgba(4,2,16,0.72)', pointerEvents: 'none' }}
+          style={{ background: 'rgba(4,2,16,0.82)', pointerEvents: 'none' }}
         />
 
         {/* Colored accent bar at top — quick visual anchor keyed to this Luminary */}
@@ -651,10 +721,69 @@ export function LuminaryActivationCinematic({
           style={{ background: `linear-gradient(90deg, transparent, ${primaryColor}88, transparent)`, pointerEvents: 'none' }}
         />
 
-        {/* Compact info block — centered, no entry animation */}
+        <motion.div
+          data-testid="luminary-activation-entity"
+          className="absolute inset-0 flex items-center justify-center"
+          initial={{ opacity: 0.16, scale: 0.97 }}
+          animate={{
+            opacity: [0.16, 0.88, 0.78, 0.18],
+            scale: [0.97, 1, 1.015, 1.04],
+          }}
+          transition={{
+            duration: reducedPresentationDurationMs / 1000,
+            times: [0, 0.18, 0.76, 1],
+            ease: 'easeInOut',
+          }}
+          style={{ pointerEvents: 'none' }}
+          aria-hidden="true"
+        >
+          <div
+            className="absolute h-[48vmin] w-[48vmin] rounded-full"
+            style={{
+              background: `radial-gradient(circle, ${primaryColor}32 0%, ${primaryColor}14 42%, transparent 72%)`,
+              boxShadow: `0 0 54px ${primaryColor}24`,
+            }}
+          />
+          <motion.div
+            className="absolute h-[42vmin] w-[42vmin] rounded-full border"
+            initial={{ opacity: 0.25, scale: 0.78 }}
+            animate={{ opacity: [0.25, 0.72, 0], scale: [0.78, 1, 1.16] }}
+            transition={{
+              duration: reducedPresentationDurationMs / 1000,
+              times: [0, 0.28, 1],
+              ease: 'easeOut',
+            }}
+            style={{
+              borderColor: `${primaryColor}88`,
+              boxShadow: `inset 0 0 26px ${primaryColor}24, 0 0 30px ${primaryColor}30`,
+            }}
+          />
+          {imageUrl ? (
+            <img
+              src={imageUrl}
+              alt=""
+              draggable={false}
+              loading="eager"
+              decoding="sync"
+              fetchPriority="high"
+              style={{
+                position: 'relative',
+                zIndex: 1,
+                width: 'min(68vw, 430px)',
+                height: 'min(70vh, 560px)',
+                objectFit: 'contain',
+                filter: `drop-shadow(0 0 30px ${primaryColor}88)`,
+              }}
+            />
+          ) : (
+            <EntityArt size={220} />
+          )}
+        </motion.div>
+
+        {/* Keep the announcement below the source rather than covering the art. */}
         <div
           className="absolute inset-x-0 flex flex-col items-center gap-2 px-4"
-          style={{ top: '50%', transform: 'translateY(-50%)', pointerEvents: 'none', zIndex: 1 }}
+          style={{ bottom: 'max(3.5rem, env(safe-area-inset-bottom))', pointerEvents: 'none', zIndex: 1 }}
         >
           {/* Effect-type label pill */}
           <div
@@ -671,32 +800,50 @@ export function LuminaryActivationCinematic({
           <LuminaryEffectAnnouncement
             effectName={effectName}
             luminaryName={luminaryName}
-            description={resolutionAnnouncementCopy}
+            description={
+              sourceOnly
+                ? undefined
+                : showingSource
+                  ? sourceAnnouncementCopy
+                  : resolutionAnnouncementCopy
+            }
             triggeringPlayerName={triggeringPlayerName}
             primaryColor={primaryColor}
             secondaryColor={primaryColor}
             compact
           />
 
-          {/* Procedure strip — always visible immediately in reduced mode */}
-          {procedure && hasProcedureSteps ? (
-            <ProcedureTimeline procedure={procedure} active={false} reducedMotion />
-          ) : effectDef ? (
-            <TargetBadge
-              tone={effectDef.tone}
-              target={effectDef.target}
-              isLingering={effectDef.isLingering}
+          {/* Named directors own their consequence beats after this brief
+              source-only handoff, so do not preview their whole procedure. */}
+          {!sourceOnly && (
+            procedure && hasProcedureSteps ? (
+              <ProcedureTimeline
+                procedure={procedure}
+                active={false}
+                reducedMotion
+                stepDurationMs={resolutionStepMs}
+              />
+            ) : effectDef ? (
+              <TargetBadge
+                tone={effectDef.tone}
+                target={effectDef.target}
+                isLingering={effectDef.isLingering}
+              />
+            ) : null
+          )}
+          {!sourceOnly && (
+            <VictoryRequirementCue
+              procedure={procedure ?? []}
+              active
+              reducedMotion
+              stepDurationMs={resolutionStepMs}
             />
-          ) : null}
-          <VictoryRequirementCue
-            procedure={procedure ?? []}
-            active
-            reducedMotion
-          />
+          )}
         </div>
 
         <LuminaryEffectSkipControl
           color={primaryColor}
+          onAdvance={handleAdvance}
           onSkip={handleSkip}
           reducedMotion
         />
@@ -722,7 +869,7 @@ export function LuminaryActivationCinematic({
     phase === 'hold'       ? 0.78 :
     0; // pan_out + done
 
-  const showResolution = phase === 'resolve';
+  const showResolution = !sourceOnly && phase === 'resolve';
   const showSkipHint =
     phase === 'reveal' ||
     phase === 'hold' ||
@@ -735,6 +882,9 @@ export function LuminaryActivationCinematic({
       data-luminary-id={luminaryId}
       data-effect-type={effectType}
       data-effect-phase={directorPhase}
+      data-presentation-mode="full"
+      data-playback-mode={playbackMode}
+      data-timeline-playback-rate={timelinePlaybackRate}
       className="fixed inset-0"
       style={{ zIndex: 8900, pointerEvents: 'auto', userSelect: 'none' }}
     >
@@ -744,7 +894,9 @@ export function LuminaryActivationCinematic({
         className="absolute inset-0"
         animate={{ opacity: overlayOpacity }}
         transition={{
-          duration: isPanOut ? PAN_OUT_MS / 1000 * 0.65 : (REVEAL_MS / 1000) * 0.4,
+          duration: isPanOut
+            ? atTimelineRate(PAN_OUT_MS) / 1000 * 0.65
+            : (atTimelineRate(REVEAL_MS) / 1000) * 0.4,
           ease: 'easeInOut',
         }}
         style={{ background: 'rgba(4,2,16,1)', pointerEvents: 'none' }}
@@ -767,11 +919,11 @@ export function LuminaryActivationCinematic({
             y:       entityY,
           }}
           transition={{
-            duration: ENTITY_DUR_S,
+            duration: entityDurationS,
             times:    ENTITY_TIMES,
             ease:     'easeInOut',
             y: {
-              duration: ENTITY_DUR_S,
+              duration: entityDurationS,
               times:    ENTITY_TIMES,
               ease:     ENTITY_Y_EASE,
             },
@@ -874,7 +1026,7 @@ export function LuminaryActivationCinematic({
             <LuminaryEffectAnnouncement
               effectName={effectName}
               luminaryName={luminaryName}
-              description={sourceAnnouncementCopy}
+              description={sourceOnly ? undefined : sourceAnnouncementCopy}
               triggeringPlayerName={triggeringPlayerName}
               primaryColor={primaryColor}
               secondaryColor={primaryColor}
@@ -950,6 +1102,7 @@ export function LuminaryActivationCinematic({
                   procedure={procedure}
                   active
                   reducedMotion={false}
+                  stepDurationMs={resolutionStepMs}
                 />
               ) : targetVisible && effectDef ? (
                 <TargetBadge
@@ -969,6 +1122,7 @@ export function LuminaryActivationCinematic({
             procedure={procedure}
             active={showResolution}
             reducedMotion={false}
+            stepDurationMs={resolutionStepMs}
           />
         )}
       </AnimatePresence>
@@ -990,6 +1144,7 @@ export function LuminaryActivationCinematic({
           >
             <LuminaryEffectSkipControl
               color={primaryColor}
+              onAdvance={handleAdvance}
               onSkip={handleSkip}
             />
           </motion.div>

@@ -5580,6 +5580,39 @@ button,
           drop-shadow(0 0 24px rgba(255, 195, 80, 0.30));
 }
 
+.lum-radiant-runtime-core {
+  isolation: isolate;
+  transform-origin: center center;
+  --lum-radiant-runtime-halo-min: 0.38;
+  --lum-radiant-runtime-halo-max: 0.62;
+}
+
+.lum-radiant-runtime-core::before {
+  content: "";
+  position: absolute;
+  inset: -145%;
+  z-index: -1;
+  border-radius: 50%;
+  background: radial-gradient(
+    circle,
+    rgba(255, 252, 220, 0.82) 0%,
+    rgba(255, 226, 138, 0.42) 24%,
+    rgba(255, 196, 80, 0.16) 48%,
+    transparent 72%
+  );
+  animation: lum-radiant-runtime-halo 3.8s ease-in-out infinite;
+}
+
+.lum-radiant-runtime-core--focused {
+  --lum-radiant-runtime-halo-min: 0.56;
+  --lum-radiant-runtime-halo-max: 0.82;
+}
+
+@keyframes lum-radiant-runtime-halo {
+  0%, 100% { opacity: var(--lum-radiant-runtime-halo-min); }
+  50% { opacity: var(--lum-radiant-runtime-halo-max); }
+}
+
 /* ── Luminary claimed tear ─────────────────────────────────────────────────
    The entity has broken free. What remains in its slot is a fractured,
    affinity-fed dimensional tear and a small alliance plaque. */
@@ -5726,6 +5759,33 @@ button,
 @keyframes luminary-freed-hover {
   0%, 100% { transform: translate3d(0, 2px, 0); }
   50% { transform: translate3d(0, -5px, 0); }
+}
+
+.luminary-claimed-free-entity--compass {
+  animation-name: luminary-compass-loom;
+}
+
+@keyframes luminary-compass-loom {
+  0%, 100% { transform: scaleX(0.94); }
+  50% { transform: scaleX(1.06); }
+}
+
+.lum-portal-seal--idle-paused .luminary-claimed-summoned-backdrop,
+.lum-portal-seal--idle-paused .luminary-claimed-free-entity,
+.lum-portal-seal--idle-paused .lum-radiant-ring,
+.lum-portal-seal--idle-paused .lum-radiant-core,
+.lum-portal-seal--idle-paused .lum-radiant-runtime-core::before,
+.game-shell[data-luminary-idle-suspended="true"] .luminary-claimed-summoned-backdrop,
+.game-shell[data-luminary-idle-suspended="true"] .luminary-claimed-free-entity,
+.game-shell[data-luminary-idle-suspended="true"] .lum-radiant-ring,
+.game-shell[data-luminary-idle-suspended="true"] .lum-radiant-core,
+.game-shell[data-luminary-idle-suspended="true"] .lum-radiant-runtime-core::before {
+  animation-play-state: paused !important;
+}
+
+.lum-portal-seal--idle-paused .luminary-claimed-free-entity,
+.game-shell[data-luminary-idle-suspended="true"] .luminary-claimed-free-entity {
+  will-change: auto;
 }
 
 .lum-portal-seal-affinity {

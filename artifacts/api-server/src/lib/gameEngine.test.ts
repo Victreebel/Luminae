@@ -49,6 +49,18 @@ function enrichPlayer(state: GameStateData, playerIdx: number) {
   state.affinityWell.singularity = 5;
 }
 
+function placeRuptureTargets(state: GameStateData, count = 4): string[] {
+  const tier3Pool = [...state.forgeTier3, ...state.deckTier3];
+  const targets = tier3Pool
+    .filter((cardId) => (CARD_MAP.get(cardId)?.cost.flare ?? 0) < 5)
+    .slice(0, count);
+  expect(targets.length).toBeGreaterThan(0);
+  const targetSet = new Set(targets);
+  state.forgeTier3 = [...targets];
+  state.deckTier3 = tier3Pool.filter((cardId) => !targetSet.has(cardId));
+  return targets;
+}
+
 /** Advance the current player's turn via pass. */
 function pass(state: GameStateData) {
   const p = state.players[state.currentPlayerIndex];
@@ -1475,17 +1487,55 @@ describe("Forgotten Hour — markers expire at end of owner's next turn", () => 
   });
 });
 
-// ─── On-arrival burn effects ───────────────────────────────────────────────────
+// ─── On-arrival Forge and Burn effects ───────────────────────────────────────
 
-describe("Impact Extinction (lum_forge) — burns all face-up Tier III on arrival", () => {
-  it("removes all original Tier III Forge cards on Iron Harbinger arrival", () => {
+describe("Impact Extinction (lum_forge) — resets the complete Forge through the Archives", () => {
+  it("returns all rows, randomizes each tier pool, refills, and never emits a Burn", () => {
     const state = makeGame();
-    const t3Before = [...state.forgeTier3];
-    expect(t3Before.length).toBeGreaterThan(0);
-    claimLuminary(state, "lum_forge");
-    // None of the original T3 cards should remain in the Forge.
-    for (const id of t3Before) {
-      expect(state.forgeTier3).not.toContain(id);
+    const rowsBefore = {
+      3: [...state.forgeTier3],
+      2: [...state.forgeTier2],
+      1: [...state.forgeTier1],
+    };
+    const poolsBefore = {
+      3: [...state.forgeTier3, ...state.deckTier3].sort(),
+      2: [...state.forgeTier2, ...state.deckTier2].sort(),
+      1: [...state.forgeTier1, ...state.deckTier1].sort(),
+    };
+    const burnPileBefore = [...state.burnPile];
+    const burnEventsBefore = [...state.burnEvents];
+    const randomSpy = vi.spyOn(Math, "random").mockReturnValue(0);
+
+    try {
+      claimLuminary(state, "lum_forge");
+    } finally {
+      randomSpy.mockRestore();
+    }
+
+    expect(state.forgeTier3).toHaveLength(4);
+    expect(state.forgeTier2).toHaveLength(4);
+    expect(state.forgeTier1).toHaveLength(4);
+    const triggeringForgeId = state.players[0].forgedArtifactIds.at(-1);
+    expect([...state.forgeTier3, ...state.deckTier3].sort()).toEqual(poolsBefore[3]);
+    expect([...state.forgeTier2, ...state.deckTier2].sort()).toEqual(poolsBefore[2]);
+    expect([...state.forgeTier1, ...state.deckTier1].sort()).toEqual(
+      poolsBefore[1].filter(cardId => cardId !== triggeringForgeId),
+    );
+    expect(state.burnPile).toEqual(burnPileBefore);
+    expect(state.burnEvents).toEqual(burnEventsBefore);
+
+    const activation = state.pendingLuminaryActivationEvents.find(
+      (event) => event.luminaryId === "lum_forge",
+    );
+    expect(activation?.targetCardIds).toHaveLength(12);
+    expect(activation?.targetCardIds?.slice(0, 8)).toEqual([
+      ...rowsBefore[3],
+      ...rowsBefore[2],
+    ]);
+    expect(activation?.targetCardIds?.slice(8)).toHaveLength(4);
+    expect(activation?.targetCardIds).not.toContain(triggeringForgeId);
+    for (const cardId of activation?.targetCardIds?.slice(8) ?? []) {
+      expect(poolsBefore[1]).toContain(cardId);
     }
   });
 });
@@ -1586,14 +1636,15 @@ describe("Phoenix Paradox (lum_astral) — Eternal Recurrence", () => {
     state.players[0].luminaries.push("lum_bloom");
     state.catalystBloomBurnCount = 0;
     const eventCountBefore = state.burnEvents.length;
+    placeRuptureTargets(state);
 
-    claimLuminary(state, "lum_forge");
+    claimLuminary(state, "lum_moth");
 
     const recurrenceBurns = state.burnEvents.slice(eventCountBefore);
     expect(recurrenceBurns.length).toBeGreaterThan(0);
     expect(state.catalystBloomBurnCount).toBe(recurrenceBurns.length);
     for (const event of recurrenceBurns) {
-      expect(event.sourceLuminaryId).toBe("lum_forge");
+      expect(event.sourceLuminaryId).toBe("lum_moth");
       expect(event.destination).toBe("archive");
       expect(state.burnPile).not.toContain(event.cardId);
       const archive =
@@ -2420,15 +2471,12 @@ describe("burnPile eligibility guards and burnCard() invariants", () => {
 
   // ── refillForgeSlot: slot refill after burn ───────────────────────────────
 
-  it("burned Forge slot is refilled from the deck after Iron Harbinger (lum_forge) fires", () => {
-    // Iron Harbinger's Impact Extinction burns every face-up Tier III card on
-    // arrival. refillForgeSlot should replace each burned slot with a fresh Artifact
-    // from deckTier3 (if available).
-    const t3Before = [...state.forgeTier3];
+  it("burned Forge slot is refilled from the deck after Red Moth (lum_moth) fires", () => {
+    const t3Before = placeRuptureTargets(state);
     expect(t3Before.length).toBeGreaterThan(0);
     const deck3LengthBefore = state.deckTier3.length;
 
-    claimLuminary(state, "lum_forge");
+    claimLuminary(state, "lum_moth");
 
     // Every originally-visible T3 card must now be absent from the Forge.
     for (const id of t3Before) {
@@ -2453,11 +2501,9 @@ describe("burnPile eligibility guards and burnCard() invariants", () => {
   // ── burnPile growth: one entry per burnCard() call ────────────────────────
 
   it("burnPile grows by exactly the number of cards burned (one entry per call)", () => {
-    const t3Count = state.forgeTier3.length;
-    expect(t3Count).toBeGreaterThan(0);
-
-    // Claim lum_forge → burnAllInTier burns every current T3 slot.
-    claimLuminary(state, "lum_forge");
+    const targets = placeRuptureTargets(state, state.forgeTier3.length);
+    const t3Count = targets.length;
+    claimLuminary(state, "lum_moth");
 
     expect(state.burnPile.length).toBe(t3Count);
   });
@@ -2465,16 +2511,16 @@ describe("burnPile eligibility guards and burnCard() invariants", () => {
   // ── burnPile deduplication: same card ID appears at most once ─────────────
 
   it("burnPile does not gain a duplicate when burnCard is called twice with the same card ID", () => {
-    // Pre-seed burnPile with one T3 card that is still physically in the Forge.
-    // When lum_forge fires, burnAllInTier will find the card in the Forge and
+    // Pre-seed burnPile with one qualifying T3 card that is still physically in
+    // the Forge. When Red Moth fires, the duplicate guard must prevent a second
     // call burnCard with it again.  The deduplication guard must prevent a second
     // entry from appearing in burnPile (burnEvents may still have two entries —
     // that is intentional and is not tested here).
-    const cardId = state.forgeTier3[0];
+    const cardId = placeRuptureTargets(state, 1)[0];
     expect(cardId).toBeTruthy();
     state.burnPile = [cardId!];
 
-    claimLuminary(state, "lum_forge");
+    claimLuminary(state, "lum_moth");
 
     const occurrences = state.burnPile.filter((id) => id === cardId).length;
     expect(occurrences).toBe(1);
@@ -2539,9 +2585,10 @@ describe("LUMINARIES catalogue", () => {
 // ─── BurnEvent — enriched payload ─────────────────────────────────────────────
 
 describe("BurnEvent — enriched payload (v2 format)", () => {
-  it("BurnEvent has a non-empty eventId after Iron Harbinger fires", () => {
+  it("BurnEvent has a non-empty eventId after Red Moth fires", () => {
     const state = makeGame();
-    claimLuminary(state, "lum_forge");
+    placeRuptureTargets(state);
+    claimLuminary(state, "lum_moth");
     expect(state.burnEvents.length).toBeGreaterThan(0);
     for (const ev of state.burnEvents) {
       expect(typeof ev.eventId).toBe("string");
@@ -2551,7 +2598,8 @@ describe("BurnEvent — enriched payload (v2 format)", () => {
 
   it("BurnEvent.artifactName is a non-empty string for every burned card", () => {
     const state = makeGame();
-    claimLuminary(state, "lum_forge");
+    placeRuptureTargets(state);
+    claimLuminary(state, "lum_moth");
     expect(state.burnEvents.length).toBeGreaterThan(0);
     for (const ev of state.burnEvents) {
       expect(typeof ev.artifactName).toBe("string");
@@ -2561,7 +2609,8 @@ describe("BurnEvent — enriched payload (v2 format)", () => {
 
   it("BurnEvent.sourceType is 'luminary' for Luminary-triggered burns", () => {
     const state = makeGame();
-    claimLuminary(state, "lum_forge");
+    placeRuptureTargets(state);
+    claimLuminary(state, "lum_moth");
     for (const ev of state.burnEvents) {
       expect(ev.sourceType).toBe("luminary");
     }
@@ -2569,15 +2618,17 @@ describe("BurnEvent — enriched payload (v2 format)", () => {
 
   it("BurnEvent.sourceLuminaryId identifies the burning Luminary", () => {
     const state = makeGame();
-    claimLuminary(state, "lum_forge");
+    placeRuptureTargets(state);
+    claimLuminary(state, "lum_moth");
     for (const ev of state.burnEvents) {
-      expect(ev.sourceLuminaryId).toBe("lum_forge");
+      expect(ev.sourceLuminaryId).toBe("lum_moth");
     }
   });
 
   it("BurnEvent.tier is 1, 2, or 3 for every burned card", () => {
     const state = makeGame();
-    claimLuminary(state, "lum_forge");
+    placeRuptureTargets(state);
+    claimLuminary(state, "lum_moth");
     for (const ev of state.burnEvents) {
       expect([1, 2, 3]).toContain(ev.tier);
     }
@@ -2585,7 +2636,8 @@ describe("BurnEvent — enriched payload (v2 format)", () => {
 
   it("BurnEvent.ownerPlayerId is the claiming player's id", () => {
     const state = makeGame();
-    claimLuminary(state, "lum_forge"); // p1 claims lum_forge
+    placeRuptureTargets(state);
+    claimLuminary(state, "lum_moth"); // p1 claims lum_moth
     for (const ev of state.burnEvents) {
       expect(ev.ownerPlayerId).toBe("p1");
     }
@@ -2593,7 +2645,8 @@ describe("BurnEvent — enriched payload (v2 format)", () => {
 
   it("multiple burns create distinct BurnEvents with distinct eventIds", () => {
     const state = makeGame();
-    claimLuminary(state, "lum_forge");
+    placeRuptureTargets(state);
+    claimLuminary(state, "lum_moth");
     const ids = state.burnEvents.map((e) => e.eventId);
     const unique = new Set(ids);
     expect(unique.size).toBe(ids.length);

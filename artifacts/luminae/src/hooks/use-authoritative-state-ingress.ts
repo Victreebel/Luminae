@@ -24,6 +24,10 @@ export interface AuthoritativeStateIngress<TState> {
     state: TState,
     source: AuthoritativeStateSource,
   ) => AuthoritativeStateIngressResult;
+  replaceEpoch: (
+    state: TState,
+    source: AuthoritativeStateSource,
+  ) => void;
   clear: () => void;
   nudge: () => void;
   queuedCount: number;
@@ -115,6 +119,19 @@ export function useAuthoritativeStateIngress<TState extends VersionedState>({
     setQueuedCount(0);
   }, []);
 
+  const replaceEpoch = useCallback((
+    state: TState,
+    source: AuthoritativeStateSource,
+  ) => {
+    if (timerRef.current) {
+      clearTimeout(timerRef.current);
+      timerRef.current = null;
+    }
+    queueRef.current = [];
+    setQueuedCount(0);
+    processRef.current(state, source);
+  }, []);
+
   const nudge = useCallback(() => {
     if (timerRef.current) {
       clearTimeout(timerRef.current);
@@ -131,6 +148,7 @@ export function useAuthoritativeStateIngress<TState extends VersionedState>({
 
   return {
     accept,
+    replaceEpoch,
     clear,
     nudge,
     queuedCount,

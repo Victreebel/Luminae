@@ -11,10 +11,15 @@ import {
   type LuminaryEffectSequenceController,
 } from "@/lib/luminaryEffectSequence";
 import {
-  archivePulseDelayForIndexes,
   PHOENIX_ARCHIVE_FLIGHT_MS,
   PHOENIX_ARCHIVE_STAGGER_MS,
 } from "./phoenixArchiveReturnTiming";
+import {
+  boundedLuminaryStagger,
+  luminaryPacedDuration,
+  luminaryReadDuration,
+  type LuminaryPlaybackMode,
+} from "@/lib/luminaryPresentationPacing";
 
 type Tier = 1 | 2 | 3;
 
@@ -34,6 +39,8 @@ interface ReturnFlight {
 interface PhoenixArchiveReturnDirectorProps {
   cardIds: string[];
   reducedMotion?: boolean;
+  playbackMode?: LuminaryPlaybackMode;
+  timelinePlaybackRate?: number;
   triggeringPlayerName?: string;
   queuePosition?: number;
   queueTotal?: number;
@@ -64,6 +71,8 @@ function fallbackArchivePoint(tier: Tier): Point {
 export function PhoenixArchiveReturnDirector({
   cardIds,
   reducedMotion = false,
+  playbackMode = "standard",
+  timelinePlaybackRate = 1,
   triggeringPlayerName,
   queuePosition = 1,
   queueTotal = 1,
@@ -90,11 +99,25 @@ export function PhoenixArchiveReturnDirector({
 
   useEffect(() => {
     let preparedFlights: ReturnFlight[] = [];
+    const staggerMs = boundedLuminaryStagger(
+      cardIds.length,
+      PHOENIX_ARCHIVE_STAGGER_MS,
+      playbackMode,
+      timelinePlaybackRate,
+    );
+    const itemFlightMs = luminaryPacedDuration(
+      PHOENIX_ARCHIVE_FLIGHT_MS,
+      playbackMode,
+      timelinePlaybackRate,
+    );
     const flightDurationMs = Math.max(
-      950,
-      PHOENIX_ARCHIVE_FLIGHT_MS +
-        Math.max(0, cardIds.length - 1) * PHOENIX_ARCHIVE_STAGGER_MS +
-        280,
+      luminaryReadDuration(
+        `${cardIds.length} burned Artifacts return to the Archives.`,
+        playbackMode,
+        timelinePlaybackRate,
+      ),
+      itemFlightMs + Math.max(0, cardIds.length - 1) * staggerMs +
+        luminaryPacedDuration(180, playbackMode, timelinePlaybackRate),
     );
 
     const sequence = createLuminaryEffectSequence({
@@ -102,14 +125,20 @@ export function PhoenixArchiveReturnDirector({
       phases: [
         {
           id: "announce",
-          durationMs: 900,
-          reducedDurationMs: 160,
+          durationMs: luminaryPacedDuration(
+            220,
+            playbackMode,
+            timelinePlaybackRate,
+          ),
           run: () => setReady(true),
         },
         {
           id: "frame",
-          durationMs: 180,
-          reducedDurationMs: 0,
+          durationMs: luminaryPacedDuration(
+            140,
+            playbackMode,
+            timelinePlaybackRate,
+          ),
           run: () => {
             const sourceElement = document.querySelector<HTMLElement>(
               "[data-burn-pile-chip-anchor]",
@@ -147,13 +176,15 @@ export function PhoenixArchiveReturnDirector({
         },
         {
           id: "target",
-          durationMs: 180,
-          reducedDurationMs: 0,
+          durationMs: luminaryPacedDuration(
+            120,
+            playbackMode,
+            timelinePlaybackRate,
+          ),
         },
         {
           id: "resolve",
           durationMs: flightDurationMs,
-          reducedDurationMs: 320,
           run: () => setFlights(preparedFlights),
         },
         {
@@ -161,8 +192,11 @@ export function PhoenixArchiveReturnDirector({
         },
         {
           id: "aftermath",
-          durationMs: 280,
-          reducedDurationMs: 80,
+          durationMs: luminaryPacedDuration(
+            180,
+            playbackMode,
+            timelinePlaybackRate,
+          ),
         },
       ],
       onPhaseChange: setDirectorPhase,
@@ -178,7 +212,7 @@ export function PhoenixArchiveReturnDirector({
       sequence.cancel();
       if (sequenceRef.current === sequence) sequenceRef.current = null;
     };
-  }, [cardIds, reducedMotion]);
+  }, [cardIds, playbackMode, reducedMotion, timelinePlaybackRate]);
   const queueLabel = queueTotal > 1
     ? `START OF TURN EFFECT · ${queuePosition} OF ${queueTotal}`
     : "START OF TURN EFFECT";
@@ -225,7 +259,14 @@ export function PhoenixArchiveReturnDirector({
         const fan = ((flight.index % 7) - 3) * 6;
         const delay = reducedMotion
           ? 0
-          : (flight.index * PHOENIX_ARCHIVE_STAGGER_MS) / 1000;
+          : (
+              flight.index * boundedLuminaryStagger(
+                cardIds.length,
+                PHOENIX_ARCHIVE_STAGGER_MS,
+                playbackMode,
+                timelinePlaybackRate,
+              )
+            ) / 1000;
         const midpointX =
           flight.from.x + (flight.to.x - flight.from.x) * 0.48 + fan;
         const midpointY =
@@ -273,7 +314,13 @@ export function PhoenixArchiveReturnDirector({
                   }
             }
             transition={{
-              duration: reducedMotion ? 0.32 : PHOENIX_ARCHIVE_FLIGHT_MS / 1000,
+              duration: reducedMotion
+                ? 0.22
+                : luminaryPacedDuration(
+                    PHOENIX_ARCHIVE_FLIGHT_MS,
+                    playbackMode,
+                    timelinePlaybackRate,
+                  ) / 1000,
               delay,
               ease: [0.22, 0.72, 0.18, 1],
             }}
@@ -317,11 +364,24 @@ export function PhoenixArchiveReturnDirector({
         const count = tierCounts[tier];
         if (!count) return null;
         const tierFlights = flights.filter((flight) => flight.tier === tier);
-        const pulseDelay = archivePulseDelayForIndexes(
-          tierFlights.map((flight) => flight.index),
-          reducedMotion,
-        );
-        if (pulseDelay === null) return null;
+        if (tierFlights.length === 0) return null;
+        const pulseDelay = reducedMotion
+          ? 0.12
+          : (
+              Math.max(...tierFlights.map((flight) => flight.index)) *
+                boundedLuminaryStagger(
+                  cardIds.length,
+                  PHOENIX_ARCHIVE_STAGGER_MS,
+                  playbackMode,
+                  timelinePlaybackRate,
+                ) +
+              luminaryPacedDuration(
+                PHOENIX_ARCHIVE_FLIGHT_MS,
+                playbackMode,
+                timelinePlaybackRate,
+              ) -
+              130
+            ) / 1000;
         const archive = tierFlights[0]?.to ?? fallbackArchivePoint(tier);
         return (
           <motion.div
@@ -358,8 +418,9 @@ export function PhoenixArchiveReturnDirector({
       <LuminaryEffectSkipControl
         color="#fda4af"
         reducedMotion={reducedMotion}
+        onAdvance={() => sequenceRef.current?.advance()}
         onSkip={() => sequenceRef.current?.skip()}
-        label="Skip Eternal Recurrence phase"
+        label="Advance Eternal Recurrence; hold to skip"
       />
     </div>
   );

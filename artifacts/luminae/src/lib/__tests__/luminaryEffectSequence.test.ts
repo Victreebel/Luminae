@@ -77,6 +77,33 @@ describe('Luminary effect phase contract', () => {
     expect(completions).toEqual([true]);
   });
 
+  it('advances one active phase without skipping the effect', async () => {
+    vi.useFakeTimers();
+    const visited: string[] = [];
+    const completions: boolean[] = [];
+    const controller = createLuminaryEffectSequence({
+      phases: [
+        { id: 'announce', durationMs: 1_000 },
+        { id: 'frame', durationMs: 1_000 },
+        { id: 'target', durationMs: 20 },
+      ],
+      onPhaseChange: phase => visited.push(phase),
+      onComplete: skipped => completions.push(skipped),
+    });
+
+    controller.start();
+    await Promise.resolve();
+    controller.advance();
+    await Promise.resolve();
+
+    expect(visited).toEqual(['announce', 'frame']);
+    expect(completions).toEqual([]);
+
+    await vi.runAllTimersAsync();
+    expect(visited).toEqual(['announce', 'frame', 'target']);
+    expect(completions).toEqual([false]);
+  });
+
   it('uses reduced phase durations when supplied', () => {
     const phases = [
       { id: 'announce' as const, durationMs: 900, reducedDurationMs: 120 },

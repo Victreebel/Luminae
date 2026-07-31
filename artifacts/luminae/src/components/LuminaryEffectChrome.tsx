@@ -59,6 +59,7 @@ export function LuminaryEffectAnnouncement({
 
 interface LuminaryEffectSkipControlProps {
   color: string;
+  onAdvance?: () => void;
   onSkip: () => void;
   reducedMotion?: boolean;
   label?: string;
@@ -66,15 +67,18 @@ interface LuminaryEffectSkipControlProps {
 
 export function LuminaryEffectSkipControl({
   color,
+  onAdvance,
   onSkip,
-  reducedMotion = false,
-  label = 'Skip current effect phase',
+  label = 'Advance current beat; hold to skip this effect',
 }: LuminaryEffectSkipControlProps) {
   const [progress, setProgress] = useState(0);
   const startRef = useRef<number | null>(null);
   const rafRef = useRef<number | null>(null);
+  const suppressClickRef = useRef(false);
   const onSkipRef = useRef(onSkip);
+  const onAdvanceRef = useRef(onAdvance);
   onSkipRef.current = onSkip;
+  onAdvanceRef.current = onAdvance;
 
   const reset = () => {
     startRef.current = null;
@@ -87,14 +91,13 @@ export function LuminaryEffectSkipControl({
 
   const finish = () => {
     reset();
+    suppressClickRef.current = true;
     onSkipRef.current();
   };
 
   const start = (event: React.PointerEvent<HTMLButtonElement>) => {
-    if (reducedMotion) return;
     if (event.pointerType === 'mouse' && event.button !== 0) return;
     if (startRef.current !== null) return;
-    event.preventDefault();
     event.stopPropagation();
     event.currentTarget.setPointerCapture(event.pointerId);
     startRef.current = performance.now();
@@ -127,12 +130,18 @@ export function LuminaryEffectSkipControl({
       aria-label={label}
       className="fixed bottom-4 right-4 z-[9002] flex items-center gap-2 border-0 bg-transparent p-1 text-white/70"
       style={{
-        cursor: reducedMotion ? 'pointer' : 'default',
+        cursor: 'pointer',
         pointerEvents: 'auto',
+        touchAction: 'none',
+        userSelect: 'none',
       }}
       onClick={(event) => {
         event.stopPropagation();
-        if (reducedMotion) finish();
+        if (suppressClickRef.current) {
+          suppressClickRef.current = false;
+          return;
+        }
+        onAdvanceRef.current?.();
       }}
       onPointerDown={start}
       onPointerUp={reset}
@@ -143,7 +152,7 @@ export function LuminaryEffectSkipControl({
         className="text-[10px] uppercase"
         style={{ letterSpacing: '0.14em' }}
       >
-        {reducedMotion ? 'tap to skip' : 'hold to skip'}
+        {onAdvance ? 'tap next · hold skip' : 'hold to skip'}
       </span>
       <svg
         width={40}

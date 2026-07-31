@@ -29,6 +29,7 @@ import {
   activationDirectorPreparesCamera,
 } from '@/components/ActivationDirectorRouter';
 import type { DirectorBurnSlot } from '@/components/CinderMandateBurnDirector';
+import type { IronHarbingerResetSlot } from '@/components/IronHarbingerResetDirector';
 import { resolveLuminaryProcedure } from '@/lib/luminaryAnimationProcedures';
 import {
   canAcknowledgeLuminaryActivations,
@@ -53,6 +54,7 @@ import {
   useLuminaryPresentationEngine,
   type LuminaryPresentationRuntimeSignals,
 } from '@/hooks/use-luminary-presentation-engine';
+import { useCameraInputLease } from '@/hooks/use-camera-input-lease';
 import { useToast } from '@/hooks/use-toast';
 import { gameAudio } from '@/lib/audio';
 import { CipherApertureAnimation, CipherSigil } from '@/components/CipherApertureAnimation';
@@ -64,7 +66,7 @@ import {
   Volume2, VolumeX, AlertCircle, Sparkles, Clock,
   Gavel, Package, LayoutGrid, Landmark, List,
   ChevronDown, ChevronUp, ChevronRight, Flag, X, HelpCircle, Check, DoorOpen,
-  MoreVertical, Zap, RefreshCw, Lightbulb, FlaskConical
+  MoreVertical, Zap, RefreshCw, Lightbulb, FlaskConical, Gauge
 } from 'lucide-react';
 import {
   DropdownMenu,
@@ -94,7 +96,7 @@ import { useForgeKeyboardNav } from '@/hooks/use-forge-keyboard-nav';
 import { KardashevScene } from '@/components/KardashevScene';
 import { getKardashevTier, getDominantAffinityPalette, getCivilizationName, type AffinityPalette } from '@/lib/kardashev';
 import { hexRgba, AFFINITIES, TIER_CIVILIZATION, AFFINITY_KEY_TO_HEX, DEAL_ANIM_MS, DEAL_FLIP_SOUND_MS, INITIAL_TURN_GUARD_MS, ABRIDGED_SHRINK_MS, ANIM_LOCK_BUFFER_MS, ABRIDGED_ACTION_MS, FORGE_FULL_MS, RESERVED_FORGE_FULL_MS, FALLBACK_FLIP_ANIM_MS, FALLBACK_FLIP_CLEANUP_MS, CIPHER_TAIL_BUFFER_MS, AFFINITY_BURST_STAGGER_MS, AFFINITY_BURST_BASE_MS, AFFINITY_BURST_SETTLE_MS, ABRIDGED_FORGE_LOCK_MS, CIPHER_GAME_TOTAL_MS, CIPHER_DEAL_FIRE_DELAY_MS, ARRIVAL_LABEL_LINGER_MS, RETURN_FLIGHT_MS } from './game-constants';
-import { PlayerAvatar, OpponentChip, RematchCountdown } from './game-player';
+import { PlayerAvatar, OpponentChip } from './game-player';
 import { AffinityToken, BaseDialog, type EminenceBreakdown, ArtifactCardView, ForgedCardWithTooltip, TurnCountdown, CardBack, EminenceBadge, EminenceDiamond, EminenceSigil, PendingActionOverlay } from './game-card';
 import { getLuminaryEminenceTitle } from './game-luminary';
 import { LuminaryOrderPicker } from './game-luminary-order-picker';
@@ -135,12 +137,17 @@ import type { AnimationProcedureStep } from '@/lib/animationProcedure';
 import { ForgeAnimation, OpponentForgeAnimation, AbridgedForgeAnimation } from './game-forge-animation';
 import { VictoryCinematic } from '@/components/VictoryCinematic';
 import { deriveAccolades } from '@/lib/accolades';
+import { buildCivilizationProfile } from '@/lib/civilizationProfile';
 import {
   DevLuminarySequencePanel,
   type DevSequencePlaybackMode,
 } from '@/components/DevLuminarySequencePanel';
 import { DevLuminarySequenceTrace } from '@/components/DevLuminarySequenceTrace';
 import { DevBuildIdentity } from '@/components/DevBuildIdentity';
+import {
+  normalizeLuminaryPlaybackMode,
+  type LuminaryPlaybackMode,
+} from '@/lib/luminaryPresentationPacing';
 
 function playMarkerStrikeSound(markerType?: string | null) {
   if (!markerType) return;
@@ -296,6 +303,7 @@ function TurnOrderIntroOverlay({
     while ((stepCount - 1) % playerCount !== firstIndex) stepCount += 1;
 
     const timers: ReturnType<typeof setTimeout>[] = [];
+    gameAudio.playBrandMnemonic();
     timers.push(setTimeout(() => {
       gameAudio.playButtonSelect();
       setSelectorArmed(true);
@@ -309,7 +317,7 @@ function TurnOrderIntroOverlay({
       timers.push(setTimeout(() => {
         setActiveIndex(i % playerCount);
         if (i === stepCount - 1) {
-          gameAudio.playButtonConfirm();
+          gameAudio.playTurnOrderResolved();
           setRevealed(true);
         } else {
           gameAudio.playTurnOrderTick(i);
@@ -499,6 +507,16 @@ export default function GameBoard() {
     if (session?.token) {
       void apiUpdatePreferences(session.token, { abridgedAnims: next }).catch(() => undefined);
     }
+  };
+
+  const [luminaryPlaybackMode, setLuminaryPlaybackMode] =
+    useState<LuminaryPlaybackMode>(() => normalizeLuminaryPlaybackMode(
+      localStorage.getItem('luminae_luminary_effect_pace'),
+    ));
+  const toggleLuminaryPlaybackMode = () => {
+    const next = luminaryPlaybackMode === 'standard' ? 'swift' : 'standard';
+    setLuminaryPlaybackMode(next);
+    localStorage.setItem('luminae_luminary_effect_pace', next);
   };
 
   const [skipCinematics, setSkipCinematicsState] = useState<boolean>(() => getSkipCinematics());
@@ -1050,6 +1068,8 @@ export default function GameBoard() {
   // Slot keys that currently have condemned ghost cards set by the director.
   // Tracked separately so onBurnComplete can clear them even if onRefillPulse was skipped.
   const directorGhostSlotKeysRef = useRef<string[]>([]);
+  const pendingIronHarbingerSlotsRef = useRef<IronHarbingerResetSlot[]>([]);
+  const ironHarbingerGhostSlotKeysRef = useRef<string[]>([]);
   // IDs of luminaries claimed in this session — their entity overlay persists.
   const [claimedThisSession, setClaimedThisSession] = useState<string[]>([]);
   // IDs whose server-side claim has landed, but whose board portal/vortex should
@@ -1209,6 +1229,7 @@ export default function GameBoard() {
   // ghost is cleared atomically with setCardActionBurst / setCipherBurst so the
   // card transitions directly from "in slot" to "flying in overlay" with no flash.
   const [burstGhostCards, setBurstGhostCards] = useState<Record<string, ArtifactCard>>({});
+  const [ironHarbingerGhostIds, setIronHarbingerGhostIds] = useState<Record<string, string>>({});
   // Persistent marker-type fallback for ghost cards (keyed by card ID).
   // Captured at ghost-creation time (before setQueryData wipes state.artifactMarkers).
   // Used so the condemned/forgotten badge stays visible on a ghost card even after
@@ -1307,8 +1328,10 @@ export default function GameBoard() {
     delay: number;
   }>>([]);
   const prevStateRef = useRef<GameState | null>(null);
+  const audibleLuminaryEligibilityIdsRef = useRef<Set<string>>(new Set());
   const playerPanelRef = useRef<HTMLDivElement>(null);
   const mainScrollRef = useRef<HTMLElement>(null);
+  const cameraControlledRef = useRef(false);
   const overlayOpenRef = useRef(false);
 
   const viewOrchestrator = useViewOrchestrator({
@@ -1333,14 +1356,20 @@ export default function GameBoard() {
       lead?: number;
       orchestrated?: boolean;
       restoreImmediate?: boolean;
+      staggerMs?: number;
     },
   ): string | null => {
     if (ids.length === 0) return null;
     // fireBrandStrikes called
     const lead = opts?.lead ?? 0;
+    const staggerMs = Math.max(0, opts?.staggerMs ?? 90);
+    const staggerEnvelopeMs = Math.max(0, ids.length - 1) * staggerMs;
     setNewlyMarkedCardIds(new Set(ids));
     // Brand lands at 420ms + 1.35s duration + stagger + buffer
-    setTimeout(() => setNewlyMarkedCardIds(new Set()), 2200 + lead);
+    setTimeout(
+      () => setNewlyMarkedCardIds(new Set()),
+      2_200 + lead + staggerEnvelopeMs,
+    );
 
     // Capture card DOM rects and build the beam strike list.
     const strikes: BrandStrikeTarget[] = [];
@@ -1356,7 +1385,7 @@ export default function GameBoard() {
       strikes.push({
         rect: { x: r.x, y: r.y, w: r.width, h: r.height },
         type: markers[cardId].type as BrandStrikeTarget['type'],
-        delay: lead + i * 90,
+        delay: lead + i * staggerMs,
       });
     });
     // fireBrandStrikes captured strikes
@@ -1386,16 +1415,25 @@ export default function GameBoard() {
     ]);
     // Per-card delay map: badge springs in 150ms after impact (420ms) = 570ms
     const delayMap = new Map<string, number>();
-    ids.forEach((cardId, i) => delayMap.set(cardId, lead + i * 90 + 570));
+    ids.forEach((cardId, i) => delayMap.set(cardId, lead + i * staggerMs + 570));
     setBrandDelayMap(delayMap);
-    setTimeout(() => setBrandDelayMap(new Map()), 2200 + lead);
+    setTimeout(
+      () => setBrandDelayMap(new Map()),
+      2_200 + lead + staggerEnvelopeMs,
+    );
     // Electric aura — starts at beam impact per card, lingers 3.2s
     const auraMap = new Map<string, { type: MarkerType; delay: number }>();
     ids.forEach((cardId, i) => {
-      auraMap.set(cardId, { type: markers[cardId].type as MarkerType, delay: lead + i * 90 + 420 });
+      auraMap.set(cardId, {
+        type: markers[cardId].type as MarkerType,
+        delay: lead + i * staggerMs + 420,
+      });
     });
     setStrikeAuraMap(auraMap);
-    setTimeout(() => setStrikeAuraMap(new Map()), lead + (ids.length - 1) * 90 + 420 + 1000);
+    setTimeout(
+      () => setStrikeAuraMap(new Map()),
+      lead + staggerEnvelopeMs + 420 + 1_000,
+    );
     return strikeId;
   }, []);
 
@@ -1459,6 +1497,7 @@ export default function GameBoard() {
     };
 
     const onTouchMove = (e: TouchEvent) => {
+      if (cameraControlledRef.current) return;
       // Do not forward touch events while any overlay is open — doing so
       // corrupts the main scroll position and leaves it stuck after dismiss.
       if (overlayOpenRef.current) return;
@@ -1594,12 +1633,23 @@ export default function GameBoard() {
     luminarySequenceStatus.authoritativeSequenceActive;
   const luminaryCameraSequenceRequested = luminarySequenceStatus.cameraLeaseRequested;
   const isCameraControlled = luminarySequenceStatus.cameraControlled;
+  cameraControlledRef.current = isCameraControlled;
+  useCameraInputLease({
+    active: isCameraControlled,
+    boardRef: mainScrollRef,
+    passthroughRef: playerPanelRef,
+  });
   const authoritativeStateIngress = luminaryPresentationEngine.ingress;
   const queuedStateCount = luminaryPresentationEngine.queuedStateCount;
   const devSequencePlaybackActive =
     import.meta.env.DEV && luminaryPresentationEngine.run.status === 'running';
-  const devSequenceUsesAbridgedAnimations =
-    devSequencePlaybackActive && devSequencePlaybackMode !== 'canonical';
+  const devSequenceTimelineRate = devSequencePlaybackActive
+    ? devSequencePlaybackMode === 'instant'
+      ? 12
+      : devSequencePlaybackMode === 'fast'
+        ? 4
+        : 1
+    : 1;
 
   useEffect(() => {
     if (!devSequencePlaybackActive || devSequencePlaybackMode === 'canonical') return;
@@ -3229,6 +3279,7 @@ export default function GameBoard() {
     const discountedForgeIds = me?.discountedForgeIds ?? [];
     const tier = getKardashevTier(forgedArtifacts, discountedForgeIds);
     const palette = getDominantAffinityPalette(forgedArtifacts);
+    const profile = buildCivilizationProfile(forgedArtifacts);
     // Civilization structure is earned through forging, not temporary affinities.
     // Each tier's artifacts add lasting visual capacity to the civilization scene.
     const tierArtifacts = forgedArtifacts.filter((artifact) => artifact.tier === Math.max(1, tier));
@@ -3238,6 +3289,7 @@ export default function GameBoard() {
       discountedForgeIds,
       tier,
       palette,
+      profile,
       progressFraction: Math.min(1, tierArtifacts.length / milestones),
       name: me?.civName || getCivilizationName(palette, tier),
       forgedCount: forgedArtifacts.length,
@@ -3257,6 +3309,7 @@ export default function GameBoard() {
   }, [forgottenHourCycleState, state?.artifactMarkers]);
   const kardashevTier = civilizationModel.tier;
   const kardashevPalette = civilizationModel.palette;
+  const civilizationProfile = civilizationModel.profile;
   const kardashevProgressFraction = civilizationModel.progressFraction;
 
   const opponentData = useMemo(() => {
@@ -3470,6 +3523,9 @@ export default function GameBoard() {
       resolvedArrivalEventIdsRef.current = new Set();
       pendingArrivalServerResolutionsRef.current = [];
       pendingActivationServerResolutionsRef.current = new Set();
+      pendingIronHarbingerSlotsRef.current = [];
+      ironHarbingerGhostSlotKeysRef.current = [];
+      audibleLuminaryEligibilityIdsRef.current = new Set();
       lastPlannedCancelNoticeRef.current = null;
       for (const timer of opponentEminenceImpactDelayTimersRef.current) clearTimeout(timer);
       opponentEminenceImpactDelayTimersRef.current = [];
@@ -3479,8 +3535,47 @@ export default function GameBoard() {
       setClaimedThisSession([]);
       setArrivalVisualHoldIds([]);
       setReturningLuminaryIds([]);
+      setIronHarbingerGhostIds({});
       setShowCinematic(true);
     }
+
+      if (prev) {
+        const newlyEligibleIds: string[] = [];
+        const rememberEligible = (luminaryId: string) => {
+          if (!luminaryId || audibleLuminaryEligibilityIdsRef.current.has(luminaryId)) return;
+          audibleLuminaryEligibilityIdsRef.current.add(luminaryId);
+          newlyEligibleIds.push(luminaryId);
+        };
+
+        for (const luminaryId of newState.pendingLuminaryChoice?.candidates ?? []) {
+          rememberEligible(luminaryId);
+        }
+
+        const previousSummonEventIds = new Set(
+          (prev.pendingSummonEvents ?? []).map((event) => event.eventId),
+        );
+        for (const event of newState.pendingSummonEvents ?? []) {
+          if (!previousSummonEventIds.has(event.eventId)) rememberEligible(event.luminaryId);
+        }
+
+        if (newlyEligibleIds.length > 0) {
+          gameAudio.playLuminaryEligibility(newlyEligibleIds.length);
+        }
+
+        const previousAffinityByLuminary = new Map(
+          (prev.luminaryAffinities ?? []).map((entry) => [entry.luminaryId, entry.activeAffinity] as const),
+        );
+        const changedAffinities = (newState.luminaryAffinities ?? []).filter((entry) => {
+          const previousAffinity = previousAffinityByLuminary.get(entry.luminaryId);
+          return previousAffinity !== undefined && previousAffinity !== entry.activeAffinity;
+        });
+        changedAffinities.forEach((entry, index) => {
+          setTimeout(
+            () => gameAudio.playAffinitySwitch(entry.activeAffinity as AffinityKey),
+            index * 80,
+          );
+        });
+      }
       const action = newState.lastAction;
 
       // ── Planned-action cancellation ────────────────────────────────────────
@@ -4234,6 +4329,77 @@ export default function GameBoard() {
         }
       }
 
+      // Preserve the pre-reset Forge for Iron Harbinger. The server has already
+      // returned, randomized, and redealt every row in newState, but the player
+      // must continue seeing the original twelve Artifacts until the dedicated
+      // director lifts them from their molds.
+      {
+        const previousActivationIds = new Set(
+          (prev?.pendingLuminaryActivationEvents ?? []).map(event => event.eventId),
+        );
+        const ironEvent = (newState.pendingLuminaryActivationEvents ?? []).find(
+          event => (
+            event.luminaryId === 'lum_forge' &&
+            event.effectType === 'summon' &&
+            !previousActivationIds.has(event.eventId)
+          ),
+        );
+        if (ironEvent) {
+          const targetIds = ironEvent.targetCardIds ?? [];
+          const targetSet = new Set(targetIds);
+          const previousRows: Array<{
+            tier: 1 | 2 | 3;
+            cards: (ArtifactCard | null)[];
+          }> = [
+            { tier: 3, cards: (prev?.forgeTier3 ?? []) as (ArtifactCard | null)[] },
+            { tier: 2, cards: (prev?.forgeTier2 ?? []) as (ArtifactCard | null)[] },
+            { tier: 1, cards: (prev?.forgeTier1 ?? []) as (ArtifactCard | null)[] },
+          ];
+          const capturedById = new Map<string, ArtifactCard>();
+          previousRows.forEach(({ cards }) => {
+            cards.forEach((card) => {
+              if (card && targetSet.has(card.id)) capturedById.set(card.id, card);
+            });
+          });
+          const nextIndex: Record<1 | 2 | 3, number> = { 1: 0, 2: 0, 3: 0 };
+          const capturedSlots = targetIds.map((cardId): IronHarbingerResetSlot => {
+            const tier: 1 | 2 | 3 = cardId.startsWith('t3')
+              ? 3
+              : cardId.startsWith('t2')
+                ? 2
+                : 1;
+            const slotIndex = nextIndex[tier]++;
+            return {
+              cardId,
+              card: capturedById.get(cardId) ?? null,
+              tier,
+              slotIndex,
+              slotKey: `${tier}-${slotIndex}`,
+            };
+          });
+          const ghostIds = Object.fromEntries(
+            capturedSlots.map(slot => [slot.slotKey, slot.cardId]),
+          );
+          const ghostEntries = capturedSlots.filter(
+            (slot): slot is IronHarbingerResetSlot & { card: ArtifactCard } =>
+              slot.card != null,
+          );
+
+          pendingIronHarbingerSlotsRef.current = capturedSlots;
+          ironHarbingerGhostSlotKeysRef.current = capturedSlots.map(slot => slot.slotKey);
+          setIronHarbingerGhostIds(ghostIds);
+          if (ghostEntries.length > 0) {
+            setBurstGhostCards(current => {
+              const next = { ...current };
+              ghostEntries.forEach((slot) => {
+                next[slot.slotKey] = slot.card;
+              });
+              return next;
+            });
+          }
+        }
+      }
+
       // Detect newly arrived pendingLuminaryActivationEvents and enqueue effect cinematics.
       // These are authoritative resolution events: the server will not advance
       // the turn until each event's complete presentation is acknowledged.
@@ -4420,13 +4586,32 @@ export default function GameBoard() {
 
   // ── Rematch vote state ─────────────────────────────────────────────────────
   const [rematchVote, setRematchVote] = useState<RematchVoteUpdate | null>(null);
-  const [hasVoted, setHasVoted] = useState(false);
   const [votePending, setVotePending] = useState(false);
   const [rematchVoteMode, setRematchVoteMode] = useState<'fresh' | 'same-board' | null>(null);
+  const hasVoted = Boolean(
+    session?.playerId && rematchVote?.voterIds.includes(session.playerId),
+  );
+  const hasDeclinedRematch = Boolean(
+    session?.playerId && rematchVote?.declinedIds.includes(session.playerId),
+  );
+  const allRematchHumansResponded = Boolean(
+    rematchVote?.active &&
+    state?.players
+      .filter((player) => !player.isAi)
+      .every(
+        (player) =>
+          rematchVote.voterIds.includes(player.playerId) ||
+          rematchVote.declinedIds.includes(player.playerId),
+      ),
+  );
+  const rematchHasEnoughPlayers = (rematchVote?.voterIds.length ?? 0) >= 2;
 
-  const submitRematchVote = useCallback(async (sameBoard: boolean) => {
-    if (hasVoted || votePending) return;
-    if (sameBoard && !canReplaySameBoard) {
+  const submitRematchResponse = useCallback(async (
+    action: 'join' | 'decline' | 'withdraw',
+    sameBoard = rematchVote?.sameBoard ?? false,
+  ) => {
+    if (votePending) return;
+    if (action === 'join' && sameBoard && !canReplaySameBoard) {
       toast({
         title: 'Replay unavailable',
         description: 'This game was started before Luminae saved opening board snapshots. Start a new game once, then Replay Same Board will work from there.',
@@ -4439,15 +4624,15 @@ export default function GameBoard() {
     }
     const mode: 'fresh' | 'same-board' = sameBoard ? 'same-board' : 'fresh';
     setVotePending(true);
-    setRematchVoteMode(mode);
+    if (action === 'join') setRematchVoteMode(mode);
     try {
       const resp = await fetch(`/api/rooms/${roomId}/rematch`, {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ sessionToken: session.sessionToken, sameBoard }),
+        body: JSON.stringify({ sessionToken: session.sessionToken, action, sameBoard }),
       });
       if (!resp.ok) {
-        let message = 'Could not register your vote.';
+        let message = 'Could not update the rematch invitation.';
         const text = await resp.text();
         if (text) {
           try {
@@ -4459,18 +4644,89 @@ export default function GameBoard() {
         }
         throw new Error(message);
       }
-      setHasVoted(true);
+      const update = await resp.json() as RematchVoteUpdate;
+      setRematchVote(update);
+      setRematchVoteMode(
+        action === 'join'
+          ? update.sameBoard
+            ? 'same-board'
+            : 'fresh'
+          : null,
+      );
     } catch (err) {
-      setRematchVoteMode(null);
+      if (action === 'join') setRematchVoteMode(null);
       toast({
-        title: 'Vote failed',
-        description: err instanceof Error ? err.message : 'Could not register your vote.',
+        title: 'Rematch update failed',
+        description: err instanceof Error ? err.message : 'Could not update the rematch invitation.',
         variant: 'destructive',
       });
     } finally {
       setVotePending(false);
     }
-  }, [canReplaySameBoard, hasVoted, roomId, session?.sessionToken, toast, votePending]);
+  }, [canReplaySameBoard, rematchVote?.sameBoard, roomId, session?.sessionToken, toast, votePending]);
+
+  const loadRematchInfo = useCallback(async () => {
+    if (!roomId || !session?.sessionToken) return;
+    try {
+      const params = new URLSearchParams({ sessionToken: session.sessionToken });
+      const resp = await fetch(`/api/rooms/${roomId}/rematch?${params.toString()}`);
+      if (!resp.ok) return;
+      setRematchVote(await resp.json() as RematchVoteUpdate);
+    } catch {
+      // WebSocket updates remain the primary path; reconnect polling retries.
+    }
+  }, [roomId, session?.sessionToken]);
+
+  useEffect(() => {
+    if (state?.status !== 'finished') return;
+    void loadRematchInfo();
+  }, [loadRematchInfo, state?.status]);
+
+  useEffect(() => {
+    if (state?.status !== 'finished' || !rematchVote?.active || !roomId || !session?.sessionToken) {
+      return;
+    }
+
+    const refresh = () => {
+      void loadRematchInfo();
+      void queryClient.invalidateQueries({
+        queryKey: getGetGameStateQueryKey(roomId, { sessionToken: session.sessionToken }),
+      });
+    };
+    const interval = window.setInterval(refresh, 1_500);
+    return () => window.clearInterval(interval);
+  }, [
+    loadRematchInfo,
+    queryClient,
+    rematchVote?.active,
+    roomId,
+    session?.sessionToken,
+    state?.status,
+  ]);
+
+  useEffect(() => {
+    if (state?.status !== 'playing') return;
+    setRematchVote(null);
+    setVotePending(false);
+    setRematchVoteMode(null);
+  }, [state?.status]);
+
+  const leaveFinishedRoom = useCallback(() => {
+    if (state?.status === 'finished' && roomId && session?.sessionToken) {
+      void fetch(`/api/rooms/${roomId}/rematch`, {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({
+          sessionToken: session.sessionToken,
+          action: 'decline',
+        }),
+        keepalive: true,
+      }).catch(() => {
+        // Leaving the result screen should never be held hostage by the request.
+      });
+    }
+    setLocation('/');
+  }, [roomId, session?.sessionToken, setLocation, state?.status]);
 
   const [reconnectBannerDismissed, setReconnectBannerDismissed] = useState(false);
   const { sendChatMessage, isConnected, isReconnecting } = useGameWebsocket({
@@ -4488,16 +4744,14 @@ export default function GameBoard() {
     onRematchVoteUpdate: (data) => {
       setRematchVote(data);
     },
-    onRematchStarted: (_state, _sessionStats) => {
-      // State was already forwarded to onStateUpdate. Reset vote UI.
+    onRematchStarted: (nextState, _sessionStats) => {
+      authoritativeStateIngress.replaceEpoch(nextState as GameState, 'websocket');
       setRematchVote(null);
-      setHasVoted(false);
       setVotePending(false);
       setRematchVoteMode(null);
     },
     onRematchCancelled: () => {
       setRematchVote(null);
-      setHasVoted(false);
       setVotePending(false);
       setRematchVoteMode(null);
       toast({ title: 'Rematch cancelled', description: 'Not enough players confirmed. The game has ended.' });
@@ -4505,7 +4759,7 @@ export default function GameBoard() {
     onRematchDeclined: (_sessionStats) => {
       // This player was not included — send them home after a brief message
       setRematchVoteMode(null);
-      toast({ title: 'Not included', description: 'The other players started a new game without you.' });
+      toast({ title: 'Rematch started', description: 'The other players have begun their next game.' });
       setTimeout(() => setLocation('/'), 3000);
     },
     onChatMessage: (msg) => {
@@ -4517,6 +4771,11 @@ export default function GameBoard() {
   // refetchInterval callback always sees the latest WS health without
   // needing to be inside this render's closure.
   wsConnectedRef.current = isConnected;
+
+  useEffect(() => {
+    if (!isConnected || state?.status !== 'finished') return;
+    void loadRematchInfo();
+  }, [isConnected, loadRematchInfo, state?.status]);
 
   // Reset the manual dismiss whenever a new disconnect cycle begins so the
   // banner reappears for each fresh drop (not just the first one).
@@ -4562,7 +4821,16 @@ export default function GameBoard() {
     if (!state || !prevStateRef.current) return;
     const polledVersion = state.version;
     const prevVersion = prevStateRef.current.version;
-    if (typeof polledVersion !== 'number' || polledVersion <= prevVersion) return;
+    const isRematchEpoch =
+      prevStateRef.current.status === 'finished' && state.status === 'playing';
+    if (typeof polledVersion !== 'number') return;
+    if (isRematchEpoch) {
+      // Rematches restart the server version counter. They must replace the
+      // finished game directly instead of being rejected as stale.
+      authoritativeStateIngress.replaceEpoch(state as GameState, 'polling');
+      return;
+    }
+    if (polledVersion <= prevVersion) return;
     // eslint-disable-next-line no-restricted-syntax -- `state` comes from TanStack Query's inferred return type which may be slightly wider than GameState; the cast is safe because the server always returns a conforming GameState object validated by Zod.
     const ingressResult = authoritativeStateIngress.accept(state as unknown as GameState, 'polling');
     if (ingressResult === 'queued') {
@@ -4590,9 +4858,17 @@ export default function GameBoard() {
     const t = setTimeout(() => {
       setBurstGhostCards(prev => {
         if (Object.keys(prev).length === 0) return prev;
-        return {};
+        const protectedKeys = new Set(ironHarbingerGhostSlotKeysRef.current);
+        if (protectedKeys.size === 0) return {};
+        const next: Record<string, ArtifactCard> = {};
+        protectedKeys.forEach((key) => {
+          if (prev[key]) next[key] = prev[key];
+        });
+        return next;
       });
-      ghostArtifactMarkerTypesRef.current.clear();
+      if (ironHarbingerGhostSlotKeysRef.current.length === 0) {
+        ghostArtifactMarkerTypesRef.current.clear();
+      }
     }, 7000);
     return () => clearTimeout(t);
   }, [burstGhostCards]);
@@ -6120,19 +6396,6 @@ export default function GameBoard() {
 
     return totalMs;
   };
-  const prepareDevLuminarySequence = (playbackMode: DevSequencePlaybackMode) => {
-    setDevSequencePlaybackMode(playbackMode);
-    setActiveTab('board');
-    setSelectedCard(null);
-    setSelectedDeckTier(null);
-    setSelectedLuminary(null);
-    setShowRules(false);
-    setShowReservedOverlay(false);
-    setShowForgedOverlay(false);
-    setShowBurnPileOverlay(false);
-    setShowEminenceBreakdown(false);
-  };
-
   const resetDevLuminaryPresentation = () => {
     luminaryPresentationEngine.resetDevSequenceRun();
     handledArrivalEventIdsRef.current.clear();
@@ -6142,6 +6405,8 @@ export default function GameBoard() {
     summonActivationLocksRef.current = new Set();
     pendingDirectorBurnSlotsRef.current = [];
     directorGhostSlotKeysRef.current = [];
+    pendingIronHarbingerSlotsRef.current = [];
+    ironHarbingerGhostSlotKeysRef.current = [];
     pendingSuppressArrivalIdsRef.current = new Set();
     arrivalVisualHoldIdsRef.current = new Set();
     returningLuminaryIdsRef.current = new Set();
@@ -6155,6 +6420,7 @@ export default function GameBoard() {
     setReturningLuminaryIds([]);
     setClaimedThisSession([]);
     setBurstGhostCards({});
+    setIronHarbingerGhostIds({});
     setHiddenSlots(new Set());
     setRefillingSlots(new Set());
     setSuppressedMarkerIds(new Set());
@@ -6163,6 +6429,23 @@ export default function GameBoard() {
     setDelayedEffectFloatQueue([]);
     setActiveDelayedEffectFloat(null);
     setShowSeedBoardEffect(false);
+  };
+
+  const prepareDevLuminarySequence = (playbackMode: DevSequencePlaybackMode) => {
+    // A repeated baseline can reintroduce events the browser has already
+    // presented. Reset all local deduplication, acknowledgement, and ghost
+    // state before the dev endpoint broadcasts the fresh sequence.
+    resetDevLuminaryPresentation();
+    setDevSequencePlaybackMode(playbackMode);
+    setActiveTab('board');
+    setSelectedCard(null);
+    setSelectedDeckTier(null);
+    setSelectedLuminary(null);
+    setShowRules(false);
+    setShowReservedOverlay(false);
+    setShowForgedOverlay(false);
+    setShowBurnPileOverlay(false);
+    setShowEminenceBreakdown(false);
   };
 
 
@@ -6194,6 +6477,7 @@ export default function GameBoard() {
     burnChipAnim,
     burnChipArrivalAnim,
     burstGhostCards,
+    ironHarbingerGhostIds,
     canPlan,
     cardDetailDiscovered,
     claimedThisSession,
@@ -6208,6 +6492,7 @@ export default function GameBoard() {
     handleDeckTap,
     hiddenSlots,
     isCameraControlled,
+    luminaryPresentationActive,
     isLandscapeCockpit,
     isMyTurn,
     isTutorial,
@@ -6447,6 +6732,7 @@ export default function GameBoard() {
     cardDetailDiscovered,
     civEditValue,
     civLabel,
+    civilizationProfile,
     computeCosts,
     costMode,
     expandedLumEffects,
@@ -6565,6 +6851,7 @@ export default function GameBoard() {
     <div
       className="game-shell h-[100dvh] bg-background text-foreground flex flex-col overflow-hidden relative"
       data-camera-controlled={isCameraControlled ? 'true' : undefined}
+      data-luminary-idle-suspended={luminaryPresentationActive ? 'true' : undefined}
       data-board-presentation={activeTab === 'board' ? boardPresentation : undefined}
       data-board-layout={activeTab === 'board' ? boardLayoutMode : 'base'}
       data-board-density={activeTab === 'board' ? boardDensityMode : 'stacked'}
@@ -6713,7 +7000,11 @@ export default function GameBoard() {
             </DropdownMenuItem>
             <DropdownMenuItem onClick={toggleAbridgedAnims}>
               <Zap className={`h-4 w-4 ${abridgedAnims ? 'text-yellow-400' : 'text-muted-foreground opacity-50'}`} />
-              Reduced animations
+              Reduced motion
+            </DropdownMenuItem>
+            <DropdownMenuItem onClick={toggleLuminaryPlaybackMode}>
+              <Gauge className={`h-4 w-4 ${luminaryPlaybackMode === 'swift' ? 'text-cyan-300' : 'text-muted-foreground'}`} />
+              Effects: {luminaryPlaybackMode === 'swift' ? 'Swift' : 'Standard'}
             </DropdownMenuItem>
             <DropdownMenuItem onClick={toggleSkipCinematics}>
               <Sparkles className={`h-4 w-4 ${skipCinematics ? 'text-muted-foreground opacity-50' : 'text-yellow-400'}`} />
@@ -7410,7 +7701,7 @@ export default function GameBoard() {
                   {/* Panel art column */}
                   <div className="flex w-[92px] shrink-0 flex-col items-center gap-1.5">
                     <div className="h-[132px] w-[92px] overflow-hidden rounded-lg border border-white/15 shadow-xl">
-                      <LuminaryPanelArt luminaryId={selectedLuminary.id} width={92} height={132} claimed={false} />
+                      <LuminaryPanelArt luminaryId={selectedLuminary.id} width={92} height={132} claimed={false} runtime />
                     </div>
                     <span className="text-[8px] font-bold uppercase tracking-[0.18em] text-white/40">{selectedLuminary.domain ?? 'Luminary'}</span>
                     {(() => {
@@ -7753,8 +8044,10 @@ export default function GameBoard() {
             destPos={cardActionBurst.destPos}
             destinationKind={cardActionBurst.destKind}
             ownerName={cardActionBurst.playerName}
+            spentColors={cardActionBurst.spentColors}
             eminence={cardActionBurst.eminence}
             eminenceTotal={me?.eminence ?? 0}
+            eminenceTarget={victoryRequirement}
             eminenceTargetSelector='[data-eminence-sigil="player"]'
             onEminenceImpact={triggerEminencePanelImpact}
             isForgottenForge={cardActionBurst.isForgottenForge}
@@ -7783,6 +8076,7 @@ export default function GameBoard() {
             spentColors={cardActionBurst.spentColors}
             eminence={cardActionBurst.eminence}
             eminenceTotal={me?.eminence ?? 0}
+            eminenceTarget={victoryRequirement}
             eminenceTargetSelector='[data-eminence-sigil="player"]'
             onEminenceImpact={triggerEminencePanelImpact}
             gotSingularity={cardActionBurst.gotSingularity}
@@ -7805,8 +8099,10 @@ export default function GameBoard() {
             startRect={opponentForgeAbsorb.startRect}
             destPos={opponentForgeAbsorb.chipCenter}
             ownerName={opponentForgeAbsorb.ownerName}
+            spentColors={opponentForgeAbsorb.spentColors}
             eminence={opponentForgeAbsorb.eminence}
             eminenceTotal={opponentForgeAbsorb.eminenceTotal}
+            eminenceTarget={victoryRequirement}
             eminenceTargetSelector={`[data-eminence-sigil="opponent-${opponentForgeAbsorb.playerId}"]`}
             onEminenceImpact={(amount) => triggerOpponentEminenceImpact(opponentForgeAbsorb.playerId, amount)}
             isForgottenForge={opponentForgeAbsorb.isForgottenForge}
@@ -7822,6 +8118,7 @@ export default function GameBoard() {
             ownerName={opponentForgeAbsorb.ownerName}
             eminence={opponentForgeAbsorb.eminence}
             eminenceTotal={opponentForgeAbsorb.eminenceTotal}
+            eminenceTarget={victoryRequirement}
             spentColors={opponentForgeAbsorb.spentColors}
             eminenceTargetSelector={`[data-eminence-sigil="opponent-${opponentForgeAbsorb.playerId}"]`}
             isCompact={effectiveForgeCompact}
@@ -8794,6 +9091,7 @@ export default function GameBoard() {
           const winnerDiscountedIds = (winnerPlayer.discountedForgeIds ?? []) as string[];
           const winnerTier = getKardashevTier(winnerCards, winnerDiscountedIds);
           const winnerPalette = getDominantAffinityPalette(winnerCards);
+          const winnerProfile = buildCivilizationProfile(winnerCards);
           const winnerCivName = getCivilizationName(winnerPalette, winnerTier);
           const isLocalWinner = winnerId === session.playerId;
           const isSpectator = !state.players.some(p => p.playerId === session.playerId);
@@ -8807,6 +9105,7 @@ export default function GameBoard() {
               civName={isLocalWinner ? civLabel : winnerCivName}
               tier={winnerTier}
               palette={winnerPalette}
+              civilizationProfile={winnerProfile}
               eminence={winnerPlayer.eminence}
               cardsForged={winnerCards.length}
               accolades={accolades}
@@ -8958,6 +9257,7 @@ export default function GameBoard() {
           const winnerDiscountedIds = (winnerPlayer?.discountedForgeIds ?? []) as string[];
           const victoryTier = getKardashevTier(winnerCards, winnerDiscountedIds);
           const victoryPalette = getDominantAffinityPalette(winnerCards);
+          const victoryProfile = buildCivilizationProfile(winnerCards);
           return (
           <div
             className="fixed inset-0 z-[220] flex items-center justify-center overflow-y-auto bg-background/98 p-4 sm:p-6"
@@ -8965,6 +9265,7 @@ export default function GameBoard() {
             <KardashevScene
               tier={victoryTier}
               palette={victoryPalette}
+              profile={victoryProfile}
               progressFraction={1}
               paused
               maxDpr={1}
@@ -9071,7 +9372,7 @@ export default function GameBoard() {
                         '--seal-glow-bright': `${accentColor}cc`,
                       } as React.CSSProperties}
                     >
-                      <LuminaryPanelArt luminaryId={lumId} width={80} height={80} claimed={false} />
+                      <LuminaryPanelArt luminaryId={lumId} width={80} height={80} claimed={false} runtime />
                     </div>
                     <motion.p
                       initial={{ opacity: 0 }}
@@ -9182,7 +9483,7 @@ export default function GameBoard() {
                 })()}
               </div>
 
-              {/* ── Session Record (appears after first vote) ───────────────── */}
+              {/* ── Session Record ───────────────────────────────────────────── */}
               {rematchVote && Object.keys(rematchVote.sessionStats).length > 0 && (
                 <motion.div
                   initial={{ opacity: 0, height: 0 }}
@@ -9218,92 +9519,150 @@ export default function GameBoard() {
                 transition={{ delay: 0.9 }}
                 className="flex flex-col gap-3 border-t border-white/10 pt-4"
               >
-                {/* Who has voted */}
-                {rematchVote && (
-                  <div className="flex flex-col gap-1.5">
-                    <div className="flex items-center justify-center gap-2 flex-wrap">
+                {rematchVote?.active ? (
+                  <div className="rounded-xl border border-primary/25 bg-primary/[0.07] p-3 space-y-3">
+                    <div className="flex items-start justify-between gap-3">
+                      <div className="min-w-0">
+                        <div className="text-[10px] font-bold uppercase tracking-[0.16em] text-primary">
+                          Rematch Invitation
+                        </div>
+                        <p className="mt-1 text-xs leading-snug text-muted-foreground">
+                          {rematchVote.starting
+                            ? 'Everyone has responded. Starting the next game...'
+                            : allRematchHumansResponded && !rematchHasEnoughPlayers
+                            ? 'At least two players must join before another game can begin.'
+                            : `${state.players.find((p) => p.playerId === rematchVote.initiatorId)?.playerName ?? 'A player'} invited the table. The game starts when every human player responds.`}
+                        </p>
+                      </div>
+                      <span className="shrink-0 rounded-md border border-white/15 bg-black/25 px-2 py-1 text-[10px] font-semibold text-foreground/85">
+                        {rematchVote.sameBoard ? 'Same opening' : 'Fresh opening'}
+                      </span>
+                    </div>
+
+                    <div className="grid grid-cols-2 gap-1.5">
                       {state.players.map((p) => {
-                        const voted = rematchVote.voterIds.includes(p.playerId);
+                        const joined = rematchVote.voterIds.includes(p.playerId);
+                        const declined = rematchVote.declinedIds.includes(p.playerId);
                         const isMe = p.playerId === session.playerId;
                         const avatarIdForPlayer = p.avatarId ?? (isMe ? session.avatarId : null);
+                        const status = p.isAi || joined
+                          ? 'Ready'
+                          : declined
+                          ? 'Not joining'
+                          : p.isConnected === false
+                          ? 'Disconnected'
+                          : 'Waiting';
                         return (
-                          <div key={p.playerId} className={`flex flex-col items-center gap-0.5 transition-opacity ${voted ? 'opacity-100' : 'opacity-35'}`}>
-                            <div className="relative">
-                              <PlayerAvatar avatarId={avatarIdForPlayer} name={p.playerName} size={28} />
-                              {voted && (
-                                <span className="absolute -top-1 -right-1 text-[10px] bg-emerald-500 text-white rounded-full w-3.5 h-3.5 flex items-center justify-center leading-none">✓</span>
+                          <div
+                            key={p.playerId}
+                            className="flex min-w-0 items-center gap-2 rounded-lg border border-white/8 bg-black/20 px-2 py-1.5"
+                          >
+                            <div className="relative shrink-0">
+                              <PlayerAvatar avatarId={avatarIdForPlayer} name={p.playerName} size={26} />
+                              {(p.isAi || joined) && (
+                                <span className="absolute -right-1 -top-1 flex h-3.5 w-3.5 items-center justify-center rounded-full bg-emerald-500 text-[9px] leading-none text-white">
+                                  ✓
+                                </span>
                               )}
                             </div>
-                            <span className="text-[9px] text-muted-foreground truncate max-w-[36px]">{p.playerName.split(' ')[0]}</span>
+                            <div className="min-w-0">
+                              <div className="truncate text-[11px] font-semibold text-foreground">
+                                {p.playerName}
+                              </div>
+                              <div className={`text-[9px] ${
+                                p.isAi || joined
+                                  ? 'text-emerald-400'
+                                  : declined
+                                  ? 'text-muted-foreground'
+                                  : 'text-amber-300'
+                              }`}>
+                                {status}
+                              </div>
+                            </div>
                           </div>
                         );
                       })}
                     </div>
-                    {/* Countdown */}
-                    {rematchVote.countdownEndsAt !== null && (
-                      <RematchCountdown endsAt={rematchVote.countdownEndsAt} />
-                    )}
-                    {rematchVote.countdownEndsAt === null && state.players.filter(p => !p.isAi).length === 2 && !hasVoted && (
-                      <p className="text-xs text-center text-muted-foreground">Waiting for both players to confirm…</p>
-                    )}
-                    {rematchVote.sameBoard && (
-                      <p className="text-xs text-center text-primary">
-                        Same opening board requested.
-                      </p>
+
+                    {hasVoted ? (
+                      <div className="grid grid-cols-[1fr_auto] gap-2">
+                        <div className="flex h-11 items-center justify-center rounded-xl border border-emerald-300/35 bg-emerald-500/12 text-sm font-bold text-emerald-100">
+                          <Check className="mr-2 h-4 w-4" />
+                          Ready
+                        </div>
+                        <Button
+                          size="lg"
+                          variant="outline"
+                          className="h-11 rounded-xl border-white/15 bg-white/5 px-4 text-foreground/80 hover:bg-white/10 hover:text-foreground"
+                          disabled={votePending || rematchVote.starting}
+                          onClick={() => void submitRematchResponse('decline')}
+                        >
+                          Not This Time
+                        </Button>
+                      </div>
+                    ) : (
+                      <div className={`grid gap-2 ${hasDeclinedRematch ? 'grid-cols-1' : 'grid-cols-2'}`}>
+                        <Button
+                          size="lg"
+                          className="h-11 rounded-xl bg-primary font-bold text-primary-foreground shadow-[0_0_24px_hsl(var(--primary)/0.28)] hover:bg-primary/90"
+                          disabled={votePending || rematchVote.starting}
+                          onClick={() => void submitRematchResponse('join', rematchVote.sameBoard)}
+                        >
+                          <RefreshCw className="mr-2 h-4 w-4" />
+                          {hasDeclinedRematch ? 'Join After All' : 'Join Rematch'}
+                        </Button>
+                        {!hasDeclinedRematch && (
+                          <Button
+                            size="lg"
+                            variant="outline"
+                            className="h-11 rounded-xl border-white/15 bg-white/5 text-foreground/80 hover:bg-white/10 hover:text-foreground"
+                            disabled={votePending || rematchVote.starting}
+                            onClick={() => void submitRematchResponse('decline')}
+                          >
+                            Not This Time
+                          </Button>
+                        )}
+                      </div>
                     )}
                   </div>
-                )}
-
-                <div className="flex items-center gap-2">
-                  <div className="h-px flex-1 bg-white/10" />
-                  <span className="text-[10px] font-bold uppercase tracking-[0.18em] text-muted-foreground/60">Next</span>
-                  <div className="h-px flex-1 bg-white/10" />
-                </div>
-                <div className="grid grid-cols-1 sm:grid-cols-2 gap-2">
-                  <Button
-                    size="lg"
-                    className={`h-12 rounded-xl text-base font-bold transition-all ${
-                      hasVoted && rematchVoteMode === 'fresh'
-                        ? 'border border-emerald-300/55 bg-emerald-500/18 text-emerald-50 shadow-[0_0_28px_rgba(16,185,129,0.22)] hover:bg-emerald-500/22'
-                        : 'bg-primary text-primary-foreground shadow-[0_0_28px_hsl(var(--primary)/0.34)] hover:bg-primary/90 hover:shadow-[0_0_34px_hsl(var(--primary)/0.46)]'
-                    } disabled:opacity-100`}
-                    disabled={votePending}
-                    aria-disabled={hasVoted || votePending}
-                    onClick={() => void submitRematchVote(false)}
-                  >
-                    {hasVoted && rematchVoteMode === 'fresh' ? <Check className="mr-2 h-4 w-4" /> : <RefreshCw className="mr-2 h-4 w-4" />}
-                    {votePending && rematchVoteMode === 'fresh'
-                      ? 'Sending...'
-                      : hasVoted && rematchVoteMode === 'fresh'
-                      ? 'Vote Cast'
-                      : 'Play Again'}
-                  </Button>
-                  <Button
-                    size="lg"
-                    variant="outline"
-                    className={`h-12 rounded-xl border-white/20 bg-white/7 text-foreground font-bold shadow-[inset_0_1px_0_rgba(255,255,255,0.08)] hover:bg-white/12 hover:text-foreground ${
-                      hasVoted && rematchVoteMode === 'same-board'
-                        ? 'border-emerald-300/55 bg-emerald-500/18 text-emerald-50 shadow-[0_0_28px_rgba(16,185,129,0.22)]'
-                        : ''
-                    } disabled:opacity-100`}
-                    disabled={votePending || !canReplaySameBoard}
-                    aria-disabled={hasVoted || votePending || !canReplaySameBoard}
-                    onClick={() => void submitRematchVote(true)}
-                  >
-                    {hasVoted && rematchVoteMode === 'same-board' ? <Check className="mr-2 h-4 w-4" /> : <LayoutGrid className="mr-2 h-4 w-4" />}
-                    {votePending && rematchVoteMode === 'same-board'
-                      ? 'Sending...'
-                      : hasVoted && rematchVoteMode === 'same-board'
-                      ? 'Vote Cast'
-                      : canReplaySameBoard
-                      ? 'Replay Same Board'
-                      : 'Replay Unavailable'}
-                  </Button>
-                </div>
-                {!canReplaySameBoard && (
-                  <p className="text-center text-[11px] leading-snug text-muted-foreground">
-                    Same-board replay works for games started after this update.
-                  </p>
+                ) : (
+                  <>
+                    <div className="flex items-center gap-2">
+                      <div className="h-px flex-1 bg-white/10" />
+                      <span className="text-[10px] font-bold uppercase tracking-[0.18em] text-muted-foreground/60">Next</span>
+                      <div className="h-px flex-1 bg-white/10" />
+                    </div>
+                    <div className="grid grid-cols-1 gap-2 sm:grid-cols-2">
+                      <Button
+                        size="lg"
+                        className="h-12 rounded-xl bg-primary text-base font-bold text-primary-foreground shadow-[0_0_28px_hsl(var(--primary)/0.34)] transition-all hover:bg-primary/90 hover:shadow-[0_0_34px_hsl(var(--primary)/0.46)]"
+                        disabled={votePending}
+                        onClick={() => void submitRematchResponse('join', false)}
+                      >
+                        <RefreshCw className="mr-2 h-4 w-4" />
+                        {votePending && rematchVoteMode === 'fresh' ? 'Inviting...' : 'Play Again'}
+                      </Button>
+                      <Button
+                        size="lg"
+                        variant="outline"
+                        className="h-12 rounded-xl border-white/20 bg-white/7 font-bold text-foreground shadow-[inset_0_1px_0_rgba(255,255,255,0.08)] hover:bg-white/12 hover:text-foreground disabled:opacity-50"
+                        disabled={votePending || !canReplaySameBoard}
+                        onClick={() => void submitRematchResponse('join', true)}
+                      >
+                        <LayoutGrid className="mr-2 h-4 w-4" />
+                        {votePending && rematchVoteMode === 'same-board'
+                          ? 'Inviting...'
+                          : canReplaySameBoard
+                          ? 'Replay Same Board'
+                          : 'Replay Unavailable'}
+                      </Button>
+                    </div>
+                    {!canReplaySameBoard && (
+                      <p className="text-center text-[11px] leading-snug text-muted-foreground">
+                        Same-board replay works for games started after this update.
+                      </p>
+                    )}
+                  </>
                 )}
                 <div className="grid grid-cols-2 gap-2">
                   <Button
@@ -9319,7 +9678,7 @@ export default function GameBoard() {
                     <LayoutGrid className="mr-2 h-4 w-4" />
                     View Board
                   </Button>
-                  <Button size="lg" variant="outline" className="h-11 rounded-xl border-white/15 bg-white/5 text-foreground/85 hover:bg-white/10 hover:text-foreground" onClick={() => setLocation('/')}>
+                  <Button size="lg" variant="outline" className="h-11 rounded-xl border-white/15 bg-white/5 text-foreground/85 hover:bg-white/10 hover:text-foreground" onClick={leaveFinishedRoom}>
                     <DoorOpen className="mr-2 h-4 w-4" />
                     Home
                   </Button>
@@ -9726,8 +10085,11 @@ export default function GameBoard() {
             lum={lum}
             triggeringPlayer={triggeringPlayer}
             state={state}
-            abridgedAnims={abridgedAnims || devSequenceUsesAbridgedAnimations}
+            abridgedAnims={abridgedAnims}
+            playbackMode={luminaryPlaybackMode}
+            activationTimelineRate={devSequenceTimelineRate}
             pendingBurnSlots={pendingDirectorBurnSlotsRef.current}
+            ironHarbingerSlots={pendingIronHarbingerSlotsRef.current}
             queuePosition={activationSequenceProgress.position}
             queueTotal={activationSequenceProgress.total}
             onResolutionStart={() => {
@@ -9904,6 +10266,59 @@ export default function GameBoard() {
                 }
               },
               playCardBurn: (index, total) => gameAudio.playCardBurn(index, total),
+            }}
+            ironHarbingerActions={{
+              prepare: viewOrchestrator.prepare,
+              setAnimEndTime: (durationMs) => {
+                activationAftermathOwnerEventIdRef.current = evt.eventId;
+                setAnimEndTime(durationMs);
+              },
+              onLiftSlots: (slotKeys) => {
+                const keySet = new Set(slotKeys);
+                setIronHarbingerGhostIds(current => {
+                  const next = { ...current };
+                  slotKeys.forEach(key => delete next[key]);
+                  return next;
+                });
+                setBurstGhostCards(current => {
+                  const next = { ...current };
+                  slotKeys.forEach(key => delete next[key]);
+                  return next;
+                });
+                setHiddenSlots(current => new Set([...current, ...keySet]));
+              },
+              onRevealSlot: (slotKey) => {
+                setHiddenSlots(current => {
+                  if (!current.has(slotKey)) return current;
+                  const next = new Set(current);
+                  next.delete(slotKey);
+                  return next;
+                });
+              },
+              onFinish: (slotKeys) => {
+                const keySet = new Set(slotKeys);
+                setIronHarbingerGhostIds(current => {
+                  const next = { ...current };
+                  slotKeys.forEach(key => delete next[key]);
+                  return next;
+                });
+                setBurstGhostCards(current => {
+                  const next = { ...current };
+                  slotKeys.forEach(key => delete next[key]);
+                  return next;
+                });
+                setHiddenSlots(current => {
+                  if (![...keySet].some(key => current.has(key))) return current;
+                  const next = new Set(current);
+                  keySet.forEach(key => next.delete(key));
+                  return next;
+                });
+                ironHarbingerGhostSlotKeysRef.current = [];
+                pendingIronHarbingerSlotsRef.current = [];
+              },
+              playShuffle: () => gameAudio.playCardFlip(),
+              playArchiveImpact: () => gameAudio.playImpactExtinctionArchive(),
+              playDeal: () => gameAudio.playCardDraw(),
             }}
             onBurnComplete={() => {
               const isFinalQueuedActivation = activationQueue.length <= 1;

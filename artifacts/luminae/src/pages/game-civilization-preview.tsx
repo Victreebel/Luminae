@@ -1,5 +1,6 @@
 import { KardashevScene } from '@/components/KardashevScene';
 import type { AffinityPalette, KardashevTier } from '@/lib/kardashev';
+import type { CivilizationProfile } from '@/lib/civilizationProfile';
 
 export type CivilizationPreviewPlacement = 'left' | 'rail';
 
@@ -7,6 +8,7 @@ export interface CivilizationPreviewModel {
   name: string;
   tier: KardashevTier;
   palette: AffinityPalette;
+  profile: CivilizationProfile;
   forgedCount: number;
 }
 
@@ -38,6 +40,7 @@ function CivilizationPreviewModule({
         <KardashevScene
           tier={civilizationModel.tier}
           palette={civilizationModel.palette}
+          profile={civilizationModel.profile}
           progressFraction={progressFraction}
           paused
           maxDpr={1}

@@ -77,4 +77,24 @@ describe('useAuthoritativeStateIngress', () => {
     expect(result.current.queuedCount).toBe(0);
     expect(process).not.toHaveBeenCalled();
   });
+
+  it('replaces the version epoch for a rematch and discards old queued work', () => {
+    vi.useFakeTimers();
+    const process = vi.fn();
+    const { result } = renderHook(() => useAuthoritativeStateIngress<TestState>({
+      blocked: true,
+      getProcessedVersion: () => 40,
+      process,
+    }));
+
+    act(() => {
+      result.current.accept({ version: 41 }, 'websocket');
+      result.current.replaceEpoch({ version: 1 }, 'websocket');
+      vi.runAllTimers();
+    });
+
+    expect(result.current.queuedCount).toBe(0);
+    expect(process).toHaveBeenCalledOnce();
+    expect(process).toHaveBeenCalledWith({ version: 1 }, 'websocket');
+  });
 });

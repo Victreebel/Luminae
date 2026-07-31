@@ -34,6 +34,12 @@ import {
   createLuminaryEffectSequence,
   type LuminaryEffectSequenceController,
 } from '@/lib/luminaryEffectSequence';
+import {
+  boundedLuminaryStagger,
+  luminaryPacedDuration,
+  luminaryReadDuration,
+  type LuminaryPlaybackMode,
+} from '@/lib/luminaryPresentationPacing';
 
 // ─── Timing constants ─────────────────────────────────────────────────────────
 
@@ -94,6 +100,7 @@ export interface ArtifactBrandingActions {
       lead?: number;
       orchestrated?: boolean;
       restoreImmediate?: boolean;
+      staggerMs?: number;
     },
   ) => string | null;
 }
@@ -104,6 +111,8 @@ interface ArtifactBrandingDirectorProps {
   lumSummonSecondaryColor?: string;
   targetCardIds: string[];
   reducedMotion: boolean;
+  playbackMode?: LuminaryPlaybackMode;
+  timelinePlaybackRate?: number;
   markerType?: 'condemned' | 'forgotten' | 'nullified';
   effectName?: string;
   resultLabel?: string;
@@ -125,6 +134,8 @@ export function ArtifactBrandingDirector({
   lumSummonSecondaryColor,
   targetCardIds,
   reducedMotion,
+  playbackMode = 'standard',
+  timelinePlaybackRate = 1,
   markerType = 'condemned',
   effectName = 'Cinder Mandate',
   resultLabel = 'Condemned',
@@ -169,15 +180,39 @@ export function ArtifactBrandingDirector({
     const procedure: AnimationProcedureStep[] = [
       { type: 'targetClaim', targetIds: targetCardIds, keyword: markerType },
     ];
-    const lead = reducedMotion ? 0 : SOURCE_PULSE_LEAD_MS;
-    const estimatedTotalMs =
-      SETTLE_ESTIMATE_MS +
-      BEAT_HOLD_MS +
+    const paced = (durationMs: number) => luminaryPacedDuration(
+      durationMs,
+      playbackMode,
+      timelinePlaybackRate,
+    );
+    const announcementReadMs = luminaryReadDuration(
+      effectDescription ?? `${targetCardIds.length} Artifacts become ${resultLabel}.`,
+      playbackMode,
+      timelinePlaybackRate,
+    );
+    const announceLeadMs = paced(180);
+    const settleEstimateMs = paced(SETTLE_ESTIMATE_MS);
+    const lead = reducedMotion ? 0 : paced(SOURCE_PULSE_LEAD_MS);
+    const staggerMs = boundedLuminaryStagger(
+      targetCardIds.length,
+      90,
+      playbackMode,
+      timelinePlaybackRate,
+    );
+    // Swift mode removes dead air around the strike, but the brand beam and
+    // aura still need their complete visual envelope. Reduced motion has a
+    // separate crisp-flash implementation with a shorter fixed duration.
+    const strikeVisualMs = reducedMotion ? 350 : 1_420;
+    const strikeTotalMs =
       lead +
-      (targetCardIds.length - 1) * 90 +
-      1420 + // aura-complete window
-      400 +  // buffer
-      AFTERMATH_HOLD_MS;
+      Math.max(0, targetCardIds.length - 1) * staggerMs +
+      strikeVisualMs +
+      paced(240);
+    const estimatedTotalMs =
+      Math.max(
+        announcementReadMs,
+        announceLeadMs + settleEstimateMs + strikeTotalMs,
+      ) + paced(AFTERMATH_HOLD_MS);
     actionsRef.current.setAnimEndTime(estimatedTotalMs);
 
     let source:
@@ -194,8 +229,7 @@ export function ArtifactBrandingDirector({
       phases: [
         {
           id: 'announce',
-          durationMs: BEAT_HOLD_MS,
-          reducedDurationMs: 160,
+          durationMs: announceLeadMs,
           run: () => {
             const overlay = beatOverlayRef.current;
             if (overlay) {
@@ -215,7 +249,7 @@ export function ArtifactBrandingDirector({
               done,
               { forceOrchestrate: true },
             ),
-            SETTLE_ESTIMATE_MS,
+            settleEstimateMs,
           ),
         },
         {
@@ -254,17 +288,13 @@ export function ArtifactBrandingDirector({
                 lead: usedLead,
                 orchestrated: false,
                 restoreImmediate: reducedMotion,
+                staggerMs,
               },
             );
             actionsRef.current.unsuppressMarkers(targetCardIds);
 
-            const strikeTotalMs =
-              usedLead +
-              (targetCardIds.length - 1) * 90 +
-              1420 +
-              400;
             actionsRef.current.setAnimEndTime(
-              strikeTotalMs + AFTERMATH_HOLD_MS,
+              strikeTotalMs + paced(AFTERMATH_HOLD_MS),
             );
             await wait(strikeId ? strikeTotalMs : 200);
           },
@@ -284,8 +314,7 @@ export function ArtifactBrandingDirector({
         },
         {
           id: 'aftermath',
-          durationMs: AFTERMATH_HOLD_MS,
-          reducedDurationMs: 80,
+          durationMs: paced(AFTERMATH_HOLD_MS),
         },
       ],
       onPhaseChange: phase => {
@@ -348,8 +377,9 @@ export function ArtifactBrandingDirector({
       <LuminaryEffectSkipControl
         color={lumSummonColor ?? '#ef4444'}
         reducedMotion={reducedMotion}
+        onAdvance={() => sequenceRef.current?.advance()}
         onSkip={() => sequenceRef.current?.skip()}
-        label={`Skip ${effectName} branding phase`}
+        label={`Advance ${effectName}; hold to skip`}
       />
     </div>,
     document.body,

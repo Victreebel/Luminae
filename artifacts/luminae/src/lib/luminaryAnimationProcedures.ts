@@ -64,7 +64,6 @@ import { artifactMarkerHasBrand } from './artifactBrands';
 function t3(s: GameState): ArtifactCard[] { return s.forgeTier3 ?? []; }
 function t2(s: GameState): ArtifactCard[] { return s.forgeTier2 ?? []; }
 function t1(s: GameState): ArtifactCard[] { return s.forgeTier1 ?? []; }
-function t3Ids(s: GameState): string[] { return t3(s).map(c => c.id); }
 function allForgeArtifacts(s: GameState): ArtifactCard[] { return [...t3(s), ...t2(s), ...t1(s)]; }
 function allForgeArtifactIds(s: GameState): string[] { return allForgeArtifacts(s).map(c => c.id); }
 function allPlayerIds(s: GameState): string[] {
@@ -182,15 +181,18 @@ function resolveBloom(s: GameState, ownerId: string): AnimationTimelineStep[] {
 }
 
 // 8. Iron Harbinger / Impact Extinction (lum_forge)
-//    luminaryPulse → targetClaim all face-up Tier III (hammer-shadow, keyword: burn pre-tint)
-//    → burn all → forgeRefill (Forge refresh)
-//    The burn pre-tint on targetClaim produces the "hammer-shadow falls before the strike" beat.
-function resolveForge(s: GameState): AnimationTimelineStep[] {
-  const targets = t3Ids(s);
+//    luminaryPulse → claim the original Forge array → return to Archives
+//    → randomize all three Archives → refill every row.
+function resolveForge(
+  s: GameState,
+  payloadIds?: string[],
+): AnimationTimelineStep[] {
+  const targets = payloadIds ?? allForgeArtifactIds(s);
   return [
     pulse('lum_forge'),
-    { type: 'targetClaim', targetIds: targets, keyword: 'burn' },
-    { type: 'keywordEvents', events: [{ keyword: 'burn', targetIds: targets }] },
+    { type: 'targetClaim', targetIds: targets },
+    { type: 'archiveReturn', cardIds: targets },
+    { type: 'deckScry', tierIds: ['tier1', 'tier2', 'tier3'] },
     { type: 'forgeRefill', slotIds: [] },
   ];
 }
@@ -356,7 +358,7 @@ export function resolveLuminaryProcedure(
       case 'lum_radiant': return resolveRadiant(state, ownerId);
       case 'lum_astral':  return resolveAstral(effectType, eventPayload?.targetCardIds);
       case 'lum_bloom':   return resolveBloom(state, ownerId);
-      case 'lum_forge':   return resolveForge(state);
+      case 'lum_forge':   return resolveForge(state, eventPayload?.targetCardIds);
       case 'lum_compass': return resolveCompass(state, effectType, eventPayload?.targetCardIds);
       case 'lum_seed':    return resolveSeed();
       case 'lum_orchard': return resolveOrchard(state, ownerId);

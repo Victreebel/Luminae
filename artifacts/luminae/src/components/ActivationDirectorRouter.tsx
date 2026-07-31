@@ -22,14 +22,21 @@
  * the only layer permitted to release it.
  */
 import { useState, type ReactElement } from 'react';
+import { useReducedMotion } from 'framer-motion';
 import { ArtifactBrandingDirector } from './CinderMandateBrandingDirector';
 import type { CinderMandateBrandingActions } from './CinderMandateBrandingDirector';
 import { CinderMandateBurnDirector } from './CinderMandateBurnDirector';
 import type { CinderMandateBurnActions, DirectorBurnSlot } from './CinderMandateBurnDirector';
 import { LuminaryActivationCinematic } from './LuminaryActivationCinematic';
 import { PhoenixArchiveReturnDirector } from './PhoenixArchiveReturnDirector';
+import {
+  IronHarbingerResetDirector,
+  type IronHarbingerResetActions,
+  type IronHarbingerResetSlot,
+} from './IronHarbingerResetDirector';
 import { resolveLuminaryProcedure } from '@/lib/luminaryAnimationProcedures';
 import { getLuminaryAnnouncementCopy } from '@/lib/luminaryEffectAnnouncements';
+import type { LuminaryPlaybackMode } from '@/lib/luminaryPresentationPacing';
 import type {
   PendingLuminaryActivationEvent,
   Luminary,
@@ -44,7 +51,10 @@ export interface ActivationDirectorRouterProps {
   lum: Luminary | undefined;
   triggeringPlayer: GamePlayerState | undefined;
   state: GameState | null;
+  /** Player accessibility preference. This alone may omit full-motion reveals. */
   abridgedAnims: boolean;
+  playbackMode: LuminaryPlaybackMode;
+  activationTimelineRate: number;
   pendingBurnSlots: DirectorBurnSlot[];
   queuePosition: number;
   queueTotal: number;
@@ -55,6 +65,9 @@ export interface ActivationDirectorRouterProps {
 
   burnActions: CinderMandateBurnActions;
   onBurnComplete: () => void;
+
+  ironHarbingerSlots: IronHarbingerResetSlot[];
+  ironHarbingerActions: IronHarbingerResetActions;
 
   onCinematicComplete: (skipped: boolean) => void;
 }
@@ -80,6 +93,14 @@ interface DirectorEntry {
  * unmatched events use it automatically.
  */
 const DIRECTOR_REGISTRY: readonly DirectorEntry[] = [
+  // ── Iron Harbinger — full Forge return, Archive shuffle, and redeal ──────
+  {
+    luminaryId: 'lum_forge',
+    effectType: 'summon',
+    preparesCamera: true,
+    render: (props) => <IronHarbingerActivationPrelude {...props} />,
+  },
+
   // ── Phoenix Paradox — delayed Burn Pile recovery ─────────────────────────
   {
     luminaryId: 'lum_astral',
@@ -88,6 +109,8 @@ const DIRECTOR_REGISTRY: readonly DirectorEntry[] = [
       evt,
       triggeringPlayer,
       abridgedAnims,
+      playbackMode,
+      activationTimelineRate,
       queuePosition,
       queueTotal,
       onCinematicComplete,
@@ -95,6 +118,8 @@ const DIRECTOR_REGISTRY: readonly DirectorEntry[] = [
       <PhoenixArchiveReturnDirector
         cardIds={evt.targetCardIds ?? []}
         reducedMotion={abridgedAnims}
+        playbackMode={playbackMode}
+        timelinePlaybackRate={activationTimelineRate}
         triggeringPlayerName={triggeringPlayer?.playerName}
         queuePosition={queuePosition}
         queueTotal={queueTotal}
@@ -166,6 +191,85 @@ const DIRECTOR_REGISTRY: readonly DirectorEntry[] = [
   },
 ];
 
+function IronHarbingerActivationPrelude({
+  evt,
+  lum,
+  triggeringPlayer,
+  state,
+  abridgedAnims,
+  playbackMode,
+  activationTimelineRate,
+  queuePosition,
+  queueTotal,
+  onResolutionStart,
+  ironHarbingerSlots,
+  ironHarbingerActions,
+  onCinematicComplete,
+}: ActivationDirectorRouterProps) {
+  const [preludeComplete, setPreludeComplete] = useState(false);
+  const effectName = lum?.effectName ?? lum?.name ?? evt.luminaryId;
+  const announcementFallback = {
+    effectName,
+    effectDescription: lum?.effectDescription,
+  };
+
+  if (!preludeComplete) {
+    const procedure = resolveLuminaryProcedure(
+      evt.luminaryId,
+      'summon',
+      state,
+      evt.triggeringPlayerId,
+      { targetCardIds: evt.targetCardIds },
+    );
+
+    return (
+      <LuminaryActivationCinematic
+        luminaryId={evt.luminaryId}
+        effectType="summon"
+        luminaryName={lum?.name ?? evt.luminaryId}
+        effectDescription={getLuminaryAnnouncementCopy(
+          evt.luminaryId,
+          'source',
+          announcementFallback,
+          'summon',
+        )}
+        resolutionDescription={getLuminaryAnnouncementCopy(
+          evt.luminaryId,
+          'resolution',
+          announcementFallback,
+          'summon',
+        )}
+        triggeringPlayerName={triggeringPlayer?.playerName}
+        queuePosition={queuePosition}
+        queueTotal={queueTotal}
+        procedure={procedure.length > 0 ? procedure : undefined}
+        onResolutionStart={onResolutionStart}
+        reducedMotion={abridgedAnims}
+        playbackMode={playbackMode}
+        timelinePlaybackRate={activationTimelineRate}
+        sourceOnly
+        onComplete={() => setPreludeComplete(true)}
+      />
+    );
+  }
+
+  return (
+    <IronHarbingerResetDirector
+      targetCardIds={evt.targetCardIds ?? []}
+      capturedSlots={ironHarbingerSlots}
+      state={state}
+      reducedMotion={abridgedAnims}
+      playbackMode={playbackMode}
+      timelinePlaybackRate={activationTimelineRate}
+      triggeringPlayerName={triggeringPlayer?.playerName}
+      queuePosition={queuePosition}
+      queueTotal={queueTotal}
+      actions={ironHarbingerActions}
+      onComplete={onCinematicComplete}
+    />
+  );
+}
+
 interface BrandingActivationPreludeProps
   extends ActivationDirectorRouterProps {
   markerType: 'condemned' | 'forgotten' | 'nullified';
@@ -178,6 +282,8 @@ function BrandingActivationPrelude({
   triggeringPlayer,
   state,
   abridgedAnims,
+  playbackMode,
+  activationTimelineRate,
   queuePosition,
   queueTotal,
   onResolutionStart,
@@ -227,6 +333,9 @@ function BrandingActivationPrelude({
         procedure={procedure.length > 0 ? procedure : undefined}
         onResolutionStart={onResolutionStart}
         reducedMotion={abridgedAnims}
+        playbackMode={playbackMode}
+        timelinePlaybackRate={activationTimelineRate}
+        sourceOnly
         onComplete={() => setPreludeComplete(true)}
       />
     );
@@ -239,6 +348,8 @@ function BrandingActivationPrelude({
       lumSummonSecondaryColor={lum?.summonSecondaryColor}
       targetCardIds={evt.targetCardIds ?? []}
       reducedMotion={abridgedAnims}
+      playbackMode={playbackMode}
+      timelinePlaybackRate={activationTimelineRate}
       markerType={markerType}
       effectName={effectName}
       resultLabel={resultLabel}
@@ -260,6 +371,8 @@ function EmberEndTurnActivation({
   triggeringPlayer,
   state,
   abridgedAnims,
+  playbackMode,
+  activationTimelineRate,
   queuePosition,
   queueTotal,
   onResolutionStart,
@@ -315,6 +428,8 @@ function EmberEndTurnActivation({
         procedure={procedure}
         onResolutionStart={onResolutionStart}
         reducedMotion={abridgedAnims}
+        playbackMode={playbackMode}
+        timelinePlaybackRate={activationTimelineRate}
         onComplete={onCinematicComplete}
       />
     );
@@ -325,6 +440,8 @@ function EmberEndTurnActivation({
       targetCardIds={evt.targetCardIds ?? []}
       pendingBurnSlots={pendingBurnSlots}
       reducedMotion={abridgedAnims}
+      playbackMode={playbackMode}
+      timelinePlaybackRate={activationTimelineRate}
       triggeringPlayerName={triggeringPlayer?.playerName}
       queuePosition={queuePosition}
       queueTotal={queueTotal}
@@ -368,13 +485,27 @@ export function activationDirectorPreparesCamera(
 // ─── Component ────────────────────────────────────────────────────────────────
 
 export function ActivationDirectorRouter(props: ActivationDirectorRouterProps) {
-  const { evt, lum, triggeringPlayer, state, abridgedAnims, onCinematicComplete } = props;
+  const systemPrefersReducedMotion = !!useReducedMotion();
+  const {
+    evt,
+    lum,
+    triggeringPlayer,
+    state,
+    abridgedAnims: requestedReducedMotion,
+    playbackMode,
+    activationTimelineRate,
+    onCinematicComplete,
+  } = props;
+  const abridgedAnims = requestedReducedMotion || systemPrefersReducedMotion;
+  const effectiveProps = abridgedAnims === requestedReducedMotion
+    ? props
+    : { ...props, abridgedAnims };
 
   // Dispatch to the first matching named director in the registry
   const entry = DIRECTOR_REGISTRY.find(
     e => e.luminaryId === evt.luminaryId && e.effectType === evt.effectType,
   );
-  if (entry) return entry.render(props);
+  if (entry) return entry.render(effectiveProps);
 
   // ── Generic cinematic for all other Luminary activations ─────────────────
   const procedure = resolveLuminaryProcedure(
@@ -414,6 +545,8 @@ export function ActivationDirectorRouter(props: ActivationDirectorRouterProps) {
       procedure={procedure.length > 0 ? procedure : undefined}
       onResolutionStart={props.onResolutionStart}
       reducedMotion={abridgedAnims}
+      playbackMode={playbackMode}
+      timelinePlaybackRate={activationTimelineRate}
       onComplete={onCinematicComplete}
     />
   );

@@ -174,7 +174,7 @@ export const MOCK_PROCEDURE_STATES: Record<string, MockProcedureEntry> = {
   },
 
   // 8. Iron Harbinger — Impact Extinction
-  //    Burns all T3 only. T2 unaffected.
+  //    Returns all Forge rows, randomizes every Archive, and redeals.
   lum_forge: {
     state: base({
       forgeTier3: [
@@ -184,7 +184,7 @@ export const MOCK_PROCEDURE_STATES: Record<string, MockProcedureEntry> = {
       forgeTier2: [mc('f2a', 2, 'flare'), mc('f2b', 2, 'radiance')],
     }),
     ownerId: 'mock-p1',
-    description: '4 T3 + 2 T2 Artifacts. Hammer-shadow pre-tint on T3 only; all 4 burn. T2 unaffected. The Forge refreshes.',
+    description: 'All face-up Artifacts lift from their molds, return to matching Archives, and are randomized before all three Forge rows refill.',
   },
 
   // 9. ??? — The Forgotten Hour

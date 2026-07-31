@@ -17,6 +17,7 @@ export interface BoardForgeProps {
   burnChipAnim: MotionAnimate;
   burnChipArrivalAnim: MotionAnimate;
   burstGhostCards: Record<string, ArtifactCard>;
+  ironHarbingerGhostIds: Record<string, string>;
   canPlan: boolean;
   cardDetailDiscovered: boolean;
   computeCosts: (card: ArtifactCard, mode: CostMode) => Partial<Record<AffinityKey, number>> | undefined;
@@ -67,6 +68,7 @@ export function BoardForge({
   burnChipAnim,
   burnChipArrivalAnim,
   burstGhostCards,
+  ironHarbingerGhostIds,
   canPlan,
   cardDetailDiscovered,
   computeCosts,
@@ -153,6 +155,7 @@ export function BoardForge({
           burnChipAnim={burnChipAnim}
           burnChipArrivalAnim={burnChipArrivalAnim}
           burstGhostCards={burstGhostCards}
+          ironHarbingerGhostIds={ironHarbingerGhostIds}
           canPlan={canPlan}
           cardDetailDiscovered={cardDetailDiscovered}
           computeCosts={computeCosts}
@@ -348,6 +351,7 @@ function ForgeCostControls({
 function ForgeTierShelves({
   brandDelayMap,
   burstGhostCards,
+  ironHarbingerGhostIds,
   canPlan,
   cardDetailDiscovered,
   computeCosts,
@@ -393,7 +397,7 @@ function ForgeTierShelves({
         let nextCol = 0;
         const colIndices = row.cards.map((card, index) => {
           const slotKey = row.tier + '-' + index;
-          if (burstGhostCards[slotKey] || hiddenSlots.has(slotKey) || !card) return -1;
+          if (burstGhostCards[slotKey] || ironHarbingerGhostIds[slotKey] || hiddenSlots.has(slotKey) || !card) return -1;
           return nextCol++;
         });
         const shelfAccent = row.tier === 3
@@ -455,6 +459,7 @@ function ForgeTierShelves({
                       colIdx={colIndices[i]}
                       brandDelayMap={brandDelayMap}
                       burstGhostCards={burstGhostCards}
+                      ironHarbingerGhostIds={ironHarbingerGhostIds}
                       cardDetailDiscovered={cardDetailDiscovered}
                       computeCosts={computeCosts}
                       costMode={costMode}

@@ -1,4 +1,4 @@
-import React, { useState, useEffect } from 'react';
+import React from 'react';
 import { motion } from 'framer-motion';
 import { ChevronDown } from 'lucide-react';
 import { getAvatarForPlayer } from '@/lib/avatars';
@@ -184,33 +184,6 @@ export function OpponentChip({
 
         </div>
       )}
-    </div>
-  );
-}
-
-export function RematchCountdown({ endsAt }: { endsAt: number }) {
-  const [remaining, setRemaining] = useState(() => Math.max(0, endsAt - Date.now()));
-  useEffect(() => {
-    const id = setInterval(() => {
-      const r = Math.max(0, endsAt - Date.now());
-      setRemaining(r);
-      if (r === 0) clearInterval(id);
-    }, 100);
-    return () => clearInterval(id);
-  }, [endsAt]);
-  const secs = Math.ceil(remaining / 1000);
-  const pct = Math.min(100, (remaining / 5000) * 100);
-  return (
-    <div className="space-y-1">
-      <div className="h-1 rounded-full bg-secondary overflow-hidden">
-        <div
-          className="h-full bg-primary transition-all duration-100"
-          style={{ width: `${pct}%` }}
-        />
-      </div>
-      <p className="text-xs text-center text-muted-foreground">
-        Starting in {secs}s…
-      </p>
     </div>
   );
 }

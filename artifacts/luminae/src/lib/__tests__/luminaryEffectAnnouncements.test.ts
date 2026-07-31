@@ -2,6 +2,7 @@ import { describe, expect, it } from 'vitest';
 import {
   getLuminaryAnnouncementCopy,
   MAX_LUMINARY_ANNOUNCEMENT_LENGTH,
+  MAX_LUMINARY_ANNOUNCEMENT_WORDS,
 } from '@/lib/luminaryEffectAnnouncements';
 
 const knownLuminaryIds = [
@@ -30,7 +31,7 @@ describe('Luminary announcement copy', () => {
     const resolution = getLuminaryAnnouncementCopy('lum_compass', 'resolution');
 
     expect(source).toBe('The Forgotten Hour opens.');
-    expect(resolution).toBe('All face-up Forge Artifacts become Forgotten; victory rises by 1.');
+    expect(resolution).toBe('Forge Artifacts become Forgotten; victory rises by 1.');
     expect(source).not.toBe(resolution);
   });
 
@@ -59,7 +60,8 @@ describe('Luminary announcement copy', () => {
       effectDescription: `${'A very long rule sentence '.repeat(12)}. A second sentence.`,
     });
 
-    expect(copy.endsWith('…')).toBe(true);
+    expect(copy.endsWith('...')).toBe(true);
     expect(copy.length).toBeLessThanOrEqual(MAX_LUMINARY_ANNOUNCEMENT_LENGTH);
+    expect(copy.trim().split(/\s+/)).toHaveLength(MAX_LUMINARY_ANNOUNCEMENT_WORDS);
   });
 });
