@@ -131,10 +131,19 @@ const ILLUSTRATED_IDS = new Set<string>([
   'lum_scholar',
 ]);
 
-const _luminaryImageModules = import.meta.glob<{ default: string }>(
-  '../assets/luminaries/**/*.{webp,png,jpg}',
-  { eager: true },
-);
+const _luminaryImageModules = import.meta.glob<{ default: string }>([
+  '../assets/luminaries/*/panel.{webp,png,jpg}',
+  '../assets/luminaries/*/panel_runtime.webp',
+  '../assets/luminaries/*/entity.{webp,png,jpg}',
+  '../assets/luminaries/*/entity_runtime.webp',
+  '../assets/luminaries/*/cinematic.{webp,png,jpg}',
+  '../assets/luminaries/lum_radiant/Radiant 1.png',
+  '../assets/luminaries/lum_radiant/Radiant 2.png',
+  '../assets/luminaries/lum_radiant/Radiant 3.png',
+  '../assets/luminaries/lum_radiant/radiant_1_runtime.webp',
+  '../assets/luminaries/lum_radiant/radiant_2_runtime.webp',
+  '../assets/luminaries/lum_radiant/radiant_3_runtime.webp',
+], { eager: true });
 
 // Flat lookup: "lum_ember/panel" → resolved asset URL
 const _luminaryImageMap: Record<string, string> = {};
@@ -147,7 +156,10 @@ for (const [path, mod] of Object.entries(_luminaryImageModules)) {
   }
 }
 
-function _getLuminaryImage(id: string, slot: 'panel' | 'entity' | 'background' | 'cinematic'): string | null {
+function _getLuminaryImage(
+  id: string,
+  slot: 'panel' | 'panel_runtime' | 'entity' | 'entity_runtime' | 'background' | 'cinematic',
+): string | null {
   if (!ILLUSTRATED_IDS.has(id)) return null;
   return _luminaryImageMap[`${id}/${slot}`] ?? null;
 }
@@ -156,16 +168,24 @@ function _getLuminaryImage(id: string, slot: 'panel' | 'entity' | 'background' |
 export interface LuminaryImageAssets {
   /** Sealed board panel art. Displayed in the objective tile and as the shattering vessel. */
   panelArt: string | null;
+  /** Retina-safe board texture. Full-resolution art remains reserved for cinematics. */
+  panelRuntime: string | null;
   /** Freed entity transparent cutout. No card border or square portrait edges. */
   entityCutout: string | null;
+  /** Retina-safe transparent cutout for the persistent claimed panel. */
+  entityRuntime: string | null;
   /** Bounded runtime texture for full-screen cinematics. Keeps animation decode/GPU upload stable. */
   cinematicArt: string | null;
 }
 
 export function getLuminaryImageAssets(id: string): LuminaryImageAssets {
+  const panelArt = _getLuminaryImage(id, 'panel');
+  const entityCutout = _getLuminaryImage(id, 'entity');
   return {
-    panelArt:     _getLuminaryImage(id, 'panel'),
-    entityCutout: _getLuminaryImage(id, 'entity'),
+    panelArt,
+    panelRuntime: _getLuminaryImage(id, 'panel_runtime') ?? panelArt,
+    entityCutout,
+    entityRuntime: _getLuminaryImage(id, 'entity_runtime') ?? entityCutout,
     cinematicArt: _getLuminaryImage(id, 'cinematic'),
   };
 }
@@ -279,12 +299,16 @@ function TideEyeOverlay({
   cyFactor = 0.472,
   nativeAligned = false,
   nativeAlign = 'center',
+  animateDetails = true,
+  allowBlink = true,
 }: {
   width: number;
   height: number;
   cyFactor?: number;
   nativeAligned?: boolean;
   nativeAlign?: 'top' | 'center';
+  animateDetails?: boolean;
+  allowBlink?: boolean;
 }) {
   const isMobile = useIsMobile();
   const canvasWidth = nativeAligned ? 511 : width;
@@ -305,16 +329,27 @@ function TideEyeOverlay({
   // Random blink: isOpen=false → eyelid animates shut, then re-opens
   const [isOpen, setIsOpen] = useState(true);
   useEffect(() => {
-    let tid: ReturnType<typeof setTimeout>;
+    if (!allowBlink) {
+      setIsOpen(true);
+      return;
+    }
+    let blinkTimer: ReturnType<typeof setTimeout>;
+    let reopenTimer: ReturnType<typeof setTimeout>;
     const scheduleBlink = () => {
-      tid = setTimeout(() => {
+      blinkTimer = setTimeout(() => {
         setIsOpen(false);
-        setTimeout(() => { setIsOpen(true); scheduleBlink(); }, 160);
+        reopenTimer = setTimeout(() => {
+          setIsOpen(true);
+          scheduleBlink();
+        }, 160);
       }, 2500 + Math.random() * 5000);
     };
     scheduleBlink();
-    return () => clearTimeout(tid);
-  }, []);
+    return () => {
+      clearTimeout(blinkTimer);
+      clearTimeout(reopenTimer);
+    };
+  }, [allowBlink]);
 
   return (
     <svg
@@ -376,7 +411,7 @@ function TideEyeOverlay({
         <ellipse cx={cx} cy={cy} rx={scleraRX} ry={scleraRY} fill="url(#te-sclera)" />
 
         {/* Iris glow halo — pulsing sapphire ring just outside the iris */}
-        {isMobile ? (
+        {isMobile || !animateDetails ? (
           <circle
             cx={cx} cy={cy} r={irisR * 1.14}
             fill="none" stroke="#1eb8f0" strokeWidth={irisR * 0.38}
@@ -395,7 +430,7 @@ function TideEyeOverlay({
         )}
 
         {/* Drifting iris group — iris + texture + limbal ring + pupil + catch lights */}
-        {isMobile ? (
+        {isMobile || !animateDetails ? (
           <g transform={`translate(${maxDX*0.35},${maxDY*0.25})`}>
             {/* Static mid-drift position — same content without motion */}
             <circle cx={cx} cy={cy} r={irisR} fill="url(#te-iris)" />
@@ -1223,6 +1258,7 @@ export function LuminaryPanelArt({
   width,
   height,
   claimed = false,
+  runtime = false,
 }: {
   luminaryId: string;
   /** Pixel or CSS width applied to the component's root. Board cards pass 100%
@@ -1231,10 +1267,13 @@ export function LuminaryPanelArt({
   /** Pixel or CSS height applied to the component's root. */
   height: number | string;
   claimed?: boolean;
+  /** Use the board-sized texture. Full-resolution art remains available to cinematics. */
+  runtime?: boolean;
 }) {
   const vis = getLuminaryVisuals(luminaryId);
   const { primaryColor, secondaryColor, glowColor, EntityArt } = vis;
-  const { panelArt } = getLuminaryImageAssets(luminaryId);
+  const { panelArt, panelRuntime } = getLuminaryImageAssets(luminaryId);
+  const panelImage = runtime ? panelRuntime : panelArt;
   const numericWidth = typeof width === 'number' ? width : 112;
   const numericHeight = typeof height === 'number' ? height : 160;
   const entitySize = Math.min(numericWidth, numericHeight);
@@ -1242,11 +1281,11 @@ export function LuminaryPanelArt({
   return (
     <div className="relative overflow-hidden" style={{ width, height }}>
 
-      {panelArt ? (
+      {panelImage ? (
         // ── Real illustrated panel art ──────────────────────────────────────
         // Image covers the tile; tint and frame are applied on top.
         <img
-          src={panelArt}
+          src={panelImage}
           alt=""
           className="absolute inset-0 w-full h-full"
           style={{ objectFit: 'cover', objectPosition: 'center' }}
@@ -5341,6 +5380,8 @@ export function LuminaryClaimedEntityArt({
   showAura = true,
   presentation = 'contained',
   animate = true,
+  idleMotionActive = true,
+  detailMotionActive = true,
 }: {
   luminaryId: string;
   activeColor?: string;
@@ -5348,11 +5389,15 @@ export function LuminaryClaimedEntityArt({
   showAura?: boolean;
   presentation?: 'contained' | 'freed';
   animate?: boolean;
+  idleMotionActive?: boolean;
+  detailMotionActive?: boolean;
 }) {
   const vis = getLuminaryVisuals(luminaryId);
   const { EntityArt, primaryColor, glowColor, entityBlendMode, auraStyle } = vis;
   const auraVariant = AURA_VARIANTS[auraStyle] ?? AURA_VARIANT_FALLBACK;
-  const { entityCutout } = getLuminaryImageAssets(luminaryId);
+  const { entityCutout, entityRuntime } = getLuminaryImageAssets(luminaryId);
+  const useRuntimeArt = presentation === 'freed' && !animate;
+  const entityImage = useRuntimeArt ? entityRuntime : entityCutout;
   const ov = IDLE_ENTITY_OVERRIDES[luminaryId] ?? {};
   const entScale = presentation === 'freed'
     ? (ov.freedScale ?? 1)
@@ -5398,9 +5443,15 @@ export function LuminaryClaimedEntityArt({
 
   let entityEl: React.ReactNode;
   if (luminaryId === 'lum_radiant') {
-    const ring = _luminaryImageMap['lum_radiant/Radiant 1'] ?? null;
-    const body = _luminaryImageMap['lum_radiant/Radiant 2'] ?? null;
-    const core = _luminaryImageMap['lum_radiant/Radiant 3'] ?? null;
+    const ring = useRuntimeArt
+      ? (_luminaryImageMap['lum_radiant/radiant_1_runtime'] ?? null)
+      : (_luminaryImageMap['lum_radiant/Radiant 1'] ?? null);
+    const body = useRuntimeArt
+      ? (_luminaryImageMap['lum_radiant/radiant_2_runtime'] ?? null)
+      : (_luminaryImageMap['lum_radiant/Radiant 2'] ?? null);
+    const core = useRuntimeArt
+      ? (_luminaryImageMap['lum_radiant/radiant_3_runtime'] ?? null)
+      : (_luminaryImageMap['lum_radiant/Radiant 3'] ?? null);
     if (ring && body && core) {
       const absfill: React.CSSProperties = { position: 'absolute', inset: 0 };
       const layerImg: React.CSSProperties = {
@@ -5420,7 +5471,12 @@ export function LuminaryClaimedEntityArt({
           <div style={{ ...absfill, transform: 'scale(1.1)', transformOrigin: 'center center' }}>
             <img src={body} draggable={false} alt="" style={layerImg} />
           </div>
-          <div className="lum-radiant-core-pulse" style={{ ...absfill, transform: 'translateY(-5px) scale(0.20)', transformOrigin: 'center center' }}>
+          <div
+            className={useRuntimeArt
+              ? `lum-radiant-runtime-core${detailMotionActive ? ' lum-radiant-runtime-core--focused' : ''}`
+              : 'lum-radiant-core-pulse'}
+            style={{ ...absfill, transform: 'translateY(-5px) scale(0.20)', transformOrigin: 'center center' }}
+          >
             <img src={core} draggable={false} alt="" className="lum-radiant-core" style={layerImg} />
           </div>
         </div>
@@ -5428,7 +5484,7 @@ export function LuminaryClaimedEntityArt({
     }
   }
 
-  entityEl ??= entityCutout ? (
+  entityEl ??= entityImage ? (
     <div
       className={idleClass}
       style={{
@@ -5439,7 +5495,7 @@ export function LuminaryClaimedEntityArt({
       }}
     >
       <img
-        src={entityCutout}
+        src={entityImage}
         alt=""
         draggable={false}
         style={{
@@ -5462,6 +5518,8 @@ export function LuminaryClaimedEntityArt({
           width={IDLE_W}
           height={IDLE_H}
           nativeAligned
+          animateDetails={detailMotionActive}
+          allowBlink={idleMotionActive}
         />
       )}
     </div>

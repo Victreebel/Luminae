@@ -1,5 +1,6 @@
 export type LuminaryAnnouncementPart = 'source' | 'resolution';
 export const MAX_LUMINARY_ANNOUNCEMENT_LENGTH = 110;
+export const MAX_LUMINARY_ANNOUNCEMENT_WORDS = 10;
 
 interface LuminaryAnnouncementCopy {
   source: string;
@@ -8,11 +9,11 @@ interface LuminaryAnnouncementCopy {
 
 const ANNOUNCEMENTS: Record<string, LuminaryAnnouncementCopy> = {
   lum_moth: {
-    source: 'Rupture marks Tier III Artifacts costing 4 or less Flare.',
-    resolution: 'Marked Tier III Artifacts are burned and redrawn.',
+    source: 'Rupture targets Tier III Artifacts below 5 Flare.',
+    resolution: 'Those Artifacts burn and immediately redraw.',
   },
   lum_tide: {
-    source: 'The Observer Effect searches the Tier II and III Archives.',
+    source: 'The Observer Effect searches two Archives.',
     resolution: 'Continuum Artifacts rise to the top.',
   },
   lum_verdant: {
@@ -36,12 +37,12 @@ const ANNOUNCEMENTS: Record<string, LuminaryAnnouncementCopy> = {
     resolution: 'Gain +1 Eminence per burn effect.',
   },
   lum_forge: {
-    source: 'Impact Extinction targets Tier III.',
-    resolution: 'All face-up Tier III Artifacts are burned.',
+    source: 'Impact Extinction destabilizes the Forge.',
+    resolution: 'Artifacts return, Archives randomize, and the Forge refills.',
   },
   lum_compass: {
     source: 'The Forgotten Hour opens.',
-    resolution: 'All face-up Forge Artifacts become Forgotten; victory rises by 1.',
+    resolution: 'Forge Artifacts become Forgotten; victory rises by 1.',
   },
   lum_seed: {
     source: 'Avatar Seeds enter the Archives.',
@@ -83,12 +84,18 @@ function firstSentence(value?: string): string | undefined {
 }
 
 function keepAnnouncementReadable(value: string): string {
-  if (value.length <= MAX_LUMINARY_ANNOUNCEMENT_LENGTH) return value;
-  const clipped = value
-    .slice(0, MAX_LUMINARY_ANNOUNCEMENT_LENGTH - 1)
+  const words = value.trim().split(/\s+/).filter(Boolean);
+  const wordClipped = words.length > MAX_LUMINARY_ANNOUNCEMENT_WORDS
+    ? `${words.slice(0, MAX_LUMINARY_ANNOUNCEMENT_WORDS).join(' ')}...`
+    : value;
+  if (wordClipped.length <= MAX_LUMINARY_ANNOUNCEMENT_LENGTH) {
+    return wordClipped;
+  }
+  const clipped = wordClipped
+    .slice(0, MAX_LUMINARY_ANNOUNCEMENT_LENGTH - 3)
     .replace(/\s+\S*$/, '')
     .trim();
-  return `${clipped}…`;
+  return `${clipped}...`;
 }
 
 export function getLuminaryAnnouncementCopy(
@@ -110,10 +117,12 @@ export function getLuminaryAnnouncementCopy(
   }
 
   const copy = ANNOUNCEMENTS[luminaryId];
-  if (copy) return copy[part];
+  if (copy) return keepAnnouncementReadable(copy[part]);
 
   if (part === 'source') {
-    return `${fallback?.effectName ?? 'Luminary effect'} is resolving.`;
+    return keepAnnouncementReadable(
+      `${fallback?.effectName ?? 'Luminary effect'} is resolving.`,
+    );
   }
 
   return keepAnnouncementReadable(

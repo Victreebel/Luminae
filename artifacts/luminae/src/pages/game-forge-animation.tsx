@@ -249,6 +249,7 @@ export interface ForgeAnimationProps {
   gotSingularity: boolean;
   playerName?: string;
   eminenceTotal?: number;
+  eminenceTarget?: number;
   eminenceTargetSelector?: string | null;
   onEminenceImpact?: (amount: number) => void;
   /** In compact Forge view, skip the lift-to-center step and stamp the card in place. */
@@ -265,6 +266,7 @@ export interface OpponentForgeAnimationProps {
   ownerName?: string;
   eminence?: number;
   eminenceTotal?: number;
+  eminenceTarget?: number;
   /** Affinity colors spent by the opponent. Falls back to card.bonusAffinity if omitted. */
   spentColors?: AffinityKey[];
   eminenceTargetSelector?: string | null;
@@ -286,6 +288,7 @@ export function ForgeAnimation({
   spentColors,
   eminence,
   eminenceTotal,
+  eminenceTarget,
   eminenceTargetSelector,
   onEminenceImpact,
   playerName,
@@ -351,10 +354,11 @@ export function ForgeAnimation({
 
   useEffect(() => {
     gameAudio.playForgeAnimation();
+    gameAudio.playAffinityPayment(spentColors);
     if (!isForgottenForge) return;
     const id = setTimeout(() => gameAudio.playForgottenForge(), (isCompact ? 60 : 280));
     return () => clearTimeout(id);
-  }, [animKey, isCompact, isForgottenForge]);
+  }, [animKey, isCompact, isForgottenForge, spentColors]);
 
   const [stamped, setStamped] = useState(false);
   useEffect(() => {
@@ -666,6 +670,7 @@ export function ForgeAnimation({
           animKey={animKey}
           amount={eminence}
           eminenceAfter={eminenceTotal}
+          eminenceTarget={eminenceTarget}
           start={sealStart}
           size={sealSize}
           fallbackDest={destPos}
@@ -704,6 +709,7 @@ function EminenceSealFlight({
   animKey,
   amount,
   eminenceAfter,
+  eminenceTarget = 15,
   start,
   size,
   fallbackDest,
@@ -714,6 +720,7 @@ function EminenceSealFlight({
   animKey: number;
   amount: number;
   eminenceAfter?: number;
+  eminenceTarget?: number;
   start: { x: number; y: number };
   size: number;
   fallbackDest?: { x: number; y: number };
@@ -726,13 +733,13 @@ function EminenceSealFlight({
 
   useEffect(() => {
     const raf = requestAnimationFrame(() => setTarget(readEminenceTargetRect(targetSelector)));
-    gameAudio.playEminenceSeal(amount, eminenceAfter);
+    gameAudio.playEminenceSeal(amount, eminenceAfter, eminenceTarget);
     const impactTimer = setTimeout(() => onImpact?.(amount), sealTiming.land * 1000);
     return () => {
       cancelAnimationFrame(raf);
       clearTimeout(impactTimer);
     };
-  }, [animKey, amount, eminenceAfter, onImpact, targetSelector, sealTiming.land]);
+  }, [animKey, amount, eminenceAfter, eminenceTarget, onImpact, targetSelector, sealTiming.land]);
 
   const targetX = target ? target.x + target.w / 2 : (fallbackDest?.x ?? window.innerWidth - 80);
   const targetY = target ? target.y + target.h / 2 : (fallbackDest?.y ?? 80);
@@ -745,7 +752,7 @@ function EminenceSealFlight({
   const launch = sealTiming.launch / total;
   const preLand = Math.max(launch, (sealTiming.land - 0.12) / total);
   const land = sealTiming.land / total;
-  const displayEminence = Math.max(amount, Math.min(15, eminenceAfter ?? amount));
+  const displayEminence = Math.max(amount, Math.min(eminenceTarget, eminenceAfter ?? amount));
 
   return (
     <>
@@ -821,8 +828,10 @@ export interface AbridgedForgeAnimationProps {
   destPos?: { x: number; y: number };
   destinationKind?: 'civilization' | 'tab';
   ownerName?: string;
+  spentColors?: AffinityKey[];
   eminence?: number;
   eminenceTotal?: number;
+  eminenceTarget?: number;
   eminenceTargetSelector?: string | null;
   onEminenceImpact?: (amount: number) => void;
   /** Called when the card finishes shrinking into the destination. */
@@ -831,17 +840,18 @@ export interface AbridgedForgeAnimationProps {
 }
 
 export function AbridgedForgeAnimation({
-  animKey, card, cardFace, tier, startRect, destPos, destinationKind, ownerName, eminence = 0, eminenceTotal, eminenceTargetSelector, onEminenceImpact, onComplete, isForgottenForge = false,
+  animKey, card, cardFace, tier, startRect, destPos, destinationKind, ownerName, spentColors, eminence = 0, eminenceTotal, eminenceTarget, eminenceTargetSelector, onEminenceImpact, onComplete, isForgottenForge = false,
 }: AbridgedForgeAnimationProps) {
   const { x: sx, y: sy, w, h } = startRect;
   const dx = destPos ? destPos.x - sx - w / 2 : 0;
   const dy = destPos ? destPos.y - sy - h / 2 : 0;
 
   useEffect(() => {
+    if (spentColors?.length) gameAudio.playAffinityPayment(spentColors);
     if (!isForgottenForge) return;
     const id = setTimeout(() => gameAudio.playForgottenForge(), 40);
     return () => clearTimeout(id);
-  }, [animKey, isForgottenForge]);
+  }, [animKey, isForgottenForge, spentColors]);
 
   return (
     <motion.div
@@ -911,6 +921,7 @@ export function AbridgedForgeAnimation({
           animKey={animKey}
           amount={eminence}
           eminenceAfter={eminenceTotal}
+          eminenceTarget={eminenceTarget}
           start={cardEminenceMarkerCenter({ x: sx, y: sy, w, h })}
           size={Math.max(30, Math.min(46, w * 0.55))}
           fallbackDest={destPos}
@@ -929,7 +940,7 @@ export function AbridgedForgeAnimation({
 // destination differs: chipCenter (opponent avatar pill) instead of destPos.
 
 export function OpponentForgeAnimation({
-  animKey, card, tier, startRect, chipCenter, ownerName, eminence: eminenceProp, eminenceTotal, spentColors: spentColorsProp, eminenceTargetSelector, onEminenceImpact, isCompact, isForgottenForge = false,
+  animKey, card, tier, startRect, chipCenter, ownerName, eminence: eminenceProp, eminenceTotal, eminenceTarget, spentColors: spentColorsProp, eminenceTargetSelector, onEminenceImpact, isCompact, isForgottenForge = false,
 }: OpponentForgeAnimationProps) {
   const { x: sx, y: sy, w, h } = startRect;
   const { accent, accentGlow, accentDark } = resolveAccent(card.bonusAffinity);
@@ -979,10 +990,17 @@ export function OpponentForgeAnimation({
 
   useEffect(() => {
     gameAudio.playForgeAnimation();
+    gameAudio.playAffinityPayment(
+      spentColorsProp && spentColorsProp.length > 0
+        ? spentColorsProp
+        : card.bonusAffinity
+          ? [card.bonusAffinity as AffinityKey]
+          : [],
+    );
     if (!isForgottenForge) return;
     const id = setTimeout(() => gameAudio.playForgottenForge(), (isCompact ? 60 : 280));
     return () => clearTimeout(id);
-  }, [animKey, isCompact, isForgottenForge]);
+  }, [animKey, card.bonusAffinity, isCompact, isForgottenForge, spentColorsProp]);
 
   const [stamped, setStamped] = useState(false);
   useEffect(() => {
@@ -1284,6 +1302,7 @@ export function OpponentForgeAnimation({
           animKey={animKey}
           amount={eminence}
           eminenceAfter={eminenceTotal}
+          eminenceTarget={eminenceTarget}
           start={cardEminenceMarkerCenter({
             x: cx,
             y: cy,

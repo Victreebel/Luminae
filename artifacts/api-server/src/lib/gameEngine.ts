@@ -654,7 +654,7 @@ export const LUMINARIES: LuminaryDef[] = [
     summonSecondaryColor: "#1c1917",
     auraStyle: "storm",
     effectName: "Impact Extinction",
-    effectDescription: "On arrival, burns every currently face-up Tier III Artifact from The Forge, forcing all those slots to manifest replacements from the Archive.",
+    effectDescription: "On arrival, return every face-up Forge Artifact to its corresponding Archive, randomize each Archive, then refill every Forge row.",
   },
   {
     id: "lum_compass",
@@ -1524,47 +1524,6 @@ function markBlueprintBlockedIfForgotten(
 }
 
 /**
- * Burn all face-up Artifacts currently in the Forge tier.
- * Only the cards present at the moment this function is called are burned;
- * replacement cards drawn from the deck are NOT re-burned.
- * Pushes a single aggregate action-log entry (single-card or multi-card canonical
- * format) instead of per-card entries — callers must NOT push a redundant summary.
- * Returns the count of cards that were burned.
- */
-function burnAllInTier(state: GameStateData, tier: 1 | 2 | 3, sourceLuminaryId: string): number {
-  const snapshot = [...getForgeRowForTier(state, tier)];
-  const burnedNames: string[] = [];
-  for (const id of snapshot) {
-    const forgeRow = getForgeRowForTier(state, tier);
-    if (forgeRow.includes(id)) {
-      const lore = getCardLore(id);
-      burnedNames.push(lore.name);
-      burnCard(state, id, tier, sourceLuminaryId, true); // suppressLog — aggregate below
-    }
-  }
-  const count = burnedNames.length;
-  if (count > 0) {
-    const lum = LUMINARIES.find((l) => l.id === sourceLuminaryId);
-    const lumName = lum?.name ?? sourceLuminaryId;
-    const owner = state.players.find((p) => p.luminaries.includes(sourceLuminaryId));
-    const recurrenceActive = state.players.some((p) => p.luminaries.includes("lum_astral"));
-    const destinationText = recurrenceActive
-      ? "They returned to the bottoms of their corresponding Archives."
-      : "They moved to the Burn Pile.";
-    const summary = count === 1
-      ? `${lumName} Burned ${burnedNames[0]}. ${recurrenceActive ? `${burnedNames[0]} returned to the bottom of its Archive.` : `${burnedNames[0]} moved to the Burn Pile.`}`
-      : `${lumName} Burned ${count} Artifacts. ${destinationText}`;
-    pushLog(state, {
-      playerId: owner?.playerId ?? "",
-      playerName: owner?.playerName ?? "",
-      summary,
-      turn: state.roundNumber,
-    });
-  }
-  return count;
-}
-
-/**
  * Scry top `count` cards of the given tier's deck and reorder:
  * cards with `keepColor` in their cost stay on top (original order),
  * cards without `keepColor` go to the bottom (original order).
@@ -1606,8 +1565,8 @@ function incrementBloomCount(state: GameStateData): void {
  * Archive according to Eternal Recurrence, increments the Catalyst Bloom
  * accumulator, optionally pushes a per-card log, then refills the Forge slot.
  *
- * Pass `suppressLog = true` when the caller (e.g. burnAllInTier) will push its
- * own aggregate log entry instead of per-card entries.
+ * Pass `suppressLog = true` when the caller will push its own aggregate log
+ * entry instead of per-card entries.
  *
  * Callers are responsible for pushing their own effect-level summary log and
  * any activation events AFTER calling burnCard (or the burn loop helpers).
@@ -1910,10 +1869,18 @@ function applySummonEffect(
       break;
     }
     case "lum_forge": {
-      // Impact Extinction: burn all face-up T3 Artifacts.
-      // burnAllInTier pushes the canonical aggregate log — no redundant summary here.
-      burnAllInTier(state, 3, "lum_forge");
-      pushActivationEvent(state, lumId, "summon", player.playerId);
+      // Impact Extinction: collapse the entire Forge back into the Archives,
+      // randomize each complete tier pool, then manifest four new Artifacts per row.
+      // This is explicitly not a Burn: it emits no BurnEvent and never touches
+      // the Burn Pile, Phoenix recurrence, or burn-dependent payouts.
+      const returnedIds = resetForgeThroughArchives(state);
+      pushLog(state, {
+        playerId: player.playerId,
+        playerName: player.playerName,
+        summary: `The Iron Harbinger — Impact Extinction: returned ${returnedIds.length} Forge Artifacts to their Archives, randomized the Archives, and refilled The Forge`,
+        turn: state.roundNumber,
+      });
+      pushActivationEvent(state, lumId, "summon", player.playerId, returnedIds);
       break;
     }
     case "lum_astral": {
@@ -3656,6 +3623,32 @@ function getDeckForTier(state: GameStateData, tier: 1 | 2 | 3): string[] {
   if (tier === 1) return state.deckTier1;
   if (tier === 2) return state.deckTier2;
   return state.deckTier3;
+}
+
+/**
+ * Return every face-up Forge Artifact to its matching Archive, randomize the
+ * complete tier pools, and refill each Forge row. The returned ID order mirrors
+ * the board presentation (Tier III, Tier II, Tier I) so clients can map the
+ * activation payload back to the twelve original slots.
+ */
+function resetForgeThroughArchives(state: GameStateData): string[] {
+  const returnedIds: string[] = [];
+
+  for (const tier of [3, 2, 1] as const) {
+    const forgeRow = getForgeRowForTier(state, tier);
+    const archive = getDeckForTier(state, tier);
+    const returnedFromRow = [...forgeRow];
+    returnedIds.push(...returnedFromRow);
+
+    const randomizedPool = shuffle([...archive, ...returnedFromRow]);
+    const nextRow = randomizedPool.slice(0, 4);
+    const nextArchive = randomizedPool.slice(nextRow.length);
+
+    forgeRow.splice(0, forgeRow.length, ...nextRow);
+    archive.splice(0, archive.length, ...nextArchive);
+  }
+
+  return returnedIds;
 }
 
 // ─── State Normalization ────────────────────────────────────────────────

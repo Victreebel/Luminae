@@ -181,7 +181,7 @@ export const LuminaryOrderPicker = React.memo(function LuminaryOrderPicker({
                 >
                   {/* Panel art */}
                   <div className="absolute inset-0 pointer-events-none">
-                    <LuminaryPanelArt luminaryId={lum.id} width={BOARD_CARD_W} height={BOARD_CARD_H} claimed={false} />
+                    <LuminaryPanelArt luminaryId={lum.id} width={BOARD_CARD_W} height={BOARD_CARD_H} claimed={false} runtime />
                   </div>
 
                   {/* Dark gradient */}

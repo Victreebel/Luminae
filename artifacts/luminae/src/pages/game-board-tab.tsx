@@ -12,6 +12,7 @@ export interface BoardTabMainScope {
   burnChipAnim: any;
   burnChipArrivalAnim: any;
   burstGhostCards: any;
+  ironHarbingerGhostIds: any;
   canPlan: any;
   cardDetailDiscovered: any;
   claimedThisSession: any;
@@ -26,6 +27,7 @@ export interface BoardTabMainScope {
   handleDeckTap: any;
   hiddenSlots: any;
   isCameraControlled: any;
+  luminaryPresentationActive: any;
   isLandscapeCockpit: any;
   isMyTurn: any;
   isTutorial: any;
@@ -65,6 +67,7 @@ export function BoardTabMain({ scope }: { scope: BoardTabMainScope }) {
     burnChipAnim,
     burnChipArrivalAnim,
     burstGhostCards,
+    ironHarbingerGhostIds,
     canPlan,
     cardDetailDiscovered,
     claimedThisSession,
@@ -79,6 +82,7 @@ export function BoardTabMain({ scope }: { scope: BoardTabMainScope }) {
     handleDeckTap,
     hiddenSlots,
     isCameraControlled,
+    luminaryPresentationActive,
     isLandscapeCockpit,
     isMyTurn,
     isTutorial,
@@ -136,7 +140,10 @@ export function BoardTabMain({ scope }: { scope: BoardTabMainScope }) {
         safeLuminaries={safeLuminaries}
         safePlayers={safePlayers}
         setSelectedLuminary={setSelectedLuminary}
-        state={state}
+        turnCount={state.turnCount}
+        luminaryAffinities={state.luminaryAffinities ?? []}
+        burnPileCount={(state.burnPile ?? []).length}
+        suspendIdleMotion={luminaryPresentationActive || isCameraControlled || arrivalQueue.length > 0}
         tutorialAttention={tutorialAttention}
         tutorialZone={tutorialZone}
       />
@@ -146,6 +153,7 @@ export function BoardTabMain({ scope }: { scope: BoardTabMainScope }) {
         burnChipAnim={burnChipAnim}
         burnChipArrivalAnim={burnChipArrivalAnim}
         burstGhostCards={burstGhostCards}
+        ironHarbingerGhostIds={ironHarbingerGhostIds}
         canPlan={canPlan}
         cardDetailDiscovered={cardDetailDiscovered}
         computeCosts={computeCosts}

@@ -37,6 +37,11 @@ import {
   type LuminaryEffectSequenceController,
 } from '@/lib/luminaryEffectSequence';
 import type { ArtifactCard } from '@workspace/api-client-react';
+import {
+  luminaryPacedDuration,
+  luminaryReadDuration,
+  type LuminaryPlaybackMode,
+} from '@/lib/luminaryPresentationPacing';
 
 // ─── Timing constants ─────────────────────────────────────────────────────────
 
@@ -135,6 +140,8 @@ interface CinderMandateBurnDirectorProps {
    */
   pendingBurnSlots: DirectorBurnSlot[];
   reducedMotion: boolean;
+  playbackMode?: LuminaryPlaybackMode;
+  timelinePlaybackRate?: number;
   triggeringPlayerName?: string;
   queuePosition?: number;
   queueTotal?: number;
@@ -148,6 +155,8 @@ export function CinderMandateBurnDirector({
   targetCardIds,
   pendingBurnSlots,
   reducedMotion,
+  playbackMode = 'standard',
+  timelinePlaybackRate = 1,
   triggeringPlayerName,
   queuePosition = 1,
   queueTotal = 1,
@@ -212,17 +221,36 @@ export function CinderMandateBurnDirector({
         ? [{ type: 'targetClaim', targetIds: ids, keyword: 'condemned' }]
         : [];
 
-    const totalMs =
-      DECREE_MS + SHUDDER_MS + HEAT_WASH_MS + BURN_FLASH_TOTAL_MS + AFTERMATH_HOLD_MS;
-    actionsRef.current.setAnimEndTime(totalMs + 800 /* camera settle */);
+    const paced = (durationMs: number) => luminaryPacedDuration(
+      durationMs,
+      playbackMode,
+      timelinePlaybackRate,
+    );
+    const announceLeadMs = paced(180);
+    const cameraSettleMs = paced(800);
+    const shudderMs = paced(SHUDDER_MS);
+    const heatWashMs = paced(HEAT_WASH_MS);
+    const burnFlashMs = timelinePlaybackRate > 1
+      ? paced(BURN_FLASH_TOTAL_MS)
+      : BURN_FLASH_TOTAL_MS;
+    const aftermathMs = paced(260);
+    const readableMs = luminaryReadDuration(
+      'All condemned Artifacts are burned.',
+      playbackMode,
+      timelinePlaybackRate,
+    );
+    const totalMs = Math.max(
+      readableMs,
+      announceLeadMs + cameraSettleMs + shudderMs + burnFlashMs + aftermathMs,
+    );
+    actionsRef.current.setAnimEndTime(totalMs);
 
     const sequence = createLuminaryEffectSequence({
       reducedMotion,
       phases: [
         {
           id: 'announce',
-          durationMs: DECREE_MS,
-          reducedDurationMs: 160,
+          durationMs: announceLeadMs,
           run: () => {
             const decree = decreeRef.current;
             if (decree) {
@@ -242,7 +270,7 @@ export function CinderMandateBurnDirector({
               done,
               { forceOrchestrate: true },
             ),
-            800,
+            cameraSettleMs,
           ),
         },
         {
@@ -261,20 +289,20 @@ export function CinderMandateBurnDirector({
 
             const heatDelay = reducedMotion
               ? 0
-              : Math.round(SHUDDER_MS * 0.4);
+              : Math.round(shudderMs * 0.4);
             await wait(heatDelay);
             if (!signal.aborted && heatWashRef.current) {
               void animate(
                 heatWashRef.current,
                 { opacity: [0, 0.17, 0] },
                 {
-                  duration: reducedMotion ? 0.08 : HEAT_WASH_MS / 1000,
+                  duration: reducedMotion ? 0.08 : heatWashMs / 1000,
                   ease: 'easeInOut',
                   times: [0, 0.35, 1],
                 },
               );
             }
-            await wait(Math.max(0, SHUDDER_MS - heatDelay));
+            await wait(Math.max(0, shudderMs - heatDelay));
             elements.forEach(element => {
               element.style.animation = '';
               element.style.transform = '';
@@ -313,7 +341,7 @@ export function CinderMandateBurnDirector({
             if (slots.length > 0) {
               actionsRef.current.onBurnChipPulse();
             }
-            await wait(BURN_FLASH_TOTAL_MS);
+            await wait(burnFlashMs);
           },
         },
         {
@@ -333,8 +361,7 @@ export function CinderMandateBurnDirector({
         },
         {
           id: 'aftermath',
-          durationMs: AFTERMATH_HOLD_MS,
-          reducedDurationMs: 100,
+          durationMs: aftermathMs,
         },
       ],
       onPhaseChange: phase => {
@@ -403,8 +430,9 @@ export function CinderMandateBurnDirector({
         <LuminaryEffectSkipControl
           color="#ef4444"
           reducedMotion={reducedMotion}
+          onAdvance={() => sequenceRef.current?.advance()}
           onSkip={() => sequenceRef.current?.skip()}
-          label="Skip Cinder Mandate burn phase"
+          label="Advance Cinder Mandate; hold to skip"
         />
       </div>
 

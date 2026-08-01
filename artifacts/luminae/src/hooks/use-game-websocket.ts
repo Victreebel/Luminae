@@ -1,9 +1,12 @@
 import { useEffect, useRef, useState, useCallback } from 'react';
 
 export interface RematchVoteUpdate {
+  active: boolean;
   voterIds: string[];
+  declinedIds: string[];
   sameBoard: boolean;
-  countdownEndsAt: number | null;
+  initiatorId: string | null;
+  starting: boolean;
   sessionStats: Record<string, { wins: number; losses: number; ties: number; playerName: string }>;
 }
 
@@ -147,15 +150,19 @@ export function useGameWebsocket({
             break;
           case 'rematch_vote_update':
             onRematchVoteUpdateRef.current?.({
+              active: data.active === true,
               voterIds: data.voterIds ?? [],
+              declinedIds: data.declinedIds ?? [],
               sameBoard: data.sameBoard === true,
-              countdownEndsAt: data.countdownEndsAt ?? null,
+              initiatorId: data.initiatorId ?? null,
+              starting: data.starting === true,
               sessionStats: data.sessionStats ?? {},
             });
             break;
           case 'rematch_started':
-            // Treat like a state update (new game) + pass along session stats
-            onStateUpdateRef.current?.(data.state);
+            // A rematch starts a new state-version epoch. Let the rematch
+            // handler replace the finished game directly instead of sending the
+            // lower version through the normal monotonic ingress lane.
             onRematchStartedRef.current?.(data.state, data.sessionStats ?? {});
             break;
           case 'rematch_cancelled':

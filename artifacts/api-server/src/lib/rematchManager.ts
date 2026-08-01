@@ -1,5 +1,5 @@
 // ── rematchManager ────────────────────────────────────────────────────────────
-// Manages per-room rematch voting, countdown timers, and cumulative session
+// Manages per-room rematch invitations, explicit responses, and cumulative session
 // statistics (win / loss / tie records across successive rematches).
 //
 // All state is in-memory — it intentionally resets on server restart, which is
@@ -26,10 +26,10 @@ import {
 import { armTurnTimer, updateTurnDeadline } from "./turnTimer";
 import { runAiTurnsIfNeeded } from "./aiTurnRunner";
 import { logger } from "./logger";
+import { getRematchReadiness } from "./rematchFlow";
 
 // ── Constants ─────────────────────────────────────────────────────────────────
-const COUNTDOWN_MS = 5000;
-const ACCELERATE_MS = 300; // Fires this soon when all players have voted early
+const START_DELAY_MS = 250;
 
 // ── Types ─────────────────────────────────────────────────────────────────────
 interface PlayerSessionRecord {
@@ -41,12 +41,10 @@ interface PlayerSessionRecord {
 
 interface RematchState {
   voterIds: Set<string>;
+  declinedIds: Set<string>;
   sameBoard: boolean;
-  countdownEndsAt: number | null; // null means waiting (2-player mode)
-  countdownTimer: NodeJS.Timeout | null;
-  // How many total players were in the game when the first vote was cast.
-  // Determines whether to show a countdown (>2 players) or just wait.
-  totalPlayerCount: number;
+  initiatorId: string | null;
+  startTimer: NodeJS.Timeout | null;
 }
 
 // ── In-memory stores ──────────────────────────────────────────────────────────
@@ -91,30 +89,36 @@ export function recordGameResult(
 
 export function clearRematch(roomId: string): void {
   const s = _votes.get(roomId);
-  if (s?.countdownTimer) clearTimeout(s.countdownTimer);
+  if (s?.startTimer) clearTimeout(s.startTimer);
   _votes.delete(roomId);
 }
 
-interface RematchVoteInfo {
+export interface RematchVoteInfo {
+  active: boolean;
   voterIds: string[];
+  declinedIds: string[];
   sameBoard: boolean;
-  /** ms timestamp; null means no countdown (2-player: waiting for partner). */
-  countdownEndsAt: number | null;
+  initiatorId: string | null;
+  starting: boolean;
   sessionStats: Record<string, PlayerSessionRecord>;
 }
 
+export type RematchResponseAction = "join" | "decline" | "withdraw";
+
 interface RematchVoteOptions {
+  action?: RematchResponseAction;
   sameBoard?: boolean;
 }
 
 /**
- * Records one player's vote for a rematch and manages the countdown.
+ * Records one player's explicit rematch response.
  *
  * Rules:
- *  - AI players are auto-confirmed on the first vote.
- *  - If total players ≤ 2: no countdown — start fires immediately when all confirm.
- *  - If total players > 2: a COUNTDOWN_MS countdown begins on the first vote.
- *    If all players vote before it expires, it accelerates to ACCELERATE_MS.
+ *  - The first human join creates an invitation and chooses the board mode.
+ *  - AI players are auto-confirmed once an invitation exists.
+ *  - There is no response timer. Human players must join or explicitly decline.
+ *  - The rematch starts as soon as every human has responded and at least two
+ *    total players remain.
  */
 export async function castVote(
   roomId: string,
@@ -125,48 +129,79 @@ export async function castVote(
   if (!_votes.has(roomId)) {
     _votes.set(roomId, {
       voterIds: new Set(),
-      sameBoard: options.sameBoard === true,
-      countdownEndsAt: null,
-      countdownTimer: null,
-      totalPlayerCount: allRoomPlayers.length,
+      declinedIds: new Set(),
+      sameBoard: false,
+      initiatorId: null,
+      startTimer: null,
     });
   }
   const state = _votes.get(roomId)!;
+  const action = options.action ?? "join";
 
-  // Record this player's vote
-  state.voterIds.add(playerId);
-  if (options.sameBoard === true) {
-    state.sameBoard = true;
+  if (action === "join") {
+    if (state.initiatorId === null) {
+      state.initiatorId = playerId;
+      state.sameBoard = options.sameBoard === true;
+    }
+    state.declinedIds.delete(playerId);
+    state.voterIds.add(playerId);
+
+    for (const player of allRoomPlayers) {
+      if (player.isAi) state.voterIds.add(player.id);
+    }
+  } else {
+    state.voterIds.delete(playerId);
+    if (action === "decline") {
+      state.declinedIds.add(playerId);
+    } else {
+      state.declinedIds.delete(playerId);
+    }
+
+    if (state.initiatorId === playerId) {
+      state.initiatorId =
+        allRoomPlayers.find(
+          (player) => !player.isAi && state.voterIds.has(player.id),
+        )?.id ?? null;
+    }
+
+    if (state.initiatorId === null) {
+      state.sameBoard = false;
+      for (const player of allRoomPlayers) {
+        if (player.isAi) state.voterIds.delete(player.id);
+      }
+    }
   }
 
-  // AI players always want to play again
-  for (const p of allRoomPlayers) {
-    if (p.isAi) state.voterIds.add(p.id);
-  }
+  const readiness = getRematchReadiness(
+    {
+      joinedIds: state.voterIds,
+      declinedIds: state.declinedIds,
+    },
+    allRoomPlayers,
+  );
 
-  const allVoted = allRoomPlayers.every((p) => state.voterIds.has(p.id));
-  const needsCountdown = allRoomPlayers.length > 2;
-
-  if (allVoted) {
-    // Everyone is in — fire quickly regardless of countdown state
-    if (state.countdownTimer) clearTimeout(state.countdownTimer);
-    const delay = ACCELERATE_MS;
-    state.countdownEndsAt = Date.now() + delay;
-    state.countdownTimer = setTimeout(() => void _executeRematch(roomId), delay);
-  } else if (needsCountdown && state.countdownEndsAt === null) {
-    // First vote in a 3+ player room — start the 5-second window
-    state.countdownEndsAt = Date.now() + COUNTDOWN_MS;
-    state.countdownTimer = setTimeout(
+  if (!readiness.shouldStart && state.startTimer) {
+    clearTimeout(state.startTimer);
+    state.startTimer = null;
+  } else if (readiness.shouldStart && !state.startTimer) {
+    state.startTimer = setTimeout(
       () => void _executeRematch(roomId),
-      COUNTDOWN_MS,
+      START_DELAY_MS,
     );
   }
-  // 2-player room, not all voted: no countdown, just wait.
 
+  return getRematchInfo(roomId);
+}
+
+export function getRematchInfo(roomId: string): RematchVoteInfo {
+  const state = _votes.get(roomId);
   return {
-    voterIds: Array.from(state.voterIds),
-    sameBoard: state.sameBoard,
-    countdownEndsAt: state.countdownEndsAt,
+    active: state?.initiatorId !== null && state?.initiatorId !== undefined,
+    voterIds: state ? Array.from(state.voterIds) : [],
+    declinedIds: state ? Array.from(state.declinedIds) : [],
+    sameBoard: state?.sameBoard ?? false,
+    initiatorId: state?.initiatorId ?? null,
+    starting: state?.startTimer !== null && state?.startTimer !== undefined,
     sessionStats: getSessionStats(roomId),
   };
 }
@@ -184,7 +219,7 @@ async function loadReplayBoardSnapshot(roomId: string): Promise<InitialBoardSnap
   return getReplayBoardSnapshot(state);
 }
 
-// ── Internal: execute rematch when countdown fires ────────────────────────────
+// ── Internal: execute rematch after all humans respond ────────────────────────
 
 async function _executeRematch(roomId: string): Promise<void> {
   const state = _votes.get(roomId);

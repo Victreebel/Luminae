@@ -34,6 +34,7 @@ export type AnimationArchetype =
   | 'passiveBoon'      // persistent passive bonus on owner (no card residue)
   | 'globalDisruption' // board-wide victory requirement or state pressure
   | 'thresholdPayoff'  // conditional owner eminenceChange when threshold or count met
+  | 'forgeReset'       // all Forge Artifacts return, Archives randomize, rows redeal
   | 'suppression'      // Forgotten or Nullified residue on Forge Artifacts
   | 'seeded'           // Seeded residue deferred to deck; badge on Forge entry
   | 'replication'      // Artifact copy boon (no direct Eminence delta)
@@ -212,15 +213,16 @@ export const LUMINARY_ANIMATION_CONFIG: Record<string, LuminaryAnimationConfig> 
     affinities: ['flare', 'abyss'],
     primaryColor: '#f97316',
     secondaryColor: '#1c1917',
-    animationArchetype: 'burn',
+    animationArchetype: 'forgeReset',
     effectName: 'Impact Extinction',
     procedureSteps: [
       { type: 'luminaryPulse', luminaryId: 'lum_forge' },
-      { type: 'targetClaim', targetIds: [], keyword: 'burn' },
-      { type: 'keywordEvents', events: [{ keyword: 'burn', targetIds: [] }] },
+      { type: 'targetClaim', targetIds: [] },
+      { type: 'archiveReturn', cardIds: [] },
+      { type: 'deckScry', tierIds: ['tier1', 'tier2', 'tier3'] },
       { type: 'forgeRefill', slotIds: [] },
     ],
-    flavorLine: 'A hammer-shadow descends across the Tier III row before the Burn fires — every Artifact falls in the same moment; the mass extinction is fast and unambiguous.',
+    flavorLine: 'A central impact lifts the entire Forge from its molds. Every Artifact returns to its corresponding Archive, the spires randomize, and a new array manifests.',
   },
 
   // 9. ??? — The Forgotten Hour

@@ -1,10 +1,13 @@
-import React from 'react';
+import React, { useEffect, useMemo, useRef, useState } from 'react';
 import { AFFINITY_KEYS, AFFINITY_META, type AffinityKey } from '@/lib/affinityMeta';
 import backgroundCosmos from '@assets/generated_images/background_cosmos.png';
-import type { GamePlayerState, GameState, Luminary, LuminaryActiveState } from '@workspace/api-client-react';
+import type {
+  AffinityCounts,
+  GamePlayerState,
+  Luminary,
+  LuminaryActiveState,
+} from '@workspace/api-client-react';
 import { LuminaryCard } from './game-luminary';
-
-type LuminaryAffinityState = LuminaryActiveState;
 
 export interface BoardTerminusProps {
   armedLumIds: Set<string>;
@@ -19,10 +22,193 @@ export interface BoardTerminusProps {
   safeLuminaries: Luminary[];
   safePlayers: GamePlayerState[];
   setSelectedLuminary: React.Dispatch<React.SetStateAction<Luminary | null>>;
-  state: GameState;
+  turnCount: number;
+  luminaryAffinities: LuminaryActiveState[];
+  burnPileCount: number;
+  suspendIdleMotion: boolean;
   tutorialAttention: string | null | undefined;
   tutorialZone: string | null | undefined;
 }
+
+interface TerminusLuminarySlotProps {
+  luminary: Luminary;
+  claimedByPlayer: GamePlayerState | null;
+  luminaryAffinity: LuminaryActiveState | null;
+  isLive: boolean;
+  isClaimedThisSession: boolean;
+  isArrivalVisuallyHeld: boolean;
+  costMode: BoardTerminusProps['costMode'];
+  playerBonuses?: Partial<AffinityCounts>;
+  isMyTurn: boolean;
+  isArmed: boolean;
+  isFlashing: boolean;
+  burnCount?: number;
+  suspendIdleMotion: boolean;
+  onSelect: React.Dispatch<React.SetStateAction<Luminary | null>>;
+}
+
+function useLuminarySlotVisibility() {
+  const ref = useRef<HTMLDivElement>(null);
+  const [isIntersecting, setIsIntersecting] = useState(true);
+  const [isDocumentVisible, setIsDocumentVisible] = useState(
+    () => typeof document === 'undefined' || !document.hidden,
+  );
+
+  useEffect(() => {
+    const node = ref.current;
+    if (!node || typeof IntersectionObserver === 'undefined') return;
+    const root = node.closest('[data-luminary-scroll]');
+    const observer = new IntersectionObserver(
+      ([entry]) => setIsIntersecting(entry?.isIntersecting ?? true),
+      {
+        root,
+        rootMargin: '0px 24px',
+        threshold: 0.02,
+      },
+    );
+    observer.observe(node);
+    return () => observer.disconnect();
+  }, []);
+
+  useEffect(() => {
+    const onVisibilityChange = () => setIsDocumentVisible(!document.hidden);
+    document.addEventListener('visibilitychange', onVisibilityChange);
+    return () => document.removeEventListener('visibilitychange', onVisibilityChange);
+  }, []);
+
+  return {
+    ref,
+    isRuntimeVisible: isIntersecting && isDocumentVisible,
+  };
+}
+
+function sameStringList(a: readonly string[] | undefined, b: readonly string[] | undefined) {
+  if (a === b) return true;
+  if (!a || !b || a.length !== b.length) return false;
+  return a.every((value, index) => value === b[index]);
+}
+
+function samePlayerIdentity(a: GamePlayerState | null, b: GamePlayerState | null) {
+  if (a === b) return true;
+  if (!a || !b) return false;
+  return a.playerId === b.playerId
+    && a.playerName === b.playerName
+    && a.avatarId === b.avatarId;
+}
+
+function sameAffinityState(a: LuminaryActiveState | null, b: LuminaryActiveState | null) {
+  if (a === b) return true;
+  if (!a || !b) return false;
+  return a.luminaryId === b.luminaryId
+    && a.activeAffinity === b.activeAffinity
+    && sameStringList(a.eligibleAffinities, b.eligibleAffinities);
+}
+
+function sameBonuses(
+  a: Partial<AffinityCounts> | undefined,
+  b: Partial<AffinityCounts> | undefined,
+) {
+  if (a === b) return true;
+  return AFFINITY_KEYS.every(key => (a?.[key] ?? 0) === (b?.[key] ?? 0));
+}
+
+function sameLuminary(a: Luminary, b: Luminary) {
+  return a === b || (
+    a.id === b.id
+    && a.name === b.name
+    && a.domain === b.domain
+    && a.flavor === b.flavor
+    && a.eminence === b.eminence
+    && AFFINITY_KEYS.every(key => (a.requirements[key] ?? 0) === (b.requirements[key] ?? 0))
+  );
+}
+
+const TerminusLuminarySlot = React.memo(function TerminusLuminarySlot({
+  luminary,
+  claimedByPlayer,
+  luminaryAffinity,
+  isLive,
+  isClaimedThisSession,
+  isArrivalVisuallyHeld,
+  costMode,
+  playerBonuses,
+  isMyTurn,
+  isArmed,
+  isFlashing,
+  burnCount,
+  suspendIdleMotion,
+  onSelect,
+}: TerminusLuminarySlotProps) {
+  const { ref, isRuntimeVisible } = useLuminarySlotVisibility();
+  const claimedByNames = claimedByPlayer ? [claimedByPlayer.playerName] : [];
+  const edgeKey = ((luminaryAffinity?.activeAffinity as AffinityKey | undefined)
+    ?? (AFFINITY_KEYS.find(key => (
+      key !== 'singularity' && (luminary.requirements[key] ?? 0) > 0
+    )) as AffinityKey | undefined)
+    ?? 'singularity') as AffinityKey;
+  const edgeMeta = AFFINITY_META[edgeKey];
+  const isAwakened = !!claimedByPlayer;
+  const idleMotionActive = isAwakened && isRuntimeVisible && !suspendIdleMotion;
+
+  return (
+    <div
+      ref={ref}
+      data-testid="terminus-luminary-slot"
+      data-luminary-id={luminary.id}
+      data-runtime-visible={isRuntimeVisible ? 'true' : 'false'}
+      className={`board-terminus-card-stage ${isArrivalVisuallyHeld ? 'board-terminus-card-stage--summoning' : isAwakened ? 'board-terminus-card-stage--awakened' : 'board-terminus-card-stage--dormant'}`}
+      data-state-label={isArrivalVisuallyHeld ? 'Summoning' : isAwakened ? 'Breakthrough' : 'Dormant'}
+      style={{
+        '--terminus-affinity': edgeMeta.glowHex,
+        '--terminus-affinity-core': edgeMeta.hex,
+      } as React.CSSProperties}
+    >
+      {isArrivalVisuallyHeld ? (
+        <div
+          className="board-terminus-summoning-slot"
+          data-luminary-id={luminary.id}
+          aria-label={`${luminary.name} summoning`}
+        />
+      ) : (
+        <LuminaryCard
+          luminary={luminary}
+          claimedByNames={claimedByNames}
+          isReleased={isClaimedThisSession}
+          luminaryAffinity={luminaryAffinity}
+          claimedByPlayer={claimedByPlayer}
+          isLive={isLive}
+          playerBonuses={playerBonuses}
+          isMyTurn={isMyTurn}
+          onOpenSheet={() => onSelect(luminary)}
+          isArmed={isArmed}
+          isFlashing={isFlashing}
+          burnCount={burnCount}
+          costMode={costMode}
+          showActiveAffinity
+          showClaimedIdentity
+          showClaimedPresence={false}
+          idleMotionActive={idleMotionActive}
+        />
+      )}
+    </div>
+  );
+}, (previous, next) => {
+  const bothClaimed = !!previous.claimedByPlayer && !!next.claimedByPlayer;
+  return sameLuminary(previous.luminary, next.luminary)
+    && samePlayerIdentity(previous.claimedByPlayer, next.claimedByPlayer)
+    && sameAffinityState(previous.luminaryAffinity, next.luminaryAffinity)
+    && previous.isLive === next.isLive
+    && previous.isClaimedThisSession === next.isClaimedThisSession
+    && previous.isArrivalVisuallyHeld === next.isArrivalVisuallyHeld
+    && (bothClaimed || previous.costMode === next.costMode)
+    && (bothClaimed || sameBonuses(previous.playerBonuses, next.playerBonuses))
+    && (bothClaimed || previous.isMyTurn === next.isMyTurn)
+    && previous.isArmed === next.isArmed
+    && previous.isFlashing === next.isFlashing
+    && previous.burnCount === next.burnCount
+    && previous.suspendIdleMotion === next.suspendIdleMotion
+    && previous.onSelect === next.onSelect;
+});
 
 export function BoardTerminus({
   armedLumIds,
@@ -37,10 +223,42 @@ export function BoardTerminus({
   safeLuminaries,
   safePlayers,
   setSelectedLuminary,
-  state,
+  turnCount,
+  luminaryAffinities,
+  burnPileCount,
+  suspendIdleMotion,
   tutorialAttention,
   tutorialZone,
 }: BoardTerminusProps) {
+  const claimedByLuminaryId = useMemo(() => {
+    const claimed = new Map<string, GamePlayerState>();
+    for (const player of safePlayers) {
+      for (const luminaryId of player.claimedLuminaryIds ?? []) {
+        claimed.set(luminaryId, player);
+      }
+    }
+    return claimed;
+  }, [safePlayers]);
+
+  const affinityByLuminaryId = useMemo(
+    () => new Map(luminaryAffinities.map(affinity => [affinity.luminaryId, affinity])),
+    [luminaryAffinities],
+  );
+
+  const arrivalPendingIds = useMemo(
+    () => new Set(
+      arrivalQueue
+        .filter(event => !event.isDevTest)
+        .map(event => event.id),
+    ),
+    [arrivalQueue],
+  );
+
+  const arrivalHeldIds = useMemo(
+    () => new Set(arrivalVisualHoldIds),
+    [arrivalVisualHoldIds],
+  );
+
   return (
     <>
       {/* ═══════════════════════════════════════════════════════
@@ -102,78 +320,34 @@ export function BoardTerminus({
           <div className="board-terminus-rail board-terminus-rail--right" />
         </div>
         <div data-luminary-scroll data-testid="terminus-luminary-row" className="board-terminus-cards relative overflow-x-auto no-scrollbar">
-          {safeLuminaries.map(l => {
-            const claimedByPlayer = safePlayers.find(p => (p.claimedLuminaryIds ?? []).includes(l.id)) ?? null;
-            const claimedByNames = claimedByPlayer ? [claimedByPlayer.playerName] : [];
-            const turnCount: number = state.turnCount;
-
-            // Real server affinity state
-            const serverLumAffinity = (state.luminaryAffinities as LuminaryAffinityState[])
-              .find((la) => la.luminaryId === l.id) ?? null;
-            // isLive: bonus active starting the turn AFTER arrival
-            const isLive = !!serverLumAffinity && turnCount > serverLumAffinity.summonedAtTurnCount;
-
-            // Suppress the claimed vortex/portal while an arrival cutscene is active
-            // for this luminary. The server marks it claimed immediately (for rules /
-            // persistence), but visually the portal must not appear until the shatter
-            // animation has fully resolved. isArrivalInProgress covers every entry in
-            // the queue (not just the head) so queued-but-not-yet-playing cutscenes
-            // are also suppressed. Dev-test entries (isDevTest=true) have no real
-            // claimedByPlayer, so they are excluded to keep the dev preview working.
-            const isArrivalCutscenePending = arrivalQueue.some(e => e.id === l.id && !e.isDevTest)
-              || pendingSuppressArrivalIdsRef.current.has(l.id);
-            const isArrivalVisuallyHeld = isArrivalCutscenePending || arrivalVisualHoldIds.includes(l.id);
-
-            // Visible claimed state — cleared during active cutscene/return hold so
-            // the shattered source panel cannot briefly reappear before the claimed
-            // vortex is ready.
+          {safeLuminaries.map(luminary => {
+            const claimedByPlayer = claimedByLuminaryId.get(luminary.id) ?? null;
+            const luminaryAffinity = affinityByLuminaryId.get(luminary.id) ?? null;
+            const isArrivalVisuallyHeld = arrivalPendingIds.has(luminary.id)
+              || pendingSuppressArrivalIdsRef.current.has(luminary.id)
+              || arrivalHeldIds.has(luminary.id);
             const visibleClaimedByPlayer = isArrivalVisuallyHeld ? null : claimedByPlayer;
-            const visibleClaimedByNames  = isArrivalVisuallyHeld ? []   : claimedByNames;
-            const edgeKey = ((serverLumAffinity?.activeAffinity as AffinityKey | undefined)
-              ?? (AFFINITY_KEYS.find(k => k !== 'singularity' && (l.requirements[k as AffinityKey] ?? 0) > 0) as AffinityKey | undefined)
-              ?? 'singularity') as AffinityKey;
-            const edgeMeta = AFFINITY_META[edgeKey];
-            const isAwakened = !!visibleClaimedByPlayer;
+            const isLive = !!luminaryAffinity
+              && turnCount > luminaryAffinity.summonedAtTurnCount;
 
             return (
-              <div
-                key={l.id}
-                data-testid="terminus-luminary-slot"
-                data-luminary-id={l.id}
-                className={`board-terminus-card-stage ${isArrivalVisuallyHeld ? 'board-terminus-card-stage--summoning' : isAwakened ? 'board-terminus-card-stage--awakened' : 'board-terminus-card-stage--dormant'}`}
-                data-state-label={isArrivalVisuallyHeld ? 'Summoning' : isAwakened ? 'Breakthrough' : 'Dormant'}
-                style={{
-                  '--terminus-affinity': edgeMeta.glowHex,
-                  '--terminus-affinity-core': edgeMeta.hex,
-                } as React.CSSProperties}
-              >
-                {isArrivalVisuallyHeld ? (
-                  <div
-                    className="board-terminus-summoning-slot"
-                    data-luminary-id={l.id}
-                    aria-label={`${l.name} summoning`}
-                  />
-                ) : (
-                  <LuminaryCard
-                    luminary={l}
-                    claimedByNames={visibleClaimedByNames}
-                    isReleased={claimedThisSession.includes(l.id)}
-                    luminaryAffinity={serverLumAffinity}
-                    claimedByPlayer={visibleClaimedByPlayer}
-                    isLive={isLive}
-                    playerBonuses={me?.bonuses}
-                    isMyTurn={isMyTurn}
-                    onOpenSheet={() => setSelectedLuminary(l)}
-                    isArmed={armedLumIds.has(l.id)}
-                    isFlashing={flashLumId === l.id}
-                    burnCount={l.id === 'lum_bloom' ? (state.burnPile ?? []).length : undefined}
-                    costMode={costMode}
-                    showActiveAffinity
-                    showClaimedIdentity
-                    showClaimedPresence={false}
-                  />
-                )}
-              </div>
+              <TerminusLuminarySlot
+                key={luminary.id}
+                luminary={luminary}
+                claimedByPlayer={visibleClaimedByPlayer}
+                luminaryAffinity={luminaryAffinity}
+                isLive={isLive}
+                isClaimedThisSession={claimedThisSession.includes(luminary.id)}
+                isArrivalVisuallyHeld={isArrivalVisuallyHeld}
+                costMode={costMode}
+                playerBonuses={me?.bonuses}
+                isMyTurn={isMyTurn}
+                isArmed={armedLumIds.has(luminary.id)}
+                isFlashing={flashLumId === luminary.id}
+                burnCount={luminary.id === 'lum_bloom' ? burnPileCount : undefined}
+                suspendIdleMotion={suspendIdleMotion}
+                onSelect={setSelectedLuminary}
+              />
             );
           })}
         </div>

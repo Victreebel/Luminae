@@ -21,7 +21,7 @@ import {
 import { broadcastToRoom, getConnectedPlayerIds, sendToPlayer, filterStateForPlayer } from "../lib/websocket";
 import { runAiTurnsIfNeeded } from "../lib/aiTurnRunner";
 import { armTurnTimer, updateTurnDeadline, clearTurnTimer } from "../lib/turnTimer";
-import { castVote } from "../lib/rematchManager";
+import { castVote, getRematchInfo } from "../lib/rematchManager";
 
 const router: IRouter = Router();
 
@@ -105,6 +105,7 @@ const UpdateRoomSettingsBody = z.object({
 });
 
 const RematchBody = StartGameBody.extend({
+  action: z.enum(["join", "decline", "withdraw"]).optional(),
   sameBoard: z.boolean().optional(),
 });
 
@@ -654,10 +655,36 @@ router.post("/rooms/:roomId/start", async (req, res): Promise<void> => {
   void runAiTurnsIfNeeded(rawId);
 });
 
-// POST /api/rooms/:roomId/rematch — any player votes to play again.
-// The first vote starts a 5-second countdown (3+ players) or waits for the
-// second confirmation (2-player). When conditions are met the server kicks off
-// a new game via rematchManager and broadcasts rematch_started / rematch_declined.
+// GET /api/rooms/:roomId/rematch — recover the current invitation after a
+// refresh or reconnect.
+router.get("/rooms/:roomId/rematch", async (req, res): Promise<void> => {
+  const rawId = Array.isArray(req.params.roomId)
+    ? req.params.roomId[0]
+    : req.params.roomId;
+  const sessionToken =
+    typeof req.query.sessionToken === "string" ? req.query.sessionToken : "";
+
+  const [player] = await db
+    .select()
+    .from(playersTable)
+    .where(
+      and(
+        eq(playersTable.sessionToken, sessionToken),
+        eq(playersTable.roomId, rawId),
+      ),
+    )
+    .limit(1);
+
+  if (!player) {
+    res.status(403).json({ error: "Not a member of this room" });
+    return;
+  }
+
+  res.json(getRematchInfo(rawId));
+});
+
+// POST /api/rooms/:roomId/rematch — join, decline, or withdraw from a rematch
+// invitation. Nothing starts until every human player has explicitly responded.
 router.post("/rooms/:roomId/rematch", async (req, res): Promise<void> => {
   const rawId = Array.isArray(req.params.roomId)
     ? req.params.roomId[0]
@@ -701,7 +728,10 @@ router.post("/rooms/:roomId/rematch", async (req, res): Promise<void> => {
     return;
   }
 
-  if (parsed.data.sameBoard === true) {
+  if (
+    (parsed.data.action ?? "join") === "join" &&
+    parsed.data.sameBoard === true
+  ) {
     const [gameStateRow] = await db
       .select({ state: gameStatesTable.state })
       .from(gameStatesTable)
@@ -728,7 +758,10 @@ router.post("/rooms/:roomId/rematch", async (req, res): Promise<void> => {
     rawId,
     player.id,
     allPlayers.map((p) => ({ id: p.id, name: p.name, isAi: p.isAi })),
-    { sameBoard: parsed.data.sameBoard === true },
+    {
+      action: parsed.data.action ?? "join",
+      sameBoard: parsed.data.sameBoard === true,
+    },
   );
 
   // Broadcast updated vote state to all players in the room
@@ -736,10 +769,7 @@ router.post("/rooms/:roomId/rematch", async (req, res): Promise<void> => {
     if (p.isAi) continue;
     sendToPlayer(rawId, p.id, {
       type: "rematch_vote_update",
-      voterIds: voteInfo.voterIds,
-      sameBoard: voteInfo.sameBoard,
-      countdownEndsAt: voteInfo.countdownEndsAt,
-      sessionStats: voteInfo.sessionStats,
+      ...voteInfo,
     });
   }
 

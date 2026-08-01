@@ -3,6 +3,13 @@ import { motion, AnimatePresence } from 'framer-motion';
 import type { KardashevTier, AffinityPalette } from '@/lib/kardashev';
 import { getCivilizationName, getSecondaryAffinityColor } from '@/lib/kardashev';
 import { useIsMobile } from '@/hooks/use-mobile';
+import { AFFINITY_META } from '@/lib/affinityMeta';
+import {
+  EMPTY_CIVILIZATION_PROFILE,
+  type CivilizationLandmark,
+  type CivilizationProfile,
+  type CivilizationTrait,
+} from '@/lib/civilizationProfile';
 
 // ── Seeded PRNG ──────────────────────────────────────────────────────────────
 function seededRng(seed: number): () => number {
@@ -13,6 +20,11 @@ function seededRng(seed: number): () => number {
     s = (s ^ (s >>> 16)) >>> 0;
     return s / 0xffffffff;
   };
+}
+
+function mixSceneSeed(base: number, civilizationSeed: number): number {
+  if (civilizationSeed === 0) return base;
+  return Math.imul((base ^ civilizationSeed) >>> 0, 0x45d9f3b) >>> 0;
 }
 
 // ── Hex to RGBA helper ───────────────────────────────────────────────────────
@@ -104,10 +116,9 @@ function genStars(rng: () => number, count: number): Star[] {
   }));
 }
 
-function genGalaxy(rng: () => number): GalaxyPoint[] {
+function genGalaxy(rng: () => number, arms = 2): GalaxyPoint[] {
   const pts: GalaxyPoint[] = [];
-  const arms = 2;
-  const perArm = 220;
+  const perArm = Math.floor(440 / arms);
   for (let a = 0; a < arms; a++) {
     const baseAngle = (a / arms) * Math.PI * 2;
     for (let i = 0; i < perArm; i++) {
@@ -139,8 +150,8 @@ function genGalaxy(rng: () => number): GalaxyPoint[] {
   return pts;
 }
 
-function genPlanetPatches(rng: () => number): PlanetPatch[] {
-  return Array.from({ length: 6 }, (_, i) => ({
+function genPlanetPatches(rng: () => number, count = 6): PlanetPatch[] {
+  return Array.from({ length: count }, (_, i) => ({
     dx: rng() * 1.6 - 0.8,
     dy: rng() * 1.2 - 0.6,
     rx: 0.18 + rng() * 0.30,
@@ -852,6 +863,367 @@ function drawGalaxy(
   ctx.restore();
 }
 
+interface CivilizationLandmarkPoint {
+  x: number;
+  y: number;
+  size: number;
+  rotation: number;
+}
+
+const LANDMARK_MATERIALS = {
+  flare: { lineAlpha: 0.92, fillAlpha: 0.24, pulseSpeed: 1.55, glow: 1.15 },
+  continuum: { lineAlpha: 0.86, fillAlpha: 0.15, pulseSpeed: 0.72, glow: 0.8 },
+  verdance: { lineAlpha: 0.88, fillAlpha: 0.2, pulseSpeed: 0.9, glow: 1 },
+  abyss: { lineAlpha: 0.68, fillAlpha: 0.12, pulseSpeed: 0.5, glow: 1.4 },
+  radiance: { lineAlpha: 0.96, fillAlpha: 0.28, pulseSpeed: 0.64, glow: 1.2 },
+} as const;
+
+function getCivilizationLandmarkPoint(
+  landmark: CivilizationLandmark,
+  tier: KardashevTier,
+  index: number,
+  count: number,
+  w: number,
+  h: number,
+  t: number,
+): CivilizationLandmarkPoint {
+  const rng = seededRng(mixSceneSeed(landmark.seed, 301 + tier * 97));
+  const minDimension = Math.min(w, h);
+  const tierScale = 0.82 + landmark.tier * 0.13;
+  const size = Math.min(22, Math.max(7, minDimension * 0.055 * tierScale));
+  const direction = index % 2 === 0 ? 1 : -1;
+  const drift = t * (0.004 + (landmark.seed % 5) * 0.001) * direction;
+
+  if (tier === 0) {
+    return {
+      x: w * (0.12 + 0.76 * rng()),
+      y: h * (0.69 + 0.12 * rng()),
+      size,
+      rotation: (rng() - 0.5) * 0.35,
+    };
+  }
+
+  if (tier === 1) {
+    const angle = rng() * Math.PI * 2 + drift;
+    return {
+      x: w * 0.5 + Math.cos(angle) * minDimension * (0.29 + rng() * 0.045),
+      y: h * 0.52 + Math.sin(angle) * minDimension * (0.19 + rng() * 0.035),
+      size,
+      rotation: angle + Math.PI * 0.5,
+    };
+  }
+
+  if (tier === 2) {
+    const lane = count <= 1 ? 0.36 : 0.27 + (index / (count - 1)) * 0.16;
+    const angle = rng() * Math.PI * 2 + drift * 1.8;
+    return {
+      x: w * 0.5 + Math.cos(angle) * minDimension * lane,
+      y: h * 0.5 + Math.sin(angle) * minDimension * lane * 0.48,
+      size: size * 0.92,
+      rotation: angle + Math.PI * 0.5,
+    };
+  }
+
+  const angle = rng() * Math.PI * 2 + drift * 0.8;
+  const distance = minDimension * (0.16 + rng() * 0.27);
+  return {
+    x: w * 0.5 + Math.cos(angle) * distance,
+    y: h * 0.5 + Math.sin(angle) * distance * 0.57,
+    size: size * 0.82,
+    rotation: angle,
+  };
+}
+
+function drawRegularPolygon(
+  ctx: CanvasRenderingContext2D,
+  sides: number,
+  radius: number,
+  rotation = 0,
+) {
+  ctx.beginPath();
+  for (let index = 0; index <= sides; index += 1) {
+    const angle = rotation + (index / sides) * Math.PI * 2;
+    const x = Math.cos(angle) * radius;
+    const y = Math.sin(angle) * radius;
+    if (index === 0) ctx.moveTo(x, y);
+    else ctx.lineTo(x, y);
+  }
+  ctx.closePath();
+}
+
+function drawCivilizationLandmarkGlyph(
+  ctx: CanvasRenderingContext2D,
+  landmark: CivilizationLandmark,
+  point: CivilizationLandmarkPoint,
+  t: number,
+) {
+  const color = AFFINITY_META[landmark.affinity].hex;
+  const material = LANDMARK_MATERIALS[landmark.affinity];
+  const phase = (landmark.seed % 1000) / 1000 * Math.PI * 2;
+  const pulse = 0.78 + 0.22 * Math.sin(t * material.pulseSpeed + phase);
+  const size = point.size * (0.94 + pulse * 0.06);
+
+  ctx.save();
+  ctx.translate(point.x, point.y);
+  const beaconRadius = size * (1.35 + pulse * 0.12);
+  const beacon = ctx.createRadialGradient(0, 0, size * 0.1, 0, 0, beaconRadius);
+  beacon.addColorStop(0, hexAlpha(color, 0.24 * pulse));
+  beacon.addColorStop(0.42, hexAlpha(color, 0.09 * pulse));
+  beacon.addColorStop(1, hexAlpha(color, 0));
+  ctx.fillStyle = beacon;
+  ctx.beginPath();
+  ctx.arc(0, 0, beaconRadius, 0, Math.PI * 2);
+  ctx.fill();
+  ctx.rotate(point.rotation);
+  ctx.strokeStyle = hexAlpha(color, material.lineAlpha * pulse);
+  ctx.fillStyle = hexAlpha(color, material.fillAlpha * pulse);
+  ctx.lineWidth = Math.max(0.75, size * 0.11);
+  ctx.lineCap = landmark.affinity === 'verdance' ? 'round' : 'square';
+  ctx.lineJoin = 'round';
+  ctx.shadowColor = color;
+  ctx.shadowBlur = size * material.glow * pulse;
+
+  if (landmark.affinity === 'continuum') {
+    ctx.setLineDash([Math.max(1, size * 0.28), Math.max(1, size * 0.16)]);
+  }
+
+  switch (landmark.trait) {
+    case 'ignition': {
+      ctx.beginPath();
+      ctx.arc(0, 0, size * 0.28, 0, Math.PI * 2);
+      ctx.fill();
+      for (let ray = 0; ray < 6; ray += 1) {
+        const angle = ray / 6 * Math.PI * 2 + t * 0.08;
+        ctx.beginPath();
+        ctx.moveTo(Math.cos(angle) * size * 0.42, Math.sin(angle) * size * 0.42);
+        ctx.lineTo(Math.cos(angle) * size * 0.86, Math.sin(angle) * size * 0.86);
+        ctx.stroke();
+      }
+      break;
+    }
+    case 'biosphere': {
+      ctx.beginPath();
+      ctx.moveTo(0, size * 0.68);
+      ctx.quadraticCurveTo(-size * 0.06, 0, 0, -size * 0.7);
+      ctx.stroke();
+      for (const branch of [-1, 1]) {
+        ctx.beginPath();
+        ctx.moveTo(0, size * 0.2);
+        ctx.quadraticCurveTo(branch * size * 0.35, -size * 0.02, branch * size * 0.5, -size * 0.3);
+        ctx.stroke();
+        ctx.beginPath();
+        ctx.arc(branch * size * 0.5, -size * 0.3, size * 0.18, 0, Math.PI * 2);
+        ctx.fill();
+      }
+      ctx.beginPath();
+      ctx.arc(0, -size * 0.68, size * 0.22, 0, Math.PI * 2);
+      ctx.fill();
+      break;
+    }
+    case 'chronology': {
+      ctx.beginPath();
+      ctx.arc(0, 0, size * 0.72, -Math.PI * 0.15, Math.PI * 1.35);
+      ctx.stroke();
+      ctx.beginPath();
+      ctx.arc(0, 0, size * 0.43, Math.PI * 0.35, Math.PI * 1.85);
+      ctx.stroke();
+      const handAngle = t * 0.2 + phase;
+      ctx.beginPath();
+      ctx.moveTo(0, 0);
+      ctx.lineTo(Math.cos(handAngle) * size * 0.58, Math.sin(handAngle) * size * 0.58);
+      ctx.stroke();
+      break;
+    }
+    case 'transit': {
+      for (const offset of [-0.2, 0.2]) {
+        ctx.beginPath();
+        ctx.moveTo(-size * 0.8, size * offset);
+        ctx.quadraticCurveTo(0, -size * (0.6 + offset), size * 0.8, size * offset);
+        ctx.stroke();
+      }
+      const beadProgress = (t * 0.13 + (landmark.seed % 97) / 97) % 1;
+      const beadX = (beadProgress * 2 - 1) * size * 0.8;
+      const beadY = -size * 0.6 * (1 - Math.pow(beadProgress * 2 - 1, 2));
+      ctx.beginPath();
+      ctx.arc(beadX, beadY, size * 0.13, 0, Math.PI * 2);
+      ctx.fill();
+      break;
+    }
+    case 'archive': {
+      ctx.beginPath();
+      ctx.moveTo(-size * 0.62, -size * 0.62);
+      ctx.lineTo(-size * 0.62, size * 0.62);
+      ctx.stroke();
+      for (let row = -1; row <= 1; row += 1) {
+        ctx.beginPath();
+        ctx.moveTo(-size * 0.42, row * size * 0.42);
+        ctx.lineTo(size * (0.5 + row * 0.06), row * size * 0.42);
+        ctx.stroke();
+      }
+      ctx.beginPath();
+      ctx.arc(size * 0.56, 0, size * 0.17, 0, Math.PI * 2);
+      ctx.fill();
+      break;
+    }
+    case 'lattice': {
+      drawRegularPolygon(ctx, 6, size * 0.72, Math.PI / 6);
+      ctx.stroke();
+      for (let index = 0; index < 3; index += 1) {
+        const angle = index / 3 * Math.PI;
+        ctx.beginPath();
+        ctx.moveTo(Math.cos(angle) * size * 0.72, Math.sin(angle) * size * 0.72);
+        ctx.lineTo(-Math.cos(angle) * size * 0.72, -Math.sin(angle) * size * 0.72);
+        ctx.stroke();
+      }
+      break;
+    }
+    case 'veil': {
+      ctx.save();
+      ctx.shadowBlur = 0;
+      ctx.fillStyle = 'rgba(0,0,0,0.72)';
+      ctx.beginPath();
+      ctx.arc(0, 0, size * 0.72, 0, Math.PI * 2);
+      ctx.fill();
+      ctx.restore();
+      ctx.beginPath();
+      ctx.arc(size * 0.13, 0, size * 0.71, Math.PI * 0.35, Math.PI * 1.65);
+      ctx.stroke();
+      ctx.beginPath();
+      ctx.arc(-size * 0.38, 0, size * 0.12, 0, Math.PI * 2);
+      ctx.fill();
+      break;
+    }
+    case 'containment': {
+      ctx.strokeRect(-size * 0.58, -size * 0.58, size * 1.16, size * 1.16);
+      ctx.beginPath();
+      ctx.arc(0, 0, size * 0.38, 0, Math.PI * 2);
+      ctx.stroke();
+      ctx.beginPath();
+      ctx.arc(0, 0, size * 0.13, 0, Math.PI * 2);
+      ctx.fill();
+      break;
+    }
+    case 'replication': {
+      const replicationPoints = [
+        [0, -0.52],
+        [-0.5, 0.34],
+        [0.5, 0.34],
+      ] as const;
+      ctx.beginPath();
+      ctx.moveTo(0, -size * 0.52);
+      ctx.lineTo(-size * 0.5, size * 0.34);
+      ctx.lineTo(size * 0.5, size * 0.34);
+      ctx.closePath();
+      ctx.stroke();
+      for (const [x, y] of replicationPoints) {
+        ctx.beginPath();
+        ctx.arc(x * size, y * size, size * 0.23, 0, Math.PI * 2);
+        ctx.fill();
+      }
+      break;
+    }
+    case 'accord': {
+      ctx.beginPath();
+      ctx.arc(-size * 0.28, 0, size * 0.48, -Math.PI * 0.7, Math.PI * 0.7);
+      ctx.stroke();
+      ctx.beginPath();
+      ctx.arc(size * 0.28, 0, size * 0.48, Math.PI * 0.3, Math.PI * 1.7);
+      ctx.stroke();
+      ctx.beginPath();
+      ctx.arc(0, 0, size * 0.16, 0, Math.PI * 2);
+      ctx.fill();
+      break;
+    }
+    case 'entropy': {
+      ctx.beginPath();
+      for (let step = 0; step <= 28; step += 1) {
+        const progress = step / 28;
+        const angle = progress * Math.PI * 4 + t * 0.08;
+        const radius = size * (0.1 + progress * 0.65);
+        const x = Math.cos(angle) * radius;
+        const y = Math.sin(angle) * radius;
+        if (step === 0) ctx.moveTo(x, y);
+        else ctx.lineTo(x, y);
+      }
+      ctx.stroke();
+      break;
+    }
+    case 'aperture': {
+      drawRegularPolygon(ctx, 4, size * 0.78, Math.PI / 4);
+      ctx.stroke();
+      ctx.save();
+      ctx.shadowBlur = 0;
+      ctx.fillStyle = 'rgba(0,0,0,0.82)';
+      ctx.beginPath();
+      ctx.ellipse(0, 0, size * 0.32, size * 0.5, 0, 0, Math.PI * 2);
+      ctx.fill();
+      ctx.restore();
+      ctx.beginPath();
+      ctx.ellipse(0, 0, size * 0.34, size * 0.52, 0, 0, Math.PI * 2);
+      ctx.stroke();
+      break;
+    }
+  }
+
+  ctx.restore();
+}
+
+function drawCivilizationLandmarks(
+  ctx: CanvasRenderingContext2D,
+  w: number,
+  h: number,
+  t: number,
+  tier: KardashevTier,
+  profile: CivilizationProfile,
+  palette: AffinityPalette,
+) {
+  if (profile.landmarks.length === 0) return;
+  const minDimension = Math.min(w, h);
+  const visibleLimit = minDimension < 170 ? 3 : minDimension < 260 ? 4 : 6;
+  const landmarks = profile.landmarks.slice(0, visibleLimit);
+  const points = landmarks.map((landmark, index) => (
+    getCivilizationLandmarkPoint(landmark, tier, index, landmarks.length, w, h, t)
+  ));
+  const connectedTraits: CivilizationTrait[] = ['transit', 'lattice', 'accord', 'archive'];
+  const connectionWeight = connectedTraits.reduce(
+    (sum, trait) => sum + profile.traitWeights[trait],
+    0,
+  );
+
+  if (points.length > 1 && connectionWeight > 0) {
+    ctx.save();
+    ctx.strokeStyle = hexAlpha(palette.primary, Math.min(0.2, 0.06 + connectionWeight * 0.004));
+    ctx.lineWidth = Math.max(0.5, minDimension * 0.003);
+    ctx.setLineDash([Math.max(2, minDimension * 0.025), Math.max(2, minDimension * 0.018)]);
+    for (let index = 0; index < points.length; index += 1) {
+      const current = points[index]!;
+      const next = points[(index + 1) % points.length]!;
+      ctx.beginPath();
+      ctx.moveTo(current.x, current.y);
+      ctx.quadraticCurveTo(w * 0.5, h * 0.5, next.x, next.y);
+      ctx.stroke();
+    }
+    ctx.restore();
+  }
+
+  if (tier === 0) {
+    ctx.save();
+    ctx.strokeStyle = hexAlpha(palette.primary, 0.14);
+    ctx.lineWidth = Math.max(0.5, minDimension * 0.002);
+    for (const point of points) {
+      ctx.beginPath();
+      ctx.moveTo(point.x, point.y + point.size * 0.5);
+      ctx.lineTo(point.x, h * 0.91);
+      ctx.stroke();
+    }
+    ctx.restore();
+  }
+
+  landmarks.forEach((landmark, index) => {
+    drawCivilizationLandmarkGlyph(ctx, landmark, points[index]!, t);
+  });
+}
+
 // ── Per-tier render functions ────────────────────────────────────────────────
 
 function renderTier0(
@@ -859,11 +1231,14 @@ function renderTier0(
   w: number, h: number,
   t: number,
   stars: Star[],
+  profile: CivilizationProfile,
+  palette: AffinityPalette,
 ) {
   drawBackground(ctx, w, h, 0);
   drawStars(ctx, w, h, t, stars);
   drawMoon(ctx, w, h, t);
   drawHorizonGlow(ctx, w, h);
+  drawCivilizationLandmarks(ctx, w, h, t, 0, profile, palette);
 }
 
 function renderTier1(
@@ -876,11 +1251,13 @@ function renderTier1(
   secondaryColor: string | null,
   cityLights: CityLight[],
   progressFraction: number,
+  profile: CivilizationProfile,
 ) {
   drawBackground(ctx, w, h, 1);
   drawStars(ctx, w, h, t, stars, 0.55);
   const pr = Math.min(w, h) * 0.265;
   drawPlanet(ctx, w * 0.5, h * 0.52, pr, t, palette, patches, secondaryColor, cityLights, progressFraction);
+  drawCivilizationLandmarks(ctx, w, h, t, 1, profile, palette);
 }
 
 function renderTier2(
@@ -894,6 +1271,7 @@ function renderTier2(
   secondaryColor: string | null,
   progressFraction: number,
   bornAt: Float32Array,
+  profile: CivilizationProfile,
 ) {
   drawBackground(ctx, w, h, 2);
   drawStars(ctx, w, h, t, stars, 0.42);
@@ -921,6 +1299,7 @@ function renderTier2(
   for (const o of sortedOrbits) {
     drawOrbitPlanet(ctx, cx, cy, o, t, palette, secondaryColor, o.orbitR === maxOrbitR);
   }
+  drawCivilizationLandmarks(ctx, w, h, t, 2, profile, palette);
 }
 
 function renderTier3(
@@ -932,11 +1311,13 @@ function renderTier3(
   palette: AffinityPalette,
   secondaryColor: string | null,
   progressFraction: number,
+  profile: CivilizationProfile,
 ) {
   drawBackground(ctx, w, h, 3);
   drawStars(ctx, w, h, t, stars, 0.3);
   const scale = Math.min(w, h) * 0.47;
   drawGalaxy(ctx, w * 0.5, h * 0.5, t, galaxyPoints, palette, scale, secondaryColor, progressFraction);
+  drawCivilizationLandmarks(ctx, w, h, t, 3, profile, palette);
 }
 
 // ── Error boundary ───────────────────────────────────────────────────────────
@@ -963,6 +1344,7 @@ class SceneErrorBoundary extends React.Component<
 interface KardashevCanvasProps {
   tier: KardashevTier;
   palette: AffinityPalette;
+  profile: CivilizationProfile;
   /** 0–1 fraction of advancement within the current tier.
    *  - Tier 1: interpolates night-side city-light dot count (0 → ~80).
    *  - Tier 2: interpolates Dyson swarm density (satellite count + arc span).
@@ -984,7 +1366,15 @@ const TIER_LABELS: Record<KardashevTier, string> = {
   3: 'Galactic',
 };
 
-function KardashevCanvas({ tier, palette, progressFraction = 1, paused = false, fps, maxDpr = 2 }: KardashevCanvasProps) {
+function KardashevCanvas({
+  tier,
+  palette,
+  profile,
+  progressFraction = 1,
+  paused = false,
+  fps,
+  maxDpr = 2,
+}: KardashevCanvasProps) {
   const canvasRef = useRef<HTMLCanvasElement>(null);
   const isMobile = useIsMobile();
   const isMobileRef = useRef(isMobile);
@@ -998,20 +1388,51 @@ function KardashevCanvas({ tier, palette, progressFraction = 1, paused = false, 
     () => ({ primary: palettePrimary, secondary: paletteSecondary, accent: paletteAccent }),
     [palettePrimary, paletteSecondary, paletteAccent],
   );
+  const civilizationSeed = profile.artifactCount > 0 ? profile.seed : 0;
+  const organicWeight = profile.traitCounts.biosphere + profile.traitCounts.replication;
+  const networkWeight = (
+    profile.traitCounts.transit +
+    profile.traitCounts.lattice +
+    profile.traitCounts.accord
+  );
+  const patchCount = Math.min(10, 6 + Math.floor(organicWeight / 2));
+  const orbitCount = Math.min(5, 3 + Math.floor(networkWeight / 3));
+  const galaxyArmCount = networkWeight >= 5 ? 4 : networkWeight >= 2 ? 3 : 2;
 
   // Generate stable scene data (seeded, won't change between renders).
   // dysonSwarm is always generated at max count (60); drawDysonSwarm slices it.
   // On mobile, use a reduced geometry budget to stay within GPU/CPU limits.
-  const stars = useMemo(() => genStars(seededRng(42), isMobile ? 145 : 360), [isMobile]);
+  const stars = useMemo(
+    () => genStars(seededRng(mixSceneSeed(42, civilizationSeed)), isMobile ? 145 : 360),
+    [civilizationSeed, isMobile],
+  );
   const galaxyPoints = useMemo(() => {
-    const all = genGalaxy(seededRng(137));
+    const all = genGalaxy(
+      seededRng(mixSceneSeed(137, civilizationSeed)),
+      galaxyArmCount,
+    );
     return isMobile ? all.slice(0, 210) : all;
-  }, [isMobile]);
-  const patches = useMemo(() => genPlanetPatches(seededRng(99)), []);
-  const orbits = useMemo(() => genOrbits(seededRng(77), 3), []);
-  const dysonSwarm = useMemo(() => genDysonSwarm(seededRng(13), 60), []);
+  }, [civilizationSeed, galaxyArmCount, isMobile]);
+  const patches = useMemo(
+    () => genPlanetPatches(seededRng(mixSceneSeed(99, civilizationSeed)), patchCount),
+    [civilizationSeed, patchCount],
+  );
+  const orbits = useMemo(
+    () => genOrbits(seededRng(mixSceneSeed(77, civilizationSeed)), orbitCount),
+    [civilizationSeed, orbitCount],
+  );
+  const dysonSwarm = useMemo(
+    () => genDysonSwarm(seededRng(mixSceneSeed(13, civilizationSeed)), 60),
+    [civilizationSeed],
+  );
   // Always generated at max count (80 desktop / 32 mobile); drawCityLights slices based on progressFraction
-  const cityLights = useMemo(() => genCityLights(seededRng(55), isMobile ? 32 : 80), [isMobile]);
+  const cityLights = useMemo(
+    () => genCityLights(
+      seededRng(mixSceneSeed(55, civilizationSeed)),
+      isMobile ? 32 : 80,
+    ),
+    [civilizationSeed, isMobile],
+  );
 
   // Per-slot born-timestamps for Dyson swarm fade-in.
   // Initialized to a large negative value so all pre-existing satellites resolve
@@ -1093,10 +1514,10 @@ function KardashevCanvas({ tier, palette, progressFraction = 1, paused = false, 
       ctx.setTransform(dpr, 0, 0, dpr, 0, 0);
       ctx.clearRect(0, 0, w, h);
 
-      if (tier === 0) renderTier0(ctx, w, h, t, stars);
-      else if (tier === 1) renderTier1(ctx, w, h, t, stars, patches, stablePalette, secondaryColor, cityLights, clampedFraction);
-      else if (tier === 2) renderTier2(ctx, w, h, t, stars, orbits, isMobileRef.current ? [] : dysonSwarm, stablePalette, secondaryColor, clampedFraction, bornAtRef.current);
-      else renderTier3(ctx, w, h, t, stars, galaxyPoints, stablePalette, secondaryColor, clampedFraction);
+      if (tier === 0) renderTier0(ctx, w, h, t, stars, profile, stablePalette);
+      else if (tier === 1) renderTier1(ctx, w, h, t, stars, patches, stablePalette, secondaryColor, cityLights, clampedFraction, profile);
+      else if (tier === 2) renderTier2(ctx, w, h, t, stars, orbits, isMobileRef.current ? [] : dysonSwarm, stablePalette, secondaryColor, clampedFraction, bornAtRef.current, profile);
+      else renderTier3(ctx, w, h, t, stars, galaxyPoints, stablePalette, secondaryColor, clampedFraction, profile);
 
       if (shouldAnimate) {
         rafId = requestAnimationFrame(render);
@@ -1109,7 +1530,7 @@ function KardashevCanvas({ tier, palette, progressFraction = 1, paused = false, 
       render(performance.now());
     }
     return () => cancelAnimationFrame(rafId);
-  }, [tier, stablePalette, progressFraction, paused, fps, maxDpr, stars, galaxyPoints, patches, orbits, dysonSwarm, cityLights]);
+  }, [tier, stablePalette, profile, progressFraction, paused, fps, maxDpr, stars, galaxyPoints, patches, orbits, dysonSwarm, cityLights]);
 
   return (
     <>
@@ -1133,6 +1554,8 @@ function KardashevCanvas({ tier, palette, progressFraction = 1, paused = false, 
 export interface KardashevSceneProps {
   tier: KardashevTier;
   palette: AffinityPalette;
+  /** Forged-artifact signature that shapes scene geometry and landmarks. */
+  profile?: CivilizationProfile;
   className?: string;
   /** 0–1 fraction of advancement within the current tier.
    *  - Tier 1: interpolates night-side city-light dot count (0 → ~80).
@@ -1148,9 +1571,19 @@ export interface KardashevSceneProps {
   maxDpr?: number;
 }
 
-export function KardashevScene({ tier, palette, className, progressFraction, paused = false, fps, maxDpr }: KardashevSceneProps) {
+export function KardashevScene({
+  tier,
+  palette,
+  profile = EMPTY_CIVILIZATION_PROFILE,
+  className,
+  progressFraction,
+  paused = false,
+  fps,
+  maxDpr,
+}: KardashevSceneProps) {
   const civName = getCivilizationName(palette, tier);
   const civKey = `${tier}-${palette.primary}-${palette.secondary}`;
+  const sceneKey = `${tier}-${profile.key}`;
   const secondaryColor = getSecondaryAffinityColor(palette);
 
   // Dual-affinity: two stacked inset rings — 1 px of primary color, then 1 px of secondary.
@@ -1164,14 +1597,22 @@ export function KardashevScene({ tier, palette, className, progressFraction, pau
       <div className={className ?? "relative h-[220px] rounded-2xl overflow-hidden bg-black"}>
         <AnimatePresence mode="wait" initial={false}>
           <motion.div
-            key={tier}
+            key={sceneKey}
             className="absolute inset-0"
             initial={paused ? false : { opacity: 0, scale: 0.97 }}
             animate={paused ? { opacity: 1, scale: 1 } : { opacity: 1, scale: 1 }}
             exit={paused ? undefined : { opacity: 0, scale: 1.03 }}
             transition={paused ? { duration: 0 } : { duration: TIER_CROSSFADE_DURATION_S, ease: 'easeInOut' }}
           >
-            <KardashevCanvas tier={tier} palette={palette} progressFraction={progressFraction} paused={paused} fps={fps} maxDpr={maxDpr} />
+            <KardashevCanvas
+              tier={tier}
+              palette={palette}
+              profile={profile}
+              progressFraction={progressFraction}
+              paused={paused}
+              fps={fps}
+              maxDpr={maxDpr}
+            />
           </motion.div>
         </AnimatePresence>
 

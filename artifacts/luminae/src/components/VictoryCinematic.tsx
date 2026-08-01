@@ -4,6 +4,7 @@ import { KardashevScene } from '@/components/KardashevScene';
 import { useFocusTrap } from '@/hooks/use-focus-trap';
 import type { KardashevTier, AffinityPalette } from '@/lib/kardashev';
 import type { Accolade } from '@/lib/accolades';
+import type { CivilizationProfile } from '@/lib/civilizationProfile';
 
 export interface VictoryCinematicProps {
   winnerName: string;
@@ -12,6 +13,7 @@ export interface VictoryCinematicProps {
   civName: string;
   tier: KardashevTier;
   palette: AffinityPalette;
+  civilizationProfile?: CivilizationProfile;
   eminence: number;
   cardsForged: number;
   accolades: Accolade[];
@@ -44,6 +46,7 @@ export function VictoryCinematic({
   civName,
   tier,
   palette,
+  civilizationProfile,
   eminence,
   cardsForged,
   accolades,
@@ -149,6 +152,7 @@ export function VictoryCinematic({
         <KardashevScene
           tier={tier}
           palette={palette}
+          profile={civilizationProfile}
           className="relative w-full h-full overflow-hidden bg-black"
           fps={30}
           maxDpr={1.25}

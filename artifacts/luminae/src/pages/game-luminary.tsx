@@ -1,4 +1,4 @@
-import React, { useRef, useMemo, useEffect } from 'react';
+import React, { useRef, useMemo, useEffect, useState } from 'react';
 import { motion, AnimatePresence, useReducedMotion } from 'framer-motion';
 import type { Luminary, GamePlayerState, LuminaryActiveState, AffinityCounts } from '@workspace/api-client-react';
 import { AFFINITY_META, AFFINITY_KEYS, type AffinityKey } from '@/lib/affinityMeta';
@@ -135,6 +135,7 @@ export function LuminaryClaimedPortal({
   luminary, claimedByPlayer, luminaryAffinity,
   isOwnedByMe, isLive: _isLive, onOpenSheet, isNew = false,
   showClaimedIdentity = true, showActiveAffinity = true,
+  idleMotionActive = true,
 }: {
   luminary: Luminary;
   claimedByPlayer?: GamePlayerState | null;
@@ -147,9 +148,16 @@ export function LuminaryClaimedPortal({
   burnCount?: number;
   showClaimedIdentity?: boolean;
   showActiveAffinity?: boolean;
+  idleMotionActive?: boolean;
 }) {
   const fresh = useRef(isNew).current;
   const prefersReducedMotion = useReducedMotion();
+  const [detailActive, setDetailActive] = useState(false);
+  const motionAllowed = idleMotionActive && !prefersReducedMotion;
+
+  useEffect(() => {
+    if (!motionAllowed) setDetailActive(false);
+  }, [motionAllowed]);
 
   const activeKey = (luminaryAffinity?.activeAffinity ?? null) as AffinityKey | null;
 
@@ -211,7 +219,8 @@ export function LuminaryClaimedPortal({
       type="button"
       data-testid="summoned-luminary-card"
       data-luminary-id={luminary.id}
-      className={`absolute inset-0 bg-[#030308] rounded-xl lum-portal-seal lum-portal-seal--freed ${isCompass ? 'lum-portal-seal--compass' : ''} ${fresh ? 'lum-portal-seal--fresh' : ''}`}
+      data-idle-motion-active={motionAllowed ? 'true' : 'false'}
+      className={`absolute inset-0 bg-[#030308] rounded-xl lum-portal-seal lum-portal-seal--freed ${isCompass ? 'lum-portal-seal--compass' : ''} ${fresh ? 'lum-portal-seal--fresh' : ''} ${motionAllowed ? '' : 'lum-portal-seal--idle-paused'} ${detailActive ? 'lum-portal-seal--detail-active' : ''}`}
       style={{
         transformOrigin: '50% 42%',
         cursor: isInteractive ? 'pointer' : 'default',
@@ -235,6 +244,10 @@ export function LuminaryClaimedPortal({
       animate={{ scale: 1, opacity: 1 }}
       transition={fresh ? { duration: 0.88, ease: [0.16, 1, 0.3, 1] } : {}}
       onClick={onOpenSheet}
+      onPointerEnter={() => setDetailActive(true)}
+      onPointerLeave={() => setDetailActive(false)}
+      onFocus={() => setDetailActive(true)}
+      onBlur={() => setDetailActive(false)}
       whileTap={isInteractive ? { scale: 0.97 } : {}}
       aria-label={`Released Luminary: ${luminary.name}${ownerName ? `, allied with ${ownerName}` : ''}`}
     >
@@ -291,17 +304,12 @@ export function LuminaryClaimedPortal({
       </div>
 
       {/* The liberated Luminary owns the absolute foreground. */}
-      <motion.div
-        className="luminary-claimed-free-entity"
+      <div
+        className={`luminary-claimed-free-entity ${isCompass ? 'luminary-claimed-free-entity--compass' : ''}`}
         style={{
           '--luminary-freed-hover-duration': `${hoverDuration}s`,
           '--luminary-freed-hover-delay': `${-(hoverSeed % 7) * 0.38}s`,
-          animation: isCompass ? 'none' : undefined,
         } as React.CSSProperties}
-        animate={isCompass && !prefersReducedMotion ? { scaleX: [0.94, 1.06, 0.94], y: 0 } : undefined}
-        transition={isCompass && !prefersReducedMotion
-          ? { duration: hoverDuration, ease: 'easeInOut', repeat: Infinity }
-          : undefined}
         aria-hidden="true"
       >
         <LuminaryClaimedEntityArt
@@ -311,8 +319,10 @@ export function LuminaryClaimedPortal({
           showAura={false}
           presentation="freed"
           animate={false}
+          idleMotionActive={motionAllowed}
+          detailMotionActive={motionAllowed && detailActive}
         />
-      </motion.div>
+      </div>
 
     </motion.button>
   );
@@ -324,6 +334,7 @@ export function LuminaryCard({
   costMode, playerBonuses, isMyTurn, onOpenSheet,
   isArmed = false, isFlashing = false, burnCount, showClaimedPresence = true,
   showClaimedIdentity = true, showActiveAffinity = true, showClaimedSummary = false,
+  idleMotionActive = true,
 }: {
   luminary: Luminary;
   claimedByNames?: string[];
@@ -343,6 +354,7 @@ export function LuminaryCard({
   showClaimedIdentity?: boolean;
   showActiveAffinity?: boolean;
   showClaimedSummary?: boolean;
+  idleMotionActive?: boolean;
 }) {
   const isClaimed = claimedByNames.length > 0;
   const isCompass = luminary.id === 'lum_compass';
@@ -415,6 +427,7 @@ export function LuminaryCard({
               burnCount={burnCount}
               showClaimedIdentity={showClaimedSummary ? false : showClaimedIdentity}
               showActiveAffinity={showActiveAffinity}
+              idleMotionActive={idleMotionActive}
             />
             {showClaimedSummary && (
               <div className="luminary-claimed-panel-status absolute inset-0 z-30 flex flex-col justify-between p-1.5 pointer-events-none">
@@ -460,7 +473,7 @@ export function LuminaryCard({
         <>
           {/* Background art layer — procedural entity portrait fills the card */}
           <div className="luminary-card-art absolute inset-0 pointer-events-none">
-            <LuminaryPanelArt luminaryId={luminary.id} width="100%" height="100%" claimed={false} />
+            <LuminaryPanelArt luminaryId={luminary.id} width="100%" height="100%" claimed={false} runtime />
           </div>
 
           {/* Same dark gradient as artifact cards */}

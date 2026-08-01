@@ -1,3 +1,5 @@
+import { useState } from 'react';
+import { ChevronDown, ChevronUp } from 'lucide-react';
 import type {
   LuminarySequenceRunState,
   LuminarySequenceSignals,
@@ -17,6 +19,8 @@ export function DevLuminarySequenceTrace({
   ingressQueuedCount,
   run,
 }: DevLuminarySequenceTraceProps) {
+  const [expanded, setExpanded] = useState(false);
+
   if (run.status === 'idle') return null;
 
   const resultTone = run.status === 'passed'
@@ -35,24 +39,42 @@ export function DevLuminarySequenceTrace({
       aria-live="polite"
       data-testid="luminary-sequence-trace"
     >
-      <div className="mb-1 flex items-center justify-between gap-2">
+      <button
+        type="button"
+        className={[
+          'pointer-events-auto flex w-full items-center justify-between gap-2',
+          'font-mono text-[10px] text-current',
+        ].join(' ')}
+        aria-expanded={expanded}
+        aria-controls="luminary-sequence-trace-details"
+        onClick={() => setExpanded(current => !current)}
+      >
         <span className="font-bold uppercase tracking-[0.12em]">Sequence trace</span>
-        <span className="font-bold uppercase">{run.status}</span>
-      </div>
-      <div className="grid grid-cols-[1fr_auto] gap-x-3 gap-y-0.5 text-white/70">
-        <span>phase</span><span className="text-white">{status.phase}</span>
-        <span>server summon / effect</span>
-        <span>{signals.pendingSummonCount} / {signals.pendingActivationCount}</span>
-        <span>local effect / payoff</span>
-        <span>{signals.activationQueueLength} / {signals.delayedResultQueueLength}</span>
-        <span>state ingress</span><span>{ingressQueuedCount}</span>
-        <span>camera</span>
-        <span className={status.cameraControlled ? 'text-amber-200' : 'text-emerald-200'}>
-          {status.cameraControlled ? 'leased' : 'released'}
+        <span className="flex items-center gap-1.5">
+          <span className="font-bold uppercase">{run.status}</span>
+          {expanded
+            ? <ChevronUp className="h-3 w-3" aria-hidden="true" />
+            : <ChevronDown className="h-3 w-3" aria-hidden="true" />}
         </span>
-      </div>
-      {run.failure && (
-        <p className="mt-1 border-t border-current/20 pt-1 leading-snug">{run.failure}</p>
+      </button>
+      {expanded && (
+        <div id="luminary-sequence-trace-details" className="mt-1">
+          <div className="grid grid-cols-[1fr_auto] gap-x-3 gap-y-0.5 text-white/70">
+            <span>phase</span><span className="text-white">{status.phase}</span>
+            <span>server summon / effect</span>
+            <span>{signals.pendingSummonCount} / {signals.pendingActivationCount}</span>
+            <span>local effect / payoff</span>
+            <span>{signals.activationQueueLength} / {signals.delayedResultQueueLength}</span>
+            <span>state ingress</span><span>{ingressQueuedCount}</span>
+            <span>camera</span>
+            <span className={status.cameraControlled ? 'text-amber-200' : 'text-emerald-200'}>
+              {status.cameraControlled ? 'leased' : 'released'}
+            </span>
+          </div>
+          {run.failure && (
+            <p className="mt-1 border-t border-current/20 pt-1 leading-snug">{run.failure}</p>
+          )}
+        </div>
       )}
     </aside>
   );

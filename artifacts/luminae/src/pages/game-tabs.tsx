@@ -25,6 +25,10 @@ import { ForgeMarkerLayer } from './game-board-forge-markers';
 import { getArtifactBrandTypes } from '@/lib/artifactBrands';
 import { getLuminaryEminenceTitle } from './game-luminary';
 import type { CostMode, SelectedCard } from './game-types';
+import {
+  CIVILIZATION_TRAIT_LABELS,
+  type CivilizationProfile,
+} from '@/lib/civilizationProfile';
 
 type SetState<T> = React.Dispatch<React.SetStateAction<T>>;
 
@@ -110,6 +114,69 @@ export function OpponentStatStrip({
   );
 }
 
+function CivilizationSignatureStrip({
+  profile,
+  forgedArtifacts,
+  onOpenArtifact,
+}: {
+  profile: CivilizationProfile;
+  forgedArtifacts: readonly ArtifactCard[];
+  onOpenArtifact: (card: ArtifactCard) => void;
+}) {
+  if (profile.landmarks.length === 0) return null;
+
+  return (
+    <section className="space-y-2" aria-label="Civilization infrastructure">
+      <div className="flex items-center justify-between gap-3">
+        <span className="text-[10px] font-semibold uppercase text-muted-foreground">
+          Artifact infrastructure
+        </span>
+        <span className="text-[10px] tabular-nums text-muted-foreground/70">
+          {profile.dominantTraits.length} signatures
+        </span>
+      </div>
+      <div className="grid grid-cols-2 gap-1.5 sm:grid-cols-3">
+        {profile.landmarks.slice(0, 6).map((landmark) => {
+          const card = forgedArtifacts.find(({ id }) => id === landmark.artifactId);
+          const affinity = AFFINITY_META[landmark.affinity];
+          return (
+            <button
+              key={landmark.artifactId}
+              type="button"
+              disabled={!card}
+              onClick={() => {
+                if (card) onOpenArtifact(card);
+              }}
+              className="min-w-0 border border-white/8 bg-white/[0.025] px-2 py-1.5 text-left transition-colors hover:border-white/18 hover:bg-white/[0.055] disabled:pointer-events-none"
+              title={`${landmark.artifactName} · ${CIVILIZATION_TRAIT_LABELS[landmark.trait]}`}
+              aria-label={`Inspect ${landmark.artifactName}, ${CIVILIZATION_TRAIT_LABELS[landmark.trait]}`}
+            >
+              <span className="flex min-w-0 items-center gap-1.5">
+                <span
+                  className="h-2 w-2 shrink-0 rounded-full"
+                  style={{
+                    backgroundColor: affinity.hex,
+                    boxShadow: `0 0 7px ${affinity.glowHex}`,
+                  }}
+                  aria-hidden="true"
+                />
+                <span className="min-w-0">
+                  <span className="block truncate text-[10px] font-semibold text-foreground/90">
+                    {CIVILIZATION_TRAIT_LABELS[landmark.trait]}
+                  </span>
+                  <span className="block truncate text-[9px] text-muted-foreground">
+                    {landmark.artifactName}
+                  </span>
+                </span>
+              </span>
+            </button>
+          );
+        })}
+      </div>
+    </section>
+  );
+}
+
 export interface HandTabScope {
   activationGateActive: boolean;
   activationQueue: readonly unknown[];
@@ -117,6 +184,7 @@ export interface HandTabScope {
   cardDetailDiscovered: boolean;
   civEditValue: string;
   civLabel: string;
+  civilizationProfile: CivilizationProfile;
   computeCosts: (card: ArtifactCard, mode: CostMode) => Partial<Record<AffinityKey, number>> | undefined;
   costMode: CostMode;
   expandedLumEffects: Set<string>;
@@ -181,6 +249,7 @@ export function HandTab({ scope }: { scope: HandTabScope }) {
     cardDetailDiscovered,
     civEditValue,
     civLabel,
+    civilizationProfile,
     computeCosts,
     costMode,
     expandedLumEffects,
@@ -225,12 +294,18 @@ export function HandTab({ scope }: { scope: HandTabScope }) {
       <KardashevScene
         tier={kardashevTier}
         palette={kardashevPalette}
+        profile={civilizationProfile}
         progressFraction={kardashevProgressFraction}
         paused={
           activationGateActive ||
           activationQueue.length > 0 ||
           (state.status === 'finished' && (pendingGameOver || showCinematic || showWinOverlay))
         }
+      />
+      <CivilizationSignatureStrip
+        profile={civilizationProfile}
+        forgedArtifacts={me?.forgedArtifacts ?? []}
+        onOpenArtifact={openForgedCardSheet}
       />
 
       {/* Eminence + name */}
@@ -456,7 +531,7 @@ export function HandTab({ scope }: { scope: HandTabScope }) {
                         }}
                       >
                         <div className="shrink-0 rounded-md overflow-hidden">
-                          <LuminaryPanelArt luminaryId={lumId} width={24} height={24} claimed />
+                          <LuminaryPanelArt luminaryId={lumId} width={24} height={24} claimed runtime />
                         </div>
                         <div className="flex-1 min-w-0">
                           <p className="text-[11px] font-semibold text-white leading-tight truncate">{lum.name}</p>
@@ -586,7 +661,7 @@ export function HandTab({ scope }: { scope: HandTabScope }) {
                   >
                     {/* Tiny panel art */}
                     <div className="shrink-0 rounded-md overflow-hidden">
-                      <LuminaryPanelArt luminaryId={lum.id} width={32} height={32} claimed={!!claimedByPlayer} />
+                      <LuminaryPanelArt luminaryId={lum.id} width={32} height={32} claimed={!!claimedByPlayer} runtime />
                     </div>
                     {/* Name + domain */}
                     <div className="flex-1 min-w-0">

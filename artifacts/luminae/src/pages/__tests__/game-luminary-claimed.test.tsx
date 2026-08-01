@@ -74,4 +74,23 @@ describe('LuminaryClaimedPortal', () => {
       '--lum-claimed-active': '#2ECC71',
     });
   });
+
+  it('uses board-sized entity art and pauses persistent idle motion', () => {
+    const { container, getByTestId } = render(
+      <LuminaryClaimedPortal
+        luminary={luminary}
+        luminaryAffinity={activeState}
+        idleMotionActive={false}
+      />,
+    );
+
+    const portal = getByTestId('summoned-luminary-card');
+    const entityImage = container.querySelector<HTMLImageElement>(
+      '.luminary-claimed-contained-art img',
+    );
+
+    expect(portal).toHaveClass('lum-portal-seal--idle-paused');
+    expect(portal).toHaveAttribute('data-idle-motion-active', 'false');
+    expect(entityImage?.getAttribute('src')).toContain('entity_runtime.webp');
+  });
 });

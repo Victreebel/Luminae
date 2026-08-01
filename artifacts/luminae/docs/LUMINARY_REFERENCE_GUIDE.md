@@ -176,10 +176,10 @@ The active Luminary pool is `AVAILABLE_LUMINARIES` (12 illustrated Luminaries). 
 | **Affinities** | Flare, Abyss |
 | **Cost** | 4 Flare + 4 Abyss |
 | **Eminence** | 3 |
-| **Effect** | On arrival, burns **every** currently face-up Tier III Artifact in the Forge. All those slots immediately redraw. |
+| **Effect** | On arrival, return every face-up Forge Artifact to its corresponding Archive, randomize each Archive, then refill every Forge row. This is not a Burn effect. |
 | **Flavor** | *"The hammer falls only after the future has already broken."* |
-| **Animation Archetype** | `burn` |
-| **Procedure Steps** | `luminaryPulse` → `targetClaim` (keyword: burn) → `keywordEvents` (burn) → `forgeRefill` |
+| **Animation Archetype** | `forgeReset` |
+| **Procedure Steps** | `luminaryPulse` → `targetClaim` → `archiveReturn` → `deckScry` → `forgeRefill` |
 | **Residue** | None |
 | **Colors** | Primary `#f97316`, Secondary `#1c1917`, Aura `storm` |
 | **Art Status** | Illustrated panel + entity locked |
