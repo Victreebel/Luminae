@@ -142,7 +142,8 @@ function stepInfo(step: AnimationProcedureStep): StepInfo | null {
     }
     case 'affinityReturn': {
       const scope = step.playerIds.length > 1 ? ' ALL' : '';
-      return { icon: '◇', label: `RETURN AFFINITY${scope}`, color: '#60a5fa' };
+      const amount = step.amount ? ` ${step.amount}` : '';
+      return { icon: '◇', label: `RETURN${amount} AFFINITY${scope}`, color: '#60a5fa' };
     }
     case 'deckScry':      return { icon: '◉', label: 'SCRY ARCHIVES', color: '#a78bfa' };
     case 'pendingAction': return { icon: '✦', label: 'ASSIMILATE READY', color: '#fb923c' };
@@ -460,13 +461,12 @@ export function LuminaryActivationCinematic({
     playbackMode,
     timelinePlaybackRate,
   );
+  const isMobile = useIsMobile();
   const isDesktopShell =
     typeof navigator !== 'undefined' && navigator.userAgent.includes('Electron');
-
-  const isMobile = useIsMobile();
+  const useLowCostRuntimeComposite = (isDesktopShell || isMobile) && !isReduced;
   const entityY = isMobile ? ENTITY_Y_MOBILE : ENTITY_Y_DESKTOP;
   const entityYInitial = isMobile ? ENTITY_Y_MOBILE[0] : ENTITY_Y_DESKTOP[0];
-  const useLowCostRuntimeComposite = (isDesktopShell || isMobile) && !isReduced;
 
   const resolutionStartedRef = useRef(false);
   const onResolutionStartRef = useRef(onResolutionStart);
@@ -480,13 +480,22 @@ export function LuminaryActivationCinematic({
 
   const vis = getLuminaryVisuals(luminaryId);
   const { primaryColor, EntityArt, entityBlendMode } = vis;
-  const { entityCutout, panelArt, cinematicArt } = getLuminaryImageAssets(luminaryId);
+  const {
+    entityCutout,
+    entityRuntime,
+    panelArt,
+    panelRuntime,
+    cinematicArt,
+  } = getLuminaryImageAssets(luminaryId);
 
-  // Best available image for the current render path. Desktop/mobile use the
-  // bounded cinematic texture; board panels and detail views still use source art.
-  const imageUrl = useLowCostRuntimeComposite
-    ? (cinematicArt ?? entityCutout ?? panelArt)
-    : (entityCutout ?? panelArt);
+  // Cinematics use bounded textures on every web surface. Source-resolution
+  // art remains available to inspection/detail views where it is static.
+  const imageUrl =
+    cinematicArt
+    ?? entityRuntime
+    ?? entityCutout
+    ?? panelRuntime
+    ?? panelArt;
 
   const label = EFFECT_TYPE_LABELS[effectType] ?? 'EFFECT';
   const effectDef = LUMINARY_EFFECT_MAP[luminaryId] ?? null;

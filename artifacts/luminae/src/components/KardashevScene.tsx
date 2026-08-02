@@ -3,6 +3,7 @@ import { motion, AnimatePresence } from 'framer-motion';
 import type { KardashevTier, AffinityPalette } from '@/lib/kardashev';
 import { getCivilizationName, getSecondaryAffinityColor } from '@/lib/kardashev';
 import { useIsMobile } from '@/hooks/use-mobile';
+import { useRuntimePerformanceState } from '@/lib/runtimePerformance';
 import { AFFINITY_META } from '@/lib/affinityMeta';
 import {
   EMPTY_CIVILIZATION_PROFILE,
@@ -868,14 +869,15 @@ interface CivilizationLandmarkPoint {
   y: number;
   size: number;
   rotation: number;
+  depth: number;
 }
 
 const LANDMARK_MATERIALS = {
-  flare: { lineAlpha: 0.92, fillAlpha: 0.24, pulseSpeed: 1.55, glow: 1.15 },
-  continuum: { lineAlpha: 0.86, fillAlpha: 0.15, pulseSpeed: 0.72, glow: 0.8 },
-  verdance: { lineAlpha: 0.88, fillAlpha: 0.2, pulseSpeed: 0.9, glow: 1 },
-  abyss: { lineAlpha: 0.68, fillAlpha: 0.12, pulseSpeed: 0.5, glow: 1.4 },
-  radiance: { lineAlpha: 0.96, fillAlpha: 0.28, pulseSpeed: 0.64, glow: 1.2 },
+  flare: { hull: '#21191a', trimAlpha: 0.72, lightAlpha: 0.9, pulseSpeed: 1.55 },
+  continuum: { hull: '#161c28', trimAlpha: 0.62, lightAlpha: 0.82, pulseSpeed: 0.72 },
+  verdance: { hull: '#17221d', trimAlpha: 0.64, lightAlpha: 0.84, pulseSpeed: 0.9 },
+  abyss: { hull: '#171521', trimAlpha: 0.5, lightAlpha: 0.68, pulseSpeed: 0.5 },
+  radiance: { hull: '#22211d', trimAlpha: 0.74, lightAlpha: 0.92, pulseSpeed: 0.64 },
 } as const;
 
 function getCivilizationLandmarkPoint(
@@ -890,279 +892,676 @@ function getCivilizationLandmarkPoint(
   const rng = seededRng(mixSceneSeed(landmark.seed, 301 + tier * 97));
   const minDimension = Math.min(w, h);
   const tierScale = 0.82 + landmark.tier * 0.13;
-  const size = Math.min(22, Math.max(7, minDimension * 0.055 * tierScale));
+  const size = Math.min(46, Math.max(16, minDimension * 0.12 * tierScale));
   const direction = index % 2 === 0 ? 1 : -1;
   const drift = t * (0.004 + (landmark.seed % 5) * 0.001) * direction;
 
   if (tier === 0) {
+    const slot = (index + 1) / (count + 1);
+    const jitter = (rng() - 0.5) * Math.min(22, w / Math.max(3, count) * 0.24);
+    const densityScale = count === 1 ? 1.55 : count === 2 ? 1.3 : count <= 4 ? 1.08 : 0.86;
     return {
-      x: w * (0.12 + 0.76 * rng()),
-      y: h * (0.69 + 0.12 * rng()),
-      size,
-      rotation: (rng() - 0.5) * 0.35,
+      x: w * (0.07 + slot * 0.86) + jitter,
+      y: h * (0.76 + 0.05 * rng()),
+      size: size * 1.08 * densityScale,
+      rotation: 0,
+      depth: 1,
     };
   }
 
   if (tier === 1) {
-    const angle = rng() * Math.PI * 2 + drift;
+    const angle = (index / Math.max(1, count)) * Math.PI * 2 + rng() * 0.32 + drift;
     return {
       x: w * 0.5 + Math.cos(angle) * minDimension * (0.29 + rng() * 0.045),
       y: h * 0.52 + Math.sin(angle) * minDimension * (0.19 + rng() * 0.035),
-      size,
+      size: size * 0.78,
       rotation: angle + Math.PI * 0.5,
+      depth: Math.sin(angle),
     };
   }
 
   if (tier === 2) {
     const lane = count <= 1 ? 0.36 : 0.27 + (index / (count - 1)) * 0.16;
-    const angle = rng() * Math.PI * 2 + drift * 1.8;
+    const angle = (index / Math.max(1, count)) * Math.PI * 2 + rng() * 0.45 + drift * 1.8;
     return {
       x: w * 0.5 + Math.cos(angle) * minDimension * lane,
       y: h * 0.5 + Math.sin(angle) * minDimension * lane * 0.48,
-      size: size * 0.92,
+      size: size * 0.56,
       rotation: angle + Math.PI * 0.5,
+      depth: Math.sin(angle),
     };
   }
 
-  const angle = rng() * Math.PI * 2 + drift * 0.8;
+  const angle = (index / Math.max(1, count)) * Math.PI * 2 + rng() * 0.6 + drift * 0.8;
   const distance = minDimension * (0.16 + rng() * 0.27);
   return {
     x: w * 0.5 + Math.cos(angle) * distance,
     y: h * 0.5 + Math.sin(angle) * distance * 0.57,
-    size: size * 0.82,
+    size: size * 0.42,
     rotation: angle,
+    depth: Math.sin(angle),
   };
 }
 
-function drawRegularPolygon(
+function drawStructurePolygon(
   ctx: CanvasRenderingContext2D,
-  sides: number,
-  radius: number,
-  rotation = 0,
+  points: ReadonlyArray<readonly [number, number]>,
+  fillStyle: string,
+  strokeStyle: string,
+  lineWidth: number,
 ) {
+  const first = points[0];
+  if (!first) return;
   ctx.beginPath();
-  for (let index = 0; index <= sides; index += 1) {
-    const angle = rotation + (index / sides) * Math.PI * 2;
-    const x = Math.cos(angle) * radius;
-    const y = Math.sin(angle) * radius;
-    if (index === 0) ctx.moveTo(x, y);
-    else ctx.lineTo(x, y);
+  ctx.moveTo(first[0], first[1]);
+  for (let index = 1; index < points.length; index += 1) {
+    const point = points[index]!;
+    ctx.lineTo(point[0], point[1]);
   }
   ctx.closePath();
+  ctx.fillStyle = fillStyle;
+  ctx.fill();
+  ctx.strokeStyle = strokeStyle;
+  ctx.lineWidth = lineWidth;
+  ctx.stroke();
 }
 
-function drawCivilizationLandmarkGlyph(
+function drawStructureLight(
+  ctx: CanvasRenderingContext2D,
+  x: number,
+  y: number,
+  radius: number,
+  color: string,
+  alpha: number,
+) {
+  ctx.save();
+  ctx.fillStyle = hexAlpha(color, alpha);
+  ctx.shadowColor = color;
+  ctx.shadowBlur = radius * 4;
+  ctx.beginPath();
+  ctx.arc(x, y, radius, 0, Math.PI * 2);
+  ctx.fill();
+  ctx.restore();
+}
+
+function drawWindowGrid(
+  ctx: CanvasRenderingContext2D,
+  x: number,
+  y: number,
+  width: number,
+  height: number,
+  columns: number,
+  rows: number,
+  color: string,
+  seed: number,
+) {
+  const gapX = width / Math.max(1, columns);
+  const gapY = height / Math.max(1, rows);
+  ctx.fillStyle = hexAlpha(color, 0.56);
+  for (let row = 0; row < rows; row += 1) {
+    for (let column = 0; column < columns; column += 1) {
+      if ((seed + row * 5 + column * 3) % 7 === 0) continue;
+      ctx.fillRect(
+        x + column * gapX + gapX * 0.25,
+        y + row * gapY + gapY * 0.28,
+        Math.max(0.6, gapX * 0.42),
+        Math.max(0.45, gapY * 0.28),
+      );
+    }
+  }
+}
+
+function drawRadiatorPanel(
+  ctx: CanvasRenderingContext2D,
+  x: number,
+  y: number,
+  width: number,
+  height: number,
+  color: string,
+  lineWidth: number,
+) {
+  ctx.fillStyle = 'rgba(7,11,18,0.94)';
+  ctx.strokeStyle = hexAlpha(color, 0.48);
+  ctx.lineWidth = lineWidth;
+  ctx.fillRect(x, y, width, height);
+  ctx.strokeRect(x, y, width, height);
+  for (let division = 1; division < 4; division += 1) {
+    const panelX = x + width * division / 4;
+    ctx.beginPath();
+    ctx.moveTo(panelX, y);
+    ctx.lineTo(panelX, y + height);
+    ctx.stroke();
+  }
+}
+
+function drawLandmarkPlatform(
+  ctx: CanvasRenderingContext2D,
+  size: number,
+  sceneTier: KardashevTier,
+  hull: string,
+  accent: string,
+  outline: string,
+  lineWidth: number,
+) {
+  if (sceneTier <= 1) {
+    const groundGlow = ctx.createRadialGradient(0, size * 0.62, 0, 0, size * 0.62, size * 1.05);
+    groundGlow.addColorStop(0, hexAlpha(accent, 0.12));
+    groundGlow.addColorStop(1, hexAlpha(accent, 0));
+    ctx.fillStyle = groundGlow;
+    ctx.beginPath();
+    ctx.ellipse(0, size * 0.62, size * 1.05, size * 0.22, 0, 0, Math.PI * 2);
+    ctx.fill();
+    drawStructurePolygon(ctx, [
+      [-size * 0.82, size * 0.45],
+      [size * 0.82, size * 0.45],
+      [size * 0.66, size * 0.7],
+      [-size * 0.66, size * 0.7],
+    ], hull, outline, lineWidth);
+    ctx.strokeStyle = hexAlpha(accent, 0.38);
+    ctx.beginPath();
+    ctx.moveTo(-size * 0.58, size * 0.49);
+    ctx.lineTo(size * 0.58, size * 0.49);
+    ctx.stroke();
+    return;
+  }
+
+  ctx.strokeStyle = 'rgba(165,185,205,0.34)';
+  ctx.lineWidth = lineWidth * 1.4;
+  ctx.beginPath();
+  ctx.moveTo(-size * 0.92, size * 0.48);
+  ctx.lineTo(size * 0.92, size * 0.48);
+  ctx.stroke();
+  drawStructurePolygon(ctx, [
+    [-size * 0.42, size * 0.31],
+    [size * 0.42, size * 0.31],
+    [size * 0.56, size * 0.58],
+    [-size * 0.56, size * 0.58],
+  ], hull, outline, lineWidth);
+}
+
+function drawCivilizationLandmarkStructure(
   ctx: CanvasRenderingContext2D,
   landmark: CivilizationLandmark,
   point: CivilizationLandmarkPoint,
   t: number,
+  sceneTier: KardashevTier,
 ) {
   const color = AFFINITY_META[landmark.affinity].hex;
   const material = LANDMARK_MATERIALS[landmark.affinity];
   const phase = (landmark.seed % 1000) / 1000 * Math.PI * 2;
-  const pulse = 0.78 + 0.22 * Math.sin(t * material.pulseSpeed + phase);
-  const size = point.size * (0.94 + pulse * 0.06);
+  const pulse = 0.82 + 0.18 * Math.sin(t * material.pulseSpeed + phase);
+  const size = point.size;
+  const variant = 0.9 + (landmark.seed % 7) * 0.028;
+  const complexity = Math.min(3, Math.max(1, landmark.tier));
+  const orbital = sceneTier >= 2;
+  const hull = material.hull;
+  const outline = 'rgba(168,188,210,0.34)';
+  const hardOutline = 'rgba(190,208,224,0.46)';
+  const accent = hexAlpha(color, material.trimAlpha);
+  const accentDim = hexAlpha(color, material.trimAlpha * 0.42);
+  const glass = hexAlpha(color, 0.16 + pulse * 0.08);
+  const lightAlpha = material.lightAlpha * pulse;
+  const lineWidth = Math.max(0.55, size * 0.035);
 
   ctx.save();
   ctx.translate(point.x, point.y);
-  const beaconRadius = size * (1.35 + pulse * 0.12);
-  const beacon = ctx.createRadialGradient(0, 0, size * 0.1, 0, 0, beaconRadius);
-  beacon.addColorStop(0, hexAlpha(color, 0.24 * pulse));
-  beacon.addColorStop(0.42, hexAlpha(color, 0.09 * pulse));
-  beacon.addColorStop(1, hexAlpha(color, 0));
-  ctx.fillStyle = beacon;
-  ctx.beginPath();
-  ctx.arc(0, 0, beaconRadius, 0, Math.PI * 2);
-  ctx.fill();
   ctx.rotate(point.rotation);
-  ctx.strokeStyle = hexAlpha(color, material.lineAlpha * pulse);
-  ctx.fillStyle = hexAlpha(color, material.fillAlpha * pulse);
-  ctx.lineWidth = Math.max(0.75, size * 0.11);
-  ctx.lineCap = landmark.affinity === 'verdance' ? 'round' : 'square';
+  ctx.globalAlpha = sceneTier === 0 ? 0.98 : 0.66 + (point.depth + 1) * 0.15;
+  ctx.lineWidth = lineWidth;
+  ctx.lineCap = 'round';
   ctx.lineJoin = 'round';
-  ctx.shadowColor = color;
-  ctx.shadowBlur = size * material.glow * pulse;
-
-  if (landmark.affinity === 'continuum') {
-    ctx.setLineDash([Math.max(1, size * 0.28), Math.max(1, size * 0.16)]);
-  }
+  drawLandmarkPlatform(ctx, size, sceneTier, hull, color, outline, lineWidth);
 
   switch (landmark.trait) {
     case 'ignition': {
-      ctx.beginPath();
-      ctx.arc(0, 0, size * 0.28, 0, Math.PI * 2);
-      ctx.fill();
-      for (let ray = 0; ray < 6; ray += 1) {
-        const angle = ray / 6 * Math.PI * 2 + t * 0.08;
+      if (orbital) {
+        drawRadiatorPanel(ctx, -size * 0.94, -size * 0.16, size * 0.46, size * 0.36, color, lineWidth);
+        drawRadiatorPanel(ctx, size * 0.48, -size * 0.16, size * 0.46, size * 0.36, color, lineWidth);
+        ctx.strokeStyle = hardOutline;
+        ctx.lineWidth = size * 0.16;
         ctx.beginPath();
-        ctx.moveTo(Math.cos(angle) * size * 0.42, Math.sin(angle) * size * 0.42);
-        ctx.lineTo(Math.cos(angle) * size * 0.86, Math.sin(angle) * size * 0.86);
+        ctx.arc(0, 0, size * 0.38, 0, Math.PI * 2);
         ctx.stroke();
+        ctx.strokeStyle = accent;
+        ctx.lineWidth = lineWidth;
+        ctx.stroke();
+        drawStructureLight(ctx, 0, 0, size * 0.14, color, lightAlpha);
+      } else {
+        for (const side of [-1, 1]) {
+          const x = side * size * 0.53;
+          drawStructurePolygon(ctx, [
+            [x - size * 0.14, size * 0.43],
+            [x - size * 0.1, -size * 0.5 * variant],
+            [x + size * 0.1, -size * 0.5 * variant],
+            [x + size * 0.14, size * 0.43],
+          ], hull, outline, lineWidth);
+          ctx.strokeStyle = accentDim;
+          ctx.beginPath();
+          ctx.moveTo(x, -size * 0.49 * variant);
+          ctx.lineTo(x, -size * 0.72 * variant);
+          ctx.stroke();
+        }
+        ctx.fillStyle = hull;
+        ctx.strokeStyle = hardOutline;
+        ctx.fillRect(-size * 0.3, -size * 0.48, size * 0.6, size * 0.92);
+        ctx.strokeRect(-size * 0.3, -size * 0.48, size * 0.6, size * 0.92);
+        ctx.fillStyle = glass;
+        ctx.fillRect(-size * 0.18, -size * 0.3, size * 0.36, size * 0.56);
+        drawStructureLight(ctx, 0, -size * 0.02, size * 0.09, color, lightAlpha);
       }
       break;
     }
     case 'biosphere': {
-      ctx.beginPath();
-      ctx.moveTo(0, size * 0.68);
-      ctx.quadraticCurveTo(-size * 0.06, 0, 0, -size * 0.7);
-      ctx.stroke();
-      for (const branch of [-1, 1]) {
+      if (orbital) {
+        ctx.strokeStyle = hardOutline;
+        ctx.lineWidth = size * 0.14;
         ctx.beginPath();
-        ctx.moveTo(0, size * 0.2);
-        ctx.quadraticCurveTo(branch * size * 0.35, -size * 0.02, branch * size * 0.5, -size * 0.3);
+        ctx.ellipse(0, -size * 0.03, size * 0.7, size * 0.38, 0, 0, Math.PI * 2);
         ctx.stroke();
+        ctx.strokeStyle = accent;
+        ctx.lineWidth = lineWidth;
+        ctx.stroke();
+        for (const x of [-0.42, 0, 0.42]) {
+          ctx.fillStyle = hexAlpha(color, 0.22);
+          ctx.beginPath();
+          ctx.arc(size * x, -size * 0.03, size * 0.17, 0, Math.PI * 2);
+          ctx.fill();
+          ctx.strokeStyle = outline;
+          ctx.stroke();
+        }
+        ctx.strokeStyle = hardOutline;
         ctx.beginPath();
-        ctx.arc(branch * size * 0.5, -size * 0.3, size * 0.18, 0, Math.PI * 2);
+        ctx.moveTo(-size * 0.95, -size * 0.03);
+        ctx.lineTo(size * 0.95, -size * 0.03);
+        ctx.stroke();
+      } else {
+        ctx.fillStyle = hexAlpha(color, 0.11);
+        ctx.strokeStyle = hardOutline;
+        ctx.lineWidth = lineWidth * 1.3;
+        ctx.beginPath();
+        ctx.moveTo(-size * 0.78, size * 0.42);
+        ctx.quadraticCurveTo(0, -size * 1.02 * variant, size * 0.78, size * 0.42);
+        ctx.closePath();
         ctx.fill();
+        ctx.stroke();
+        for (const x of [-0.42, -0.12, 0.18, 0.48]) {
+          const towerHeight = size * (0.3 + ((landmark.seed + Math.round(x * 100)) % 4) * 0.08);
+          ctx.fillStyle = hull;
+          ctx.fillRect(size * x - size * 0.07, size * 0.39 - towerHeight, size * 0.14, towerHeight);
+          ctx.fillStyle = accentDim;
+          ctx.fillRect(size * x - size * 0.03, size * 0.42 - towerHeight, size * 0.06, towerHeight * 0.72);
+        }
+        ctx.strokeStyle = accentDim;
+        ctx.beginPath();
+        ctx.moveTo(-size * 0.5, size * 0.13);
+        ctx.quadraticCurveTo(0, -size * 0.42, size * 0.5, size * 0.13);
+        ctx.stroke();
       }
-      ctx.beginPath();
-      ctx.arc(0, -size * 0.68, size * 0.22, 0, Math.PI * 2);
-      ctx.fill();
       break;
     }
     case 'chronology': {
+      ctx.fillStyle = hull;
+      ctx.strokeStyle = hardOutline;
+      ctx.fillRect(-size * 0.16, -size * 0.52, size * 0.32, size * 0.96);
+      ctx.strokeRect(-size * 0.16, -size * 0.52, size * 0.32, size * 0.96);
+      ctx.strokeStyle = accent;
       ctx.beginPath();
-      ctx.arc(0, 0, size * 0.72, -Math.PI * 0.15, Math.PI * 1.35);
+      ctx.moveTo(0, -size * 0.5);
+      ctx.lineTo(0, -size * 0.83 * variant);
       ctx.stroke();
+      for (const side of [-1, 1]) {
+        ctx.save();
+        ctx.translate(side * size * 0.46, -size * (0.12 + (side > 0 ? 0.12 : 0)));
+        ctx.rotate(side * 0.36);
+        ctx.fillStyle = 'rgba(10,15,23,0.96)';
+        ctx.strokeStyle = outline;
+        ctx.beginPath();
+        ctx.moveTo(-size * 0.28, 0);
+        ctx.quadraticCurveTo(0, size * 0.24, size * 0.28, 0);
+        ctx.lineTo(0, size * 0.08);
+        ctx.closePath();
+        ctx.fill();
+        ctx.stroke();
+        ctx.beginPath();
+        ctx.moveTo(0, size * 0.05);
+        ctx.lineTo(0, size * 0.24);
+        ctx.stroke();
+        ctx.restore();
+      }
+      ctx.strokeStyle = accentDim;
       ctx.beginPath();
-      ctx.arc(0, 0, size * 0.43, Math.PI * 0.35, Math.PI * 1.85);
+      ctx.ellipse(0, -size * 0.23, size * 0.34, size * 0.12, 0, 0, Math.PI * 2);
       ctx.stroke();
-      const handAngle = t * 0.2 + phase;
-      ctx.beginPath();
-      ctx.moveTo(0, 0);
-      ctx.lineTo(Math.cos(handAngle) * size * 0.58, Math.sin(handAngle) * size * 0.58);
-      ctx.stroke();
+      drawStructureLight(ctx, 0, -size * 0.84 * variant, size * 0.055, color, lightAlpha);
       break;
     }
     case 'transit': {
-      for (const offset of [-0.2, 0.2]) {
+      if (!orbital) {
+        ctx.strokeStyle = 'rgba(100,116,132,0.35)';
         ctx.beginPath();
-        ctx.moveTo(-size * 0.8, size * offset);
-        ctx.quadraticCurveTo(0, -size * (0.6 + offset), size * 0.8, size * offset);
+        ctx.moveTo(-size * 0.18, size * 0.46);
+        ctx.lineTo(-size * 0.48, size * 0.9);
+        ctx.moveTo(size * 0.18, size * 0.46);
+        ctx.lineTo(size * 0.48, size * 0.9);
         ctx.stroke();
       }
-      const beadProgress = (t * 0.13 + (landmark.seed % 97) / 97) % 1;
-      const beadX = (beadProgress * 2 - 1) * size * 0.8;
-      const beadY = -size * 0.6 * (1 - Math.pow(beadProgress * 2 - 1, 2));
+      for (const side of [-1, 1]) {
+        const x = side * size * 0.56;
+        drawStructurePolygon(ctx, [
+          [x - size * 0.14, size * 0.43],
+          [x - size * 0.1, -size * 0.56 * variant],
+          [x + size * 0.1, -size * 0.66 * variant],
+          [x + size * 0.16, size * 0.43],
+        ], hull, outline, lineWidth);
+        drawStructureLight(ctx, x, -size * 0.48 * variant, size * 0.045, color, lightAlpha * 0.8);
+      }
+      ctx.strokeStyle = hardOutline;
+      ctx.lineWidth = size * 0.13;
       ctx.beginPath();
-      ctx.arc(beadX, beadY, size * 0.13, 0, Math.PI * 2);
-      ctx.fill();
+      ctx.ellipse(0, -size * 0.08, size * 0.48, size * 0.62, 0, 0, Math.PI * 2);
+      ctx.stroke();
+      ctx.strokeStyle = accent;
+      ctx.lineWidth = lineWidth;
+      ctx.setLineDash([size * 0.16, size * 0.09]);
+      ctx.stroke();
+      ctx.setLineDash([]);
+      const transitProgress = (t * 0.12 + (landmark.seed % 101) / 101) % 1;
+      drawStructureLight(
+        ctx,
+        -size * 0.35 + size * 0.7 * transitProgress,
+        -size * 0.08,
+        size * 0.045,
+        color,
+        lightAlpha,
+      );
       break;
     }
     case 'archive': {
-      ctx.beginPath();
-      ctx.moveTo(-size * 0.62, -size * 0.62);
-      ctx.lineTo(-size * 0.62, size * 0.62);
-      ctx.stroke();
-      for (let row = -1; row <= 1; row += 1) {
-        ctx.beginPath();
-        ctx.moveTo(-size * 0.42, row * size * 0.42);
-        ctx.lineTo(size * (0.5 + row * 0.06), row * size * 0.42);
-        ctx.stroke();
+      const towerCount = 2 + complexity;
+      for (let tower = 0; tower < towerCount; tower += 1) {
+        const normalized = towerCount === 1 ? 0 : tower / (towerCount - 1);
+        const x = (normalized - 0.5) * size * 1.24;
+        const towerHeight = size * (0.54 + ((landmark.seed + tower * 3) % 5) * 0.08);
+        const towerWidth = size * (0.2 + ((landmark.seed + tower) % 3) * 0.025);
+        drawStructurePolygon(ctx, [
+          [x - towerWidth, size * 0.43],
+          [x - towerWidth * 0.82, size * 0.43 - towerHeight],
+          [x, size * 0.36 - towerHeight],
+          [x + towerWidth * 0.82, size * 0.43 - towerHeight],
+          [x + towerWidth, size * 0.43],
+        ], hull, outline, lineWidth);
+        drawWindowGrid(
+          ctx,
+          x - towerWidth * 0.6,
+          size * 0.5 - towerHeight,
+          towerWidth * 1.2,
+          towerHeight * 0.7,
+          2,
+          4,
+          color,
+          landmark.seed + tower,
+        );
       }
+      ctx.strokeStyle = accentDim;
       ctx.beginPath();
-      ctx.arc(size * 0.56, 0, size * 0.17, 0, Math.PI * 2);
-      ctx.fill();
+      ctx.moveTo(-size * 0.72, size * 0.18);
+      ctx.lineTo(size * 0.72, size * 0.18);
+      ctx.stroke();
+      drawStructureLight(ctx, 0, -size * 0.68 * variant, size * 0.05, color, lightAlpha);
       break;
     }
     case 'lattice': {
-      drawRegularPolygon(ctx, 6, size * 0.72, Math.PI / 6);
-      ctx.stroke();
-      for (let index = 0; index < 3; index += 1) {
-        const angle = index / 3 * Math.PI;
+      const towers = [
+        { x: -0.55, height: 0.63 },
+        { x: 0, height: 0.9 * variant },
+        { x: 0.55, height: 0.7 },
+      ];
+      for (const tower of towers) {
+        ctx.fillStyle = hull;
+        ctx.strokeStyle = outline;
+        ctx.fillRect(
+          size * (tower.x - 0.13),
+          size * (0.43 - tower.height),
+          size * 0.26,
+          size * tower.height,
+        );
+        ctx.strokeRect(
+          size * (tower.x - 0.13),
+          size * (0.43 - tower.height),
+          size * 0.26,
+          size * tower.height,
+        );
+        drawWindowGrid(
+          ctx,
+          size * (tower.x - 0.09),
+          size * (0.49 - tower.height),
+          size * 0.18,
+          size * tower.height * 0.72,
+          2,
+          4,
+          color,
+          landmark.seed + Math.round(tower.x * 10),
+        );
+      }
+      for (const height of [-0.05, 0.22]) {
+        ctx.strokeStyle = 'rgba(15,20,28,0.96)';
+        ctx.lineWidth = size * 0.13;
         ctx.beginPath();
-        ctx.moveTo(Math.cos(angle) * size * 0.72, Math.sin(angle) * size * 0.72);
-        ctx.lineTo(-Math.cos(angle) * size * 0.72, -Math.sin(angle) * size * 0.72);
+        ctx.moveTo(-size * 0.54, size * height);
+        ctx.lineTo(size * 0.54, size * height);
+        ctx.stroke();
+        ctx.strokeStyle = accentDim;
+        ctx.lineWidth = lineWidth;
         ctx.stroke();
       }
       break;
     }
     case 'veil': {
-      ctx.save();
-      ctx.shadowBlur = 0;
-      ctx.fillStyle = 'rgba(0,0,0,0.72)';
+      ctx.fillStyle = 'rgba(3,5,9,0.46)';
       ctx.beginPath();
-      ctx.arc(0, 0, size * 0.72, 0, Math.PI * 2);
+      ctx.moveTo(-size * 0.92, size * 0.38);
+      ctx.lineTo(0, -size * 0.96);
+      ctx.lineTo(size * 0.92, size * 0.38);
+      ctx.closePath();
       ctx.fill();
-      ctx.restore();
-      ctx.beginPath();
-      ctx.arc(size * 0.13, 0, size * 0.71, Math.PI * 0.35, Math.PI * 1.65);
-      ctx.stroke();
-      ctx.beginPath();
-      ctx.arc(-size * 0.38, 0, size * 0.12, 0, Math.PI * 2);
-      ctx.fill();
+      for (const side of [-1, 0, 1]) {
+        const x = side * size * 0.58;
+        const mastHeight = size * (0.58 + (side === 0 ? 0.24 : 0));
+        drawStructurePolygon(ctx, [
+          [x - size * 0.1, size * 0.43],
+          [x - size * 0.04, size * 0.43 - mastHeight],
+          [x + size * 0.04, size * 0.43 - mastHeight],
+          [x + size * 0.1, size * 0.43],
+        ], '#0a0b11', 'rgba(94,105,126,0.35)', lineWidth);
+        ctx.strokeStyle = accentDim;
+        ctx.beginPath();
+        ctx.arc(x, size * 0.4 - mastHeight, size * 0.15, Math.PI * 0.12, Math.PI * 0.88);
+        ctx.stroke();
+        drawStructureLight(ctx, x, size * 0.42 - mastHeight, size * 0.035, color, lightAlpha * 0.55);
+      }
       break;
     }
     case 'containment': {
-      ctx.strokeRect(-size * 0.58, -size * 0.58, size * 1.16, size * 1.16);
-      ctx.beginPath();
-      ctx.arc(0, 0, size * 0.38, 0, Math.PI * 2);
-      ctx.stroke();
-      ctx.beginPath();
-      ctx.arc(0, 0, size * 0.13, 0, Math.PI * 2);
-      ctx.fill();
+      if (orbital) {
+        ctx.fillStyle = hull;
+        ctx.strokeStyle = hardOutline;
+        ctx.lineWidth = lineWidth;
+        ctx.fillRect(-size * 0.58, -size * 0.35, size * 1.16, size * 0.7);
+        ctx.strokeRect(-size * 0.58, -size * 0.35, size * 1.16, size * 0.7);
+        for (const x of [-0.38, 0, 0.38]) {
+          ctx.strokeStyle = outline;
+          ctx.lineWidth = size * 0.1;
+          ctx.beginPath();
+          ctx.moveTo(size * x, -size * 0.42);
+          ctx.lineTo(size * x, size * 0.42);
+          ctx.stroke();
+        }
+        ctx.fillStyle = glass;
+        ctx.fillRect(-size * 0.15, -size * 0.22, size * 0.3, size * 0.44);
+        drawStructureLight(ctx, 0, 0, size * 0.06, color, lightAlpha);
+      } else {
+        drawStructurePolygon(ctx, [
+          [-size * 0.82, size * 0.42],
+          [-size * 0.62, -size * 0.28],
+          [-size * 0.36, -size * 0.5 * variant],
+          [size * 0.36, -size * 0.5 * variant],
+          [size * 0.62, -size * 0.28],
+          [size * 0.82, size * 0.42],
+        ], '#14181e', hardOutline, lineWidth * 1.2);
+        for (const side of [-1, 1]) {
+          ctx.strokeStyle = outline;
+          ctx.lineWidth = size * 0.1;
+          ctx.beginPath();
+          ctx.moveTo(side * size * 0.55, -size * 0.27);
+          ctx.lineTo(side * size * 0.68, size * 0.4);
+          ctx.stroke();
+        }
+        ctx.fillStyle = 'rgba(3,6,10,0.92)';
+        ctx.strokeStyle = accent;
+        ctx.lineWidth = lineWidth;
+        ctx.fillRect(-size * 0.25, -size * 0.16, size * 0.5, size * 0.58);
+        ctx.strokeRect(-size * 0.25, -size * 0.16, size * 0.5, size * 0.58);
+        ctx.beginPath();
+        ctx.moveTo(0, -size * 0.12);
+        ctx.lineTo(0, size * 0.38);
+        ctx.stroke();
+        drawStructureLight(ctx, 0, size * 0.11, size * 0.045, color, lightAlpha * 0.75);
+      }
       break;
     }
     case 'replication': {
-      const replicationPoints = [
-        [0, -0.52],
-        [-0.5, 0.34],
-        [0.5, 0.34],
-      ] as const;
+      ctx.strokeStyle = hardOutline;
+      ctx.lineWidth = size * 0.12;
       ctx.beginPath();
-      ctx.moveTo(0, -size * 0.52);
-      ctx.lineTo(-size * 0.5, size * 0.34);
-      ctx.lineTo(size * 0.5, size * 0.34);
-      ctx.closePath();
+      ctx.moveTo(-size * 0.68, size * 0.42);
+      ctx.lineTo(-size * 0.68, -size * 0.46 * variant);
+      ctx.lineTo(size * 0.68, -size * 0.46 * variant);
+      ctx.lineTo(size * 0.68, size * 0.42);
       ctx.stroke();
-      for (const [x, y] of replicationPoints) {
-        ctx.beginPath();
-        ctx.arc(x * size, y * size, size * 0.23, 0, Math.PI * 2);
-        ctx.fill();
+      ctx.strokeStyle = accentDim;
+      ctx.lineWidth = lineWidth;
+      ctx.beginPath();
+      ctx.moveTo(-size * 0.58, -size * 0.31 * variant);
+      ctx.lineTo(size * 0.58, -size * 0.31 * variant);
+      ctx.stroke();
+      ctx.fillStyle = hull;
+      ctx.strokeStyle = outline;
+      ctx.fillRect(-size * 0.34, -size * 0.18, size * 0.68, size * 0.6);
+      ctx.strokeRect(-size * 0.34, -size * 0.18, size * 0.68, size * 0.6);
+      for (const side of [-1, 1]) {
+        ctx.fillStyle = 'rgba(10,14,20,0.96)';
+        ctx.fillRect(side * size * 0.52 - size * 0.13, size * 0.14, size * 0.26, size * 0.22);
+        ctx.strokeRect(side * size * 0.52 - size * 0.13, size * 0.14, size * 0.26, size * 0.22);
       }
+      ctx.strokeStyle = accent;
+      ctx.beginPath();
+      ctx.moveTo(-size * 0.2, -size * 0.02);
+      ctx.lineTo(size * 0.2, -size * 0.02);
+      ctx.stroke();
+      drawStructureLight(ctx, 0, size * 0.2, size * 0.055, color, lightAlpha);
       break;
     }
     case 'accord': {
+      drawStructurePolygon(ctx, [
+        [-size * 0.75, size * 0.42],
+        [-size * 0.67, -size * 0.48 * variant],
+        [-size * 0.38, -size * 0.68 * variant],
+        [-size * 0.27, size * 0.42],
+      ], hull, outline, lineWidth);
+      drawStructurePolygon(ctx, [
+        [size * 0.27, size * 0.42],
+        [size * 0.38, -size * 0.68 * variant],
+        [size * 0.67, -size * 0.48 * variant],
+        [size * 0.75, size * 0.42],
+      ], hull, outline, lineWidth);
+      drawWindowGrid(ctx, -size * 0.62, -size * 0.38, size * 0.22, size * 0.58, 2, 4, color, landmark.seed);
+      drawWindowGrid(ctx, size * 0.4, -size * 0.38, size * 0.22, size * 0.58, 2, 4, color, landmark.seed + 1);
+      ctx.strokeStyle = 'rgba(20,25,33,0.96)';
+      ctx.lineWidth = size * 0.13;
       ctx.beginPath();
-      ctx.arc(-size * 0.28, 0, size * 0.48, -Math.PI * 0.7, Math.PI * 0.7);
+      ctx.moveTo(-size * 0.4, -size * 0.05);
+      ctx.lineTo(size * 0.4, -size * 0.05);
       ctx.stroke();
-      ctx.beginPath();
-      ctx.arc(size * 0.28, 0, size * 0.48, Math.PI * 0.3, Math.PI * 1.7);
+      ctx.strokeStyle = accent;
+      ctx.lineWidth = lineWidth;
       ctx.stroke();
+      ctx.fillStyle = glass;
+      ctx.strokeStyle = hardOutline;
       ctx.beginPath();
-      ctx.arc(0, 0, size * 0.16, 0, Math.PI * 2);
+      ctx.moveTo(-size * 0.27, size * 0.4);
+      ctx.quadraticCurveTo(0, -size * 0.19, size * 0.27, size * 0.4);
+      ctx.closePath();
       ctx.fill();
+      ctx.stroke();
       break;
     }
     case 'entropy': {
-      ctx.beginPath();
-      for (let step = 0; step <= 28; step += 1) {
-        const progress = step / 28;
-        const angle = progress * Math.PI * 4 + t * 0.08;
-        const radius = size * (0.1 + progress * 0.65);
-        const x = Math.cos(angle) * radius;
-        const y = Math.sin(angle) * radius;
-        if (step === 0) ctx.moveTo(x, y);
-        else ctx.lineTo(x, y);
+      for (const x of [-0.66, -0.48, 0.48, 0.66]) {
+        ctx.fillStyle = hull;
+        ctx.strokeStyle = outline;
+        ctx.fillRect(size * x - size * 0.07, -size * 0.29, size * 0.14, size * 0.64);
+        ctx.strokeRect(size * x - size * 0.07, -size * 0.29, size * 0.14, size * 0.64);
       }
-      ctx.stroke();
+      ctx.fillStyle = hull;
+      ctx.strokeStyle = hardOutline;
+      ctx.fillRect(-size * 0.38, -size * 0.5 * variant, size * 0.76, size * (0.93 + 0.5 * (variant - 1)));
+      ctx.strokeRect(-size * 0.38, -size * 0.5 * variant, size * 0.76, size * (0.93 + 0.5 * (variant - 1)));
+      for (let vent = 0; vent < 3; vent += 1) {
+        const y = -size * 0.28 + vent * size * 0.22;
+        ctx.fillStyle = hexAlpha(color, 0.18 + pulse * 0.14);
+        ctx.fillRect(-size * 0.24, y, size * 0.48, size * 0.09);
+      }
+      if (orbital) {
+        drawRadiatorPanel(ctx, -size * 1.02, -size * 0.2, size * 0.5, size * 0.42, color, lineWidth);
+        drawRadiatorPanel(ctx, size * 0.52, -size * 0.2, size * 0.5, size * 0.42, color, lineWidth);
+      }
+      drawStructureLight(ctx, 0, size * 0.02, size * 0.07, color, lightAlpha);
       break;
     }
     case 'aperture': {
-      drawRegularPolygon(ctx, 4, size * 0.78, Math.PI / 4);
-      ctx.stroke();
-      ctx.save();
-      ctx.shadowBlur = 0;
-      ctx.fillStyle = 'rgba(0,0,0,0.82)';
+      for (const side of [-1, 1]) {
+        const x = side * size * 0.63;
+        drawStructurePolygon(ctx, [
+          [x - size * 0.14, size * 0.43],
+          [x - size * 0.1, -size * 0.43],
+          [x + size * 0.1, -size * 0.43],
+          [x + size * 0.14, size * 0.43],
+        ], hull, outline, lineWidth);
+      }
+      ctx.strokeStyle = hardOutline;
+      ctx.lineWidth = size * 0.17;
       ctx.beginPath();
-      ctx.ellipse(0, 0, size * 0.32, size * 0.5, 0, 0, Math.PI * 2);
+      ctx.ellipse(0, -size * 0.07, size * 0.51, size * 0.62 * variant, 0, 0, Math.PI * 2);
+      ctx.stroke();
+      ctx.strokeStyle = accent;
+      ctx.lineWidth = lineWidth * 1.4;
+      ctx.setLineDash([size * 0.2, size * 0.09]);
+      ctx.stroke();
+      ctx.setLineDash([]);
+      ctx.fillStyle = 'rgba(1,2,5,0.96)';
+      ctx.beginPath();
+      ctx.ellipse(0, -size * 0.07, size * 0.38, size * 0.48 * variant, 0, 0, Math.PI * 2);
       ctx.fill();
-      ctx.restore();
+      ctx.strokeStyle = accentDim;
+      ctx.lineWidth = lineWidth;
       ctx.beginPath();
-      ctx.ellipse(0, 0, size * 0.34, size * 0.52, 0, 0, Math.PI * 2);
+      ctx.moveTo(-size * 0.62, -size * 0.3);
+      ctx.lineTo(size * 0.62, -size * 0.3);
       ctx.stroke();
+      drawStructureLight(ctx, 0, -size * (0.07 + 0.48 * variant), size * 0.045, color, lightAlpha * 0.8);
       break;
     }
+  }
+
+  if (landmark.tier >= 2) {
+    const antennaX = ((landmark.seed % 5) - 2) * size * 0.12;
+    ctx.beginPath();
+    ctx.moveTo(antennaX, -size * 0.56);
+    ctx.lineTo(antennaX, -size * 0.85);
+    ctx.strokeStyle = outline;
+    ctx.lineWidth = lineWidth;
+    ctx.stroke();
+    drawStructureLight(ctx, antennaX, -size * 0.87, size * 0.035, color, lightAlpha * 0.65);
   }
 
   ctx.restore();
@@ -1192,35 +1591,32 @@ function drawCivilizationLandmarks(
 
   if (points.length > 1 && connectionWeight > 0) {
     ctx.save();
-    ctx.strokeStyle = hexAlpha(palette.primary, Math.min(0.2, 0.06 + connectionWeight * 0.004));
-    ctx.lineWidth = Math.max(0.5, minDimension * 0.003);
-    ctx.setLineDash([Math.max(2, minDimension * 0.025), Math.max(2, minDimension * 0.018)]);
-    for (let index = 0; index < points.length; index += 1) {
-      const current = points[index]!;
-      const next = points[(index + 1) % points.length]!;
+    const orderedPoints = tier === 0 ? [...points].sort((left, right) => left.x - right.x) : points;
+    ctx.strokeStyle = hexAlpha(palette.primary, Math.min(0.18, 0.05 + connectionWeight * 0.003));
+    ctx.lineWidth = Math.max(0.6, minDimension * 0.0025);
+    for (let index = 0; index < orderedPoints.length - (tier === 0 ? 1 : 0); index += 1) {
+      const current = orderedPoints[index]!;
+      const next = orderedPoints[(index + 1) % orderedPoints.length]!;
       ctx.beginPath();
-      ctx.moveTo(current.x, current.y);
-      ctx.quadraticCurveTo(w * 0.5, h * 0.5, next.x, next.y);
-      ctx.stroke();
-    }
-    ctx.restore();
-  }
-
-  if (tier === 0) {
-    ctx.save();
-    ctx.strokeStyle = hexAlpha(palette.primary, 0.14);
-    ctx.lineWidth = Math.max(0.5, minDimension * 0.002);
-    for (const point of points) {
-      ctx.beginPath();
-      ctx.moveTo(point.x, point.y + point.size * 0.5);
-      ctx.lineTo(point.x, h * 0.91);
+      if (tier === 0) {
+        ctx.moveTo(current.x, current.y + current.size * 0.64);
+        ctx.quadraticCurveTo(
+          (current.x + next.x) * 0.5,
+          h * 0.88,
+          next.x,
+          next.y + next.size * 0.64,
+        );
+      } else {
+        ctx.moveTo(current.x, current.y);
+        ctx.quadraticCurveTo(w * 0.5, h * 0.5, next.x, next.y);
+      }
       ctx.stroke();
     }
     ctx.restore();
   }
 
   landmarks.forEach((landmark, index) => {
-    drawCivilizationLandmarkGlyph(ctx, landmark, points[index]!, t);
+    drawCivilizationLandmarkStructure(ctx, landmark, points[index]!, t, tier);
   });
 }
 
@@ -1357,6 +1753,8 @@ interface KardashevCanvasProps {
   fps?: number;
   /** Optional device-pixel-ratio cap for decorative/background scene instances. */
   maxDpr?: number;
+  /** Allows the RAF loop during a short, controlled mobile cinematic. */
+  allowMobileMotion?: boolean;
 }
 
 const TIER_LABELS: Record<KardashevTier, string> = {
@@ -1374,9 +1772,11 @@ function KardashevCanvas({
   paused = false,
   fps,
   maxDpr = 2,
+  allowMobileMotion = false,
 }: KardashevCanvasProps) {
   const canvasRef = useRef<HTMLCanvasElement>(null);
   const isMobile = useIsMobile();
+  const runtime = useRuntimePerformanceState();
   const isMobileRef = useRef(isMobile);
   isMobileRef.current = isMobile;
   const frameCountRef = useRef(0);
@@ -1474,7 +1874,9 @@ function KardashevCanvas({
     const secondaryColor = getSecondaryAffinityColor(stablePalette);
     const clampedFraction = Math.min(1, Math.max(0, progressFraction));
 
-    const shouldAnimate = !paused;
+    const shouldAnimate = !paused
+      && runtime.visible
+      && (!runtime.mobile || allowMobileMotion);
     const minFrameMs = shouldAnimate && fps && fps > 0 ? 1000 / fps : 0;
 
     const render = (now: number) => {
@@ -1530,7 +1932,7 @@ function KardashevCanvas({
       render(performance.now());
     }
     return () => cancelAnimationFrame(rafId);
-  }, [tier, stablePalette, profile, progressFraction, paused, fps, maxDpr, stars, galaxyPoints, patches, orbits, dysonSwarm, cityLights]);
+  }, [tier, stablePalette, profile, progressFraction, paused, fps, maxDpr, allowMobileMotion, runtime.mobile, runtime.visible, stars, galaxyPoints, patches, orbits, dysonSwarm, cityLights]);
 
   return (
     <>
@@ -1569,6 +1971,8 @@ export interface KardashevSceneProps {
   fps?: number;
   /** Optional device-pixel-ratio cap for decorative/background scene instances. */
   maxDpr?: number;
+  /** Keeps this scene animated on mobile when it is itself a controlled cinematic. */
+  allowMobileMotion?: boolean;
 }
 
 export function KardashevScene({
@@ -1580,7 +1984,10 @@ export function KardashevScene({
   paused = false,
   fps,
   maxDpr,
+  allowMobileMotion = false,
 }: KardashevSceneProps) {
+  const runtime = useRuntimePerformanceState();
+  const runtimePaused = paused || !runtime.visible || (runtime.mobile && !allowMobileMotion);
   const civName = getCivilizationName(palette, tier);
   const civKey = `${tier}-${palette.primary}-${palette.secondary}`;
   const sceneKey = `${tier}-${profile.key}`;
@@ -1599,19 +2006,20 @@ export function KardashevScene({
           <motion.div
             key={sceneKey}
             className="absolute inset-0"
-            initial={paused ? false : { opacity: 0, scale: 0.97 }}
-            animate={paused ? { opacity: 1, scale: 1 } : { opacity: 1, scale: 1 }}
-            exit={paused ? undefined : { opacity: 0, scale: 1.03 }}
-            transition={paused ? { duration: 0 } : { duration: TIER_CROSSFADE_DURATION_S, ease: 'easeInOut' }}
+            initial={runtimePaused ? false : { opacity: 0, scale: 0.97 }}
+            animate={runtimePaused ? { opacity: 1, scale: 1 } : { opacity: 1, scale: 1 }}
+            exit={runtimePaused ? undefined : { opacity: 0, scale: 1.03 }}
+            transition={runtimePaused ? { duration: 0 } : { duration: TIER_CROSSFADE_DURATION_S, ease: 'easeInOut' }}
           >
             <KardashevCanvas
               tier={tier}
               palette={palette}
               profile={profile}
               progressFraction={progressFraction}
-              paused={paused}
+              paused={runtimePaused}
               fps={fps}
               maxDpr={maxDpr}
+              allowMobileMotion={allowMobileMotion}
             />
           </motion.div>
         </AnimatePresence>
@@ -1622,9 +2030,9 @@ export function KardashevScene({
             key={civKey}
             className="absolute bottom-2 left-3 text-[9px] font-mono tracking-widest uppercase select-none pointer-events-none"
             style={{ color: 'rgba(180,200,255,0.28)' }}
-            initial={paused ? false : { opacity: 0 }}
-            animate={paused ? { opacity: 1 } : { opacity: 1, transition: { delay: CIV_LABEL_DELAY_S, duration: CIV_LABEL_DURATION_S, ease: 'easeInOut' } }}
-            exit={paused ? undefined : { opacity: 0, transition: { duration: CIV_LABEL_EXIT_S, ease: 'easeInOut' } }}
+            initial={runtimePaused ? false : { opacity: 0 }}
+            animate={runtimePaused ? { opacity: 1 } : { opacity: 1, transition: { delay: CIV_LABEL_DELAY_S, duration: CIV_LABEL_DURATION_S, ease: 'easeInOut' } }}
+            exit={runtimePaused ? undefined : { opacity: 0, transition: { duration: CIV_LABEL_EXIT_S, ease: 'easeInOut' } }}
           >
             {civName}
           </motion.div>

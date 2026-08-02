@@ -5,6 +5,7 @@ import { useEffect, useRef } from 'react';
 import { useIsMobile } from '@/hooks/use-mobile';
 import { CARD_ART } from './game-constants';
 import { BrandStampSVG } from './game-brand-stamp';
+import { useRuntimePerformanceState } from '@/lib/runtimePerformance';
 
 export type MarkerType = 'forgotten' | 'condemned' | 'nullified' | 'avatar_seed' | 'burned';
 export type PersistentMarkerType = Exclude<MarkerType, 'burned'>;
@@ -228,7 +229,6 @@ export function ArrivalBrandStrike({
       ? window.matchMedia('(prefers-reduced-motion: reduce)').matches
       : false,
   ).current;
-
   useEffect(() => {
     const maxDelay = strikes.length > 0 ? Math.max(...strikes.map(s => s.delay)) : 0;
     const firstDelay = strikes.length > 0 ? Math.min(...strikes.map(s => s.delay)) : 0;
@@ -745,12 +745,14 @@ function HeldBrandKeyword({
       ? window.matchMedia('(prefers-reduced-motion: reduce)').matches
       : false,
   ).current;
+  const runtime = useRuntimePerformanceState();
+  const freezePersistentBrand = reducedMotion || runtime.mobile || !runtime.visible;
   const stackOffset =
     (stackIndex - (stackCount - 1) / 2) * (compact ? 10 : 18);
 
   return (
     <motion.div
-      className="absolute inset-0 z-[15] flex items-center justify-center pointer-events-none"
+      className="persistent-brand-keyword absolute inset-0 z-[15] flex items-center justify-center pointer-events-none"
       initial={{ opacity: 0, scale: 0.96 }}
       animate={{ opacity: 1, scale: 1 }}
       transition={{ duration: 0.18, delay: delayS, ease: 'easeOut' }}
@@ -771,12 +773,12 @@ function HeldBrandKeyword({
             background: `radial-gradient(ellipse, ${bm.flashColor}4f 0%, ${bm.beamColor}26 48%, transparent 76%)`,
           }}
           animate={
-            reducedMotion
+            freezePersistentBrand
               ? { opacity: 0.34, scale: 1 }
               : { opacity: [0.16, 0.64, 0.16], scaleX: [0.98, 1.04, 0.98] }
           }
           transition={
-            reducedMotion
+            freezePersistentBrand
               ? { duration: 0.18, delay: delayS, ease: 'easeOut' }
               : {
                   duration: pulseDuration,
@@ -796,7 +798,7 @@ function HeldBrandKeyword({
             filter: restingGlow,
           }}
           animate={
-            reducedMotion
+            freezePersistentBrand
               ? { opacity: 0.88, scaleX: 1, filter: restingGlow }
               : {
                   opacity: [0.68, 1, 0.68],
@@ -805,7 +807,7 @@ function HeldBrandKeyword({
                 }
           }
           transition={
-            reducedMotion
+            freezePersistentBrand
               ? { duration: 0.18, delay: delayS, ease: 'easeOut' }
               : {
                   duration: pulseDuration,

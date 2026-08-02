@@ -1,4 +1,3 @@
-import React from 'react';
 import { LUMII_BEAT_COUNT } from '@/components/LumiiTutorial';
 import { BoardTerminus } from './game-board-terminus';
 import { BoardForge } from './game-board-forge';

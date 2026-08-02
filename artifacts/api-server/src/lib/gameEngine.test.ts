@@ -88,7 +88,11 @@ function finishByExhaustion(state: GameStateData) {
  * sets their bonuses to the requirements and forges a Tier 1 card,
  * which triggers checkLuminaries.
  */
-function claimLuminary(state: GameStateData, lumId: string) {
+function claimLuminary(
+  state: GameStateData,
+  lumId: string,
+  prepareBeforeForge?: (state: GameStateData) => void,
+) {
   const lum = LUMINARY_MAP.get(lumId);
   if (!lum) throw new Error(`Unknown luminary: ${lumId}`);
   const player = state.players[state.currentPlayerIndex];
@@ -98,6 +102,7 @@ function claimLuminary(state: GameStateData, lumId: string) {
     player.bonuses[c] = lum.requirements[c];
   }
   enrichPlayer(state, state.currentPlayerIndex);
+  prepareBeforeForge?.(state);
   // Only this Luminary should be active so no other arrivals fire.
   state.activeLuminaries = [lumId];
 
@@ -1791,36 +1796,115 @@ describe("Observer Effect (lum_tide) — scry and reorder decks by Continuum", (
 
 // ─── Balance Due (lum_pale) ───────────────────────────────────────────────────
 
-describe("Balance Due (lum_pale) — returns Affinities held above half supply", () => {
-  it("returns one Affinity of each type held above half its starting supply", () => {
+describe("Balance Due (lum_pale) — taxes holdings at half the starting supply", () => {
+  it("returns two tokens for every qualifying player and Affinity, including Singularity", () => {
     const state = makeGame();
-    // Give both players 10 of each color. The bank stays at its initial value (4
-    // for 2 players), so Balance Due's halfSupply = 4/2 = 2. 10 > 2 → each player
-    // returns 1 per color. Do NOT modify the bank so the hardcoded threshold holds.
-    for (const c of STANDARD_AFFINITY_KEYS) {
-      state.players[0].affinities[c] = 10;
-      state.players[1].affinities[c] = 10;
-    }
-    state.players[0].affinities.singularity = 5;
-    state.players[1].affinities.singularity = 5;
+    claimLuminary(state, "lum_pale", (prepared) => {
+      for (const player of prepared.players) {
+        for (const affinity of STANDARD_AFFINITY_KEYS) {
+          player.affinities[affinity] = 0;
+          player.bonuses[affinity] = 10;
+          prepared.affinityWell[affinity] = 4;
+        }
+        player.affinities.singularity = 0;
+      }
+      prepared.players[0].affinities = {
+        ...prepared.players[0].affinities,
+        flare: 2,
+        continuum: 1,
+        verdance: 3,
+        abyss: 0,
+        radiance: 1,
+        singularity: 3,
+      };
+      prepared.players[1].affinities = {
+        ...prepared.players[1].affinities,
+        flare: 1,
+        continuum: 2,
+        verdance: 0,
+        abyss: 4,
+        radiance: 0,
+        singularity: 2,
+      };
+    });
 
-    // claimLuminary will also call enrichPlayer (which modifies the bank), but
-    // Balance Due uses state.players.length to recompute the threshold (always 4 for
-    // 2 players), so the bank value doesn't affect the result.
-    const p1BeforeFlare = state.players[1].affinities.flare;    // = 10
-    const p1BeforeContinuum = state.players[1].affinities.continuum; // = 10
+    expect(state.players[0].affinities).toMatchObject({
+      flare: 0,
+      continuum: 1,
+      verdance: 1,
+      abyss: 0,
+      radiance: 1,
+      singularity: 1,
+    });
+    expect(state.players[1].affinities).toMatchObject({
+      flare: 1,
+      continuum: 0,
+      verdance: 0,
+      abyss: 2,
+      radiance: 0,
+      singularity: 2,
+    });
+    expect(state.pendingLuminaryActivationEvents[0]).toMatchObject({
+      luminaryId: "lum_pale",
+      affinityReturns: [
+        { playerId: "p1", affinityType: "flare", affinityAmount: 2 },
+        { playerId: "p1", affinityType: "verdance", affinityAmount: 2 },
+        { playerId: "p1", affinityType: "singularity", affinityAmount: 2 },
+        { playerId: "p2", affinityType: "continuum", affinityAmount: 2 },
+        { playerId: "p2", affinityType: "abyss", affinityAmount: 2 },
+      ],
+    });
+  });
 
-    claimLuminary(state, "lum_pale");
+  it("does nothing when every holding is below half the starting supply", () => {
+    const state = makeGame();
+    claimLuminary(state, "lum_pale", (prepared) => {
+      for (const player of prepared.players) {
+        for (const affinity of STANDARD_AFFINITY_KEYS) {
+          player.affinities[affinity] = 1;
+          player.bonuses[affinity] = 10;
+        }
+        player.affinities.singularity = 0;
+      }
+    });
 
-    // Player 1 (p2) made no Forge action and loses only Affinities from Balance Due.
-    // 10 > halfSupply(2) → returns 1 per color.
-    expect(state.players[1].affinities.flare).toBe(p1BeforeFlare - 1);
-    expect(state.players[1].affinities.continuum).toBe(p1BeforeContinuum - 1);
+    expect(state.players.every((player) => (
+      STANDARD_AFFINITY_KEYS.every((affinity) => player.affinities[affinity] === 1)
+    ))).toBe(true);
+    expect(state.pendingLuminaryActivationEvents[0]).toMatchObject({
+      luminaryId: "lum_pale",
+      affinityReturns: [],
+    });
+  });
 
-    // Player 0 (p1, the claimer) also loses 1 per color from Balance Due,
-    // plus any Affinities spent on the triggering Forge action. Net: at most -1 per type.
-    expect(state.players[0].affinities.flare).toBeLessThanOrEqual(9);
-    expect(state.players[0].affinities.continuum).toBeLessThanOrEqual(9);
+  it("returns two from a holding of three when the starting supply is five", () => {
+    const state = normalizeState(initializeGame([
+      { id: "p1", name: "Player 1" },
+      { id: "p2", name: "Player 2" },
+      { id: "p3", name: "Player 3" },
+    ], 3));
+    state.currentPlayerIndex = 0;
+
+    claimLuminary(state, "lum_pale", (prepared) => {
+      for (const player of prepared.players) {
+        for (const affinity of STANDARD_AFFINITY_KEYS) {
+          player.affinities[affinity] = 0;
+          player.bonuses[affinity] = 10;
+          prepared.affinityWell[affinity] = 5;
+        }
+        player.affinities.singularity = 0;
+      }
+      prepared.players[1].affinities.verdance = 3;
+      prepared.affinityWell.verdance = 2;
+    });
+
+    expect(state.players[1].affinities.verdance).toBe(1);
+    expect(state.affinityWell.verdance).toBe(4);
+    expect(state.pendingLuminaryActivationEvents[0]).toMatchObject({
+      affinityReturns: [
+        { playerId: "p2", affinityType: "verdance", affinityAmount: 2 },
+      ],
+    });
   });
 });
 
@@ -2911,6 +2995,27 @@ describe("developer Luminary sequence laboratory", () => {
       luminaryIds: ["lum_null", "lum_compass", "lum_ember"],
     });
     expect(state.devLuminarySequenceActive).toBe(true);
+  });
+
+  it("stages qualifying holdings for every player to demonstrate Pale Merchant's return", () => {
+    const state = makeGame();
+    state.players[0]!.affinities.abyss = 0;
+    state.players[0]!.affinities.radiance = 0;
+
+    const result = runDevLuminarySequence(state, "p1", {
+      luminaryIds: ["lum_pale"],
+      includeEndOfTurnEffects: false,
+      includeStartOfTurnEffects: false,
+    });
+
+    expect(result.success).toBe(true);
+    expect(state.pendingLuminaryActivationEvents[0]).toMatchObject({
+      luminaryId: "lum_pale",
+      affinityReturns: [
+        { playerId: "p1", affinityType: "flare", affinityAmount: 2 },
+        { playerId: "p2", affinityType: "continuum", affinityAmount: 2 },
+      ],
+    });
   });
 
   it("queues staged delayed hooks in production order after every arrival effect", () => {

@@ -8,6 +8,7 @@ import type {
   LuminaryActiveState,
 } from '@workspace/api-client-react';
 import { LuminaryCard } from './game-luminary';
+import { useRuntimePerformanceState } from '@/lib/runtimePerformance';
 
 export interface BoardTerminusProps {
   armedLumIds: Set<string>;
@@ -230,6 +231,8 @@ export function BoardTerminus({
   tutorialAttention,
   tutorialZone,
 }: BoardTerminusProps) {
+  const runtime = useRuntimePerformanceState();
+  const suspendPersistentMotion = suspendIdleMotion || runtime.mobile || !runtime.visible;
   const claimedByLuminaryId = useMemo(() => {
     const claimed = new Map<string, GamePlayerState>();
     for (const player of safePlayers) {
@@ -239,6 +242,17 @@ export function BoardTerminus({
     }
     return claimed;
   }, [safePlayers]);
+  const animatedClaimIds = useMemo(() => {
+    if (suspendPersistentMotion) return new Set<string>();
+
+    const ordered = [
+      ...claimedThisSession.filter(id => claimedByLuminaryId.has(id)),
+      ...safeLuminaries
+        .map(luminary => luminary.id)
+        .filter(id => claimedByLuminaryId.has(id) && !claimedThisSession.includes(id)),
+    ];
+    return new Set(ordered.slice(-2));
+  }, [claimedByLuminaryId, claimedThisSession, safeLuminaries, suspendPersistentMotion]);
 
   const affinityByLuminaryId = useMemo(
     () => new Map(luminaryAffinities.map(affinity => [affinity.luminaryId, affinity])),
@@ -345,7 +359,7 @@ export function BoardTerminus({
                 isArmed={armedLumIds.has(luminary.id)}
                 isFlashing={flashLumId === luminary.id}
                 burnCount={luminary.id === 'lum_bloom' ? burnPileCount : undefined}
-                suspendIdleMotion={suspendIdleMotion}
+                suspendIdleMotion={suspendPersistentMotion || !animatedClaimIds.has(luminary.id)}
                 onSelect={setSelectedLuminary}
               />
             );

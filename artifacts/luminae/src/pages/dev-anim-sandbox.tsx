@@ -2795,7 +2795,8 @@ function describeStep(step: AnimationTimelineStep): string {
     }
     case "affinityReturn": {
       const t = step.affinityType ? ` (${step.affinityType})` : "";
-      return `affinityReturn${t} · ${step.playerIds.length} player${step.playerIds.length !== 1 ? "s" : ""}`;
+      const amount = step.amount ? ` × ${step.amount}` : "";
+      return `affinityReturn${t}${amount} · ${step.playerIds.length} player${step.playerIds.length !== 1 ? "s" : ""}`;
     }
     case "deckScry": {
       const tiers = step.tierIds.map((t) => t.replace("tier", "T")).join("+");

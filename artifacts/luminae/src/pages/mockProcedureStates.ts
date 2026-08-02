@@ -220,11 +220,11 @@ export const MOCK_PROCEDURE_STATES: Record<string, MockProcedureEntry> = {
   },
 
   // 12. Pale Merchant — Balance Due
-  //     Affinity return from both players.
+  //     Every player at half of a starting supply returns two matching tokens.
   lum_pale: {
     state: base({ players: TWO_PLAYERS }),
     ownerId: 'mock-p1',
-    description: '2 players in room. Both panels highlighted; excess Affinities return to the Well.',
+    description: 'Qualifying players and Affinity channels are highlighted; two matching tokens return per qualifying type.',
   },
 
   // 13. Ember Sovereign — Cinder Mandate

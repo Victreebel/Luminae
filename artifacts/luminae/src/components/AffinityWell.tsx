@@ -686,7 +686,11 @@ export function AffinityWellCells({
                     </div>{/* end dimming wrapper */}
 
                     {/* ── Count + bonus chip row ── */}
-                    <div className="affinity-well-count-row" style={{ display: 'flex', flexDirection: 'row', alignItems: 'center', gap: 3 }}>
+                    <div
+                      className="affinity-well-count-row"
+                      data-affinity-held-source={c}
+                      style={{ display: 'flex', flexDirection: 'row', alignItems: 'center', gap: 3 }}
+                    >
                       {isSingularity ? (
                         /* Singularity: owned singularity count */
                         <span

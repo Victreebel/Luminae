@@ -52,6 +52,25 @@ vi.mock('../IronHarbingerResetDirector', () => ({
   ),
 }));
 
+vi.mock('../PaleMerchantReturnDirector', () => ({
+  PaleMerchantReturnDirector: ({
+    returns,
+    playbackMode,
+    timelinePlaybackRate,
+  }: {
+    returns: unknown[];
+    playbackMode?: string;
+    timelinePlaybackRate?: number;
+  }) => (
+    <div
+      data-testid="balance-due-director"
+      data-returns={JSON.stringify(returns)}
+      data-playback-mode={playbackMode}
+      data-timeline-playback-rate={timelinePlaybackRate}
+    />
+  ),
+}));
+
 function props(): ActivationDirectorRouterProps {
   const noop = vi.fn();
   return {
@@ -131,5 +150,46 @@ describe('ActivationDirectorRouter sequence composition', () => {
       .toHaveAttribute('data-playback-mode', 'swift');
     expect(screen.getByTestId('impact-extinction-director'))
       .toHaveAttribute('data-timeline-playback-rate', '4');
+  });
+
+  it('routes every authoritative Balance Due return instead of the legacy active Affinity', () => {
+    const paleProps = props();
+    paleProps.evt = {
+      eventId: 'pale-merchant-summon',
+      luminaryId: 'lum_pale',
+      effectType: 'summon',
+      triggeringPlayerId: 'player-1',
+      affinityType: 'flare',
+      affinityAmount: 2,
+      affinityReturns: [
+        { playerId: 'player-1', affinityType: 'verdance', affinityAmount: 2 },
+        { playerId: 'player-1', affinityType: 'singularity', affinityAmount: 2 },
+        { playerId: 'player-2', affinityType: 'abyss', affinityAmount: 2 },
+      ],
+    } as ActivationDirectorRouterProps['evt'];
+    paleProps.lum = {
+      id: 'lum_pale',
+      name: 'The Pale Merchant',
+      effectName: 'Balance Due',
+      effectDescription: 'Qualifying players return two matching Affinity tokens.',
+    } as ActivationDirectorRouterProps['lum'];
+    paleProps.state = {
+      players: [
+        { playerId: 'player-1', playerName: 'Aster' },
+        { playerId: 'player-2', playerName: 'Nox' },
+      ],
+    } as ActivationDirectorRouterProps['state'];
+
+    render(<ActivationDirectorRouter {...paleProps} />);
+    fireEvent.click(screen.getByTestId('activation-prelude'));
+
+    const director = screen.getByTestId('balance-due-director');
+    expect(JSON.parse(director.getAttribute('data-returns') ?? '[]')).toEqual([
+      { playerId: 'player-1', playerName: 'Aster', affinity: 'verdance', amount: 2 },
+      { playerId: 'player-1', playerName: 'Aster', affinity: 'singularity', amount: 2 },
+      { playerId: 'player-2', playerName: 'Nox', affinity: 'abyss', amount: 2 },
+    ]);
+    expect(director).toHaveAttribute('data-playback-mode', 'swift');
+    expect(director).toHaveAttribute('data-timeline-playback-rate', '4');
   });
 });

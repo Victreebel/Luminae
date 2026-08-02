@@ -57,6 +57,75 @@
   --radius-xl: calc(var(--radius) + 4px);
 }
 
+/* ── Automatic mobile runtime budget ───────────────────────────────────────
+   Persistent board decoration is deliberately cheaper than controlled
+   cinematics. The policy is driven by runtimePerformance.ts on <html>. */
+html[data-document-visible="false"] .game-shell *,
+html[data-document-visible="false"] .game-shell *::before,
+html[data-document-visible="false"] .game-shell *::after {
+  animation-play-state: paused !important;
+}
+
+.game-shell .game-header,
+.game-shell .board-forge,
+.game-shell .board-terminus,
+.game-shell .affinity-well-panel,
+.game-shell > [data-premium-cinematic] {
+  isolation: isolate;
+  contain: paint style;
+}
+
+.artifact-card-view[data-runtime-visible="false"],
+[data-runtime-visible="false"] [class*="lum-ambient-"] {
+  animation-play-state: paused !important;
+}
+
+@media (max-width: 1024px) and (pointer: coarse) {
+  .game-shell .game-cosmic-background {
+    animation: none !important;
+    transform: none !important;
+    opacity: 0.9;
+  }
+
+  .game-shell .game-cosmic-nebula {
+    opacity: 0.72;
+  }
+
+  .game-shell [class*="lum-ambient-"],
+  .game-shell .lum-idle-aura,
+  .game-shell .board-terminus-space::before,
+  .game-shell .board-terminus-space::after,
+  .game-shell .board-forge-embers {
+    animation: none !important;
+  }
+
+  .game-shell [class*="lum-ambient-"],
+  .game-shell .persistent-brand-keyword,
+  .game-shell .persistent-brand-keyword * {
+    transition-property: transform, opacity !important;
+    will-change: auto !important;
+  }
+
+  .game-shell .affinity-well-cell-emblem,
+  .game-shell [data-runtime-visible="false"] {
+    filter: none !important;
+  }
+
+  .game-shell .artifact-card-view,
+  .game-shell .forge-foundry-mold,
+  .game-shell .board-terminus-card-stage,
+  .game-shell .affinity-well-cell,
+  .game-shell .opponent-chip-shell {
+    contain: paint style;
+  }
+
+  .game-shell .artifact-card-view,
+  .game-shell .persistent-brand-keyword {
+    backface-visibility: hidden;
+    transform: translateZ(0);
+  }
+}
+
 /* Full Forge is an inspection surface on phones. Preserve complete molds and
    expose the over-width shelf through touch scrolling instead of clipping it. */
 @media (max-width: 680px) {
@@ -4714,6 +4783,7 @@ button,
   opacity: 0.72;
   mix-blend-mode: screen;
   animation: lum-claimed-native-portal-breathe 5.8s ease-in-out infinite;
+  will-change: transform, opacity;
 }
 .lum-claimed-native-portal::before,
 .lum-claimed-native-portal::after {
@@ -5784,7 +5854,9 @@ button,
 }
 
 .lum-portal-seal--idle-paused .luminary-claimed-free-entity,
-.game-shell[data-luminary-idle-suspended="true"] .luminary-claimed-free-entity {
+.lum-portal-seal--idle-paused .luminary-claimed-summoned-backdrop,
+.game-shell[data-luminary-idle-suspended="true"] .luminary-claimed-free-entity,
+.game-shell[data-luminary-idle-suspended="true"] .luminary-claimed-summoned-backdrop {
   will-change: auto;
 }
 
@@ -5817,12 +5889,10 @@ button,
   0%, 100% {
     opacity: 0.58;
     transform: translate(-50%, -50%) scale(0.965);
-    filter: saturate(0.95);
   }
   48% {
     opacity: 0.82;
     transform: translate(-50%, -50%) scale(1.025);
-    filter: saturate(1.18);
   }
 }
 

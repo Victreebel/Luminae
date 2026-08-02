@@ -156,6 +156,7 @@ export function VictoryCinematic({
           className="relative w-full h-full overflow-hidden bg-black"
           fps={30}
           maxDpr={1.25}
+          allowMobileMotion
         />
       </motion.div>
 

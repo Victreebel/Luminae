@@ -21,7 +21,7 @@
  * Luminary sequence lease freezes the board before any director mounts and is
  * the only layer permitted to release it.
  */
-import { useState, type ReactElement } from 'react';
+import { useMemo, useState, type ReactElement } from 'react';
 import { useReducedMotion } from 'framer-motion';
 import { ArtifactBrandingDirector } from './CinderMandateBrandingDirector';
 import type { CinderMandateBrandingActions } from './CinderMandateBrandingDirector';
@@ -29,6 +29,11 @@ import { CinderMandateBurnDirector } from './CinderMandateBurnDirector';
 import type { CinderMandateBurnActions, DirectorBurnSlot } from './CinderMandateBurnDirector';
 import { LuminaryActivationCinematic } from './LuminaryActivationCinematic';
 import { PhoenixArchiveReturnDirector } from './PhoenixArchiveReturnDirector';
+import {
+  PaleMerchantReturnDirector,
+  type PaleMerchantAffinityReturn,
+} from './PaleMerchantReturnDirector';
+import type { AffinityKey } from '@/lib/affinityMeta';
 import {
   IronHarbingerResetDirector,
   type IronHarbingerResetActions,
@@ -93,6 +98,14 @@ interface DirectorEntry {
  * unmatched events use it automatically.
  */
 const DIRECTOR_REGISTRY: readonly DirectorEntry[] = [
+  // ── Pale Merchant — global half-supply Affinity return ───────────────────
+  {
+    luminaryId: 'lum_pale',
+    effectType: 'summon',
+    preparesCamera: true,
+    render: (props) => <PaleMerchantActivationPrelude {...props} />,
+  },
+
   // ── Iron Harbinger — full Forge return, Archive shuffle, and redeal ──────
   {
     luminaryId: 'lum_forge',
@@ -190,6 +203,80 @@ const DIRECTOR_REGISTRY: readonly DirectorEntry[] = [
     render: (props) => <EmberEndTurnActivation {...props} />,
   },
 ];
+
+function PaleMerchantActivationPrelude({
+  evt,
+  lum,
+  triggeringPlayer,
+  state,
+  abridgedAnims,
+  playbackMode,
+  activationTimelineRate,
+  queuePosition,
+  queueTotal,
+  onResolutionStart,
+  onCinematicComplete,
+}: ActivationDirectorRouterProps) {
+  const [preludeComplete, setPreludeComplete] = useState(false);
+  const affinityReturns = useMemo<PaleMerchantAffinityReturn[]>(() => {
+    const authoritative = Array.isArray(evt.affinityReturns)
+      ? evt.affinityReturns
+      : evt.affinityType
+        ? [{
+            playerId: evt.triggeringPlayerId,
+            affinityType: evt.affinityType,
+            affinityAmount: evt.affinityAmount ?? 2,
+          }]
+        : [];
+    return authoritative.map((result) => ({
+      playerId: result.playerId,
+      playerName: state?.players?.find((player) => player.playerId === result.playerId)?.playerName,
+      affinity: result.affinityType as AffinityKey,
+      amount: result.affinityAmount,
+    }));
+  }, [evt.affinityAmount, evt.affinityReturns, evt.affinityType, evt.triggeringPlayerId, state?.players]);
+
+  if (!preludeComplete) {
+    const procedure = resolveLuminaryProcedure(
+      evt.luminaryId,
+      'summon',
+      state,
+      evt.triggeringPlayerId,
+      { targetCardIds: evt.targetCardIds, affinityReturns: evt.affinityReturns },
+    );
+    return (
+      <LuminaryActivationCinematic
+        luminaryId={evt.luminaryId}
+        effectType="summon"
+        luminaryName={lum?.name ?? 'The Pale Merchant'}
+        effectDescription="Each player returns two of every Affinity held at half or more of its starting supply."
+        triggeringPlayerName={triggeringPlayer?.playerName}
+        queuePosition={queuePosition}
+        queueTotal={queueTotal}
+        procedure={procedure.length > 0 ? procedure : undefined}
+        onResolutionStart={onResolutionStart}
+        reducedMotion={abridgedAnims}
+        playbackMode={playbackMode}
+        timelinePlaybackRate={activationTimelineRate}
+        sourceOnly
+        onComplete={() => setPreludeComplete(true)}
+      />
+    );
+  }
+
+  return (
+    <PaleMerchantReturnDirector
+      returns={affinityReturns}
+      triggeringPlayerName={triggeringPlayer?.playerName}
+      reducedMotion={abridgedAnims}
+      playbackMode={playbackMode}
+      timelinePlaybackRate={activationTimelineRate}
+      queuePosition={queuePosition}
+      queueTotal={queueTotal}
+      onComplete={onCinematicComplete}
+    />
+  );
+}
 
 function IronHarbingerActivationPrelude({
   evt,

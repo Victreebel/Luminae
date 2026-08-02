@@ -14,10 +14,20 @@ const CARD_ART_MODULES = import.meta.glob("../assets/cards/*.png", {
   query: "?url",
   import: "default",
 }) as Record<string, string>;
+const CARD_RUNTIME_ART_MODULES = import.meta.glob("../assets/cards/runtime/*.webp", {
+  eager: true,
+  query: "?url",
+  import: "default",
+}) as Record<string, string>;
 export const CARD_ART: Record<string, string> = {};
+export const CARD_RUNTIME_ART: Record<string, string> = {};
 for (const [path, url] of Object.entries(CARD_ART_MODULES)) {
   const id = path.split("/").pop()!.replace(".png", "");
   CARD_ART[id] = url;
+}
+for (const [path, url] of Object.entries(CARD_RUNTIME_ART_MODULES)) {
+  const id = path.split("/").pop()!.replace(".webp", "");
+  CARD_RUNTIME_ART[id] = url;
 }
 
 export const AFFINITIES: AffinityKey[] = [...AFFINITY_KEYS];

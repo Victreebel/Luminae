@@ -4,6 +4,7 @@
 
 import { z } from "zod";
 import {
+  AFFINITY_KEYS,
   compareVictoryStandings,
   KNOWN_AURA_STYLES,
   LUMINARY_IDS,
@@ -51,6 +52,12 @@ interface PhoenixRecurrenceState {
   recoveryPending: boolean;
 }
 
+export interface LuminaryAffinityReturn {
+  playerId: string;
+  affinityType: AffinityKey;
+  affinityAmount: number;
+}
+
 /** Emitted each time a Luminary's mechanical effect fires (arrival cutscene,
  *  end-of-turn hook, start-of-turn hook).  Clients consume it to trigger
  *  the 4-second activation cinematic overlay, then send
@@ -70,6 +77,12 @@ export interface PendingLuminaryActivationEvent {
    * artifactMarkers before the client animation runs).
    */
   targetCardIds?: string[];
+  /** Legacy single-return payload retained for queued games created before Balance Due became global. */
+  affinityType?: StandardAffinityKey;
+  /** Legacy single-return amount retained for queued games created before Balance Due became global. */
+  affinityAmount?: number;
+  /** Authoritative player/Affinity pairs returned by a global activation such as Balance Due. */
+  affinityReturns?: LuminaryAffinityReturn[];
 }
 
 const ERR_ARTIFACT_NOT_IN_FORGE = "Artifact is no longer in The Forge";
@@ -706,7 +719,7 @@ export const LUMINARIES: LuminaryDef[] = [
     summonSecondaryColor: "#0a0a14",
     auraStyle: "pale",
     effectName: "Balance Due",
-    effectDescription: "On arrival, each player holding more than half the starting supply of any Affinity must return 1 of that Affinity to the Well.",
+    effectDescription: "On arrival, each player returns 2 tokens of every Affinity they hold at half or more of its starting supply.",
   },
   // ── Triple-color Luminaries (2–4 Eminence) ──────────────────────────────────
   {
@@ -1705,29 +1718,46 @@ function applySummonEffect_avatarSeeds(
 
 function applySummonEffect_balanceDue(
   state: GameStateData,
-  player: PlayerGameState,
-): void {
-  // "More than half that affinity's starting supply" per player count.
-  const n = state.players.length === 2 ? 4 : state.players.length === 3 ? 5 : 7;
-  const halfSupply = n / 2; // e.g. 2 for 4-start, 2.5 for 5-start
+  owner: PlayerGameState,
+): LuminaryAffinityReturn[] {
+  const startingSupply = affinityWellForPlayerCount(state.players.length);
+  const returns: LuminaryAffinityReturn[] = [];
 
-  let totalReturned = 0;
-  for (const p of state.players) {
-    for (const c of STANDARD_AFFINITY_KEYS) {
-      if ((p.affinities[c] ?? 0) > halfSupply) {
-        p.affinities[c]--;
-        state.affinityWell[c]++;
-        totalReturned++;
-      }
+  for (const player of state.players) {
+    const playerReturns: LuminaryAffinityReturn[] = [];
+    for (const affinity of AFFINITY_KEYS) {
+      const threshold = Math.ceil(startingSupply[affinity] / 2);
+      if ((player.affinities[affinity] ?? 0) < threshold) continue;
+
+      player.affinities[affinity] -= 2;
+      state.affinityWell[affinity] += 2;
+      const result = { playerId: player.playerId, affinityType: affinity, affinityAmount: 2 };
+      returns.push(result);
+      playerReturns.push(result);
+    }
+
+    if (playerReturns.length > 0) {
+      const returned = playerReturns
+        .map(({ affinityType, affinityAmount }) => `${affinityAmount} ${affinityType}`)
+        .join(", ");
+      pushLog(state, {
+        playerId: player.playerId,
+        playerName: player.playerName,
+        summary: `The Pale Merchant — Balance Due: returned ${returned} Affinity to the Well`,
+        turn: state.roundNumber,
+      });
     }
   }
-  if (totalReturned > 0) {
+
+  if (returns.length === 0) {
     pushLog(state, {
-      playerId: player.playerId, playerName: player.playerName,
-      summary: `Pale Merchant — Balance Due: ${totalReturned} Affinity returned`,
+      playerId: owner.playerId,
+      playerName: owner.playerName,
+      summary: "The Pale Merchant — Balance Due: no player held half of an Affinity's starting supply",
       turn: state.roundNumber,
     });
   }
+  return returns;
 }
 
 function applySummonEffect_cinderMandate(
@@ -1813,6 +1843,7 @@ function pushActivationEvent(
   effectType: PendingLuminaryActivationEvent["effectType"],
   triggeringPlayerId: string,
   targetCardIds?: string[],
+  affinityResult?: Pick<PendingLuminaryActivationEvent, "affinityType" | "affinityAmount" | "affinityReturns">,
 ): void {
   if (!Array.isArray(state.pendingLuminaryActivationEvents)) {
     state.pendingLuminaryActivationEvents = [];
@@ -1824,6 +1855,7 @@ function pushActivationEvent(
     triggeringPlayerId,
     createdAt: Date.now(),
     ...(targetCardIds && targetCardIds.length > 0 ? { targetCardIds } : {}),
+    ...affinityResult,
   });
 }
 
@@ -1914,9 +1946,12 @@ function applySummonEffect(
       break;
     }
     case "lum_pale": {
-      // Balance Due: each player holding more than half starting supply returns 1.
-      applySummonEffect_balanceDue(state, player);
-      pushActivationEvent(state, lumId, "summon", player.playerId);
+      // Balance Due: every player at or above half of an Affinity's
+      // starting supply returns exactly two tokens of each qualifying type.
+      const affinityReturns = applySummonEffect_balanceDue(state, player);
+      pushActivationEvent(state, lumId, "summon", player.playerId, undefined, {
+        affinityReturns,
+      });
       break;
     }
     case "lum_ember": {
@@ -2438,6 +2473,27 @@ export function runDevLuminarySequence(
   const summonStart = state.pendingSummonEvents.length;
   const activationStart = state.pendingLuminaryActivationEvents.length;
   state.devLuminarySequenceActive = true;
+
+  // Keep Balance Due observable in the sequence lab even when the captured
+  // baseline has no qualifying holdings. The real game never receives this staging.
+  if (orderedIds.includes("lum_pale")) {
+    const startingSupply = affinityWellForPlayerCount(state.players.length);
+    const stagedAffinities: readonly StandardAffinityKey[] = [
+      "flare",
+      "continuum",
+      "verdance",
+      "abyss",
+      "radiance",
+    ];
+    state.players.forEach((gamePlayer, index) => {
+      const affinity = stagedAffinities[index % stagedAffinities.length]!;
+      const threshold = Math.ceil(startingSupply[affinity] / 2);
+      const needed = Math.max(0, threshold - (gamePlayer.affinities[affinity] ?? 0));
+      gamePlayer.affinities[affinity] += needed;
+      state.affinityWell[affinity] = Math.max(0, state.affinityWell[affinity] - needed);
+    });
+  }
+
   applyLuminaryBatch(state, player, orderedIds, 1);
 
   if (options.includeEndOfTurnEffects || options.includeStartOfTurnEffects) {

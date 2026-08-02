@@ -18,18 +18,18 @@ export const CIVILIZATION_TRAITS = [
 export type CivilizationTrait = (typeof CIVILIZATION_TRAITS)[number];
 
 export const CIVILIZATION_TRAIT_LABELS: Record<CivilizationTrait, string> = {
-  ignition: 'Ignition works',
-  biosphere: 'Living worlds',
-  chronology: 'Chronology',
-  transit: 'Transit lanes',
-  archive: 'Memory archives',
-  lattice: 'Civic lattices',
-  veil: 'Veiled sectors',
-  containment: 'Containment',
-  replication: 'Replication',
-  accord: 'Concordance',
-  entropy: 'Entropy works',
-  aperture: 'Deep apertures',
+  ignition: 'Reactor district',
+  biosphere: 'Biosphere arcology',
+  chronology: 'Chronometric array',
+  transit: 'Transit gate',
+  archive: 'Archive citadel',
+  lattice: 'Linked habitats',
+  veil: 'Veil emitter field',
+  containment: 'Containment vault',
+  replication: 'Fabrication yard',
+  accord: 'Concord complex',
+  entropy: 'Entropy furnace',
+  aperture: 'Aperture station',
 };
 
 const ARTIFACT_IDS_BY_TRAIT: Record<CivilizationTrait, readonly string[]> = {

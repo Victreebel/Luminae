@@ -3,6 +3,7 @@ import { createPortal } from 'react-dom';
 import { useFocusTrap } from '@/hooks/use-focus-trap';
 import { motion, AnimatePresence, useReducedMotion } from 'framer-motion';
 import { useIsMobile } from '@/hooks/use-mobile';
+import { useRuntimePerformanceState } from './runtimePerformance';
 import cardTier3Bg from '@assets/generated_images/card_tier3.png';
 import { ARRIVAL_CUTSCENE_BEATS_MS, gameAudio } from './audio';
 import { KNOWN_AURA_STYLES } from '@workspace/game-types';
@@ -187,6 +188,20 @@ export function getLuminaryImageAssets(id: string): LuminaryImageAssets {
     entityCutout,
     entityRuntime: _getLuminaryImage(id, 'entity_runtime') ?? entityCutout,
     cinematicArt: _getLuminaryImage(id, 'cinematic'),
+  };
+}
+
+/** Runtime-bounded textures used by the full-screen arrival renderer. */
+export function getLuminaryArrivalImageAssets(id: string) {
+  const assets = getLuminaryImageAssets(id);
+  return {
+    panelImage: assets.panelRuntime ?? assets.panelArt,
+    entityImage:
+      assets.entityRuntime
+      ?? assets.cinematicArt
+      ?? assets.entityCutout
+      ?? assets.panelRuntime
+      ?? assets.panelArt,
   };
 }
 
@@ -2027,22 +2042,36 @@ function drawCanvasTideEye(
   ctx.restore();
 }
 
-function createTintedImageCanvas(img: HTMLImageElement, tint = 'rgba(0,0,0,0.96)'): HTMLCanvasElement | null {
+function boundedTextureSize(width: number, height: number, maxDimension: number) {
+  const scale = Math.min(1, maxDimension / Math.max(width, height));
+  return {
+    width: Math.max(1, Math.round(width * scale)),
+    height: Math.max(1, Math.round(height * scale)),
+  };
+}
+
+function createTintedImageCanvas(
+  img: HTMLImageElement,
+  tint = 'rgba(0,0,0,0.96)',
+  maxDimension = 640,
+): HTMLCanvasElement | null {
   if (typeof document === 'undefined') return null;
   const iw = img.naturalWidth || img.width;
   const ih = img.naturalHeight || img.height;
   if (!iw || !ih) return null;
 
+  const bounded = boundedTextureSize(iw, ih, maxDimension);
+
   const canvas = document.createElement('canvas');
-  canvas.width = iw;
-  canvas.height = ih;
+  canvas.width = bounded.width;
+  canvas.height = bounded.height;
   const canvasCtx = canvas.getContext('2d');
   if (!canvasCtx) return null;
 
-  canvasCtx.drawImage(img, 0, 0, iw, ih);
+  canvasCtx.drawImage(img, 0, 0, bounded.width, bounded.height);
   canvasCtx.globalCompositeOperation = 'source-in';
   canvasCtx.fillStyle = tint;
-  canvasCtx.fillRect(0, 0, iw, ih);
+  canvasCtx.fillRect(0, 0, bounded.width, bounded.height);
   canvasCtx.globalCompositeOperation = 'source-over';
   return canvas;
 }
@@ -2060,24 +2089,27 @@ function drawTintedContainImageTransformed(
   scaleY = 1,
   rotation = 0,
   tint = 'rgba(0,0,0,0.96)',
+  maxTextureDimension = 640,
 ) {
   const iw = img.naturalWidth || img.width;
   const ih = img.naturalHeight || img.height;
   if (!iw || !ih) return;
 
-  if (scratch.width !== iw || scratch.height !== ih) {
-    scratch.width = iw;
-    scratch.height = ih;
+  const bounded = boundedTextureSize(iw, ih, maxTextureDimension);
+
+  if (scratch.width !== bounded.width || scratch.height !== bounded.height) {
+    scratch.width = bounded.width;
+    scratch.height = bounded.height;
   }
 
   const scratchCtx = scratch.getContext('2d');
   if (!scratchCtx) return;
-  scratchCtx.clearRect(0, 0, iw, ih);
+  scratchCtx.clearRect(0, 0, bounded.width, bounded.height);
   scratchCtx.globalCompositeOperation = 'source-over';
-  scratchCtx.drawImage(img, 0, 0, iw, ih);
+  scratchCtx.drawImage(img, 0, 0, bounded.width, bounded.height);
   scratchCtx.globalCompositeOperation = 'source-in';
   scratchCtx.fillStyle = tint;
-  scratchCtx.fillRect(0, 0, iw, ih);
+  scratchCtx.fillRect(0, 0, bounded.width, bounded.height);
   scratchCtx.globalCompositeOperation = 'source-over';
 
   const fit = Math.min(maxW / iw, maxH / ih) * scale;
@@ -2639,9 +2671,11 @@ function LuminaryArrivalCutsceneCanvas({
   onSkip,
   overrideColor,
 }: LuminaryArrivalCutsceneProps) {
+  const runtime = useRuntimePerformanceState();
   const canvasRef = useRef<HTMLCanvasElement | null>(null);
   const containerRef = useRef<HTMLElement | null>(null);
   const frameRef = useRef<number | null>(null);
+  const lastDrawRef = useRef(0);
   const startRef = useRef(0);
   const fadeStartRef = useRef<number | null>(null);
   const completedRef = useRef(false);
@@ -2661,11 +2695,11 @@ function LuminaryArrivalCutsceneCanvas({
     ? overrideColor
     : visPrimaryColor;
   const isEpicSnapshot = cinematicMode === 'epic' && !!boardSnapshot && !!cardRect;
-  const { panelArt, entityCutout, cinematicArt } = getLuminaryImageAssets(luminaryId);
-  // Use the transparent entity art for the moving figure. The cheap cinematic
-  // textures are useful fallbacks, but several are square renders; using them as
-  // the primary swing-in entity makes the summon feel boxed or visually swapped.
-  const entityImageSrc = luminaryId === 'lum_radiant' ? null : entityCutout ?? cinematicArt ?? panelArt;
+  const { panelImage, entityImage } = getLuminaryArrivalImageAssets(luminaryId);
+  const entityImageSrc = luminaryId === 'lum_radiant' ? null : entityImage;
+  const maxTextureDimension = runtime.mobile ? 512 : 768;
+  const canvasDprCap = runtime.mobile ? 1 : 1.25;
+  const frameIntervalMs = runtime.mobile ? 1000 / 30 : 0;
   const panelImageRef = useRef<HTMLImageElement | null>(null);
   const entityImageRef = useRef<HTMLImageElement | null>(null);
   const radiantLayerRefs = useRef<{
@@ -2677,13 +2711,31 @@ function LuminaryArrivalCutsceneCanvas({
   const silhouetteCanvasRef = useRef<HTMLCanvasElement | null>(null);
   const starsRef = useRef(seededStars(luminaryId, 70));
 
+  const releaseCanvasResources = () => {
+    const canvas = canvasRef.current;
+    if (canvas) {
+      canvas.width = 1;
+      canvas.height = 1;
+    }
+    const silhouette = silhouetteCanvasRef.current;
+    if (silhouette) {
+      silhouette.width = 1;
+      silhouette.height = 1;
+    }
+    panelImageRef.current = null;
+    entityImageRef.current = null;
+    silhouetteCanvasRef.current = null;
+    boardSnapshotImageRef.current = null;
+    radiantLayerRefs.current = { ring: null, body: null, core: null };
+  };
+
   useEffect(() => {
     let cancelled = false;
     panelImageRef.current = null;
-    if (panelArt) {
+    if (panelImage) {
       const img = new Image();
       img.decoding = 'async';
-      img.src = panelArt;
+      img.src = panelImage;
       img.onload = () => {
         if (cancelled) return;
         panelImageRef.current = img;
@@ -2691,7 +2743,7 @@ function LuminaryArrivalCutsceneCanvas({
       };
     }
     return () => { cancelled = true; };
-  }, [panelArt]);
+  }, [panelImage]);
 
   useEffect(() => {
     let cancelled = false;
@@ -2704,12 +2756,16 @@ function LuminaryArrivalCutsceneCanvas({
       img.onload = () => {
         if (cancelled) return;
         entityImageRef.current = img;
-        silhouetteCanvasRef.current = createTintedImageCanvas(img);
+        silhouetteCanvasRef.current = createTintedImageCanvas(
+          img,
+          'rgba(0,0,0,0.96)',
+          maxTextureDimension,
+        );
         redrawRef.current?.();
       };
     }
     return () => { cancelled = true; };
-  }, [entityImageSrc]);
+  }, [entityImageSrc, maxTextureDimension]);
 
   useEffect(() => {
     let cancelled = false;
@@ -2731,9 +2787,24 @@ function LuminaryArrivalCutsceneCanvas({
       };
     };
 
-    loadLayer('ring', _luminaryImageMap['lum_radiant/Radiant 1'] ?? null);
-    loadLayer('body', _luminaryImageMap['lum_radiant/Radiant 2'] ?? null);
-    loadLayer('core', _luminaryImageMap['lum_radiant/Radiant 3'] ?? null);
+    loadLayer(
+      'ring',
+      _luminaryImageMap['lum_radiant/radiant_1_runtime']
+        ?? _luminaryImageMap['lum_radiant/Radiant 1']
+        ?? null,
+    );
+    loadLayer(
+      'body',
+      _luminaryImageMap['lum_radiant/radiant_2_runtime']
+        ?? _luminaryImageMap['lum_radiant/Radiant 2']
+        ?? null,
+    );
+    loadLayer(
+      'core',
+      _luminaryImageMap['lum_radiant/radiant_3_runtime']
+        ?? _luminaryImageMap['lum_radiant/Radiant 3']
+        ?? null,
+    );
     return () => { cancelled = true; };
   }, [luminaryId]);
 
@@ -2788,13 +2859,17 @@ function LuminaryArrivalCutsceneCanvas({
   const loop = (now: number) => {
     const canvas = canvasRef.current;
     if (!canvas || completedRef.current) return;
-    draw(now);
+    if (frameIntervalMs === 0 || now - lastDrawRef.current >= frameIntervalMs) {
+      lastDrawRef.current = now;
+      draw(now);
+    }
     const elapsed = now - startRef.current;
     const fadeElapsed = fadeStartRef.current === null ? 0 : now - fadeStartRef.current;
     const fadeDuration = isEpicSnapshot ? 640 : 420;
     if (fadeStartRef.current !== null && fadeElapsed >= fadeDuration) {
       completedRef.current = true;
       frameRef.current = null;
+      releaseCanvasResources();
       onCompleteRef.current();
       return;
     }
@@ -2814,7 +2889,7 @@ function LuminaryArrivalCutsceneCanvas({
     const ctx = canvas?.getContext('2d', { alpha: true });
     if (!canvas || !ctx) return;
     const rect = canvas.getBoundingClientRect();
-    const dpr = Math.min(window.devicePixelRatio || 1, 1.5);
+    const dpr = Math.min(window.devicePixelRatio || 1, canvasDprCap);
     const targetW = Math.max(1, Math.floor(rect.width * dpr));
     const targetH = Math.max(1, Math.floor(rect.height * dpr));
     if (canvas.width !== targetW || canvas.height !== targetH) {
@@ -3273,6 +3348,7 @@ function LuminaryArrivalCutsceneCanvas({
             entityScaleY,
             rotation,
             'rgba(0,0,0,0.96)',
+            maxTextureDimension,
           );
         }
         ctx.restore();
@@ -3451,6 +3527,7 @@ function LuminaryArrivalCutsceneCanvas({
     setIsFinishing(false);
     gameAudio.playArrivalCutscene(auraStyle);
     startRef.current = performance.now();
+    lastDrawRef.current = 0;
     const resize = () => redrawRef.current?.();
     window.addEventListener('resize', resize);
     redrawRef.current = () => draw(performance.now());
@@ -3460,6 +3537,7 @@ function LuminaryArrivalCutsceneCanvas({
       if (frameRef.current !== null) cancelAnimationFrame(frameRef.current);
       frameRef.current = null;
       redrawRef.current = null;
+      releaseCanvasResources();
     };
   }, [luminaryId]); // eslint-disable-line react-hooks/exhaustive-deps
 
@@ -3488,6 +3566,9 @@ function LuminaryArrivalCutsceneCanvas({
     <div
       ref={(el) => { containerRef.current = el; }}
       className="fixed inset-0 z-[9000]"
+      data-arrival-texture-profile="bounded"
+      data-arrival-frame-rate={runtime.mobile ? '30' : 'display'}
+      data-arrival-dpr-cap={canvasDprCap}
       onClick={() => {
         if (awaitingDismiss) finish();
       }}
@@ -3619,8 +3700,8 @@ function LuminaryArrivalCutscenePerformance({
   const primaryColor = (overrideColor && overrideColor.startsWith('#') && overrideColor.length >= 7)
     ? overrideColor
     : visPrimaryColor;
-  const { panelArt, entityCutout, cinematicArt } = getLuminaryImageAssets(luminaryId);
-  const entityImage = luminaryId === 'lum_radiant' ? null : cinematicArt ?? entityCutout ?? panelArt;
+  const { entityImage: boundedEntityImage } = getLuminaryArrivalImageAssets(luminaryId);
+  const entityImage = luminaryId === 'lum_radiant' ? null : boundedEntityImage;
   const vw = typeof window !== 'undefined' ? window.innerWidth : 375;
   const vh = typeof window !== 'undefined' ? window.innerHeight : 667;
   const proxyW = Math.min(148, Math.max(112, vw * 0.20));
@@ -3735,7 +3816,7 @@ function LuminaryArrivalCutscenePerformance({
             border: `1px solid ${primaryColor}55`,
           }}
         >
-          <LuminaryPanelArt luminaryId={luminaryId} width={proxyW} height={proxyH} />
+          <LuminaryPanelArt luminaryId={luminaryId} width={proxyW} height={proxyH} runtime />
           <div className="absolute inset-0 pointer-events-none bg-gradient-to-b from-black/10 via-black/0 to-black/75" />
           {showCracks && (
             <div className="absolute inset-0 pointer-events-none">
@@ -4256,7 +4337,7 @@ function LuminaryArrivalCutsceneFull({
               }}
             >
               {/* Identical interior to LuminaryCard — same component, same props */}
-              <LuminaryPanelArt luminaryId={luminaryId} width={BOARD_CARD_W} height={BOARD_CARD_H} />
+              <LuminaryPanelArt luminaryId={luminaryId} width={BOARD_CARD_W} height={BOARD_CARD_H} runtime />
               {/* Same dark gradient the board card overlays for text legibility */}
               <div className="absolute inset-0 bg-gradient-to-b from-black/20 via-black/10 to-black/90 pointer-events-none" />
 
@@ -4778,7 +4859,7 @@ function LuminaryArrivalCutsceneFull({
                 draggable={false}
               />
             ) : (
-              <LuminaryPanelArt luminaryId={luminaryId} width={BOARD_CARD_W} height={BOARD_CARD_H} />
+              <LuminaryPanelArt luminaryId={luminaryId} width={BOARD_CARD_W} height={BOARD_CARD_H} runtime />
             )}
             {/* Affinity-colour transmutation — the vessel material is consumed by the
                 Luminary's energy. Ramps to full opacity (solid affinity colour) before

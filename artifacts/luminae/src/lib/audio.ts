@@ -94,10 +94,21 @@ const AFFINITY_FREQUENCIES: Record<AffinityKey, number> = {
   singularity: 880.0, // A5 — wild, special
 };
 
-class GameAudio {
+export class GameAudio {
   private ctx: AudioContext | null = null;
   private muted = false;
   private decodedAudio = new Map<string, Promise<AudioBuffer>>();
+  private transientEpoch = 0;
+  private transientVoices = new Map<AudioScheduledSourceNode, AudioNode[]>();
+  private transientBuses = new Map<AudioNode, {
+    nodes: AudioNode[];
+    cleanupTimer: ReturnType<typeof setTimeout>;
+  }>();
+  private arrivalBuses = new Map<GainNode, {
+    compressor: DynamicsCompressorNode;
+    cleanupTimer: ReturnType<typeof setTimeout> | null;
+  }>();
+  private activationBuses = new Map<GainNode, ReturnType<typeof setTimeout> | null>();
 
   // ── Music state ─────────────────────────────────────────────────────────
   private musicStarted = false;
@@ -108,20 +119,114 @@ class GameAudio {
   private endgameFilter: BiquadFilterNode | null = null;
   private noiseSource: AudioBufferSourceNode | null = null;
   private shimmerTimer: ReturnType<typeof setTimeout> | null = null;
+  private musicNodes = new Set<AudioNode>();
   private endgameIntensity = 0;
   private musicDuckUntil = 0;
   private readonly MUSIC_GAIN = 0.32;
 
-  // ── Arrival cutscene mute state ──────────────────────────────────────────
-  private _arrivalMasterGain: GainNode | null = null;
-  private _arrivalCtx: AudioContext | null = null;
-
-  // ── Activation sting mute state ──────────────────────────────────────────
-  private _activationGain: GainNode | null = null;
-  private _activationCtx: AudioContext | null = null;
-
   constructor() {
     this.muted = localStorage.getItem('luminae_muted') === 'true';
+  }
+
+  private disconnect(node: AudioNode | null | undefined) {
+    if (!node) return;
+    try {
+      node.disconnect();
+    } catch {}
+  }
+
+  private rememberMusic(...nodes: AudioNode[]) {
+    for (const node of nodes) this.musicNodes.add(node);
+  }
+
+  private trackVoice(source: AudioScheduledSourceNode, nodes: AudioNode[] = []) {
+    this.transientVoices.set(source, nodes);
+    const cleanup = () => {
+      this.disconnect(source);
+      for (const node of nodes) this.disconnect(node);
+      this.transientVoices.delete(source);
+    };
+    source.addEventListener('ended', cleanup, { once: true });
+  }
+
+  private disposeArrivalBus(masterGain: GainNode) {
+    const bus = this.arrivalBuses.get(masterGain);
+    if (!bus) return;
+    if (bus.cleanupTimer) clearTimeout(bus.cleanupTimer);
+    this.disconnect(bus.compressor);
+    this.disconnect(masterGain);
+    this.arrivalBuses.delete(masterGain);
+  }
+
+  private scheduleArrivalBusCleanup(masterGain: GainNode, delayMs: number) {
+    const bus = this.arrivalBuses.get(masterGain);
+    if (!bus) return;
+    if (bus.cleanupTimer) clearTimeout(bus.cleanupTimer);
+    bus.cleanupTimer = setTimeout(() => this.disposeArrivalBus(masterGain), delayMs);
+  }
+
+  private registerActivationBus(gain: GainNode, lifetimeMs = 12_000) {
+    const existing = this.activationBuses.get(gain);
+    if (existing) clearTimeout(existing);
+    const timer = setTimeout(() => this.disposeActivationBus(gain), lifetimeMs);
+    this.activationBuses.set(gain, timer);
+  }
+
+  private disposeActivationBus(gain: GainNode) {
+    const timer = this.activationBuses.get(gain);
+    if (timer) clearTimeout(timer);
+    this.disconnect(gain);
+    this.activationBuses.delete(gain);
+  }
+
+  private registerTransientBus(nodes: AudioNode[], lifetimeMs: number) {
+    const root = nodes[0];
+    if (!root) return;
+    const cleanupTimer = setTimeout(() => this.disposeTransientBus(root), lifetimeMs);
+    this.transientBuses.set(root, { nodes, cleanupTimer });
+  }
+
+  private disposeTransientBus(root: AudioNode) {
+    const bus = this.transientBuses.get(root);
+    if (!bus) return;
+    clearTimeout(bus.cleanupTimer);
+    for (const node of bus.nodes) this.disconnect(node);
+    this.transientBuses.delete(root);
+  }
+
+  /** Dispose one-shot presentation audio without interrupting ambient music. */
+  resetTransientAudio() {
+    this.transientEpoch += 1;
+    this.stopArrivalCutscene();
+    this.stopActivationSting();
+
+    for (const [source, nodes] of this.transientVoices) {
+      try {
+        source.stop();
+      } catch {}
+      this.disconnect(source);
+      for (const node of nodes) this.disconnect(node);
+    }
+    this.transientVoices.clear();
+
+    for (const masterGain of [...this.arrivalBuses.keys()]) {
+      this.disposeArrivalBus(masterGain);
+    }
+    for (const gain of [...this.activationBuses.keys()]) {
+      this.disposeActivationBus(gain);
+    }
+    for (const root of [...this.transientBuses.keys()]) {
+      this.disposeTransientBus(root);
+    }
+  }
+
+  getTransientResourceCounts() {
+    return {
+      voices: this.transientVoices.size,
+      buses: this.transientBuses.size,
+      arrivalBuses: this.arrivalBuses.size,
+      activationBuses: this.activationBuses.size,
+    };
   }
 
   isMuted() {
@@ -217,6 +322,7 @@ class GameAudio {
     g.gain.exponentialRampToValueAtTime(0.001, endTime);
     o.connect(g);
     g.connect(dest ?? ctx.destination);
+    this.trackVoice(o, [g]);
     o.start(startTime);
     o.stop(endTime + 0.05);
     return { o, g };
@@ -239,6 +345,7 @@ class GameAudio {
     src.connect(filt);
     filt.connect(g);
     g.connect(dest ?? ctx.destination);
+    this.trackVoice(src, [filt, g]);
     src.start(startTime);
     src.stop(startTime + duration + 0.05);
   }
@@ -262,6 +369,7 @@ class GameAudio {
     src.connect(filt);
     filt.connect(g);
     g.connect(dest ?? ctx.destination);
+    this.trackVoice(src, [filt, g]);
     src.start(startTime);
     src.stop(startTime + duration + 0.05);
   }
@@ -783,8 +891,7 @@ class GameAudio {
       }
 
       ag.connect(ctx.destination);
-      this._activationGain = ag;
-      this._activationCtx = ctx;
+      this.registerActivationBus(ag);
       void this.scheduleMp3(EFFECT_WAV, t, 0.8, undefined, ag);
     } catch (e) {
       console.warn('SFX failed', e);
@@ -793,15 +900,21 @@ class GameAudio {
 
   /** Immediately silence any in-progress activation sting (called on skip). */
   stopActivationSting() {
-    if (this._activationGain && this._activationCtx) {
+    const ctx = this.ctx;
+    if (!ctx) return;
+    for (const gain of [...this.activationBuses.keys()]) {
       try {
-        const t = this._activationCtx.currentTime;
-        this._activationGain.gain.cancelScheduledValues(t);
-        this._activationGain.gain.setValueAtTime(this._activationGain.gain.value, t);
-        this._activationGain.gain.linearRampToValueAtTime(0, t + 0.08);
+        const t = ctx.currentTime;
+        gain.gain.cancelScheduledValues(t);
+        gain.gain.setValueAtTime(gain.gain.value, t);
+        gain.gain.linearRampToValueAtTime(0, t + 0.08);
       } catch {}
-      this._activationGain = null;
-      this._activationCtx = null;
+      const existing = this.activationBuses.get(gain);
+      if (existing) clearTimeout(existing);
+      this.activationBuses.set(
+        gain,
+        setTimeout(() => this.disposeActivationBus(gain), 120),
+      );
     }
   }
 
@@ -988,8 +1101,7 @@ class GameAudio {
       }
 
       ag.connect(ctx.destination);
-      this._activationGain = ag;
-      this._activationCtx = ctx;
+      this.registerActivationBus(ag);
       void this.scheduleMp3(FORGOTTEN_HOUR_MP3, t, 0.72, undefined, ag);
     } catch (e) {
       console.warn('SFX failed', e);
@@ -1087,6 +1199,7 @@ class GameAudio {
       src.connect(lp);
       lp.connect(g);
       g.connect(ctx.destination);
+      this.trackVoice(src, [lp, g]);
       src.start(t);
       src.stop(t + 2.1);
       this.osc(ctx, 220, 'sine', t + 0.1, t + 1.6, 0.05, 0.08);
@@ -1158,6 +1271,8 @@ class GameAudio {
     g.gain.exponentialRampToValueAtTime(0.001, startTime + dur);
     o.connect(g);
     g.connect(dest ?? ctx.destination);
+    this.trackVoice(o, [g]);
+    this.trackVoice(lfo, [lfg]);
     lfo.start(startTime);
     o.start(startTime);
     lfo.stop(startTime + dur + 0.05);
@@ -1177,6 +1292,7 @@ class GameAudio {
     g.gain.exponentialRampToValueAtTime(0.001, startTime + dur);
     o.connect(g);
     g.connect(dest ?? ctx.destination);
+    this.trackVoice(o, [g]);
     o.start(startTime);
     o.stop(startTime + dur + 0.05);
   }
@@ -1188,6 +1304,7 @@ class GameAudio {
    */
   private async scheduleMp3(url: string, scheduledTime: number, volume: number, fadeOut?: { afterSeconds: number; durationSeconds: number }, dest?: AudioNode, attackSeconds = 0, attackStartRatio = 0): Promise<void> {
     if (this.muted) return;
+    const epoch = this.transientEpoch;
     try {
       const ctx = this.initCtx();
       let audioPromise = this.decodedAudio.get(url);
@@ -1207,7 +1324,7 @@ class GameAudio {
         this.decodedAudio.set(url, audioPromise);
       }
       const audioBuf = await audioPromise;
-      if (this.muted) return; // re-check after async gap
+      if (this.muted || epoch !== this.transientEpoch) return;
       const now = ctx.currentTime;
       if (now > scheduledTime + 0.6) return; // missed the window; skip silently
       const startAt = Math.max(now, scheduledTime);
@@ -1230,6 +1347,7 @@ class GameAudio {
       // so a gain ramp on the bus silences this source even if decode finishes
       // after the ramp was scheduled (race-free skip behaviour).
       gain.connect(dest ?? ctx.destination);
+      this.trackVoice(src, [gain]);
       src.start(startAt);
     } catch (e) {
       console.warn('[Luminae] MP3 schedule failed', e);
@@ -1394,8 +1512,8 @@ class GameAudio {
       masterGain.gain.value = 1;
       comp.connect(masterGain);
       masterGain.connect(ctx.destination);
-      this._arrivalMasterGain = masterGain;
-      this._arrivalCtx = ctx;
+      this.arrivalBuses.set(masterGain, { compressor: comp, cleanupTimer: null });
+      this.scheduleArrivalBusCleanup(masterGain, 13_000);
 
       const D = comp;
 
@@ -1544,7 +1662,7 @@ class GameAudio {
       // Each file is fetched+decoded async and scheduled precisely on the
       // AudioContext timeline. Decode typically completes well within the
       // ~3.0 s gap before the first beat (CRACK1).
-      // Route all MP3 SFX through _arrivalMasterGain (same bus as the procedural
+      // Route all MP3 SFX through the arrival master gain (same bus as the procedural
       // synthesis chain).  If stopArrivalCutscene() has already ramped the master
       // to 0 by the time a decode completes, the newly connected gain feeds into
       // a zero-output bus and stays silent — no separate per-source tracking needed.
@@ -1575,12 +1693,15 @@ class GameAudio {
    * Safe to call if no cutscene is playing.
    */
   stopArrivalCutscene() {
-    const ctx = this._arrivalCtx;
-    const gain = this._arrivalMasterGain;
-    if (!ctx || !gain) return;
+    const ctx = this.ctx;
+    if (!ctx || this.arrivalBuses.size === 0) return;
     const now = ctx.currentTime;
-    gain.gain.setValueAtTime(gain.gain.value, now);
-    gain.gain.linearRampToValueAtTime(0, now + 0.25);
+    for (const gain of [...this.arrivalBuses.keys()]) {
+      gain.gain.cancelScheduledValues(now);
+      gain.gain.setValueAtTime(gain.gain.value, now);
+      gain.gain.linearRampToValueAtTime(0, now + 0.25);
+      this.scheduleArrivalBusCleanup(gain, 320);
+    }
     this.restoreMusic(0.3);
   }
 
@@ -1610,6 +1731,7 @@ class GameAudio {
       master.gain.value = 0.24;
       comp.connect(master);
       master.connect(ctx.destination);
+      this.registerTransientBus([comp, master], 8_000);
       const D = comp;
 
       const s = (ms: number) => t + ms / 1000;
@@ -1794,6 +1916,7 @@ class GameAudio {
       impactCompressor.release.value = 0.2;
       impactFilter.connect(impactCompressor);
       impactCompressor.connect(ctx.destination);
+      this.registerTransientBus([impactFilter, impactCompressor], 3_000);
 
       // Sub-bass thud layers — the physical mass of the stamp
       this.osc(ctx, 52, 'sine', hit, hit + 0.6, 0.24, 0.004);
@@ -1862,6 +1985,7 @@ class GameAudio {
       master.gain.value = 0.34 * intensity;
       comp.connect(master);
       master.connect(ctx.destination);
+      this.registerTransientBus([comp, master], 4_000);
 
       const emerge = t + 0.66;
       const launch = t + 0.94;
@@ -1920,6 +2044,7 @@ class GameAudio {
       reverbOut.gain.value = 0.42;
       convolver.connect(reverbOut);
       reverbOut.connect(master);
+      this.rememberMusic(master, convolver, reverbOut);
 
       const connect = (node: AudioNode, dry: number, wet: number) => {
         const dg = ctx.createGain();
@@ -1930,6 +2055,7 @@ class GameAudio {
         node.connect(wg);
         dg.connect(master);
         wg.connect(convolver);
+        this.rememberMusic(dg, wg);
       };
 
       const drones = [
@@ -1942,6 +2068,7 @@ class GameAudio {
       for (const { freq, lfoHz, vol } of drones) {
         const pair = ctx.createGain();
         pair.gain.value = vol;
+        this.rememberMusic(pair);
         for (const d of [0, 4, -3]) {
           const o = ctx.createOscillator();
           o.type = 'sine';
@@ -1950,6 +2077,7 @@ class GameAudio {
           o.connect(pair);
           o.start();
           this.droneOscillators.push(o);
+          this.rememberMusic(o);
         }
         const lfo = ctx.createOscillator();
         const lfoG = ctx.createGain();
@@ -1960,11 +2088,13 @@ class GameAudio {
         lfoG.connect(pair.gain);
         lfo.start();
         this.droneOscillators.push(lfo);
+        this.rememberMusic(lfo, lfoG);
         const filt = ctx.createBiquadFilter();
         filt.type = 'lowpass';
         filt.frequency.value = 500;
         filt.Q.value = 0.5;
         pair.connect(filt);
+        this.rememberMusic(filt);
         connect(filt, 0.6, 0.4);
       }
 
@@ -1979,6 +2109,7 @@ class GameAudio {
       endgameFilter.Q.value = 1.2 + this.endgameIntensity * 2.4;
       endgameFilter.connect(endgameGain);
       this.endgameFilter = endgameFilter;
+      this.rememberMusic(endgameGain, endgameFilter);
 
       const pressureNotes = [220.0, 329.6, 440.0, 554.4];
       for (const [i, freq] of pressureNotes.entries()) {
@@ -1992,6 +2123,7 @@ class GameAudio {
         g.connect(endgameFilter);
         o.start();
         this.endgameOscillators.push(o);
+        this.rememberMusic(o, g);
       }
 
       const pulse = ctx.createOscillator();
@@ -2003,6 +2135,7 @@ class GameAudio {
       pulseG.connect(endgameGain.gain);
       pulse.start();
       this.endgameOscillators.push(pulse);
+      this.rememberMusic(pulse, pulseG);
 
       const noiseBuf = this.buildNoiseBuffer(ctx, 8);
       const noise = ctx.createBufferSource();
@@ -2025,12 +2158,16 @@ class GameAudio {
       noiseMod.start();
       noise.start();
       this.noiseSource = noise;
+      this.droneOscillators.push(noiseMod);
+      this.rememberMusic(noise, noiseLP, noiseMod, noiseModG, noiseG);
       connect(noiseG, 0.5, 0.5);
 
       this.scheduleShimmer(ctx, convolver, master);
     } catch (e) {
       console.warn('Ambient music failed', e);
       this.musicStarted = false;
+      for (const node of this.musicNodes) this.disconnect(node);
+      this.musicNodes.clear();
     }
   }
 
@@ -2045,12 +2182,14 @@ class GameAudio {
     const dronesToStop = this.droneOscillators;
     const endgameToStop = this.endgameOscillators;
     const noiseToStop = this.noiseSource;
+    const musicNodesToDisconnect = [...this.musicNodes];
     this.masterMusicGain = null;
     this.droneOscillators = [];
     this.endgameOscillators = [];
     this.endgameGain = null;
     this.endgameFilter = null;
     this.noiseSource = null;
+    this.musicNodes.clear();
     this.musicDuckUntil = 0;
 
     if (masterToStop && this.ctx) {
@@ -2070,6 +2209,7 @@ class GameAudio {
           o.stop();
         } catch {}
       }
+      for (const node of musicNodesToDisconnect) this.disconnect(node);
     }, 3000);
   }
 
@@ -2141,6 +2281,8 @@ class GameAudio {
           g.connect(wet);
           wet.connect(reverb);
           g.connect(master);
+          this.trackVoice(o, [g, wet]);
+          this.trackVoice(vib, [vibG]);
           vib.start();
           o.start();
           o.stop(ctx.currentTime + dur + 0.2);

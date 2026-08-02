@@ -64,7 +64,13 @@ export interface AffinityWellPanelScope {
   victoryRequirement: any;
 }
 
-export function AffinityWellPanel({ scope }: { scope: AffinityWellPanelScope }) {
+function sameScope(previous: AffinityWellPanelScope, next: AffinityWellPanelScope) {
+  const keys = Object.keys(previous) as Array<keyof AffinityWellPanelScope>;
+  return keys.length === Object.keys(next).length
+    && keys.every(key => Object.is(previous[key], next[key]));
+}
+
+export const AffinityWellPanel = React.memo(function AffinityWellPanel({ scope }: { scope: AffinityWellPanelScope }) {
   const {
     canPlan,
     cancelReturnPhase,
@@ -196,12 +202,17 @@ export function AffinityWellPanel({ scope }: { scope: AffinityWellPanelScope }) 
               variants={localTurnVariants}
               className="affinity-well-player flex items-center gap-1.5 min-w-0"
             >
-              <PlayerAvatar avatarId={session.avatarId} name={me.playerName} size={18} />
-              {isMyTurn && <span className="h-1.5 w-1.5 rounded-full bg-primary animate-pulse shrink-0" />}
-              <span className="text-[11px] font-semibold truncate max-w-[80px]">{me.playerName}</span>
-              {isMyTurn && (
-                <span className="text-[9px] font-bold text-primary bg-primary/15 px-1.5 py-0.5 rounded-full shrink-0">your turn</span>
-              )}
+              <span
+                data-player-affinity-source={me.playerId}
+                className="inline-flex min-w-0 items-center gap-1.5"
+              >
+                <PlayerAvatar avatarId={session.avatarId} name={me.playerName} size={18} />
+                {isMyTurn && <span className="h-1.5 w-1.5 rounded-full bg-primary animate-pulse shrink-0" />}
+                <span className="text-[11px] font-semibold truncate max-w-[80px]">{me.playerName}</span>
+                {isMyTurn && (
+                  <span className="text-[9px] font-bold text-primary bg-primary/15 px-1.5 py-0.5 rounded-full shrink-0">your turn</span>
+                )}
+              </span>
             </motion.div>
             {/* Right: stats */}
             <div className="affinity-well-status shrink-0">
@@ -267,7 +278,11 @@ export function AffinityWellPanel({ scope }: { scope: AffinityWellPanelScope }) 
                   ariaLabel={`${projectedHeldTotal} affinities held`}
                 />
               </span>
-              <span className="affinity-well-compact-avatar" title={me.playerName}>
+              <span
+                className="affinity-well-compact-avatar"
+                data-player-affinity-source={me.playerId}
+                title={me.playerName}
+              >
                 <PlayerAvatar avatarId={session.avatarId} name={me.playerName} size={16} />
               </span>
             </div>
@@ -637,4 +652,4 @@ export function AffinityWellPanel({ scope }: { scope: AffinityWellPanelScope }) 
 
     </div>
   );
-}
+}, (previous, next) => sameScope(previous.scope, next.scope));

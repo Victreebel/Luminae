@@ -1545,6 +1545,23 @@ components:
         - luminaryId
         - claimedByPlayerId
 
+    LuminaryAffinityReturn:
+      type: object
+      description: One authoritative player/Affinity token return caused by a Luminary activation
+      properties:
+        playerId:
+          type: string
+        affinityType:
+          type: string
+          enum: [flare, continuum, verdance, abyss, radiance, singularity]
+        affinityAmount:
+          type: integer
+          minimum: 0
+      required:
+        - playerId
+        - affinityType
+        - affinityAmount
+
     PendingLuminaryActivationEvent:
       type: object
       description: An activation event queued for the short (~4s) per-effect cinematic overlay
@@ -1568,6 +1585,19 @@ components:
           items:
             type: string
           description: Artifact IDs targeted by this activation (e.g. condemned Artifacts for start_of_turn burn). Captured server-side before state mutations clear artifactMarkers.
+        affinityType:
+          type: string
+          enum: [flare, continuum, verdance, abyss, radiance]
+          description: Legacy single-return Affinity retained for queued games created before Balance Due became global
+        affinityAmount:
+          type: integer
+          minimum: 0
+          description: Legacy single-return amount retained for queued games created before Balance Due became global
+        affinityReturns:
+          type: array
+          description: Authoritative player/Affinity pairs returned by a global activation such as Balance Due
+          items:
+            $ref: "#/components/schemas/LuminaryAffinityReturn"
       required:
         - eventId
         - luminaryId

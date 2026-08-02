@@ -270,6 +270,10 @@ export const StartGameBody = zod.object({
   sessionToken: zod.string(),
 });
 
+export const startGameResponsePendingLuminaryActivationEventsItemAffinityAmountMin = 0;
+
+export const startGameResponsePendingLuminaryActivationEventsItemAffinityReturnsItemAffinityAmountMin = 0;
+
 export const StartGameResponse = zod.object({
   roomId: zod.string(),
   status: zod.enum(["lobby", "playing", "finished"]),
@@ -713,6 +717,48 @@ export const StartGameResponse = zod.object({
             .describe(
               "Artifact IDs targeted by this activation (e.g. condemned Artifacts for start_of_turn burn). Captured server-side before state mutations clear artifactMarkers.",
             ),
+          affinityType: zod
+            .enum(["flare", "continuum", "verdance", "abyss", "radiance"])
+            .optional()
+            .describe(
+              "Legacy single-return Affinity retained for queued games created before Balance Due became global",
+            ),
+          affinityAmount: zod
+            .number()
+            .min(
+              startGameResponsePendingLuminaryActivationEventsItemAffinityAmountMin,
+            )
+            .optional()
+            .describe(
+              "Legacy single-return amount retained for queued games created before Balance Due became global",
+            ),
+          affinityReturns: zod
+            .array(
+              zod
+                .object({
+                  playerId: zod.string(),
+                  affinityType: zod.enum([
+                    "flare",
+                    "continuum",
+                    "verdance",
+                    "abyss",
+                    "radiance",
+                    "singularity",
+                  ]),
+                  affinityAmount: zod
+                    .number()
+                    .min(
+                      startGameResponsePendingLuminaryActivationEventsItemAffinityReturnsItemAffinityAmountMin,
+                    ),
+                })
+                .describe(
+                  "One authoritative player\/Affinity token return caused by a Luminary activation",
+                ),
+            )
+            .optional()
+            .describe(
+              "Authoritative player\/Affinity pairs returned by a global activation such as Balance Due",
+            ),
         })
         .describe(
           "An activation event queued for the short (~4s) per-effect cinematic overlay",
@@ -929,6 +975,10 @@ export const GetGameStateParams = zod.object({
 export const GetGameStateQueryParams = zod.object({
   sessionToken: zod.coerce.string(),
 });
+
+export const getGameStateResponsePendingLuminaryActivationEventsItemAffinityAmountMin = 0;
+
+export const getGameStateResponsePendingLuminaryActivationEventsItemAffinityReturnsItemAffinityAmountMin = 0;
 
 export const GetGameStateResponse = zod.object({
   roomId: zod.string(),
@@ -1373,6 +1423,48 @@ export const GetGameStateResponse = zod.object({
             .describe(
               "Artifact IDs targeted by this activation (e.g. condemned Artifacts for start_of_turn burn). Captured server-side before state mutations clear artifactMarkers.",
             ),
+          affinityType: zod
+            .enum(["flare", "continuum", "verdance", "abyss", "radiance"])
+            .optional()
+            .describe(
+              "Legacy single-return Affinity retained for queued games created before Balance Due became global",
+            ),
+          affinityAmount: zod
+            .number()
+            .min(
+              getGameStateResponsePendingLuminaryActivationEventsItemAffinityAmountMin,
+            )
+            .optional()
+            .describe(
+              "Legacy single-return amount retained for queued games created before Balance Due became global",
+            ),
+          affinityReturns: zod
+            .array(
+              zod
+                .object({
+                  playerId: zod.string(),
+                  affinityType: zod.enum([
+                    "flare",
+                    "continuum",
+                    "verdance",
+                    "abyss",
+                    "radiance",
+                    "singularity",
+                  ]),
+                  affinityAmount: zod
+                    .number()
+                    .min(
+                      getGameStateResponsePendingLuminaryActivationEventsItemAffinityReturnsItemAffinityAmountMin,
+                    ),
+                })
+                .describe(
+                  "One authoritative player\/Affinity token return caused by a Luminary activation",
+                ),
+            )
+            .optional()
+            .describe(
+              "Authoritative player\/Affinity pairs returned by a global activation such as Balance Due",
+            ),
         })
         .describe(
           "An activation event queued for the short (~4s) per-effect cinematic overlay",
@@ -1628,6 +1720,10 @@ export const SubmitActionBody = zod.object({
     .optional()
     .describe("Ordered list of luminaryIds for choose_luminary_order action"),
 });
+
+export const submitActionResponsePendingLuminaryActivationEventsItemAffinityAmountMin = 0;
+
+export const submitActionResponsePendingLuminaryActivationEventsItemAffinityReturnsItemAffinityAmountMin = 0;
 
 export const SubmitActionResponse = zod.object({
   roomId: zod.string(),
@@ -2071,6 +2167,48 @@ export const SubmitActionResponse = zod.object({
             .optional()
             .describe(
               "Artifact IDs targeted by this activation (e.g. condemned Artifacts for start_of_turn burn). Captured server-side before state mutations clear artifactMarkers.",
+            ),
+          affinityType: zod
+            .enum(["flare", "continuum", "verdance", "abyss", "radiance"])
+            .optional()
+            .describe(
+              "Legacy single-return Affinity retained for queued games created before Balance Due became global",
+            ),
+          affinityAmount: zod
+            .number()
+            .min(
+              submitActionResponsePendingLuminaryActivationEventsItemAffinityAmountMin,
+            )
+            .optional()
+            .describe(
+              "Legacy single-return amount retained for queued games created before Balance Due became global",
+            ),
+          affinityReturns: zod
+            .array(
+              zod
+                .object({
+                  playerId: zod.string(),
+                  affinityType: zod.enum([
+                    "flare",
+                    "continuum",
+                    "verdance",
+                    "abyss",
+                    "radiance",
+                    "singularity",
+                  ]),
+                  affinityAmount: zod
+                    .number()
+                    .min(
+                      submitActionResponsePendingLuminaryActivationEventsItemAffinityReturnsItemAffinityAmountMin,
+                    ),
+                })
+                .describe(
+                  "One authoritative player\/Affinity token return caused by a Luminary activation",
+                ),
+            )
+            .optional()
+            .describe(
+              "Authoritative player\/Affinity pairs returned by a global activation such as Balance Due",
             ),
         })
         .describe(

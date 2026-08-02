@@ -66,7 +66,7 @@ export type AnimationProcedureStep =
     }
   | { type: 'eminenceChange'; playerIds: string[]; amount: number }
   | { type: 'victoryRequirementChange'; amount: number }
-  | { type: 'affinityReturn'; playerIds: string[]; affinityType?: string }
+  | { type: 'affinityReturn'; playerIds: string[]; affinityType?: string; amount?: number }
   | { type: 'deckScry'; tierIds: string[]; affinityBias?: string }
   | { type: 'pendingAction'; action: 'assimilate'; ownerId: string }
   | {

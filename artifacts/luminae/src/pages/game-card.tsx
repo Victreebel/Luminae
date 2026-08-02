@@ -6,7 +6,7 @@ import { AFFINITY_META, type AffinityKey } from '@/lib/affinityMeta';
 import { AffinityEmblem } from '@/components/AffinityEmblem';
 import { CardBackTier1, CardBackTier2, CardBackTier3 } from '@/components/ArtifactCardBack';
 import { useFocusTrap } from '@/hooks/use-focus-trap';
-import { AFFINITIES, CARD_ART, AFFINITY_CARD_GRADIENTS, TIER_BACKDROPS } from './game-constants';
+import { AFFINITIES, CARD_ART, CARD_RUNTIME_ART, AFFINITY_CARD_GRADIENTS, TIER_BACKDROPS } from './game-constants';
 import cardTier1Bg from '@assets/generated_images/card_tier1.png';
 
 export function AffinityToken({
@@ -283,6 +283,21 @@ export const ArtifactCardView = React.memo(function ArtifactCardView({
   const bonusMeta = AFFINITY_META[card.bonusAffinity as AffinityKey];
   const cardTier = tier ?? card.tier ?? 1;
   const specificArt = CARD_ART[card.id];
+  const runtimeArt = CARD_RUNTIME_ART[card.id];
+  const cardRootRef = useRef<HTMLDivElement>(null);
+
+  useEffect(() => {
+    const node = cardRootRef.current;
+    if (!node || typeof IntersectionObserver === 'undefined') return;
+    const observer = new IntersectionObserver(
+      ([entry]) => {
+        node.dataset.runtimeVisible = entry?.isIntersecting ? 'true' : 'false';
+      },
+      { rootMargin: '120px 120px', threshold: 0.01 },
+    );
+    observer.observe(node);
+    return () => observer.disconnect();
+  }, []);
 
   const [ripples, setRipples] = useState<{ id: number; x: number; y: number }[]>([]);
   const rippleCounter = useRef(0);
@@ -291,9 +306,7 @@ export const ArtifactCardView = React.memo(function ArtifactCardView({
   const touchOrigin = useRef<{ x: number; y: number } | null>(null);
 
   const artLayerStyle: React.CSSProperties = {
-    backgroundImage: specificArt
-      ? `url(${specificArt})`
-      : cardTier === 2
+    backgroundImage: cardTier === 2
         ? (AFFINITY_CARD_GRADIENTS[card.bonusAffinity] ?? AFFINITY_CARD_GRADIENTS.radiance)
         : `url(${TIER_BACKDROPS[cardTier] ?? cardTier1Bg})`,
     backgroundSize: 'cover',
@@ -343,6 +356,7 @@ export const ArtifactCardView = React.memo(function ArtifactCardView({
 
   return (
     <motion.div
+      ref={cardRootRef}
       // SCALE CONVENTION: scale: 1.02 is safe here because this element IS the
       // overflow-hidden root — it clips its own children, not a parent clipping it.
       // Do NOT add scale-up hover to buttons/elements whose *ancestor* has overflow-hidden;
@@ -364,7 +378,21 @@ export const ArtifactCardView = React.memo(function ArtifactCardView({
       }}
       title={card.flavor || card.name}
     >
-      <div className="absolute inset-0 pointer-events-none" style={artLayerStyle} />
+      {specificArt ? (
+        <picture className="absolute inset-0 pointer-events-none">
+          {runtimeArt && <source media="(max-width: 1024px) and (pointer: coarse)" srcSet={runtimeArt} />}
+          <img
+            src={specificArt}
+            alt=""
+            className="h-full w-full object-cover"
+            loading="lazy"
+            decoding="async"
+            draggable={false}
+          />
+        </picture>
+      ) : (
+        <div className="absolute inset-0 pointer-events-none" style={artLayerStyle} />
+      )}
       {!specificArt && (
         <div
           className="absolute inset-0 pointer-events-none"

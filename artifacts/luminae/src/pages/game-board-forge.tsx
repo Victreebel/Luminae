@@ -63,7 +63,7 @@ export interface BoardForgeProps {
   viewOrchestrator: { onManualToggle: () => void };
 }
 
-export function BoardForge({
+export const BoardForge = React.memo(function BoardForge({
   brandDelayMap,
   burnChipAnim,
   burnChipArrivalAnim,
@@ -198,7 +198,7 @@ export function BoardForge({
 
     </>
   );
-}
+});
 
 function ForgeHeader() {
   return (

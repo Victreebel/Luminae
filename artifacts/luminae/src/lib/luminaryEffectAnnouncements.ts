@@ -53,8 +53,8 @@ const ANNOUNCEMENTS: Record<string, LuminaryAnnouncementCopy> = {
     resolution: 'A copy of your cheapest Tier I Artifact is added.',
   },
   lum_pale: {
-    source: 'Balance Due measures Affinity holdings.',
-    resolution: 'Excess Affinity returns to the Well.',
+    source: 'Balance Due audits every player’s Affinity holdings.',
+    resolution: 'Each player returns two of every Affinity held at half or more of its starting supply.',
   },
   lum_ember: {
     source: 'Cinder Mandate marks the Forge.',

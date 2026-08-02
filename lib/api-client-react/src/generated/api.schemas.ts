@@ -666,6 +666,28 @@ export interface PendingSummonEvent {
   createdAt?: number;
 }
 
+export type LuminaryAffinityReturnAffinityType =
+  (typeof LuminaryAffinityReturnAffinityType)[keyof typeof LuminaryAffinityReturnAffinityType];
+
+export const LuminaryAffinityReturnAffinityType = {
+  flare: "flare",
+  continuum: "continuum",
+  verdance: "verdance",
+  abyss: "abyss",
+  radiance: "radiance",
+  singularity: "singularity",
+} as const;
+
+/**
+ * One authoritative player/Affinity token return caused by a Luminary activation
+ */
+export interface LuminaryAffinityReturn {
+  playerId: string;
+  affinityType: LuminaryAffinityReturnAffinityType;
+  /** @minimum 0 */
+  affinityAmount: number;
+}
+
 /**
  * Which hook fired this event
  */
@@ -676,6 +698,20 @@ export const PendingLuminaryActivationEventEffectType = {
   summon: "summon",
   end_of_turn: "end_of_turn",
   start_of_turn: "start_of_turn",
+} as const;
+
+/**
+ * Legacy single-return Affinity retained for queued games created before Balance Due became global
+ */
+export type PendingLuminaryActivationEventAffinityType =
+  (typeof PendingLuminaryActivationEventAffinityType)[keyof typeof PendingLuminaryActivationEventAffinityType];
+
+export const PendingLuminaryActivationEventAffinityType = {
+  flare: "flare",
+  continuum: "continuum",
+  verdance: "verdance",
+  abyss: "abyss",
+  radiance: "radiance",
 } as const;
 
 /**
@@ -692,6 +728,15 @@ export interface PendingLuminaryActivationEvent {
   createdAt?: number;
   /** Artifact IDs targeted by this activation (e.g. condemned Artifacts for start_of_turn burn). Captured server-side before state mutations clear artifactMarkers. */
   targetCardIds?: string[];
+  /** Legacy single-return Affinity retained for queued games created before Balance Due became global */
+  affinityType?: PendingLuminaryActivationEventAffinityType;
+  /**
+   * Legacy single-return amount retained for queued games created before Balance Due became global
+   * @minimum 0
+   */
+  affinityAmount?: number;
+  /** Authoritative player/Affinity pairs returned by a global activation such as Balance Due */
+  affinityReturns?: LuminaryAffinityReturn[];
 }
 
 export type ArtifactMarkerType =

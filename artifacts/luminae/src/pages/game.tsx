@@ -1453,6 +1453,7 @@ export default function GameBoard() {
   useEffect(() => {
     gameAudio.startMusic();
     return () => {
+      gameAudio.resetTransientAudio();
       gameAudio.setEndgameIntensity(0);
       gameAudio.stopMusic();
     };
@@ -3510,6 +3511,10 @@ export default function GameBoard() {
       pendingTurnOrderIntroIdRef.current = openingTurnOrderId;
     }
     if (isRematch) {
+      gameAudio.resetTransientAudio();
+      gameAudio.setEndgameIntensity(0);
+      viewOrchestrator.endSequence({ immediate: true });
+      viewOrchestrator.restore({ immediate: true });
       initialTurnFiredRef.current = false;
       checkedInitialArrivalRef.current = false;
       handledArrivalEventIdsRef.current.clear();
@@ -4745,6 +4750,12 @@ export default function GameBoard() {
       setRematchVote(data);
     },
     onRematchStarted: (nextState, _sessionStats) => {
+      // A rematch is a hard presentation boundary. Dispose delayed decodes,
+      // one-shot sources, and cinematic buses before accepting the new epoch.
+      gameAudio.resetTransientAudio();
+      gameAudio.setEndgameIntensity(0);
+      viewOrchestrator.endSequence({ immediate: true });
+      viewOrchestrator.restore({ immediate: true });
       authoritativeStateIngress.replaceEpoch(nextState as GameState, 'websocket');
       setRematchVote(null);
       setVotePending(false);
@@ -6861,7 +6872,7 @@ export default function GameBoard() {
       {/* ── Cosmic background layers ──────────────────────────────────────── */}
       {/* Star-field photo: opacity pulses slowly so stars appear to breathe   */}
       <div
-        className="absolute inset-0 pointer-events-none"
+        className="game-cosmic-background absolute inset-0 pointer-events-none"
         style={{
           backgroundImage: `url(${backgroundCosmos})`,
           backgroundSize: 'cover',
@@ -6873,7 +6884,7 @@ export default function GameBoard() {
       <div className="absolute inset-0 bg-background/68 pointer-events-none" />
       {/* Nebula corner glows — affinity-palette tints, barely perceptible     */}
       <div
-        className="absolute inset-0 pointer-events-none"
+        className="game-cosmic-nebula absolute inset-0 pointer-events-none"
         style={{
           background:
             'radial-gradient(ellipse 55% 35% at 100% 0%,   #3D6BFF0F 0%, transparent 70%),' +

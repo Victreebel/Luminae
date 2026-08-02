@@ -297,7 +297,7 @@ export const LUMINARY_ANIMATION_CONFIG: Record<string, LuminaryAnimationConfig> 
       { type: 'targetClaim', targetIds: [] },
       { type: 'affinityReturn', playerIds: [] },
     ],
-    flavorLine: 'Pale scales briefly appear over overloaded Affinity channels; excess Affinity visibly returns to the Well — the debt is settled cleanly, without negotiation.',
+    flavorLine: 'Players holding at least half of an Affinity’s starting supply are marked, then two matching tokens return visibly to the shared Well.',
   },
 
   // 13. Ember Sovereign — Cinder Mandate

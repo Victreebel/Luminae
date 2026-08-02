@@ -249,13 +249,24 @@ function resolveOrchard(s: GameState, _ownerId: string): AnimationTimelineStep[]
 }
 
 // 12. Pale Merchant / Balance Due (lum_pale)
-//     luminaryPulse → player Affinity areas targetClaim → affinityReturn above the limit
-function resolvePale(s: GameState): AnimationTimelineStep[] {
-  const playerIds = allPlayerIds(s);
+//     luminaryPulse → qualifying players targetClaim → two tokens return per qualifying Affinity
+function resolvePale(
+  affinityReturns: Array<{
+    playerId: string;
+    affinityType: string;
+    affinityAmount: number;
+  }> = [],
+): AnimationTimelineStep[] {
+  const playerIds = [...new Set(affinityReturns.map((result) => result.playerId))];
   return [
     pulse('lum_pale'),
     { type: 'targetClaim', targetIds: playerIds },
-    { type: 'affinityReturn', playerIds },
+    ...affinityReturns.map((result) => ({
+      type: 'affinityReturn' as const,
+      playerIds: [result.playerId],
+      affinityType: result.affinityType,
+      amount: result.affinityAmount,
+    })),
   ];
 }
 
@@ -346,7 +357,14 @@ export function resolveLuminaryProcedure(
   effectType: EffectType,
   state: GameState | null | undefined,
   ownerId: string,
-  eventPayload?: { targetCardIds?: string[] },
+  eventPayload?: {
+    targetCardIds?: string[];
+    affinityReturns?: Array<{
+      playerId: string;
+      affinityType: string;
+      affinityAmount: number;
+    }>;
+  },
 ): AnimationTimelineStep[] {
   if (!state) return [];
   try {
@@ -362,7 +380,7 @@ export function resolveLuminaryProcedure(
       case 'lum_compass': return resolveCompass(state, effectType, eventPayload?.targetCardIds);
       case 'lum_seed':    return resolveSeed();
       case 'lum_orchard': return resolveOrchard(state, ownerId);
-      case 'lum_pale':    return resolvePale(state);
+      case 'lum_pale':    return resolvePale(eventPayload?.affinityReturns);
       case 'lum_ember':   return resolveEmber(state, effectType, eventPayload?.targetCardIds);
       case 'lum_hunger':  return resolveHunger(state, ownerId);
       case 'lum_null':    return resolveNull(state, eventPayload?.targetCardIds);

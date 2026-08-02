@@ -3,6 +3,7 @@ import { render } from '@testing-library/react';
 import { beforeAll, describe, expect, it, vi } from 'vitest';
 import type { Luminary, LuminaryActiveState } from '@workspace/api-client-react';
 import { LuminaryClaimedPortal } from '../game-luminary';
+import { getLuminaryArrivalImageAssets } from '@/lib/luminaryAssets';
 
 beforeAll(() => {
   Object.defineProperty(window, 'matchMedia', {
@@ -48,6 +49,13 @@ const activeState: LuminaryActiveState = {
 };
 
 describe('LuminaryClaimedPortal', () => {
+  it('selects bounded textures for the arrival renderer', () => {
+    const textures = getLuminaryArrivalImageAssets(luminary.id);
+
+    expect(textures.panelImage).toContain('panel_runtime.webp');
+    expect(textures.entityImage).toContain('entity_runtime.webp');
+  });
+
   it('reuses the summoned backdrop without the former spiral vortex', () => {
     const { container } = render(
       <LuminaryClaimedPortal
@@ -91,6 +99,22 @@ describe('LuminaryClaimedPortal', () => {
 
     expect(portal).toHaveClass('lum-portal-seal--idle-paused');
     expect(portal).toHaveAttribute('data-idle-motion-active', 'false');
+    expect(entityImage?.getAttribute('src')).toContain('entity_runtime.webp');
+  });
+
+  it('keeps board-sized entity art while idle motion is active', () => {
+    const { container } = render(
+      <LuminaryClaimedPortal
+        luminary={luminary}
+        luminaryAffinity={activeState}
+        idleMotionActive
+      />,
+    );
+
+    const entityImage = container.querySelector<HTMLImageElement>(
+      '.luminary-claimed-contained-art img',
+    );
+
     expect(entityImage?.getAttribute('src')).toContain('entity_runtime.webp');
   });
 });

@@ -22,7 +22,7 @@
  * presentations may interrupt the normal view, but always restore it afterward.
  */
 
-import { useRef, useCallback, useState } from 'react';
+import { useRef, useCallback, useEffect, useState } from 'react';
 import type { AnimationProcedureStep } from '@/lib/animationProcedure';
 
 // ─── Orchestration model ──────────────────────────────────────────────────────
@@ -280,6 +280,13 @@ function fadeForgeAndSwitch(
     onComplete?.();
     return;
   }
+  const forgeWithCleanup = forge as HTMLElement & {
+    _orchCleanup?: ReturnType<typeof setTimeout>;
+  };
+  if (forgeWithCleanup._orchCleanup) {
+    clearTimeout(forgeWithCleanup._orchCleanup);
+    forgeWithCleanup._orchCleanup = undefined;
+  }
   const durationMs = abridged ? FADE_SHORT_MS : FADE_FULL_MS;
   forge.style.transition = `opacity ${durationMs}ms ease-in-out`;
   forge.style.opacity    = String(fadeTo);
@@ -290,10 +297,10 @@ function fadeForgeAndSwitch(
     const cleanup = setTimeout(() => {
       forge.style.transition = '';
       forge.style.opacity    = '';
+      forgeWithCleanup._orchCleanup = undefined;
       onComplete?.();
     }, durationMs + 16);
-    (forge as HTMLElement & { _orchCleanup?: ReturnType<typeof setTimeout> })
-      ._orchCleanup = cleanup;
+    forgeWithCleanup._orchCleanup = cleanup;
   });
 }
 
@@ -497,6 +504,15 @@ export function useViewOrchestrator({
       scrollTimerRef.current = null;
     }
     removeScrollListener();
+    const forge = document.querySelector<HTMLElement>('[data-forge-section]') as
+      | (HTMLElement & { _orchCleanup?: ReturnType<typeof setTimeout> })
+      | null;
+    if (forge?._orchCleanup) {
+      clearTimeout(forge._orchCleanup);
+      forge._orchCleanup = undefined;
+      forge.style.transition = '';
+      forge.style.opacity = '';
+    }
     modelRef.current               = null;
     isProgrammaticScrollRef.current = false;
   }, [removeScrollListener]);
@@ -765,6 +781,12 @@ export function useViewOrchestrator({
       playerToggledCompactRef.current = true;
     }
   }, []);
+
+  useEffect(() => () => {
+    sequenceActiveRef.current = false;
+    pendingSequenceRestoreRef.current = null;
+    resetPerCinematic();
+  }, [resetPerCinematic]);
 
   return {
     beginSequence,

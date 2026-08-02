@@ -23,6 +23,7 @@ describe('ActivationDirectorRouter registry', () => {
       'lum_ember:summon',
       'lum_forge:summon',
       'lum_null:summon',
+      'lum_pale:summon',
     ]);
   });
 
@@ -48,6 +49,7 @@ describe('ActivationDirectorRouter registry', () => {
     expect(activationDirectorPreparesCamera('lum_compass', 'end_of_turn')).toBe(true);
     expect(activationDirectorPreparesCamera('lum_forge', 'summon')).toBe(true);
     expect(activationDirectorPreparesCamera('lum_null', 'summon')).toBe(true);
+    expect(activationDirectorPreparesCamera('lum_pale', 'summon')).toBe(true);
     expect(activationDirectorPreparesCamera('lum_astral', 'start_of_turn')).toBe(false);
   });
 });

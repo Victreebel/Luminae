@@ -248,7 +248,7 @@ The active Luminary pool is `AVAILABLE_LUMINARIES` (12 illustrated Luminaries). 
 | **Affinities** | Abyss, Radiance |
 | **Cost** | 4 Abyss + 4 Radiance |
 | **Eminence** | 3 |
-| **Effect** | On arrival, each player holding more than half the starting supply of any Affinity must return 1 of that Affinity to the Well. |
+| **Effect** | On arrival, each player returns 2 tokens of every Affinity they hold at half or more of its starting supply. |
 | **Flavor** | *"Every bargain reveals one truth and buries another."* |
 | **Animation Archetype** | `affinityReturn` |
 | **Procedure Steps** | `luminaryPulse` → `targetClaim` → `affinityReturn` (all affected players) |
