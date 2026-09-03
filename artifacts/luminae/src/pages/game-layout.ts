@@ -13,6 +13,18 @@ export interface BoardLayoutPolicy {
 
 const CIVILIZATION_PREVIEW_MIN_WIDTH = 1600;
 const CIVILIZATION_PREVIEW_MIN_HEIGHT = 900;
+const FULL_FORGE_LANDSCAPE_MIN_WIDTH = 1800;
+const FULL_FORGE_LANDSCAPE_MIN_HEIGHT = 1020;
+const FULL_FORGE_PORTRAIT_MIN_WIDTH = 900;
+const FULL_FORGE_PORTRAIT_MIN_HEIGHT = 1200;
+
+function fullForgeFitsViewport(width: number, height: number): boolean {
+  if (width > height) {
+    return width >= FULL_FORGE_LANDSCAPE_MIN_WIDTH && height >= FULL_FORGE_LANDSCAPE_MIN_HEIGHT;
+  }
+
+  return width >= FULL_FORGE_PORTRAIT_MIN_WIDTH && height >= FULL_FORGE_PORTRAIT_MIN_HEIGHT;
+}
 
 function createPolicy(
   viewportClass: BoardViewportClass,
@@ -37,6 +49,7 @@ export function getBoardLayoutPolicyForViewport(width: number, height: number): 
   const phonePortrait = !landscape && safeWidth <= 600;
   const phoneLandscape = landscape && (safeWidth <= 940 || safeHeight <= 600);
   const desktopLandscape = landscape && safeWidth >= 1200 && safeHeight >= 720;
+  const forceCompactForge = !fullForgeFitsViewport(safeWidth, safeHeight);
 
   if (phonePortrait) {
     return createPolicy('phone-portrait', 'stacked', 'base', { forceCompactForge: true });
@@ -66,17 +79,20 @@ export function getBoardLayoutPolicyForViewport(width: number, height: number): 
         ? 'left-civ'
         : 'base';
 
-    return createPolicy('desktop', density, layout, { sideAffinityWell: true });
+    return createPolicy('desktop', density, layout, {
+      sideAffinityWell: true,
+      forceCompactForge,
+    });
   }
 
   if (landscape) {
     return createPolicy('tablet', 'efficient', 'base', {
       sideAffinityWell: true,
-      forceCompactForge: safeHeight < 700,
+      forceCompactForge,
     });
   }
 
-  return createPolicy('tablet', 'stacked');
+  return createPolicy('tablet', 'stacked', 'base', { forceCompactForge });
 }
 
 export function getBoardLayoutPolicy(): BoardLayoutPolicy {
