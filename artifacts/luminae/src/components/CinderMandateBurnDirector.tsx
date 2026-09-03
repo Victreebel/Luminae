@@ -27,10 +27,7 @@
 import { useEffect, useRef } from 'react';
 import { animate } from 'framer-motion';
 import { createPortal } from 'react-dom';
-import {
-  LuminaryEffectAnnouncement,
-  LuminaryEffectSkipControl,
-} from './LuminaryEffectChrome';
+import { LuminaryEffectSkipControl } from './LuminaryEffectChrome';
 import type { AnimationProcedureStep } from '@/lib/animationProcedure';
 import {
   createLuminaryEffectSequence,
@@ -39,9 +36,11 @@ import {
 import type { ArtifactCard } from '@workspace/api-client-react';
 import {
   luminaryPacedDuration,
-  luminaryReadDuration,
   type LuminaryPlaybackMode,
 } from '@/lib/luminaryPresentationPacing';
+import { gameAudio } from '@/lib/audio';
+import { playLuminaryEffectPhaseSound } from '@/lib/luminaryEffectSound';
+import { MOLD_CAST_DURATION_MS } from '@/pages/game-mold-casting';
 
 // ─── Timing constants ─────────────────────────────────────────────────────────
 
@@ -157,9 +156,6 @@ export function CinderMandateBurnDirector({
   reducedMotion,
   playbackMode = 'standard',
   timelinePlaybackRate = 1,
-  triggeringPlayerName,
-  queuePosition = 1,
-  queueTotal = 1,
   actions,
   onComplete,
 }: CinderMandateBurnDirectorProps) {
@@ -226,23 +222,18 @@ export function CinderMandateBurnDirector({
       playbackMode,
       timelinePlaybackRate,
     );
-    const announceLeadMs = paced(180);
+    const announceLeadMs = reducedMotion ? 0 : paced(80);
     const cameraSettleMs = paced(800);
     const shudderMs = paced(SHUDDER_MS);
     const heatWashMs = paced(HEAT_WASH_MS);
     const burnFlashMs = timelinePlaybackRate > 1
       ? paced(BURN_FLASH_TOTAL_MS)
       : BURN_FLASH_TOTAL_MS;
-    const aftermathMs = paced(260);
-    const readableMs = luminaryReadDuration(
-      'All condemned Artifacts are burned.',
-      playbackMode,
-      timelinePlaybackRate,
-    );
-    const totalMs = Math.max(
-      readableMs,
-      announceLeadMs + cameraSettleMs + shudderMs + burnFlashMs + aftermathMs,
-    );
+    const aftermathMs = reducedMotion
+      ? 180
+      : paced(MOLD_CAST_DURATION_MS + 140);
+    const totalMs =
+      announceLeadMs + cameraSettleMs + shudderMs + burnFlashMs + aftermathMs;
     actionsRef.current.setAnimEndTime(totalMs);
 
     const sequence = createLuminaryEffectSequence({
@@ -367,8 +358,10 @@ export function CinderMandateBurnDirector({
       onPhaseChange: phase => {
         const decree = decreeRef.current;
         if (decree) decree.dataset.effectPhase = phase;
+        playLuminaryEffectPhaseSound('lum_ember', phase, '#ff5a3c');
       },
       onSkip: () => {
+        gameAudio.stopActivationSting();
         const decree = decreeRef.current;
         if (decree) decree.style.opacity = '0';
         actionsRef.current.unlockBoardScroll();
@@ -386,6 +379,7 @@ export function CinderMandateBurnDirector({
     return () => {
       sequence.cancel();
       if (sequenceRef.current === sequence) sequenceRef.current = null;
+      gameAudio.stopActivationSting();
       actionsRef.current.unlockBoardScroll();
     };
     // eslint-disable-next-line react-hooks/exhaustive-deps
@@ -397,7 +391,7 @@ export function CinderMandateBurnDirector({
   // No AnimatePresence or state needed — animation is fully imperative.
   return createPortal(
     <>
-      {/* Decree interstitial — fades in immediately, out at DECREE_MS */}
+      {/* Subtle effect wash; the shared source flash owns effect identification. */}
       <div
         ref={(el) => { decreeRef.current = el; }}
         data-testid="cinder-mandate-burn-director"
@@ -414,25 +408,13 @@ export function CinderMandateBurnDirector({
           opacity: 0,
         }}
       >
-        <LuminaryEffectAnnouncement
-          effectName="Cinder Mandate"
-          luminaryName="The Ember Sovereign"
-          description="All condemned Artifacts are burned."
-          triggeringPlayerName={triggeringPlayerName}
-          queueLabel={
-            queueTotal > 1
-              ? `END OF TURN EFFECT · ${queuePosition} OF ${queueTotal}`
-              : 'END OF TURN EFFECT'
-          }
-          primaryColor="#ef4444"
-          secondaryColor="#fbbf24"
-        />
         <LuminaryEffectSkipControl
           color="#ef4444"
           reducedMotion={reducedMotion}
           onAdvance={() => sequenceRef.current?.advance()}
           onSkip={() => sequenceRef.current?.skip()}
           label="Advance Cinder Mandate; hold to skip"
+          docked
         />
       </div>
 

@@ -20,13 +20,6 @@ export interface VictoryCinematicProps {
   onDismiss: () => void;
 }
 
-const TIER_LABELS: Record<KardashevTier, string> = {
-  0: 'Type 0 — Terrestrial',
-  1: 'Type I — Planetary',
-  2: 'Type II — Stellar',
-  3: 'Type III — Galactic',
-};
-
 // Phase timing constants (ms from mount)
 export const PHASE_1_MS = 800;   // board-reveal → darkening
 export const PHASE_2_MS = 1200;  // darkening → civ-in
@@ -200,7 +193,7 @@ export function VictoryCinematic({
         )}
       </motion.div>
 
-      {/* ── Civilization name + tier — delayed to ~2.4 s ── */}
+      {/* ── Civilization name — delayed to ~2.4 s ── */}
       <motion.div
         initial={{ opacity: 0, y: 10 }}
         animate={{ opacity: 1, y: 0 }}
@@ -212,9 +205,6 @@ export function VictoryCinematic({
           style={{ color: palette.primary, textShadow: `0 0 30px ${palette.primary}66` }}
         >
           {civName}
-        </div>
-        <div className="text-xs font-mono tracking-widest uppercase text-white/40">
-          {TIER_LABELS[tier]}
         </div>
       </motion.div>
 

@@ -18,16 +18,31 @@ import type {
 
 import type {
   AccountWithToken,
+  AcknowledgeArchitectRecordPresentation200,
+  AcknowledgeBlueprintVaultReveal200,
   ActionRequest,
   ActiveGamesResponse,
   AddAiPlayerBody,
+  ArchitectRecordState,
+  BlueprintChallengeSession,
+  BlueprintDecryptionKeyUseResult,
+  BlueprintLoadout,
+  BlueprintLoadoutBody,
+  BlueprintVaultResponse,
+  BlueprintVaultThresholdBody,
+  BlueprintVaultThresholdResult,
   CardLoreCatalog,
   ChallengeAcceptedResponse,
   ChallengeActionBody,
   ChallengeCreatedResponse,
   ChallengesResponse,
+  CivilizationIdentitySelection,
+  CivilizationIdentityUpdateResponse,
+  CosmeticLoadoutBody,
+  CosmeticLoadoutResponse,
   CreateChallengeBody,
   CreateRoomBody,
+  FirstPartyEventBody,
   FriendRequestActionBody,
   FriendRequestsResponse,
   FriendsListResponse,
@@ -38,8 +53,11 @@ import type {
   HostActionBody,
   JoinRoomBody,
   LoginBody,
+  OnboardingClaimBody,
   PlayerStatsResponse,
+  QualifyingMatchSession,
   QuitRoomBody,
+  RecordFirstPartyEvent202,
   RegisterBody,
   RejoinRoomBody,
   RematchBody,
@@ -48,6 +66,8 @@ import type {
   RoomPlayer,
   RoomWithPlayer,
   SendFriendRequestBody,
+  WithdrawBlueprintClearanceChallenge200,
+  WithdrawBlueprintClearanceChallengeBody,
 } from "./api.schemas";
 
 import { customFetch } from "../custom-fetch";
@@ -472,7 +492,7 @@ export const useJoinRoom = <
 };
 
 /**
- * @summary Reclaim an existing player slot in a room (works in any status)
+ * @summary Securely rotate an existing player's game session
  */
 export const getRejoinRoomUrl = (roomId: string) => {
   return `/api/rooms/${roomId}/rejoin`;
@@ -536,7 +556,7 @@ export type RejoinRoomMutationBody = BodyType<RejoinRoomBody>;
 export type RejoinRoomMutationError = ErrorType<void>;
 
 /**
- * @summary Reclaim an existing player slot in a room (works in any status)
+ * @summary Securely rotate an existing player's game session
  */
 export const useRejoinRoom = <
   TError = ErrorType<void>,
@@ -1503,6 +1523,1230 @@ export function useGetMe<
 
   return { ...query, queryKey: queryOptions.queryKey };
 }
+
+/**
+ * @summary Confirm the account's earned public civilization identity
+ */
+export const getUpdateCivilizationIdentityUrl = () => {
+  return `/api/auth/me/civilization-identity`;
+};
+
+export const updateCivilizationIdentity = async (
+  civilizationIdentitySelection: CivilizationIdentitySelection,
+  options?: RequestInit,
+): Promise<CivilizationIdentityUpdateResponse> => {
+  return customFetch<CivilizationIdentityUpdateResponse>(
+    getUpdateCivilizationIdentityUrl(),
+    {
+      ...options,
+      method: "PUT",
+      headers: { "Content-Type": "application/json", ...options?.headers },
+      body: JSON.stringify(civilizationIdentitySelection),
+    },
+  );
+};
+
+export const getUpdateCivilizationIdentityMutationOptions = <
+  TError = ErrorType<void>,
+  TContext = unknown,
+>(options?: {
+  mutation?: UseMutationOptions<
+    Awaited<ReturnType<typeof updateCivilizationIdentity>>,
+    TError,
+    { data: BodyType<CivilizationIdentitySelection> },
+    TContext
+  >;
+  request?: SecondParameter<typeof customFetch>;
+}): UseMutationOptions<
+  Awaited<ReturnType<typeof updateCivilizationIdentity>>,
+  TError,
+  { data: BodyType<CivilizationIdentitySelection> },
+  TContext
+> => {
+  const mutationKey = ["updateCivilizationIdentity"];
+  const { mutation: mutationOptions, request: requestOptions } = options
+    ? options.mutation &&
+      "mutationKey" in options.mutation &&
+      options.mutation.mutationKey
+      ? options
+      : { ...options, mutation: { ...options.mutation, mutationKey } }
+    : { mutation: { mutationKey }, request: undefined };
+
+  const mutationFn: MutationFunction<
+    Awaited<ReturnType<typeof updateCivilizationIdentity>>,
+    { data: BodyType<CivilizationIdentitySelection> }
+  > = (props) => {
+    const { data } = props ?? {};
+
+    return updateCivilizationIdentity(data, requestOptions);
+  };
+
+  return { mutationFn, ...mutationOptions };
+};
+
+export type UpdateCivilizationIdentityMutationResult = NonNullable<
+  Awaited<ReturnType<typeof updateCivilizationIdentity>>
+>;
+export type UpdateCivilizationIdentityMutationBody =
+  BodyType<CivilizationIdentitySelection>;
+export type UpdateCivilizationIdentityMutationError = ErrorType<void>;
+
+/**
+ * @summary Confirm the account's earned public civilization identity
+ */
+export const useUpdateCivilizationIdentity = <
+  TError = ErrorType<void>,
+  TContext = unknown,
+>(options?: {
+  mutation?: UseMutationOptions<
+    Awaited<ReturnType<typeof updateCivilizationIdentity>>,
+    TError,
+    { data: BodyType<CivilizationIdentitySelection> },
+    TContext
+  >;
+  request?: SecondParameter<typeof customFetch>;
+}): UseMutationResult<
+  Awaited<ReturnType<typeof updateCivilizationIdentity>>,
+  TError,
+  { data: BodyType<CivilizationIdentitySelection> },
+  TContext
+> => {
+  return useMutation(getUpdateCivilizationIdentityMutationOptions(options));
+};
+
+/**
+ * @summary Fetch the account's redacted Architect Record
+ */
+export const getGetArchitectRecordUrl = () => {
+  return `/api/campaigns/architect-record`;
+};
+
+export const getArchitectRecord = async (
+  options?: RequestInit,
+): Promise<ArchitectRecordState> => {
+  return customFetch<ArchitectRecordState>(getGetArchitectRecordUrl(), {
+    ...options,
+    method: "GET",
+  });
+};
+
+export const getGetArchitectRecordQueryKey = () => {
+  return [`/api/campaigns/architect-record`] as const;
+};
+
+export const getGetArchitectRecordQueryOptions = <
+  TData = Awaited<ReturnType<typeof getArchitectRecord>>,
+  TError = ErrorType<unknown>,
+>(options?: {
+  query?: UseQueryOptions<
+    Awaited<ReturnType<typeof getArchitectRecord>>,
+    TError,
+    TData
+  >;
+  request?: SecondParameter<typeof customFetch>;
+}) => {
+  const { query: queryOptions, request: requestOptions } = options ?? {};
+
+  const queryKey = queryOptions?.queryKey ?? getGetArchitectRecordQueryKey();
+
+  const queryFn: QueryFunction<
+    Awaited<ReturnType<typeof getArchitectRecord>>
+  > = ({ signal }) => getArchitectRecord({ signal, ...requestOptions });
+
+  return { queryKey, queryFn, ...queryOptions } as UseQueryOptions<
+    Awaited<ReturnType<typeof getArchitectRecord>>,
+    TError,
+    TData
+  > & { queryKey: QueryKey };
+};
+
+export type GetArchitectRecordQueryResult = NonNullable<
+  Awaited<ReturnType<typeof getArchitectRecord>>
+>;
+export type GetArchitectRecordQueryError = ErrorType<unknown>;
+
+/**
+ * @summary Fetch the account's redacted Architect Record
+ */
+
+export function useGetArchitectRecord<
+  TData = Awaited<ReturnType<typeof getArchitectRecord>>,
+  TError = ErrorType<unknown>,
+>(options?: {
+  query?: UseQueryOptions<
+    Awaited<ReturnType<typeof getArchitectRecord>>,
+    TError,
+    TData
+  >;
+  request?: SecondParameter<typeof customFetch>;
+}): UseQueryResult<TData, TError> & { queryKey: QueryKey } {
+  const queryOptions = getGetArchitectRecordQueryOptions(options);
+
+  const query = useQuery(queryOptions) as UseQueryResult<TData, TError> & {
+    queryKey: QueryKey;
+  };
+
+  return { ...query, queryKey: queryOptions.queryKey };
+}
+
+/**
+ * @summary Idempotently claim a completed first-contact tutorial
+ */
+export const getClaimArchitectRecordOnboardingUrl = () => {
+  return `/api/campaigns/architect-record/onboarding-claim`;
+};
+
+export const claimArchitectRecordOnboarding = async (
+  onboardingClaimBody: OnboardingClaimBody,
+  options?: RequestInit,
+): Promise<ArchitectRecordState> => {
+  return customFetch<ArchitectRecordState>(
+    getClaimArchitectRecordOnboardingUrl(),
+    {
+      ...options,
+      method: "POST",
+      headers: { "Content-Type": "application/json", ...options?.headers },
+      body: JSON.stringify(onboardingClaimBody),
+    },
+  );
+};
+
+export const getClaimArchitectRecordOnboardingMutationOptions = <
+  TError = ErrorType<unknown>,
+  TContext = unknown,
+>(options?: {
+  mutation?: UseMutationOptions<
+    Awaited<ReturnType<typeof claimArchitectRecordOnboarding>>,
+    TError,
+    { data: BodyType<OnboardingClaimBody> },
+    TContext
+  >;
+  request?: SecondParameter<typeof customFetch>;
+}): UseMutationOptions<
+  Awaited<ReturnType<typeof claimArchitectRecordOnboarding>>,
+  TError,
+  { data: BodyType<OnboardingClaimBody> },
+  TContext
+> => {
+  const mutationKey = ["claimArchitectRecordOnboarding"];
+  const { mutation: mutationOptions, request: requestOptions } = options
+    ? options.mutation &&
+      "mutationKey" in options.mutation &&
+      options.mutation.mutationKey
+      ? options
+      : { ...options, mutation: { ...options.mutation, mutationKey } }
+    : { mutation: { mutationKey }, request: undefined };
+
+  const mutationFn: MutationFunction<
+    Awaited<ReturnType<typeof claimArchitectRecordOnboarding>>,
+    { data: BodyType<OnboardingClaimBody> }
+  > = (props) => {
+    const { data } = props ?? {};
+
+    return claimArchitectRecordOnboarding(data, requestOptions);
+  };
+
+  return { mutationFn, ...mutationOptions };
+};
+
+export type ClaimArchitectRecordOnboardingMutationResult = NonNullable<
+  Awaited<ReturnType<typeof claimArchitectRecordOnboarding>>
+>;
+export type ClaimArchitectRecordOnboardingMutationBody =
+  BodyType<OnboardingClaimBody>;
+export type ClaimArchitectRecordOnboardingMutationError = ErrorType<unknown>;
+
+/**
+ * @summary Idempotently claim a completed first-contact tutorial
+ */
+export const useClaimArchitectRecordOnboarding = <
+  TError = ErrorType<unknown>,
+  TContext = unknown,
+>(options?: {
+  mutation?: UseMutationOptions<
+    Awaited<ReturnType<typeof claimArchitectRecordOnboarding>>,
+    TError,
+    { data: BodyType<OnboardingClaimBody> },
+    TContext
+  >;
+  request?: SecondParameter<typeof customFetch>;
+}): UseMutationResult<
+  Awaited<ReturnType<typeof claimArchitectRecordOnboarding>>,
+  TError,
+  { data: BodyType<OnboardingClaimBody> },
+  TContext
+> => {
+  return useMutation(getClaimArchitectRecordOnboardingMutationOptions(options));
+};
+
+/**
+ * @summary Idempotently acknowledge a saved Architect Record presentation
+ */
+export const getAcknowledgeArchitectRecordPresentationUrl = (
+  presentationId: string,
+) => {
+  return `/api/campaigns/architect-record/presentations/${presentationId}/acknowledge`;
+};
+
+export const acknowledgeArchitectRecordPresentation = async (
+  presentationId: string,
+  options?: RequestInit,
+): Promise<AcknowledgeArchitectRecordPresentation200> => {
+  return customFetch<AcknowledgeArchitectRecordPresentation200>(
+    getAcknowledgeArchitectRecordPresentationUrl(presentationId),
+    {
+      ...options,
+      method: "POST",
+    },
+  );
+};
+
+export const getAcknowledgeArchitectRecordPresentationMutationOptions = <
+  TError = ErrorType<unknown>,
+  TContext = unknown,
+>(options?: {
+  mutation?: UseMutationOptions<
+    Awaited<ReturnType<typeof acknowledgeArchitectRecordPresentation>>,
+    TError,
+    { presentationId: string },
+    TContext
+  >;
+  request?: SecondParameter<typeof customFetch>;
+}): UseMutationOptions<
+  Awaited<ReturnType<typeof acknowledgeArchitectRecordPresentation>>,
+  TError,
+  { presentationId: string },
+  TContext
+> => {
+  const mutationKey = ["acknowledgeArchitectRecordPresentation"];
+  const { mutation: mutationOptions, request: requestOptions } = options
+    ? options.mutation &&
+      "mutationKey" in options.mutation &&
+      options.mutation.mutationKey
+      ? options
+      : { ...options, mutation: { ...options.mutation, mutationKey } }
+    : { mutation: { mutationKey }, request: undefined };
+
+  const mutationFn: MutationFunction<
+    Awaited<ReturnType<typeof acknowledgeArchitectRecordPresentation>>,
+    { presentationId: string }
+  > = (props) => {
+    const { presentationId } = props ?? {};
+
+    return acknowledgeArchitectRecordPresentation(
+      presentationId,
+      requestOptions,
+    );
+  };
+
+  return { mutationFn, ...mutationOptions };
+};
+
+export type AcknowledgeArchitectRecordPresentationMutationResult = NonNullable<
+  Awaited<ReturnType<typeof acknowledgeArchitectRecordPresentation>>
+>;
+
+export type AcknowledgeArchitectRecordPresentationMutationError =
+  ErrorType<unknown>;
+
+/**
+ * @summary Idempotently acknowledge a saved Architect Record presentation
+ */
+export const useAcknowledgeArchitectRecordPresentation = <
+  TError = ErrorType<unknown>,
+  TContext = unknown,
+>(options?: {
+  mutation?: UseMutationOptions<
+    Awaited<ReturnType<typeof acknowledgeArchitectRecordPresentation>>,
+    TError,
+    { presentationId: string },
+    TContext
+  >;
+  request?: SecondParameter<typeof customFetch>;
+}): UseMutationResult<
+  Awaited<ReturnType<typeof acknowledgeArchitectRecordPresentation>>,
+  TError,
+  { presentationId: string },
+  TContext
+> => {
+  return useMutation(
+    getAcknowledgeArchitectRecordPresentationMutationOptions(options),
+  );
+};
+
+/**
+ * @summary Create or resume a standard 15-Eminence match against three Hard AIs
+ */
+export const getCreateOrResumeQualifyingMatchUrl = () => {
+  return `/api/campaigns/architect-record/qualifying-match`;
+};
+
+export const createOrResumeQualifyingMatch = async (
+  options?: RequestInit,
+): Promise<QualifyingMatchSession> => {
+  return customFetch<QualifyingMatchSession>(
+    getCreateOrResumeQualifyingMatchUrl(),
+    {
+      ...options,
+      method: "POST",
+    },
+  );
+};
+
+export const getCreateOrResumeQualifyingMatchMutationOptions = <
+  TError = ErrorType<unknown>,
+  TContext = unknown,
+>(options?: {
+  mutation?: UseMutationOptions<
+    Awaited<ReturnType<typeof createOrResumeQualifyingMatch>>,
+    TError,
+    void,
+    TContext
+  >;
+  request?: SecondParameter<typeof customFetch>;
+}): UseMutationOptions<
+  Awaited<ReturnType<typeof createOrResumeQualifyingMatch>>,
+  TError,
+  void,
+  TContext
+> => {
+  const mutationKey = ["createOrResumeQualifyingMatch"];
+  const { mutation: mutationOptions, request: requestOptions } = options
+    ? options.mutation &&
+      "mutationKey" in options.mutation &&
+      options.mutation.mutationKey
+      ? options
+      : { ...options, mutation: { ...options.mutation, mutationKey } }
+    : { mutation: { mutationKey }, request: undefined };
+
+  const mutationFn: MutationFunction<
+    Awaited<ReturnType<typeof createOrResumeQualifyingMatch>>,
+    void
+  > = () => {
+    return createOrResumeQualifyingMatch(requestOptions);
+  };
+
+  return { mutationFn, ...mutationOptions };
+};
+
+export type CreateOrResumeQualifyingMatchMutationResult = NonNullable<
+  Awaited<ReturnType<typeof createOrResumeQualifyingMatch>>
+>;
+
+export type CreateOrResumeQualifyingMatchMutationError = ErrorType<unknown>;
+
+/**
+ * @summary Create or resume a standard 15-Eminence match against three Hard AIs
+ */
+export const useCreateOrResumeQualifyingMatch = <
+  TError = ErrorType<unknown>,
+  TContext = unknown,
+>(options?: {
+  mutation?: UseMutationOptions<
+    Awaited<ReturnType<typeof createOrResumeQualifyingMatch>>,
+    TError,
+    void,
+    TContext
+  >;
+  request?: SecondParameter<typeof customFetch>;
+}): UseMutationResult<
+  Awaited<ReturnType<typeof createOrResumeQualifyingMatch>>,
+  TError,
+  void,
+  TContext
+> => {
+  return useMutation(getCreateOrResumeQualifyingMatchMutationOptions(options));
+};
+
+/**
+ * @summary Accept an allowlisted event with fixed, non-personal dimensions
+ */
+export const getRecordFirstPartyEventUrl = () => {
+  return `/api/events/first-party`;
+};
+
+export const recordFirstPartyEvent = async (
+  firstPartyEventBody: FirstPartyEventBody,
+  options?: RequestInit,
+): Promise<RecordFirstPartyEvent202> => {
+  return customFetch<RecordFirstPartyEvent202>(getRecordFirstPartyEventUrl(), {
+    ...options,
+    method: "POST",
+    headers: { "Content-Type": "application/json", ...options?.headers },
+    body: JSON.stringify(firstPartyEventBody),
+  });
+};
+
+export const getRecordFirstPartyEventMutationOptions = <
+  TError = ErrorType<unknown>,
+  TContext = unknown,
+>(options?: {
+  mutation?: UseMutationOptions<
+    Awaited<ReturnType<typeof recordFirstPartyEvent>>,
+    TError,
+    { data: BodyType<FirstPartyEventBody> },
+    TContext
+  >;
+  request?: SecondParameter<typeof customFetch>;
+}): UseMutationOptions<
+  Awaited<ReturnType<typeof recordFirstPartyEvent>>,
+  TError,
+  { data: BodyType<FirstPartyEventBody> },
+  TContext
+> => {
+  const mutationKey = ["recordFirstPartyEvent"];
+  const { mutation: mutationOptions, request: requestOptions } = options
+    ? options.mutation &&
+      "mutationKey" in options.mutation &&
+      options.mutation.mutationKey
+      ? options
+      : { ...options, mutation: { ...options.mutation, mutationKey } }
+    : { mutation: { mutationKey }, request: undefined };
+
+  const mutationFn: MutationFunction<
+    Awaited<ReturnType<typeof recordFirstPartyEvent>>,
+    { data: BodyType<FirstPartyEventBody> }
+  > = (props) => {
+    const { data } = props ?? {};
+
+    return recordFirstPartyEvent(data, requestOptions);
+  };
+
+  return { mutationFn, ...mutationOptions };
+};
+
+export type RecordFirstPartyEventMutationResult = NonNullable<
+  Awaited<ReturnType<typeof recordFirstPartyEvent>>
+>;
+export type RecordFirstPartyEventMutationBody = BodyType<FirstPartyEventBody>;
+export type RecordFirstPartyEventMutationError = ErrorType<unknown>;
+
+/**
+ * @summary Accept an allowlisted event with fixed, non-personal dimensions
+ */
+export const useRecordFirstPartyEvent = <
+  TError = ErrorType<unknown>,
+  TContext = unknown,
+>(options?: {
+  mutation?: UseMutationOptions<
+    Awaited<ReturnType<typeof recordFirstPartyEvent>>,
+    TError,
+    { data: BodyType<FirstPartyEventBody> },
+    TContext
+  >;
+  request?: SecondParameter<typeof customFetch>;
+}): UseMutationResult<
+  Awaited<ReturnType<typeof recordFirstPartyEvent>>,
+  TError,
+  { data: BodyType<FirstPartyEventBody> },
+  TContext
+> => {
+  return useMutation(getRecordFirstPartyEventMutationOptions(options));
+};
+
+/**
+ * @summary Get owner-private Blueprint clearance, ownership, loadouts, and mastery
+ */
+export const getGetBlueprintVaultUrl = () => {
+  return `/api/blueprints/vault`;
+};
+
+export const getBlueprintVault = async (
+  options?: RequestInit,
+): Promise<BlueprintVaultResponse> => {
+  return customFetch<BlueprintVaultResponse>(getGetBlueprintVaultUrl(), {
+    ...options,
+    method: "GET",
+  });
+};
+
+export const getGetBlueprintVaultQueryKey = () => {
+  return [`/api/blueprints/vault`] as const;
+};
+
+export const getGetBlueprintVaultQueryOptions = <
+  TData = Awaited<ReturnType<typeof getBlueprintVault>>,
+  TError = ErrorType<unknown>,
+>(options?: {
+  query?: UseQueryOptions<
+    Awaited<ReturnType<typeof getBlueprintVault>>,
+    TError,
+    TData
+  >;
+  request?: SecondParameter<typeof customFetch>;
+}) => {
+  const { query: queryOptions, request: requestOptions } = options ?? {};
+
+  const queryKey = queryOptions?.queryKey ?? getGetBlueprintVaultQueryKey();
+
+  const queryFn: QueryFunction<
+    Awaited<ReturnType<typeof getBlueprintVault>>
+  > = ({ signal }) => getBlueprintVault({ signal, ...requestOptions });
+
+  return { queryKey, queryFn, ...queryOptions } as UseQueryOptions<
+    Awaited<ReturnType<typeof getBlueprintVault>>,
+    TError,
+    TData
+  > & { queryKey: QueryKey };
+};
+
+export type GetBlueprintVaultQueryResult = NonNullable<
+  Awaited<ReturnType<typeof getBlueprintVault>>
+>;
+export type GetBlueprintVaultQueryError = ErrorType<unknown>;
+
+/**
+ * @summary Get owner-private Blueprint clearance, ownership, loadouts, and mastery
+ */
+
+export function useGetBlueprintVault<
+  TData = Awaited<ReturnType<typeof getBlueprintVault>>,
+  TError = ErrorType<unknown>,
+>(options?: {
+  query?: UseQueryOptions<
+    Awaited<ReturnType<typeof getBlueprintVault>>,
+    TError,
+    TData
+  >;
+  request?: SecondParameter<typeof customFetch>;
+}): UseQueryResult<TData, TError> & { queryKey: QueryKey } {
+  const queryOptions = getGetBlueprintVaultQueryOptions(options);
+
+  const query = useQuery(queryOptions) as UseQueryResult<TData, TError> & {
+    queryKey: QueryKey;
+  };
+
+  return { ...query, queryKey: queryOptions.queryKey };
+}
+
+/**
+ * @summary Idempotently record the Supreme Cipher, encounter approach, and dialogue memory
+ */
+export const getUpdateBlueprintVaultThresholdUrl = () => {
+  return `/api/blueprints/vault/threshold`;
+};
+
+export const updateBlueprintVaultThreshold = async (
+  blueprintVaultThresholdBody: BlueprintVaultThresholdBody,
+  options?: RequestInit,
+): Promise<BlueprintVaultThresholdResult> => {
+  return customFetch<BlueprintVaultThresholdResult>(
+    getUpdateBlueprintVaultThresholdUrl(),
+    {
+      ...options,
+      method: "POST",
+      headers: { "Content-Type": "application/json", ...options?.headers },
+      body: JSON.stringify(blueprintVaultThresholdBody),
+    },
+  );
+};
+
+export const getUpdateBlueprintVaultThresholdMutationOptions = <
+  TError = ErrorType<void>,
+  TContext = unknown,
+>(options?: {
+  mutation?: UseMutationOptions<
+    Awaited<ReturnType<typeof updateBlueprintVaultThreshold>>,
+    TError,
+    { data: BodyType<BlueprintVaultThresholdBody> },
+    TContext
+  >;
+  request?: SecondParameter<typeof customFetch>;
+}): UseMutationOptions<
+  Awaited<ReturnType<typeof updateBlueprintVaultThreshold>>,
+  TError,
+  { data: BodyType<BlueprintVaultThresholdBody> },
+  TContext
+> => {
+  const mutationKey = ["updateBlueprintVaultThreshold"];
+  const { mutation: mutationOptions, request: requestOptions } = options
+    ? options.mutation &&
+      "mutationKey" in options.mutation &&
+      options.mutation.mutationKey
+      ? options
+      : { ...options, mutation: { ...options.mutation, mutationKey } }
+    : { mutation: { mutationKey }, request: undefined };
+
+  const mutationFn: MutationFunction<
+    Awaited<ReturnType<typeof updateBlueprintVaultThreshold>>,
+    { data: BodyType<BlueprintVaultThresholdBody> }
+  > = (props) => {
+    const { data } = props ?? {};
+
+    return updateBlueprintVaultThreshold(data, requestOptions);
+  };
+
+  return { mutationFn, ...mutationOptions };
+};
+
+export type UpdateBlueprintVaultThresholdMutationResult = NonNullable<
+  Awaited<ReturnType<typeof updateBlueprintVaultThreshold>>
+>;
+export type UpdateBlueprintVaultThresholdMutationBody =
+  BodyType<BlueprintVaultThresholdBody>;
+export type UpdateBlueprintVaultThresholdMutationError = ErrorType<void>;
+
+/**
+ * @summary Idempotently record the Supreme Cipher, encounter approach, and dialogue memory
+ */
+export const useUpdateBlueprintVaultThreshold = <
+  TError = ErrorType<void>,
+  TContext = unknown,
+>(options?: {
+  mutation?: UseMutationOptions<
+    Awaited<ReturnType<typeof updateBlueprintVaultThreshold>>,
+    TError,
+    { data: BodyType<BlueprintVaultThresholdBody> },
+    TContext
+  >;
+  request?: SecondParameter<typeof customFetch>;
+}): UseMutationResult<
+  Awaited<ReturnType<typeof updateBlueprintVaultThreshold>>,
+  TError,
+  { data: BodyType<BlueprintVaultThresholdBody> },
+  TContext
+> => {
+  return useMutation(getUpdateBlueprintVaultThresholdMutationOptions(options));
+};
+
+/**
+ * @summary Consume a Black Market Decryption Key for one Vault access attempt
+ */
+export const getUseBlueprintVaultDecryptionKeyUrl = () => {
+  return `/api/blueprints/vault/decryption-key`;
+};
+
+export const useBlueprintVaultDecryptionKey = async (
+  options?: RequestInit,
+): Promise<BlueprintDecryptionKeyUseResult> => {
+  return customFetch<BlueprintDecryptionKeyUseResult>(
+    getUseBlueprintVaultDecryptionKeyUrl(),
+    {
+      ...options,
+      method: "POST",
+    },
+  );
+};
+
+export const getUseBlueprintVaultDecryptionKeyMutationOptions = <
+  TError = ErrorType<void>,
+  TContext = unknown,
+>(options?: {
+  mutation?: UseMutationOptions<
+    Awaited<ReturnType<typeof useBlueprintVaultDecryptionKey>>,
+    TError,
+    void,
+    TContext
+  >;
+  request?: SecondParameter<typeof customFetch>;
+}): UseMutationOptions<
+  Awaited<ReturnType<typeof useBlueprintVaultDecryptionKey>>,
+  TError,
+  void,
+  TContext
+> => {
+  const mutationKey = ["useBlueprintVaultDecryptionKey"];
+  const { mutation: mutationOptions, request: requestOptions } = options
+    ? options.mutation &&
+      "mutationKey" in options.mutation &&
+      options.mutation.mutationKey
+      ? options
+      : { ...options, mutation: { ...options.mutation, mutationKey } }
+    : { mutation: { mutationKey }, request: undefined };
+
+  const mutationFn: MutationFunction<
+    Awaited<ReturnType<typeof useBlueprintVaultDecryptionKey>>,
+    void
+  > = () => {
+    return useBlueprintVaultDecryptionKey(requestOptions);
+  };
+
+  return { mutationFn, ...mutationOptions };
+};
+
+export type UseBlueprintVaultDecryptionKeyMutationResult = NonNullable<
+  Awaited<ReturnType<typeof useBlueprintVaultDecryptionKey>>
+>;
+
+export type UseBlueprintVaultDecryptionKeyMutationError = ErrorType<void>;
+
+/**
+ * @summary Consume a Black Market Decryption Key for one Vault access attempt
+ */
+export const useUseBlueprintVaultDecryptionKey = <
+  TError = ErrorType<void>,
+  TContext = unknown,
+>(options?: {
+  mutation?: UseMutationOptions<
+    Awaited<ReturnType<typeof useBlueprintVaultDecryptionKey>>,
+    TError,
+    void,
+    TContext
+  >;
+  request?: SecondParameter<typeof customFetch>;
+}): UseMutationResult<
+  Awaited<ReturnType<typeof useBlueprintVaultDecryptionKey>>,
+  TError,
+  void,
+  TContext
+> => {
+  return useMutation(getUseBlueprintVaultDecryptionKeyMutationOptions(options));
+};
+
+/**
+ * @summary Idempotently start or resume the Lumii clearance scenario
+ */
+export const getStartBlueprintClearanceChallengeUrl = () => {
+  return `/api/blueprints/clearance-challenge`;
+};
+
+export const startBlueprintClearanceChallenge = async (
+  options?: RequestInit,
+): Promise<BlueprintChallengeSession> => {
+  return customFetch<BlueprintChallengeSession>(
+    getStartBlueprintClearanceChallengeUrl(),
+    {
+      ...options,
+      method: "POST",
+    },
+  );
+};
+
+export const getStartBlueprintClearanceChallengeMutationOptions = <
+  TError = ErrorType<unknown>,
+  TContext = unknown,
+>(options?: {
+  mutation?: UseMutationOptions<
+    Awaited<ReturnType<typeof startBlueprintClearanceChallenge>>,
+    TError,
+    void,
+    TContext
+  >;
+  request?: SecondParameter<typeof customFetch>;
+}): UseMutationOptions<
+  Awaited<ReturnType<typeof startBlueprintClearanceChallenge>>,
+  TError,
+  void,
+  TContext
+> => {
+  const mutationKey = ["startBlueprintClearanceChallenge"];
+  const { mutation: mutationOptions, request: requestOptions } = options
+    ? options.mutation &&
+      "mutationKey" in options.mutation &&
+      options.mutation.mutationKey
+      ? options
+      : { ...options, mutation: { ...options.mutation, mutationKey } }
+    : { mutation: { mutationKey }, request: undefined };
+
+  const mutationFn: MutationFunction<
+    Awaited<ReturnType<typeof startBlueprintClearanceChallenge>>,
+    void
+  > = () => {
+    return startBlueprintClearanceChallenge(requestOptions);
+  };
+
+  return { mutationFn, ...mutationOptions };
+};
+
+export type StartBlueprintClearanceChallengeMutationResult = NonNullable<
+  Awaited<ReturnType<typeof startBlueprintClearanceChallenge>>
+>;
+
+export type StartBlueprintClearanceChallengeMutationError = ErrorType<unknown>;
+
+/**
+ * @summary Idempotently start or resume the Lumii clearance scenario
+ */
+export const useStartBlueprintClearanceChallenge = <
+  TError = ErrorType<unknown>,
+  TContext = unknown,
+>(options?: {
+  mutation?: UseMutationOptions<
+    Awaited<ReturnType<typeof startBlueprintClearanceChallenge>>,
+    TError,
+    void,
+    TContext
+  >;
+  request?: SecondParameter<typeof customFetch>;
+}): UseMutationResult<
+  Awaited<ReturnType<typeof startBlueprintClearanceChallenge>>,
+  TError,
+  void,
+  TContext
+> => {
+  return useMutation(
+    getStartBlueprintClearanceChallengeMutationOptions(options),
+  );
+};
+
+/**
+ * @summary Idempotently withdraw from the active Lumii clearance scenario
+ */
+export const getWithdrawBlueprintClearanceChallengeUrl = () => {
+  return `/api/blueprints/clearance-challenge/withdraw`;
+};
+
+export const withdrawBlueprintClearanceChallenge = async (
+  withdrawBlueprintClearanceChallengeBody: WithdrawBlueprintClearanceChallengeBody,
+  options?: RequestInit,
+): Promise<WithdrawBlueprintClearanceChallenge200> => {
+  return customFetch<WithdrawBlueprintClearanceChallenge200>(
+    getWithdrawBlueprintClearanceChallengeUrl(),
+    {
+      ...options,
+      method: "POST",
+      headers: { "Content-Type": "application/json", ...options?.headers },
+      body: JSON.stringify(withdrawBlueprintClearanceChallengeBody),
+    },
+  );
+};
+
+export const getWithdrawBlueprintClearanceChallengeMutationOptions = <
+  TError = ErrorType<unknown>,
+  TContext = unknown,
+>(options?: {
+  mutation?: UseMutationOptions<
+    Awaited<ReturnType<typeof withdrawBlueprintClearanceChallenge>>,
+    TError,
+    { data: BodyType<WithdrawBlueprintClearanceChallengeBody> },
+    TContext
+  >;
+  request?: SecondParameter<typeof customFetch>;
+}): UseMutationOptions<
+  Awaited<ReturnType<typeof withdrawBlueprintClearanceChallenge>>,
+  TError,
+  { data: BodyType<WithdrawBlueprintClearanceChallengeBody> },
+  TContext
+> => {
+  const mutationKey = ["withdrawBlueprintClearanceChallenge"];
+  const { mutation: mutationOptions, request: requestOptions } = options
+    ? options.mutation &&
+      "mutationKey" in options.mutation &&
+      options.mutation.mutationKey
+      ? options
+      : { ...options, mutation: { ...options.mutation, mutationKey } }
+    : { mutation: { mutationKey }, request: undefined };
+
+  const mutationFn: MutationFunction<
+    Awaited<ReturnType<typeof withdrawBlueprintClearanceChallenge>>,
+    { data: BodyType<WithdrawBlueprintClearanceChallengeBody> }
+  > = (props) => {
+    const { data } = props ?? {};
+
+    return withdrawBlueprintClearanceChallenge(data, requestOptions);
+  };
+
+  return { mutationFn, ...mutationOptions };
+};
+
+export type WithdrawBlueprintClearanceChallengeMutationResult = NonNullable<
+  Awaited<ReturnType<typeof withdrawBlueprintClearanceChallenge>>
+>;
+export type WithdrawBlueprintClearanceChallengeMutationBody =
+  BodyType<WithdrawBlueprintClearanceChallengeBody>;
+export type WithdrawBlueprintClearanceChallengeMutationError =
+  ErrorType<unknown>;
+
+/**
+ * @summary Idempotently withdraw from the active Lumii clearance scenario
+ */
+export const useWithdrawBlueprintClearanceChallenge = <
+  TError = ErrorType<unknown>,
+  TContext = unknown,
+>(options?: {
+  mutation?: UseMutationOptions<
+    Awaited<ReturnType<typeof withdrawBlueprintClearanceChallenge>>,
+    TError,
+    { data: BodyType<WithdrawBlueprintClearanceChallengeBody> },
+    TContext
+  >;
+  request?: SecondParameter<typeof customFetch>;
+}): UseMutationResult<
+  Awaited<ReturnType<typeof withdrawBlueprintClearanceChallenge>>,
+  TError,
+  { data: BodyType<WithdrawBlueprintClearanceChallengeBody> },
+  TContext
+> => {
+  return useMutation(
+    getWithdrawBlueprintClearanceChallengeMutationOptions(options),
+  );
+};
+
+/**
+ * @summary Mark the completed Vault opening as seen
+ */
+export const getAcknowledgeBlueprintVaultRevealUrl = () => {
+  return `/api/blueprints/vault/reveal-ack`;
+};
+
+export const acknowledgeBlueprintVaultReveal = async (
+  options?: RequestInit,
+): Promise<AcknowledgeBlueprintVaultReveal200> => {
+  return customFetch<AcknowledgeBlueprintVaultReveal200>(
+    getAcknowledgeBlueprintVaultRevealUrl(),
+    {
+      ...options,
+      method: "POST",
+    },
+  );
+};
+
+export const getAcknowledgeBlueprintVaultRevealMutationOptions = <
+  TError = ErrorType<unknown>,
+  TContext = unknown,
+>(options?: {
+  mutation?: UseMutationOptions<
+    Awaited<ReturnType<typeof acknowledgeBlueprintVaultReveal>>,
+    TError,
+    void,
+    TContext
+  >;
+  request?: SecondParameter<typeof customFetch>;
+}): UseMutationOptions<
+  Awaited<ReturnType<typeof acknowledgeBlueprintVaultReveal>>,
+  TError,
+  void,
+  TContext
+> => {
+  const mutationKey = ["acknowledgeBlueprintVaultReveal"];
+  const { mutation: mutationOptions, request: requestOptions } = options
+    ? options.mutation &&
+      "mutationKey" in options.mutation &&
+      options.mutation.mutationKey
+      ? options
+      : { ...options, mutation: { ...options.mutation, mutationKey } }
+    : { mutation: { mutationKey }, request: undefined };
+
+  const mutationFn: MutationFunction<
+    Awaited<ReturnType<typeof acknowledgeBlueprintVaultReveal>>,
+    void
+  > = () => {
+    return acknowledgeBlueprintVaultReveal(requestOptions);
+  };
+
+  return { mutationFn, ...mutationOptions };
+};
+
+export type AcknowledgeBlueprintVaultRevealMutationResult = NonNullable<
+  Awaited<ReturnType<typeof acknowledgeBlueprintVaultReveal>>
+>;
+
+export type AcknowledgeBlueprintVaultRevealMutationError = ErrorType<unknown>;
+
+/**
+ * @summary Mark the completed Vault opening as seen
+ */
+export const useAcknowledgeBlueprintVaultReveal = <
+  TError = ErrorType<unknown>,
+  TContext = unknown,
+>(options?: {
+  mutation?: UseMutationOptions<
+    Awaited<ReturnType<typeof acknowledgeBlueprintVaultReveal>>,
+    TError,
+    void,
+    TContext
+  >;
+  request?: SecondParameter<typeof customFetch>;
+}): UseMutationResult<
+  Awaited<ReturnType<typeof acknowledgeBlueprintVaultReveal>>,
+  TError,
+  void,
+  TContext
+> => {
+  return useMutation(
+    getAcknowledgeBlueprintVaultRevealMutationOptions(options),
+  );
+};
+
+/**
+ * @summary Replace the two Blueprint slots for one supported mode
+ */
+export const getUpdateBlueprintLoadoutUrl = (
+  mode: "campaign" | "custom" | "competitive",
+) => {
+  return `/api/blueprints/loadouts/${mode}`;
+};
+
+export const updateBlueprintLoadout = async (
+  mode: "campaign" | "custom" | "competitive",
+  blueprintLoadoutBody: BlueprintLoadoutBody,
+  options?: RequestInit,
+): Promise<BlueprintLoadout> => {
+  return customFetch<BlueprintLoadout>(getUpdateBlueprintLoadoutUrl(mode), {
+    ...options,
+    method: "PUT",
+    headers: { "Content-Type": "application/json", ...options?.headers },
+    body: JSON.stringify(blueprintLoadoutBody),
+  });
+};
+
+export const getUpdateBlueprintLoadoutMutationOptions = <
+  TError = ErrorType<unknown>,
+  TContext = unknown,
+>(options?: {
+  mutation?: UseMutationOptions<
+    Awaited<ReturnType<typeof updateBlueprintLoadout>>,
+    TError,
+    {
+      mode: "campaign" | "custom" | "competitive";
+      data: BodyType<BlueprintLoadoutBody>;
+    },
+    TContext
+  >;
+  request?: SecondParameter<typeof customFetch>;
+}): UseMutationOptions<
+  Awaited<ReturnType<typeof updateBlueprintLoadout>>,
+  TError,
+  {
+    mode: "campaign" | "custom" | "competitive";
+    data: BodyType<BlueprintLoadoutBody>;
+  },
+  TContext
+> => {
+  const mutationKey = ["updateBlueprintLoadout"];
+  const { mutation: mutationOptions, request: requestOptions } = options
+    ? options.mutation &&
+      "mutationKey" in options.mutation &&
+      options.mutation.mutationKey
+      ? options
+      : { ...options, mutation: { ...options.mutation, mutationKey } }
+    : { mutation: { mutationKey }, request: undefined };
+
+  const mutationFn: MutationFunction<
+    Awaited<ReturnType<typeof updateBlueprintLoadout>>,
+    {
+      mode: "campaign" | "custom" | "competitive";
+      data: BodyType<BlueprintLoadoutBody>;
+    }
+  > = (props) => {
+    const { mode, data } = props ?? {};
+
+    return updateBlueprintLoadout(mode, data, requestOptions);
+  };
+
+  return { mutationFn, ...mutationOptions };
+};
+
+export type UpdateBlueprintLoadoutMutationResult = NonNullable<
+  Awaited<ReturnType<typeof updateBlueprintLoadout>>
+>;
+export type UpdateBlueprintLoadoutMutationBody = BodyType<BlueprintLoadoutBody>;
+export type UpdateBlueprintLoadoutMutationError = ErrorType<unknown>;
+
+/**
+ * @summary Replace the two Blueprint slots for one supported mode
+ */
+export const useUpdateBlueprintLoadout = <
+  TError = ErrorType<unknown>,
+  TContext = unknown,
+>(options?: {
+  mutation?: UseMutationOptions<
+    Awaited<ReturnType<typeof updateBlueprintLoadout>>,
+    TError,
+    {
+      mode: "campaign" | "custom" | "competitive";
+      data: BodyType<BlueprintLoadoutBody>;
+    },
+    TContext
+  >;
+  request?: SecondParameter<typeof customFetch>;
+}): UseMutationResult<
+  Awaited<ReturnType<typeof updateBlueprintLoadout>>,
+  TError,
+  {
+    mode: "campaign" | "custom" | "competitive";
+    data: BodyType<BlueprintLoadoutBody>;
+  },
+  TContext
+> => {
+  return useMutation(getUpdateBlueprintLoadoutMutationOptions(options));
+};
+
+/**
+ * @summary Equip or clear one scoped cosmetic slot
+ */
+export const getUpdateCosmeticLoadoutUrl = () => {
+  return `/api/cosmetics/loadout`;
+};
+
+export const updateCosmeticLoadout = async (
+  cosmeticLoadoutBody: CosmeticLoadoutBody,
+  options?: RequestInit,
+): Promise<CosmeticLoadoutResponse> => {
+  return customFetch<CosmeticLoadoutResponse>(getUpdateCosmeticLoadoutUrl(), {
+    ...options,
+    method: "PUT",
+    headers: { "Content-Type": "application/json", ...options?.headers },
+    body: JSON.stringify(cosmeticLoadoutBody),
+  });
+};
+
+export const getUpdateCosmeticLoadoutMutationOptions = <
+  TError = ErrorType<unknown>,
+  TContext = unknown,
+>(options?: {
+  mutation?: UseMutationOptions<
+    Awaited<ReturnType<typeof updateCosmeticLoadout>>,
+    TError,
+    { data: BodyType<CosmeticLoadoutBody> },
+    TContext
+  >;
+  request?: SecondParameter<typeof customFetch>;
+}): UseMutationOptions<
+  Awaited<ReturnType<typeof updateCosmeticLoadout>>,
+  TError,
+  { data: BodyType<CosmeticLoadoutBody> },
+  TContext
+> => {
+  const mutationKey = ["updateCosmeticLoadout"];
+  const { mutation: mutationOptions, request: requestOptions } = options
+    ? options.mutation &&
+      "mutationKey" in options.mutation &&
+      options.mutation.mutationKey
+      ? options
+      : { ...options, mutation: { ...options.mutation, mutationKey } }
+    : { mutation: { mutationKey }, request: undefined };
+
+  const mutationFn: MutationFunction<
+    Awaited<ReturnType<typeof updateCosmeticLoadout>>,
+    { data: BodyType<CosmeticLoadoutBody> }
+  > = (props) => {
+    const { data } = props ?? {};
+
+    return updateCosmeticLoadout(data, requestOptions);
+  };
+
+  return { mutationFn, ...mutationOptions };
+};
+
+export type UpdateCosmeticLoadoutMutationResult = NonNullable<
+  Awaited<ReturnType<typeof updateCosmeticLoadout>>
+>;
+export type UpdateCosmeticLoadoutMutationBody = BodyType<CosmeticLoadoutBody>;
+export type UpdateCosmeticLoadoutMutationError = ErrorType<unknown>;
+
+/**
+ * @summary Equip or clear one scoped cosmetic slot
+ */
+export const useUpdateCosmeticLoadout = <
+  TError = ErrorType<unknown>,
+  TContext = unknown,
+>(options?: {
+  mutation?: UseMutationOptions<
+    Awaited<ReturnType<typeof updateCosmeticLoadout>>,
+    TError,
+    { data: BodyType<CosmeticLoadoutBody> },
+    TContext
+  >;
+  request?: SecondParameter<typeof customFetch>;
+}): UseMutationResult<
+  Awaited<ReturnType<typeof updateCosmeticLoadout>>,
+  TError,
+  { data: BodyType<CosmeticLoadoutBody> },
+  TContext
+> => {
+  return useMutation(getUpdateCosmeticLoadoutMutationOptions(options));
+};
 
 /**
  * @summary List active (non-finished) games for the current account

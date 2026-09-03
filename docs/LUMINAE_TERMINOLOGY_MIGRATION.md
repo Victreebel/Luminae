@@ -1,6 +1,6 @@
 # Luminae Terminology Contract
 
-Last audited: 2026-07-15
+Last audited: 2026-08-11
 
 ## Purpose
 
@@ -11,10 +11,16 @@ this document.
 
 ## Canonical Model
 
-- The six resources are Affinities: Flare, Radiance, Verdance, Continuum,
-  Abyss, and Singularity.
+- The five natural Affinities are Flare, Continuum, Verdance, Abyss, and
+  Radiance. They can be Harnessed from the Affinity Well and embodied by
+  Luminaries.
+- Singularity is the sixth Affinity for rules and storage compatibility, but it
+  is an Architect-generated convergence current rather than a natural
+  reservoir. Architects create it by Encrypting an Artifact.
 - A player's resources are `affinities`; the shared supply is `affinityWell`.
-- Players `harness` Affinities.
+- Players `harness` only natural Affinities. Singularity may be held, spent,
+  returned, or affected by game effects, but it cannot be Harnessed, embodied
+  by Lumii, used as a Luminary requirement, or granted as an Artifact bonus.
 - The shared Artifact display is the Forge, represented by `forgeTier1`,
   `forgeTier2`, and `forgeTier3`.
 - Players forge or reserve Artifacts.
@@ -36,7 +42,8 @@ Action payloads use `affinities`, `affinity`, and `returnAffinities`.
 
 ## Sources Of Truth
 
-- `@workspace/game-types` owns Affinity keys, count types, and display names.
+- `@workspace/game-types` owns Affinity keys, natural-Affinity keys, count
+  types, and display names.
 - `lib/api-spec/openapi.yaml` owns the transport contract.
 - Generated React and Zod clients are regenerated from that contract.
 - `artifacts/luminae/src/lib/affinityMeta.ts` owns Affinity presentation data.

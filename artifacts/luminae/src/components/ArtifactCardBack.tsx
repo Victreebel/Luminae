@@ -1,4 +1,6 @@
 
+import { useCosmetics } from "@/contexts/CosmeticsContext";
+
 // ── ArtifactCardBack ─────────────────────────────────────────────────────────
 // Three-tier SVG card backs — Kardashev civilization-scale motifs.
 //
@@ -26,6 +28,47 @@ const GOLD3 = '#7a6030';
 const BG_DEEP = '#030509';
 const BG_MID  = '#08091a';
 
+const ASTRAL_FOUNDRY_CARD_BACK_ID = 'cosmetic.cardBack.astralFoundry.v1';
+
+function AstralFoundryOverlay() {
+  return (
+    <g aria-hidden="true" pointerEvents="none" data-cosmetic-card-back="astral-foundry">
+      <path
+        d="M8 5.5H62L65 9V91L62 94.5H8L5 91V9Z"
+        fill="none"
+        stroke="#e6ca78"
+        strokeWidth="0.7"
+        strokeOpacity="0.78"
+      />
+      <path
+        d="M11 8H29M41 8H59M11 92H29M41 92H59"
+        fill="none"
+        stroke="#f5e4a7"
+        strokeWidth="0.45"
+        strokeOpacity="0.62"
+      />
+      <path
+        d="M35 5.8L39 10L35 14.2L31 10Z"
+        fill="#061326"
+        stroke="#d9bd68"
+        strokeWidth="0.7"
+      />
+      <circle cx="35" cy="10" r="1.45" fill="#75c9ff" opacity="0.95" />
+      <circle cx="35" cy="10" r="2.4" fill="none" stroke="#75c9ff" strokeWidth="0.45" opacity="0.45" />
+      {([[8, 9], [62, 9], [8, 91], [62, 91]] as const).map(([x, y]) => (
+        <g key={`${x}-${y}`}>
+          <circle cx={x} cy={y} r="1.05" fill="#241d0e" stroke="#e4ca79" strokeWidth="0.45" />
+          <circle cx={x} cy={y} r="0.3" fill="#a9ddff" />
+        </g>
+      ))}
+    </g>
+  );
+}
+
+function useAstralFoundryCardBack(): boolean {
+  return useCosmetics().equippedItemIds.card_back === ASTRAL_FOUNDRY_CARD_BACK_ID;
+}
+
 const toRad = (d: number) => (d * Math.PI) / 180;
 
 const arcPath = (cx: number, cy: number, r: number, s: number, e: number) => {
@@ -48,6 +91,7 @@ const pt = (cx: number, cy: number, r: number, deg: number): [number,number] => 
 // ║  atmospheric ring, first orbital arc. Technology is planet-bound.       ║
 // ╚══════════════════════════════════════════════════════════════════════════╝
 export function CardBackTier1({ count: _count }: { count?: number }) {
+  const astralFoundryEquipped = useAstralFoundryCardBack();
   const id = 't1cb';
   const PX = 35, PY = 56, PR = 16;
 
@@ -341,6 +385,7 @@ export function CardBackTier1({ count: _count }: { count?: number }) {
       {/* ── Luminae wordmark ── */}
       <text x="35" y="89.5" textAnchor="middle" fontFamily="Georgia, serif"
         fontSize="3.8" fill={GOLD} opacity="0.50" letterSpacing="2.5">LUMINAE</text>
+      {astralFoundryEquipped && <AstralFoundryOverlay />}
     </svg>
   );
 }
@@ -353,6 +398,7 @@ export function CardBackTier1({ count: _count }: { count?: number }) {
 // ║  orbital planes around a single star, harvesting its full output.       ║
 // ╚══════════════════════════════════════════════════════════════════════════╝
 export function CardBackTier2({ count: _count }: { count?: number }) {
+  const astralFoundryEquipped = useAstralFoundryCardBack();
   const id = 't2cb';
   const CX = 35, CY = 51;   // star / sphere center
 
@@ -635,6 +681,7 @@ export function CardBackTier2({ count: _count }: { count?: number }) {
       {/* ── Luminae wordmark ── */}
       <text x="35" y="89.5" textAnchor="middle" fontFamily="Georgia, serif"
         fontSize="3.8" fill={GOLD} opacity="0.48" letterSpacing="2.5">LUMINAE</text>
+      {astralFoundryEquipped && <AstralFoundryOverlay />}
     </svg>
   );
 }
@@ -650,6 +697,7 @@ export function CardBackTier2({ count: _count }: { count?: number }) {
 // ╚══════════════════════════════════════════════════════════════════════════╝
 
 export function CardBackTier3({ count: _count }: { count?: number }) {
+  const astralFoundryEquipped = useAstralFoundryCardBack();
   const id = 't3cb';
   const HUB_X = 35, HUB_Y = 52; // central convergence hub
 
@@ -1203,6 +1251,7 @@ export function CardBackTier3({ count: _count }: { count?: number }) {
       {/* Luminae wordmark */}
       <text x="35" y="89.5" textAnchor="middle" fontFamily="Georgia, serif"
         fontSize="3.8" fill={GOLD} opacity="0.60" letterSpacing="2.5">LUMINAE</text>
+      {astralFoundryEquipped && <AstralFoundryOverlay />}
     </svg>
   );
 }

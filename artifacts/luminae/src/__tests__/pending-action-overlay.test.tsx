@@ -53,4 +53,22 @@ describe('PendingActionOverlay', () => {
     expect(container.querySelector('button button')).toBeNull();
     expect(screen.getByRole('button', { name: /Tier 1 Archive/ })).toBeInTheDocument();
   });
+
+  it('labels a Tide plan as an Archive Forge rather than Encrypt', () => {
+    render(
+      <ForgeDeckPile
+        deckCount={8}
+        deckDisabled={false}
+        deckTitle="Cancel archive Forge"
+        forgeCompact
+        isDeckPending
+        pendingLabel="Archive Forge pending"
+        onCancelPlan={vi.fn()}
+        onDeckTap={vi.fn()}
+        tier={2}
+      />,
+    );
+
+    expect(screen.getByRole('button', { name: 'Cancel pending Archive Forge' })).toBeInTheDocument();
+  });
 });

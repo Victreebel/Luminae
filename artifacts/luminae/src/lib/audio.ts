@@ -2,34 +2,57 @@
 // Blend of cosmic (warm, ethereal) + satisfying UI (snappy pops, tings).
 // Each interaction has a distinct sonic character:
 //   affinitySelected — Affinity-specific ting + tactile click
+//   affinityDelivery — counted rising cadence for visible Affinity grants
 //   artifactForged   — bass thud + chord + sparkle arpeggio
 //   artifactReserved — mysterious rising swoosh + soft pad
 //   turnStart      — cosmic bell (metallic, long decay)
 //   win            — epic bass boom + triumphant arpeggio
 // Ambient music layers run separately on masterMusicGain.
 
-import type { AffinityKey } from '@workspace/game-types';
+import type { AffinityKey, NaturalAffinityKey } from '@workspace/game-types';
+import type { AnimationArchetype } from '@/lib/luminaryAnimationConfig';
+import { ANTIMATTER_CINEMATIC_TIMING } from '@/lib/antimatterCinematicTimeline';
+import { ANTIMATTER_DETONATION_TIMING } from '@/lib/antimatterDetonationTimeline';
+import { LUMII_SIGNAL_NOTES, type LumiiSignalMode } from '@/lib/lumiiIdentity';
 
 // Maps each Luminary's arrivalColor hex → its nearest AffinityKey affinity.
 // Mirrors the ARRIVAL_COLOR_TO_AFFINITY table in gameEngine.ts.
-const FANFARE_COLOR_MAP: Record<string, AffinityKey> = {
+const FANFARE_COLOR_MAP: Record<string, NaturalAffinityKey> = {
   '#ff5a3c': 'flare',
+  '#ff8a6a': 'flare',
   '#f43f5e': 'flare',
+  '#ef4444': 'flare',
+  '#f97316': 'flare',
   '#60a5fa': 'continuum',
   '#38bdf8': 'continuum',
   '#3d6bff': 'continuum',
+  '#7090ff': 'continuum',
   '#2563eb': 'continuum',
   '#2ecc71': 'verdance',
+  '#5be197': 'verdance',
   '#4ade80': 'verdance',
   '#86efac': 'verdance',
   '#0f172a': 'abyss',
   '#4c1d95': 'abyss',
   '#7b1fa2': 'abyss',
+  '#a832d4': 'abyss',
+  '#cc70f0': 'abyss',
   '#fef9c3': 'radiance',
+  '#dfc878': 'radiance',
+  '#f5e8b8': 'radiance',
   '#cbd5e1': 'radiance',
   '#a8b8e8': 'radiance',
-  '#fbbf24': 'singularity',
+  '#fbbf24': 'radiance',
+  '#e8e4ff': 'radiance',
+  '#c8c0ff': 'radiance',
+  '#ffffff': 'radiance',
 };
+
+export function resolveLuminaryAudioAffinity(color?: string): NaturalAffinityKey {
+  return FANFARE_COLOR_MAP[color?.toLowerCase() ?? ''] ?? 'radiance';
+}
+
+export type LuminaryEffectSoundBeat = 'target' | 'resolve' | 'aftermath';
 
 // Card draw / flip — pre-built MP3 asset.
 const CARD_DRAW_MP3 = new URL('../assets/audio/Effects/Card draw.mp3', import.meta.url).href;
@@ -40,12 +63,74 @@ const IMPACT_EXTINCTION_ARCHIVE_MP3 = new URL(
   import.meta.url,
 ).href;
 
+// Impact Extinction — authored riser whose measured primary transient lands at
+// 2.64s. Playback begins from a dynamic offset so that transient stays locked
+// to the visual shockwave at every presentation speed.
+const IMPACT_EXTINCTION_SHOCKWAVE_MP3 = new URL(
+  '../assets/audio/Effects/Impact Extinction Shockwave.mp3',
+  import.meta.url,
+).href;
+const IMPACT_EXTINCTION_SHOCKWAVE_PEAK_SECONDS = 2.64;
+
+// Avatar Seeds — one authored sowing gesture spanning the staggered mold
+// inscriptions. Its measured primary transient lands at 0.36s.
+const SEED_BEYOND_SEASONS_MP3 = new URL(
+  '../assets/audio/Effects/Seed Beyond Seasons Avatar Seeds.mp3',
+  import.meta.url,
+).href;
+const SEED_BEYOND_SEASONS_PEAK_SECONDS = 0.36;
+
+const ANTIMATTER_CINEMATIC_SFX = {
+  deepImpact: new URL(
+    '../assets/audio/Blueprints/Antimatter/sources/deep-impact-665093.mp3',
+    import.meta.url,
+  ).href,
+  hydraulics: new URL(
+    '../assets/audio/Blueprints/Antimatter/sources/hydraulics-212941.mp3',
+    import.meta.url,
+  ).href,
+  metalDoorSlam: new URL(
+    '../assets/audio/Blueprints/Antimatter/sources/metal-door-slam-48980.mp3',
+    import.meta.url,
+  ).href,
+  metalImpact: new URL(
+    '../assets/audio/Blueprints/Antimatter/sources/metal-impact-620077.mp3',
+    import.meta.url,
+  ).href,
+  pressureRelease: new URL(
+    '../assets/audio/Blueprints/Antimatter/sources/pressure-release-457294.mp3',
+    import.meta.url,
+  ).href,
+  ratchet: new URL(
+    '../assets/audio/Blueprints/Antimatter/sources/ratchet-591529.mp3',
+    import.meta.url,
+  ).href,
+} as const;
+
+export function getImpactExtinctionShockwaveSourceOffset(impactDelayMs: number): number {
+  return Math.max(
+    0,
+    IMPACT_EXTINCTION_SHOCKWAVE_PEAK_SECONDS - Math.max(0, impactDelayMs) / 1000,
+  );
+}
+
+export function getSeedBeyondSeasonsCueTiming(impactDelayMs: number) {
+  const impactDelaySeconds = Math.max(0, impactDelayMs) / 1000;
+  return {
+    startDelaySeconds: Math.max(0, impactDelaySeconds - SEED_BEYOND_SEASONS_PEAK_SECONDS),
+    sourceOffsetSeconds: Math.max(0, SEED_BEYOND_SEASONS_PEAK_SECONDS - impactDelaySeconds),
+  };
+}
+
 // Forge stamp impact — authored metal hit used at the artifact-sealing beat.
 const FORGE_STAMP_HIT_MP3 = new URL('../assets/audio/Effects/Forge Stamp Hit.mp3', import.meta.url).href;
 
 // Forge mold landing — pre-built MP3 asset.
 // Luminary effect activation sting — pre-built WAV asset.
 const EFFECT_WAV = new URL('../assets/audio/Effects/Effect.wav', import.meta.url).href;
+
+// Trap trigger — authored cue for Antimatter Detonator and similar hidden hazards.
+const TRAP_TRIGGER_WAV = new URL('../assets/audio/Effects/Trap Trigger.wav', import.meta.url).href;
 
 // Burn mechanic — pre-built MP3 asset.
 const BURN_MP3 = new URL('../assets/audio/Effects/Burn.mp3', import.meta.url).href;
@@ -55,6 +140,12 @@ const FORGOTTEN_EFFECT_MP3 = new URL('../assets/audio/Effects/Forgotten Effect A
 
 // The Forgotten Hour cue — pre-built MP3 asset for the ??? Luminary effect.
 const FORGOTTEN_HOUR_MP3 = new URL('../assets/audio/Effects/Forgotten Hour Sound effect.mp3', import.meta.url).href;
+
+// Void Warden — authored spectral voice layered beneath the Oblivion threshold pulse.
+const OBLIVION_VOID_PULSE_MP3 = new URL(
+  '../assets/audio/Effects/Oblivion Void Pulse.mp3',
+  import.meta.url,
+).href;
 
 // Arrival brand strike (Cinder Mandate, etc.) — plays when brand beams land on cards.
 const SPELLBOUND_WAV = new URL('../assets/audio/Effects/Spellbound.wav', import.meta.url).href;
@@ -98,6 +189,7 @@ export class GameAudio {
   private ctx: AudioContext | null = null;
   private muted = false;
   private decodedAudio = new Map<string, Promise<AudioBuffer>>();
+  private reversedAudioSlices = new Map<string, AudioBuffer>();
   private transientEpoch = 0;
   private transientVoices = new Map<AudioScheduledSourceNode, AudioNode[]>();
   private transientBuses = new Map<AudioNode, {
@@ -109,6 +201,11 @@ export class GameAudio {
     cleanupTimer: ReturnType<typeof setTimeout> | null;
   }>();
   private activationBuses = new Map<GainNode, ReturnType<typeof setTimeout> | null>();
+  private antimatterCinematicBus: {
+    master: GainNode;
+    nodes: AudioNode[];
+    cleanupTimer: ReturnType<typeof setTimeout>;
+  } | null = null;
 
   // ── Music state ─────────────────────────────────────────────────────────
   private musicStarted = false;
@@ -117,6 +214,14 @@ export class GameAudio {
   private endgameOscillators: OscillatorNode[] = [];
   private endgameGain: GainNode | null = null;
   private endgameFilter: BiquadFilterNode | null = null;
+  private lumiiScenarioGain: GainNode | null = null;
+  private lumiiScenarioFilter: BiquadFilterNode | null = null;
+  private lumiiScenarioPulseGain: GainNode | null = null;
+  private lumiiScenarioPulseFilter: BiquadFilterNode | null = null;
+  private lumiiScenarioOscillators: OscillatorNode[] = [];
+  private lumiiScenarioActive = false;
+  private lumiiScenarioRhythmTimer: ReturnType<typeof setTimeout> | null = null;
+  private lumiiScenarioBeatIndex = 0;
   private noiseSource: AudioBufferSourceNode | null = null;
   private shimmerTimer: ReturnType<typeof setTimeout> | null = null;
   private musicNodes = new Set<AudioNode>();
@@ -197,6 +302,7 @@ export class GameAudio {
   /** Dispose one-shot presentation audio without interrupting ambient music. */
   resetTransientAudio() {
     this.transientEpoch += 1;
+    this.disposeAntimatterBlueprintCinematic(false);
     this.stopArrivalCutscene();
     this.stopActivationSting();
 
@@ -226,6 +332,7 @@ export class GameAudio {
       buses: this.transientBuses.size,
       arrivalBuses: this.arrivalBuses.size,
       activationBuses: this.activationBuses.size,
+      antimatterBuses: this.antimatterCinematicBus ? 1 : 0,
     };
   }
 
@@ -236,6 +343,7 @@ export class GameAudio {
   toggleMute() {
     this.muted = !this.muted;
     localStorage.setItem('luminae_muted', String(this.muted));
+    if (this.muted) this.disposeAntimatterBlueprintCinematic(false);
     if (this.masterMusicGain && this.ctx) {
       const now = this.ctx.currentTime;
       this.masterMusicGain.gain.cancelScheduledValues(now);
@@ -248,6 +356,7 @@ export class GameAudio {
   setMuted(value: boolean) {
     this.muted = value;
     localStorage.setItem('luminae_muted', String(this.muted));
+    if (this.muted) this.disposeAntimatterBlueprintCinematic(false);
     if (this.masterMusicGain && this.ctx) {
       const now = this.ctx.currentTime;
       this.masterMusicGain.gain.cancelScheduledValues(now);
@@ -308,6 +417,97 @@ export class GameAudio {
     gain.setValueAtTime(gain.value, now);
     gain.linearRampToValueAtTime(this.muted ? 0 : this.getMusicGain(), now + releaseSeconds);
     this.musicDuckUntil = 0;
+  }
+
+  private getLumiiScenarioGainTarget() {
+    return this.lumiiScenarioActive ? 0.054 + this.endgameIntensity * 0.064 : 0;
+  }
+
+  private getLumiiScenarioBeatDelayMs() {
+    return Math.round(610 - this.endgameIntensity * 130);
+  }
+
+  private clearLumiiScenarioRhythm() {
+    if (this.lumiiScenarioRhythmTimer !== null) {
+      clearTimeout(this.lumiiScenarioRhythmTimer);
+      this.lumiiScenarioRhythmTimer = null;
+    }
+  }
+
+  private scheduleLumiiScenarioRhythm(ctx: AudioContext) {
+    if (this.lumiiScenarioRhythmTimer !== null || !this.musicStarted || !this.lumiiScenarioActive) return;
+    const tick = () => {
+      this.lumiiScenarioRhythmTimer = null;
+      if (!this.musicStarted || !this.lumiiScenarioActive) return;
+      if (!this.muted) this.playLumiiScenarioRhythmBeat(ctx);
+      this.lumiiScenarioRhythmTimer = setTimeout(tick, this.getLumiiScenarioBeatDelayMs());
+    };
+    this.lumiiScenarioRhythmTimer = setTimeout(tick, 180);
+  }
+
+  private playLumiiScenarioRhythmBeat(ctx: AudioContext) {
+    if (!this.lumiiScenarioGain) return;
+    const now = ctx.currentTime;
+    const beat = this.lumiiScenarioBeatIndex++ % 8;
+    const pressure = 0.55 + this.endgameIntensity * 0.45;
+    const root = beat % 4 === 0 ? 46.25 : beat % 4 === 2 ? 55.0 : 61.74;
+
+    if (beat % 2 === 0) {
+      this.scheduleLumiiScenarioTone(ctx, root, 'sawtooth', now, 0.32, 0.19 * pressure, 'lowpass', 210 + pressure * 120);
+      this.scheduleLumiiScenarioTone(ctx, root * 2, 'triangle', now + 0.018, 0.26, 0.065 * pressure, 'lowpass', 300 + pressure * 150);
+    }
+
+    if (beat === 3 || beat === 7) {
+      const note = beat === 3 ? LUMII_SIGNAL_NOTES.hostile[2] : LUMII_SIGNAL_NOTES.hostile[4];
+      this.scheduleLumiiScenarioTone(ctx, note, 'triangle', now + 0.012, 0.16, 0.045 * pressure, 'bandpass', note * 1.5);
+    }
+
+    if (beat === 0) {
+      LUMII_SIGNAL_NOTES.hostile.forEach((frequency, index) => {
+        this.scheduleLumiiScenarioTone(
+          ctx,
+          frequency,
+          index % 2 === 0 ? 'triangle' : 'sine',
+          now + 0.055 + index * 0.075,
+          0.22,
+          (0.026 + this.endgameIntensity * 0.016) * (1 - index * 0.08),
+          'bandpass',
+          frequency * 1.45,
+        );
+      });
+    }
+  }
+
+  private scheduleLumiiScenarioTone(
+    ctx: AudioContext,
+    frequency: number,
+    type: OscillatorType,
+    startTime: number,
+    duration: number,
+    peak: number,
+    filterType: BiquadFilterType,
+    filterFrequency: number,
+  ) {
+    if (!this.lumiiScenarioGain) return;
+    try {
+      const oscillator = ctx.createOscillator();
+      const gain = ctx.createGain();
+      const filter = ctx.createBiquadFilter();
+      oscillator.type = type;
+      oscillator.frequency.setValueAtTime(frequency, startTime);
+      filter.type = filterType;
+      filter.frequency.setValueAtTime(filterFrequency, startTime);
+      filter.Q.value = filterType === 'bandpass' ? 2.3 : 0.72;
+      gain.gain.setValueAtTime(0.0001, startTime);
+      gain.gain.linearRampToValueAtTime(peak, startTime + 0.025);
+      gain.gain.exponentialRampToValueAtTime(0.0001, startTime + duration);
+      oscillator.connect(gain);
+      gain.connect(filter);
+      filter.connect(this.lumiiScenarioGain);
+      this.trackVoice(oscillator, [gain, filter]);
+      oscillator.start(startTime);
+      oscillator.stop(startTime + duration + 0.04);
+    } catch {}
   }
 
   // ── Low-level helpers ───────────────────────────────────────────────────
@@ -405,7 +605,1057 @@ export class GameAudio {
     this.osc(ctx, 261.63, 'sine', startTime, startTime + 0.92, 0.026 * intensity, 0.04, dest);
   }
 
+  private getReversedAudioSlice(
+    ctx: AudioContext,
+    url: string,
+    buffer: AudioBuffer,
+    offset: number,
+    duration: number,
+  ) {
+    const startFrame = Math.min(
+      buffer.length - 1,
+      Math.max(0, Math.floor(offset * buffer.sampleRate)),
+    );
+    const frameLength = Math.max(
+      1,
+      Math.min(
+        buffer.length - startFrame,
+        Math.ceil(duration * buffer.sampleRate),
+      ),
+    );
+    const cacheKey = `${url}:${startFrame}:${frameLength}`;
+    const cached = this.reversedAudioSlices.get(cacheKey);
+    if (cached) return cached;
+
+    const reversed = ctx.createBuffer(
+      buffer.numberOfChannels,
+      frameLength,
+      buffer.sampleRate,
+    );
+    for (let channel = 0; channel < buffer.numberOfChannels; channel += 1) {
+      const sourceData = buffer.getChannelData(channel);
+      const targetData = reversed.getChannelData(channel);
+      for (let frame = 0; frame < frameLength; frame += 1) {
+        targetData[frame] = sourceData[startFrame + frameLength - frame - 1];
+      }
+    }
+    this.reversedAudioSlices.set(cacheKey, reversed);
+    return reversed;
+  }
+
+  private disposeAntimatterBlueprintCinematic(restoreAmbientMusic: boolean) {
+    const bus = this.antimatterCinematicBus;
+    if (!bus) return;
+    clearTimeout(bus.cleanupTimer);
+    for (const node of bus.nodes) this.disconnect(node);
+    this.antimatterCinematicBus = null;
+    if (restoreAmbientMusic) this.restoreMusic(0.32);
+  }
+
+  stopAntimatterBlueprintCinematic() {
+    this.disposeAntimatterBlueprintCinematic(true);
+  }
+
+  /**
+   * Eight-second authored score for the Antimatter Detonator manifestation.
+   * Recorded metal and machinery cues share the Three.js timing source, so
+   * replay can restart picture and sound on the same frame.
+   */
+  playAntimatterBlueprintCinematic(
+    { abridged = false }: { abridged?: boolean } = {},
+  ) {
+    this.disposeAntimatterBlueprintCinematic(false);
+    if (this.muted) return false;
+
+    const nodes: AudioNode[] = [];
+    try {
+      const ctx = this.initCtx();
+      const timing = ANTIMATTER_CINEMATIC_TIMING;
+      const playbackDuration = abridged
+        ? timing.duration - timing.reducedMotionStart
+        : timing.duration;
+      const start = ctx.currentTime + 0.035;
+
+      const master = ctx.createGain();
+      const compressor = ctx.createDynamicsCompressor();
+      const dryBus = ctx.createGain();
+      const wetBus = ctx.createGain();
+      const reverb = ctx.createConvolver();
+      const assemblyBus = ctx.createGain();
+      const manifestationBus = ctx.createGain();
+      const musicBus = ctx.createGain();
+      const musicFilter = ctx.createBiquadFilter();
+      nodes.push(
+        master,
+        compressor,
+        dryBus,
+        wetBus,
+        reverb,
+        assemblyBus,
+        manifestationBus,
+        musicBus,
+        musicFilter,
+      );
+
+      compressor.threshold.value = -22;
+      compressor.knee.value = 12;
+      compressor.ratio.value = 5.5;
+      compressor.attack.value = 0.004;
+      compressor.release.value = 0.28;
+      reverb.buffer = this.buildReverbIR(ctx, 2.8);
+      dryBus.gain.value = 0.96;
+      wetBus.gain.value = 0.16;
+      musicBus.gain.value = 0.86;
+      musicFilter.type = 'lowpass';
+      musicFilter.Q.value = 0.7;
+      musicFilter.frequency.setValueAtTime(240, start);
+      musicFilter.frequency.linearRampToValueAtTime(520, start + timing.ignition.peaksAt);
+      musicFilter.frequency.linearRampToValueAtTime(310, start + timing.duration);
+
+      assemblyBus.connect(dryBus);
+      assemblyBus.connect(reverb);
+      manifestationBus.connect(dryBus);
+      manifestationBus.connect(reverb);
+      musicBus.connect(musicFilter);
+      musicFilter.connect(dryBus);
+      musicFilter.connect(reverb);
+      reverb.connect(wetBus);
+      dryBus.connect(master);
+      wetBus.connect(master);
+      master.connect(compressor);
+      compressor.connect(ctx.destination);
+
+      master.gain.setValueAtTime(0.0001, start);
+      master.gain.linearRampToValueAtTime(0.68, start + 0.09);
+      master.gain.setValueAtTime(0.68, start + playbackDuration - 0.38);
+      master.gain.exponentialRampToValueAtTime(0.0001, start + playbackDuration + 0.28);
+
+      const scheduleTone = ({
+        at,
+        duration,
+        from,
+        to = from,
+        peak,
+        type = 'sine',
+        attack = 0.04,
+        release = 0.24,
+        destination = assemblyBus,
+      }: {
+        at: number;
+        duration: number;
+        from: number;
+        to?: number;
+        peak: number;
+        type?: OscillatorType;
+        attack?: number;
+        release?: number;
+        destination?: AudioNode;
+      }) => {
+        const beginsAt = start + at;
+        const endsAt = beginsAt + duration;
+        const attackEndsAt = beginsAt + Math.min(attack, duration * 0.45);
+        const releaseStartsAt = Math.max(attackEndsAt, endsAt - release);
+        const oscillator = ctx.createOscillator();
+        const gain = ctx.createGain();
+        oscillator.type = type;
+        oscillator.frequency.setValueAtTime(Math.max(1, from), beginsAt);
+        oscillator.frequency.exponentialRampToValueAtTime(Math.max(1, to), endsAt);
+        gain.gain.setValueAtTime(0.0001, beginsAt);
+        gain.gain.linearRampToValueAtTime(peak, attackEndsAt);
+        gain.gain.setValueAtTime(peak * 0.78, releaseStartsAt);
+        gain.gain.exponentialRampToValueAtTime(0.0001, endsAt);
+        oscillator.connect(gain);
+        gain.connect(destination);
+        this.trackVoice(oscillator, [gain]);
+        oscillator.start(beginsAt);
+        oscillator.stop(endsAt + 0.05);
+      };
+
+      const scheduleBassPulse = (
+        at: number,
+        intensity = 1,
+        destination: AudioNode = musicBus,
+      ) => {
+        scheduleTone({
+          at,
+          duration: 0.52,
+          from: 55,
+          to: 33,
+          peak: 0.14 * intensity,
+          attack: 0.006,
+          release: 0.46,
+          destination,
+        });
+        scheduleTone({
+          at: at + 0.008,
+          duration: 0.19,
+          from: 112,
+          to: 56,
+          peak: 0.043 * intensity,
+          type: 'triangle',
+          attack: 0.004,
+          release: 0.16,
+          destination,
+        });
+        this.noiseBlip(ctx, start + at, 0.065, 0.032 * intensity, 105, 1.1, destination);
+      };
+
+      const scheduleSample = ({
+        url,
+        at,
+        duration,
+        volume,
+        offset = 0,
+        rate = 1,
+        attack = 0.004,
+        release = 0.1,
+        highpass,
+        lowpass,
+        pan = 0,
+        reverse = false,
+        destination = assemblyBus,
+      }: {
+        url: string;
+        at: number;
+        duration: number;
+        volume: number;
+        offset?: number;
+        rate?: number;
+        attack?: number;
+        release?: number;
+        highpass?: number;
+        lowpass?: number;
+        pan?: number;
+        reverse?: boolean;
+        destination?: AudioNode;
+      }) => {
+        const scheduledTime = start + at;
+        void this.loadMp3(url, ctx).then((buffer) => {
+          if (this.muted || this.antimatterCinematicBus?.master !== master) return;
+
+          const now = ctx.currentTime;
+          const lateness = Math.max(0, now - scheduledTime);
+          const playbackRate = Math.max(0.25, Math.min(2, rate));
+          const baseSourceOffset = Math.min(
+            buffer.duration - 0.01,
+            Math.max(0, offset),
+          );
+          const requestedSourceDuration = Math.min(
+            duration * playbackRate,
+            Math.max(0.01, buffer.duration - baseSourceOffset),
+          );
+          const fullAudibleDuration = requestedSourceDuration / playbackRate;
+          if (lateness >= fullAudibleDuration || lateness > 0.6) return;
+
+          let playbackBuffer = buffer;
+          let sourceOffset = baseSourceOffset + lateness * playbackRate;
+          if (reverse) {
+            playbackBuffer = this.getReversedAudioSlice(
+              ctx,
+              url,
+              buffer,
+              baseSourceOffset,
+              requestedSourceDuration,
+            );
+            sourceOffset = Math.min(
+              playbackBuffer.duration - 0.001,
+              lateness * playbackRate,
+            );
+          }
+          const sourceDuration = Math.max(
+            0.001,
+            Math.min(
+              requestedSourceDuration - lateness * playbackRate,
+              playbackBuffer.duration - sourceOffset,
+            ),
+          );
+          const audibleDuration = sourceDuration / playbackRate;
+          const startsAt = Math.max(now, scheduledTime);
+          const attackEndsAt = startsAt + Math.min(attack, audibleDuration * 0.45);
+          const releaseStartsAt = Math.max(
+            attackEndsAt,
+            startsAt + audibleDuration - Math.min(release, audibleDuration * 0.72),
+          );
+
+          const source = ctx.createBufferSource();
+          const gain = ctx.createGain();
+          const voiceNodes: AudioNode[] = [gain];
+          source.buffer = playbackBuffer;
+          source.playbackRate.setValueAtTime(playbackRate, startsAt);
+          gain.gain.setValueAtTime(0.0001, startsAt);
+          gain.gain.linearRampToValueAtTime(volume, attackEndsAt);
+          gain.gain.setValueAtTime(volume, releaseStartsAt);
+          gain.gain.exponentialRampToValueAtTime(0.0001, startsAt + audibleDuration);
+
+          let tail: AudioNode = source;
+          if (highpass != null) {
+            const filter = ctx.createBiquadFilter();
+            filter.type = 'highpass';
+            filter.frequency.value = highpass;
+            filter.Q.value = 0.7;
+            tail.connect(filter);
+            tail = filter;
+            voiceNodes.push(filter);
+          }
+          if (lowpass != null) {
+            const filter = ctx.createBiquadFilter();
+            filter.type = 'lowpass';
+            filter.frequency.value = lowpass;
+            filter.Q.value = 0.7;
+            tail.connect(filter);
+            tail = filter;
+            voiceNodes.push(filter);
+          }
+          if (pan !== 0) {
+            const panner = ctx.createStereoPanner();
+            panner.pan.value = Math.max(-1, Math.min(1, pan));
+            tail.connect(panner);
+            tail = panner;
+            voiceNodes.push(panner);
+          }
+          tail.connect(gain);
+          gain.connect(destination);
+          this.trackVoice(source, voiceNodes);
+          source.start(startsAt, sourceOffset, sourceDuration);
+        }).catch((error) => {
+          console.warn('[Luminae] Antimatter sample failed', error);
+        });
+      };
+
+      const registerCleanup = () => {
+        this.duckMusic(0.16, Math.max(0.4, playbackDuration - 1.05), 0.08, 0.9);
+        const cleanupTimer = setTimeout(() => {
+          if (this.antimatterCinematicBus?.master === master) {
+            this.disposeAntimatterBlueprintCinematic(true);
+          }
+        }, (playbackDuration + 1.4) * 1000);
+        this.antimatterCinematicBus = { master, nodes, cleanupTimer };
+        return true;
+      };
+
+      if (abridged) {
+        scheduleSample({
+          url: ANTIMATTER_CINEMATIC_SFX.deepImpact,
+          at: 0,
+          duration: playbackDuration,
+          volume: 0.14,
+          offset: 1.28,
+          rate: 0.52,
+          attack: 0.1,
+          lowpass: 460,
+          highpass: 28,
+          release: 0.78,
+          destination: manifestationBus,
+        });
+        [0.53, 1.27].forEach((at, index) => {
+          scheduleSample({
+            url: ANTIMATTER_CINEMATIC_SFX.metalDoorSlam,
+            at,
+            duration: Math.min(0.62, playbackDuration - at),
+            volume: 0.25 + index * 0.04,
+            rate: 0.36,
+            lowpass: 230,
+            highpass: 28,
+            release: 0.48,
+            destination: manifestationBus,
+          });
+          scheduleBassPulse(at, 0.7 + index * 0.08, manifestationBus);
+        });
+        return registerCleanup();
+      }
+
+      // A low cosmic pad gives the cinematic an actual ominous score. Two
+      // overlapping passages avoid an audible loop, while the shared music bus
+      // still drops them into the implosion vacuum and restores them afterward.
+      scheduleSample({
+        url: LUMINARY_SFX.universeExpanding,
+        at: 0.12,
+        duration: 5.5,
+        volume: 0.11,
+        rate: 0.64,
+        attack: 1.15,
+        release: 1.05,
+        highpass: 34,
+        lowpass: 1_100,
+        pan: -0.08,
+        destination: musicBus,
+      });
+      scheduleSample({
+        url: LUMINARY_SFX.universeExpanding,
+        at: 3.82,
+        duration: timing.phases.manifested - 3.82,
+        volume: 0.095,
+        offset: 0.5,
+        rate: 0.64,
+        attack: 0.92,
+        release: 0.95,
+        highpass: 34,
+        lowpass: 980,
+        pan: 0.08,
+        destination: musicBus,
+      });
+
+      // Slowed structural recordings sit under the tonal pad so the score
+      // retains physical scale without turning into machinery or a synth buzz.
+      scheduleSample({
+        url: ANTIMATTER_CINEMATIC_SFX.deepImpact,
+        at: 0,
+        duration: timing.phases.manifested,
+        volume: 0.24,
+        offset: 0.18,
+        rate: 0.32,
+        attack: 1.05,
+        release: 1.1,
+        lowpass: 260,
+        highpass: 24,
+        destination: musicBus,
+      });
+      scheduleSample({
+        url: ANTIMATTER_CINEMATIC_SFX.metalDoorSlam,
+        at: 0.1,
+        duration: 4.1,
+        volume: 0.1,
+        offset: 0.06,
+        rate: 0.25,
+        attack: 0.8,
+        release: 1.2,
+        lowpass: 420,
+        highpass: 38,
+        pan: -0.22,
+        destination: musicBus,
+      });
+
+      // Each source Artifact rides a different length of real hydraulic motion.
+      const artifactCues = [
+        timing.parts.ignitionKernel,
+        timing.parts.magneticBottle,
+        timing.parts.causalSparkCoil,
+        timing.parts.horizonExtractor,
+      ];
+      const artifactPans = [-0.48, 0.24, 0.48, -0.2];
+      const hydraulicOffsets = [0.28, 2.05, 4.38, 6.62];
+      artifactCues.forEach(({ entersAt, locksAt }, index) => {
+        scheduleSample({
+          url: ANTIMATTER_CINEMATIC_SFX.hydraulics,
+          at: entersAt,
+          duration: Math.min(timing.assemblyAudio.entryStrokeDuration, locksAt - entersAt),
+          volume: 0.115 + index * 0.008,
+          offset: hydraulicOffsets[index],
+          rate: 0.78 + index * 0.055,
+          attack: 0.035,
+          release: 0.16,
+          highpass: 72,
+          lowpass: 2_300 - index * 180,
+          pan: artifactPans[index],
+        });
+      });
+
+      // Each card-linked keystone now unfolds into a larger subsystem after
+      // approach. These shared timing windows are also consumed by the Three.js
+      // renderer, keeping every mechanical extension attached to visible motion.
+      const deploymentCues = [
+        {
+          timing: timing.deployments.ignitionNetwork,
+          strokeDuration: 0.34,
+          offset: 1.12,
+          rate: 0.62,
+          volume: 0.105,
+          pan: -0.42,
+          lowpass: 1_500,
+        },
+        {
+          timing: timing.deployments.magneticCage,
+          strokeDuration: 0.32,
+          offset: 3.16,
+          rate: 0.6,
+          volume: 0.11,
+          pan: 0.16,
+          lowpass: 1_400,
+        },
+        {
+          timing: timing.deployments.causalCircumference,
+          strokeDuration: 0.28,
+          offset: 5.45,
+          rate: 0.64,
+          volume: 0.105,
+          pan: 0.38,
+          lowpass: 1_550,
+        },
+        {
+          timing: timing.deployments.horizonMirror,
+          strokeDuration: 0.26,
+          offset: 7.45,
+          rate: 0.58,
+          volume: 0.11,
+          pan: -0.34,
+          lowpass: 1_250,
+        },
+        {
+          timing: timing.deployments.horizonSpine,
+          strokeDuration: 0.24,
+          offset: 8.2,
+          rate: 0.56,
+          volume: 0.1,
+          pan: 0,
+          lowpass: 1_150,
+        },
+      ];
+      deploymentCues.forEach(({ timing: deployment, strokeDuration, ...cue }, index) => {
+        scheduleSample({
+          url: ANTIMATTER_CINEMATIC_SFX.hydraulics,
+          at: deployment.startsAt,
+          duration: Math.min(strokeDuration, deployment.settlesAt - deployment.startsAt),
+          attack: 0.025,
+          release: 0.09,
+          highpass: 58 + index * 6,
+          ...cue,
+        });
+      });
+
+      // Keep toothed motion brief. Longer ratchet slices read as caustic drilling
+      // when layered with the hydraulic subsystem deployments.
+      [
+        { at: timing.deployments.magneticCage.startsAt + 0.16, duration: 0.38, offset: 2.18, pan: 0.12 },
+      ].forEach((cue, index) => {
+        scheduleSample({
+          url: ANTIMATTER_CINEMATIC_SFX.ratchet,
+          at: cue.at,
+          duration: cue.duration,
+          offset: cue.offset,
+          volume: 0.12 + index * 0.025,
+          rate: 0.7 + index * 0.04,
+          attack: 0.012,
+          release: 0.1,
+          highpass: 115,
+          lowpass: 3_800,
+          pan: cue.pan,
+        });
+      });
+
+      [
+        { at: timing.deployments.ignitionNetwork.settlesAt, pan: -0.42, offset: 0.32 },
+        { at: timing.deployments.magneticCage.settlesAt, pan: 0.16, offset: 0.52 },
+        { at: timing.deployments.horizonMirror.settlesAt, pan: -0.34, offset: 0.74 },
+      ].forEach(({ at, pan, offset }) => {
+        scheduleSample({
+          url: ANTIMATTER_CINEMATIC_SFX.metalImpact,
+          at,
+          duration: 0.22,
+          offset,
+          volume: 0.14,
+          rate: 1.12,
+          attack: 0.004,
+          release: 0.14,
+          highpass: 150,
+          lowpass: 3_600,
+          pan,
+        });
+      });
+
+      // Ignition Kernel: one concise furnace-door closure. A slowed duplicate
+      // bloomed after the visible lock and made this moment sound strained.
+      scheduleSample({
+        url: ANTIMATTER_CINEMATIC_SFX.metalDoorSlam,
+        at: timing.parts.ignitionKernel.locksAt,
+        duration: 0.62,
+        volume: 0.54,
+        rate: 0.94,
+        release: 0.28,
+        lowpass: 3_800,
+        highpass: 42,
+        pan: artifactPans[0],
+      });
+
+      // Magnetic Bottle: a clamp snap with a longer steel resonance.
+      scheduleSample({
+        url: ANTIMATTER_CINEMATIC_SFX.metalImpact,
+        at: timing.parts.magneticBottle.locksAt,
+        duration: 1.22,
+        volume: 0.5,
+        rate: 0.78,
+        lowpass: 4_200,
+        highpass: 62,
+        pan: artifactPans[1],
+      });
+      scheduleSample({
+        url: ANTIMATTER_CINEMATIC_SFX.metalDoorSlam,
+        at: timing.parts.magneticBottle.locksAt + 0.045,
+        duration: 0.96,
+        volume: 0.27,
+        rate: 0.7,
+        lowpass: 720,
+        highpass: 34,
+        pan: artifactPans[1],
+      });
+
+      // Causal Spark Coil: its deployment already carries the ratcheting motion;
+      // reserve this moment for the distinct breaker-like seating hit.
+      scheduleSample({
+        url: ANTIMATTER_CINEMATIC_SFX.metalImpact,
+        at: timing.parts.causalSparkCoil.locksAt,
+        duration: 0.96,
+        volume: 0.46,
+        rate: 0.94,
+        highpass: 48,
+        lowpass: 3_200,
+        pan: artifactPans[2],
+      });
+
+      // Horizon Extractor: the heaviest, least resonant pressure seal.
+      scheduleSample({
+        url: ANTIMATTER_CINEMATIC_SFX.metalDoorSlam,
+        at: timing.parts.horizonExtractor.locksAt,
+        duration: 0.74,
+        volume: 0.66,
+        rate: 0.64,
+        lowpass: 1_450,
+        highpass: 28,
+        release: 0.52,
+        pan: artifactPans[3],
+      });
+      scheduleSample({
+        url: ANTIMATTER_CINEMATIC_SFX.deepImpact,
+        at: timing.parts.horizonExtractor.locksAt + 0.018,
+        duration: 0.58,
+        volume: 0.32,
+        offset: 0.08,
+        rate: 0.74,
+        lowpass: 480,
+        highpass: 24,
+        pan: artifactPans[3] * 0.4,
+      });
+
+      // Containment is field pressure, not additional construction. Slowed and
+      // reversed recordings create a smooth inward load between the last lock
+      // and the implosion without introducing more ratchets or clanks.
+      scheduleSample({
+        url: ANTIMATTER_CINEMATIC_SFX.deepImpact,
+        at: timing.containment.startsAt,
+        duration: timing.implosion.startsAt - timing.containment.startsAt,
+        volume: 0.14,
+        offset: 1.24,
+        rate: 0.42,
+        attack: 0.28,
+        release: 0.22,
+        highpass: 24,
+        lowpass: 380,
+        destination: manifestationBus,
+      });
+      scheduleSample({
+        url: ANTIMATTER_CINEMATIC_SFX.pressureRelease,
+        at: timing.containment.startsAt + 0.08,
+        duration: timing.implosion.startsAt - timing.containment.startsAt - 0.14,
+        volume: 0.085,
+        offset: 0.56,
+        rate: 0.54,
+        attack: 0.22,
+        release: 0.16,
+        highpass: 52,
+        lowpass: 1_050,
+        reverse: true,
+        destination: manifestationBus,
+      });
+      [4.34, 4.96, 5.3].forEach((at, index) => {
+        scheduleBassPulse(at, 0.42 + index * 0.09, manifestationBus);
+      });
+
+      // End the assembly texture decisively after the final lock so its metal
+      // resonance cannot make the containment field read as more construction.
+      const assemblyGain = assemblyBus.gain;
+      assemblyGain.setValueAtTime(1, start);
+      assemblyGain.setValueAtTime(
+        1,
+        start + timing.parts.horizonExtractor.locksAt + 0.04,
+      );
+      assemblyGain.exponentialRampToValueAtTime(
+        0.0001,
+        start + timing.phases.containment,
+      );
+
+      // The chamber bed falls into a hard vacuum at the pinch point, returns
+      // under the aftershock, then ends exactly as the device manifests.
+      const musicGain = musicBus.gain;
+      musicGain.setValueAtTime(0.86, start + timing.implosion.startsAt);
+      musicGain.linearRampToValueAtTime(0.025, start + timing.implosion.pinchesAt);
+      musicGain.setValueAtTime(0.025, start + timing.flash.peaksAt + 0.02);
+      musicGain.linearRampToValueAtTime(0.22, start + timing.flash.endsAt);
+      musicGain.exponentialRampToValueAtTime(
+        0.0001,
+        start + timing.phases.manifested,
+      );
+
+      // Three inward fronts narrow toward the same instant. Reversing short
+      // recorded slices gives the collapse a physical draw without a synth buzz.
+      scheduleSample({
+        url: ANTIMATTER_CINEMATIC_SFX.pressureRelease,
+        at: timing.implosion.startsAt,
+        duration: timing.implosion.pinchesAt - timing.implosion.startsAt,
+        volume: 0.18,
+        offset: 0.24,
+        rate: 0.86,
+        attack: 0.025,
+        release: 0.012,
+        lowpass: 2_800,
+        highpass: 72,
+        reverse: true,
+        destination: manifestationBus,
+      });
+      scheduleSample({
+        url: ANTIMATTER_CINEMATIC_SFX.deepImpact,
+        at: timing.implosion.startsAt,
+        duration: timing.implosion.pinchesAt - timing.implosion.startsAt,
+        volume: 0.25,
+        offset: 0.08,
+        rate: 0.72,
+        attack: 0.02,
+        release: 0.012,
+        lowpass: 620,
+        highpass: 26,
+        reverse: true,
+        destination: manifestationBus,
+      });
+      timing.implosionWaves.forEach((at, index) => {
+        scheduleSample({
+          url: ANTIMATTER_CINEMATIC_SFX.metalImpact,
+          at,
+          duration: timing.implosion.pinchesAt - at,
+          volume: 0.18 + index * 0.085,
+          offset: 0.04 + index * 0.08,
+          rate: 0.74 + index * 0.1,
+          attack: 0.01,
+          release: 0.008,
+          lowpass: 1_150 + index * 520,
+          highpass: 34,
+          pan: [-0.4, 0.24, 0][index],
+          reverse: true,
+          destination: manifestationBus,
+        });
+      });
+
+      // The flash is energy and displaced air, with no new mechanical strike
+      // after the assembly has already completed.
+      const annihilationTailDuration =
+        timing.phases.manifested - timing.flash.peaksAt;
+      scheduleSample({
+        url: ANTIMATTER_CINEMATIC_SFX.deepImpact,
+        at: timing.flash.peaksAt,
+        duration: annihilationTailDuration,
+        volume: 0.9,
+        rate: 0.86,
+        lowpass: 1_450,
+        highpass: 22,
+        release: 0.36,
+        destination: manifestationBus,
+      });
+      scheduleSample({
+        url: ANTIMATTER_CINEMATIC_SFX.pressureRelease,
+        at: timing.flash.peaksAt,
+        duration: annihilationTailDuration,
+        volume: 0.13,
+        offset: 0.2,
+        rate: 0.56,
+        lowpass: 1_200,
+        highpass: 48,
+        release: 0.38,
+        destination: manifestationBus,
+      });
+      scheduleSample({
+        url: ANTIMATTER_CINEMATIC_SFX.deepImpact,
+        at: timing.aftershock.startsAt,
+        duration: timing.aftershock.endsAt - timing.aftershock.startsAt,
+        volume: 0.27,
+        offset: 0.78,
+        rate: 0.5,
+        attack: 0.035,
+        lowpass: 440,
+        highpass: 26,
+        release: 0.34,
+        destination: manifestationBus,
+      });
+
+      // After manifestation, the finished device speaks only through three
+      // irregular bass beats. No ambience or annihilation tail crosses over.
+      timing.manifestedPulses.forEach((at, index) => {
+        scheduleBassPulse(at, 0.72 + index * 0.08, manifestationBus);
+      });
+
+      return registerCleanup();
+    } catch (error) {
+      for (const node of nodes) this.disconnect(node);
+      console.warn('Antimatter cinematic audio failed', error);
+      return false;
+    }
+  }
+
+  /**
+   * Short forge-interruption cue for a trapped Artifact. Its three pressure
+   * passes collapse into a true mix vacuum before the recorded impact lands.
+   */
+  playAntimatterDetonation({
+    speed = 1,
+    includeTrapTrigger = true,
+  }: {
+    speed?: number;
+    includeTrapTrigger?: boolean;
+  } = {}) {
+    if (this.muted) return false;
+
+    const nodes: AudioNode[] = [];
+    try {
+      const ctx = this.initCtx();
+      const timing = ANTIMATTER_DETONATION_TIMING;
+      const playbackSpeed = Math.max(0.3, Math.min(1.5, speed));
+      const at = (seconds: number) => seconds * playbackSpeed;
+      const start = ctx.currentTime + 0.025;
+      const master = ctx.createGain();
+      const compressor = ctx.createDynamicsCompressor();
+      const pressureBus = ctx.createGain();
+      const impactBus = ctx.createGain();
+      nodes.push(master, compressor, pressureBus, impactBus);
+
+      compressor.threshold.value = -20;
+      compressor.knee.value = 8;
+      compressor.ratio.value = 6;
+      compressor.attack.value = 0.003;
+      compressor.release.value = 0.24;
+      pressureBus.gain.value = 0.88;
+      impactBus.gain.value = 1;
+      pressureBus.connect(master);
+      impactBus.connect(master);
+      master.connect(compressor);
+      compressor.connect(ctx.destination);
+
+      master.gain.setValueAtTime(0.0001, start);
+      master.gain.linearRampToValueAtTime(0.72, start + at(0.08));
+      master.gain.setValueAtTime(0.72, start + at(timing.vacuum.startsAt - 0.035));
+      master.gain.exponentialRampToValueAtTime(0.0001, start + at(timing.vacuum.startsAt));
+      master.gain.setValueAtTime(0.0001, start + at(timing.vacuum.endsAt));
+      master.gain.linearRampToValueAtTime(0.9, start + at(timing.flash.peaksAt));
+      master.gain.setValueAtTime(0.72, start + at(timing.aftershock.startsAt + 0.08));
+      master.gain.exponentialRampToValueAtTime(0.0001, start + at(timing.aftershock.endsAt + 0.24));
+
+      this.registerTransientBus(nodes, (at(timing.duration) + 0.2) * 1000);
+      this.duckMusic(0.1, at(2.15), 0.055, 0.82);
+
+      const scheduleSample = ({
+        url,
+        startsAt,
+        duration,
+        volume,
+        offset = 0,
+        rate = 1,
+        reverse = false,
+        lowpass,
+        highpass,
+        destination,
+      }: {
+        url: string;
+        startsAt: number;
+        duration: number;
+        volume: number;
+        offset?: number;
+        rate?: number;
+        reverse?: boolean;
+        lowpass?: number;
+        highpass?: number;
+        destination: AudioNode;
+      }) => {
+        const scheduledTime = start + at(startsAt);
+        const adjustedRate = Math.max(0.3, Math.min(2, rate / playbackSpeed));
+        void this.loadMp3(url, ctx).then((buffer) => {
+          if (this.muted || !this.transientBuses.has(master)) return;
+
+          const lateness = Math.max(0, ctx.currentTime - scheduledTime);
+          const baseOffset = Math.min(buffer.duration - 0.01, Math.max(0, offset));
+          const sourceDuration = Math.min(
+            duration * adjustedRate,
+            Math.max(0.01, buffer.duration - baseOffset),
+          );
+          const audibleDuration = sourceDuration / adjustedRate;
+          if (lateness >= audibleDuration || lateness > 0.5) return;
+
+          let playbackBuffer = buffer;
+          let sourceOffset = baseOffset + lateness * adjustedRate;
+          if (reverse) {
+            playbackBuffer = this.getReversedAudioSlice(
+              ctx,
+              url,
+              buffer,
+              baseOffset,
+              sourceDuration,
+            );
+            sourceOffset = Math.min(playbackBuffer.duration - 0.001, lateness * adjustedRate);
+          }
+
+          const remainingSourceDuration = Math.max(
+            0.001,
+            Math.min(
+              sourceDuration - lateness * adjustedRate,
+              playbackBuffer.duration - sourceOffset,
+            ),
+          );
+          const remainingAudibleDuration = remainingSourceDuration / adjustedRate;
+          const beginsAt = Math.max(ctx.currentTime, scheduledTime);
+          const endsAt = beginsAt + remainingAudibleDuration;
+          const source = ctx.createBufferSource();
+          const gain = ctx.createGain();
+          const voiceNodes: AudioNode[] = [gain];
+          source.buffer = playbackBuffer;
+          source.playbackRate.setValueAtTime(adjustedRate, beginsAt);
+          gain.gain.setValueAtTime(0.0001, beginsAt);
+          gain.gain.linearRampToValueAtTime(volume, beginsAt + Math.min(0.018, remainingAudibleDuration * 0.24));
+          gain.gain.setValueAtTime(volume, Math.max(beginsAt + 0.02, endsAt - Math.min(0.16, remainingAudibleDuration * 0.5)));
+          gain.gain.exponentialRampToValueAtTime(0.0001, endsAt);
+
+          let tail: AudioNode = source;
+          if (highpass != null) {
+            const filter = ctx.createBiquadFilter();
+            filter.type = 'highpass';
+            filter.frequency.value = highpass;
+            filter.Q.value = 0.7;
+            tail.connect(filter);
+            tail = filter;
+            voiceNodes.push(filter);
+          }
+          if (lowpass != null) {
+            const filter = ctx.createBiquadFilter();
+            filter.type = 'lowpass';
+            filter.frequency.value = lowpass;
+            filter.Q.value = 0.7;
+            tail.connect(filter);
+            tail = filter;
+            voiceNodes.push(filter);
+          }
+          tail.connect(gain);
+          gain.connect(destination);
+          this.trackVoice(source, voiceNodes);
+          source.start(beginsAt, sourceOffset, remainingSourceDuration);
+        }).catch((error) => {
+          console.warn('[Luminae] Antimatter detonation sample failed', error);
+        });
+      };
+
+      if (includeTrapTrigger) {
+        scheduleSample({
+          url: TRAP_TRIGGER_WAV,
+          startsAt: 0.015,
+          duration: at(0.95),
+          volume: 0.36,
+          rate: 0.96,
+          lowpass: 4_400,
+          highpass: 70,
+          destination: pressureBus,
+        });
+      }
+      scheduleSample({
+        url: ANTIMATTER_CINEMATIC_SFX.ratchet,
+        startsAt: 0.06,
+        duration: at(0.34),
+        volume: 0.12,
+        rate: 0.68,
+        lowpass: 1_650,
+        highpass: 55,
+        destination: pressureBus,
+      });
+      scheduleSample({
+        url: ANTIMATTER_CINEMATIC_SFX.metalImpact,
+        startsAt: 0.31,
+        duration: at(0.34),
+        volume: 0.16,
+        rate: 0.72,
+        lowpass: 1_100,
+        highpass: 42,
+        destination: pressureBus,
+      });
+
+      timing.implosionWaves.forEach((startsAt, index) => {
+        scheduleSample({
+          url: index === 1
+            ? ANTIMATTER_CINEMATIC_SFX.deepImpact
+            : ANTIMATTER_CINEMATIC_SFX.pressureRelease,
+          startsAt,
+          duration: at(timing.vacuum.startsAt - startsAt),
+          volume: 0.13 + index * 0.055,
+          offset: index === 1 ? 0.72 : 0.12 + index * 0.16,
+          rate: 0.58 + index * 0.08,
+          reverse: true,
+          lowpass: 620 - index * 90,
+          highpass: 28,
+          destination: pressureBus,
+        });
+      });
+
+      scheduleSample({
+        url: ANTIMATTER_CINEMATIC_SFX.deepImpact,
+        startsAt: timing.flash.startsAt,
+        duration: at(0.68),
+        volume: 0.44,
+        offset: 0.08,
+        rate: 0.62,
+        lowpass: 520,
+        highpass: 24,
+        destination: impactBus,
+      });
+      scheduleSample({
+        url: ANTIMATTER_CINEMATIC_SFX.pressureRelease,
+        startsAt: timing.aftershock.startsAt,
+        duration: at(timing.aftershock.endsAt - timing.aftershock.startsAt),
+        volume: 0.18,
+        offset: 0.18,
+        rate: 0.58,
+        lowpass: 920,
+        highpass: 35,
+        destination: impactBus,
+      });
+
+      return true;
+    } catch (error) {
+      for (const node of nodes) this.disconnect(node);
+      console.warn('Antimatter detonation audio failed', error);
+      return false;
+    }
+  }
+
   // ── SFX ─────────────────────────────────────────────────────────────────
+
+  /** Trap-like effect trigger — hidden hazard springs before its main resolve. */
+  playTrapTrigger({
+    delaySeconds = 0,
+    volume = 0.52,
+  }: {
+    delaySeconds?: number;
+    volume?: number;
+  } = {}) {
+    if (this.muted) return false;
+    try {
+      const ctx = this.initCtx();
+      const t = ctx.currentTime + Math.max(0, delaySeconds);
+      const bus = ctx.createGain();
+      const filter = ctx.createBiquadFilter();
+      filter.type = 'lowpass';
+      filter.frequency.value = 4_700;
+      filter.Q.value = 0.45;
+      bus.gain.setValueAtTime(0.82, t);
+      filter.connect(bus);
+      bus.connect(ctx.destination);
+      this.registerTransientBus([filter, bus], 1_900);
+      this.duckMusic(0.24, 0.62, 0.035, 0.78, delaySeconds);
+
+      void this.scheduleMp3(
+        TRAP_TRIGGER_WAV,
+        t,
+        Math.max(0, Math.min(1, volume)),
+        { afterSeconds: 0.92, durationSeconds: 0.26 },
+        filter,
+        0.012,
+        0.18,
+      );
+      return true;
+    } catch (e) {
+      console.warn('Trap trigger SFX failed', e);
+      return false;
+    }
+  }
 
   /** Short sonic logo used at the absolute beginning of a match and in the win resolve. */
   playBrandMnemonic() {
@@ -518,6 +1768,46 @@ export class GameAudio {
     }
   }
 
+  /**
+   * Counted Affinity grant synchronized to visible token arrivals.
+   * Successive calls climb a consonant phrase so a multi-token delivery reads
+   * as a sequence, while the last arrival adds a restrained resolving shimmer.
+   */
+  playAffinityDelivery(
+    color: AffinityKey = 'flare',
+    sequenceIndex = 0,
+    sequenceTotal = 1,
+  ) {
+    if (this.muted) return;
+    try {
+      const ctx = this.initCtx();
+      const t = ctx.currentTime;
+      const total = Math.max(1, Math.floor(sequenceTotal));
+      const index = Math.max(0, Math.min(Math.floor(sequenceIndex), total - 1));
+      const phrase = [1, 9 / 8, 5 / 4, 3 / 2, 2];
+      const phraseIndex = total <= 1
+        ? phrase.length - 1
+        : Math.round((index / (total - 1)) * (phrase.length - 2));
+      const root = AFFINITY_FREQUENCIES[color];
+      const note = root * phrase[phraseIndex];
+      const isFinal = index === total - 1;
+
+      if (index === 0) this.duckMusic(0.72, 0.44, 0.025, 0.5);
+
+      // A compact arrival tick remains legible on phone speakers.
+      this.noiseBlip(ctx, t, 0.045, 0.038, Math.min(2_600, note * 1.6), 7);
+      this.osc(ctx, note, 'triangle', t, t + 0.28, 0.048, 0.004);
+      this.osc(ctx, note * 2, 'sine', t, t + 0.18, 0.018, 0.003);
+
+      if (isFinal) {
+        this.osc(ctx, root * 2, 'sine', t + 0.035, t + 0.52, 0.034, 0.008);
+        this.noiseBlip(ctx, t + 0.025, 0.16, 0.018, 2_400, 5);
+      }
+    } catch (e) {
+      console.warn('SFX failed', e);
+    }
+  }
+
   /** Affinity-pitched tone with a small tactile click. */
   playAffinitySelected(color: AffinityKey = 'flare') {
     if (this.muted) return;
@@ -552,6 +1842,48 @@ export class GameAudio {
         this.osc(ctx, root, 'triangle', at, at + 0.2, 0.036, 0.004);
         this.osc(ctx, root * 0.5, 'sine', at + 0.025, at + 0.31, 0.04, 0.006);
       });
+    } catch (e) {
+      console.warn('SFX failed', e);
+    }
+  }
+
+  /** Balance Due — every collected token settles into the central contract orbit. */
+  playBalanceDueGather() {
+    if (this.muted) return;
+    try {
+      const ctx = this.initCtx();
+      const t = ctx.currentTime;
+      const bus = ctx.createGain();
+      bus.gain.setValueAtTime(0.62, t);
+      bus.connect(ctx.destination);
+      this.registerTransientBus([bus], 1_450);
+      this.duckMusic(0.74, 0.72, 0.025, 0.55);
+
+      this.noiseSweep(ctx, t, 0.46, 0.012, 1_800, 260, bus);
+      this.osc(ctx, 196, 'triangle', t, t + 0.64, 0.022, 0.01, bus);
+      this.osc(ctx, 293.66, 'sine', t + 0.07, t + 0.76, 0.018, 0.008, bus);
+      this.osc(ctx, 440, 'sine', t + 0.16, t + 0.92, 0.013, 0.006, bus);
+      this.noiseBlip(ctx, t + 0.03, 0.055, 0.018, 520, 5, bus);
+    } catch (e) {
+      console.warn('SFX failed', e);
+    }
+  }
+
+  /** Balance Due — the completed orbit releases toward the shared Well. */
+  playBalanceDueRelease() {
+    if (this.muted) return;
+    try {
+      const ctx = this.initCtx();
+      const t = ctx.currentTime;
+      const bus = ctx.createGain();
+      bus.gain.setValueAtTime(0.6, t);
+      bus.connect(ctx.destination);
+      this.registerTransientBus([bus], 1_550);
+
+      this.noiseSweep(ctx, t, 0.68, 0.014, 180, 2_400, bus);
+      this.risingTone(ctx, t, 720, 130.81, 783.99, 0.024, bus);
+      this.osc(ctx, 261.63, 'sine', t + 0.08, t + 0.62, 0.014, 0.008, bus);
+      this.osc(ctx, 392, 'sine', t + 0.2, t + 0.84, 0.015, 0.006, bus);
     } catch (e) {
       console.warn('SFX failed', e);
     }
@@ -615,6 +1947,500 @@ export class GameAudio {
         ctx.currentTime,
         0.5,
       );
+    } catch (e) {
+      console.warn('SFX failed', e);
+    }
+  }
+
+  /** Impact Extinction — restrained metal instability before the central force arrives. */
+  playImpactExtinctionTremor() {
+    if (this.muted) return;
+    try {
+      const ctx = this.initCtx();
+      const t = ctx.currentTime;
+      const bus = ctx.createGain();
+      bus.gain.setValueAtTime(0.72, t);
+      bus.connect(ctx.destination);
+      this.registerTransientBus([bus], 1_100);
+      this.duckMusic(0.86, 0.5, 0.03, 0.28);
+
+      [0, 0.105, 0.215, 0.325, 0.44].forEach((offset, index) => {
+        this.noiseBlip(ctx, t + offset, 0.075, 0.016, 170 + index * 24, 2.2, bus);
+        this.osc(
+          ctx,
+          index % 2 === 0 ? 72 : 79,
+          'triangle',
+          t + offset,
+          t + offset + 0.11,
+          0.018,
+          0.008,
+          bus,
+        );
+      });
+    } catch (e) {
+      console.warn('SFX failed', e);
+    }
+  }
+
+  /** Decode the authored shockwave ahead of its frame-locked playback beat. */
+  preloadImpactExtinctionShockwave() {
+    if (this.muted) return;
+    try {
+      const ctx = this.initCtx();
+      void this.loadMp3(IMPACT_EXTINCTION_SHOCKWAVE_MP3, ctx).catch(() => undefined);
+    } catch (e) {
+      console.warn('SFX preload failed', e);
+    }
+  }
+
+  /** Impact Extinction — authored riser with its main transient locked to the shockwave. */
+  playImpactExtinctionShockwave(impactDelayMs = 0) {
+    if (this.muted) return;
+    try {
+      const ctx = this.initCtx();
+      const t = ctx.currentTime;
+      const bus = ctx.createGain();
+      bus.gain.setValueAtTime(0.58, t);
+      bus.connect(ctx.destination);
+      this.registerTransientBus([bus], 4_000);
+      this.duckMusic(0.42, 1.7, 0.04, 1.05);
+
+      void this.scheduleMp3(
+        IMPACT_EXTINCTION_SHOCKWAVE_MP3,
+        t,
+        1,
+        undefined,
+        bus,
+        0.015,
+        0.3,
+        getImpactExtinctionShockwaveSourceOffset(impactDelayMs),
+      );
+    } catch (e) {
+      console.warn('SFX failed', e);
+    }
+  }
+
+  /** Decode the authored Avatar Seeds cue ahead of its frame-locked playback. */
+  preloadSeedBeyondSeasonsCue() {
+    if (this.muted) return;
+    try {
+      const ctx = this.initCtx();
+      void this.loadMp3(SEED_BEYOND_SEASONS_MP3, ctx).catch(() => undefined);
+    } catch (e) {
+      console.warn('SFX preload failed', e);
+    }
+  }
+
+  /** Avatar Seeds — authored sowing cue with its main accent locked to the first mold. */
+  playSeedBeyondSeasonsCue(firstPlantDelayMs: number) {
+    if (this.muted) return;
+    try {
+      const ctx = this.initCtx();
+      const t = ctx.currentTime;
+      const bus = ctx.createGain();
+      bus.gain.setValueAtTime(0.72, t);
+      bus.connect(ctx.destination);
+      this.registerTransientBus([bus], 3_500);
+      this.duckMusic(0.66, 2.75, 0.06, 0.82);
+
+      const timing = getSeedBeyondSeasonsCueTiming(firstPlantDelayMs);
+      void this.scheduleMp3(
+        SEED_BEYOND_SEASONS_MP3,
+        t + timing.startDelaySeconds,
+        0.92,
+        undefined,
+        bus,
+        0.02,
+        0.08,
+        timing.sourceOffsetSeconds,
+      );
+    } catch (e) {
+      console.warn('SFX failed', e);
+    }
+  }
+
+  /** Avatar Seeds — restrained per-mold inscription beneath the authored cue. */
+  playAvatarSeedPlant(index = 0) {
+    if (this.muted) return;
+    try {
+      const ctx = this.initCtx();
+      const t = ctx.currentTime;
+      const bus = ctx.createGain();
+      bus.gain.setValueAtTime(0.5, t);
+      bus.connect(ctx.destination);
+      this.registerTransientBus([bus], 1_650);
+      const root = 587.33 * (1 + Math.min(index, 2) * 0.035);
+
+      this.osc(ctx, 92, 'sine', t, t + 0.48, 0.035, 0.01, bus);
+      this.noiseBlip(ctx, t + 0.015, 0.09, 0.018, 310, 2, bus);
+      this.osc(ctx, root, 'sine', t + 0.035, t + 0.72, 0.024, 0.008, bus);
+      this.osc(ctx, root * 1.5, 'sine', t + 0.12, t + 0.88, 0.014, 0.01, bus);
+    } catch (e) {
+      console.warn('SFX failed', e);
+    }
+  }
+
+  /** Lumii's five-note motif mirrors her five natural-Affinity constellation. */
+  playLumiiSignal(mode: LumiiSignalMode = 'guardian') {
+    if (this.muted) return;
+    try {
+      const ctx = this.initCtx();
+      const t = ctx.currentTime;
+      const bus = ctx.createGain();
+      bus.gain.setValueAtTime(mode === 'hostile' ? 0.48 : 0.4, t);
+      bus.connect(ctx.destination);
+      this.registerTransientBus([bus], 1_900);
+      const notes = LUMII_SIGNAL_NOTES[mode];
+      notes.forEach((frequency, index) => {
+        const at = t + index * (mode === 'hostile' ? 0.042 : 0.055);
+        this.osc(
+          ctx,
+          frequency,
+          mode === 'hostile' && index % 2 === 0 ? 'triangle' : 'sine',
+          at,
+          at + (mode === 'hostile' ? 0.42 : 0.62),
+          Math.max(0.01, 0.028 - index * 0.0028),
+          0.012,
+          bus,
+        );
+      });
+      if (mode === 'hostile') this.noiseBlip(ctx, t + 0.04, 0.28, 0.014, 620, 2.4, bus);
+    } catch (e) {
+      console.warn('Lumii signal failed', e);
+    }
+  }
+
+  /** Eternal Recurrence — one Burned Artifact lifts from the pile. */
+  playRecurrenceDeparture(index = 0) {
+    if (this.muted) return;
+    try {
+      const ctx = this.initCtx();
+      const t = ctx.currentTime;
+      const bus = ctx.createGain();
+      bus.gain.setValueAtTime(0.58, t);
+      bus.connect(ctx.destination);
+      this.registerTransientBus([bus], 1_300);
+      const root = 220 * (1 + (index % 4) * 0.035);
+
+      this.noiseSweep(ctx, t, 0.54, 0.012, 180, 1_260, bus);
+      this.osc(ctx, root, 'triangle', t + 0.04, t + 0.62, 0.015, 0.018, bus);
+      this.osc(ctx, root * 2, 'sine', t + 0.18, t + 0.7, 0.01, 0.012, bus);
+    } catch (e) {
+      console.warn('SFX failed', e);
+    }
+  }
+
+  /** Eternal Recurrence — one restored Artifact is absorbed by its Archive. */
+  playRecurrenceArchiveImpact(tier: 1 | 2 | 3) {
+    if (this.muted) return;
+    try {
+      const ctx = this.initCtx();
+      const t = ctx.currentTime;
+      const bus = ctx.createGain();
+      bus.gain.setValueAtTime(0.62, t);
+      bus.connect(ctx.destination);
+      this.registerTransientBus([bus], 1_050);
+      const root = tier === 1 ? 523.25 : tier === 2 ? 659.25 : 783.99;
+
+      this.noiseBlip(ctx, t, 0.065, 0.014, 420, 3, bus);
+      this.osc(ctx, root * 0.5, 'sine', t, t + 0.36, 0.018, 0.008, bus);
+      this.osc(ctx, root, 'sine', t + 0.055, t + 0.48, 0.012, 0.008, bus);
+    } catch (e) {
+      console.warn('SFX failed', e);
+    }
+  }
+
+  /** Assimilation — an accelerating nanoswarm consumes the Artifact under the scan front. */
+  playAssimilationDissolve(durationMs = 1_900) {
+    if (this.muted) return;
+    try {
+      const ctx = this.initCtx();
+      const t = ctx.currentTime;
+      const duration = Math.min(2.8, Math.max(0.42, durationMs / 1000));
+      const bus = ctx.createGain();
+      bus.gain.setValueAtTime(0.62, t);
+      bus.connect(ctx.destination);
+      this.registerTransientBus([bus], Math.round((duration + 0.85) * 1000));
+      this.duckMusic(0.68, duration + 0.4, 0.045, 0.72);
+
+      // A quiet, detuning mechanical cloud gives the grains a single body
+      // without turning the effect into a continuous energy sweep.
+      const swarm = this.osc(
+        ctx,
+        1_480,
+        'sawtooth',
+        t + 0.015,
+        t + duration * 0.9,
+        0.0065,
+        0.08,
+        bus,
+      );
+      swarm.o.frequency.setValueAtTime(1_480, t + 0.015);
+      swarm.o.frequency.exponentialRampToValueAtTime(410, t + duration * 0.9);
+      const undertone = this.osc(
+        ctx,
+        96,
+        'triangle',
+        t + duration * 0.12,
+        t + duration + 0.2,
+        0.017,
+        0.12,
+        bus,
+      );
+      undertone.o.frequency.setValueAtTime(96, t + duration * 0.12);
+      undertone.o.frequency.exponentialRampToValueAtTime(54, t + duration + 0.2);
+
+      // Short, accelerating grains read as thousands of small machines taking
+      // successive bites. Their pitch descends as less of the Artifact remains.
+      Array.from({ length: 20 }, (_, index) => index).forEach((index) => {
+        const progress = index / 19;
+        const accelerated = 1 - Math.pow(1 - progress, 1.65);
+        const grainAt = t + duration * (0.035 + accelerated * 0.76);
+        const alternatingPitch = index % 3 === 0 ? 310 : index % 3 === 1 ? -120 : 70;
+        this.noiseBlip(
+          ctx,
+          grainAt,
+          0.024 + progress * 0.025,
+          0.007 + progress * 0.009,
+          Math.max(360, 2_650 - progress * 1_900 + alternatingPitch),
+          10 + progress * 5,
+          bus,
+        );
+      });
+
+      // Broader bites punctuate the grain cloud, then collapse into a suction
+      // tail just before the particles begin their transit to Civilization.
+      [0.16, 0.34, 0.53, 0.69, 0.81].forEach((progress, index) => {
+        this.noiseBlip(
+          ctx,
+          t + duration * progress,
+          0.055 + index * 0.008,
+          0.012 + index * 0.002,
+          1_350 - index * 190,
+          4,
+          bus,
+        );
+      });
+      this.noiseSweep(ctx, t + 0.025, duration * 0.86, 0.012, 3_600, 520, bus);
+      this.noiseSweep(ctx, t + duration * 0.7, duration * 0.34, 0.02, 980, 90, bus);
+    } catch (e) {
+      console.warn('SFX failed', e);
+    }
+  }
+
+  /** Assimilation — focused nanomachine stream carrying matter to Civilization. */
+  playAssimilationTransit(durationMs = 1_250) {
+    if (this.muted) return;
+    try {
+      const ctx = this.initCtx();
+      const t = ctx.currentTime;
+      const duration = Math.min(2.2, Math.max(0.3, durationMs / 1000));
+      const bus = ctx.createGain();
+      bus.gain.setValueAtTime(0.58, t);
+      bus.connect(ctx.destination);
+      this.registerTransientBus([bus], Math.round((duration + 0.65) * 1000));
+
+      this.noiseSweep(ctx, t, duration, 0.012, 180, 2_200, bus);
+      this.risingTone(ctx, t, duration * 1000, 110, 880, 0.021, bus);
+      [0, 0.2, 0.42, 0.66].forEach((progress, index) => {
+        this.osc(
+          ctx,
+          220 * (1 + index * 0.5),
+          'sine',
+          t + duration * progress,
+          t + duration * Math.min(0.98, progress + 0.34),
+          0.009 + index * 0.002,
+          0.008,
+          bus,
+        );
+      });
+    } catch (e) {
+      console.warn('SFX failed', e);
+    }
+  }
+
+  /** Assimilation — tuned compression impact when the Affinity becomes permanent. */
+  playAssimilationAbsorb(affinity: AffinityKey) {
+    if (this.muted) return;
+    try {
+      const ctx = this.initCtx();
+      const t = ctx.currentTime;
+      const root = AFFINITY_FREQUENCIES[affinity] ?? 440;
+      const bus = ctx.createGain();
+      bus.gain.setValueAtTime(0.76, t);
+      bus.connect(ctx.destination);
+      this.registerTransientBus([bus], 1_750);
+      this.duckMusic(0.58, 0.92, 0.018, 0.62);
+
+      this.noiseBlip(ctx, t, 0.105, 0.027, 230, 3, bus);
+      this.osc(ctx, 52, 'sine', t, t + 0.58, 0.052, 0.018, bus);
+      this.osc(ctx, root * 0.5, 'triangle', t + 0.025, t + 0.62, 0.026, 0.012, bus);
+      this.osc(ctx, root, 'sine', t + 0.085, t + 0.9, 0.023, 0.008, bus);
+      this.osc(ctx, root * 1.5, 'sine', t + 0.18, t + 1.12, 0.014, 0.006, bus);
+      this.noiseSweep(ctx, t + 0.04, 0.42, 0.013, 1_800, 320, bus);
+    } catch (e) {
+      console.warn('SFX failed', e);
+    }
+  }
+
+  /** Early Bloom — vines climb, leaves unfurl, and a quiet morning chorus answers. */
+  playEarlyBloomGrowth(durationMs = 1_180) {
+    if (this.muted) return;
+    try {
+      const ctx = this.initCtx();
+      const t = ctx.currentTime;
+      const duration = Math.min(2.1, Math.max(0.42, durationMs / 1000));
+      const bus = ctx.createGain();
+      bus.gain.setValueAtTime(0.5, t);
+      bus.connect(ctx.destination);
+      this.registerTransientBus([bus], Math.round((duration + 1.05) * 1000));
+      this.duckMusic(0.82, duration + 0.2, 0.08, 0.7);
+
+      // The rising body suggests a vine extending rather than magical energy.
+      this.noiseSweep(ctx, t + 0.02, duration * 0.82, 0.009, 170, 1_050, bus);
+      const vine = this.osc(
+        ctx,
+        146.83,
+        'triangle',
+        t,
+        t + duration * 0.88,
+        0.012,
+        0.14,
+        bus,
+      );
+      vine.o.frequency.setValueAtTime(146.83, t);
+      vine.o.frequency.exponentialRampToValueAtTime(220, t + duration * 0.88);
+
+      // Fibrous creaks and leaf-rustles appear progressively higher as growth
+      // reaches upward through the visual transfer path.
+      [0.08, 0.24, 0.43, 0.61, 0.77].forEach((progress, index) => {
+        const at = t + duration * progress;
+        this.noiseBlip(ctx, at, 0.07 + index * 0.008, 0.01, 310 + index * 85, 3, bus);
+        this.noiseBlip(
+          ctx,
+          at + 0.035,
+          0.095,
+          0.0055,
+          1_650 + index * 210,
+          2,
+          bus,
+        );
+      });
+
+      // Dew-like harmonics keep the morning quality delicate and readable.
+      [
+        { progress: 0.18, frequency: 783.99 },
+        { progress: 0.46, frequency: 987.77 },
+        { progress: 0.72, frequency: 1_174.66 },
+      ].forEach(({ progress, frequency }) => {
+        this.osc(
+          ctx,
+          frequency,
+          'sine',
+          t + duration * progress,
+          t + duration * progress + 0.42,
+          0.009,
+          0.012,
+          bus,
+        );
+      });
+
+      // Two distant, restrained chirps imply spring morning without becoming
+      // a literal looping bird recording.
+      [0.28, 0.56].forEach((progress, index) => {
+        const chirpAt = t + duration * progress;
+        const chirp = this.osc(
+          ctx,
+          1_760 + index * 190,
+          'sine',
+          chirpAt,
+          chirpAt + 0.13,
+          0.0045,
+          0.018,
+          bus,
+        );
+        chirp.o.frequency.exponentialRampToValueAtTime(
+          2_640 + index * 230,
+          chirpAt + 0.1,
+        );
+      });
+    } catch (e) {
+      console.warn('SFX failed', e);
+    }
+  }
+
+  /** The victory threshold visibly recedes; a low pull resolves into a distant seal. */
+  playVictoryRequirementShift(amount = 1) {
+    if (this.muted || amount === 0) return;
+    try {
+      const ctx = this.initCtx();
+      const t = ctx.currentTime;
+      const bus = ctx.createGain();
+      bus.gain.setValueAtTime(0.7, t);
+      bus.connect(ctx.destination);
+      this.registerTransientBus([bus], 2_200);
+      this.duckMusic(0.64, 1.25, 0.035, 0.72);
+
+      const direction = amount > 0 ? 1 : -1;
+      this.noiseSweep(
+        ctx,
+        t,
+        1.05,
+        0.022,
+        direction > 0 ? 820 : 180,
+        direction > 0 ? 95 : 920,
+        bus,
+      );
+      this.osc(ctx, 73.42, 'sine', t, t + 1.35, 0.043, 0.025, bus);
+      this.osc(ctx, 293.66, 'triangle', t + 0.16, t + 0.86, 0.013, 0.018, bus);
+      this.osc(ctx, 440, 'sine', t + 0.7, t + 1.5, 0.015, 0.01, bus);
+    } catch (e) {
+      console.warn('SFX failed', e);
+    }
+  }
+
+  /** Void Warden — a spectral void pulse that pushes the victory threshold outward. */
+  playOblivionThresholdShift(amount = 1) {
+    if (this.muted || amount <= 0) return;
+    try {
+      const ctx = this.initCtx();
+      const t = ctx.currentTime;
+      const bus = ctx.createGain();
+      bus.gain.setValueAtTime(0.78, t);
+      bus.connect(ctx.destination);
+      this.registerTransientBus([bus], 4_400);
+      this.duckMusic(0.38, 2.45, 0.07, 1.05);
+
+      // The supplied voice is intentionally bounded to the pulse instead of
+      // letting its full 21-second tail outlive the threshold presentation.
+      void this.scheduleMp3(
+        OBLIVION_VOID_PULSE_MP3,
+        t,
+        0.42,
+        { afterSeconds: 2.05, durationSeconds: 0.62 },
+        bus,
+        0.14,
+        0.08,
+        0,
+        2.8,
+      );
+
+      const voidRoot = this.osc(ctx, 55, 'sine', t, t + 2.65, 0.055, 0.16, bus);
+      voidRoot.o.frequency.setValueAtTime(55, t);
+      voidRoot.o.frequency.exponentialRampToValueAtTime(29, t + 2.65);
+      this.noiseSweep(ctx, t + 0.03, 2.25, 0.026, 720, 48, bus);
+      this.noiseBlip(ctx, t + 0.18, 0.28, 0.032, 125, 2, bus);
+
+      const thresholdSteps = Math.min(8, Math.max(1, Math.round(amount)));
+      Array.from({ length: thresholdSteps }, (_, index) => index).forEach((index) => {
+        const progress = thresholdSteps === 1 ? 1 : index / (thresholdSteps - 1);
+        const at = t + 0.58 + progress * 0.88;
+        this.noiseBlip(ctx, at, 0.05, 0.011, 420 - progress * 170, 6, bus);
+        this.osc(ctx, 110 - progress * 36, 'triangle', at, at + 0.2, 0.012, 0.01, bus);
+      });
+
+      this.noiseSweep(ctx, t + 1.42, 0.8, 0.024, 1_100, 75, bus);
+      this.osc(ctx, 41.2, 'sine', t + 1.5, t + 2.82, 0.038, 0.03, bus);
     } catch (e) {
       console.warn('SFX failed', e);
     }
@@ -750,6 +2576,26 @@ export class GameAudio {
     }
   }
 
+  /** Brief gold-seal cue as a later seat receives its opening Eminence. */
+  playTurnOrderEminenceGrant(amount = 1, orderIndex = 0) {
+    if (this.muted) return;
+    try {
+      const ctx = this.initCtx();
+      const t = ctx.currentTime;
+      const root = 392 + Math.max(0, orderIndex) * 32;
+      this.duckMusic(0.78, 0.18, 0.02, 0.28);
+      this.osc(ctx, root, 'triangle', t, t + 0.22, 0.035, 0.004);
+      this.osc(ctx, root * 1.5, 'sine', t + 0.025, t + 0.3, 0.024, 0.004);
+      this.noiseBlip(ctx, t + 0.02, 0.035, 0.02, 2300, 8);
+      if (amount > 1) {
+        this.osc(ctx, root * 2, 'sine', t + 0.11, t + 0.42, 0.027, 0.004);
+        this.noiseBlip(ctx, t + 0.13, 0.04, 0.022, 2800, 9);
+      }
+    } catch (e) {
+      console.warn('SFX failed', e);
+    }
+  }
+
   /** Epic win: bass boom + triumphant arpeggio + high sparkles. */
   playWin() {
     if (this.muted) return;
@@ -797,7 +2643,7 @@ export class GameAudio {
       const ctx = this.initCtx();
       const t = ctx.currentTime;
       this.duckMusic(0.28, 1.06, 0.04, 0.9);
-      const affinity: AffinityKey = FANFARE_COLOR_MAP[summonColor.toLowerCase()] ?? 'singularity';
+      const affinity = resolveLuminaryAudioAffinity(summonColor);
       const base = AFFINITY_FREQUENCIES[affinity];
 
       // ── Tuning constants ────────────────────────────────────────────────────
@@ -838,7 +2684,7 @@ export class GameAudio {
 
   /**
    * Short activation sting for the LuminaryActivationCinematic overlay (~1–1.5 s).
-   * Three distinct tonal characters, one per effect type:
+   * Four distinct tonal contours, one per effect trigger:
    *
    *   summon ('arrival' in-game) — crystalline arrival burst: sub-bass impact + bright ascending
    *                  4-note arpeggio + high shimmer tail.  Signals something has
@@ -851,12 +2697,12 @@ export class GameAudio {
    *                   bell overtone.  Signals an entity rousing for its turn.
    *
    * `primaryColor` is the Luminary's hex color; it is mapped to an Affinity root so
-   * each affinity has a distinct pitch center.  Falls back to neutral 523 Hz (C5)
-   * when the color is not in the map.
+   * each natural Affinity has a distinct pitch center. Unknown and gold colors
+   * use neutral Radiance; Singularity's voice is reserved for Encryption.
    */
   playActivationSting(
-    _effectType: 'summon' | 'end_of_turn' | 'start_of_turn',
-    _primaryColor?: string,
+    effectType: 'summon' | 'action' | 'end_of_turn' | 'start_of_turn',
+    primaryColor?: string,
     fadeOptions?: {
       fadeInMs?: number;
       fadeOutStartMs?: number;
@@ -892,13 +2738,264 @@ export class GameAudio {
 
       ag.connect(ctx.destination);
       this.registerActivationBus(ag);
-      void this.scheduleMp3(EFFECT_WAV, t, 0.8, undefined, ag);
+      void this.scheduleMp3(EFFECT_WAV, t, 0.52, undefined, ag);
+
+      const affinity = resolveLuminaryAudioAffinity(primaryColor);
+      const root = AFFINITY_FREQUENCIES[affinity];
+      const motif = (
+        ratio: number,
+        offset: number,
+        duration: number,
+        volume: number,
+      ) => this.osc(
+        ctx,
+        root * ratio,
+        'sine',
+        t + offset,
+        t + offset + duration,
+        volume,
+        0.014,
+        ag,
+      );
+
+      // The authored sting supplies texture; this quiet motif supplies causal
+      // identity. Each trigger type has a stable contour and every Luminary is
+      // pitched around its active affinity family.
+      if (effectType === 'summon') {
+        motif(0.5, 0.04, 0.48, 0.018);
+        motif(0.75, 0.16, 0.44, 0.016);
+        motif(1, 0.3, 0.52, 0.014);
+      } else if (effectType === 'action') {
+        motif(1, 0.04, 0.3, 0.015);
+        motif(0.75, 0.15, 0.34, 0.017);
+        motif(0.5, 0.28, 0.46, 0.019);
+      } else if (effectType === 'end_of_turn') {
+        motif(0.5, 0.03, 0.4, 0.019);
+        motif(0.75, 0.22, 0.46, 0.016);
+      } else {
+        motif(0.375, 0.05, 0.42, 0.014);
+        motif(0.5, 0.17, 0.44, 0.016);
+        motif(0.75, 0.31, 0.5, 0.015);
+      }
     } catch (e) {
       console.warn('SFX failed', e);
     }
   }
 
-  /** Immediately silence any in-progress activation sting (called on skip). */
+  /**
+   * Short, phase-locked cues shared by every Luminary effect director.
+   *
+   * Target is intentionally consistent so the player learns "the effect has
+   * chosen its subject." Resolve varies by animation archetype and sits under
+   * authored sounds such as brand strikes, Burns, and Archive impacts.
+   * Aftermath is a quiet cadence that confirms the causal step is complete.
+   */
+  playLuminaryEffectBeat(
+    archetype: AnimationArchetype,
+    beat: LuminaryEffectSoundBeat,
+    primaryColor?: string,
+    luminaryId?: string,
+  ) {
+    if (this.muted) return;
+    try {
+      const ctx = this.initCtx();
+      const t = ctx.currentTime;
+      const affinity = resolveLuminaryAudioAffinity(primaryColor);
+      const root = AFFINITY_FREQUENCIES[affinity];
+      const bus = ctx.createGain();
+      bus.gain.setValueAtTime(0.74, t);
+      bus.connect(ctx.destination);
+      // Effect beats must survive the source activation component's cleanup.
+      // They are one-shot transients, not part of the activation sting bus;
+      // otherwise stopActivationSting() amputates resolve/aftermath tails as
+      // soon as the director advances or unmounts.
+      this.registerTransientBus([bus], 2_800);
+
+      const tone = (
+        ratio: number,
+        offset: number,
+        duration: number,
+        volume: number,
+        type: OscillatorType = 'sine',
+      ) => this.osc(
+        ctx,
+        root * ratio,
+        type,
+        t + offset,
+        t + offset + duration,
+        volume,
+        0.012,
+        bus,
+      );
+
+      const signature = () => {
+        // Keep identity motifs brief and quiet. They sit inside the semantic
+        // phase cue rather than becoming a second, competing sound event.
+        switch (luminaryId) {
+          case 'lum_moth':
+            tone(1.5, 0.02, 0.16, 0.011, 'sawtooth');
+            tone(0.25, 0.12, 0.34, 0.018, 'triangle');
+            break;
+          case 'lum_tide':
+            tone(0.5, 0.02, 0.5, 0.011);
+            tone(1, 0.16, 0.58, 0.012);
+            break;
+          case 'lum_verdant':
+            tone(0.5, 0.02, 0.34, 0.011, 'triangle');
+            tone(1.25, 0.2, 0.42, 0.012);
+            break;
+          case 'lum_void':
+            this.osc(ctx, 38, 'sine', t, t + 0.76, 0.025, 0.025, bus);
+            tone(0.353, 0.11, 0.56, 0.009, 'triangle');
+            break;
+          case 'lum_radiant':
+            tone(1, 0.02, 0.48, 0.011);
+            tone(1.5, 0.15, 0.52, 0.01);
+            break;
+          case 'lum_astral':
+            tone(0.375, 0.02, 0.6, 0.012);
+            tone(1.5, 0.24, 0.56, 0.01);
+            break;
+          case 'lum_bloom':
+            tone(0.5, 0.02, 0.28, 0.01, 'triangle');
+            tone(0.75, 0.16, 0.34, 0.011, 'triangle');
+            tone(1.25, 0.3, 0.42, 0.01);
+            break;
+          case 'lum_forge':
+            this.osc(ctx, 49, 'sine', t, t + 0.7, 0.027, 0.018, bus);
+            this.noiseBlip(ctx, t + 0.12, 0.09, 0.009, 310, 2, bus);
+            break;
+          case 'lum_compass':
+            // Sparse clock interval; the authored Forgotten Hour cue carries
+            // the dramatic weight at the branding strike.
+            tone(1, 0.04, 0.16, 0.008);
+            tone(0.5, 0.34, 0.3, 0.009);
+            break;
+          case 'lum_seed':
+            tone(0.375, 0.02, 0.4, 0.011, 'triangle');
+            tone(1.25, 0.22, 0.5, 0.011);
+            break;
+          case 'lum_orchard':
+            tone(1, 0.02, 0.38, 0.009);
+            tone(1.5, 0.09, 0.44, 0.01);
+            tone(2, 0.18, 0.48, 0.008);
+            break;
+          case 'lum_pale':
+            tone(1, 0.02, 0.26, 0.009);
+            tone(0.75, 0.18, 0.34, 0.01);
+            tone(0.5, 0.34, 0.42, 0.011);
+            break;
+          case 'lum_ember':
+            tone(0.25, 0.02, 0.46, 0.015, 'triangle');
+            this.noiseBlip(ctx, t + 0.12, 0.08, 0.008, 520, 2, bus);
+            break;
+          case 'lum_hunger':
+            tone(1.5, 0.02, 0.22, 0.009, 'sawtooth');
+            tone(0.375, 0.2, 0.52, 0.014, 'triangle');
+            break;
+          case 'lum_null':
+            tone(0.353, 0.02, 0.58, 0.011, 'triangle');
+            this.noiseSweep(ctx, t + 0.08, 0.46, 0.007, root * 1.2, 90, bus);
+            break;
+        }
+      };
+
+      if (beat === 'target') {
+        // One restrained focus gesture regardless of target count. Repeating
+        // this per card made multi-target effects sound chaotic.
+        tone(0.5, 0, 0.24, 0.02);
+        tone(1, 0.055, 0.2, 0.012);
+        this.noiseBlip(ctx, t + 0.025, 0.055, 0.01, root * 1.8, 10, bus);
+        return;
+      }
+
+      if (beat === 'aftermath') {
+        const unresolved = archetype === 'globalDisruption' || archetype === 'suppression';
+        const destructive = archetype === 'burn' || archetype === 'condemned';
+        tone(unresolved ? 0.7 : destructive ? 0.5 : 0.75, 0, 0.24, 0.012);
+        tone(unresolved ? 0.5 : destructive ? 0.375 : 1, 0.09, 0.3, 0.014);
+        return;
+      }
+
+      this.duckMusic(0.78, 0.28, 0.035, 0.42);
+      signature();
+      switch (archetype) {
+        case 'burn':
+        case 'condemned':
+        case 'suppression':
+          tone(0.25, 0, 0.5, 0.035, 'triangle');
+          tone(0.375, 0.055, 0.34, 0.018);
+          this.noiseSweep(ctx, t, 0.34, 0.018, root * 1.35, root * 0.24, bus);
+          break;
+
+        case 'revealUntil':
+        case 'scry':
+          tone(0.5, 0, 0.26, 0.016);
+          tone(0.75, 0.095, 0.3, 0.016);
+          tone(1, 0.2, 0.38, 0.015);
+          this.noiseSweep(ctx, t + 0.04, 0.32, 0.01, root * 0.7, root * 2.2, bus);
+          break;
+
+        case 'recurrence':
+          tone(0.375, 0, 0.52, 0.023);
+          tone(0.75, 0.14, 0.48, 0.018);
+          this.noiseSweep(ctx, t, 0.52, 0.018, root * 0.28, root * 1.6, bus);
+          break;
+
+        case 'forgeReset':
+          this.osc(ctx, 55, 'sine', t, t + 0.64, 0.048, 0.018, bus);
+          this.osc(ctx, 82.5, 'triangle', t + 0.05, t + 0.48, 0.022, 0.014, bus);
+          this.noiseSweep(ctx, t + 0.02, 0.46, 0.02, 85, 420, bus);
+          break;
+
+        case 'globalDisruption':
+          this.osc(ctx, 46, 'sine', t, t + 0.72, 0.044, 0.025, bus);
+          tone(0.5, 0.06, 0.54, 0.019, 'triangle');
+          tone(0.705, 0.13, 0.5, 0.012);
+          this.noiseSweep(ctx, t, 0.58, 0.014, 460, 70, bus);
+          break;
+
+        case 'thresholdPayoff':
+          tone(0.5, 0, 0.36, 0.018);
+          tone(0.75, 0.09, 0.42, 0.018);
+          tone(1, 0.19, 0.5, 0.02);
+          break;
+
+        case 'affinityReturn':
+          tone(1, 0, 0.28, 0.015);
+          tone(0.75, 0.1, 0.34, 0.017);
+          tone(0.5, 0.22, 0.44, 0.02);
+          this.noiseSweep(ctx, t + 0.02, 0.42, 0.012, root * 1.8, root * 0.5, bus);
+          break;
+
+        case 'seeded':
+        case 'replication':
+          tone(0.375, 0, 0.42, 0.017);
+          tone(0.5, 0.1, 0.46, 0.018);
+          tone(0.75, 0.23, 0.52, 0.017);
+          break;
+
+        case 'assimilate':
+          tone(1.5, 0, 0.34, 0.013);
+          tone(1, 0.1, 0.4, 0.016);
+          tone(0.5, 0.24, 0.52, 0.021);
+          this.noiseSweep(ctx, t, 0.5, 0.015, root * 2.8, root * 0.4, bus);
+          break;
+
+        case 'passiveBoon':
+        case 'resourceTransfer':
+        default:
+          tone(0.5, 0, 0.38, 0.016);
+          tone(0.75, 0.1, 0.42, 0.017);
+          tone(1, 0.22, 0.5, 0.017);
+          break;
+      }
+    } catch (e) {
+      console.warn('SFX failed', e);
+    }
+  }
+
+  /** Immediately silence the source activation sting without cutting effect beats. */
   stopActivationSting() {
     const ctx = this.ctx;
     if (!ctx) return;
@@ -1101,7 +3198,10 @@ export class GameAudio {
       }
 
       ag.connect(ctx.destination);
-      this.registerActivationBus(ag);
+      // The authored Forgotten Hour cue lasts about 4.5 seconds and deliberately
+      // outlives the branding director. Keep it off the source activation bus so
+      // director completion cannot cut its tail.
+      this.registerTransientBus([ag], 6_000);
       void this.scheduleMp3(FORGOTTEN_HOUR_MP3, t, 0.72, undefined, ag);
     } catch (e) {
       console.warn('SFX failed', e);
@@ -1302,28 +3402,32 @@ export class GameAudio {
    * Fire-and-forget: await not required at the call site.
    * Returns silently if the scheduled window has already passed or audio is muted.
    */
-  private async scheduleMp3(url: string, scheduledTime: number, volume: number, fadeOut?: { afterSeconds: number; durationSeconds: number }, dest?: AudioNode, attackSeconds = 0, attackStartRatio = 0): Promise<void> {
+  private loadMp3(url: string, ctx: AudioContext): Promise<AudioBuffer> {
+    let audioPromise = this.decodedAudio.get(url);
+    if (!audioPromise) {
+      audioPromise = fetch(url)
+        .then((response) => {
+          if (!response.ok) {
+            throw new Error(`Unable to load audio asset: ${response.status}`);
+          }
+          return response.arrayBuffer();
+        })
+        .then(arrayBuffer => ctx.decodeAudioData(arrayBuffer))
+        .catch((error) => {
+          this.decodedAudio.delete(url);
+          throw error;
+        });
+      this.decodedAudio.set(url, audioPromise);
+    }
+    return audioPromise;
+  }
+
+  private async scheduleMp3(url: string, scheduledTime: number, volume: number, fadeOut?: { afterSeconds: number; durationSeconds: number }, dest?: AudioNode, attackSeconds = 0, attackStartRatio = 0, sourceOffsetSeconds = 0, playbackDurationSeconds?: number): Promise<void> {
     if (this.muted) return;
     const epoch = this.transientEpoch;
     try {
       const ctx = this.initCtx();
-      let audioPromise = this.decodedAudio.get(url);
-      if (!audioPromise) {
-        audioPromise = fetch(url)
-          .then((response) => {
-            if (!response.ok) {
-              throw new Error(`Unable to load audio asset: ${response.status}`);
-            }
-            return response.arrayBuffer();
-          })
-          .then(arrayBuffer => ctx.decodeAudioData(arrayBuffer))
-          .catch((error) => {
-            this.decodedAudio.delete(url);
-            throw error;
-          });
-        this.decodedAudio.set(url, audioPromise);
-      }
-      const audioBuf = await audioPromise;
+      const audioBuf = await this.loadMp3(url, ctx);
       if (this.muted || epoch !== this.transientEpoch) return;
       const now = ctx.currentTime;
       if (now > scheduledTime + 0.6) return; // missed the window; skip silently
@@ -1348,7 +3452,21 @@ export class GameAudio {
       // after the ramp was scheduled (race-free skip behaviour).
       gain.connect(dest ?? ctx.destination);
       this.trackVoice(src, [gain]);
-      src.start(startAt);
+      const sourceOffset = Math.min(
+        Math.max(0, sourceOffsetSeconds),
+        Math.max(0, audioBuf.duration - 0.01),
+      );
+      const boundedDuration = playbackDurationSeconds == null
+        ? undefined
+        : Math.min(
+            Math.max(0.01, playbackDurationSeconds),
+            Math.max(0.01, audioBuf.duration - sourceOffset),
+          );
+      if (boundedDuration === undefined) {
+        src.start(startAt, sourceOffset);
+      } else {
+        src.start(startAt, sourceOffset, boundedDuration);
+      }
     } catch (e) {
       console.warn('[Luminae] MP3 schedule failed', e);
     }
@@ -2137,6 +4255,74 @@ export class GameAudio {
       this.endgameOscillators.push(pulse);
       this.rememberMusic(pulse, pulseG);
 
+      // Scenario layer: Lumii's hostile forecast score. It remains mounted at
+      // zero gain outside the Vault encounter, then adds pulse and motif during
+      // the boss battle without changing the normal match music.
+      const lumiiGain = ctx.createGain();
+      lumiiGain.gain.value = this.getLumiiScenarioGainTarget();
+      lumiiGain.connect(master);
+      this.lumiiScenarioGain = lumiiGain;
+      const lumiiFilter = ctx.createBiquadFilter();
+      lumiiFilter.type = 'bandpass';
+      lumiiFilter.frequency.value = 460 + this.endgameIntensity * 840;
+      lumiiFilter.Q.value = 2.05;
+      lumiiFilter.connect(lumiiGain);
+      this.lumiiScenarioFilter = lumiiFilter;
+      for (const [frequency, type, volume] of [
+        [92.5, 'sine', 0.22],
+        [138.75, 'triangle', 0.09],
+        [185.0, 'triangle', 0.045],
+        [277.18, 'sine', 0.025],
+        [349.23, 'triangle', 0.018],
+      ] as const) {
+        const oscillator = ctx.createOscillator();
+        const voiceGain = ctx.createGain();
+        oscillator.type = type;
+        oscillator.frequency.value = frequency;
+        voiceGain.gain.value = volume;
+        oscillator.connect(voiceGain);
+        voiceGain.connect(lumiiFilter);
+        oscillator.start();
+        this.lumiiScenarioOscillators.push(oscillator);
+        this.rememberMusic(oscillator, voiceGain);
+      }
+      const lumiiPulseFilter = ctx.createBiquadFilter();
+      lumiiPulseFilter.type = 'lowpass';
+      lumiiPulseFilter.frequency.value = 150 + this.endgameIntensity * 260;
+      lumiiPulseFilter.Q.value = 0.72;
+      const lumiiPulseGain = ctx.createGain();
+      lumiiPulseGain.gain.value = 0.09 + this.endgameIntensity * 0.06;
+      lumiiPulseFilter.connect(lumiiPulseGain);
+      lumiiPulseGain.connect(lumiiGain);
+      this.lumiiScenarioPulseGain = lumiiPulseGain;
+      this.lumiiScenarioPulseFilter = lumiiPulseFilter;
+      for (const [frequency, type, volume] of [
+        [46.25, 'sawtooth', 0.18],
+        [69.3, 'triangle', 0.075],
+      ] as const) {
+        const oscillator = ctx.createOscillator();
+        const voiceGain = ctx.createGain();
+        oscillator.type = type;
+        oscillator.frequency.value = frequency;
+        voiceGain.gain.value = volume;
+        oscillator.connect(voiceGain);
+        voiceGain.connect(lumiiPulseFilter);
+        oscillator.start();
+        this.lumiiScenarioOscillators.push(oscillator);
+        this.rememberMusic(oscillator, voiceGain);
+      }
+      const lumiiPulseLfo = ctx.createOscillator();
+      const lumiiPulseLfoGain = ctx.createGain();
+      lumiiPulseLfo.type = 'sine';
+      lumiiPulseLfo.frequency.value = 1.05;
+      lumiiPulseLfoGain.gain.value = 0.028;
+      lumiiPulseLfo.connect(lumiiPulseLfoGain);
+      lumiiPulseLfoGain.connect(lumiiPulseGain.gain);
+      lumiiPulseLfo.start();
+      this.lumiiScenarioOscillators.push(lumiiPulseLfo);
+      this.rememberMusic(lumiiGain, lumiiFilter, lumiiPulseFilter, lumiiPulseGain, lumiiPulseLfo, lumiiPulseLfoGain);
+      if (this.lumiiScenarioActive) this.scheduleLumiiScenarioRhythm(ctx);
+
       const noiseBuf = this.buildNoiseBuffer(ctx, 8);
       const noise = ctx.createBufferSource();
       noise.buffer = noiseBuf;
@@ -2174,6 +4360,7 @@ export class GameAudio {
   stopMusic() {
     if (!this.musicStarted) return;
     this.musicStarted = false;
+    this.clearLumiiScenarioRhythm();
     if (this.shimmerTimer !== null) {
       clearTimeout(this.shimmerTimer);
       this.shimmerTimer = null;
@@ -2181,6 +4368,7 @@ export class GameAudio {
     const masterToStop = this.masterMusicGain;
     const dronesToStop = this.droneOscillators;
     const endgameToStop = this.endgameOscillators;
+    const lumiiScenarioToStop = this.lumiiScenarioOscillators;
     const noiseToStop = this.noiseSource;
     const musicNodesToDisconnect = [...this.musicNodes];
     this.masterMusicGain = null;
@@ -2188,6 +4376,12 @@ export class GameAudio {
     this.endgameOscillators = [];
     this.endgameGain = null;
     this.endgameFilter = null;
+    this.lumiiScenarioGain = null;
+    this.lumiiScenarioFilter = null;
+    this.lumiiScenarioPulseGain = null;
+    this.lumiiScenarioPulseFilter = null;
+    this.lumiiScenarioOscillators = [];
+    this.lumiiScenarioBeatIndex = 0;
     this.noiseSource = null;
     this.musicNodes.clear();
     this.musicDuckUntil = 0;
@@ -2207,6 +4401,11 @@ export class GameAudio {
       for (const o of endgameToStop) {
         try {
           o.stop();
+        } catch {}
+      }
+      for (const oscillator of lumiiScenarioToStop) {
+        try {
+          oscillator.stop();
         } catch {}
       }
       for (const node of musicNodesToDisconnect) this.disconnect(node);
@@ -2229,6 +4428,25 @@ export class GameAudio {
     this.endgameGain?.gain.setTargetAtTime(Math.pow(next, 1.7) * 0.072, now, 1.8);
     this.endgameFilter?.frequency.setTargetAtTime(760 + next * 1900, now, 2.2);
     this.endgameFilter?.Q.setTargetAtTime(1.2 + next * 2.4, now, 2.2);
+    if (this.lumiiScenarioActive) {
+      this.lumiiScenarioGain?.gain.setTargetAtTime(this.getLumiiScenarioGainTarget(), now, 1.4);
+      this.lumiiScenarioFilter?.frequency.setTargetAtTime(460 + next * 840, now, 1.8);
+      this.lumiiScenarioFilter?.Q.setTargetAtTime(2.05 + next * 0.8, now, 1.8);
+      this.lumiiScenarioPulseGain?.gain.setTargetAtTime(0.09 + next * 0.06, now, 1.2);
+      this.lumiiScenarioPulseFilter?.frequency.setTargetAtTime(150 + next * 260, now, 1.6);
+    }
+  }
+
+  setLumiiScenarioActive(active: boolean) {
+    this.lumiiScenarioActive = active;
+    if (!active) this.clearLumiiScenarioRhythm();
+    else this.lumiiScenarioBeatIndex = 0;
+    if (!this.ctx) return;
+    const now = this.ctx.currentTime;
+    this.lumiiScenarioGain?.gain.setTargetAtTime(this.getLumiiScenarioGainTarget(), now, active ? 1.2 : 0.7);
+    this.lumiiScenarioFilter?.frequency.setTargetAtTime(460 + this.endgameIntensity * 840, now, active ? 1.4 : 0.8);
+    this.lumiiScenarioPulseGain?.gain.setTargetAtTime(0.09 + this.endgameIntensity * 0.06, now, 1.0);
+    if (active) this.scheduleLumiiScenarioRhythm(this.ctx);
   }
 
   private buildReverbIR(ctx: AudioContext, dur: number): AudioBuffer {

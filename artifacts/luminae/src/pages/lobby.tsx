@@ -21,16 +21,19 @@ import { getSession, clearSession, saveSession } from "@/lib/session";
 import { useGameWebsocket } from "@/hooks/use-game-websocket";
 import { useToast } from "@/hooks/use-toast";
 import { motion, AnimatePresence } from "framer-motion";
-import { Copy, Crown, X, Wifi, WifiOff, Bot, Plus, ArrowLeft, Timer, CheckCircle, Users, UserPlus, Send, SlidersHorizontal, ChevronDown } from "lucide-react";
+import { Copy, Crown, X, Wifi, WifiOff, Bot, Plus, ArrowLeft, Timer, CheckCircle, Users, UserPlus, Send, SlidersHorizontal, ChevronDown, ShieldCheck } from "lucide-react";
 import { gameAudio } from "@/lib/audio";
 import { FriendsPanel } from "@/components/FriendsPanel";
 import { ChallengeInbox } from "@/components/ChallengeInbox";
 import { useAccount } from "@/contexts/AccountContext";
 import { apiListFriends, apiInviteFriendToRoom, getAccountToken, type Friend } from "@/lib/accountSession";
 import { AccountLoadingScreen } from "@/components/AccountLoadingScreen";
-import { AffinityReservoirSymbol } from "@/components/AffinityReservoirSymbol";
-import backgroundCosmos from "@assets/generated_images/background_cosmos.png";
-import logoLuminae from "@assets/generated_images/logo_luminae.png";
+import {
+  LuminaeWordmark,
+  OutOfMatchBackdrop,
+  OutOfMatchHeader,
+  OutOfMatchSectionHeading,
+} from "@/components/out-of-match/OutOfMatchChrome";
 
 type AiDifficulty = "easy" | "medium" | "hard";
 
@@ -266,7 +269,7 @@ export default function Lobby() {
   const handleLeave = () => {
     if (!window.confirm("Leave the room? You can rejoin with the invite code.")) return;
     clearSession();
-    setLocation("/");
+    setLocation("/?menu=1");
   };
 
   const copyInvite = () => {
@@ -286,85 +289,95 @@ export default function Lobby() {
   const inviteCode = roomInfo?.inviteCode ?? session?.inviteCode ?? "";
 
   return (
-    <div className="h-[100dvh] flex flex-col bg-background text-foreground relative overflow-hidden">
-      {/* Cosmic background */}
-      <div
-        className="absolute inset-0 pointer-events-none"
-        style={{ backgroundImage: `url(${backgroundCosmos})`, backgroundSize: "cover", backgroundPosition: "center" }}
-      />
-      <div className="absolute inset-0 bg-background/78 pointer-events-none" />
-      <div className="absolute inset-0 opacity-20 pointer-events-none"
-        style={{ backgroundImage: "radial-gradient(circle at 50% 0%, hsl(var(--primary) / 0.5) 0%, transparent 55%)" }}
-      />
+    <div className="oom-shell h-[100dvh] flex flex-col overflow-hidden">
+      <OutOfMatchBackdrop audioMood="lobby" />
 
-      {/* Header */}
-      <header className="shrink-0 h-14 px-4 flex items-center justify-between bg-card/60 border-b border-border z-10 relative">
-        <button type="button" onClick={handleLeave} className="flex items-center gap-1.5 text-sm text-muted-foreground hover:text-foreground transition-colors">
-          <ArrowLeft className="h-4 w-4" /> Leave
-        </button>
-        <div className="flex items-center gap-2">
-          <AffinityReservoirSymbol className="drop-shadow-[0_0_10px_rgba(80,130,255,0.5)]" />
-          <img src={logoLuminae} alt="Luminae" className="h-6 w-auto drop-shadow-[0_0_12px_rgba(255,196,61,0.3)]" draggable={false} />
-        </div>
-        {account ? (
-          <button
-            type="button"
-            onClick={() => setFriendsOpen(true)}
-            className="flex items-center gap-1.5 text-sm text-muted-foreground hover:text-foreground transition-colors w-16 justify-end"
-          >
-            <Users className="h-4 w-4" />
-            <span className="hidden sm:inline">Friends</span>
-          </button>
-        ) : (
-          <div className="w-16" />
-        )}
-      </header>
-
-      {/* Scrollable content */}
-      <main className="relative z-10 flex-1 overflow-y-auto px-4 py-5 flex flex-col gap-4 max-w-sm mx-auto w-full">
-
-        {/* Invite code card */}
-        <div className="rounded-2xl bg-card/80 border border-border/60 p-5 text-center">
-          <p className="text-[10px] font-semibold uppercase tracking-widest text-muted-foreground mb-3">Invite Code</p>
-          <div className="flex items-center justify-center gap-3 mb-3">
-            <span className="text-4xl font-mono tracking-[0.25em] text-foreground font-bold select-all">
-              {inviteCode || "------"}
-            </span>
-            <button
-              type="button"
-              onClick={copyInvite}
-              className={`h-10 w-10 rounded-xl flex items-center justify-center border transition-colors ${copied ? "bg-green-500/20 border-green-500/40 text-green-400" : "bg-secondary/60 border-border text-muted-foreground hover:text-foreground"}`}
-              title="Copy invite link"
-            >
-              {copied ? <CheckCircle className="h-4.5 w-4.5" /> : <Copy className="h-4 w-4" />}
+      <OutOfMatchHeader
+        left={<LuminaeWordmark onClick={handleLeave} />}
+        center={<span className="oom-kicker hidden sm:block">Match Lobby</span>}
+        right={(
+          <div className="flex items-center gap-1 sm:gap-2">
+            <ChallengeInbox />
+            {account && (
+              <button
+                type="button"
+                onClick={() => setFriendsOpen(true)}
+                className="oom-icon-button oom-icon-button--label"
+                title="Friends"
+                aria-haspopup="dialog"
+                aria-expanded={friendsOpen}
+              >
+                <Users className="h-4 w-4" />
+                <span className="hidden text-sm font-medium sm:inline">Friends</span>
+              </button>
+            )}
+            <button type="button" onClick={handleLeave} className="oom-icon-button oom-icon-button--label" title="Leave room">
+              <ArrowLeft className="h-4 w-4" />
+              <span className="hidden text-sm font-medium sm:inline">Leave</span>
             </button>
           </div>
-          <AnimatePresence>
-            {copied && (
-              <motion.p initial={{ opacity: 0, y: -4 }} animate={{ opacity: 1, y: 0 }} exit={{ opacity: 0 }}
-                className="text-xs text-green-400 mb-2">
-                Invite link copied!
-              </motion.p>
-            )}
-          </AnimatePresence>
-          <div className="mt-2 flex flex-wrap items-center justify-center gap-x-3 gap-y-1 text-xs text-muted-foreground">
-            <div className="flex items-center gap-1.5">
-              <Timer className="h-3 w-3" />
-              <span>{roomInfo?.turnTimerSeconds ? `${roomInfo.turnTimerSeconds}s per turn` : "No turn timer"}</span>
-            </div>
-            <div className="flex items-center gap-1.5">
-              <Crown className="h-3 w-3 text-amber-300" />
-              <span>{roomInfo?.victoryRequirement ?? 15} Eminence to win</span>
-            </div>
-          </div>
-        </div>
+        )}
+      />
 
-        {/* Players list */}
-        <div className="rounded-2xl bg-card/70 border border-border/60 overflow-hidden">
-          <div className="px-4 py-3 border-b border-border/40 flex items-center justify-between">
-            <span className="text-sm font-semibold">Players</span>
-            <span className="text-xs text-muted-foreground font-mono">{players.length} / {maxPlayers}</span>
-          </div>
+      <main className="oom-frame relative z-10 flex-1 overflow-y-auto py-5 sm:py-7">
+        <div className="mx-auto grid w-full max-w-5xl gap-4 lg:grid-cols-[minmax(0,1.5fr)_minmax(300px,0.8fr)]">
+          <section className="oom-panel oom-panel--gold p-5 sm:p-6 lg:col-span-2">
+            <div className="grid gap-5 sm:grid-cols-[minmax(0,1fr)_auto] sm:items-center">
+              <div className="min-w-0">
+                <p className="oom-kicker mb-2">Match Lobby</p>
+                <h1 className="font-serif text-2xl font-bold sm:text-3xl">Assemble the Table</h1>
+                <p className="mt-2 max-w-xl text-sm leading-relaxed text-muted-foreground">
+                  Share the invite, fill the seats, and launch when your civilizations are assembled.
+                </p>
+                <div className="mt-4 flex flex-wrap gap-x-4 gap-y-2 text-xs text-muted-foreground">
+                  <span className="flex items-center gap-1.5">
+                    <Timer className="h-3.5 w-3.5" />
+                    {roomInfo?.turnTimerSeconds ? `${roomInfo.turnTimerSeconds}s turns` : "Untimed turns"}
+                  </span>
+                  <span className="flex items-center gap-1.5">
+                    <Crown className="h-3.5 w-3.5 text-amber-300" />
+                    Victory requirement: {roomInfo?.victoryRequirement ?? 20} Eminence
+                  </span>
+                  {roomInfo?.gameMode === "custom" && (
+                    <span className="flex items-center gap-1.5 text-amber-200/80">
+                      <ShieldCheck className="h-3.5 w-3.5" />
+                      Blueprint Custom · cleared accounts
+                    </span>
+                  )}
+                </div>
+              </div>
+              <div className="min-w-0 border-t border-border/30 pt-4 sm:border-l sm:border-t-0 sm:pl-6 sm:pt-0">
+                <p className="oom-kicker mb-2">Invite Code</p>
+                <div className="flex items-center gap-3">
+                  <span className="min-w-0 select-all truncate font-mono text-2xl font-bold tracking-[0.16em] text-foreground sm:text-3xl">
+                    {inviteCode || "------"}
+                  </span>
+                  <button
+                    type="button"
+                    onClick={copyInvite}
+                    className={`oom-icon-button shrink-0 ${copied ? "border-green-500/40 bg-green-500/15 text-green-400" : ""}`}
+                    title="Copy invite link"
+                  >
+                    {copied ? <CheckCircle className="h-4 w-4" /> : <Copy className="h-4 w-4" />}
+                  </button>
+                </div>
+                <AnimatePresence>
+                  {copied && (
+                    <motion.p initial={{ opacity: 0, y: -4 }} animate={{ opacity: 1, y: 0 }} exit={{ opacity: 0 }} className="mt-2 text-xs text-green-400">
+                      Invite link copied
+                    </motion.p>
+                  )}
+                </AnimatePresence>
+              </div>
+            </div>
+          </section>
+
+          <div className={`min-w-0 space-y-4 ${isHost ? "order-2" : "order-1"} lg:order-1`}>
+            <section className="oom-panel oom-panel--quiet overflow-hidden">
+              <div className="flex items-center justify-between border-b border-border/30 px-4 py-3.5">
+                <OutOfMatchSectionHeading eyebrow="Roster" title="Players" />
+                <span className="font-mono text-xs text-muted-foreground">{players.length} / {maxPlayers}</span>
+              </div>
           {players.length === 0 ? (
             <div className="py-10 text-center text-muted-foreground text-sm animate-pulse">Loading...</div>
           ) : (
@@ -419,13 +432,12 @@ export default function Lobby() {
               ))}
             </div>
           )}
-        </div>
+            </section>
 
-        {/* Invite Friends */}
-        {account && friends.length > 0 && canAddMore && (
-          <div className="rounded-2xl bg-card/60 border border-border/50 overflow-hidden">
-            <div className="px-4 py-3 border-b border-border/40 flex items-center gap-2">
-              <UserPlus className="h-4 w-4 text-primary/70 shrink-0" />
+            {account && friends.length > 0 && canAddMore && (
+          <section className="oom-panel oom-panel--quiet overflow-hidden">
+            <div className="flex items-center gap-2 border-b border-border/30 px-4 py-3.5">
+              <UserPlus className="h-4 w-4 shrink-0 text-primary/70" />
               <span className="text-sm font-semibold">Invite Friends</span>
             </div>
             <div className="divide-y divide-border/30">
@@ -479,38 +491,78 @@ export default function Lobby() {
                   );
                 })}
             </div>
+          </section>
+            )}
           </div>
-        )}
 
-        {/* Add AI (host only) */}
-        {isHost && canAddMore && (
-          <div className="rounded-2xl bg-card/60 border border-border/50 p-4 flex items-center gap-3">
-            <Bot className="h-4 w-4 text-purple-300 shrink-0" />
-            <Select value={aiDifficulty} onValueChange={(v) => setAiDifficulty(v as AiDifficulty)}>
-              <SelectTrigger className="flex-1">
-                <SelectValue />
-              </SelectTrigger>
-              <SelectContent>
-                <SelectItem value="easy">Easy AI</SelectItem>
-                <SelectItem value="medium">Medium AI</SelectItem>
-                <SelectItem value="hard">Hard AI</SelectItem>
-              </SelectContent>
-            </Select>
-            <Button
-              onClick={handleAddAi}
-              disabled={addAiPlayer.isPending}
-              variant="secondary"
-              className="shrink-0 gap-1.5"
-              data-testid="add-ai-btn"
-            >
-              <Plus className="h-4 w-4" />
-              Add AI
-            </Button>
-          </div>
-        )}
+          <aside className={`min-w-0 space-y-4 ${isHost ? "order-1" : "order-2"} lg:order-2 lg:sticky lg:top-5 lg:self-start`}>
+            <section className="oom-panel oom-panel--gold p-5">
+              <p className="oom-kicker mb-2">Launch Control</p>
+              <h2 className="font-serif text-xl font-bold">{isHost ? "Launch When Ready" : "Waiting for the Host"}</h2>
+              <p className="mt-2 text-sm leading-relaxed text-muted-foreground">
+                {isHost
+                  ? canStart
+                    ? `${connectedPlayers.length} civilizations are connected. Launching brings everyone into the match together.`
+                    : "At least two connected civilizations are required to begin."
+                  : "The match will begin as soon as the host launches it."}
+              </p>
+              <div className="mt-5">
+                {isHost ? (
+                  <Button
+                    size="lg"
+                    className="oom-action-primary h-12 w-full"
+                    disabled={!canStart || startGame.isPending}
+                    onClick={handleStart}
+                  >
+                    {startGame.isPending
+                      ? "Starting..."
+                      : canStart
+                      ? "Launch Match"
+                      : `Need ${2 - connectedPlayers.length} more player${2 - connectedPlayers.length !== 1 ? "s" : ""}`}
+                  </Button>
+                ) : (
+                  <div className="rounded-md border border-border/35 bg-secondary/25 px-4 py-3 text-center text-sm text-muted-foreground">
+                    Waiting for host to start
+                  </div>
+                )}
+              </div>
+            </section>
 
-        {/* Advanced preferences */}
-        <div className="rounded-2xl bg-card/45 border border-border/40 overflow-hidden">
+            {isHost && canAddMore && (
+              <section className="oom-panel oom-panel--quiet p-4">
+                <div className="mb-3 flex items-center gap-2">
+                  <Bot className="h-4 w-4 shrink-0 text-purple-300" />
+                  <div>
+                    <p className="text-sm font-semibold">Add an AI Civilization</p>
+                    <p className="text-[11px] text-muted-foreground">Fill an open seat instantly</p>
+                  </div>
+                </div>
+                <div className="grid grid-cols-[minmax(0,1fr)_auto] gap-2">
+                  <Select value={aiDifficulty} onValueChange={(v) => setAiDifficulty(v as AiDifficulty)}>
+                    <SelectTrigger className="min-w-0">
+                      <SelectValue />
+                    </SelectTrigger>
+                    <SelectContent>
+                      <SelectItem value="easy">Easy AI</SelectItem>
+                      <SelectItem value="medium">Medium AI</SelectItem>
+                      <SelectItem value="hard">Hard AI</SelectItem>
+                    </SelectContent>
+                  </Select>
+                  <Button
+                    onClick={handleAddAi}
+                    disabled={addAiPlayer.isPending}
+                    variant="secondary"
+                    className="gap-1.5 rounded-md"
+                    data-testid="add-ai-btn"
+                  >
+                    <Plus className="h-4 w-4" />
+                    Add
+                  </Button>
+                </div>
+              </section>
+            )}
+
+        <section className="oom-panel oom-panel--quiet overflow-hidden">
           <button
             type="button"
             onClick={() => setAdvancedSettingsOpen((open) => !open)}
@@ -518,7 +570,7 @@ export default function Lobby() {
             aria-expanded={advancedSettingsOpen}
           >
             <span className="flex items-center gap-3 min-w-0">
-              <span className="h-8 w-8 rounded-xl bg-secondary/60 border border-border/40 flex items-center justify-center shrink-0">
+              <span className="h-8 w-8 rounded-md bg-secondary/60 border border-border/40 flex items-center justify-center shrink-0">
                 <SlidersHorizontal className="h-4 w-4 text-muted-foreground" />
               </span>
               <span className="min-w-0">
@@ -570,41 +622,16 @@ export default function Lobby() {
               </motion.div>
             )}
           </AnimatePresence>
+        </section>
+          </aside>
         </div>
       </main>
-
-      {/* Bottom action */}
-      <div className="relative z-10 shrink-0 px-4 pb-8 pt-3 bg-gradient-to-t from-background/80 to-transparent">
-        <div className="max-w-sm mx-auto w-full">
-          {isHost ? (
-            <Button
-              size="lg"
-              className="w-full h-14 text-lg font-bold rounded-2xl"
-              disabled={!canStart || startGame.isPending}
-              onClick={handleStart}
-            >
-              {startGame.isPending
-                ? "Starting..."
-                : canStart
-                ? "Launch Game"
-                : `Need ${2 - connectedPlayers.length} more player${2 - connectedPlayers.length !== 1 ? 's' : ''}`}
-            </Button>
-          ) : (
-            <div className="text-center py-4 rounded-2xl bg-secondary/30 border border-border/40">
-              <p className="text-sm text-muted-foreground animate-pulse">
-                Waiting for host to start...
-              </p>
-            </div>
-          )}
-        </div>
-      </div>
 
       <FriendsPanel
         isOpen={friendsOpen}
         onClose={() => setFriendsOpen(false)}
         onChallengeCreated={handleChallengeCreated}
       />
-      <ChallengeInbox />
     </div>
   );
 }

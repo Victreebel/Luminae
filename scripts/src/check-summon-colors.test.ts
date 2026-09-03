@@ -38,6 +38,10 @@ const ENGINE_PATH = resolve(
   SCRIPTS_DIR,
   "../artifacts/api-server/src/lib/gameEngine.ts"
 );
+const GAME_TYPES_PATH = resolve(
+  SCRIPTS_DIR,
+  "../lib/game-types/src/index.ts"
+);
 
 // ── Tiny test harness ─────────────────────────────────────────────────────────
 
@@ -56,6 +60,7 @@ function assert(condition: boolean, message: string): void {
 
 const engineSrc = readFileSync(ENGINE_PATH, "utf-8");
 const assetsSrc = readFileSync(ASSETS_PATH, "utf-8");
+const gameTypesSrc = readFileSync(GAME_TYPES_PATH, "utf-8");
 
 const engineColors = parseEngineColors(engineSrc);
 const assetsColors = parseAssetsColors(assetsSrc);
@@ -89,7 +94,7 @@ for (const [id, engineEntry] of engineColors) {
 
 console.log("\n── Structural sanity ────────────────────────────────────────────────");
 
-const knownStylesForCheck = parseKnownAuraStyles(assetsSrc);
+const knownStylesForCheck = parseKnownAuraStyles(gameTypesSrc);
 const { mismatches, missingFromAssets, missingFromEngine, invalidAuraStyles } = checkColors(engineColors, assetsColors, knownStylesForCheck);
 
 assert(
@@ -130,11 +135,11 @@ assert(
         .join(", ")}`
 );
 
-// ── Aura style validation (KNOWN_AURA_STYLES from luminaryAssets.tsx) ─────────
+// ── Aura style validation (KNOWN_AURA_STYLES from game-types) ─────────────────
 
 console.log("\n── Aura style validation ────────────────────────────────────────────");
 
-const knownStyles = parseKnownAuraStyles(assetsSrc);
+const knownStyles = parseKnownAuraStyles(gameTypesSrc);
 
 assert(
   knownStyles.size > 0,
@@ -206,7 +211,7 @@ for (const [id, entry] of assetsColors) {
 
 console.log("\n── auraStyle allowlist unit tests ───────────────────────────────────");
 
-assert(knownStyles.size > 0, "KNOWN_AURA_STYLES (parsed from luminaryAssets.tsx) is non-empty");
+assert(knownStyles.size > 0, "KNOWN_AURA_STYLES (parsed from game-types) is non-empty");
 
 // A synthetic engine entry with a bad auraStyle must be flagged.
 {

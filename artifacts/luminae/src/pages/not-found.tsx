@@ -1,21 +1,36 @@
-import { Card, CardContent } from "@/components/ui/card";
-import { AlertCircle } from "lucide-react";
+import { useLocation } from "wouter";
+import { Compass, House } from "lucide-react";
+import {
+  LuminaeWordmark,
+  OutOfMatchBackdrop,
+  OutOfMatchHeader,
+  OutOfMatchSectionHeading,
+} from "@/components/out-of-match/OutOfMatchChrome";
 
 export default function NotFound() {
-  return (
-    <div className="min-h-screen w-full flex items-center justify-center bg-gray-50">
-      <Card className="w-full max-w-md mx-4">
-        <CardContent className="pt-6">
-          <div className="flex mb-4 gap-2">
-            <AlertCircle className="h-8 w-8 text-red-500" />
-            <h1 className="text-2xl font-bold text-gray-900">404 Page Not Found</h1>
-          </div>
+  const [, setLocation] = useLocation();
 
-          <p className="mt-4 text-sm text-gray-600">
-            Did you forget to add the page to the router?
+  return (
+    <div className="oom-shell min-h-[100dvh] flex flex-col">
+      <OutOfMatchBackdrop />
+      <OutOfMatchHeader left={<LuminaeWordmark onClick={() => setLocation("/")} />} />
+      <main className="oom-frame relative z-10 flex flex-1 items-center justify-center py-8">
+        <section className="oom-panel w-full max-w-md p-5 sm:p-7">
+          <div className="mb-5 flex items-start gap-3">
+            <span className="flex h-10 w-10 shrink-0 items-center justify-center rounded-md border border-primary/30 bg-primary/10 text-primary">
+              <Compass className="h-5 w-5" />
+            </span>
+            <OutOfMatchSectionHeading eyebrow="Uncharted Space" title="This Route Leads Nowhere" />
+          </div>
+          <p className="mb-5 text-sm leading-relaxed text-muted-foreground">
+            The destination may have moved or no longer exists. Your account and active matches are unaffected.
           </p>
-        </CardContent>
-      </Card>
+          <button type="button" className="oom-action-primary h-12" onClick={() => setLocation("/")}>
+            <House className="h-4 w-4" />
+            Return to Main Menu
+          </button>
+        </section>
+      </main>
     </div>
   );
 }

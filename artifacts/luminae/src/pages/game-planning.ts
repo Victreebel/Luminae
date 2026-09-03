@@ -78,7 +78,8 @@ export function getPlannedActionInfo(plannedAction?: Record<string, unknown> | n
   const actionType = plannedAction?.type as string | undefined;
   const cardId = (plannedAction?.cardId as string | undefined) ?? null;
   const deckTier =
-    actionType === 'reserve_artifact' && !cardId
+    (actionType === 'reserve_artifact' && !cardId) ||
+    (actionType === 'forge_artifact' && plannedAction?.luminaryId === 'lum_tide')
       ? Number(
         (plannedAction?.tier as number | string | undefined) ??
         (plannedAction?._tier as number | string | undefined) ??
@@ -87,6 +88,10 @@ export function getPlannedActionInfo(plannedAction?: Record<string, unknown> | n
       : null;
   const label = actionType === 'reserve_artifact'
     ? 'Encrypt pending'
+    : actionType === 'foundry_forge_artifact'
+      ? 'Foundry Forge pending'
+    : actionType === 'forge_artifact' && plannedAction?.luminaryId === 'lum_tide'
+      ? 'Archive Forge pending'
     : actionType === 'forge_artifact' || actionType === 'forge_reserved_artifact'
       ? 'Forge pending'
       : 'Pending action';

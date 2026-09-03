@@ -11,6 +11,9 @@ export const roomsTable = pgTable("rooms", {
   turnTimerSeconds: integer("turn_timer_seconds"),
   victoryRequirement: integer("victory_requirement").notNull().default(15),
   cinematicMode: text("cinematic_mode").notNull().default("standard"),
+  gameMode: text("game_mode").notNull().default("standard"),
+  scenarioId: text("scenario_id"),
+  blueprintPolicy: text("blueprint_policy").notNull().default("none"),
   createdAt: timestamp("created_at", { withTimezone: true }).notNull().defaultNow(),
   updatedAt: timestamp("updated_at", { withTimezone: true }).notNull().defaultNow(),
 });

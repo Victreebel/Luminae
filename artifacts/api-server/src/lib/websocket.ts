@@ -6,6 +6,17 @@ import { playersTable } from "@workspace/db";
 import type { Player } from "@workspace/db";
 import { eq } from "drizzle-orm";
 import { logger } from "./logger";
+import {
+  getBalanceLabMemoryPlayerBySession,
+  getBalanceLabMemoryRoom,
+  setBalanceLabMemoryPlayerConnected,
+  type BalanceLabMemoryPlayer,
+} from "./balanceLabRooms";
+import { isRuntimeOriginAllowed } from "./originPolicy";
+import {
+  LUMINAE_WEBSOCKET_PROTOCOL,
+  sessionTokenFromProtocolHeader,
+} from "./websocketSecurity";
 export { filterStateForPlayer } from "./stateProjection";
 
 // roomId → Map<playerId, ws>
@@ -37,8 +48,18 @@ export function sendToPlayer(roomId: string, playerId: string, payload: unknown)
   }
 }
 
-export function setupWebSocket(server: Server): void {
-  const wss = new WebSocketServer({ server, path: "/ws" });
+export function setupWebSocket(server: Server): WebSocketServer {
+  const wss = new WebSocketServer({
+    server,
+    path: "/ws",
+    maxPayload: 16 * 1024,
+    perMessageDeflate: false,
+    handleProtocols(protocols) {
+      return protocols.has(LUMINAE_WEBSOCKET_PROTOCOL)
+        ? LUMINAE_WEBSOCKET_PROTOCOL
+        : false;
+    },
+  });
 
   wss.on("connection", (ws: WebSocket, req: IncomingMessage) => {
     handleConnection(ws, req).catch((err) => {
@@ -52,13 +73,21 @@ export function setupWebSocket(server: Server): void {
   });
 
   logger.info("WebSocket server initialized at /ws");
+  return wss;
 }
 
 async function handleConnection(ws: WebSocket, req: IncomingMessage): Promise<void> {
+  const origin = typeof req.headers.origin === "string" ? req.headers.origin : undefined;
+  if (!isRuntimeOriginAllowed(origin)) {
+    ws.close(1008, "Origin not allowed");
+    return;
+  }
+
   const urlStr = req.url ?? "";
   const url = new URL(urlStr, "http://localhost");
   const roomId = url.searchParams.get("roomId");
-  const sessionToken = url.searchParams.get("sessionToken");
+  const sessionToken = sessionTokenFromProtocolHeader(req.headers["sec-websocket-protocol"])
+    ?? url.searchParams.get("sessionToken");
 
   if (!roomId || !sessionToken) {
     ws.close(1008, "Missing roomId or sessionToken");
@@ -66,19 +95,24 @@ async function handleConnection(ws: WebSocket, req: IncomingMessage): Promise<vo
   }
 
   // Authenticate
-  let player: Player | undefined;
+  let player: Player | BalanceLabMemoryPlayer | undefined;
 
-  try {
-    const rows = await db
-      .select()
-      .from(playersTable)
-      .where(eq(playersTable.sessionToken, sessionToken))
-      .limit(1);
-    player = rows[0];
-  } catch (err) {
-    logger.error({ err, roomId }, "DB error during WebSocket auth");
-    ws.close(1011, "Internal server error");
-    return;
+  const memoryRoom = getBalanceLabMemoryRoom(roomId);
+  if (memoryRoom) {
+    player = getBalanceLabMemoryPlayerBySession(roomId, sessionToken) ?? undefined;
+  } else {
+    try {
+      const rows = await db
+        .select()
+        .from(playersTable)
+        .where(eq(playersTable.sessionToken, sessionToken))
+        .limit(1);
+      player = rows[0];
+    } catch (err) {
+      logger.error({ err, roomId }, "DB error during WebSocket auth");
+      ws.close(1011, "Internal server error");
+      return;
+    }
   }
 
   if (!player || player.roomId !== roomId) {
@@ -93,16 +127,25 @@ async function handleConnection(ws: WebSocket, req: IncomingMessage): Promise<vo
   if (!connections.has(roomId)) {
     connections.set(roomId, new Map());
   }
-  connections.get(roomId)!.set(playerId, ws);
+  const roomConnections = connections.get(roomId)!;
+  const previousConnection = roomConnections.get(playerId);
+  roomConnections.set(playerId, ws);
+  if (previousConnection && previousConnection !== ws) {
+    previousConnection.close(1000, "Reconnected elsewhere");
+  }
 
-  // Mark connected in DB — non-fatal if this fails
-  try {
-    await db
-      .update(playersTable)
-      .set({ isConnected: true })
-      .where(eq(playersTable.id, playerId));
-  } catch (err) {
-    logger.warn({ err, roomId, playerId }, "Failed to mark player connected in DB");
+  if (memoryRoom) {
+    setBalanceLabMemoryPlayerConnected(roomId, playerId, true);
+  } else {
+    // Mark connected in DB — non-fatal if this fails
+    try {
+      await db
+        .update(playersTable)
+        .set({ isConnected: true })
+        .where(eq(playersTable.id, playerId));
+    } catch (err) {
+      logger.warn({ err, roomId, playerId }, "Failed to mark player connected in DB");
+    }
   }
 
   logger.info({ roomId, playerId }, "Player connected via WebSocket");
@@ -133,7 +176,20 @@ async function handleConnection(ws: WebSocket, req: IncomingMessage): Promise<vo
     playerName,
   });
 
+  let messageWindowStartedAt = Date.now();
+  let messagesInWindow = 0;
   ws.on("message", (raw) => {
+    const now = Date.now();
+    if (now - messageWindowStartedAt >= 10_000) {
+      messageWindowStartedAt = now;
+      messagesInWindow = 0;
+    }
+    messagesInWindow += 1;
+    if (messagesInWindow > 30) {
+      ws.close(1008, "Message rate exceeded");
+      return;
+    }
+
     try {
       const msg = JSON.parse(raw.toString()) as { type: string; text?: string };
       if (msg.type === "ping") {
@@ -188,13 +244,17 @@ async function handleClose(ws: WebSocket, roomId: string, playerId: string, play
   const freshRoom = connections.get(roomId);
   if (freshRoom?.has(playerId)) return;
 
-  try {
-    await db
-      .update(playersTable)
-      .set({ isConnected: false })
-      .where(eq(playersTable.id, playerId));
-  } catch (err) {
-    logger.warn({ err, roomId, playerId }, "Failed to mark player disconnected in DB");
+  if (getBalanceLabMemoryRoom(roomId)) {
+    setBalanceLabMemoryPlayerConnected(roomId, playerId, false);
+  } else {
+    try {
+      await db
+        .update(playersTable)
+        .set({ isConnected: false })
+        .where(eq(playersTable.id, playerId));
+    } catch (err) {
+      logger.warn({ err, roomId, playerId }, "Failed to mark player disconnected in DB");
+    }
   }
 
   logger.info({ roomId, playerId }, "Player disconnected");

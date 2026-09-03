@@ -1,0 +1,328 @@
+.scenario-protocol-presentation {
+  position: fixed;
+  inset: 0;
+  z-index: 12000;
+  display: grid;
+  place-items: center;
+  overflow: hidden;
+  box-sizing: border-box;
+  padding: clamp(12px, 2cqw, 20px);
+  color: #f4f6f8;
+  background: rgba(1, 3, 8, 0.9);
+  cursor: pointer;
+  isolation: isolate;
+  container-type: inline-size;
+}
+
+.scenario-protocol-presentation__scrim {
+  position: absolute;
+  inset: 0;
+  z-index: -2;
+  background: rgba(1, 4, 10, 0.68);
+  backdrop-filter: blur(2px) saturate(0.74);
+}
+
+.scenario-protocol-presentation__kinetic {
+  position: absolute;
+  left: 50%;
+  top: 44%;
+  width: min(68cqw, 570px);
+  aspect-ratio: 1;
+  transform: translate(-50%, -50%);
+  z-index: 2;
+  pointer-events: none;
+}
+
+.scenario-protocol-presentation__kinetic--collapse {
+  display: grid;
+  place-items: center;
+}
+
+.scenario-protocol-presentation__collapse-ring {
+  position: absolute;
+  width: 58%;
+  aspect-ratio: 1;
+  border: 1px solid rgba(224, 235, 255, 0.62);
+  border-radius: 50%;
+  box-shadow: 0 0 24px rgba(154, 197, 255, 0.2), inset 0 0 18px rgba(255, 255, 255, 0.09);
+}
+
+.scenario-protocol-presentation__collapse-ring:nth-child(even) {
+  border-color: rgba(244, 183, 95, 0.58);
+}
+
+.scenario-protocol-presentation__collapse-ray {
+  position: absolute;
+  left: 50%;
+  top: calc(50% - 1px);
+  width: 43%;
+  height: 1px;
+  transform-origin: left center;
+  background: rgba(225, 237, 255, 0.62);
+  box-shadow: 0 0 8px rgba(193, 220, 255, 0.38);
+}
+
+.scenario-protocol-presentation__collapse-core,
+.scenario-protocol-presentation__ascent-core,
+.scenario-protocol-presentation__bastion-core {
+  position: absolute;
+  left: calc(50% - 17px);
+  top: calc(50% - 17px);
+  width: 34px;
+  height: 34px;
+  border: 1px solid rgba(255, 255, 255, 0.82);
+  background: #f4f8ff;
+  box-shadow: 0 0 18px rgba(225, 239, 255, 0.72), 0 0 54px rgba(108, 168, 234, 0.42);
+  transform: rotate(45deg);
+}
+
+.scenario-protocol-presentation__kinetic--ascent {
+  perspective: 700px;
+}
+
+.scenario-protocol-presentation__orbit {
+  position: absolute;
+  left: 10%;
+  top: 30%;
+  width: 80%;
+  height: 42%;
+  border: 1px solid rgba(129, 198, 255, 0.58);
+  border-radius: 50%;
+  box-shadow: 0 0 24px rgba(62, 152, 229, 0.18);
+}
+
+.scenario-protocol-presentation__orbit--inner {
+  left: 23%;
+  top: 36%;
+  width: 54%;
+  height: 29%;
+  border-color: rgba(246, 190, 96, 0.62);
+}
+
+.scenario-protocol-presentation__ascent-rail {
+  position: absolute;
+  top: 8%;
+  bottom: 7%;
+  width: 1px;
+  background: rgba(167, 211, 255, 0.32);
+  box-shadow: 0 0 11px rgba(85, 166, 238, 0.28);
+}
+
+.scenario-protocol-presentation__ascent-rail--left { left: calc(50% - 31px); }
+.scenario-protocol-presentation__ascent-rail--right { right: calc(50% - 31px); }
+
+.scenario-protocol-presentation__ascent-packet {
+  position: absolute;
+  left: calc(50% - 2px);
+  top: 56%;
+  width: 4px;
+  height: 35px;
+  background: #b7ddff;
+  box-shadow: 0 0 12px rgba(101, 185, 255, 0.72);
+}
+
+.scenario-protocol-presentation__ascent-core {
+  top: calc(50% - 8px);
+  width: 34px;
+  height: 16px;
+  border-color: rgba(255, 210, 126, 0.88);
+  background: #f4b85b;
+  box-shadow: 0 0 18px rgba(246, 172, 69, 0.56), 0 0 48px rgba(81, 166, 236, 0.32);
+  transform: none;
+}
+
+.scenario-protocol-presentation__kinetic--bastion svg {
+  width: 100%;
+  height: 100%;
+  overflow: visible;
+  fill: rgba(87, 181, 218, 0.025);
+  stroke: rgba(180, 231, 246, 0.72);
+  stroke-width: 2;
+  filter: drop-shadow(0 0 11px rgba(96, 193, 225, 0.24));
+}
+
+.scenario-protocol-presentation__kinetic--bastion line {
+  stroke: rgba(242, 202, 119, 0.52);
+  stroke-width: 1;
+}
+
+.scenario-protocol-presentation__bastion-core {
+  display: grid;
+  place-items: center;
+  width: 48px;
+  height: 48px;
+  left: calc(50% - 24px);
+  top: calc(50% - 24px);
+  border-radius: 50%;
+  border-color: rgba(189, 236, 248, 0.78);
+  background: #06131b;
+  color: #d9f7ff;
+  transform: none;
+}
+
+.scenario-protocol-presentation__bastion-core svg {
+  width: 25px;
+  height: 25px;
+}
+
+.scenario-protocol-presentation__copy {
+  position: relative;
+  z-index: 4;
+  display: grid;
+  box-sizing: border-box;
+  width: min(100%, 640px);
+  min-height: 250px;
+  place-items: center;
+  align-content: center;
+  padding: 28px clamp(18px, 5vw, 48px);
+  text-align: center;
+  background: rgba(2, 5, 11, 0.62);
+  border-top: 1px solid rgba(224, 235, 246, 0.22);
+  border-bottom: 1px solid rgba(224, 235, 246, 0.22);
+  box-shadow: 0 26px 70px rgba(0, 0, 0, 0.42);
+}
+
+.scenario-protocol-presentation__icon {
+  display: grid;
+  width: 44px;
+  height: 44px;
+  place-items: center;
+  margin-bottom: 12px;
+  border: 1px solid rgba(224, 235, 246, 0.28);
+  color: rgba(235, 243, 251, 0.82);
+  background: rgba(255, 255, 255, 0.035);
+}
+
+.scenario-protocol-presentation__icon svg { width: 22px; height: 22px; }
+
+.scenario-protocol-presentation__copy > p,
+.scenario-protocol-presentation__copy > small,
+.scenario-protocol-presentation__redaction-stamp {
+  font-family: var(--app-font-mono);
+  font-weight: 800;
+  text-transform: uppercase;
+}
+
+.scenario-protocol-presentation__copy > p {
+  margin: 0;
+  color: rgba(225, 235, 245, 0.52);
+  font-size: 9px;
+}
+
+.scenario-protocol-presentation__copy h2 {
+  margin: 4px 0 0;
+  font-family: var(--app-font-serif);
+  font-size: clamp(20px, 4.8cqw, 38px);
+  font-weight: 600;
+}
+
+.scenario-protocol-presentation__rule {
+  width: min(220px, 64%);
+  height: 1px;
+  margin: 13px 0;
+  background: rgba(221, 232, 243, 0.2);
+}
+
+.scenario-protocol-presentation__copy blockquote {
+  max-width: 520px;
+  margin: 0;
+  color: rgba(235, 240, 246, 0.74);
+  font-size: 13px;
+  line-height: 1.55;
+}
+
+.scenario-protocol-presentation__copy > strong {
+  margin-top: 15px;
+  color: #f1d9b3;
+  font-size: 11px;
+  text-transform: uppercase;
+}
+
+.scenario-protocol-presentation[data-profile="bastion"] .scenario-protocol-presentation__copy > strong {
+  color: #cdf3fa;
+}
+
+.scenario-protocol-presentation__targets {
+  display: flex;
+  flex-wrap: wrap;
+  justify-content: center;
+  gap: 7px 18px;
+  width: 100%;
+  margin-top: 13px;
+  padding: 9px 0;
+  border-top: 1px solid rgba(255, 255, 255, 0.08);
+  border-bottom: 1px solid rgba(255, 255, 255, 0.08);
+  color: rgba(232, 238, 245, 0.62);
+  font-size: 10px;
+}
+
+.scenario-protocol-presentation__copy > small {
+  display: flex;
+  align-items: center;
+  gap: 5px;
+  margin-top: 15px;
+  color: rgba(225, 235, 245, 0.34);
+  font-size: 8px;
+}
+
+.scenario-protocol-presentation__copy > small svg { width: 11px; height: 11px; }
+
+.scenario-protocol-presentation--detonation {
+  padding: 0;
+  background: transparent;
+}
+
+.scenario-protocol-presentation--detonation .antimatter-detonation {
+  z-index: 1;
+}
+
+.scenario-protocol-presentation__redaction-stamp {
+  position: absolute;
+  z-index: 4;
+  left: 50%;
+  top: clamp(16px, 4vh, 38px);
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  transform: translateX(-50%);
+  color: rgba(240, 244, 249, 0.72);
+  font-size: 9px;
+  white-space: nowrap;
+  text-shadow: 0 2px 8px #000;
+}
+
+.scenario-protocol-presentation__redaction-stamp > svg { width: 14px; height: 14px; }
+.scenario-protocol-presentation__redaction-stamp small { display: flex; align-items: center; gap: 4px; color: rgba(240, 244, 249, 0.38); }
+.scenario-protocol-presentation__redaction-stamp small svg { width: 11px; height: 11px; }
+
+.scenario-protocol-presentation__loader {
+  position: relative;
+  z-index: 5;
+  width: 28px;
+  height: 28px;
+  color: rgba(238, 243, 250, 0.72);
+  animation: scenario-protocol-loader 0.8s linear infinite;
+}
+
+@keyframes scenario-protocol-loader { to { transform: rotate(360deg); } }
+
+@media (max-width: 600px) {
+  .scenario-protocol-presentation { padding: 12px; }
+  .scenario-protocol-presentation__kinetic { top: 40%; width: min(105vw, 470px); }
+  .scenario-protocol-presentation__copy { min-height: 238px; padding: 22px 16px; }
+  .scenario-protocol-presentation__copy blockquote { font-size: 12px; }
+  .scenario-protocol-presentation__targets { display: grid; }
+  .scenario-protocol-presentation__redaction-stamp { top: 13px; }
+}
+
+@container (max-width: 600px) {
+  .scenario-protocol-presentation__kinetic { top: 40%; width: min(105cqw, 470px); }
+  .scenario-protocol-presentation__copy { min-height: 238px; padding: 22px 16px; }
+  .scenario-protocol-presentation__copy blockquote { font-size: 12px; }
+  .scenario-protocol-presentation__targets { display: grid; }
+  .scenario-protocol-presentation__redaction-stamp { top: 13px; }
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .scenario-protocol-presentation__loader { animation-duration: 1.6s; }
+}

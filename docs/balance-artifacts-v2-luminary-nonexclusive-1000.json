@@ -1,0 +1,3417 @@
+{
+  "schema": "luminae-balance-report/v2",
+  "generatedAt": "2026-08-18T07:10:08.087Z",
+  "seed": 7142031,
+  "candidates": [
+    {
+      "candidateId": "luminary-nonexclusive-contact",
+      "ruleset": {
+        "id": "luminary_nonexclusive_contact",
+        "endCondition": "eminence",
+        "luminaryBaseEminence": "none",
+        "luminaryEligibility": "artifact_bonuses",
+        "luminaryClaimLimitPerAction": 1,
+        "luminaryContact": "nonexclusive",
+        "encryptReward": "portable_singularity",
+        "advancedPayment": "current",
+        "blueprintSlots": 2
+      },
+      "playerCount": 2,
+      "format": "quick",
+      "victoryRequirement": 15,
+      "policySeats": [
+        "adaptive",
+        "specialization"
+      ],
+      "policyRotation": "cyclic_by_game",
+      "gamesRequested": 1000,
+      "gamesCompleted": 1000,
+      "completionRate": 100,
+      "stalledGames": 0,
+      "finishReasons": {
+        "eminence": 1000,
+        "frontier_exhaustion": 0,
+        "max_turns": 0,
+        "presentation_error": 0,
+        "action_error": 0,
+        "other": 0
+      },
+      "averageTurns": 56.1,
+      "medianTurns": 56,
+      "p90Turns": 60,
+      "equalTurnViolations": 0,
+      "seatWinRates": [
+        48.7,
+        51.3
+      ],
+      "openingPositionWinRates": [
+        48.8,
+        51.2
+      ],
+      "actionCounts": {
+        "harness_two_affinities": 4255,
+        "harness_three_affinities": 8000,
+        "forge_artifact": 38710,
+        "reserve_artifact": 4474,
+        "forge_reserved_artifact": 660,
+        "assimilate": 3
+      },
+      "actionShares": {
+        "harness_two_affinities": 7.58,
+        "harness_three_affinities": 14.26,
+        "forge_artifact": 69,
+        "reserve_artifact": 7.97,
+        "forge_reserved_artifact": 1.18,
+        "assimilate": 0.01
+      },
+      "actionFailures": {},
+      "forgedByTier": [
+        25.8,
+        11.27,
+        2.3
+      ],
+      "winnerForgedByTier": [
+        12.71,
+        6.08,
+        1.55
+      ],
+      "winnerTier3ReachRate": 85.7,
+      "winnerTier3Milestones": {
+        "exactCountGames": {
+          "0": 143,
+          "1": 378,
+          "2": 307,
+          "3": 133,
+          "4": 35,
+          "5": 4
+        },
+        "exactCountRates": {
+          "0": 14.3,
+          "1": 37.8,
+          "2": 30.7,
+          "3": 13.3,
+          "4": 3.5,
+          "5": 0.4
+        },
+        "atLeastOneRate": 85.7,
+        "atLeastTwoRate": 47.9,
+        "requiredForFormat": 0,
+        "requiredRate": null,
+        "timing": {
+          "requiredMilestone": 0,
+          "nearEndingWindowStart": 0.75,
+          "attainedGames": 0,
+          "attainedNearEndingGames": 0,
+          "attainedNearEndingRate": null,
+          "meanAttainmentTurnFraction": null,
+          "medianAttainmentTurnFraction": null,
+          "meanTurnsBeforeEnd": null
+        }
+      },
+      "scoreSources": {
+        "allPlayersAverage": {
+          "artifact": 14.09,
+          "luminaryArrival": 0,
+          "startingCompensation": 0,
+          "blueprintProject": 0,
+          "other": 0.01,
+          "total": 14.11
+        },
+        "winnerAverage": {
+          "artifact": 16.35,
+          "luminaryArrival": 0,
+          "startingCompensation": 0,
+          "blueprintProject": 0,
+          "other": 0.02,
+          "total": 16.36
+        }
+      },
+      "zeroCostForges": {
+        "all": 21542,
+        "advanced": 9314,
+        "lineageEarned": 0
+      },
+      "well": {
+        "anyColorEmptyTurnRate": 4.74,
+        "fullyEmptyTurnRate": 0,
+        "noLegalActionRecoveries": 0
+      },
+      "encrypt": {
+        "attempts": 4474,
+        "successes": 4474,
+        "forgeConversions": 660,
+        "conversionRate": 14.75,
+        "meanTurnsToConversion": 33.51,
+        "strandedAtEnd": 3814,
+        "rewardGenerated": 4471,
+        "rewardSpent": 4460,
+        "rewardUnused": 11
+      },
+      "lead": {
+        "averageChanges": 2.15,
+        "leaderAt5WinRate": 66.4,
+        "leaderAt10WinRate": 79.8,
+        "comebackWinRate": 31.6
+      },
+      "luminaries": {
+        "claimsByOpeningPosition": [
+          1.271,
+          1.268
+        ],
+        "firstToLastAccessRatio": 1.002,
+        "baseEminenceByOpeningPosition": [
+          0,
+          0
+        ],
+        "perId": {
+          "lum_moth": {
+            "claimsPerGame": 0.066,
+            "ownerWinRate": 40.91,
+            "openingPositionClaimShares": [
+              57.58,
+              42.42
+            ]
+          },
+          "lum_tide": {
+            "claimsPerGame": 0.072,
+            "ownerWinRate": 63.89,
+            "openingPositionClaimShares": [
+              51.39,
+              48.61
+            ]
+          },
+          "lum_verdant": {
+            "claimsPerGame": 0.155,
+            "ownerWinRate": 55.48,
+            "openingPositionClaimShares": [
+              44.52,
+              55.48
+            ]
+          },
+          "lum_void": {
+            "claimsPerGame": 0.077,
+            "ownerWinRate": 45.45,
+            "openingPositionClaimShares": [
+              53.25,
+              46.75
+            ]
+          },
+          "lum_radiant": {
+            "claimsPerGame": 0.102,
+            "ownerWinRate": 63.73,
+            "openingPositionClaimShares": [
+              51.96,
+              48.04
+            ]
+          },
+          "lum_astral": {
+            "claimsPerGame": 0.194,
+            "ownerWinRate": 60.82,
+            "openingPositionClaimShares": [
+              49.48,
+              50.52
+            ]
+          },
+          "lum_bloom": {
+            "claimsPerGame": 0.187,
+            "ownerWinRate": 59.89,
+            "openingPositionClaimShares": [
+              47.06,
+              52.94
+            ]
+          },
+          "lum_forge": {
+            "claimsPerGame": 0.194,
+            "ownerWinRate": 62.37,
+            "openingPositionClaimShares": [
+              47.94,
+              52.06
+            ]
+          },
+          "lum_compass": {
+            "claimsPerGame": 0.202,
+            "ownerWinRate": 65.84,
+            "openingPositionClaimShares": [
+              47.52,
+              52.48
+            ]
+          },
+          "lum_seed": {
+            "claimsPerGame": 0.207,
+            "ownerWinRate": 62.8,
+            "openingPositionClaimShares": [
+              51.21,
+              48.79
+            ]
+          },
+          "lum_orchard": {
+            "claimsPerGame": 0.18,
+            "ownerWinRate": 62.78,
+            "openingPositionClaimShares": [
+              46.67,
+              53.33
+            ]
+          },
+          "lum_pale": {
+            "claimsPerGame": 0.198,
+            "ownerWinRate": 66.16,
+            "openingPositionClaimShares": [
+              52.02,
+              47.98
+            ]
+          },
+          "lum_ember": {
+            "claimsPerGame": 0.311,
+            "ownerWinRate": 58.52,
+            "openingPositionClaimShares": [
+              51.13,
+              48.87
+            ]
+          },
+          "lum_hunger": {
+            "claimsPerGame": 0.279,
+            "ownerWinRate": 57.71,
+            "openingPositionClaimShares": [
+              51.25,
+              48.75
+            ]
+          },
+          "lum_null": {
+            "claimsPerGame": 0.115,
+            "ownerWinRate": 74.78,
+            "openingPositionClaimShares": [
+              56.52,
+              43.48
+            ]
+          },
+          "lum_oracle": {
+            "claimsPerGame": 0,
+            "ownerWinRate": 0,
+            "openingPositionClaimShares": [
+              0,
+              0
+            ]
+          },
+          "lum_scholar": {
+            "claimsPerGame": 0,
+            "ownerWinRate": 0,
+            "openingPositionClaimShares": [
+              0,
+              0
+            ]
+          }
+        }
+      },
+      "market": {
+        "averageVisibleAge": 14.92,
+        "p90VisibleAge": 37
+      },
+      "policies": {
+        "games": {
+          "adaptive": 333,
+          "specialization": 334,
+          "tier-rush": 334,
+          "encrypt-denial": 334,
+          "luminary": 333,
+          "comeback": 332
+        },
+        "wins": {
+          "specialization": 96,
+          "encrypt-denial": 134,
+          "comeback": 175,
+          "adaptive": 209,
+          "tier-rush": 224,
+          "luminary": 162
+        },
+        "normalizedWinRates": {
+          "adaptive": 125.53,
+          "specialization": 57.49,
+          "tier-rush": 134.13,
+          "encrypt-denial": 80.24,
+          "luminary": 97.3,
+          "comeback": 105.42
+        }
+      },
+      "allArtifactBonusShares": {
+        "flare": 20.18,
+        "radiance": 20.09,
+        "verdance": 19.76,
+        "continuum": 19.96,
+        "abyss": 20.02
+      },
+      "winnerArtifactBonusShares": {
+        "flare": 19.59,
+        "radiance": 20.44,
+        "verdance": 19.69,
+        "continuum": 20.09,
+        "abyss": 20.19
+      },
+      "limitations": [
+        "Comeback means the eventual winner trailed the observed Eminence leader by at least 3.",
+        "Visible-market age is sampled once per core decision interval.",
+        "Portable reward spending is the observed Singularity decrease across successful Forge actions.",
+        "Blueprint-slot rules are reported but this Artifact harness does not inject private Blueprint loadouts.",
+        "Artifact score attribution tracks retained implementations from successful Forge actions and honors observed Forge-time brands; Artifact score granted by effects is left in other.",
+        "Blueprint/Project score includes declared manifestation Eminence only; later Project payouts, Luminary-effect awards, removals that cross the zero-score floor, and unattributable interactions reconcile through other, which may be negative."
+      ]
+    },
+    {
+      "candidateId": "luminary-nonexclusive-contact",
+      "ruleset": {
+        "id": "luminary_nonexclusive_contact",
+        "endCondition": "eminence",
+        "luminaryBaseEminence": "none",
+        "luminaryEligibility": "artifact_bonuses",
+        "luminaryClaimLimitPerAction": 1,
+        "luminaryContact": "nonexclusive",
+        "encryptReward": "portable_singularity",
+        "advancedPayment": "current",
+        "blueprintSlots": 2
+      },
+      "playerCount": 3,
+      "format": "quick",
+      "victoryRequirement": 15,
+      "policySeats": [
+        "adaptive",
+        "specialization",
+        "tier-rush"
+      ],
+      "policyRotation": "cyclic_by_game",
+      "gamesRequested": 1000,
+      "gamesCompleted": 1000,
+      "completionRate": 100,
+      "stalledGames": 0,
+      "finishReasons": {
+        "eminence": 1000,
+        "frontier_exhaustion": 0,
+        "max_turns": 0,
+        "presentation_error": 0,
+        "action_error": 0,
+        "other": 0
+      },
+      "averageTurns": 81.53,
+      "medianTurns": 81,
+      "p90Turns": 87,
+      "equalTurnViolations": 0,
+      "seatWinRates": [
+        32.3,
+        34,
+        33.7
+      ],
+      "openingPositionWinRates": [
+        33.3,
+        33.8,
+        32.9
+      ],
+      "actionCounts": {
+        "reserve_artifact": 6831,
+        "harness_three_affinities": 10830,
+        "harness_two_affinities": 7625,
+        "forge_artifact": 55223,
+        "forge_reserved_artifact": 1008,
+        "assimilate": 16,
+        "pass": 1
+      },
+      "actionShares": {
+        "reserve_artifact": 8.38,
+        "harness_three_affinities": 13.28,
+        "harness_two_affinities": 9.35,
+        "forge_artifact": 67.73,
+        "forge_reserved_artifact": 1.24,
+        "assimilate": 0.02,
+        "pass": 0
+      },
+      "actionFailures": {},
+      "forgedByTier": [
+        36.73,
+        16.6,
+        2.9
+      ],
+      "winnerForgedByTier": [
+        12.08,
+        6.11,
+        1.56
+      ],
+      "winnerTier3ReachRate": 85.7,
+      "winnerTier3Milestones": {
+        "exactCountGames": {
+          "0": 143,
+          "1": 369,
+          "2": 321,
+          "3": 125,
+          "4": 33,
+          "5": 7,
+          "6": 2
+        },
+        "exactCountRates": {
+          "0": 14.3,
+          "1": 36.9,
+          "2": 32.1,
+          "3": 12.5,
+          "4": 3.3,
+          "5": 0.7,
+          "6": 0.2
+        },
+        "atLeastOneRate": 85.7,
+        "atLeastTwoRate": 48.8,
+        "requiredForFormat": 0,
+        "requiredRate": null,
+        "timing": {
+          "requiredMilestone": 0,
+          "nearEndingWindowStart": 0.75,
+          "attainedGames": 0,
+          "attainedNearEndingGames": 0,
+          "attainedNearEndingRate": null,
+          "meanAttainmentTurnFraction": null,
+          "medianAttainmentTurnFraction": null,
+          "meanTurnsBeforeEnd": null
+        }
+      },
+      "scoreSources": {
+        "allPlayersAverage": {
+          "artifact": 13.35,
+          "luminaryArrival": 0,
+          "startingCompensation": 0,
+          "blueprintProject": 0,
+          "other": 0.01,
+          "total": 13.36
+        },
+        "winnerAverage": {
+          "artifact": 16.59,
+          "luminaryArrival": 0,
+          "startingCompensation": 0,
+          "blueprintProject": 0,
+          "other": 0.03,
+          "total": 16.62
+        }
+      },
+      "zeroCostForges": {
+        "all": 30512,
+        "advanced": 13413,
+        "lineageEarned": 0
+      },
+      "well": {
+        "anyColorEmptyTurnRate": 5.02,
+        "fullyEmptyTurnRate": 0.01,
+        "noLegalActionRecoveries": 0
+      },
+      "encrypt": {
+        "attempts": 6831,
+        "successes": 6831,
+        "forgeConversions": 1008,
+        "conversionRate": 14.76,
+        "meanTurnsToConversion": 46.6,
+        "strandedAtEnd": 5823,
+        "rewardGenerated": 6738,
+        "rewardSpent": 6709,
+        "rewardUnused": 29
+      },
+      "lead": {
+        "averageChanges": 3.33,
+        "leaderAt5WinRate": 49.4,
+        "leaderAt10WinRate": 73.9,
+        "comebackWinRate": 46.6
+      },
+      "luminaries": {
+        "claimsByOpeningPosition": [
+          1.351,
+          1.361,
+          1.302
+        ],
+        "firstToLastAccessRatio": 1.038,
+        "baseEminenceByOpeningPosition": [
+          0,
+          0,
+          0
+        ],
+        "perId": {
+          "lum_moth": {
+            "claimsPerGame": 0.081,
+            "ownerWinRate": 54.32,
+            "openingPositionClaimShares": [
+              29.63,
+              35.8,
+              34.57
+            ]
+          },
+          "lum_tide": {
+            "claimsPerGame": 0.094,
+            "ownerWinRate": 38.3,
+            "openingPositionClaimShares": [
+              36.17,
+              35.11,
+              28.72
+            ]
+          },
+          "lum_verdant": {
+            "claimsPerGame": 0.231,
+            "ownerWinRate": 49.35,
+            "openingPositionClaimShares": [
+              33.33,
+              33.33,
+              33.33
+            ]
+          },
+          "lum_void": {
+            "claimsPerGame": 0.087,
+            "ownerWinRate": 35.63,
+            "openingPositionClaimShares": [
+              26.44,
+              45.98,
+              27.59
+            ]
+          },
+          "lum_radiant": {
+            "claimsPerGame": 0.156,
+            "ownerWinRate": 50.64,
+            "openingPositionClaimShares": [
+              37.18,
+              29.49,
+              33.33
+            ]
+          },
+          "lum_astral": {
+            "claimsPerGame": 0.318,
+            "ownerWinRate": 41.19,
+            "openingPositionClaimShares": [
+              33.96,
+              33.96,
+              32.08
+            ]
+          },
+          "lum_bloom": {
+            "claimsPerGame": 0.273,
+            "ownerWinRate": 43.22,
+            "openingPositionClaimShares": [
+              32.6,
+              35.53,
+              31.87
+            ]
+          },
+          "lum_forge": {
+            "claimsPerGame": 0.324,
+            "ownerWinRate": 44.75,
+            "openingPositionClaimShares": [
+              34.26,
+              34.26,
+              31.48
+            ]
+          },
+          "lum_compass": {
+            "claimsPerGame": 0.343,
+            "ownerWinRate": 43.73,
+            "openingPositionClaimShares": [
+              36.73,
+              31.49,
+              31.78
+            ]
+          },
+          "lum_seed": {
+            "claimsPerGame": 0.342,
+            "ownerWinRate": 48.25,
+            "openingPositionClaimShares": [
+              34.5,
+              35.67,
+              29.82
+            ]
+          },
+          "lum_orchard": {
+            "claimsPerGame": 0.297,
+            "ownerWinRate": 48.82,
+            "openingPositionClaimShares": [
+              32.32,
+              33.67,
+              34.01
+            ]
+          },
+          "lum_pale": {
+            "claimsPerGame": 0.268,
+            "ownerWinRate": 49.63,
+            "openingPositionClaimShares": [
+              35.07,
+              32.46,
+              32.46
+            ]
+          },
+          "lum_ember": {
+            "claimsPerGame": 0.541,
+            "ownerWinRate": 43.99,
+            "openingPositionClaimShares": [
+              31.42,
+              33.27,
+              35.3
+            ]
+          },
+          "lum_hunger": {
+            "claimsPerGame": 0.48,
+            "ownerWinRate": 42.71,
+            "openingPositionClaimShares": [
+              34.58,
+              32.29,
+              33.13
+            ]
+          },
+          "lum_null": {
+            "claimsPerGame": 0.179,
+            "ownerWinRate": 58.1,
+            "openingPositionClaimShares": [
+              31.84,
+              37.99,
+              30.17
+            ]
+          },
+          "lum_oracle": {
+            "claimsPerGame": 0,
+            "ownerWinRate": 0,
+            "openingPositionClaimShares": [
+              0,
+              0,
+              0
+            ]
+          },
+          "lum_scholar": {
+            "claimsPerGame": 0,
+            "ownerWinRate": 0,
+            "openingPositionClaimShares": [
+              0,
+              0,
+              0
+            ]
+          }
+        }
+      },
+      "market": {
+        "averageVisibleAge": 19.37,
+        "p90VisibleAge": 50
+      },
+      "policies": {
+        "games": {
+          "adaptive": 499,
+          "specialization": 500,
+          "tier-rush": 501,
+          "encrypt-denial": 501,
+          "luminary": 500,
+          "comeback": 499
+        },
+        "wins": {
+          "tier-rush": 256,
+          "luminary": 152,
+          "comeback": 244,
+          "specialization": 75,
+          "adaptive": 168,
+          "encrypt-denial": 105
+        },
+        "normalizedWinRates": {
+          "adaptive": 101,
+          "specialization": 45,
+          "tier-rush": 153.29,
+          "encrypt-denial": 62.87,
+          "luminary": 91.2,
+          "comeback": 146.69
+        }
+      },
+      "allArtifactBonusShares": {
+        "flare": 20.02,
+        "radiance": 20.04,
+        "verdance": 19.88,
+        "continuum": 20.09,
+        "abyss": 19.97
+      },
+      "winnerArtifactBonusShares": {
+        "flare": 19.4,
+        "radiance": 21,
+        "verdance": 19.93,
+        "continuum": 19.61,
+        "abyss": 20.06
+      },
+      "limitations": [
+        "Comeback means the eventual winner trailed the observed Eminence leader by at least 3.",
+        "Visible-market age is sampled once per core decision interval.",
+        "Portable reward spending is the observed Singularity decrease across successful Forge actions.",
+        "Blueprint-slot rules are reported but this Artifact harness does not inject private Blueprint loadouts.",
+        "Artifact score attribution tracks retained implementations from successful Forge actions and honors observed Forge-time brands; Artifact score granted by effects is left in other.",
+        "Blueprint/Project score includes declared manifestation Eminence only; later Project payouts, Luminary-effect awards, removals that cross the zero-score floor, and unattributable interactions reconcile through other, which may be negative."
+      ]
+    },
+    {
+      "candidateId": "luminary-nonexclusive-contact",
+      "ruleset": {
+        "id": "luminary_nonexclusive_contact",
+        "endCondition": "eminence",
+        "luminaryBaseEminence": "none",
+        "luminaryEligibility": "artifact_bonuses",
+        "luminaryClaimLimitPerAction": 1,
+        "luminaryContact": "nonexclusive",
+        "encryptReward": "portable_singularity",
+        "advancedPayment": "current",
+        "blueprintSlots": 2
+      },
+      "playerCount": 4,
+      "format": "quick",
+      "victoryRequirement": 15,
+      "policySeats": [
+        "adaptive",
+        "specialization",
+        "tier-rush",
+        "encrypt-denial"
+      ],
+      "policyRotation": "cyclic_by_game",
+      "gamesRequested": 1000,
+      "gamesCompleted": 1000,
+      "completionRate": 100,
+      "stalledGames": 0,
+      "finishReasons": {
+        "eminence": 999,
+        "frontier_exhaustion": 1,
+        "max_turns": 0,
+        "presentation_error": 0,
+        "action_error": 0,
+        "other": 0
+      },
+      "averageTurns": 106.1,
+      "medianTurns": 104,
+      "p90Turns": 112,
+      "equalTurnViolations": 0,
+      "seatWinRates": [
+        25.1,
+        25.8,
+        22.9,
+        26.2
+      ],
+      "openingPositionWinRates": [
+        21.6,
+        26.7,
+        23.2,
+        28.5
+      ],
+      "actionCounts": {
+        "harness_two_affinities": 17714,
+        "reserve_artifact": 10064,
+        "harness_three_affinities": 12501,
+        "forge_artifact": 64281,
+        "forge_reserved_artifact": 1477,
+        "assimilate": 63
+      },
+      "actionShares": {
+        "harness_two_affinities": 16.7,
+        "reserve_artifact": 9.49,
+        "harness_three_affinities": 11.78,
+        "forge_artifact": 60.59,
+        "forge_reserved_artifact": 1.39,
+        "assimilate": 0.06
+      },
+      "actionFailures": {},
+      "forgedByTier": [
+        39.69,
+        23.1,
+        2.97
+      ],
+      "winnerForgedByTier": [
+        10.53,
+        6.46,
+        1.32
+      ],
+      "winnerTier3ReachRate": 82,
+      "winnerTier3Milestones": {
+        "exactCountGames": {
+          "0": 180,
+          "1": 428,
+          "2": 308,
+          "3": 63,
+          "4": 18,
+          "5": 2,
+          "6": 1
+        },
+        "exactCountRates": {
+          "0": 18,
+          "1": 42.8,
+          "2": 30.8,
+          "3": 6.3,
+          "4": 1.8,
+          "5": 0.2,
+          "6": 0.1
+        },
+        "atLeastOneRate": 82,
+        "atLeastTwoRate": 39.2,
+        "requiredForFormat": 0,
+        "requiredRate": null,
+        "timing": {
+          "requiredMilestone": 0,
+          "nearEndingWindowStart": 0.75,
+          "attainedGames": 0,
+          "attainedNearEndingGames": 0,
+          "attainedNearEndingRate": null,
+          "meanAttainmentTurnFraction": null,
+          "medianAttainmentTurnFraction": null,
+          "meanTurnsBeforeEnd": null
+        }
+      },
+      "scoreSources": {
+        "allPlayersAverage": {
+          "artifact": 12.89,
+          "luminaryArrival": 0,
+          "startingCompensation": 0,
+          "blueprintProject": 0,
+          "other": 0.01,
+          "total": 12.9
+        },
+        "winnerAverage": {
+          "artifact": 16.29,
+          "luminaryArrival": 0,
+          "startingCompensation": 0,
+          "blueprintProject": 0,
+          "other": 0.01,
+          "total": 16.3
+        }
+      },
+      "zeroCostForges": {
+        "all": 28396,
+        "advanced": 13651,
+        "lineageEarned": 0
+      },
+      "well": {
+        "anyColorEmptyTurnRate": 1.13,
+        "fullyEmptyTurnRate": 0,
+        "noLegalActionRecoveries": 0
+      },
+      "encrypt": {
+        "attempts": 10064,
+        "successes": 10064,
+        "forgeConversions": 1477,
+        "conversionRate": 14.68,
+        "meanTurnsToConversion": 55.13,
+        "strandedAtEnd": 8587,
+        "rewardGenerated": 9643,
+        "rewardSpent": 9547,
+        "rewardUnused": 96
+      },
+      "lead": {
+        "averageChanges": 4.05,
+        "leaderAt5WinRate": 40,
+        "leaderAt10WinRate": 63.2,
+        "comebackWinRate": 56.3
+      },
+      "luminaries": {
+        "claimsByOpeningPosition": [
+          0.996,
+          0.906,
+          0.888,
+          0.825
+        ],
+        "firstToLastAccessRatio": 1.207,
+        "baseEminenceByOpeningPosition": [
+          0,
+          0,
+          0,
+          0
+        ],
+        "perId": {
+          "lum_moth": {
+            "claimsPerGame": 0.05,
+            "ownerWinRate": 38,
+            "openingPositionClaimShares": [
+              26,
+              22,
+              32,
+              20
+            ]
+          },
+          "lum_tide": {
+            "claimsPerGame": 0.064,
+            "ownerWinRate": 40.63,
+            "openingPositionClaimShares": [
+              29.69,
+              31.25,
+              18.75,
+              20.31
+            ]
+          },
+          "lum_verdant": {
+            "claimsPerGame": 0.197,
+            "ownerWinRate": 46.19,
+            "openingPositionClaimShares": [
+              27.92,
+              27.41,
+              22.34,
+              22.34
+            ]
+          },
+          "lum_void": {
+            "claimsPerGame": 0.065,
+            "ownerWinRate": 44.62,
+            "openingPositionClaimShares": [
+              26.15,
+              20,
+              30.77,
+              23.08
+            ]
+          },
+          "lum_radiant": {
+            "claimsPerGame": 0.14,
+            "ownerWinRate": 33.57,
+            "openingPositionClaimShares": [
+              37.86,
+              20.71,
+              20,
+              21.43
+            ]
+          },
+          "lum_astral": {
+            "claimsPerGame": 0.307,
+            "ownerWinRate": 35.18,
+            "openingPositionClaimShares": [
+              28.66,
+              23.13,
+              27.36,
+              20.85
+            ]
+          },
+          "lum_bloom": {
+            "claimsPerGame": 0.292,
+            "ownerWinRate": 47.95,
+            "openingPositionClaimShares": [
+              26.37,
+              26.37,
+              24.32,
+              22.95
+            ]
+          },
+          "lum_forge": {
+            "claimsPerGame": 0.297,
+            "ownerWinRate": 45.79,
+            "openingPositionClaimShares": [
+              24.92,
+              22.9,
+              27.61,
+              24.58
+            ]
+          },
+          "lum_compass": {
+            "claimsPerGame": 0.248,
+            "ownerWinRate": 43.15,
+            "openingPositionClaimShares": [
+              29.84,
+              22.58,
+              25.81,
+              21.77
+            ]
+          },
+          "lum_seed": {
+            "claimsPerGame": 0.277,
+            "ownerWinRate": 44.4,
+            "openingPositionClaimShares": [
+              25.27,
+              26.71,
+              23.83,
+              24.19
+            ]
+          },
+          "lum_orchard": {
+            "claimsPerGame": 0.264,
+            "ownerWinRate": 45.83,
+            "openingPositionClaimShares": [
+              30.68,
+              27.65,
+              20.45,
+              21.21
+            ]
+          },
+          "lum_pale": {
+            "claimsPerGame": 0.291,
+            "ownerWinRate": 47.77,
+            "openingPositionClaimShares": [
+              26.8,
+              25.09,
+              24.74,
+              23.37
+            ]
+          },
+          "lum_ember": {
+            "claimsPerGame": 0.534,
+            "ownerWinRate": 42.7,
+            "openingPositionClaimShares": [
+              26.22,
+              24.91,
+              24.16,
+              24.72
+            ]
+          },
+          "lum_hunger": {
+            "claimsPerGame": 0.476,
+            "ownerWinRate": 44.75,
+            "openingPositionClaimShares": [
+              25.63,
+              25.84,
+              26.47,
+              22.06
+            ]
+          },
+          "lum_null": {
+            "claimsPerGame": 0.113,
+            "ownerWinRate": 65.49,
+            "openingPositionClaimShares": [
+              30.97,
+              27.43,
+              17.7,
+              23.89
+            ]
+          },
+          "lum_oracle": {
+            "claimsPerGame": 0,
+            "ownerWinRate": 0,
+            "openingPositionClaimShares": [
+              0,
+              0,
+              0,
+              0
+            ]
+          },
+          "lum_scholar": {
+            "claimsPerGame": 0,
+            "ownerWinRate": 0,
+            "openingPositionClaimShares": [
+              0,
+              0,
+              0,
+              0
+            ]
+          }
+        }
+      },
+      "market": {
+        "averageVisibleAge": 23.08,
+        "p90VisibleAge": 61
+      },
+      "policies": {
+        "games": {
+          "adaptive": 666,
+          "specialization": 666,
+          "tier-rush": 667,
+          "encrypt-denial": 668,
+          "luminary": 667,
+          "comeback": 666
+        },
+        "wins": {
+          "tier-rush": 220,
+          "comeback": 209,
+          "adaptive": 208,
+          "luminary": 190,
+          "encrypt-denial": 112,
+          "specialization": 61
+        },
+        "normalizedWinRates": {
+          "adaptive": 124.92,
+          "specialization": 36.64,
+          "tier-rush": 131.93,
+          "encrypt-denial": 67.07,
+          "luminary": 113.94,
+          "comeback": 125.53
+        }
+      },
+      "allArtifactBonusShares": {
+        "flare": 19.82,
+        "radiance": 19.92,
+        "verdance": 20.02,
+        "continuum": 20.24,
+        "abyss": 20
+      },
+      "winnerArtifactBonusShares": {
+        "flare": 19.4,
+        "radiance": 20.72,
+        "verdance": 19.93,
+        "continuum": 19.58,
+        "abyss": 20.36
+      },
+      "limitations": [
+        "Comeback means the eventual winner trailed the observed Eminence leader by at least 3.",
+        "Visible-market age is sampled once per core decision interval.",
+        "Portable reward spending is the observed Singularity decrease across successful Forge actions.",
+        "Blueprint-slot rules are reported but this Artifact harness does not inject private Blueprint loadouts.",
+        "Artifact score attribution tracks retained implementations from successful Forge actions and honors observed Forge-time brands; Artifact score granted by effects is left in other.",
+        "Blueprint/Project score includes declared manifestation Eminence only; later Project payouts, Luminary-effect awards, removals that cross the zero-score floor, and unattributable interactions reconcile through other, which may be negative."
+      ]
+    },
+    {
+      "candidateId": "luminary-nonexclusive-contact",
+      "ruleset": {
+        "id": "luminary_nonexclusive_contact",
+        "endCondition": "eminence",
+        "luminaryBaseEminence": "none",
+        "luminaryEligibility": "artifact_bonuses",
+        "luminaryClaimLimitPerAction": 1,
+        "luminaryContact": "nonexclusive",
+        "encryptReward": "portable_singularity",
+        "advancedPayment": "current",
+        "blueprintSlots": 2
+      },
+      "playerCount": 2,
+      "format": "standard",
+      "victoryRequirement": 20,
+      "policySeats": [
+        "adaptive",
+        "specialization"
+      ],
+      "policyRotation": "cyclic_by_game",
+      "gamesRequested": 1000,
+      "gamesCompleted": 1000,
+      "completionRate": 100,
+      "stalledGames": 0,
+      "finishReasons": {
+        "eminence": 1000,
+        "frontier_exhaustion": 0,
+        "max_turns": 0,
+        "presentation_error": 0,
+        "action_error": 0,
+        "other": 0
+      },
+      "averageTurns": 60.52,
+      "medianTurns": 60,
+      "p90Turns": 66,
+      "equalTurnViolations": 0,
+      "seatWinRates": [
+        50.6,
+        49.4
+      ],
+      "openingPositionWinRates": [
+        48.3,
+        51.7
+      ],
+      "actionCounts": {
+        "harness_two_affinities": 4277,
+        "harness_three_affinities": 8004,
+        "forge_artifact": 42717,
+        "reserve_artifact": 4510,
+        "forge_reserved_artifact": 1002,
+        "assimilate": 10
+      },
+      "actionShares": {
+        "harness_two_affinities": 7.07,
+        "harness_three_affinities": 13.23,
+        "forge_artifact": 70.58,
+        "reserve_artifact": 7.45,
+        "forge_reserved_artifact": 1.66,
+        "assimilate": 0.02
+      },
+      "actionFailures": {},
+      "forgedByTier": [
+        26.15,
+        13.38,
+        4.19
+      ],
+      "winnerForgedByTier": [
+        12.86,
+        6.99,
+        2.7
+      ],
+      "winnerTier3ReachRate": 97.7,
+      "winnerTier3Milestones": {
+        "exactCountGames": {
+          "0": 23,
+          "1": 143,
+          "2": 294,
+          "3": 286,
+          "4": 177,
+          "5": 60,
+          "6": 16,
+          "7": 1
+        },
+        "exactCountRates": {
+          "0": 2.3,
+          "1": 14.3,
+          "2": 29.4,
+          "3": 28.6,
+          "4": 17.7,
+          "5": 6,
+          "6": 1.6,
+          "7": 0.1
+        },
+        "atLeastOneRate": 97.7,
+        "atLeastTwoRate": 83.4,
+        "requiredForFormat": 1,
+        "requiredRate": 97.7,
+        "timing": {
+          "requiredMilestone": 1,
+          "nearEndingWindowStart": 0.75,
+          "attainedGames": 977,
+          "attainedNearEndingGames": 870,
+          "attainedNearEndingRate": 87,
+          "meanAttainmentTurnFraction": 0.8552,
+          "medianAttainmentTurnFraction": 0.8636,
+          "meanTurnsBeforeEnd": 8.82
+        }
+      },
+      "scoreSources": {
+        "allPlayersAverage": {
+          "artifact": 19.11,
+          "luminaryArrival": 0,
+          "startingCompensation": 0,
+          "blueprintProject": 0,
+          "other": 0.03,
+          "total": 19.15
+        },
+        "winnerAverage": {
+          "artifact": 21.9,
+          "luminaryArrival": 0,
+          "startingCompensation": 0,
+          "blueprintProject": 0,
+          "other": 0.05,
+          "total": 21.95
+        }
+      },
+      "zeroCostForges": {
+        "all": 25678,
+        "advanced": 13107,
+        "lineageEarned": 0
+      },
+      "well": {
+        "anyColorEmptyTurnRate": 4.4,
+        "fullyEmptyTurnRate": 0,
+        "noLegalActionRecoveries": 0
+      },
+      "encrypt": {
+        "attempts": 4510,
+        "successes": 4510,
+        "forgeConversions": 1002,
+        "conversionRate": 22.22,
+        "meanTurnsToConversion": 38.4,
+        "strandedAtEnd": 3508,
+        "rewardGenerated": 4507,
+        "rewardSpent": 4493,
+        "rewardUnused": 14
+      },
+      "lead": {
+        "averageChanges": 2.55,
+        "leaderAt5WinRate": 62.7,
+        "leaderAt10WinRate": 75.1,
+        "comebackWinRate": 39.4
+      },
+      "luminaries": {
+        "claimsByOpeningPosition": [
+          1.643,
+          1.633
+        ],
+        "firstToLastAccessRatio": 1.006,
+        "baseEminenceByOpeningPosition": [
+          0,
+          0
+        ],
+        "perId": {
+          "lum_moth": {
+            "claimsPerGame": 0.109,
+            "ownerWinRate": 41.28,
+            "openingPositionClaimShares": [
+              55.96,
+              44.04
+            ]
+          },
+          "lum_tide": {
+            "claimsPerGame": 0.111,
+            "ownerWinRate": 67.57,
+            "openingPositionClaimShares": [
+              47.75,
+              52.25
+            ]
+          },
+          "lum_verdant": {
+            "claimsPerGame": 0.193,
+            "ownerWinRate": 61.66,
+            "openingPositionClaimShares": [
+              47.15,
+              52.85
+            ]
+          },
+          "lum_void": {
+            "claimsPerGame": 0.139,
+            "ownerWinRate": 52.52,
+            "openingPositionClaimShares": [
+              47.48,
+              52.52
+            ]
+          },
+          "lum_radiant": {
+            "claimsPerGame": 0.148,
+            "ownerWinRate": 62.84,
+            "openingPositionClaimShares": [
+              53.38,
+              46.62
+            ]
+          },
+          "lum_astral": {
+            "claimsPerGame": 0.241,
+            "ownerWinRate": 58.51,
+            "openingPositionClaimShares": [
+              51.04,
+              48.96
+            ]
+          },
+          "lum_bloom": {
+            "claimsPerGame": 0.247,
+            "ownerWinRate": 58.3,
+            "openingPositionClaimShares": [
+              49.8,
+              50.2
+            ]
+          },
+          "lum_forge": {
+            "claimsPerGame": 0.238,
+            "ownerWinRate": 59.66,
+            "openingPositionClaimShares": [
+              47.9,
+              52.1
+            ]
+          },
+          "lum_compass": {
+            "claimsPerGame": 0.262,
+            "ownerWinRate": 63.74,
+            "openingPositionClaimShares": [
+              48.47,
+              51.53
+            ]
+          },
+          "lum_seed": {
+            "claimsPerGame": 0.255,
+            "ownerWinRate": 61.18,
+            "openingPositionClaimShares": [
+              50.59,
+              49.41
+            ]
+          },
+          "lum_orchard": {
+            "claimsPerGame": 0.223,
+            "ownerWinRate": 61.43,
+            "openingPositionClaimShares": [
+              47.53,
+              52.47
+            ]
+          },
+          "lum_pale": {
+            "claimsPerGame": 0.248,
+            "ownerWinRate": 60.89,
+            "openingPositionClaimShares": [
+              50.4,
+              49.6
+            ]
+          },
+          "lum_ember": {
+            "claimsPerGame": 0.355,
+            "ownerWinRate": 55.21,
+            "openingPositionClaimShares": [
+              49.3,
+              50.7
+            ]
+          },
+          "lum_hunger": {
+            "claimsPerGame": 0.328,
+            "ownerWinRate": 55.18,
+            "openingPositionClaimShares": [
+              51.22,
+              48.78
+            ]
+          },
+          "lum_null": {
+            "claimsPerGame": 0.179,
+            "ownerWinRate": 67.04,
+            "openingPositionClaimShares": [
+              57.54,
+              42.46
+            ]
+          },
+          "lum_oracle": {
+            "claimsPerGame": 0,
+            "ownerWinRate": 0,
+            "openingPositionClaimShares": [
+              0,
+              0
+            ]
+          },
+          "lum_scholar": {
+            "claimsPerGame": 0,
+            "ownerWinRate": 0,
+            "openingPositionClaimShares": [
+              0,
+              0
+            ]
+          }
+        }
+      },
+      "market": {
+        "averageVisibleAge": 15.12,
+        "p90VisibleAge": 38
+      },
+      "policies": {
+        "games": {
+          "adaptive": 333,
+          "specialization": 334,
+          "tier-rush": 334,
+          "encrypt-denial": 334,
+          "luminary": 333,
+          "comeback": 332
+        },
+        "wins": {
+          "specialization": 106,
+          "encrypt-denial": 135,
+          "luminary": 168,
+          "comeback": 171,
+          "adaptive": 205,
+          "tier-rush": 215
+        },
+        "normalizedWinRates": {
+          "adaptive": 123.12,
+          "specialization": 63.47,
+          "tier-rush": 128.74,
+          "encrypt-denial": 80.84,
+          "luminary": 100.9,
+          "comeback": 103.01
+        }
+      },
+      "allArtifactBonusShares": {
+        "flare": 20.17,
+        "radiance": 20.14,
+        "verdance": 19.69,
+        "continuum": 20.07,
+        "abyss": 19.93
+      },
+      "winnerArtifactBonusShares": {
+        "flare": 19.63,
+        "radiance": 20.44,
+        "verdance": 19.69,
+        "continuum": 20.25,
+        "abyss": 20
+      },
+      "limitations": [
+        "Comeback means the eventual winner trailed the observed Eminence leader by at least 3.",
+        "Visible-market age is sampled once per core decision interval.",
+        "Portable reward spending is the observed Singularity decrease across successful Forge actions.",
+        "Blueprint-slot rules are reported but this Artifact harness does not inject private Blueprint loadouts.",
+        "Artifact score attribution tracks retained implementations from successful Forge actions and honors observed Forge-time brands; Artifact score granted by effects is left in other.",
+        "Blueprint/Project score includes declared manifestation Eminence only; later Project payouts, Luminary-effect awards, removals that cross the zero-score floor, and unattributable interactions reconcile through other, which may be negative."
+      ]
+    },
+    {
+      "candidateId": "luminary-nonexclusive-contact",
+      "ruleset": {
+        "id": "luminary_nonexclusive_contact",
+        "endCondition": "eminence",
+        "luminaryBaseEminence": "none",
+        "luminaryEligibility": "artifact_bonuses",
+        "luminaryClaimLimitPerAction": 1,
+        "luminaryContact": "nonexclusive",
+        "encryptReward": "portable_singularity",
+        "advancedPayment": "current",
+        "blueprintSlots": 2
+      },
+      "playerCount": 3,
+      "format": "standard",
+      "victoryRequirement": 20,
+      "policySeats": [
+        "adaptive",
+        "specialization",
+        "tier-rush"
+      ],
+      "policyRotation": "cyclic_by_game",
+      "gamesRequested": 1000,
+      "gamesCompleted": 1000,
+      "completionRate": 100,
+      "stalledGames": 0,
+      "finishReasons": {
+        "eminence": 1000,
+        "frontier_exhaustion": 0,
+        "max_turns": 0,
+        "presentation_error": 0,
+        "action_error": 0,
+        "other": 0
+      },
+      "averageTurns": 87.88,
+      "medianTurns": 87,
+      "p90Turns": 93,
+      "equalTurnViolations": 0,
+      "seatWinRates": [
+        33.9,
+        33.6,
+        32.5
+      ],
+      "openingPositionWinRates": [
+        33,
+        33.9,
+        33.1
+      ],
+      "actionCounts": {
+        "reserve_artifact": 6891,
+        "harness_three_affinities": 10840,
+        "harness_two_affinities": 7686,
+        "forge_artifact": 60902,
+        "forge_reserved_artifact": 1534,
+        "assimilate": 25,
+        "pass": 1
+      },
+      "actionShares": {
+        "reserve_artifact": 7.84,
+        "harness_three_affinities": 12.34,
+        "harness_two_affinities": 8.75,
+        "forge_artifact": 69.3,
+        "forge_reserved_artifact": 1.75,
+        "assimilate": 0.03,
+        "pass": 0
+      },
+      "actionFailures": {},
+      "forgedByTier": [
+        37.04,
+        19.78,
+        5.61
+      ],
+      "winnerForgedByTier": [
+        12.21,
+        6.86,
+        2.8
+      ],
+      "winnerTier3ReachRate": 98.5,
+      "winnerTier3Milestones": {
+        "exactCountGames": {
+          "0": 15,
+          "1": 115,
+          "2": 298,
+          "3": 318,
+          "4": 167,
+          "5": 64,
+          "6": 18,
+          "7": 4,
+          "8": 1
+        },
+        "exactCountRates": {
+          "0": 1.5,
+          "1": 11.5,
+          "2": 29.8,
+          "3": 31.8,
+          "4": 16.7,
+          "5": 6.4,
+          "6": 1.8,
+          "7": 0.4,
+          "8": 0.1
+        },
+        "atLeastOneRate": 98.5,
+        "atLeastTwoRate": 87,
+        "requiredForFormat": 1,
+        "requiredRate": 98.5,
+        "timing": {
+          "requiredMilestone": 1,
+          "nearEndingWindowStart": 0.75,
+          "attainedGames": 985,
+          "attainedNearEndingGames": 902,
+          "attainedNearEndingRate": 90.2,
+          "meanAttainmentTurnFraction": 0.8591,
+          "medianAttainmentTurnFraction": 0.869,
+          "meanTurnsBeforeEnd": 12.45
+        }
+      },
+      "scoreSources": {
+        "allPlayersAverage": {
+          "artifact": 18.13,
+          "luminaryArrival": 0,
+          "startingCompensation": 0,
+          "blueprintProject": 0,
+          "other": 0.04,
+          "total": 18.16
+        },
+        "winnerAverage": {
+          "artifact": 22.15,
+          "luminaryArrival": 0,
+          "startingCompensation": 0,
+          "blueprintProject": 0,
+          "other": 0.06,
+          "total": 22.21
+        }
+      },
+      "zeroCostForges": {
+        "all": 36347,
+        "advanced": 18944,
+        "lineageEarned": 0
+      },
+      "well": {
+        "anyColorEmptyTurnRate": 4.66,
+        "fullyEmptyTurnRate": 0.01,
+        "noLegalActionRecoveries": 0
+      },
+      "encrypt": {
+        "attempts": 6891,
+        "successes": 6891,
+        "forgeConversions": 1534,
+        "conversionRate": 22.26,
+        "meanTurnsToConversion": 54.05,
+        "strandedAtEnd": 5357,
+        "rewardGenerated": 6798,
+        "rewardSpent": 6764,
+        "rewardUnused": 34
+      },
+      "lead": {
+        "averageChanges": 3.92,
+        "leaderAt5WinRate": 45.9,
+        "leaderAt10WinRate": 66.4,
+        "comebackWinRate": 53.5
+      },
+      "luminaries": {
+        "claimsByOpeningPosition": [
+          1.854,
+          1.838,
+          1.788
+        ],
+        "firstToLastAccessRatio": 1.037,
+        "baseEminenceByOpeningPosition": [
+          0,
+          0,
+          0
+        ],
+        "perId": {
+          "lum_moth": {
+            "claimsPerGame": 0.151,
+            "ownerWinRate": 41.72,
+            "openingPositionClaimShares": [
+              33.11,
+              32.45,
+              34.44
+            ]
+          },
+          "lum_tide": {
+            "claimsPerGame": 0.166,
+            "ownerWinRate": 42.77,
+            "openingPositionClaimShares": [
+              36.75,
+              34.34,
+              28.92
+            ]
+          },
+          "lum_verdant": {
+            "claimsPerGame": 0.335,
+            "ownerWinRate": 48.66,
+            "openingPositionClaimShares": [
+              32.24,
+              32.54,
+              35.22
+            ]
+          },
+          "lum_void": {
+            "claimsPerGame": 0.175,
+            "ownerWinRate": 42.86,
+            "openingPositionClaimShares": [
+              25.14,
+              40.57,
+              34.29
+            ]
+          },
+          "lum_radiant": {
+            "claimsPerGame": 0.219,
+            "ownerWinRate": 43.84,
+            "openingPositionClaimShares": [
+              37.44,
+              30.14,
+              32.42
+            ]
+          },
+          "lum_astral": {
+            "claimsPerGame": 0.446,
+            "ownerWinRate": 38.57,
+            "openingPositionClaimShares": [
+              33.86,
+              35.87,
+              30.27
+            ]
+          },
+          "lum_bloom": {
+            "claimsPerGame": 0.382,
+            "ownerWinRate": 40.84,
+            "openingPositionClaimShares": [
+              35.6,
+              33.77,
+              30.63
+            ]
+          },
+          "lum_forge": {
+            "claimsPerGame": 0.44,
+            "ownerWinRate": 41.36,
+            "openingPositionClaimShares": [
+              35.45,
+              33.64,
+              30.91
+            ]
+          },
+          "lum_compass": {
+            "claimsPerGame": 0.462,
+            "ownerWinRate": 42.42,
+            "openingPositionClaimShares": [
+              35.06,
+              31.6,
+              33.33
+            ]
+          },
+          "lum_seed": {
+            "claimsPerGame": 0.449,
+            "ownerWinRate": 47.44,
+            "openingPositionClaimShares": [
+              34.08,
+              35.19,
+              30.73
+            ]
+          },
+          "lum_orchard": {
+            "claimsPerGame": 0.381,
+            "ownerWinRate": 48.56,
+            "openingPositionClaimShares": [
+              32.81,
+              33.6,
+              33.6
+            ]
+          },
+          "lum_pale": {
+            "claimsPerGame": 0.355,
+            "ownerWinRate": 45.07,
+            "openingPositionClaimShares": [
+              34.93,
+              33.52,
+              31.55
+            ]
+          },
+          "lum_ember": {
+            "claimsPerGame": 0.652,
+            "ownerWinRate": 40.95,
+            "openingPositionClaimShares": [
+              32.06,
+              32.52,
+              35.43
+            ]
+          },
+          "lum_hunger": {
+            "claimsPerGame": 0.573,
+            "ownerWinRate": 39.62,
+            "openingPositionClaimShares": [
+              33.51,
+              32.46,
+              34.03
+            ]
+          },
+          "lum_null": {
+            "claimsPerGame": 0.294,
+            "ownerWinRate": 54.42,
+            "openingPositionClaimShares": [
+              34.35,
+              34.01,
+              31.63
+            ]
+          },
+          "lum_oracle": {
+            "claimsPerGame": 0,
+            "ownerWinRate": 0,
+            "openingPositionClaimShares": [
+              0,
+              0,
+              0
+            ]
+          },
+          "lum_scholar": {
+            "claimsPerGame": 0,
+            "ownerWinRate": 0,
+            "openingPositionClaimShares": [
+              0,
+              0,
+              0
+            ]
+          }
+        }
+      },
+      "market": {
+        "averageVisibleAge": 19.42,
+        "p90VisibleAge": 50
+      },
+      "policies": {
+        "games": {
+          "adaptive": 499,
+          "specialization": 500,
+          "tier-rush": 501,
+          "encrypt-denial": 501,
+          "luminary": 500,
+          "comeback": 499
+        },
+        "wins": {
+          "tier-rush": 255,
+          "luminary": 157,
+          "comeback": 233,
+          "specialization": 69,
+          "encrypt-denial": 104,
+          "adaptive": 182
+        },
+        "normalizedWinRates": {
+          "adaptive": 109.42,
+          "specialization": 41.4,
+          "tier-rush": 152.69,
+          "encrypt-denial": 62.28,
+          "luminary": 94.2,
+          "comeback": 140.08
+        }
+      },
+      "allArtifactBonusShares": {
+        "flare": 19.94,
+        "radiance": 20.03,
+        "verdance": 19.86,
+        "continuum": 20.18,
+        "abyss": 19.99
+      },
+      "winnerArtifactBonusShares": {
+        "flare": 19.19,
+        "radiance": 20.57,
+        "verdance": 20.14,
+        "continuum": 20.04,
+        "abyss": 20.06
+      },
+      "limitations": [
+        "Comeback means the eventual winner trailed the observed Eminence leader by at least 3.",
+        "Visible-market age is sampled once per core decision interval.",
+        "Portable reward spending is the observed Singularity decrease across successful Forge actions.",
+        "Blueprint-slot rules are reported but this Artifact harness does not inject private Blueprint loadouts.",
+        "Artifact score attribution tracks retained implementations from successful Forge actions and honors observed Forge-time brands; Artifact score granted by effects is left in other.",
+        "Blueprint/Project score includes declared manifestation Eminence only; later Project payouts, Luminary-effect awards, removals that cross the zero-score floor, and unattributable interactions reconcile through other, which may be negative."
+      ]
+    },
+    {
+      "candidateId": "luminary-nonexclusive-contact",
+      "ruleset": {
+        "id": "luminary_nonexclusive_contact",
+        "endCondition": "eminence",
+        "luminaryBaseEminence": "none",
+        "luminaryEligibility": "artifact_bonuses",
+        "luminaryClaimLimitPerAction": 1,
+        "luminaryContact": "nonexclusive",
+        "encryptReward": "portable_singularity",
+        "advancedPayment": "current",
+        "blueprintSlots": 2
+      },
+      "playerCount": 4,
+      "format": "standard",
+      "victoryRequirement": 20,
+      "policySeats": [
+        "adaptive",
+        "specialization",
+        "tier-rush",
+        "encrypt-denial"
+      ],
+      "policyRotation": "cyclic_by_game",
+      "gamesRequested": 1000,
+      "gamesCompleted": 1000,
+      "completionRate": 100,
+      "stalledGames": 0,
+      "finishReasons": {
+        "eminence": 962,
+        "frontier_exhaustion": 38,
+        "max_turns": 0,
+        "presentation_error": 0,
+        "action_error": 0,
+        "other": 0
+      },
+      "averageTurns": 115.46,
+      "medianTurns": 116,
+      "p90Turns": 124,
+      "equalTurnViolations": 0,
+      "seatWinRates": [
+        23.9,
+        25.2,
+        22.8,
+        28.1
+      ],
+      "openingPositionWinRates": [
+        21.8,
+        26.4,
+        24.7,
+        27.1
+      ],
+      "actionCounts": {
+        "harness_two_affinities": 18669,
+        "reserve_artifact": 10333,
+        "harness_three_affinities": 12959,
+        "forge_artifact": 71021,
+        "forge_reserved_artifact": 2318,
+        "assimilate": 156
+      },
+      "actionShares": {
+        "harness_two_affinities": 16.17,
+        "reserve_artifact": 8.95,
+        "harness_three_affinities": 11.22,
+        "forge_artifact": 61.51,
+        "forge_reserved_artifact": 2.01,
+        "assimilate": 0.14
+      },
+      "actionFailures": {},
+      "forgedByTier": [
+        39.78,
+        27.3,
+        6.25
+      ],
+      "winnerForgedByTier": [
+        10.82,
+        7.26,
+        2.61
+      ],
+      "winnerTier3ReachRate": 99.1,
+      "winnerTier3Milestones": {
+        "exactCountGames": {
+          "0": 9,
+          "1": 115,
+          "2": 353,
+          "3": 352,
+          "4": 134,
+          "5": 30,
+          "6": 5,
+          "7": 2
+        },
+        "exactCountRates": {
+          "0": 0.9,
+          "1": 11.5,
+          "2": 35.3,
+          "3": 35.2,
+          "4": 13.4,
+          "5": 3,
+          "6": 0.5,
+          "7": 0.2
+        },
+        "atLeastOneRate": 99.1,
+        "atLeastTwoRate": 87.6,
+        "requiredForFormat": 1,
+        "requiredRate": 99.1,
+        "timing": {
+          "requiredMilestone": 1,
+          "nearEndingWindowStart": 0.75,
+          "attainedGames": 991,
+          "attainedNearEndingGames": 912,
+          "attainedNearEndingRate": 91.2,
+          "meanAttainmentTurnFraction": 0.8614,
+          "medianAttainmentTurnFraction": 0.8704,
+          "meanTurnsBeforeEnd": 16.06
+        }
+      },
+      "scoreSources": {
+        "allPlayersAverage": {
+          "artifact": 17.23,
+          "luminaryArrival": 0,
+          "startingCompensation": 0,
+          "blueprintProject": 0,
+          "other": 0.02,
+          "total": 17.26
+        },
+        "winnerAverage": {
+          "artifact": 21.93,
+          "luminaryArrival": 0,
+          "startingCompensation": 0,
+          "blueprintProject": 0,
+          "other": 0.05,
+          "total": 21.98
+        }
+      },
+      "zeroCostForges": {
+        "all": 34022,
+        "advanced": 19199,
+        "lineageEarned": 0
+      },
+      "well": {
+        "anyColorEmptyTurnRate": 1.04,
+        "fullyEmptyTurnRate": 0,
+        "noLegalActionRecoveries": 0
+      },
+      "encrypt": {
+        "attempts": 10333,
+        "successes": 10333,
+        "forgeConversions": 2318,
+        "conversionRate": 22.43,
+        "meanTurnsToConversion": 65.16,
+        "strandedAtEnd": 8015,
+        "rewardGenerated": 9912,
+        "rewardSpent": 9746,
+        "rewardUnused": 166
+      },
+      "lead": {
+        "averageChanges": 4.83,
+        "leaderAt5WinRate": 33.2,
+        "leaderAt10WinRate": 55.6,
+        "comebackWinRate": 66.2
+      },
+      "luminaries": {
+        "claimsByOpeningPosition": [
+          1.555,
+          1.424,
+          1.426,
+          1.276
+        ],
+        "firstToLastAccessRatio": 1.219,
+        "baseEminenceByOpeningPosition": [
+          0,
+          0,
+          0,
+          0
+        ],
+        "perId": {
+          "lum_moth": {
+            "claimsPerGame": 0.123,
+            "ownerWinRate": 50.41,
+            "openingPositionClaimShares": [
+              28.46,
+              27.64,
+              26.02,
+              17.89
+            ]
+          },
+          "lum_tide": {
+            "claimsPerGame": 0.166,
+            "ownerWinRate": 44.58,
+            "openingPositionClaimShares": [
+              24.7,
+              29.52,
+              25.3,
+              20.48
+            ]
+          },
+          "lum_verdant": {
+            "claimsPerGame": 0.324,
+            "ownerWinRate": 44.14,
+            "openingPositionClaimShares": [
+              28.09,
+              27.16,
+              25.31,
+              19.44
+            ]
+          },
+          "lum_void": {
+            "claimsPerGame": 0.134,
+            "ownerWinRate": 44.03,
+            "openingPositionClaimShares": [
+              20.15,
+              22.39,
+              29.1,
+              28.36
+            ]
+          },
+          "lum_radiant": {
+            "claimsPerGame": 0.241,
+            "ownerWinRate": 41.49,
+            "openingPositionClaimShares": [
+              35.27,
+              22.41,
+              20.33,
+              21.99
+            ]
+          },
+          "lum_astral": {
+            "claimsPerGame": 0.454,
+            "ownerWinRate": 36.34,
+            "openingPositionClaimShares": [
+              27.75,
+              23.35,
+              25.99,
+              22.91
+            ]
+          },
+          "lum_bloom": {
+            "claimsPerGame": 0.474,
+            "ownerWinRate": 44.51,
+            "openingPositionClaimShares": [
+              26.37,
+              25.74,
+              24.05,
+              23.84
+            ]
+          },
+          "lum_forge": {
+            "claimsPerGame": 0.461,
+            "ownerWinRate": 43.38,
+            "openingPositionClaimShares": [
+              24.3,
+              24.3,
+              27.77,
+              23.64
+            ]
+          },
+          "lum_compass": {
+            "claimsPerGame": 0.44,
+            "ownerWinRate": 42.27,
+            "openingPositionClaimShares": [
+              29.55,
+              23.64,
+              26.59,
+              20.23
+            ]
+          },
+          "lum_seed": {
+            "claimsPerGame": 0.433,
+            "ownerWinRate": 45.03,
+            "openingPositionClaimShares": [
+              26.1,
+              26.1,
+              24.48,
+              23.33
+            ]
+          },
+          "lum_orchard": {
+            "claimsPerGame": 0.412,
+            "ownerWinRate": 42.23,
+            "openingPositionClaimShares": [
+              28.16,
+              26.7,
+              24.27,
+              20.87
+            ]
+          },
+          "lum_pale": {
+            "claimsPerGame": 0.44,
+            "ownerWinRate": 44.09,
+            "openingPositionClaimShares": [
+              26.82,
+              25.68,
+              24.32,
+              23.18
+            ]
+          },
+          "lum_ember": {
+            "claimsPerGame": 0.687,
+            "ownerWinRate": 39.88,
+            "openingPositionClaimShares": [
+              27.07,
+              23.29,
+              24.75,
+              24.89
+            ]
+          },
+          "lum_hunger": {
+            "claimsPerGame": 0.653,
+            "ownerWinRate": 40.43,
+            "openingPositionClaimShares": [
+              26.8,
+              24.35,
+              26.8,
+              22.05
+            ]
+          },
+          "lum_null": {
+            "claimsPerGame": 0.239,
+            "ownerWinRate": 59.41,
+            "openingPositionClaimShares": [
+              31.38,
+              29.29,
+              19.67,
+              19.67
+            ]
+          },
+          "lum_oracle": {
+            "claimsPerGame": 0,
+            "ownerWinRate": 0,
+            "openingPositionClaimShares": [
+              0,
+              0,
+              0,
+              0
+            ]
+          },
+          "lum_scholar": {
+            "claimsPerGame": 0,
+            "ownerWinRate": 0,
+            "openingPositionClaimShares": [
+              0,
+              0,
+              0,
+              0
+            ]
+          }
+        }
+      },
+      "market": {
+        "averageVisibleAge": 23.1,
+        "p90VisibleAge": 62
+      },
+      "policies": {
+        "games": {
+          "adaptive": 666,
+          "specialization": 666,
+          "tier-rush": 667,
+          "encrypt-denial": 668,
+          "luminary": 667,
+          "comeback": 666
+        },
+        "wins": {
+          "tier-rush": 232,
+          "luminary": 211,
+          "comeback": 190,
+          "adaptive": 216,
+          "encrypt-denial": 105,
+          "specialization": 46
+        },
+        "normalizedWinRates": {
+          "adaptive": 129.73,
+          "specialization": 27.63,
+          "tier-rush": 139.13,
+          "encrypt-denial": 62.87,
+          "luminary": 126.54,
+          "comeback": 114.11
+        }
+      },
+      "allArtifactBonusShares": {
+        "flare": 19.78,
+        "radiance": 20,
+        "verdance": 20,
+        "continuum": 20.23,
+        "abyss": 19.98
+      },
+      "winnerArtifactBonusShares": {
+        "flare": 19.34,
+        "radiance": 20.77,
+        "verdance": 19.89,
+        "continuum": 20.06,
+        "abyss": 19.93
+      },
+      "limitations": [
+        "Comeback means the eventual winner trailed the observed Eminence leader by at least 3.",
+        "Visible-market age is sampled once per core decision interval.",
+        "Portable reward spending is the observed Singularity decrease across successful Forge actions.",
+        "Blueprint-slot rules are reported but this Artifact harness does not inject private Blueprint loadouts.",
+        "Artifact score attribution tracks retained implementations from successful Forge actions and honors observed Forge-time brands; Artifact score granted by effects is left in other.",
+        "Blueprint/Project score includes declared manifestation Eminence only; later Project payouts, Luminary-effect awards, removals that cross the zero-score floor, and unattributable interactions reconcile through other, which may be negative."
+      ]
+    },
+    {
+      "candidateId": "luminary-nonexclusive-contact",
+      "ruleset": {
+        "id": "luminary_nonexclusive_contact",
+        "endCondition": "eminence",
+        "luminaryBaseEminence": "none",
+        "luminaryEligibility": "artifact_bonuses",
+        "luminaryClaimLimitPerAction": 1,
+        "luminaryContact": "nonexclusive",
+        "encryptReward": "portable_singularity",
+        "advancedPayment": "current",
+        "blueprintSlots": 2
+      },
+      "playerCount": 2,
+      "format": "epic",
+      "victoryRequirement": 25,
+      "policySeats": [
+        "adaptive",
+        "specialization"
+      ],
+      "policyRotation": "cyclic_by_game",
+      "gamesRequested": 1000,
+      "gamesCompleted": 1000,
+      "completionRate": 100,
+      "stalledGames": 0,
+      "finishReasons": {
+        "eminence": 1000,
+        "frontier_exhaustion": 0,
+        "max_turns": 0,
+        "presentation_error": 0,
+        "action_error": 0,
+        "other": 0
+      },
+      "averageTurns": 64.18,
+      "medianTurns": 64,
+      "p90Turns": 68,
+      "equalTurnViolations": 0,
+      "seatWinRates": [
+        48,
+        52
+      ],
+      "openingPositionWinRates": [
+        48.7,
+        51.3
+      ],
+      "actionCounts": {
+        "harness_two_affinities": 4292,
+        "harness_three_affinities": 8004,
+        "forge_artifact": 45976,
+        "reserve_artifact": 4567,
+        "forge_reserved_artifact": 1328,
+        "assimilate": 15
+      },
+      "actionShares": {
+        "harness_two_affinities": 6.69,
+        "harness_three_affinities": 12.47,
+        "forge_artifact": 71.63,
+        "reserve_artifact": 7.12,
+        "forge_reserved_artifact": 2.07,
+        "assimilate": 0.02
+      },
+      "actionFailures": {},
+      "forgedByTier": [
+        26.31,
+        14.79,
+        6.21
+      ],
+      "winnerForgedByTier": [
+        12.93,
+        7.61,
+        3.83
+      ],
+      "winnerTier3ReachRate": 99.8,
+      "winnerTier3Milestones": {
+        "exactCountGames": {
+          "0": 2,
+          "1": 38,
+          "2": 134,
+          "3": 238,
+          "4": 285,
+          "5": 184,
+          "6": 81,
+          "7": 37,
+          "8": 1
+        },
+        "exactCountRates": {
+          "0": 0.2,
+          "1": 3.8,
+          "2": 13.4,
+          "3": 23.8,
+          "4": 28.5,
+          "5": 18.4,
+          "6": 8.1,
+          "7": 3.7,
+          "8": 0.1
+        },
+        "atLeastOneRate": 99.8,
+        "atLeastTwoRate": 96,
+        "requiredForFormat": 2,
+        "requiredRate": 96,
+        "timing": {
+          "requiredMilestone": 2,
+          "nearEndingWindowStart": 0.75,
+          "attainedGames": 960,
+          "attainedNearEndingGames": 945,
+          "attainedNearEndingRate": 94.5,
+          "meanAttainmentTurnFraction": 0.8922,
+          "medianAttainmentTurnFraction": 0.8939,
+          "meanTurnsBeforeEnd": 6.94
+        }
+      },
+      "scoreSources": {
+        "allPlayersAverage": {
+          "artifact": 23.85,
+          "luminaryArrival": 0,
+          "startingCompensation": 0,
+          "blueprintProject": 0,
+          "other": 0.06,
+          "total": 23.91
+        },
+        "winnerAverage": {
+          "artifact": 27.03,
+          "luminaryArrival": 0,
+          "startingCompensation": 0,
+          "blueprintProject": 0,
+          "other": 0.08,
+          "total": 27.12
+        }
+      },
+      "zeroCostForges": {
+        "all": 29109,
+        "advanced": 16379,
+        "lineageEarned": 0
+      },
+      "well": {
+        "anyColorEmptyTurnRate": 4.15,
+        "fullyEmptyTurnRate": 0,
+        "noLegalActionRecoveries": 0
+      },
+      "encrypt": {
+        "attempts": 4567,
+        "successes": 4567,
+        "forgeConversions": 1328,
+        "conversionRate": 29.08,
+        "meanTurnsToConversion": 41.45,
+        "strandedAtEnd": 3239,
+        "rewardGenerated": 4564,
+        "rewardSpent": 4528,
+        "rewardUnused": 36
+      },
+      "lead": {
+        "averageChanges": 2.89,
+        "leaderAt5WinRate": 62.9,
+        "leaderAt10WinRate": 76.1,
+        "comebackWinRate": 41.1
+      },
+      "luminaries": {
+        "claimsByOpeningPosition": [
+          1.926,
+          1.876
+        ],
+        "firstToLastAccessRatio": 1.027,
+        "baseEminenceByOpeningPosition": [
+          0,
+          0
+        ],
+        "perId": {
+          "lum_moth": {
+            "claimsPerGame": 0.149,
+            "ownerWinRate": 48.32,
+            "openingPositionClaimShares": [
+              55.7,
+              44.3
+            ]
+          },
+          "lum_tide": {
+            "claimsPerGame": 0.162,
+            "ownerWinRate": 62.35,
+            "openingPositionClaimShares": [
+              51.23,
+              48.77
+            ]
+          },
+          "lum_verdant": {
+            "claimsPerGame": 0.239,
+            "ownerWinRate": 61.51,
+            "openingPositionClaimShares": [
+              49.79,
+              50.21
+            ]
+          },
+          "lum_void": {
+            "claimsPerGame": 0.165,
+            "ownerWinRate": 50.91,
+            "openingPositionClaimShares": [
+              48.48,
+              51.52
+            ]
+          },
+          "lum_radiant": {
+            "claimsPerGame": 0.185,
+            "ownerWinRate": 63.24,
+            "openingPositionClaimShares": [
+              53.51,
+              46.49
+            ]
+          },
+          "lum_astral": {
+            "claimsPerGame": 0.272,
+            "ownerWinRate": 54.78,
+            "openingPositionClaimShares": [
+              51.47,
+              48.53
+            ]
+          },
+          "lum_bloom": {
+            "claimsPerGame": 0.285,
+            "ownerWinRate": 55.44,
+            "openingPositionClaimShares": [
+              48.42,
+              51.58
+            ]
+          },
+          "lum_forge": {
+            "claimsPerGame": 0.273,
+            "ownerWinRate": 54.95,
+            "openingPositionClaimShares": [
+              48.35,
+              51.65
+            ]
+          },
+          "lum_compass": {
+            "claimsPerGame": 0.29,
+            "ownerWinRate": 59.31,
+            "openingPositionClaimShares": [
+              51.03,
+              48.97
+            ]
+          },
+          "lum_seed": {
+            "claimsPerGame": 0.289,
+            "ownerWinRate": 59.17,
+            "openingPositionClaimShares": [
+              51.9,
+              48.1
+            ]
+          },
+          "lum_orchard": {
+            "claimsPerGame": 0.263,
+            "ownerWinRate": 57.79,
+            "openingPositionClaimShares": [
+              48.67,
+              51.33
+            ]
+          },
+          "lum_pale": {
+            "claimsPerGame": 0.276,
+            "ownerWinRate": 59.06,
+            "openingPositionClaimShares": [
+              50.36,
+              49.64
+            ]
+          },
+          "lum_ember": {
+            "claimsPerGame": 0.37,
+            "ownerWinRate": 55.14,
+            "openingPositionClaimShares": [
+              49.19,
+              50.81
+            ]
+          },
+          "lum_hunger": {
+            "claimsPerGame": 0.348,
+            "ownerWinRate": 56.03,
+            "openingPositionClaimShares": [
+              50.57,
+              49.43
+            ]
+          },
+          "lum_null": {
+            "claimsPerGame": 0.236,
+            "ownerWinRate": 62.29,
+            "openingPositionClaimShares": [
+              54.66,
+              45.34
+            ]
+          },
+          "lum_oracle": {
+            "claimsPerGame": 0,
+            "ownerWinRate": 0,
+            "openingPositionClaimShares": [
+              0,
+              0
+            ]
+          },
+          "lum_scholar": {
+            "claimsPerGame": 0,
+            "ownerWinRate": 0,
+            "openingPositionClaimShares": [
+              0,
+              0
+            ]
+          }
+        }
+      },
+      "market": {
+        "averageVisibleAge": 15.24,
+        "p90VisibleAge": 38
+      },
+      "policies": {
+        "games": {
+          "adaptive": 333,
+          "specialization": 334,
+          "tier-rush": 334,
+          "encrypt-denial": 334,
+          "luminary": 333,
+          "comeback": 332
+        },
+        "wins": {
+          "specialization": 93,
+          "encrypt-denial": 131,
+          "luminary": 168,
+          "comeback": 180,
+          "tier-rush": 224,
+          "adaptive": 204
+        },
+        "normalizedWinRates": {
+          "adaptive": 122.52,
+          "specialization": 55.69,
+          "tier-rush": 134.13,
+          "encrypt-denial": 78.44,
+          "luminary": 100.9,
+          "comeback": 108.43
+        }
+      },
+      "allArtifactBonusShares": {
+        "flare": 20.21,
+        "radiance": 20.12,
+        "verdance": 19.67,
+        "continuum": 20.17,
+        "abyss": 19.83
+      },
+      "winnerArtifactBonusShares": {
+        "flare": 19.63,
+        "radiance": 20.26,
+        "verdance": 19.89,
+        "continuum": 20.38,
+        "abyss": 19.83
+      },
+      "limitations": [
+        "Comeback means the eventual winner trailed the observed Eminence leader by at least 3.",
+        "Visible-market age is sampled once per core decision interval.",
+        "Portable reward spending is the observed Singularity decrease across successful Forge actions.",
+        "Blueprint-slot rules are reported but this Artifact harness does not inject private Blueprint loadouts.",
+        "Artifact score attribution tracks retained implementations from successful Forge actions and honors observed Forge-time brands; Artifact score granted by effects is left in other.",
+        "Blueprint/Project score includes declared manifestation Eminence only; later Project payouts, Luminary-effect awards, removals that cross the zero-score floor, and unattributable interactions reconcile through other, which may be negative."
+      ]
+    },
+    {
+      "candidateId": "luminary-nonexclusive-contact",
+      "ruleset": {
+        "id": "luminary_nonexclusive_contact",
+        "endCondition": "eminence",
+        "luminaryBaseEminence": "none",
+        "luminaryEligibility": "artifact_bonuses",
+        "luminaryClaimLimitPerAction": 1,
+        "luminaryContact": "nonexclusive",
+        "encryptReward": "portable_singularity",
+        "advancedPayment": "current",
+        "blueprintSlots": 2
+      },
+      "playerCount": 3,
+      "format": "epic",
+      "victoryRequirement": 25,
+      "policySeats": [
+        "adaptive",
+        "specialization",
+        "tier-rush"
+      ],
+      "policyRotation": "cyclic_by_game",
+      "gamesRequested": 1000,
+      "gamesCompleted": 1000,
+      "completionRate": 100,
+      "stalledGames": 0,
+      "finishReasons": {
+        "eminence": 1000,
+        "frontier_exhaustion": 0,
+        "max_turns": 0,
+        "presentation_error": 0,
+        "action_error": 0,
+        "other": 0
+      },
+      "averageTurns": 93.27,
+      "medianTurns": 93,
+      "p90Turns": 99,
+      "equalTurnViolations": 0,
+      "seatWinRates": [
+        31.9,
+        35.1,
+        33
+      ],
+      "openingPositionWinRates": [
+        33.6,
+        33.2,
+        33.2
+      ],
+      "actionCounts": {
+        "reserve_artifact": 6989,
+        "harness_three_affinities": 10850,
+        "harness_two_affinities": 7731,
+        "forge_artifact": 65570,
+        "forge_reserved_artifact": 2090,
+        "assimilate": 36,
+        "pass": 1
+      },
+      "actionShares": {
+        "reserve_artifact": 7.49,
+        "harness_three_affinities": 11.63,
+        "harness_two_affinities": 8.29,
+        "forge_artifact": 70.3,
+        "forge_reserved_artifact": 2.24,
+        "assimilate": 0.04,
+        "pass": 0
+      },
+      "actionFailures": {},
+      "forgedByTier": [
+        37.2,
+        21.83,
+        8.63
+      ],
+      "winnerForgedByTier": [
+        12.34,
+        7.32,
+        4.05
+      ],
+      "winnerTier3ReachRate": 99.9,
+      "winnerTier3Milestones": {
+        "exactCountGames": {
+          "0": 1,
+          "1": 16,
+          "2": 86,
+          "3": 245,
+          "4": 315,
+          "5": 208,
+          "6": 84,
+          "7": 34,
+          "8": 10,
+          "9": 1
+        },
+        "exactCountRates": {
+          "0": 0.1,
+          "1": 1.6,
+          "2": 8.6,
+          "3": 24.5,
+          "4": 31.5,
+          "5": 20.8,
+          "6": 8.4,
+          "7": 3.4,
+          "8": 1,
+          "9": 0.1
+        },
+        "atLeastOneRate": 99.9,
+        "atLeastTwoRate": 98.3,
+        "requiredForFormat": 2,
+        "requiredRate": 98.3,
+        "timing": {
+          "requiredMilestone": 2,
+          "nearEndingWindowStart": 0.75,
+          "attainedGames": 983,
+          "attainedNearEndingGames": 964,
+          "attainedNearEndingRate": 96.4,
+          "meanAttainmentTurnFraction": 0.8847,
+          "medianAttainmentTurnFraction": 0.8889,
+          "meanTurnsBeforeEnd": 10.81
+        }
+      },
+      "scoreSources": {
+        "allPlayersAverage": {
+          "artifact": 22.76,
+          "luminaryArrival": 0,
+          "startingCompensation": 0,
+          "blueprintProject": 0,
+          "other": 0.06,
+          "total": 22.82
+        },
+        "winnerAverage": {
+          "artifact": 27.36,
+          "luminaryArrival": 0,
+          "startingCompensation": 0,
+          "blueprintProject": 0,
+          "other": 0.11,
+          "total": 27.47
+        }
+      },
+      "zeroCostForges": {
+        "all": 41264,
+        "advanced": 23705,
+        "lineageEarned": 0
+      },
+      "well": {
+        "anyColorEmptyTurnRate": 4.39,
+        "fullyEmptyTurnRate": 0.01,
+        "noLegalActionRecoveries": 0
+      },
+      "encrypt": {
+        "attempts": 6989,
+        "successes": 6989,
+        "forgeConversions": 2090,
+        "conversionRate": 29.9,
+        "meanTurnsToConversion": 58.99,
+        "strandedAtEnd": 4899,
+        "rewardGenerated": 6896,
+        "rewardSpent": 6841,
+        "rewardUnused": 55
+      },
+      "lead": {
+        "averageChanges": 4.48,
+        "leaderAt5WinRate": 43.7,
+        "leaderAt10WinRate": 64.3,
+        "comebackWinRate": 58.1
+      },
+      "luminaries": {
+        "claimsByOpeningPosition": [
+          2.19,
+          2.191,
+          2.17
+        ],
+        "firstToLastAccessRatio": 1.009,
+        "baseEminenceByOpeningPosition": [
+          0,
+          0,
+          0
+        ],
+        "perId": {
+          "lum_moth": {
+            "claimsPerGame": 0.208,
+            "ownerWinRate": 42.31,
+            "openingPositionClaimShares": [
+              31.25,
+              32.21,
+              36.54
+            ]
+          },
+          "lum_tide": {
+            "claimsPerGame": 0.252,
+            "ownerWinRate": 44.05,
+            "openingPositionClaimShares": [
+              34.13,
+              31.75,
+              34.13
+            ]
+          },
+          "lum_verdant": {
+            "claimsPerGame": 0.407,
+            "ownerWinRate": 46.93,
+            "openingPositionClaimShares": [
+              32.19,
+              32.43,
+              35.38
+            ]
+          },
+          "lum_void": {
+            "claimsPerGame": 0.234,
+            "ownerWinRate": 42.74,
+            "openingPositionClaimShares": [
+              26.5,
+              39.74,
+              33.76
+            ]
+          },
+          "lum_radiant": {
+            "claimsPerGame": 0.282,
+            "ownerWinRate": 43.62,
+            "openingPositionClaimShares": [
+              37.94,
+              27.66,
+              34.4
+            ]
+          },
+          "lum_astral": {
+            "claimsPerGame": 0.516,
+            "ownerWinRate": 36.24,
+            "openingPositionClaimShares": [
+              34.11,
+              35.27,
+              30.62
+            ]
+          },
+          "lum_bloom": {
+            "claimsPerGame": 0.459,
+            "ownerWinRate": 40.09,
+            "openingPositionClaimShares": [
+              34.2,
+              33.77,
+              32.03
+            ]
+          },
+          "lum_forge": {
+            "claimsPerGame": 0.523,
+            "ownerWinRate": 38.81,
+            "openingPositionClaimShares": [
+              33.84,
+              33.84,
+              32.31
+            ]
+          },
+          "lum_compass": {
+            "claimsPerGame": 0.55,
+            "ownerWinRate": 40.73,
+            "openingPositionClaimShares": [
+              35.64,
+              31.45,
+              32.91
+            ]
+          },
+          "lum_seed": {
+            "claimsPerGame": 0.513,
+            "ownerWinRate": 44.25,
+            "openingPositionClaimShares": [
+              33.72,
+              34.89,
+              31.38
+            ]
+          },
+          "lum_orchard": {
+            "claimsPerGame": 0.453,
+            "ownerWinRate": 44.59,
+            "openingPositionClaimShares": [
+              32.23,
+              34.88,
+              32.89
+            ]
+          },
+          "lum_pale": {
+            "claimsPerGame": 0.416,
+            "ownerWinRate": 44.23,
+            "openingPositionClaimShares": [
+              34.13,
+              34.86,
+              31.01
+            ]
+          },
+          "lum_ember": {
+            "claimsPerGame": 0.72,
+            "ownerWinRate": 38.75,
+            "openingPositionClaimShares": [
+              32.08,
+              33.19,
+              34.72
+            ]
+          },
+          "lum_hunger": {
+            "claimsPerGame": 0.642,
+            "ownerWinRate": 38.79,
+            "openingPositionClaimShares": [
+              32.71,
+              33.33,
+              33.96
+            ]
+          },
+          "lum_null": {
+            "claimsPerGame": 0.376,
+            "ownerWinRate": 49.73,
+            "openingPositionClaimShares": [
+              34.84,
+              31.65,
+              33.51
+            ]
+          },
+          "lum_oracle": {
+            "claimsPerGame": 0,
+            "ownerWinRate": 0,
+            "openingPositionClaimShares": [
+              0,
+              0,
+              0
+            ]
+          },
+          "lum_scholar": {
+            "claimsPerGame": 0,
+            "ownerWinRate": 0,
+            "openingPositionClaimShares": [
+              0,
+              0,
+              0
+            ]
+          }
+        }
+      },
+      "market": {
+        "averageVisibleAge": 19.38,
+        "p90VisibleAge": 50
+      },
+      "policies": {
+        "games": {
+          "adaptive": 499,
+          "specialization": 500,
+          "tier-rush": 501,
+          "encrypt-denial": 501,
+          "luminary": 500,
+          "comeback": 499
+        },
+        "wins": {
+          "tier-rush": 262,
+          "luminary": 163,
+          "comeback": 221,
+          "specialization": 71,
+          "encrypt-denial": 97,
+          "adaptive": 186
+        },
+        "normalizedWinRates": {
+          "adaptive": 111.82,
+          "specialization": 42.6,
+          "tier-rush": 156.89,
+          "encrypt-denial": 58.08,
+          "luminary": 97.8,
+          "comeback": 132.87
+        }
+      },
+      "allArtifactBonusShares": {
+        "flare": 19.93,
+        "radiance": 20.06,
+        "verdance": 19.86,
+        "continuum": 20.22,
+        "abyss": 19.93
+      },
+      "winnerArtifactBonusShares": {
+        "flare": 19.23,
+        "radiance": 20.58,
+        "verdance": 20.14,
+        "continuum": 20.12,
+        "abyss": 19.93
+      },
+      "limitations": [
+        "Comeback means the eventual winner trailed the observed Eminence leader by at least 3.",
+        "Visible-market age is sampled once per core decision interval.",
+        "Portable reward spending is the observed Singularity decrease across successful Forge actions.",
+        "Blueprint-slot rules are reported but this Artifact harness does not inject private Blueprint loadouts.",
+        "Artifact score attribution tracks retained implementations from successful Forge actions and honors observed Forge-time brands; Artifact score granted by effects is left in other.",
+        "Blueprint/Project score includes declared manifestation Eminence only; later Project payouts, Luminary-effect awards, removals that cross the zero-score floor, and unattributable interactions reconcile through other, which may be negative."
+      ]
+    },
+    {
+      "candidateId": "luminary-nonexclusive-contact",
+      "ruleset": {
+        "id": "luminary_nonexclusive_contact",
+        "endCondition": "eminence",
+        "luminaryBaseEminence": "none",
+        "luminaryEligibility": "artifact_bonuses",
+        "luminaryClaimLimitPerAction": 1,
+        "luminaryContact": "nonexclusive",
+        "encryptReward": "portable_singularity",
+        "advancedPayment": "current",
+        "blueprintSlots": 2
+      },
+      "playerCount": 4,
+      "format": "epic",
+      "victoryRequirement": 25,
+      "policySeats": [
+        "adaptive",
+        "specialization",
+        "tier-rush",
+        "encrypt-denial"
+      ],
+      "policyRotation": "cyclic_by_game",
+      "gamesRequested": 1000,
+      "gamesCompleted": 1000,
+      "completionRate": 100,
+      "stalledGames": 0,
+      "finishReasons": {
+        "eminence": 696,
+        "frontier_exhaustion": 304,
+        "max_turns": 0,
+        "presentation_error": 0,
+        "action_error": 0,
+        "other": 0
+      },
+      "averageTurns": 122.82,
+      "medianTurns": 124,
+      "p90Turns": 132,
+      "equalTurnViolations": 0,
+      "seatWinRates": [
+        23.6,
+        25.6,
+        23,
+        27.8
+      ],
+      "openingPositionWinRates": [
+        24.7,
+        27.1,
+        23.9,
+        24.3
+      ],
+      "actionCounts": {
+        "harness_two_affinities": 19611,
+        "reserve_artifact": 10715,
+        "harness_three_affinities": 13735,
+        "forge_artifact": 75085,
+        "forge_reserved_artifact": 3359,
+        "assimilate": 315
+      },
+      "actionShares": {
+        "harness_two_affinities": 15.97,
+        "reserve_artifact": 8.72,
+        "harness_three_affinities": 11.18,
+        "forge_artifact": 61.13,
+        "forge_reserved_artifact": 2.73,
+        "assimilate": 0.26
+      },
+      "actionFailures": {},
+      "forgedByTier": [
+        39.84,
+        28.86,
+        9.75
+      ],
+      "winnerForgedByTier": [
+        10.9,
+        7.55,
+        3.81
+      ],
+      "winnerTier3ReachRate": 100,
+      "winnerTier3Milestones": {
+        "exactCountGames": {
+          "0": 0,
+          "1": 11,
+          "2": 84,
+          "3": 303,
+          "4": 368,
+          "5": 173,
+          "6": 50,
+          "7": 8,
+          "8": 3
+        },
+        "exactCountRates": {
+          "0": 0,
+          "1": 1.1,
+          "2": 8.4,
+          "3": 30.3,
+          "4": 36.8,
+          "5": 17.3,
+          "6": 5,
+          "7": 0.8,
+          "8": 0.3
+        },
+        "atLeastOneRate": 100,
+        "atLeastTwoRate": 98.9,
+        "requiredForFormat": 2,
+        "requiredRate": 98.9,
+        "timing": {
+          "requiredMilestone": 2,
+          "nearEndingWindowStart": 0.75,
+          "attainedGames": 989,
+          "attainedNearEndingGames": 974,
+          "attainedNearEndingRate": 97.4,
+          "meanAttainmentTurnFraction": 0.8912,
+          "medianAttainmentTurnFraction": 0.8952,
+          "meanTurnsBeforeEnd": 13.42
+        }
+      },
+      "scoreSources": {
+        "allPlayersAverage": {
+          "artifact": 20.75,
+          "luminaryArrival": 0,
+          "startingCompensation": 0,
+          "blueprintProject": 0,
+          "other": 0.04,
+          "total": 20.79
+        },
+        "winnerAverage": {
+          "artifact": 26.48,
+          "luminaryArrival": 0,
+          "startingCompensation": 0,
+          "blueprintProject": 0,
+          "other": 0.09,
+          "total": 26.57
+        }
+      },
+      "zeroCostForges": {
+        "all": 37411,
+        "advanced": 22547,
+        "lineageEarned": 0
+      },
+      "well": {
+        "anyColorEmptyTurnRate": 0.98,
+        "fullyEmptyTurnRate": 0,
+        "noLegalActionRecoveries": 0
+      },
+      "encrypt": {
+        "attempts": 10715,
+        "successes": 10715,
+        "forgeConversions": 3359,
+        "conversionRate": 31.35,
+        "meanTurnsToConversion": 72.41,
+        "strandedAtEnd": 7356,
+        "rewardGenerated": 10294,
+        "rewardSpent": 9987,
+        "rewardUnused": 307
+      },
+      "lead": {
+        "averageChanges": 5.36,
+        "leaderAt5WinRate": 30.8,
+        "leaderAt10WinRate": 51.2,
+        "comebackWinRate": 70.2
+      },
+      "luminaries": {
+        "claimsByOpeningPosition": [
+          1.913,
+          1.786,
+          1.776,
+          1.593
+        ],
+        "firstToLastAccessRatio": 1.201,
+        "baseEminenceByOpeningPosition": [
+          0,
+          0,
+          0,
+          0
+        ],
+        "perId": {
+          "lum_moth": {
+            "claimsPerGame": 0.182,
+            "ownerWinRate": 47.25,
+            "openingPositionClaimShares": [
+              28.02,
+              29.67,
+              27.47,
+              14.84
+            ]
+          },
+          "lum_tide": {
+            "claimsPerGame": 0.264,
+            "ownerWinRate": 45.83,
+            "openingPositionClaimShares": [
+              25.76,
+              27.65,
+              26.89,
+              19.7
+            ]
+          },
+          "lum_verdant": {
+            "claimsPerGame": 0.386,
+            "ownerWinRate": 43.78,
+            "openingPositionClaimShares": [
+              28.5,
+              26.94,
+              24.87,
+              19.69
+            ]
+          },
+          "lum_void": {
+            "claimsPerGame": 0.205,
+            "ownerWinRate": 46.83,
+            "openingPositionClaimShares": [
+              23.41,
+              21.46,
+              30.73,
+              24.39
+            ]
+          },
+          "lum_radiant": {
+            "claimsPerGame": 0.305,
+            "ownerWinRate": 39.34,
+            "openingPositionClaimShares": [
+              32.79,
+              21.97,
+              23.93,
+              21.31
+            ]
+          },
+          "lum_astral": {
+            "claimsPerGame": 0.562,
+            "ownerWinRate": 37.01,
+            "openingPositionClaimShares": [
+              27.22,
+              24.02,
+              25.27,
+              23.49
+            ]
+          },
+          "lum_bloom": {
+            "claimsPerGame": 0.612,
+            "ownerWinRate": 41.34,
+            "openingPositionClaimShares": [
+              26.96,
+              25.98,
+              23.86,
+              23.2
+            ]
+          },
+          "lum_forge": {
+            "claimsPerGame": 0.591,
+            "ownerWinRate": 40.1,
+            "openingPositionClaimShares": [
+              24.53,
+              25.38,
+              26.4,
+              23.69
+            ]
+          },
+          "lum_compass": {
+            "claimsPerGame": 0.547,
+            "ownerWinRate": 40.59,
+            "openingPositionClaimShares": [
+              28.15,
+              25.23,
+              25.96,
+              20.66
+            ]
+          },
+          "lum_seed": {
+            "claimsPerGame": 0.529,
+            "ownerWinRate": 44.23,
+            "openingPositionClaimShares": [
+              26.09,
+              25.33,
+              24.95,
+              23.63
+            ]
+          },
+          "lum_orchard": {
+            "claimsPerGame": 0.494,
+            "ownerWinRate": 43.52,
+            "openingPositionClaimShares": [
+              28.54,
+              27.94,
+              23.68,
+              19.84
+            ]
+          },
+          "lum_pale": {
+            "claimsPerGame": 0.509,
+            "ownerWinRate": 41.26,
+            "openingPositionClaimShares": [
+              25.93,
+              25.93,
+              23.77,
+              24.36
+            ]
+          },
+          "lum_ember": {
+            "claimsPerGame": 0.801,
+            "ownerWinRate": 36.33,
+            "openingPositionClaimShares": [
+              26.72,
+              23.35,
+              24.97,
+              24.97
+            ]
+          },
+          "lum_hunger": {
+            "claimsPerGame": 0.755,
+            "ownerWinRate": 38.01,
+            "openingPositionClaimShares": [
+              25.43,
+              24.24,
+              26.23,
+              24.11
+            ]
+          },
+          "lum_null": {
+            "claimsPerGame": 0.326,
+            "ownerWinRate": 53.99,
+            "openingPositionClaimShares": [
+              31.29,
+              26.99,
+              21.17,
+              20.55
+            ]
+          },
+          "lum_oracle": {
+            "claimsPerGame": 0,
+            "ownerWinRate": 0,
+            "openingPositionClaimShares": [
+              0,
+              0,
+              0,
+              0
+            ]
+          },
+          "lum_scholar": {
+            "claimsPerGame": 0,
+            "ownerWinRate": 0,
+            "openingPositionClaimShares": [
+              0,
+              0,
+              0,
+              0
+            ]
+          }
+        }
+      },
+      "market": {
+        "averageVisibleAge": 23.05,
+        "p90VisibleAge": 62
+      },
+      "policies": {
+        "games": {
+          "adaptive": 666,
+          "specialization": 666,
+          "tier-rush": 667,
+          "encrypt-denial": 668,
+          "luminary": 667,
+          "comeback": 666
+        },
+        "wins": {
+          "tier-rush": 223,
+          "luminary": 220,
+          "encrypt-denial": 97,
+          "adaptive": 215,
+          "comeback": 195,
+          "specialization": 50
+        },
+        "normalizedWinRates": {
+          "adaptive": 129.13,
+          "specialization": 30.03,
+          "tier-rush": 133.73,
+          "encrypt-denial": 58.08,
+          "luminary": 131.93,
+          "comeback": 117.12
+        }
+      },
+      "allArtifactBonusShares": {
+        "flare": 19.83,
+        "radiance": 20.11,
+        "verdance": 19.92,
+        "continuum": 20.24,
+        "abyss": 19.9
+      },
+      "winnerArtifactBonusShares": {
+        "flare": 19.43,
+        "radiance": 20.36,
+        "verdance": 20.06,
+        "continuum": 20.35,
+        "abyss": 19.81
+      },
+      "limitations": [
+        "Comeback means the eventual winner trailed the observed Eminence leader by at least 3.",
+        "Visible-market age is sampled once per core decision interval.",
+        "Portable reward spending is the observed Singularity decrease across successful Forge actions.",
+        "Blueprint-slot rules are reported but this Artifact harness does not inject private Blueprint loadouts.",
+        "Artifact score attribution tracks retained implementations from successful Forge actions and honors observed Forge-time brands; Artifact score granted by effects is left in other.",
+        "Blueprint/Project score includes declared manifestation Eminence only; later Project payouts, Luminary-effect awards, removals that cross the zero-score floor, and unattributable interactions reconcile through other, which may be negative."
+      ]
+    }
+  ]
+}

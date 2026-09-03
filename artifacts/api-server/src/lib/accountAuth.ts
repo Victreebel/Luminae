@@ -3,6 +3,7 @@ import { db } from "@workspace/db";
 import { accountSessionsTable, accountsTable } from "@workspace/db";
 import { eq, and, gt } from "drizzle-orm";
 import { touchPresence } from "./presence";
+import { hashAccountSessionToken } from "./accountSessionTokens";
 
 function extractToken(req: Request): string | undefined {
   const authHeader = req.headers["authorization"];
@@ -17,7 +18,25 @@ function extractToken(req: Request): string | undefined {
 
 async function resolveSession(token: string) {
   const now = new Date();
+  const tokenHash = hashAccountSessionToken(token);
   const [row] = await db
+    .select({
+      session: accountSessionsTable,
+      account: accountsTable,
+    })
+    .from(accountSessionsTable)
+    .innerJoin(accountsTable, eq(accountSessionsTable.accountId, accountsTable.id))
+    .where(
+      and(
+        eq(accountSessionsTable.token, tokenHash),
+        gt(accountSessionsTable.expiresAt, now),
+      ),
+    )
+    .limit(1);
+  if (row) return row;
+
+  // Transparently upgrade sessions issued before tokens were hashed at rest.
+  const [legacyRow] = await db
     .select({
       session: accountSessionsTable,
       account: accountsTable,
@@ -31,7 +50,23 @@ async function resolveSession(token: string) {
       ),
     )
     .limit(1);
-  return row ?? null;
+
+  if (!legacyRow) return null;
+
+  await db
+    .update(accountSessionsTable)
+    .set({ token: tokenHash })
+    .where(
+      and(
+        eq(accountSessionsTable.id, legacyRow.session.id),
+        eq(accountSessionsTable.token, token),
+      ),
+    );
+
+  return {
+    ...legacyRow,
+    session: { ...legacyRow.session, token: tokenHash },
+  };
 }
 
 export async function accountAuth(

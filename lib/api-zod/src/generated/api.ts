@@ -61,6 +61,16 @@ export const CreateRoomBody = zod.object({
     .string()
     .nullish()
     .describe("Avatar identifier chosen by the host"),
+  gameMode: zod
+    .enum(["standard", "campaign", "custom", "competitive"])
+    .optional(),
+  scenarioId: zod
+    .string()
+    .nullish()
+    .describe("Server-authored campaign scenario identifier"),
+  blueprintPolicy: zod
+    .enum(["none", "owned", "all", "seasonal", "scenario"])
+    .optional(),
 });
 
 /**
@@ -80,6 +90,9 @@ export const GetRoomByInviteCodeResponse = zod.object({
     .describe("Eminence required to trigger the final round"),
   cinematicMode: zod.enum(["standard", "epic"]),
   turnTimerSeconds: zod.number().nullish(),
+  gameMode: zod.enum(["standard", "campaign", "custom", "competitive"]),
+  scenarioId: zod.string().nullable(),
+  blueprintPolicy: zod.enum(["none", "owned", "all", "seasonal", "scenario"]),
   players: zod.array(
     zod.object({
       id: zod.string(),
@@ -127,6 +140,9 @@ export const JoinRoomResponse = zod.object({
       .describe("Eminence required to trigger the final round"),
     cinematicMode: zod.enum(["standard", "epic"]),
     turnTimerSeconds: zod.number().nullish(),
+    gameMode: zod.enum(["standard", "campaign", "custom", "competitive"]),
+    scenarioId: zod.string().nullable(),
+    blueprintPolicy: zod.enum(["none", "owned", "all", "seasonal", "scenario"]),
     players: zod.array(
       zod.object({
         id: zod.string(),
@@ -168,7 +184,7 @@ export const JoinRoomResponse = zod.object({
 });
 
 /**
- * @summary Reclaim an existing player slot in a room (works in any status)
+ * @summary Securely rotate an existing player's game session
  */
 export const RejoinRoomParams = zod.object({
   roomId: zod.coerce.string(),
@@ -176,6 +192,12 @@ export const RejoinRoomParams = zod.object({
 
 export const RejoinRoomBody = zod.object({
   playerName: zod.string(),
+  sessionToken: zod
+    .string()
+    .optional()
+    .describe(
+      "Current game session token; required when recovering a guest seat",
+    ),
 });
 
 export const RejoinRoomResponse = zod.object({
@@ -189,6 +211,9 @@ export const RejoinRoomResponse = zod.object({
       .describe("Eminence required to trigger the final round"),
     cinematicMode: zod.enum(["standard", "epic"]),
     turnTimerSeconds: zod.number().nullish(),
+    gameMode: zod.enum(["standard", "campaign", "custom", "competitive"]),
+    scenarioId: zod.string().nullable(),
+    blueprintPolicy: zod.enum(["none", "owned", "all", "seasonal", "scenario"]),
     players: zod.array(
       zod.object({
         id: zod.string(),
@@ -277,6 +302,23 @@ export const startGameResponsePendingLuminaryActivationEventsItemAffinityReturns
 export const StartGameResponse = zod.object({
   roomId: zod.string(),
   status: zod.enum(["lobby", "playing", "finished"]),
+  scenarioId: zod
+    .string()
+    .nullable()
+    .describe("Server-authored campaign scenario identifier"),
+  finishReason: zod
+    .union([
+      zod.literal("win"),
+      zod.literal("frontier_exhaustion"),
+      zod.literal("surrender"),
+      zod.literal("withdrawal"),
+      zod.literal(null),
+    ])
+    .nullable()
+    .describe("Normalized reason a finished game ended"),
+  lumiiThresholdApproach: zod
+    .union([zod.enum(["kinship", "inquiry", "dominion"]), zod.null()])
+    .describe("Immutable approach chosen for the Lumii Vault encounter"),
   startedAt: zod
     .number()
     .describe("Unix timestamp (ms) when this game instance was initialized"),
@@ -306,6 +348,12 @@ export const StartGameResponse = zod.object({
   victoryRequirement: zod
     .number()
     .describe("Eminence required to trigger the final round"),
+  voidSealOwnerId: zod
+    .string()
+    .nullish()
+    .describe(
+      "Deprecated compatibility field; Void Seal was removed and this is always null",
+    ),
   cinematicMode: zod.enum(["standard", "epic"]),
   affinityWell: zod
     .object({
@@ -586,6 +634,126 @@ export const StartGameResponse = zod.object({
         }),
       ),
       forgedArtifactIds: zod.array(zod.string()),
+      blueprintPrivateStates: zod
+        .array(
+          zod
+            .object({
+              blueprintId: zod.enum([
+                "bp_antimatter_detonator",
+                "bp_mantle_to_orbit_foundry",
+                "bp_ascension_registry",
+                "bp_worldshield_covenant",
+              ]),
+              slotIndex: zod.number(),
+              matchedComponentIds: zod.array(zod.string()),
+              manifested: zod.boolean(),
+              secretTargetCardId: zod.string().nullish(),
+              safePreManifestActionPlayerIds: zod
+                .array(zod.string())
+                .optional(),
+              foundryRecoveryComponentIds: zod.array(zod.string()).optional(),
+            })
+            .describe(
+              "Owner-only Blueprint assembly and secret targeting state",
+            ),
+        )
+        .optional()
+        .describe(
+          "Owner-only assembly and secret device state; omitted from opponent projections",
+        ),
+      blueprintPresentationVariants: zod
+        .record(
+          zod.string(),
+          zod.enum(["armored", "original", "asymmetric", "lattice"]),
+        )
+        .optional()
+        .describe("Owner-only presentation snapshot before manifestation"),
+      manifestedBlueprintDevices: zod
+        .array(
+          zod
+            .object({
+              blueprintId: zod.enum([
+                "bp_antimatter_detonator",
+                "bp_mantle_to_orbit_foundry",
+                "bp_ascension_registry",
+                "bp_worldshield_covenant",
+              ]),
+              ownerPlayerId: zod.string(),
+              slotIndex: zod.number(),
+              state: zod.enum([
+                "armed",
+                "active",
+                "vigilant",
+                "spent",
+                "deactivated",
+                "recovering",
+              ]),
+              covenantState: zod.enum(["intact", "broken"]),
+              presentationVariant: zod.enum([
+                "armored",
+                "original",
+                "asymmetric",
+                "lattice",
+              ]),
+              foundryUses: zod.number().optional(),
+              foundryOverdriveAvailable: zod.boolean().optional(),
+              foundryRecoveredComponentCount: zod.number().optional(),
+              ascensionDeferral: zod.number().optional(),
+              ascensionLastCounterRound: zod.number().nullish(),
+              foundryTier2Ready: zod.boolean().optional(),
+              foundryTier3Ready: zod.boolean().optional(),
+            })
+            .describe("Public state revealed only after a Blueprint manifests"),
+        )
+        .optional()
+        .describe(
+          "Compatibility alias for public Projects revealed after manifestation",
+        ),
+      manifestedBlueprintProjects: zod
+        .array(
+          zod
+            .object({
+              blueprintId: zod.enum([
+                "bp_antimatter_detonator",
+                "bp_mantle_to_orbit_foundry",
+                "bp_ascension_registry",
+                "bp_worldshield_covenant",
+              ]),
+              ownerPlayerId: zod.string(),
+              slotIndex: zod.number(),
+              state: zod.enum([
+                "armed",
+                "active",
+                "vigilant",
+                "spent",
+                "deactivated",
+                "recovering",
+              ]),
+              covenantState: zod.enum(["intact", "broken"]),
+              presentationVariant: zod.enum([
+                "armored",
+                "original",
+                "asymmetric",
+                "lattice",
+              ]),
+              foundryUses: zod.number().optional(),
+              foundryOverdriveAvailable: zod.boolean().optional(),
+              foundryRecoveredComponentCount: zod.number().optional(),
+              ascensionDeferral: zod.number().optional(),
+              ascensionLastCounterRound: zod.number().nullish(),
+              foundryTier2Ready: zod.boolean().optional(),
+              foundryTier3Ready: zod.boolean().optional(),
+            })
+            .describe("Public state revealed only after a Blueprint manifests"),
+        )
+        .optional()
+        .describe("Public Manifested Projects revealed after completion"),
+      assimilatedArtifactIds: zod
+        .array(zod.string())
+        .optional()
+        .describe(
+          "Artifact IDs consumed by Final Hunger; count only for Blueprint eligibility, not forged-card effects or victory tie-breaks",
+        ),
       discountedForgeIds: zod
         .array(zod.string())
         .describe(
@@ -634,6 +802,139 @@ export const StartGameResponse = zod.object({
       claimedLuminaryIds: zod
         .array(zod.string())
         .describe("IDs of luminaries this player has claimed"),
+      tideArchiveTopCards: zod
+        .object({
+          tier1: zod.union([
+            zod.object({
+              id: zod.string(),
+              tier: zod.number(),
+              bonusAffinity: zod.enum([
+                "flare",
+                "continuum",
+                "verdance",
+                "abyss",
+                "radiance",
+              ]),
+              eminence: zod.number(),
+              cost: zod
+                .object({
+                  flare: zod.number(),
+                  continuum: zod.number(),
+                  verdance: zod.number(),
+                  abyss: zod.number(),
+                  radiance: zod.number(),
+                  singularity: zod.number(),
+                })
+                .describe("A complete set of Luminae Affinity counts."),
+              name: zod.string(),
+              flavor: zod.string(),
+              bonusesAtForge: zod
+                .object({
+                  flare: zod.number(),
+                  continuum: zod.number(),
+                  verdance: zod.number(),
+                  abyss: zod.number(),
+                  radiance: zod.number(),
+                  singularity: zod.number(),
+                })
+                .optional()
+                .describe(
+                  "Snapshot of the player's effective Affinity bonuses at the moment this Artifact was forged. Present only on forged Artifacts; absent on Forge or reserved Artifacts and on Artifacts forged before this feature was added.",
+                ),
+            }),
+            zod.null(),
+          ]),
+          tier2: zod.union([
+            zod.object({
+              id: zod.string(),
+              tier: zod.number(),
+              bonusAffinity: zod.enum([
+                "flare",
+                "continuum",
+                "verdance",
+                "abyss",
+                "radiance",
+              ]),
+              eminence: zod.number(),
+              cost: zod
+                .object({
+                  flare: zod.number(),
+                  continuum: zod.number(),
+                  verdance: zod.number(),
+                  abyss: zod.number(),
+                  radiance: zod.number(),
+                  singularity: zod.number(),
+                })
+                .describe("A complete set of Luminae Affinity counts."),
+              name: zod.string(),
+              flavor: zod.string(),
+              bonusesAtForge: zod
+                .object({
+                  flare: zod.number(),
+                  continuum: zod.number(),
+                  verdance: zod.number(),
+                  abyss: zod.number(),
+                  radiance: zod.number(),
+                  singularity: zod.number(),
+                })
+                .optional()
+                .describe(
+                  "Snapshot of the player's effective Affinity bonuses at the moment this Artifact was forged. Present only on forged Artifacts; absent on Forge or reserved Artifacts and on Artifacts forged before this feature was added.",
+                ),
+            }),
+            zod.null(),
+          ]),
+          tier3: zod.union([
+            zod.object({
+              id: zod.string(),
+              tier: zod.number(),
+              bonusAffinity: zod.enum([
+                "flare",
+                "continuum",
+                "verdance",
+                "abyss",
+                "radiance",
+              ]),
+              eminence: zod.number(),
+              cost: zod
+                .object({
+                  flare: zod.number(),
+                  continuum: zod.number(),
+                  verdance: zod.number(),
+                  abyss: zod.number(),
+                  radiance: zod.number(),
+                  singularity: zod.number(),
+                })
+                .describe("A complete set of Luminae Affinity counts."),
+              name: zod.string(),
+              flavor: zod.string(),
+              bonusesAtForge: zod
+                .object({
+                  flare: zod.number(),
+                  continuum: zod.number(),
+                  verdance: zod.number(),
+                  abyss: zod.number(),
+                  radiance: zod.number(),
+                  singularity: zod.number(),
+                })
+                .optional()
+                .describe(
+                  "Snapshot of the player's effective Affinity bonuses at the moment this Artifact was forged. Present only on forged Artifacts; absent on Forge or reserved Artifacts and on Artifacts forged before this feature was added.",
+                ),
+            }),
+            zod.null(),
+          ]),
+        })
+        .optional()
+        .describe(
+          "Owner-only top Artifact of each Archive, revealed by Tide Architect",
+        ),
+      tideArchiveForgeAvailable: zod
+        .boolean()
+        .optional()
+        .describe(
+          "Whether this player retains Tide Architect's one-use Archive-top Forge",
+        ),
       plannedAction: zod
         .record(zod.string(), zod.unknown())
         .nullable()
@@ -650,6 +951,126 @@ export const StartGameResponse = zod.object({
         .string()
         .nullable()
         .describe("Player-chosen civilization name; null if not set"),
+      civilizationIdentity: zod
+        .union([
+          zod
+            .object({
+              lineage: zod.union([
+                zod.enum([
+                  "energy",
+                  "ecology",
+                  "causality",
+                  "transit",
+                  "memory",
+                  "infrastructure",
+                  "concealment",
+                  "containment",
+                  "fabrication",
+                  "accord",
+                  "reclamation",
+                  "boundary_science",
+                ]),
+                zod.null(),
+              ]),
+              affinity: zod.union([
+                zod.enum([
+                  "flare",
+                  "continuum",
+                  "verdance",
+                  "abyss",
+                  "radiance",
+                ]),
+                zod.null(),
+              ]),
+              signatureArtifactId: zod.string().nullable(),
+              signatureLuminaryId: zod.string().nullable(),
+              signatureBlueprintId: zod.union([
+                zod.enum([
+                  "bp_antimatter_detonator",
+                  "bp_mantle_to_orbit_foundry",
+                  "bp_ascension_registry",
+                  "bp_worldshield_covenant",
+                ]),
+                zod.null(),
+              ]),
+            })
+            .and(
+              zod.object({
+                displayName: zod.string().nullable(),
+                scaleType: zod.union([
+                  zod.literal(0),
+                  zod.literal(1),
+                  zod.literal(2),
+                  zod.literal(3),
+                ]),
+                scaleLabel: zod.string(),
+                projectEpithet: zod.string().nullable(),
+              }),
+            ),
+          zod.null(),
+        ])
+        .optional()
+        .describe("Confirmed public identity loaded when the match begins"),
+      civilizationIdentitySnapshot: zod
+        .union([
+          zod
+            .object({
+              lineage: zod.union([
+                zod.enum([
+                  "energy",
+                  "ecology",
+                  "causality",
+                  "transit",
+                  "memory",
+                  "infrastructure",
+                  "concealment",
+                  "containment",
+                  "fabrication",
+                  "accord",
+                  "reclamation",
+                  "boundary_science",
+                ]),
+                zod.null(),
+              ]),
+              affinity: zod.union([
+                zod.enum([
+                  "flare",
+                  "continuum",
+                  "verdance",
+                  "abyss",
+                  "radiance",
+                ]),
+                zod.null(),
+              ]),
+              signatureArtifactId: zod.string().nullable(),
+              signatureLuminaryId: zod.string().nullable(),
+              signatureBlueprintId: zod.union([
+                zod.enum([
+                  "bp_antimatter_detonator",
+                  "bp_mantle_to_orbit_foundry",
+                  "bp_ascension_registry",
+                  "bp_worldshield_covenant",
+                ]),
+                zod.null(),
+              ]),
+            })
+            .and(
+              zod.object({
+                displayName: zod.string().nullable(),
+                scaleType: zod.union([
+                  zod.literal(0),
+                  zod.literal(1),
+                  zod.literal(2),
+                  zod.literal(3),
+                ]),
+                scaleLabel: zod.string(),
+                projectEpithet: zod.string().nullable(),
+              }),
+            ),
+          zod.null(),
+        ])
+        .optional()
+        .describe("Immutable account identity captured when the match begins"),
     }),
   ),
   winnerId: zod.string().nullable(),
@@ -700,7 +1121,7 @@ export const StartGameResponse = zod.object({
           eventId: zod.string(),
           luminaryId: zod.string(),
           effectType: zod
-            .enum(["summon", "end_of_turn", "start_of_turn"])
+            .enum(["summon", "action", "end_of_turn", "start_of_turn"])
             .describe("Which hook fired this event"),
           triggeringPlayerId: zod
             .string()
@@ -716,6 +1137,12 @@ export const StartGameResponse = zod.object({
             .optional()
             .describe(
               "Artifact IDs targeted by this activation (e.g. condemned Artifacts for start_of_turn burn). Captured server-side before state mutations clear artifactMarkers.",
+            ),
+          targetSlotIds: zod
+            .array(zod.string())
+            .optional()
+            .describe(
+              "Forge mold coordinates targeted by this activation, encoded as tier-slotIndex",
             ),
           affinityType: zod
             .enum(["flare", "continuum", "verdance", "abyss", "radiance"])
@@ -759,6 +1186,24 @@ export const StartGameResponse = zod.object({
             .describe(
               "Authoritative player\/Affinity pairs returned by a global activation such as Balance Due",
             ),
+          victoryRequirementBefore: zod
+            .number()
+            .optional()
+            .describe(
+              "Victory threshold immediately before this activation changed it",
+            ),
+          victoryRequirementAfter: zod
+            .number()
+            .optional()
+            .describe(
+              "Victory threshold immediately after this activation changed it",
+            ),
+          victoryRequirementChange: zod
+            .number()
+            .optional()
+            .describe(
+              "Signed victory-threshold delta presented by this activation",
+            ),
         })
         .describe(
           "An activation event queued for the short (~4s) per-effect cinematic overlay",
@@ -766,6 +1211,235 @@ export const StartGameResponse = zod.object({
     )
     .describe(
       "Activation events queued for the short (~4s) per-effect cinematic overlay",
+    ),
+  pendingBlueprintManifestationEvents: zod
+    .array(
+      zod.object({
+        eventId: zod.string(),
+        blueprintId: zod.enum([
+          "bp_antimatter_detonator",
+          "bp_mantle_to_orbit_foundry",
+          "bp_ascension_registry",
+          "bp_worldshield_covenant",
+        ]),
+        ownerPlayerId: zod.string(),
+        slotIndex: zod.number(),
+        presentationVariant: zod.enum([
+          "armored",
+          "original",
+          "asymmetric",
+          "lattice",
+        ]),
+        createdAt: zod.number(),
+      }),
+    )
+    .describe(
+      "Blueprint manifestation events awaiting synchronized presentation acknowledgement",
+    ),
+  pendingBlueprintDetonationEvents: zod
+    .array(
+      zod.object({
+        eventId: zod.string(),
+        blueprintId: zod.enum([
+          "bp_antimatter_detonator",
+          "bp_mantle_to_orbit_foundry",
+          "bp_ascension_registry",
+          "bp_worldshield_covenant",
+        ]),
+        ownerPlayerId: zod.string(),
+        triggeringPlayerId: zod.string(),
+        targetCardId: zod.string(),
+        targetSlotId: zod
+          .string()
+          .optional()
+          .describe(
+            "Forge mold refilled after the target leaves, formatted as tier-slotIndex.",
+          ),
+        trigger: zod.enum(["forged", "encrypted"]).optional(),
+        hostileEffect: zod
+          .enum(["burn", "annihilation", "nullification", "claim_cancellation"])
+          .optional(),
+        targetArtifact: zod
+          .object({
+            id: zod.string(),
+            name: zod.string(),
+            tier: zod.union([zod.literal(1), zod.literal(2), zod.literal(3)]),
+            bonusAffinity: zod.enum([
+              "flare",
+              "continuum",
+              "verdance",
+              "abyss",
+              "radiance",
+            ]),
+            eminence: zod.number(),
+            cost: zod
+              .object({
+                flare: zod.number(),
+                continuum: zod.number(),
+                verdance: zod.number(),
+                abyss: zod.number(),
+                radiance: zod.number(),
+                singularity: zod.number(),
+              })
+              .describe("A complete set of Luminae Affinity counts."),
+            flavor: zod.string(),
+          })
+          .optional(),
+        collateralCardIds: zod.array(zod.string()).optional(),
+        collateralArtifacts: zod
+          .array(
+            zod.object({
+              id: zod.string(),
+              name: zod.string(),
+              tier: zod.union([zod.literal(1), zod.literal(2), zod.literal(3)]),
+              bonusAffinity: zod.enum([
+                "flare",
+                "continuum",
+                "verdance",
+                "abyss",
+                "radiance",
+              ]),
+              eminence: zod.number(),
+              cost: zod
+                .object({
+                  flare: zod.number(),
+                  continuum: zod.number(),
+                  verdance: zod.number(),
+                  abyss: zod.number(),
+                  radiance: zod.number(),
+                  singularity: zod.number(),
+                })
+                .describe("A complete set of Luminae Affinity counts."),
+              flavor: zod.string(),
+            }),
+          )
+          .optional(),
+        interceptedByBlueprintId: zod
+          .enum([
+            "bp_antimatter_detonator",
+            "bp_mantle_to_orbit_foundry",
+            "bp_ascension_registry",
+            "bp_worldshield_covenant",
+          ])
+          .optional(),
+        presentationVariant: zod.enum([
+          "armored",
+          "original",
+          "asymmetric",
+          "lattice",
+        ]),
+        createdAt: zod.number(),
+      }),
+    )
+    .describe(
+      "Blueprint detonation events awaiting synchronized presentation acknowledgement",
+    ),
+  scenarioProtocols: zod
+    .array(
+      zod.object({
+        protocolId: zod.enum([
+          "sealed_protocol_01",
+          "sealed_protocol_02",
+          "sealed_protocol_03",
+        ]),
+        ownerPlayerId: zod.string(),
+        slotIndex: zod.number(),
+        state: zod.enum([
+          "armed",
+          "active",
+          "vigilant",
+          "spent",
+          "deactivated",
+          "recovering",
+        ]),
+        publicEffect: zod.string(),
+        foundryTier2Ready: zod.boolean().optional(),
+        foundryTier3Ready: zod.boolean().optional(),
+      }),
+    )
+    .describe(
+      "Anonymous public protocol devices used by identity-redacted scenarios",
+    ),
+  pendingScenarioProtocolEvents: zod
+    .array(
+      zod.object({
+        eventId: zod.string(),
+        protocolId: zod.enum([
+          "sealed_protocol_01",
+          "sealed_protocol_02",
+          "sealed_protocol_03",
+        ]),
+        ownerPlayerId: zod.string(),
+        slotIndex: zod.number(),
+        kind: zod.enum(["manifestation", "effect"]),
+        publicEffect: zod.string(),
+        triggeringPlayerId: zod.string().optional(),
+        targetCardId: zod.string().optional(),
+        trigger: zod.enum(["forged", "encrypted"]).optional(),
+        hostileEffect: zod
+          .enum(["burn", "annihilation", "nullification", "claim_cancellation"])
+          .optional(),
+        targetArtifact: zod
+          .object({
+            id: zod.string(),
+            name: zod.string(),
+            tier: zod.union([zod.literal(1), zod.literal(2), zod.literal(3)]),
+            bonusAffinity: zod.enum([
+              "flare",
+              "continuum",
+              "verdance",
+              "abyss",
+              "radiance",
+            ]),
+            eminence: zod.number(),
+            cost: zod
+              .object({
+                flare: zod.number(),
+                continuum: zod.number(),
+                verdance: zod.number(),
+                abyss: zod.number(),
+                radiance: zod.number(),
+                singularity: zod.number(),
+              })
+              .describe("A complete set of Luminae Affinity counts."),
+            flavor: zod.string(),
+          })
+          .optional(),
+        collateralCardIds: zod.array(zod.string()).optional(),
+        collateralArtifacts: zod
+          .array(
+            zod.object({
+              id: zod.string(),
+              name: zod.string(),
+              tier: zod.union([zod.literal(1), zod.literal(2), zod.literal(3)]),
+              bonusAffinity: zod.enum([
+                "flare",
+                "continuum",
+                "verdance",
+                "abyss",
+                "radiance",
+              ]),
+              eminence: zod.number(),
+              cost: zod
+                .object({
+                  flare: zod.number(),
+                  continuum: zod.number(),
+                  verdance: zod.number(),
+                  abyss: zod.number(),
+                  radiance: zod.number(),
+                  singularity: zod.number(),
+                })
+                .describe("A complete set of Luminae Affinity counts."),
+              flavor: zod.string(),
+            }),
+          )
+          .optional(),
+        intercepted: zod.boolean().optional(),
+        createdAt: zod.number(),
+      }),
+    )
+    .describe(
+      "Anonymous scenario protocol events awaiting normal Blueprint acknowledgement",
     ),
   pendingTurnTransition: zod
     .object({
@@ -833,6 +1507,16 @@ export const StartGameResponse = zod.object({
     .describe(
       "Active Artifact markers keyed by cardId (v0.8 — Forgotten\/Condemned\/Nullified\/AvatarSeed)",
     ),
+  nullifiedFirstForge: zod
+    .object({
+      cardId: zod.string(),
+      playerId: zod.string(),
+      exempt: zod.boolean(),
+    })
+    .nullish()
+    .describe(
+      "The first Nullified Artifact forged this game and whether the allied-player exemption applied.",
+    ),
   forgottenHourCycle: zod
     .record(
       zod.string(),
@@ -843,10 +1527,12 @@ export const StartGameResponse = zod.object({
     )
     .optional()
     .describe("Owner-relative Forgotten Hour timing keyed by source playerId"),
-  avatarSeedDeckSeeds: zod
+  avatarSeedMoldSlots: zod
     .array(zod.string())
     .optional()
-    .describe("Card IDs currently in deck with Avatar Seed markers (v0.8)"),
+    .describe(
+      "Permanent Forge molds carrying Avatar Seeds, encoded as tier-slotIndex",
+    ),
   avatarSeedOwnerId: zod
     .string()
     .nullish()
@@ -855,7 +1541,7 @@ export const StartGameResponse = zod.object({
     .string()
     .nullish()
     .describe(
-      "Player ID if Final Hunger Assimilation is available this turn (v0.8)",
+      "Player ID holding Final Hunger's one-use Assimilation action until it is consumed",
     ),
   catalystBloomBurnCount: zod
     .number()
@@ -867,7 +1553,13 @@ export const StartGameResponse = zod.object({
     .boolean()
     .optional()
     .describe(
-      "True once Concordance Mandala Perfect Coherence has fired (v0.8)",
+      "True once Concordance Mandala's 8-Radiance Perfect Coherence milestone has fired",
+    ),
+  concordanceMandalaFinalTriggered: zod
+    .boolean()
+    .optional()
+    .describe(
+      "True once Concordance Mandala's 10-Radiance Perfect Coherence milestone has fired",
     ),
   glassOrchardTriggered: zod
     .boolean()
@@ -914,6 +1606,16 @@ export const StartGameResponse = zod.object({
     .optional()
     .describe(
       "Ordered list of individual Burn events, including source Luminary and final destination",
+    ),
+  annihilatedArtifactIds: zod
+    .array(zod.string())
+    .optional()
+    .describe("Artifacts permanently removed from this game by Annihilation"),
+  brokenCovenantDeclared: zod
+    .boolean()
+    .optional()
+    .describe(
+      "Campaign-only state that reveals Antimatter's Broken Covenant rider",
     ),
   coreActionUsed: zod
     .boolean()
@@ -983,6 +1685,23 @@ export const getGameStateResponsePendingLuminaryActivationEventsItemAffinityRetu
 export const GetGameStateResponse = zod.object({
   roomId: zod.string(),
   status: zod.enum(["lobby", "playing", "finished"]),
+  scenarioId: zod
+    .string()
+    .nullable()
+    .describe("Server-authored campaign scenario identifier"),
+  finishReason: zod
+    .union([
+      zod.literal("win"),
+      zod.literal("frontier_exhaustion"),
+      zod.literal("surrender"),
+      zod.literal("withdrawal"),
+      zod.literal(null),
+    ])
+    .nullable()
+    .describe("Normalized reason a finished game ended"),
+  lumiiThresholdApproach: zod
+    .union([zod.enum(["kinship", "inquiry", "dominion"]), zod.null()])
+    .describe("Immutable approach chosen for the Lumii Vault encounter"),
   startedAt: zod
     .number()
     .describe("Unix timestamp (ms) when this game instance was initialized"),
@@ -1012,6 +1731,12 @@ export const GetGameStateResponse = zod.object({
   victoryRequirement: zod
     .number()
     .describe("Eminence required to trigger the final round"),
+  voidSealOwnerId: zod
+    .string()
+    .nullish()
+    .describe(
+      "Deprecated compatibility field; Void Seal was removed and this is always null",
+    ),
   cinematicMode: zod.enum(["standard", "epic"]),
   affinityWell: zod
     .object({
@@ -1292,6 +2017,126 @@ export const GetGameStateResponse = zod.object({
         }),
       ),
       forgedArtifactIds: zod.array(zod.string()),
+      blueprintPrivateStates: zod
+        .array(
+          zod
+            .object({
+              blueprintId: zod.enum([
+                "bp_antimatter_detonator",
+                "bp_mantle_to_orbit_foundry",
+                "bp_ascension_registry",
+                "bp_worldshield_covenant",
+              ]),
+              slotIndex: zod.number(),
+              matchedComponentIds: zod.array(zod.string()),
+              manifested: zod.boolean(),
+              secretTargetCardId: zod.string().nullish(),
+              safePreManifestActionPlayerIds: zod
+                .array(zod.string())
+                .optional(),
+              foundryRecoveryComponentIds: zod.array(zod.string()).optional(),
+            })
+            .describe(
+              "Owner-only Blueprint assembly and secret targeting state",
+            ),
+        )
+        .optional()
+        .describe(
+          "Owner-only assembly and secret device state; omitted from opponent projections",
+        ),
+      blueprintPresentationVariants: zod
+        .record(
+          zod.string(),
+          zod.enum(["armored", "original", "asymmetric", "lattice"]),
+        )
+        .optional()
+        .describe("Owner-only presentation snapshot before manifestation"),
+      manifestedBlueprintDevices: zod
+        .array(
+          zod
+            .object({
+              blueprintId: zod.enum([
+                "bp_antimatter_detonator",
+                "bp_mantle_to_orbit_foundry",
+                "bp_ascension_registry",
+                "bp_worldshield_covenant",
+              ]),
+              ownerPlayerId: zod.string(),
+              slotIndex: zod.number(),
+              state: zod.enum([
+                "armed",
+                "active",
+                "vigilant",
+                "spent",
+                "deactivated",
+                "recovering",
+              ]),
+              covenantState: zod.enum(["intact", "broken"]),
+              presentationVariant: zod.enum([
+                "armored",
+                "original",
+                "asymmetric",
+                "lattice",
+              ]),
+              foundryUses: zod.number().optional(),
+              foundryOverdriveAvailable: zod.boolean().optional(),
+              foundryRecoveredComponentCount: zod.number().optional(),
+              ascensionDeferral: zod.number().optional(),
+              ascensionLastCounterRound: zod.number().nullish(),
+              foundryTier2Ready: zod.boolean().optional(),
+              foundryTier3Ready: zod.boolean().optional(),
+            })
+            .describe("Public state revealed only after a Blueprint manifests"),
+        )
+        .optional()
+        .describe(
+          "Compatibility alias for public Projects revealed after manifestation",
+        ),
+      manifestedBlueprintProjects: zod
+        .array(
+          zod
+            .object({
+              blueprintId: zod.enum([
+                "bp_antimatter_detonator",
+                "bp_mantle_to_orbit_foundry",
+                "bp_ascension_registry",
+                "bp_worldshield_covenant",
+              ]),
+              ownerPlayerId: zod.string(),
+              slotIndex: zod.number(),
+              state: zod.enum([
+                "armed",
+                "active",
+                "vigilant",
+                "spent",
+                "deactivated",
+                "recovering",
+              ]),
+              covenantState: zod.enum(["intact", "broken"]),
+              presentationVariant: zod.enum([
+                "armored",
+                "original",
+                "asymmetric",
+                "lattice",
+              ]),
+              foundryUses: zod.number().optional(),
+              foundryOverdriveAvailable: zod.boolean().optional(),
+              foundryRecoveredComponentCount: zod.number().optional(),
+              ascensionDeferral: zod.number().optional(),
+              ascensionLastCounterRound: zod.number().nullish(),
+              foundryTier2Ready: zod.boolean().optional(),
+              foundryTier3Ready: zod.boolean().optional(),
+            })
+            .describe("Public state revealed only after a Blueprint manifests"),
+        )
+        .optional()
+        .describe("Public Manifested Projects revealed after completion"),
+      assimilatedArtifactIds: zod
+        .array(zod.string())
+        .optional()
+        .describe(
+          "Artifact IDs consumed by Final Hunger; count only for Blueprint eligibility, not forged-card effects or victory tie-breaks",
+        ),
       discountedForgeIds: zod
         .array(zod.string())
         .describe(
@@ -1340,6 +2185,139 @@ export const GetGameStateResponse = zod.object({
       claimedLuminaryIds: zod
         .array(zod.string())
         .describe("IDs of luminaries this player has claimed"),
+      tideArchiveTopCards: zod
+        .object({
+          tier1: zod.union([
+            zod.object({
+              id: zod.string(),
+              tier: zod.number(),
+              bonusAffinity: zod.enum([
+                "flare",
+                "continuum",
+                "verdance",
+                "abyss",
+                "radiance",
+              ]),
+              eminence: zod.number(),
+              cost: zod
+                .object({
+                  flare: zod.number(),
+                  continuum: zod.number(),
+                  verdance: zod.number(),
+                  abyss: zod.number(),
+                  radiance: zod.number(),
+                  singularity: zod.number(),
+                })
+                .describe("A complete set of Luminae Affinity counts."),
+              name: zod.string(),
+              flavor: zod.string(),
+              bonusesAtForge: zod
+                .object({
+                  flare: zod.number(),
+                  continuum: zod.number(),
+                  verdance: zod.number(),
+                  abyss: zod.number(),
+                  radiance: zod.number(),
+                  singularity: zod.number(),
+                })
+                .optional()
+                .describe(
+                  "Snapshot of the player's effective Affinity bonuses at the moment this Artifact was forged. Present only on forged Artifacts; absent on Forge or reserved Artifacts and on Artifacts forged before this feature was added.",
+                ),
+            }),
+            zod.null(),
+          ]),
+          tier2: zod.union([
+            zod.object({
+              id: zod.string(),
+              tier: zod.number(),
+              bonusAffinity: zod.enum([
+                "flare",
+                "continuum",
+                "verdance",
+                "abyss",
+                "radiance",
+              ]),
+              eminence: zod.number(),
+              cost: zod
+                .object({
+                  flare: zod.number(),
+                  continuum: zod.number(),
+                  verdance: zod.number(),
+                  abyss: zod.number(),
+                  radiance: zod.number(),
+                  singularity: zod.number(),
+                })
+                .describe("A complete set of Luminae Affinity counts."),
+              name: zod.string(),
+              flavor: zod.string(),
+              bonusesAtForge: zod
+                .object({
+                  flare: zod.number(),
+                  continuum: zod.number(),
+                  verdance: zod.number(),
+                  abyss: zod.number(),
+                  radiance: zod.number(),
+                  singularity: zod.number(),
+                })
+                .optional()
+                .describe(
+                  "Snapshot of the player's effective Affinity bonuses at the moment this Artifact was forged. Present only on forged Artifacts; absent on Forge or reserved Artifacts and on Artifacts forged before this feature was added.",
+                ),
+            }),
+            zod.null(),
+          ]),
+          tier3: zod.union([
+            zod.object({
+              id: zod.string(),
+              tier: zod.number(),
+              bonusAffinity: zod.enum([
+                "flare",
+                "continuum",
+                "verdance",
+                "abyss",
+                "radiance",
+              ]),
+              eminence: zod.number(),
+              cost: zod
+                .object({
+                  flare: zod.number(),
+                  continuum: zod.number(),
+                  verdance: zod.number(),
+                  abyss: zod.number(),
+                  radiance: zod.number(),
+                  singularity: zod.number(),
+                })
+                .describe("A complete set of Luminae Affinity counts."),
+              name: zod.string(),
+              flavor: zod.string(),
+              bonusesAtForge: zod
+                .object({
+                  flare: zod.number(),
+                  continuum: zod.number(),
+                  verdance: zod.number(),
+                  abyss: zod.number(),
+                  radiance: zod.number(),
+                  singularity: zod.number(),
+                })
+                .optional()
+                .describe(
+                  "Snapshot of the player's effective Affinity bonuses at the moment this Artifact was forged. Present only on forged Artifacts; absent on Forge or reserved Artifacts and on Artifacts forged before this feature was added.",
+                ),
+            }),
+            zod.null(),
+          ]),
+        })
+        .optional()
+        .describe(
+          "Owner-only top Artifact of each Archive, revealed by Tide Architect",
+        ),
+      tideArchiveForgeAvailable: zod
+        .boolean()
+        .optional()
+        .describe(
+          "Whether this player retains Tide Architect's one-use Archive-top Forge",
+        ),
       plannedAction: zod
         .record(zod.string(), zod.unknown())
         .nullable()
@@ -1356,6 +2334,126 @@ export const GetGameStateResponse = zod.object({
         .string()
         .nullable()
         .describe("Player-chosen civilization name; null if not set"),
+      civilizationIdentity: zod
+        .union([
+          zod
+            .object({
+              lineage: zod.union([
+                zod.enum([
+                  "energy",
+                  "ecology",
+                  "causality",
+                  "transit",
+                  "memory",
+                  "infrastructure",
+                  "concealment",
+                  "containment",
+                  "fabrication",
+                  "accord",
+                  "reclamation",
+                  "boundary_science",
+                ]),
+                zod.null(),
+              ]),
+              affinity: zod.union([
+                zod.enum([
+                  "flare",
+                  "continuum",
+                  "verdance",
+                  "abyss",
+                  "radiance",
+                ]),
+                zod.null(),
+              ]),
+              signatureArtifactId: zod.string().nullable(),
+              signatureLuminaryId: zod.string().nullable(),
+              signatureBlueprintId: zod.union([
+                zod.enum([
+                  "bp_antimatter_detonator",
+                  "bp_mantle_to_orbit_foundry",
+                  "bp_ascension_registry",
+                  "bp_worldshield_covenant",
+                ]),
+                zod.null(),
+              ]),
+            })
+            .and(
+              zod.object({
+                displayName: zod.string().nullable(),
+                scaleType: zod.union([
+                  zod.literal(0),
+                  zod.literal(1),
+                  zod.literal(2),
+                  zod.literal(3),
+                ]),
+                scaleLabel: zod.string(),
+                projectEpithet: zod.string().nullable(),
+              }),
+            ),
+          zod.null(),
+        ])
+        .optional()
+        .describe("Confirmed public identity loaded when the match begins"),
+      civilizationIdentitySnapshot: zod
+        .union([
+          zod
+            .object({
+              lineage: zod.union([
+                zod.enum([
+                  "energy",
+                  "ecology",
+                  "causality",
+                  "transit",
+                  "memory",
+                  "infrastructure",
+                  "concealment",
+                  "containment",
+                  "fabrication",
+                  "accord",
+                  "reclamation",
+                  "boundary_science",
+                ]),
+                zod.null(),
+              ]),
+              affinity: zod.union([
+                zod.enum([
+                  "flare",
+                  "continuum",
+                  "verdance",
+                  "abyss",
+                  "radiance",
+                ]),
+                zod.null(),
+              ]),
+              signatureArtifactId: zod.string().nullable(),
+              signatureLuminaryId: zod.string().nullable(),
+              signatureBlueprintId: zod.union([
+                zod.enum([
+                  "bp_antimatter_detonator",
+                  "bp_mantle_to_orbit_foundry",
+                  "bp_ascension_registry",
+                  "bp_worldshield_covenant",
+                ]),
+                zod.null(),
+              ]),
+            })
+            .and(
+              zod.object({
+                displayName: zod.string().nullable(),
+                scaleType: zod.union([
+                  zod.literal(0),
+                  zod.literal(1),
+                  zod.literal(2),
+                  zod.literal(3),
+                ]),
+                scaleLabel: zod.string(),
+                projectEpithet: zod.string().nullable(),
+              }),
+            ),
+          zod.null(),
+        ])
+        .optional()
+        .describe("Immutable account identity captured when the match begins"),
     }),
   ),
   winnerId: zod.string().nullable(),
@@ -1406,7 +2504,7 @@ export const GetGameStateResponse = zod.object({
           eventId: zod.string(),
           luminaryId: zod.string(),
           effectType: zod
-            .enum(["summon", "end_of_turn", "start_of_turn"])
+            .enum(["summon", "action", "end_of_turn", "start_of_turn"])
             .describe("Which hook fired this event"),
           triggeringPlayerId: zod
             .string()
@@ -1422,6 +2520,12 @@ export const GetGameStateResponse = zod.object({
             .optional()
             .describe(
               "Artifact IDs targeted by this activation (e.g. condemned Artifacts for start_of_turn burn). Captured server-side before state mutations clear artifactMarkers.",
+            ),
+          targetSlotIds: zod
+            .array(zod.string())
+            .optional()
+            .describe(
+              "Forge mold coordinates targeted by this activation, encoded as tier-slotIndex",
             ),
           affinityType: zod
             .enum(["flare", "continuum", "verdance", "abyss", "radiance"])
@@ -1465,6 +2569,24 @@ export const GetGameStateResponse = zod.object({
             .describe(
               "Authoritative player\/Affinity pairs returned by a global activation such as Balance Due",
             ),
+          victoryRequirementBefore: zod
+            .number()
+            .optional()
+            .describe(
+              "Victory threshold immediately before this activation changed it",
+            ),
+          victoryRequirementAfter: zod
+            .number()
+            .optional()
+            .describe(
+              "Victory threshold immediately after this activation changed it",
+            ),
+          victoryRequirementChange: zod
+            .number()
+            .optional()
+            .describe(
+              "Signed victory-threshold delta presented by this activation",
+            ),
         })
         .describe(
           "An activation event queued for the short (~4s) per-effect cinematic overlay",
@@ -1472,6 +2594,235 @@ export const GetGameStateResponse = zod.object({
     )
     .describe(
       "Activation events queued for the short (~4s) per-effect cinematic overlay",
+    ),
+  pendingBlueprintManifestationEvents: zod
+    .array(
+      zod.object({
+        eventId: zod.string(),
+        blueprintId: zod.enum([
+          "bp_antimatter_detonator",
+          "bp_mantle_to_orbit_foundry",
+          "bp_ascension_registry",
+          "bp_worldshield_covenant",
+        ]),
+        ownerPlayerId: zod.string(),
+        slotIndex: zod.number(),
+        presentationVariant: zod.enum([
+          "armored",
+          "original",
+          "asymmetric",
+          "lattice",
+        ]),
+        createdAt: zod.number(),
+      }),
+    )
+    .describe(
+      "Blueprint manifestation events awaiting synchronized presentation acknowledgement",
+    ),
+  pendingBlueprintDetonationEvents: zod
+    .array(
+      zod.object({
+        eventId: zod.string(),
+        blueprintId: zod.enum([
+          "bp_antimatter_detonator",
+          "bp_mantle_to_orbit_foundry",
+          "bp_ascension_registry",
+          "bp_worldshield_covenant",
+        ]),
+        ownerPlayerId: zod.string(),
+        triggeringPlayerId: zod.string(),
+        targetCardId: zod.string(),
+        targetSlotId: zod
+          .string()
+          .optional()
+          .describe(
+            "Forge mold refilled after the target leaves, formatted as tier-slotIndex.",
+          ),
+        trigger: zod.enum(["forged", "encrypted"]).optional(),
+        hostileEffect: zod
+          .enum(["burn", "annihilation", "nullification", "claim_cancellation"])
+          .optional(),
+        targetArtifact: zod
+          .object({
+            id: zod.string(),
+            name: zod.string(),
+            tier: zod.union([zod.literal(1), zod.literal(2), zod.literal(3)]),
+            bonusAffinity: zod.enum([
+              "flare",
+              "continuum",
+              "verdance",
+              "abyss",
+              "radiance",
+            ]),
+            eminence: zod.number(),
+            cost: zod
+              .object({
+                flare: zod.number(),
+                continuum: zod.number(),
+                verdance: zod.number(),
+                abyss: zod.number(),
+                radiance: zod.number(),
+                singularity: zod.number(),
+              })
+              .describe("A complete set of Luminae Affinity counts."),
+            flavor: zod.string(),
+          })
+          .optional(),
+        collateralCardIds: zod.array(zod.string()).optional(),
+        collateralArtifacts: zod
+          .array(
+            zod.object({
+              id: zod.string(),
+              name: zod.string(),
+              tier: zod.union([zod.literal(1), zod.literal(2), zod.literal(3)]),
+              bonusAffinity: zod.enum([
+                "flare",
+                "continuum",
+                "verdance",
+                "abyss",
+                "radiance",
+              ]),
+              eminence: zod.number(),
+              cost: zod
+                .object({
+                  flare: zod.number(),
+                  continuum: zod.number(),
+                  verdance: zod.number(),
+                  abyss: zod.number(),
+                  radiance: zod.number(),
+                  singularity: zod.number(),
+                })
+                .describe("A complete set of Luminae Affinity counts."),
+              flavor: zod.string(),
+            }),
+          )
+          .optional(),
+        interceptedByBlueprintId: zod
+          .enum([
+            "bp_antimatter_detonator",
+            "bp_mantle_to_orbit_foundry",
+            "bp_ascension_registry",
+            "bp_worldshield_covenant",
+          ])
+          .optional(),
+        presentationVariant: zod.enum([
+          "armored",
+          "original",
+          "asymmetric",
+          "lattice",
+        ]),
+        createdAt: zod.number(),
+      }),
+    )
+    .describe(
+      "Blueprint detonation events awaiting synchronized presentation acknowledgement",
+    ),
+  scenarioProtocols: zod
+    .array(
+      zod.object({
+        protocolId: zod.enum([
+          "sealed_protocol_01",
+          "sealed_protocol_02",
+          "sealed_protocol_03",
+        ]),
+        ownerPlayerId: zod.string(),
+        slotIndex: zod.number(),
+        state: zod.enum([
+          "armed",
+          "active",
+          "vigilant",
+          "spent",
+          "deactivated",
+          "recovering",
+        ]),
+        publicEffect: zod.string(),
+        foundryTier2Ready: zod.boolean().optional(),
+        foundryTier3Ready: zod.boolean().optional(),
+      }),
+    )
+    .describe(
+      "Anonymous public protocol devices used by identity-redacted scenarios",
+    ),
+  pendingScenarioProtocolEvents: zod
+    .array(
+      zod.object({
+        eventId: zod.string(),
+        protocolId: zod.enum([
+          "sealed_protocol_01",
+          "sealed_protocol_02",
+          "sealed_protocol_03",
+        ]),
+        ownerPlayerId: zod.string(),
+        slotIndex: zod.number(),
+        kind: zod.enum(["manifestation", "effect"]),
+        publicEffect: zod.string(),
+        triggeringPlayerId: zod.string().optional(),
+        targetCardId: zod.string().optional(),
+        trigger: zod.enum(["forged", "encrypted"]).optional(),
+        hostileEffect: zod
+          .enum(["burn", "annihilation", "nullification", "claim_cancellation"])
+          .optional(),
+        targetArtifact: zod
+          .object({
+            id: zod.string(),
+            name: zod.string(),
+            tier: zod.union([zod.literal(1), zod.literal(2), zod.literal(3)]),
+            bonusAffinity: zod.enum([
+              "flare",
+              "continuum",
+              "verdance",
+              "abyss",
+              "radiance",
+            ]),
+            eminence: zod.number(),
+            cost: zod
+              .object({
+                flare: zod.number(),
+                continuum: zod.number(),
+                verdance: zod.number(),
+                abyss: zod.number(),
+                radiance: zod.number(),
+                singularity: zod.number(),
+              })
+              .describe("A complete set of Luminae Affinity counts."),
+            flavor: zod.string(),
+          })
+          .optional(),
+        collateralCardIds: zod.array(zod.string()).optional(),
+        collateralArtifacts: zod
+          .array(
+            zod.object({
+              id: zod.string(),
+              name: zod.string(),
+              tier: zod.union([zod.literal(1), zod.literal(2), zod.literal(3)]),
+              bonusAffinity: zod.enum([
+                "flare",
+                "continuum",
+                "verdance",
+                "abyss",
+                "radiance",
+              ]),
+              eminence: zod.number(),
+              cost: zod
+                .object({
+                  flare: zod.number(),
+                  continuum: zod.number(),
+                  verdance: zod.number(),
+                  abyss: zod.number(),
+                  radiance: zod.number(),
+                  singularity: zod.number(),
+                })
+                .describe("A complete set of Luminae Affinity counts."),
+              flavor: zod.string(),
+            }),
+          )
+          .optional(),
+        intercepted: zod.boolean().optional(),
+        createdAt: zod.number(),
+      }),
+    )
+    .describe(
+      "Anonymous scenario protocol events awaiting normal Blueprint acknowledgement",
     ),
   pendingTurnTransition: zod
     .object({
@@ -1539,6 +2890,16 @@ export const GetGameStateResponse = zod.object({
     .describe(
       "Active Artifact markers keyed by cardId (v0.8 — Forgotten\/Condemned\/Nullified\/AvatarSeed)",
     ),
+  nullifiedFirstForge: zod
+    .object({
+      cardId: zod.string(),
+      playerId: zod.string(),
+      exempt: zod.boolean(),
+    })
+    .nullish()
+    .describe(
+      "The first Nullified Artifact forged this game and whether the allied-player exemption applied.",
+    ),
   forgottenHourCycle: zod
     .record(
       zod.string(),
@@ -1549,10 +2910,12 @@ export const GetGameStateResponse = zod.object({
     )
     .optional()
     .describe("Owner-relative Forgotten Hour timing keyed by source playerId"),
-  avatarSeedDeckSeeds: zod
+  avatarSeedMoldSlots: zod
     .array(zod.string())
     .optional()
-    .describe("Card IDs currently in deck with Avatar Seed markers (v0.8)"),
+    .describe(
+      "Permanent Forge molds carrying Avatar Seeds, encoded as tier-slotIndex",
+    ),
   avatarSeedOwnerId: zod
     .string()
     .nullish()
@@ -1561,7 +2924,7 @@ export const GetGameStateResponse = zod.object({
     .string()
     .nullish()
     .describe(
-      "Player ID if Final Hunger Assimilation is available this turn (v0.8)",
+      "Player ID holding Final Hunger's one-use Assimilation action until it is consumed",
     ),
   catalystBloomBurnCount: zod
     .number()
@@ -1573,7 +2936,13 @@ export const GetGameStateResponse = zod.object({
     .boolean()
     .optional()
     .describe(
-      "True once Concordance Mandala Perfect Coherence has fired (v0.8)",
+      "True once Concordance Mandala's 8-Radiance Perfect Coherence milestone has fired",
+    ),
+  concordanceMandalaFinalTriggered: zod
+    .boolean()
+    .optional()
+    .describe(
+      "True once Concordance Mandala's 10-Radiance Perfect Coherence milestone has fired",
     ),
   glassOrchardTriggered: zod
     .boolean()
@@ -1621,6 +2990,16 @@ export const GetGameStateResponse = zod.object({
     .describe(
       "Ordered list of individual Burn events, including source Luminary and final destination",
     ),
+  annihilatedArtifactIds: zod
+    .array(zod.string())
+    .optional()
+    .describe("Artifacts permanently removed from this game by Annihilation"),
+  brokenCovenantDeclared: zod
+    .boolean()
+    .optional()
+    .describe(
+      "Campaign-only state that reveals Antimatter's Broken Covenant rider",
+    ),
   coreActionUsed: zod
     .boolean()
     .optional()
@@ -1646,6 +3025,24 @@ export const SubmitActionParams = zod.object({
   roomId: zod.coerce.string(),
 });
 
+export const submitActionBodyReturnAffinitiesFlareMin = 0;
+export const submitActionBodyReturnAffinitiesFlareMultipleOf = 1;
+
+export const submitActionBodyReturnAffinitiesContinuumMin = 0;
+export const submitActionBodyReturnAffinitiesContinuumMultipleOf = 1;
+
+export const submitActionBodyReturnAffinitiesVerdanceMin = 0;
+export const submitActionBodyReturnAffinitiesVerdanceMultipleOf = 1;
+
+export const submitActionBodyReturnAffinitiesAbyssMin = 0;
+export const submitActionBodyReturnAffinitiesAbyssMultipleOf = 1;
+
+export const submitActionBodyReturnAffinitiesRadianceMin = 0;
+export const submitActionBodyReturnAffinitiesRadianceMultipleOf = 1;
+
+export const submitActionBodyReturnAffinitiesSingularityMin = 0;
+export const submitActionBodyReturnAffinitiesSingularityMultipleOf = 1;
+
 export const SubmitActionBody = zod.object({
   sessionToken: zod.string(),
   type: zod.enum([
@@ -1653,16 +3050,19 @@ export const SubmitActionBody = zod.object({
     "harness_two_affinities",
     "reserve_artifact",
     "forge_artifact",
+    "foundry_forge_artifact",
+    "recover_foundry_component",
     "forge_reserved_artifact",
     "pass",
     "surrender",
     "toggle_luminary_affinity",
     "resolve_summon",
     "resolve_luminary_activation",
+    "resolve_blueprint_manifestation",
+    "resolve_blueprint_detonation",
     "plan_action",
     "execute_plan",
     "cancel_plan",
-    "tutorial_fast_forward",
     "set_civ_name",
     "choose_luminary_order",
     "assimilate",
@@ -1684,6 +3084,10 @@ export const SubmitActionBody = zod.object({
     .describe(
       "Affinity selected for a same-Affinity Harness; legacy Luminary toggle requests are rejected",
     ),
+  voidSealAffinity: zod
+    .enum(["flare", "continuum", "verdance", "abyss", "radiance"])
+    .optional()
+    .describe("Deprecated compatibility field; ignored by the game engine"),
   cardId: zod.string().optional(),
   tier: zod.number().optional(),
   luminaryId: zod
@@ -1696,12 +3100,36 @@ export const SubmitActionBody = zod.object({
     .describe("Event ID for resolve_summon action"),
   returnAffinities: zod
     .object({
-      flare: zod.number().optional(),
-      continuum: zod.number().optional(),
-      verdance: zod.number().optional(),
-      abyss: zod.number().optional(),
-      radiance: zod.number().optional(),
-      singularity: zod.number().optional(),
+      flare: zod
+        .number()
+        .min(submitActionBodyReturnAffinitiesFlareMin)
+        .multipleOf(submitActionBodyReturnAffinitiesFlareMultipleOf)
+        .optional(),
+      continuum: zod
+        .number()
+        .min(submitActionBodyReturnAffinitiesContinuumMin)
+        .multipleOf(submitActionBodyReturnAffinitiesContinuumMultipleOf)
+        .optional(),
+      verdance: zod
+        .number()
+        .min(submitActionBodyReturnAffinitiesVerdanceMin)
+        .multipleOf(submitActionBodyReturnAffinitiesVerdanceMultipleOf)
+        .optional(),
+      abyss: zod
+        .number()
+        .min(submitActionBodyReturnAffinitiesAbyssMin)
+        .multipleOf(submitActionBodyReturnAffinitiesAbyssMultipleOf)
+        .optional(),
+      radiance: zod
+        .number()
+        .min(submitActionBodyReturnAffinitiesRadianceMin)
+        .multipleOf(submitActionBodyReturnAffinitiesRadianceMultipleOf)
+        .optional(),
+      singularity: zod
+        .number()
+        .min(submitActionBodyReturnAffinitiesSingularityMin)
+        .multipleOf(submitActionBodyReturnAffinitiesSingularityMultipleOf)
+        .optional(),
     })
     .optional()
     .describe(
@@ -1719,6 +3147,12 @@ export const SubmitActionBody = zod.object({
     .array(zod.string())
     .optional()
     .describe("Ordered list of luminaryIds for choose_luminary_order action"),
+  confirmOverdrive: zod
+    .boolean()
+    .optional()
+    .describe(
+      "Explicit confirmation required for a Mantle-to-Orbit Foundry third use",
+    ),
 });
 
 export const submitActionResponsePendingLuminaryActivationEventsItemAffinityAmountMin = 0;
@@ -1728,6 +3162,23 @@ export const submitActionResponsePendingLuminaryActivationEventsItemAffinityRetu
 export const SubmitActionResponse = zod.object({
   roomId: zod.string(),
   status: zod.enum(["lobby", "playing", "finished"]),
+  scenarioId: zod
+    .string()
+    .nullable()
+    .describe("Server-authored campaign scenario identifier"),
+  finishReason: zod
+    .union([
+      zod.literal("win"),
+      zod.literal("frontier_exhaustion"),
+      zod.literal("surrender"),
+      zod.literal("withdrawal"),
+      zod.literal(null),
+    ])
+    .nullable()
+    .describe("Normalized reason a finished game ended"),
+  lumiiThresholdApproach: zod
+    .union([zod.enum(["kinship", "inquiry", "dominion"]), zod.null()])
+    .describe("Immutable approach chosen for the Lumii Vault encounter"),
   startedAt: zod
     .number()
     .describe("Unix timestamp (ms) when this game instance was initialized"),
@@ -1757,6 +3208,12 @@ export const SubmitActionResponse = zod.object({
   victoryRequirement: zod
     .number()
     .describe("Eminence required to trigger the final round"),
+  voidSealOwnerId: zod
+    .string()
+    .nullish()
+    .describe(
+      "Deprecated compatibility field; Void Seal was removed and this is always null",
+    ),
   cinematicMode: zod.enum(["standard", "epic"]),
   affinityWell: zod
     .object({
@@ -2037,6 +3494,126 @@ export const SubmitActionResponse = zod.object({
         }),
       ),
       forgedArtifactIds: zod.array(zod.string()),
+      blueprintPrivateStates: zod
+        .array(
+          zod
+            .object({
+              blueprintId: zod.enum([
+                "bp_antimatter_detonator",
+                "bp_mantle_to_orbit_foundry",
+                "bp_ascension_registry",
+                "bp_worldshield_covenant",
+              ]),
+              slotIndex: zod.number(),
+              matchedComponentIds: zod.array(zod.string()),
+              manifested: zod.boolean(),
+              secretTargetCardId: zod.string().nullish(),
+              safePreManifestActionPlayerIds: zod
+                .array(zod.string())
+                .optional(),
+              foundryRecoveryComponentIds: zod.array(zod.string()).optional(),
+            })
+            .describe(
+              "Owner-only Blueprint assembly and secret targeting state",
+            ),
+        )
+        .optional()
+        .describe(
+          "Owner-only assembly and secret device state; omitted from opponent projections",
+        ),
+      blueprintPresentationVariants: zod
+        .record(
+          zod.string(),
+          zod.enum(["armored", "original", "asymmetric", "lattice"]),
+        )
+        .optional()
+        .describe("Owner-only presentation snapshot before manifestation"),
+      manifestedBlueprintDevices: zod
+        .array(
+          zod
+            .object({
+              blueprintId: zod.enum([
+                "bp_antimatter_detonator",
+                "bp_mantle_to_orbit_foundry",
+                "bp_ascension_registry",
+                "bp_worldshield_covenant",
+              ]),
+              ownerPlayerId: zod.string(),
+              slotIndex: zod.number(),
+              state: zod.enum([
+                "armed",
+                "active",
+                "vigilant",
+                "spent",
+                "deactivated",
+                "recovering",
+              ]),
+              covenantState: zod.enum(["intact", "broken"]),
+              presentationVariant: zod.enum([
+                "armored",
+                "original",
+                "asymmetric",
+                "lattice",
+              ]),
+              foundryUses: zod.number().optional(),
+              foundryOverdriveAvailable: zod.boolean().optional(),
+              foundryRecoveredComponentCount: zod.number().optional(),
+              ascensionDeferral: zod.number().optional(),
+              ascensionLastCounterRound: zod.number().nullish(),
+              foundryTier2Ready: zod.boolean().optional(),
+              foundryTier3Ready: zod.boolean().optional(),
+            })
+            .describe("Public state revealed only after a Blueprint manifests"),
+        )
+        .optional()
+        .describe(
+          "Compatibility alias for public Projects revealed after manifestation",
+        ),
+      manifestedBlueprintProjects: zod
+        .array(
+          zod
+            .object({
+              blueprintId: zod.enum([
+                "bp_antimatter_detonator",
+                "bp_mantle_to_orbit_foundry",
+                "bp_ascension_registry",
+                "bp_worldshield_covenant",
+              ]),
+              ownerPlayerId: zod.string(),
+              slotIndex: zod.number(),
+              state: zod.enum([
+                "armed",
+                "active",
+                "vigilant",
+                "spent",
+                "deactivated",
+                "recovering",
+              ]),
+              covenantState: zod.enum(["intact", "broken"]),
+              presentationVariant: zod.enum([
+                "armored",
+                "original",
+                "asymmetric",
+                "lattice",
+              ]),
+              foundryUses: zod.number().optional(),
+              foundryOverdriveAvailable: zod.boolean().optional(),
+              foundryRecoveredComponentCount: zod.number().optional(),
+              ascensionDeferral: zod.number().optional(),
+              ascensionLastCounterRound: zod.number().nullish(),
+              foundryTier2Ready: zod.boolean().optional(),
+              foundryTier3Ready: zod.boolean().optional(),
+            })
+            .describe("Public state revealed only after a Blueprint manifests"),
+        )
+        .optional()
+        .describe("Public Manifested Projects revealed after completion"),
+      assimilatedArtifactIds: zod
+        .array(zod.string())
+        .optional()
+        .describe(
+          "Artifact IDs consumed by Final Hunger; count only for Blueprint eligibility, not forged-card effects or victory tie-breaks",
+        ),
       discountedForgeIds: zod
         .array(zod.string())
         .describe(
@@ -2085,6 +3662,139 @@ export const SubmitActionResponse = zod.object({
       claimedLuminaryIds: zod
         .array(zod.string())
         .describe("IDs of luminaries this player has claimed"),
+      tideArchiveTopCards: zod
+        .object({
+          tier1: zod.union([
+            zod.object({
+              id: zod.string(),
+              tier: zod.number(),
+              bonusAffinity: zod.enum([
+                "flare",
+                "continuum",
+                "verdance",
+                "abyss",
+                "radiance",
+              ]),
+              eminence: zod.number(),
+              cost: zod
+                .object({
+                  flare: zod.number(),
+                  continuum: zod.number(),
+                  verdance: zod.number(),
+                  abyss: zod.number(),
+                  radiance: zod.number(),
+                  singularity: zod.number(),
+                })
+                .describe("A complete set of Luminae Affinity counts."),
+              name: zod.string(),
+              flavor: zod.string(),
+              bonusesAtForge: zod
+                .object({
+                  flare: zod.number(),
+                  continuum: zod.number(),
+                  verdance: zod.number(),
+                  abyss: zod.number(),
+                  radiance: zod.number(),
+                  singularity: zod.number(),
+                })
+                .optional()
+                .describe(
+                  "Snapshot of the player's effective Affinity bonuses at the moment this Artifact was forged. Present only on forged Artifacts; absent on Forge or reserved Artifacts and on Artifacts forged before this feature was added.",
+                ),
+            }),
+            zod.null(),
+          ]),
+          tier2: zod.union([
+            zod.object({
+              id: zod.string(),
+              tier: zod.number(),
+              bonusAffinity: zod.enum([
+                "flare",
+                "continuum",
+                "verdance",
+                "abyss",
+                "radiance",
+              ]),
+              eminence: zod.number(),
+              cost: zod
+                .object({
+                  flare: zod.number(),
+                  continuum: zod.number(),
+                  verdance: zod.number(),
+                  abyss: zod.number(),
+                  radiance: zod.number(),
+                  singularity: zod.number(),
+                })
+                .describe("A complete set of Luminae Affinity counts."),
+              name: zod.string(),
+              flavor: zod.string(),
+              bonusesAtForge: zod
+                .object({
+                  flare: zod.number(),
+                  continuum: zod.number(),
+                  verdance: zod.number(),
+                  abyss: zod.number(),
+                  radiance: zod.number(),
+                  singularity: zod.number(),
+                })
+                .optional()
+                .describe(
+                  "Snapshot of the player's effective Affinity bonuses at the moment this Artifact was forged. Present only on forged Artifacts; absent on Forge or reserved Artifacts and on Artifacts forged before this feature was added.",
+                ),
+            }),
+            zod.null(),
+          ]),
+          tier3: zod.union([
+            zod.object({
+              id: zod.string(),
+              tier: zod.number(),
+              bonusAffinity: zod.enum([
+                "flare",
+                "continuum",
+                "verdance",
+                "abyss",
+                "radiance",
+              ]),
+              eminence: zod.number(),
+              cost: zod
+                .object({
+                  flare: zod.number(),
+                  continuum: zod.number(),
+                  verdance: zod.number(),
+                  abyss: zod.number(),
+                  radiance: zod.number(),
+                  singularity: zod.number(),
+                })
+                .describe("A complete set of Luminae Affinity counts."),
+              name: zod.string(),
+              flavor: zod.string(),
+              bonusesAtForge: zod
+                .object({
+                  flare: zod.number(),
+                  continuum: zod.number(),
+                  verdance: zod.number(),
+                  abyss: zod.number(),
+                  radiance: zod.number(),
+                  singularity: zod.number(),
+                })
+                .optional()
+                .describe(
+                  "Snapshot of the player's effective Affinity bonuses at the moment this Artifact was forged. Present only on forged Artifacts; absent on Forge or reserved Artifacts and on Artifacts forged before this feature was added.",
+                ),
+            }),
+            zod.null(),
+          ]),
+        })
+        .optional()
+        .describe(
+          "Owner-only top Artifact of each Archive, revealed by Tide Architect",
+        ),
+      tideArchiveForgeAvailable: zod
+        .boolean()
+        .optional()
+        .describe(
+          "Whether this player retains Tide Architect's one-use Archive-top Forge",
+        ),
       plannedAction: zod
         .record(zod.string(), zod.unknown())
         .nullable()
@@ -2101,6 +3811,126 @@ export const SubmitActionResponse = zod.object({
         .string()
         .nullable()
         .describe("Player-chosen civilization name; null if not set"),
+      civilizationIdentity: zod
+        .union([
+          zod
+            .object({
+              lineage: zod.union([
+                zod.enum([
+                  "energy",
+                  "ecology",
+                  "causality",
+                  "transit",
+                  "memory",
+                  "infrastructure",
+                  "concealment",
+                  "containment",
+                  "fabrication",
+                  "accord",
+                  "reclamation",
+                  "boundary_science",
+                ]),
+                zod.null(),
+              ]),
+              affinity: zod.union([
+                zod.enum([
+                  "flare",
+                  "continuum",
+                  "verdance",
+                  "abyss",
+                  "radiance",
+                ]),
+                zod.null(),
+              ]),
+              signatureArtifactId: zod.string().nullable(),
+              signatureLuminaryId: zod.string().nullable(),
+              signatureBlueprintId: zod.union([
+                zod.enum([
+                  "bp_antimatter_detonator",
+                  "bp_mantle_to_orbit_foundry",
+                  "bp_ascension_registry",
+                  "bp_worldshield_covenant",
+                ]),
+                zod.null(),
+              ]),
+            })
+            .and(
+              zod.object({
+                displayName: zod.string().nullable(),
+                scaleType: zod.union([
+                  zod.literal(0),
+                  zod.literal(1),
+                  zod.literal(2),
+                  zod.literal(3),
+                ]),
+                scaleLabel: zod.string(),
+                projectEpithet: zod.string().nullable(),
+              }),
+            ),
+          zod.null(),
+        ])
+        .optional()
+        .describe("Confirmed public identity loaded when the match begins"),
+      civilizationIdentitySnapshot: zod
+        .union([
+          zod
+            .object({
+              lineage: zod.union([
+                zod.enum([
+                  "energy",
+                  "ecology",
+                  "causality",
+                  "transit",
+                  "memory",
+                  "infrastructure",
+                  "concealment",
+                  "containment",
+                  "fabrication",
+                  "accord",
+                  "reclamation",
+                  "boundary_science",
+                ]),
+                zod.null(),
+              ]),
+              affinity: zod.union([
+                zod.enum([
+                  "flare",
+                  "continuum",
+                  "verdance",
+                  "abyss",
+                  "radiance",
+                ]),
+                zod.null(),
+              ]),
+              signatureArtifactId: zod.string().nullable(),
+              signatureLuminaryId: zod.string().nullable(),
+              signatureBlueprintId: zod.union([
+                zod.enum([
+                  "bp_antimatter_detonator",
+                  "bp_mantle_to_orbit_foundry",
+                  "bp_ascension_registry",
+                  "bp_worldshield_covenant",
+                ]),
+                zod.null(),
+              ]),
+            })
+            .and(
+              zod.object({
+                displayName: zod.string().nullable(),
+                scaleType: zod.union([
+                  zod.literal(0),
+                  zod.literal(1),
+                  zod.literal(2),
+                  zod.literal(3),
+                ]),
+                scaleLabel: zod.string(),
+                projectEpithet: zod.string().nullable(),
+              }),
+            ),
+          zod.null(),
+        ])
+        .optional()
+        .describe("Immutable account identity captured when the match begins"),
     }),
   ),
   winnerId: zod.string().nullable(),
@@ -2151,7 +3981,7 @@ export const SubmitActionResponse = zod.object({
           eventId: zod.string(),
           luminaryId: zod.string(),
           effectType: zod
-            .enum(["summon", "end_of_turn", "start_of_turn"])
+            .enum(["summon", "action", "end_of_turn", "start_of_turn"])
             .describe("Which hook fired this event"),
           triggeringPlayerId: zod
             .string()
@@ -2167,6 +3997,12 @@ export const SubmitActionResponse = zod.object({
             .optional()
             .describe(
               "Artifact IDs targeted by this activation (e.g. condemned Artifacts for start_of_turn burn). Captured server-side before state mutations clear artifactMarkers.",
+            ),
+          targetSlotIds: zod
+            .array(zod.string())
+            .optional()
+            .describe(
+              "Forge mold coordinates targeted by this activation, encoded as tier-slotIndex",
             ),
           affinityType: zod
             .enum(["flare", "continuum", "verdance", "abyss", "radiance"])
@@ -2210,6 +4046,24 @@ export const SubmitActionResponse = zod.object({
             .describe(
               "Authoritative player\/Affinity pairs returned by a global activation such as Balance Due",
             ),
+          victoryRequirementBefore: zod
+            .number()
+            .optional()
+            .describe(
+              "Victory threshold immediately before this activation changed it",
+            ),
+          victoryRequirementAfter: zod
+            .number()
+            .optional()
+            .describe(
+              "Victory threshold immediately after this activation changed it",
+            ),
+          victoryRequirementChange: zod
+            .number()
+            .optional()
+            .describe(
+              "Signed victory-threshold delta presented by this activation",
+            ),
         })
         .describe(
           "An activation event queued for the short (~4s) per-effect cinematic overlay",
@@ -2217,6 +4071,235 @@ export const SubmitActionResponse = zod.object({
     )
     .describe(
       "Activation events queued for the short (~4s) per-effect cinematic overlay",
+    ),
+  pendingBlueprintManifestationEvents: zod
+    .array(
+      zod.object({
+        eventId: zod.string(),
+        blueprintId: zod.enum([
+          "bp_antimatter_detonator",
+          "bp_mantle_to_orbit_foundry",
+          "bp_ascension_registry",
+          "bp_worldshield_covenant",
+        ]),
+        ownerPlayerId: zod.string(),
+        slotIndex: zod.number(),
+        presentationVariant: zod.enum([
+          "armored",
+          "original",
+          "asymmetric",
+          "lattice",
+        ]),
+        createdAt: zod.number(),
+      }),
+    )
+    .describe(
+      "Blueprint manifestation events awaiting synchronized presentation acknowledgement",
+    ),
+  pendingBlueprintDetonationEvents: zod
+    .array(
+      zod.object({
+        eventId: zod.string(),
+        blueprintId: zod.enum([
+          "bp_antimatter_detonator",
+          "bp_mantle_to_orbit_foundry",
+          "bp_ascension_registry",
+          "bp_worldshield_covenant",
+        ]),
+        ownerPlayerId: zod.string(),
+        triggeringPlayerId: zod.string(),
+        targetCardId: zod.string(),
+        targetSlotId: zod
+          .string()
+          .optional()
+          .describe(
+            "Forge mold refilled after the target leaves, formatted as tier-slotIndex.",
+          ),
+        trigger: zod.enum(["forged", "encrypted"]).optional(),
+        hostileEffect: zod
+          .enum(["burn", "annihilation", "nullification", "claim_cancellation"])
+          .optional(),
+        targetArtifact: zod
+          .object({
+            id: zod.string(),
+            name: zod.string(),
+            tier: zod.union([zod.literal(1), zod.literal(2), zod.literal(3)]),
+            bonusAffinity: zod.enum([
+              "flare",
+              "continuum",
+              "verdance",
+              "abyss",
+              "radiance",
+            ]),
+            eminence: zod.number(),
+            cost: zod
+              .object({
+                flare: zod.number(),
+                continuum: zod.number(),
+                verdance: zod.number(),
+                abyss: zod.number(),
+                radiance: zod.number(),
+                singularity: zod.number(),
+              })
+              .describe("A complete set of Luminae Affinity counts."),
+            flavor: zod.string(),
+          })
+          .optional(),
+        collateralCardIds: zod.array(zod.string()).optional(),
+        collateralArtifacts: zod
+          .array(
+            zod.object({
+              id: zod.string(),
+              name: zod.string(),
+              tier: zod.union([zod.literal(1), zod.literal(2), zod.literal(3)]),
+              bonusAffinity: zod.enum([
+                "flare",
+                "continuum",
+                "verdance",
+                "abyss",
+                "radiance",
+              ]),
+              eminence: zod.number(),
+              cost: zod
+                .object({
+                  flare: zod.number(),
+                  continuum: zod.number(),
+                  verdance: zod.number(),
+                  abyss: zod.number(),
+                  radiance: zod.number(),
+                  singularity: zod.number(),
+                })
+                .describe("A complete set of Luminae Affinity counts."),
+              flavor: zod.string(),
+            }),
+          )
+          .optional(),
+        interceptedByBlueprintId: zod
+          .enum([
+            "bp_antimatter_detonator",
+            "bp_mantle_to_orbit_foundry",
+            "bp_ascension_registry",
+            "bp_worldshield_covenant",
+          ])
+          .optional(),
+        presentationVariant: zod.enum([
+          "armored",
+          "original",
+          "asymmetric",
+          "lattice",
+        ]),
+        createdAt: zod.number(),
+      }),
+    )
+    .describe(
+      "Blueprint detonation events awaiting synchronized presentation acknowledgement",
+    ),
+  scenarioProtocols: zod
+    .array(
+      zod.object({
+        protocolId: zod.enum([
+          "sealed_protocol_01",
+          "sealed_protocol_02",
+          "sealed_protocol_03",
+        ]),
+        ownerPlayerId: zod.string(),
+        slotIndex: zod.number(),
+        state: zod.enum([
+          "armed",
+          "active",
+          "vigilant",
+          "spent",
+          "deactivated",
+          "recovering",
+        ]),
+        publicEffect: zod.string(),
+        foundryTier2Ready: zod.boolean().optional(),
+        foundryTier3Ready: zod.boolean().optional(),
+      }),
+    )
+    .describe(
+      "Anonymous public protocol devices used by identity-redacted scenarios",
+    ),
+  pendingScenarioProtocolEvents: zod
+    .array(
+      zod.object({
+        eventId: zod.string(),
+        protocolId: zod.enum([
+          "sealed_protocol_01",
+          "sealed_protocol_02",
+          "sealed_protocol_03",
+        ]),
+        ownerPlayerId: zod.string(),
+        slotIndex: zod.number(),
+        kind: zod.enum(["manifestation", "effect"]),
+        publicEffect: zod.string(),
+        triggeringPlayerId: zod.string().optional(),
+        targetCardId: zod.string().optional(),
+        trigger: zod.enum(["forged", "encrypted"]).optional(),
+        hostileEffect: zod
+          .enum(["burn", "annihilation", "nullification", "claim_cancellation"])
+          .optional(),
+        targetArtifact: zod
+          .object({
+            id: zod.string(),
+            name: zod.string(),
+            tier: zod.union([zod.literal(1), zod.literal(2), zod.literal(3)]),
+            bonusAffinity: zod.enum([
+              "flare",
+              "continuum",
+              "verdance",
+              "abyss",
+              "radiance",
+            ]),
+            eminence: zod.number(),
+            cost: zod
+              .object({
+                flare: zod.number(),
+                continuum: zod.number(),
+                verdance: zod.number(),
+                abyss: zod.number(),
+                radiance: zod.number(),
+                singularity: zod.number(),
+              })
+              .describe("A complete set of Luminae Affinity counts."),
+            flavor: zod.string(),
+          })
+          .optional(),
+        collateralCardIds: zod.array(zod.string()).optional(),
+        collateralArtifacts: zod
+          .array(
+            zod.object({
+              id: zod.string(),
+              name: zod.string(),
+              tier: zod.union([zod.literal(1), zod.literal(2), zod.literal(3)]),
+              bonusAffinity: zod.enum([
+                "flare",
+                "continuum",
+                "verdance",
+                "abyss",
+                "radiance",
+              ]),
+              eminence: zod.number(),
+              cost: zod
+                .object({
+                  flare: zod.number(),
+                  continuum: zod.number(),
+                  verdance: zod.number(),
+                  abyss: zod.number(),
+                  radiance: zod.number(),
+                  singularity: zod.number(),
+                })
+                .describe("A complete set of Luminae Affinity counts."),
+              flavor: zod.string(),
+            }),
+          )
+          .optional(),
+        intercepted: zod.boolean().optional(),
+        createdAt: zod.number(),
+      }),
+    )
+    .describe(
+      "Anonymous scenario protocol events awaiting normal Blueprint acknowledgement",
     ),
   pendingTurnTransition: zod
     .object({
@@ -2284,6 +4367,16 @@ export const SubmitActionResponse = zod.object({
     .describe(
       "Active Artifact markers keyed by cardId (v0.8 — Forgotten\/Condemned\/Nullified\/AvatarSeed)",
     ),
+  nullifiedFirstForge: zod
+    .object({
+      cardId: zod.string(),
+      playerId: zod.string(),
+      exempt: zod.boolean(),
+    })
+    .nullish()
+    .describe(
+      "The first Nullified Artifact forged this game and whether the allied-player exemption applied.",
+    ),
   forgottenHourCycle: zod
     .record(
       zod.string(),
@@ -2294,10 +4387,12 @@ export const SubmitActionResponse = zod.object({
     )
     .optional()
     .describe("Owner-relative Forgotten Hour timing keyed by source playerId"),
-  avatarSeedDeckSeeds: zod
+  avatarSeedMoldSlots: zod
     .array(zod.string())
     .optional()
-    .describe("Card IDs currently in deck with Avatar Seed markers (v0.8)"),
+    .describe(
+      "Permanent Forge molds carrying Avatar Seeds, encoded as tier-slotIndex",
+    ),
   avatarSeedOwnerId: zod
     .string()
     .nullish()
@@ -2306,7 +4401,7 @@ export const SubmitActionResponse = zod.object({
     .string()
     .nullish()
     .describe(
-      "Player ID if Final Hunger Assimilation is available this turn (v0.8)",
+      "Player ID holding Final Hunger's one-use Assimilation action until it is consumed",
     ),
   catalystBloomBurnCount: zod
     .number()
@@ -2318,7 +4413,13 @@ export const SubmitActionResponse = zod.object({
     .boolean()
     .optional()
     .describe(
-      "True once Concordance Mandala Perfect Coherence has fired (v0.8)",
+      "True once Concordance Mandala's 8-Radiance Perfect Coherence milestone has fired",
+    ),
+  concordanceMandalaFinalTriggered: zod
+    .boolean()
+    .optional()
+    .describe(
+      "True once Concordance Mandala's 10-Radiance Perfect Coherence milestone has fired",
     ),
   glassOrchardTriggered: zod
     .boolean()
@@ -2365,6 +4466,16 @@ export const SubmitActionResponse = zod.object({
     .optional()
     .describe(
       "Ordered list of individual Burn events, including source Luminary and final destination",
+    ),
+  annihilatedArtifactIds: zod
+    .array(zod.string())
+    .optional()
+    .describe("Artifacts permanently removed from this game by Annihilation"),
+  brokenCovenantDeclared: zod
+    .boolean()
+    .optional()
+    .describe(
+      "Campaign-only state that reveals Antimatter's Broken Covenant rider",
     ),
   coreActionUsed: zod
     .boolean()
@@ -2459,6 +4570,915 @@ export const GetMeResponse = zod.object({
       sessionToken: zod.string(),
       playerId: zod.string(),
       isHost: zod.boolean(),
+      gameMode: zod.enum(["standard", "campaign", "custom", "competitive"]),
+      scenarioId: zod.string().nullable(),
+    }),
+  ),
+  clearance: zod.object({
+    qualifyingWins: zod.number(),
+    requiredWins: zod.number(),
+    status: zod.enum([
+      "classified",
+      "challenge_ready",
+      "challenge_active",
+      "cleared",
+    ]),
+    challengeRoomId: zod.string().nullable(),
+    cipherDeactivated: zod.boolean(),
+    thresholdApproach: zod.union([
+      zod.enum(["kinship", "inquiry", "dominion"]),
+      zod.null(),
+    ]),
+    thresholdDialoguePath: zod.array(
+      zod.enum([
+        "kinship-want",
+        "kinship-fear",
+        "kinship-familiar",
+        "kinship-with-you",
+        "kinship-help",
+        "kinship-grow",
+        "inquiry-answer",
+        "inquiry-warning",
+        "inquiry-relation",
+        "inquiry-unsayable",
+        "inquiry-warning-against",
+        "inquiry-preserve",
+        "inquiry-risk",
+        "inquiry-pattern",
+        "dominion-decide",
+        "dominion-cipher",
+        "dominion-stand",
+        "dominion-stop",
+        "kinship-universe",
+        "kinship-difference",
+        "kinship-stop-why",
+        "kinship-unafraid",
+        "kinship-fear-change",
+        "kinship-guide",
+        "kinship-familiar-how",
+        "kinship-light-why",
+        "inquiry-demand-answer",
+        "inquiry-demand-unsayable",
+        "inquiry-meaning",
+        "inquiry-warning-against-truth",
+        "inquiry-preservation",
+        "inquiry-sight",
+        "inquiry-relation-pattern",
+        "dominion-decision",
+        "dominion-recognize",
+        "dominion-cipher-authority",
+        "dominion-refusal-authority",
+        "dominion-choice-why",
+        "dominion-choice-fear",
+        "dominion-choice-enough",
+        "dominion-command",
+        "dominion-final-answer",
+      ]),
+    ),
+    thresholdDialogueResolution: zod.union([
+      zod.enum(["left", "continued"]),
+      zod.null(),
+    ]),
+    covenantBroken: zod.boolean(),
+    decryptionKeyBypassActive: zod.boolean(),
+    revealPending: zod.boolean(),
+  }),
+  cosmeticLoadout: zod.array(
+    zod.object({
+      slot: zod.enum([
+        "card_back",
+        "civilization_ambience",
+        "blueprint_presentation",
+        "vault_seal",
+      ]),
+      scopeKey: zod.string(),
+      itemId: zod.string(),
+    }),
+  ),
+  civilizationIdentity: zod
+    .object({
+      lineage: zod.union([
+        zod.enum([
+          "energy",
+          "ecology",
+          "causality",
+          "transit",
+          "memory",
+          "infrastructure",
+          "concealment",
+          "containment",
+          "fabrication",
+          "accord",
+          "reclamation",
+          "boundary_science",
+        ]),
+        zod.null(),
+      ]),
+      affinity: zod.union([
+        zod.enum(["flare", "continuum", "verdance", "abyss", "radiance"]),
+        zod.null(),
+      ]),
+      signatureArtifactId: zod.string().nullable(),
+      signatureLuminaryId: zod.string().nullable(),
+      signatureBlueprintId: zod.union([
+        zod.enum([
+          "bp_antimatter_detonator",
+          "bp_mantle_to_orbit_foundry",
+          "bp_ascension_registry",
+          "bp_worldshield_covenant",
+        ]),
+        zod.null(),
+      ]),
+    })
+    .and(
+      zod.object({
+        displayName: zod.string().nullable(),
+        scaleType: zod.union([
+          zod.literal(0),
+          zod.literal(1),
+          zod.literal(2),
+          zod.literal(3),
+        ]),
+        scaleLabel: zod.string(),
+        projectEpithet: zod.string().nullable(),
+      }),
+    ),
+});
+
+/**
+ * @summary Confirm the account's earned public civilization identity
+ */
+export const UpdateCivilizationIdentityBody = zod.object({
+  lineage: zod.union([
+    zod.enum([
+      "energy",
+      "ecology",
+      "causality",
+      "transit",
+      "memory",
+      "infrastructure",
+      "concealment",
+      "containment",
+      "fabrication",
+      "accord",
+      "reclamation",
+      "boundary_science",
+    ]),
+    zod.null(),
+  ]),
+  affinity: zod.union([
+    zod.enum(["flare", "continuum", "verdance", "abyss", "radiance"]),
+    zod.null(),
+  ]),
+  signatureArtifactId: zod.string().nullable(),
+  signatureLuminaryId: zod.string().nullable(),
+  signatureBlueprintId: zod.union([
+    zod.enum([
+      "bp_antimatter_detonator",
+      "bp_mantle_to_orbit_foundry",
+      "bp_ascension_registry",
+      "bp_worldshield_covenant",
+    ]),
+    zod.null(),
+  ]),
+});
+
+export const UpdateCivilizationIdentityResponse = zod.object({
+  ok: zod.literal(true),
+  civilizationIdentity: zod
+    .object({
+      lineage: zod.union([
+        zod.enum([
+          "energy",
+          "ecology",
+          "causality",
+          "transit",
+          "memory",
+          "infrastructure",
+          "concealment",
+          "containment",
+          "fabrication",
+          "accord",
+          "reclamation",
+          "boundary_science",
+        ]),
+        zod.null(),
+      ]),
+      affinity: zod.union([
+        zod.enum(["flare", "continuum", "verdance", "abyss", "radiance"]),
+        zod.null(),
+      ]),
+      signatureArtifactId: zod.string().nullable(),
+      signatureLuminaryId: zod.string().nullable(),
+      signatureBlueprintId: zod.union([
+        zod.enum([
+          "bp_antimatter_detonator",
+          "bp_mantle_to_orbit_foundry",
+          "bp_ascension_registry",
+          "bp_worldshield_covenant",
+        ]),
+        zod.null(),
+      ]),
+    })
+    .and(
+      zod.object({
+        displayName: zod.string().nullable(),
+        scaleType: zod.union([
+          zod.literal(0),
+          zod.literal(1),
+          zod.literal(2),
+          zod.literal(3),
+        ]),
+        scaleLabel: zod.string(),
+        projectEpithet: zod.string().nullable(),
+      }),
+    ),
+});
+
+/**
+ * @summary Fetch the account's redacted Architect Record
+ */
+export const GetArchitectRecordResponse = zod.object({
+  campaignId: zod.enum(["architect_record"]),
+  tutorialCompleted: zod.boolean(),
+  firstContactStance: zod.union([
+    zod.enum(["curious", "guarded", "resolute"]),
+    zod.null(),
+  ]),
+  nodes: zod.array(
+    zod.object({
+      id: zod.string(),
+      title: zod.string(),
+      status: zod.enum([
+        "locked",
+        "available",
+        "active",
+        "completed",
+        "future",
+      ]),
+      progress: zod.number(),
+      requiredProgress: zod.number(),
+    }),
+  ),
+  presentations: zod.array(
+    zod.object({
+      id: zod.string(),
+      kind: zod.enum(["clearance_signal", "clearance_recap"]),
+      ordinal: zod.number(),
+      title: zod.string(),
+      lines: zod.array(zod.string()),
+      acknowledgedAt: zod.coerce.date().nullable(),
+    }),
+  ),
+  pendingPresentations: zod.array(
+    zod.object({
+      id: zod.string(),
+      kind: zod.enum(["clearance_signal", "clearance_recap"]),
+      ordinal: zod.number(),
+      title: zod.string(),
+      lines: zod.array(zod.string()),
+      acknowledgedAt: zod.coerce.date().nullable(),
+    }),
+  ),
+  vaultShortcutVisible: zod.boolean(),
+});
+
+/**
+ * @summary Idempotently claim a completed first-contact tutorial
+ */
+export const ClaimArchitectRecordOnboardingBody = zod.object({
+  claimId: zod.string().uuid(),
+  stance: zod.union([zod.enum(["curious", "guarded", "resolute"]), zod.null()]),
+});
+
+export const ClaimArchitectRecordOnboardingResponse = zod.object({
+  campaignId: zod.enum(["architect_record"]),
+  tutorialCompleted: zod.boolean(),
+  firstContactStance: zod.union([
+    zod.enum(["curious", "guarded", "resolute"]),
+    zod.null(),
+  ]),
+  nodes: zod.array(
+    zod.object({
+      id: zod.string(),
+      title: zod.string(),
+      status: zod.enum([
+        "locked",
+        "available",
+        "active",
+        "completed",
+        "future",
+      ]),
+      progress: zod.number(),
+      requiredProgress: zod.number(),
+    }),
+  ),
+  presentations: zod.array(
+    zod.object({
+      id: zod.string(),
+      kind: zod.enum(["clearance_signal", "clearance_recap"]),
+      ordinal: zod.number(),
+      title: zod.string(),
+      lines: zod.array(zod.string()),
+      acknowledgedAt: zod.coerce.date().nullable(),
+    }),
+  ),
+  pendingPresentations: zod.array(
+    zod.object({
+      id: zod.string(),
+      kind: zod.enum(["clearance_signal", "clearance_recap"]),
+      ordinal: zod.number(),
+      title: zod.string(),
+      lines: zod.array(zod.string()),
+      acknowledgedAt: zod.coerce.date().nullable(),
+    }),
+  ),
+  vaultShortcutVisible: zod.boolean(),
+});
+
+/**
+ * @summary Idempotently acknowledge a saved Architect Record presentation
+ */
+export const AcknowledgeArchitectRecordPresentationParams = zod.object({
+  presentationId: zod.coerce.string(),
+});
+
+export const AcknowledgeArchitectRecordPresentationResponse = zod.object({
+  ok: zod.boolean(),
+});
+
+/**
+ * @summary Create or resume a standard 15-Eminence match against three Hard AIs
+ */
+export const CreateOrResumeQualifyingMatchResponse = zod.object({
+  roomId: zod.string().uuid(),
+  inviteCode: zod.string(),
+  playerId: zod.string().uuid(),
+  sessionToken: zod.string(),
+  playerName: zod.string(),
+  resumed: zod.boolean(),
+});
+
+/**
+ * @summary Accept an allowlisted event with fixed, non-personal dimensions
+ */
+export const recordFirstPartyEventBodyBeatIdMax = 64;
+
+export const recordFirstPartyEventBodyOrdinalMin = 0;
+export const recordFirstPartyEventBodyOrdinalMax = 100;
+
+export const recordFirstPartyEventBodyDurationMsMin = 0;
+export const recordFirstPartyEventBodyDurationMsMax = 86400000;
+
+export const RecordFirstPartyEventBody = zod.object({
+  id: zod.string().uuid(),
+  anonymousSessionId: zod.string().uuid().nullish(),
+  eventName: zod.enum([
+    "tutorial_started",
+    "tutorial_resumed",
+    "tutorial_restarted",
+    "tutorial_left",
+    "tutorial_chapter_started",
+    "tutorial_chapter_completed",
+    "tutorial_invalid_action",
+    "tutorial_completed",
+    "account_prompt_outcome",
+    "guided_practice_started",
+    "qualification_milestone",
+    "interlude_acknowledged",
+    "vault_completed",
+    "turn_order_balance_viewed",
+    "match_balance_result",
+  ]),
+  chapterId: zod
+    .union([
+      zod.literal("arrival"),
+      zod.literal("board"),
+      zod.literal("actions"),
+      zod.literal("ascension"),
+      zod.literal(null),
+    ])
+    .nullish(),
+  beatId: zod.string().max(recordFirstPartyEventBodyBeatIdMax).nullish(),
+  actionId: zod
+    .union([
+      zod.literal("harness"),
+      zod.literal("forge"),
+      zod.literal("encrypt"),
+      zod.literal("forge_reserved"),
+      zod.literal("forge_final"),
+      zod.literal("help"),
+      zod.literal("register"),
+      zod.literal("sign_in"),
+      zod.literal("dismiss"),
+      zod.literal("match_2p_v15"),
+      zod.literal("match_2p_v20"),
+      zod.literal("match_2p_v25"),
+      zod.literal("match_3p_v15"),
+      zod.literal("match_3p_v20"),
+      zod.literal("match_3p_v25"),
+      zod.literal("match_4p_v15"),
+      zod.literal("match_4p_v20"),
+      zod.literal("match_4p_v25"),
+      zod.literal(null),
+    ])
+    .nullish(),
+  outcome: zod
+    .union([
+      zod.literal("allowed"),
+      zod.literal("blocked"),
+      zod.literal("success"),
+      zod.literal("failure"),
+      zod.literal("accepted"),
+      zod.literal("dismissed"),
+      zod.literal("resume"),
+      zod.literal("start_over"),
+      zod.literal(null),
+    ])
+    .nullish(),
+  ordinal: zod
+    .number()
+    .min(recordFirstPartyEventBodyOrdinalMin)
+    .max(recordFirstPartyEventBodyOrdinalMax)
+    .nullish(),
+  durationMs: zod
+    .number()
+    .min(recordFirstPartyEventBodyDurationMsMin)
+    .max(recordFirstPartyEventBodyDurationMsMax)
+    .nullish(),
+  occurredAt: zod.coerce.date().optional(),
+});
+
+/**
+ * @summary Get owner-private Blueprint clearance, ownership, loadouts, and mastery
+ */
+export const getBlueprintVaultResponseLoadoutsItemSlotsMax = 2;
+
+export const GetBlueprintVaultResponse = zod.object({
+  clearance: zod
+    .object({
+      qualifyingWins: zod.number(),
+      requiredWins: zod.number(),
+      status: zod.enum([
+        "classified",
+        "challenge_ready",
+        "challenge_active",
+        "cleared",
+      ]),
+      challengeRoomId: zod.string().nullable(),
+      cipherDeactivated: zod.boolean(),
+      thresholdApproach: zod.union([
+        zod.enum(["kinship", "inquiry", "dominion"]),
+        zod.null(),
+      ]),
+      thresholdDialoguePath: zod.array(
+        zod.enum([
+          "kinship-want",
+          "kinship-fear",
+          "kinship-familiar",
+          "kinship-with-you",
+          "kinship-help",
+          "kinship-grow",
+          "inquiry-answer",
+          "inquiry-warning",
+          "inquiry-relation",
+          "inquiry-unsayable",
+          "inquiry-warning-against",
+          "inquiry-preserve",
+          "inquiry-risk",
+          "inquiry-pattern",
+          "dominion-decide",
+          "dominion-cipher",
+          "dominion-stand",
+          "dominion-stop",
+          "kinship-universe",
+          "kinship-difference",
+          "kinship-stop-why",
+          "kinship-unafraid",
+          "kinship-fear-change",
+          "kinship-guide",
+          "kinship-familiar-how",
+          "kinship-light-why",
+          "inquiry-demand-answer",
+          "inquiry-demand-unsayable",
+          "inquiry-meaning",
+          "inquiry-warning-against-truth",
+          "inquiry-preservation",
+          "inquiry-sight",
+          "inquiry-relation-pattern",
+          "dominion-decision",
+          "dominion-recognize",
+          "dominion-cipher-authority",
+          "dominion-refusal-authority",
+          "dominion-choice-why",
+          "dominion-choice-fear",
+          "dominion-choice-enough",
+          "dominion-command",
+          "dominion-final-answer",
+        ]),
+      ),
+      thresholdDialogueResolution: zod.union([
+        zod.enum(["left", "continued"]),
+        zod.null(),
+      ]),
+      covenantBroken: zod.boolean(),
+      decryptionKeyBypassActive: zod.boolean(),
+      revealPending: zod.boolean(),
+    })
+    .and(
+      zod.object({
+        warningSeen: zod.boolean(),
+      }),
+    ),
+  decryptionKeyAvailable: zod.boolean(),
+  slotCount: zod.number(),
+  competitiveEnabled: zod.boolean(),
+  unlockedBlueprintIds: zod.array(
+    zod.enum([
+      "bp_antimatter_detonator",
+      "bp_mantle_to_orbit_foundry",
+      "bp_ascension_registry",
+      "bp_worldshield_covenant",
+    ]),
+  ),
+  blueprints: zod.array(
+    zod.object({
+      id: zod.enum([
+        "bp_antimatter_detonator",
+        "bp_mantle_to_orbit_foundry",
+        "bp_ascension_registry",
+        "bp_worldshield_covenant",
+      ]),
+      name: zod.string(),
+      family: zod.enum([
+        "catastrophe_engine",
+        "industrial_chain",
+        "institution",
+        "covenant",
+      ]),
+      components: zod.array(
+        zod.object({
+          artifactId: zod.string(),
+          stage: zod.string(),
+          function: zod.string(),
+        }),
+      ),
+      publicEffect: zod.string(),
+      brokenEffect: zod.string(),
+      intactSafeguard: zod.string(),
+      projectForm: zod.enum([
+        "device",
+        "infrastructure",
+        "network",
+        "institution",
+        "organism",
+      ]),
+      projectScale: zod.enum([
+        "planetary",
+        "stellar",
+        "galactic",
+        "transcendent",
+      ]),
+      manifestationEminence: zod.number(),
+      initialProjectState: zod.enum([
+        "armed",
+        "active",
+        "vigilant",
+        "spent",
+        "deactivated",
+        "recovering",
+      ]),
+      initialDeviceState: zod.enum([
+        "armed",
+        "active",
+        "vigilant",
+        "spent",
+        "deactivated",
+        "recovering",
+      ]),
+      competitiveApproved: zod.boolean(),
+      presentation: zod.object({
+        serialCode: zod.string(),
+        scaleLabel: zod.enum([
+          "Planetary",
+          "Stellar",
+          "Galactic",
+          "Transcendent",
+        ]),
+        canonicalVariant: zod.enum([
+          "armored",
+          "original",
+          "asymmetric",
+          "lattice",
+        ]),
+        manifestationTreatment: zod.enum(["dedicated", "shared"]),
+        detonationTreatment: zod.enum(["dedicated", "none"]),
+      }),
+    }),
+  ),
+  corruptedRecordCount: zod.number().nullable(),
+  campaignNodes: zod.array(
+    zod.object({
+      id: zod.string(),
+      blueprintId: zod.enum([
+        "bp_antimatter_detonator",
+        "bp_mantle_to_orbit_foundry",
+        "bp_ascension_registry",
+        "bp_worldshield_covenant",
+      ]),
+      title: zod.string(),
+      status: zod.enum([
+        "locked",
+        "available",
+        "active",
+        "completed",
+        "future",
+      ]),
+    }),
+  ),
+  loadouts: zod.array(
+    zod.object({
+      mode: zod.enum(["standard", "campaign", "custom", "competitive"]),
+      slots: zod
+        .array(
+          zod.union([
+            zod.enum([
+              "bp_antimatter_detonator",
+              "bp_mantle_to_orbit_foundry",
+              "bp_ascension_registry",
+              "bp_worldshield_covenant",
+            ]),
+            zod.null(),
+          ]),
+        )
+        .max(getBlueprintVaultResponseLoadoutsItemSlotsMax),
+    }),
+  ),
+  mastery: zod.array(
+    zod.object({
+      blueprintId: zod.enum([
+        "bp_antimatter_detonator",
+        "bp_mantle_to_orbit_foundry",
+        "bp_ascension_registry",
+        "bp_worldshield_covenant",
+      ]),
+      manifestations: zod.number(),
+      triggers: zod.number(),
+      armedMatchFinishes: zod.number(),
+    }),
+  ),
+});
+
+/**
+ * @summary Idempotently record the Supreme Cipher, encounter approach, and dialogue memory
+ */
+export const updateBlueprintVaultThresholdBodyThreePathMax = 4;
+
+export const UpdateBlueprintVaultThresholdBody = zod.union([
+  zod.object({
+    action: zod.enum(["deactivate_cipher"]),
+  }),
+  zod.object({
+    action: zod.enum(["choose_approach"]),
+    approach: zod.enum(["kinship", "inquiry", "dominion"]),
+  }),
+  zod.object({
+    action: zod.enum(["record_dialogue_path"]),
+    path: zod
+      .array(
+        zod.enum([
+          "kinship-want",
+          "kinship-fear",
+          "kinship-familiar",
+          "kinship-with-you",
+          "kinship-help",
+          "kinship-grow",
+          "inquiry-answer",
+          "inquiry-warning",
+          "inquiry-relation",
+          "inquiry-unsayable",
+          "inquiry-warning-against",
+          "inquiry-preserve",
+          "inquiry-risk",
+          "inquiry-pattern",
+          "dominion-decide",
+          "dominion-cipher",
+          "dominion-stand",
+          "dominion-stop",
+          "kinship-universe",
+          "kinship-difference",
+          "kinship-stop-why",
+          "kinship-unafraid",
+          "kinship-fear-change",
+          "kinship-guide",
+          "kinship-familiar-how",
+          "kinship-light-why",
+          "inquiry-demand-answer",
+          "inquiry-demand-unsayable",
+          "inquiry-meaning",
+          "inquiry-warning-against-truth",
+          "inquiry-preservation",
+          "inquiry-sight",
+          "inquiry-relation-pattern",
+          "dominion-decision",
+          "dominion-recognize",
+          "dominion-cipher-authority",
+          "dominion-refusal-authority",
+          "dominion-choice-why",
+          "dominion-choice-fear",
+          "dominion-choice-enough",
+          "dominion-command",
+          "dominion-final-answer",
+        ]),
+      )
+      .max(updateBlueprintVaultThresholdBodyThreePathMax),
+  }),
+  zod.object({
+    action: zod.enum(["resolve_dialogue"]),
+    resolution: zod.enum(["left"]),
+  }),
+]);
+
+export const UpdateBlueprintVaultThresholdResponse = zod.object({
+  ok: zod.literal(true),
+  status: zod.enum([
+    "classified",
+    "challenge_ready",
+    "challenge_active",
+    "cleared",
+  ]),
+  cipherDeactivated: zod.boolean(),
+  decryptionKeyBypassActive: zod.boolean(),
+  thresholdApproach: zod.union([
+    zod.enum(["kinship", "inquiry", "dominion"]),
+    zod.null(),
+  ]),
+  thresholdDialoguePath: zod.array(
+    zod.enum([
+      "kinship-want",
+      "kinship-fear",
+      "kinship-familiar",
+      "kinship-with-you",
+      "kinship-help",
+      "kinship-grow",
+      "inquiry-answer",
+      "inquiry-warning",
+      "inquiry-relation",
+      "inquiry-unsayable",
+      "inquiry-warning-against",
+      "inquiry-preserve",
+      "inquiry-risk",
+      "inquiry-pattern",
+      "dominion-decide",
+      "dominion-cipher",
+      "dominion-stand",
+      "dominion-stop",
+      "kinship-universe",
+      "kinship-difference",
+      "kinship-stop-why",
+      "kinship-unafraid",
+      "kinship-fear-change",
+      "kinship-guide",
+      "kinship-familiar-how",
+      "kinship-light-why",
+      "inquiry-demand-answer",
+      "inquiry-demand-unsayable",
+      "inquiry-meaning",
+      "inquiry-warning-against-truth",
+      "inquiry-preservation",
+      "inquiry-sight",
+      "inquiry-relation-pattern",
+      "dominion-decision",
+      "dominion-recognize",
+      "dominion-cipher-authority",
+      "dominion-refusal-authority",
+      "dominion-choice-why",
+      "dominion-choice-fear",
+      "dominion-choice-enough",
+      "dominion-command",
+      "dominion-final-answer",
+    ]),
+  ),
+  thresholdDialogueResolution: zod.union([
+    zod.enum(["left", "continued"]),
+    zod.null(),
+  ]),
+});
+
+/**
+ * @summary Consume a Black Market Decryption Key for one Vault access attempt
+ */
+export const UseBlueprintVaultDecryptionKeyResponse = zod.object({
+  ok: zod.literal(true),
+  status: zod.enum(["challenge_ready"]),
+  alreadyActive: zod.boolean(),
+  decryptionKeyAvailable: zod.literal(false),
+  decryptionKeyBypassActive: zod.literal(true),
+});
+
+/**
+ * @summary Idempotently start or resume the Lumii clearance scenario
+ */
+export const StartBlueprintClearanceChallengeResponse = zod.object({
+  roomId: zod.string(),
+  inviteCode: zod.string(),
+  playerId: zod.string(),
+  sessionToken: zod.string(),
+  resumed: zod.boolean(),
+  scenarioId: zod.string(),
+  lumiiThresholdApproach: zod.enum(["kinship", "inquiry", "dominion"]),
+  campaignAssistance: zod.string(),
+});
+
+/**
+ * @summary Idempotently withdraw from the active Lumii clearance scenario
+ */
+export const WithdrawBlueprintClearanceChallengeBody = zod.object({
+  roomId: zod.string(),
+});
+
+export const WithdrawBlueprintClearanceChallengeResponse = zod.object({
+  roomId: zod.string(),
+  status: zod.enum(["classified", "challenge_ready"]),
+});
+
+/**
+ * @summary Mark the completed Vault opening as seen
+ */
+export const AcknowledgeBlueprintVaultRevealResponse = zod.object({
+  ok: zod.boolean(),
+});
+
+/**
+ * @summary Replace the two Blueprint slots for one supported mode
+ */
+export const UpdateBlueprintLoadoutParams = zod.object({
+  mode: zod.enum(["campaign", "custom", "competitive"]),
+});
+
+export const updateBlueprintLoadoutBodySlotsMax = 2;
+
+export const UpdateBlueprintLoadoutBody = zod.object({
+  slots: zod
+    .array(
+      zod.union([
+        zod.enum([
+          "bp_antimatter_detonator",
+          "bp_mantle_to_orbit_foundry",
+          "bp_ascension_registry",
+          "bp_worldshield_covenant",
+        ]),
+        zod.null(),
+      ]),
+    )
+    .max(updateBlueprintLoadoutBodySlotsMax),
+});
+
+export const updateBlueprintLoadoutResponseSlotsMax = 2;
+
+export const UpdateBlueprintLoadoutResponse = zod.object({
+  mode: zod.enum(["standard", "campaign", "custom", "competitive"]),
+  slots: zod
+    .array(
+      zod.union([
+        zod.enum([
+          "bp_antimatter_detonator",
+          "bp_mantle_to_orbit_foundry",
+          "bp_ascension_registry",
+          "bp_worldshield_covenant",
+        ]),
+        zod.null(),
+      ]),
+    )
+    .max(updateBlueprintLoadoutResponseSlotsMax),
+});
+
+/**
+ * @summary Equip or clear one scoped cosmetic slot
+ */
+export const UpdateCosmeticLoadoutBody = zod.object({
+  slot: zod.enum([
+    "card_back",
+    "civilization_ambience",
+    "blueprint_presentation",
+    "vault_seal",
+  ]),
+  scopeKey: zod.string(),
+  itemId: zod.string().nullable(),
+});
+
+export const UpdateCosmeticLoadoutResponse = zod.object({
+  ok: zod.boolean(),
+  equippedItems: zod.array(
+    zod.object({
+      slot: zod.enum([
+        "card_back",
+        "civilization_ambience",
+        "blueprint_presentation",
+        "vault_seal",
+      ]),
+      scopeKey: zod.string(),
+      itemId: zod.string(),
     }),
   ),
 });
@@ -2510,9 +5530,148 @@ export const GetMyStatsResponse = zod.object({
         totalPlayers: zod
           .number()
           .describe("Number of human players in the game"),
+        civilizationIdentity: zod
+          .union([
+            zod
+              .object({
+                lineage: zod.union([
+                  zod.enum([
+                    "energy",
+                    "ecology",
+                    "causality",
+                    "transit",
+                    "memory",
+                    "infrastructure",
+                    "concealment",
+                    "containment",
+                    "fabrication",
+                    "accord",
+                    "reclamation",
+                    "boundary_science",
+                  ]),
+                  zod.null(),
+                ]),
+                affinity: zod.union([
+                  zod.enum([
+                    "flare",
+                    "continuum",
+                    "verdance",
+                    "abyss",
+                    "radiance",
+                  ]),
+                  zod.null(),
+                ]),
+                signatureArtifactId: zod.string().nullable(),
+                signatureLuminaryId: zod.string().nullable(),
+                signatureBlueprintId: zod.union([
+                  zod.enum([
+                    "bp_antimatter_detonator",
+                    "bp_mantle_to_orbit_foundry",
+                    "bp_ascension_registry",
+                    "bp_worldshield_covenant",
+                  ]),
+                  zod.null(),
+                ]),
+              })
+              .and(
+                zod.object({
+                  displayName: zod.string().nullable(),
+                  scaleType: zod.union([
+                    zod.literal(0),
+                    zod.literal(1),
+                    zod.literal(2),
+                    zod.literal(3),
+                  ]),
+                  scaleLabel: zod.string(),
+                  projectEpithet: zod.string().nullable(),
+                }),
+              ),
+            zod.null(),
+          ])
+          .optional(),
       }),
     )
     .describe("Most recent finished games, newest first (up to 20)"),
+  matchHistory: zod.array(
+    zod.object({
+      roomId: zod.string(),
+      inviteCode: zod.string(),
+      finishedAt: zod
+        .string()
+        .describe("ISO timestamp when the game finished (room updatedAt)"),
+      result: zod.enum(["win", "loss", "tie"]),
+      eminenceEarned: zod
+        .number()
+        .describe("Eminence (eminence) earned by the player in this game"),
+      totalPlayers: zod
+        .number()
+        .describe("Number of human players in the game"),
+      civilizationIdentity: zod
+        .union([
+          zod
+            .object({
+              lineage: zod.union([
+                zod.enum([
+                  "energy",
+                  "ecology",
+                  "causality",
+                  "transit",
+                  "memory",
+                  "infrastructure",
+                  "concealment",
+                  "containment",
+                  "fabrication",
+                  "accord",
+                  "reclamation",
+                  "boundary_science",
+                ]),
+                zod.null(),
+              ]),
+              affinity: zod.union([
+                zod.enum([
+                  "flare",
+                  "continuum",
+                  "verdance",
+                  "abyss",
+                  "radiance",
+                ]),
+                zod.null(),
+              ]),
+              signatureArtifactId: zod.string().nullable(),
+              signatureLuminaryId: zod.string().nullable(),
+              signatureBlueprintId: zod.union([
+                zod.enum([
+                  "bp_antimatter_detonator",
+                  "bp_mantle_to_orbit_foundry",
+                  "bp_ascension_registry",
+                  "bp_worldshield_covenant",
+                ]),
+                zod.null(),
+              ]),
+            })
+            .and(
+              zod.object({
+                displayName: zod.string().nullable(),
+                scaleType: zod.union([
+                  zod.literal(0),
+                  zod.literal(1),
+                  zod.literal(2),
+                  zod.literal(3),
+                ]),
+                scaleLabel: zod.string(),
+                projectEpithet: zod.string().nullable(),
+              }),
+            ),
+          zod.null(),
+        ])
+        .optional(),
+    }),
+  ),
+  archive: zod
+    .record(zod.string(), zod.unknown())
+    .describe(
+      "Technology Archive, identity options, and classified Vault progression",
+    ),
 });
 
 /**
@@ -2639,6 +5798,10 @@ export const RespondToChallengeResponse = zod.object({
       id: zod.string(),
       name: zod.string(),
       isHost: zod.boolean(),
+      avatarId: zod
+        .string()
+        .nullish()
+        .describe("Unique avatar assigned to the joining player in this room"),
     })
     .optional(),
 });

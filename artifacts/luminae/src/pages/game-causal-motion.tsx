@@ -61,6 +61,9 @@ type HarnessGeometry = ViewportGeometry & {
   sources: Partial<Record<AffinityKey, Point>>;
 };
 
+const LUMII_HUD_NAME_PILL_SELECTOR = '[data-lumii-hud-name-pill="true"]';
+const LUMII_HUD_ENTITY_SELECTOR = '[data-lumii-hud-entity="true"]';
+
 export function HarnessConvergenceLayer({
   selectedAffinities,
   harnessBurstKeys,
@@ -247,6 +250,7 @@ export interface ArchiveManifestationGeometry {
   tier: number;
   deckRect: { x: number; y: number; w: number; h: number };
   slotRect: { x: number; y: number; w: number; h: number };
+  delayMs?: number;
 }
 
 export function ArchiveManifestationTrace({
@@ -270,6 +274,8 @@ export function ArchiveManifestationTrace({
       : '#a8e6ff';
   const width = typeof window === 'undefined' ? 1 : window.innerWidth;
   const height = typeof window === 'undefined' ? 1 : window.innerHeight;
+  const delay = (manifestation.delayMs ?? 0) / 1000;
+  const duration = reduceMotion ? 0.24 : 0.62;
 
   return (
     <div className="causal-motion-layer causal-motion-layer--archive" aria-hidden="true">
@@ -283,8 +289,9 @@ export function ArchiveManifestationTrace({
           initial={{ opacity: 0, pathLength: 0 }}
           animate={{ opacity: [0, 0.78, 0.52, 0], pathLength: [0, 1, 1, 1] }}
           transition={{
-            duration: reduceMotion ? 0.34 : 1.42,
-            times: reduceMotion ? [0, 0.25, 0.7, 1] : [0, 0.3, 0.82, 1],
+            duration,
+            delay,
+            times: [0, 0.26, 0.82, 1],
             ease: 'easeInOut',
           }}
           style={{ filter: `drop-shadow(0 0 7px ${color})` }}
@@ -295,7 +302,7 @@ export function ArchiveManifestationTrace({
         style={{ left: from.x, top: from.y, borderColor: color, boxShadow: `0 0 14px ${color}` }}
         initial={{ opacity: 0, scale: 0.5 }}
         animate={{ opacity: [0, 0.9, 0], scale: [0.5, 1.2, 0.72] }}
-        transition={{ duration: reduceMotion ? 0.32 : 0.7 }}
+        transition={{ duration: reduceMotion ? 0.18 : 0.42, delay }}
       />
       <motion.span
         className="archive-manifestation-target"
@@ -310,8 +317,9 @@ export function ArchiveManifestationTrace({
         initial={{ opacity: 0, scale: 0.94 }}
         animate={{ opacity: [0, 0, 0.82, 0], scale: [0.94, 0.94, 1.02, 1] }}
         transition={{
-          duration: reduceMotion ? 0.36 : 1.5,
-          times: reduceMotion ? [0, 0.2, 0.55, 1] : [0, 0.68, 0.84, 1],
+          duration,
+          delay,
+          times: [0, 0.48, 0.76, 1],
         }}
       />
     </div>
@@ -323,6 +331,7 @@ export interface OpponentHarnessTraceState {
   affinities: AffinityKey[];
   playerId: string;
   playerName: string;
+  targetKind?: 'opponent' | 'lumii';
 }
 
 export function OpponentHarnessTrace({
@@ -338,10 +347,20 @@ export function OpponentHarnessTrace({
   }) | null>(null);
 
   React.useLayoutEffect(() => {
-    const chipHit = getVisibleElementRect(`[data-opponent-chip="${trace.playerId}"]`);
-    if (!chipHit) return;
-    const avatarHit = getVisibleElementRect(`[data-opponent-avatar="${trace.playerId}"]`);
-    const destinationRect = avatarHit?.rect ?? chipHit.rect;
+    const isLumiiTarget = trace.targetKind === 'lumii';
+    const escapedPlayerId = typeof CSS !== 'undefined' && CSS.escape
+      ? CSS.escape(trace.playerId)
+      : trace.playerId;
+    const recipientHit = isLumiiTarget
+      ? (getVisibleElementRect(LUMII_HUD_NAME_PILL_SELECTOR) ?? getVisibleElementRect(LUMII_HUD_ENTITY_SELECTOR))
+      : getVisibleElementRect(`[data-opponent-chip="${escapedPlayerId}"]`);
+    if (!recipientHit) return;
+    const avatarHit = isLumiiTarget
+      ? getVisibleElementRect(LUMII_HUD_ENTITY_SELECTOR)
+      : getVisibleElementRect(`[data-opponent-avatar="${escapedPlayerId}"]`);
+    const destinationRect = isLumiiTarget
+      ? recipientHit.rect
+      : (avatarHit?.rect ?? recipientHit.rect);
     const destination = centerOf(destinationRect);
     const recipientAccent =
       AFFINITY_META[trace.affinities[0]]?.glowHex ?? '#a8c5ff';
@@ -388,15 +407,15 @@ export function OpponentHarnessTrace({
       height: window.innerHeight,
       destination,
       recipientRect: {
-        left: chipHit.rect.left,
-        top: chipHit.rect.top,
-        width: chipHit.rect.width,
-        height: chipHit.rect.height,
+        left: recipientHit.rect.left,
+        top: recipientHit.rect.top,
+        width: recipientHit.rect.width,
+        height: recipientHit.rect.height,
       },
       sources,
     });
 
-    chipHit.element.animate(
+    recipientHit.element.animate(
       [
         {
           filter: 'brightness(1) saturate(1)',

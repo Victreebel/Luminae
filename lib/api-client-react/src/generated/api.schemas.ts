@@ -61,6 +61,15 @@ export const ActiveRoomEntryStatus = {
   playing: "playing",
 } as const;
 
+export type GameMode = (typeof GameMode)[keyof typeof GameMode];
+
+export const GameMode = {
+  standard: "standard",
+  campaign: "campaign",
+  custom: "custom",
+  competitive: "competitive",
+} as const;
+
 export interface ActiveRoomEntry {
   roomId: string;
   inviteCode: string;
@@ -68,6 +77,626 @@ export interface ActiveRoomEntry {
   sessionToken: string;
   playerId: string;
   isHost: boolean;
+  gameMode: GameMode;
+  /** @nullable */
+  scenarioId: string | null;
+}
+
+export type BlueprintClearanceSummaryStatus =
+  (typeof BlueprintClearanceSummaryStatus)[keyof typeof BlueprintClearanceSummaryStatus];
+
+export const BlueprintClearanceSummaryStatus = {
+  classified: "classified",
+  challenge_ready: "challenge_ready",
+  challenge_active: "challenge_active",
+  cleared: "cleared",
+} as const;
+
+export type LumiiThresholdApproach =
+  (typeof LumiiThresholdApproach)[keyof typeof LumiiThresholdApproach];
+
+export const LumiiThresholdApproach = {
+  kinship: "kinship",
+  inquiry: "inquiry",
+  dominion: "dominion",
+} as const;
+
+export type LumiiThresholdDialogueChoiceId =
+  (typeof LumiiThresholdDialogueChoiceId)[keyof typeof LumiiThresholdDialogueChoiceId];
+
+export const LumiiThresholdDialogueChoiceId = {
+  "kinship-want": "kinship-want",
+  "kinship-fear": "kinship-fear",
+  "kinship-familiar": "kinship-familiar",
+  "kinship-with-you": "kinship-with-you",
+  "kinship-help": "kinship-help",
+  "kinship-grow": "kinship-grow",
+  "inquiry-answer": "inquiry-answer",
+  "inquiry-warning": "inquiry-warning",
+  "inquiry-relation": "inquiry-relation",
+  "inquiry-unsayable": "inquiry-unsayable",
+  "inquiry-warning-against": "inquiry-warning-against",
+  "inquiry-preserve": "inquiry-preserve",
+  "inquiry-risk": "inquiry-risk",
+  "inquiry-pattern": "inquiry-pattern",
+  "dominion-decide": "dominion-decide",
+  "dominion-cipher": "dominion-cipher",
+  "dominion-stand": "dominion-stand",
+  "dominion-stop": "dominion-stop",
+  "kinship-universe": "kinship-universe",
+  "kinship-difference": "kinship-difference",
+  "kinship-stop-why": "kinship-stop-why",
+  "kinship-unafraid": "kinship-unafraid",
+  "kinship-fear-change": "kinship-fear-change",
+  "kinship-guide": "kinship-guide",
+  "kinship-familiar-how": "kinship-familiar-how",
+  "kinship-light-why": "kinship-light-why",
+  "inquiry-demand-answer": "inquiry-demand-answer",
+  "inquiry-demand-unsayable": "inquiry-demand-unsayable",
+  "inquiry-meaning": "inquiry-meaning",
+  "inquiry-warning-against-truth": "inquiry-warning-against-truth",
+  "inquiry-preservation": "inquiry-preservation",
+  "inquiry-sight": "inquiry-sight",
+  "inquiry-relation-pattern": "inquiry-relation-pattern",
+  "dominion-decision": "dominion-decision",
+  "dominion-recognize": "dominion-recognize",
+  "dominion-cipher-authority": "dominion-cipher-authority",
+  "dominion-refusal-authority": "dominion-refusal-authority",
+  "dominion-choice-why": "dominion-choice-why",
+  "dominion-choice-fear": "dominion-choice-fear",
+  "dominion-choice-enough": "dominion-choice-enough",
+  "dominion-command": "dominion-command",
+  "dominion-final-answer": "dominion-final-answer",
+} as const;
+
+export type LumiiThresholdDialogueResolution =
+  (typeof LumiiThresholdDialogueResolution)[keyof typeof LumiiThresholdDialogueResolution];
+
+export const LumiiThresholdDialogueResolution = {
+  left: "left",
+  continued: "continued",
+} as const;
+
+export interface BlueprintClearanceSummary {
+  qualifyingWins: number;
+  requiredWins: number;
+  status: BlueprintClearanceSummaryStatus;
+  /** @nullable */
+  challengeRoomId: string | null;
+  cipherDeactivated: boolean;
+  thresholdApproach: LumiiThresholdApproach | null;
+  thresholdDialoguePath: LumiiThresholdDialogueChoiceId[];
+  thresholdDialogueResolution: LumiiThresholdDialogueResolution | null;
+  covenantBroken: boolean;
+  decryptionKeyBypassActive: boolean;
+  revealPending: boolean;
+}
+
+export type BlueprintVaultThresholdBody =
+  | {
+      action: "deactivate_cipher";
+    }
+  | {
+      action: "choose_approach";
+      approach: LumiiThresholdApproach;
+    }
+  | {
+      action: "record_dialogue_path";
+      /** @maxItems 4 */
+      path: LumiiThresholdDialogueChoiceId[];
+    }
+  | {
+      action: "resolve_dialogue";
+      resolution: "left";
+    };
+
+export type BlueprintVaultThresholdResultStatus =
+  (typeof BlueprintVaultThresholdResultStatus)[keyof typeof BlueprintVaultThresholdResultStatus];
+
+export const BlueprintVaultThresholdResultStatus = {
+  classified: "classified",
+  challenge_ready: "challenge_ready",
+  challenge_active: "challenge_active",
+  cleared: "cleared",
+} as const;
+
+export interface BlueprintVaultThresholdResult {
+  ok: boolean;
+  status: BlueprintVaultThresholdResultStatus;
+  cipherDeactivated: boolean;
+  decryptionKeyBypassActive: boolean;
+  thresholdApproach: LumiiThresholdApproach | null;
+  thresholdDialoguePath: LumiiThresholdDialogueChoiceId[];
+  thresholdDialogueResolution: LumiiThresholdDialogueResolution | null;
+}
+
+export type BlueprintDecryptionKeyUseResultStatus =
+  (typeof BlueprintDecryptionKeyUseResultStatus)[keyof typeof BlueprintDecryptionKeyUseResultStatus];
+
+export const BlueprintDecryptionKeyUseResultStatus = {
+  challenge_ready: "challenge_ready",
+} as const;
+
+export interface BlueprintDecryptionKeyUseResult {
+  ok: boolean;
+  status: BlueprintDecryptionKeyUseResultStatus;
+  alreadyActive: boolean;
+  decryptionKeyAvailable: boolean;
+  decryptionKeyBypassActive: boolean;
+}
+
+export type CosmeticLoadoutItemSlot =
+  (typeof CosmeticLoadoutItemSlot)[keyof typeof CosmeticLoadoutItemSlot];
+
+export const CosmeticLoadoutItemSlot = {
+  card_back: "card_back",
+  civilization_ambience: "civilization_ambience",
+  blueprint_presentation: "blueprint_presentation",
+  vault_seal: "vault_seal",
+} as const;
+
+export interface CosmeticLoadoutItem {
+  slot: CosmeticLoadoutItemSlot;
+  scopeKey: string;
+  itemId: string;
+}
+
+export interface BlueprintComponentDefinition {
+  artifactId: string;
+  stage: string;
+  function: string;
+}
+
+export type BlueprintDefinitionFamily =
+  (typeof BlueprintDefinitionFamily)[keyof typeof BlueprintDefinitionFamily];
+
+export const BlueprintDefinitionFamily = {
+  catastrophe_engine: "catastrophe_engine",
+  industrial_chain: "industrial_chain",
+  institution: "institution",
+  covenant: "covenant",
+} as const;
+
+export type BlueprintDefinitionProjectForm =
+  (typeof BlueprintDefinitionProjectForm)[keyof typeof BlueprintDefinitionProjectForm];
+
+export const BlueprintDefinitionProjectForm = {
+  device: "device",
+  infrastructure: "infrastructure",
+  network: "network",
+  institution: "institution",
+  organism: "organism",
+} as const;
+
+export type BlueprintDefinitionProjectScale =
+  (typeof BlueprintDefinitionProjectScale)[keyof typeof BlueprintDefinitionProjectScale];
+
+export const BlueprintDefinitionProjectScale = {
+  planetary: "planetary",
+  stellar: "stellar",
+  galactic: "galactic",
+  transcendent: "transcendent",
+} as const;
+
+export type BlueprintDefinitionPresentationScaleLabel =
+  (typeof BlueprintDefinitionPresentationScaleLabel)[keyof typeof BlueprintDefinitionPresentationScaleLabel];
+
+export const BlueprintDefinitionPresentationScaleLabel = {
+  Planetary: "Planetary",
+  Stellar: "Stellar",
+  Galactic: "Galactic",
+  Transcendent: "Transcendent",
+} as const;
+
+export type BlueprintDefinitionPresentationManifestationTreatment =
+  (typeof BlueprintDefinitionPresentationManifestationTreatment)[keyof typeof BlueprintDefinitionPresentationManifestationTreatment];
+
+export const BlueprintDefinitionPresentationManifestationTreatment = {
+  dedicated: "dedicated",
+  shared: "shared",
+} as const;
+
+export type BlueprintDefinitionPresentationDetonationTreatment =
+  (typeof BlueprintDefinitionPresentationDetonationTreatment)[keyof typeof BlueprintDefinitionPresentationDetonationTreatment];
+
+export const BlueprintDefinitionPresentationDetonationTreatment = {
+  dedicated: "dedicated",
+  none: "none",
+} as const;
+
+export type BlueprintPresentationVariant =
+  (typeof BlueprintPresentationVariant)[keyof typeof BlueprintPresentationVariant];
+
+export const BlueprintPresentationVariant = {
+  armored: "armored",
+  original: "original",
+  asymmetric: "asymmetric",
+  lattice: "lattice",
+} as const;
+
+export type BlueprintDefinitionPresentation = {
+  serialCode: string;
+  scaleLabel: BlueprintDefinitionPresentationScaleLabel;
+  canonicalVariant: BlueprintPresentationVariant;
+  manifestationTreatment: BlueprintDefinitionPresentationManifestationTreatment;
+  detonationTreatment: BlueprintDefinitionPresentationDetonationTreatment;
+};
+
+export type BlueprintId = (typeof BlueprintId)[keyof typeof BlueprintId];
+
+export const BlueprintId = {
+  bp_antimatter_detonator: "bp_antimatter_detonator",
+  bp_mantle_to_orbit_foundry: "bp_mantle_to_orbit_foundry",
+  bp_ascension_registry: "bp_ascension_registry",
+  bp_worldshield_covenant: "bp_worldshield_covenant",
+} as const;
+
+export type BlueprintDeviceState =
+  (typeof BlueprintDeviceState)[keyof typeof BlueprintDeviceState];
+
+export const BlueprintDeviceState = {
+  armed: "armed",
+  active: "active",
+  vigilant: "vigilant",
+  spent: "spent",
+  deactivated: "deactivated",
+  recovering: "recovering",
+} as const;
+
+export interface BlueprintDefinition {
+  id: BlueprintId;
+  name: string;
+  family: BlueprintDefinitionFamily;
+  components: BlueprintComponentDefinition[];
+  publicEffect: string;
+  brokenEffect: string;
+  intactSafeguard: string;
+  projectForm: BlueprintDefinitionProjectForm;
+  projectScale: BlueprintDefinitionProjectScale;
+  manifestationEminence: number;
+  initialProjectState: BlueprintDeviceState;
+  initialDeviceState: BlueprintDeviceState;
+  competitiveApproved: boolean;
+  presentation: BlueprintDefinitionPresentation;
+}
+
+export interface BlueprintLoadout {
+  mode: GameMode;
+  /** @maxItems 2 */
+  slots: (BlueprintId | null)[];
+}
+
+export interface BlueprintLoadoutBody {
+  /** @maxItems 2 */
+  slots: (BlueprintId | null)[];
+}
+
+export interface BlueprintMastery {
+  blueprintId: BlueprintId;
+  manifestations: number;
+  triggers: number;
+  armedMatchFinishes: number;
+}
+
+export type FirstContactStance =
+  (typeof FirstContactStance)[keyof typeof FirstContactStance];
+
+export const FirstContactStance = {
+  curious: "curious",
+  guarded: "guarded",
+  resolute: "resolute",
+} as const;
+
+export type CampaignNodeStatus =
+  (typeof CampaignNodeStatus)[keyof typeof CampaignNodeStatus];
+
+export const CampaignNodeStatus = {
+  locked: "locked",
+  available: "available",
+  active: "active",
+  completed: "completed",
+  future: "future",
+} as const;
+
+export type CampaignPresentationKind =
+  (typeof CampaignPresentationKind)[keyof typeof CampaignPresentationKind];
+
+export const CampaignPresentationKind = {
+  clearance_signal: "clearance_signal",
+  clearance_recap: "clearance_recap",
+} as const;
+
+export interface CampaignPresentation {
+  id: string;
+  kind: CampaignPresentationKind;
+  ordinal: number;
+  title: string;
+  lines: string[];
+  /** @nullable */
+  acknowledgedAt: string | null;
+}
+
+export interface CampaignNodeSummary {
+  id: string;
+  title: string;
+  status: CampaignNodeStatus;
+  progress: number;
+  requiredProgress: number;
+}
+
+export type ArchitectRecordStateCampaignId =
+  (typeof ArchitectRecordStateCampaignId)[keyof typeof ArchitectRecordStateCampaignId];
+
+export const ArchitectRecordStateCampaignId = {
+  architect_record: "architect_record",
+} as const;
+
+export interface ArchitectRecordState {
+  campaignId: ArchitectRecordStateCampaignId;
+  tutorialCompleted: boolean;
+  firstContactStance: FirstContactStance | null;
+  nodes: CampaignNodeSummary[];
+  presentations: CampaignPresentation[];
+  pendingPresentations: CampaignPresentation[];
+  vaultShortcutVisible: boolean;
+}
+
+export interface OnboardingClaimBody {
+  claimId: string;
+  stance: FirstContactStance | null;
+}
+
+export interface QualifyingMatchSession {
+  roomId: string;
+  inviteCode: string;
+  playerId: string;
+  sessionToken: string;
+  playerName: string;
+  resumed: boolean;
+}
+
+export type FirstPartyEventBodyEventName =
+  (typeof FirstPartyEventBodyEventName)[keyof typeof FirstPartyEventBodyEventName];
+
+export const FirstPartyEventBodyEventName = {
+  tutorial_started: "tutorial_started",
+  tutorial_resumed: "tutorial_resumed",
+  tutorial_restarted: "tutorial_restarted",
+  tutorial_left: "tutorial_left",
+  tutorial_chapter_started: "tutorial_chapter_started",
+  tutorial_chapter_completed: "tutorial_chapter_completed",
+  tutorial_invalid_action: "tutorial_invalid_action",
+  tutorial_completed: "tutorial_completed",
+  account_prompt_outcome: "account_prompt_outcome",
+  guided_practice_started: "guided_practice_started",
+  qualification_milestone: "qualification_milestone",
+  interlude_acknowledged: "interlude_acknowledged",
+  vault_completed: "vault_completed",
+  turn_order_balance_viewed: "turn_order_balance_viewed",
+  match_balance_result: "match_balance_result",
+} as const;
+
+/**
+ * @nullable
+ */
+export type FirstPartyEventBodyChapterId =
+  | (typeof FirstPartyEventBodyChapterId)[keyof typeof FirstPartyEventBodyChapterId]
+  | null;
+
+export const FirstPartyEventBodyChapterId = {
+  arrival: "arrival",
+  board: "board",
+  actions: "actions",
+  ascension: "ascension",
+} as const;
+
+/**
+ * @nullable
+ */
+export type FirstPartyEventBodyActionId =
+  | (typeof FirstPartyEventBodyActionId)[keyof typeof FirstPartyEventBodyActionId]
+  | null;
+
+export const FirstPartyEventBodyActionId = {
+  harness: "harness",
+  forge: "forge",
+  encrypt: "encrypt",
+  forge_reserved: "forge_reserved",
+  forge_final: "forge_final",
+  help: "help",
+  register: "register",
+  sign_in: "sign_in",
+  dismiss: "dismiss",
+  match_2p_v15: "match_2p_v15",
+  match_2p_v20: "match_2p_v20",
+  match_2p_v25: "match_2p_v25",
+  match_3p_v15: "match_3p_v15",
+  match_3p_v20: "match_3p_v20",
+  match_3p_v25: "match_3p_v25",
+  match_4p_v15: "match_4p_v15",
+  match_4p_v20: "match_4p_v20",
+  match_4p_v25: "match_4p_v25",
+} as const;
+
+/**
+ * @nullable
+ */
+export type FirstPartyEventBodyOutcome =
+  | (typeof FirstPartyEventBodyOutcome)[keyof typeof FirstPartyEventBodyOutcome]
+  | null;
+
+export const FirstPartyEventBodyOutcome = {
+  allowed: "allowed",
+  blocked: "blocked",
+  success: "success",
+  failure: "failure",
+  accepted: "accepted",
+  dismissed: "dismissed",
+  resume: "resume",
+  start_over: "start_over",
+} as const;
+
+export interface FirstPartyEventBody {
+  id: string;
+  /** @nullable */
+  anonymousSessionId?: string | null;
+  eventName: FirstPartyEventBodyEventName;
+  /** @nullable */
+  chapterId?: FirstPartyEventBodyChapterId;
+  /**
+   * @maxLength 64
+   * @nullable
+   */
+  beatId?: string | null;
+  /** @nullable */
+  actionId?: FirstPartyEventBodyActionId;
+  /** @nullable */
+  outcome?: FirstPartyEventBodyOutcome;
+  /**
+   * @minimum 0
+   * @maximum 100
+   * @nullable
+   */
+  ordinal?: number | null;
+  /**
+   * @minimum 0
+   * @maximum 86400000
+   * @nullable
+   */
+  durationMs?: number | null;
+  occurredAt?: string;
+}
+
+export type BlueprintVaultClearance = BlueprintClearanceSummary & {
+  warningSeen: boolean;
+};
+
+export type BlueprintVaultResponseCampaignNodesItemStatus =
+  (typeof BlueprintVaultResponseCampaignNodesItemStatus)[keyof typeof BlueprintVaultResponseCampaignNodesItemStatus];
+
+export const BlueprintVaultResponseCampaignNodesItemStatus = {
+  locked: "locked",
+  available: "available",
+  active: "active",
+  completed: "completed",
+  future: "future",
+} as const;
+
+export type BlueprintVaultResponseCampaignNodesItem = {
+  id: string;
+  blueprintId: BlueprintId;
+  title: string;
+  status: BlueprintVaultResponseCampaignNodesItemStatus;
+};
+
+export interface BlueprintVaultResponse {
+  clearance: BlueprintVaultClearance;
+  decryptionKeyAvailable: boolean;
+  slotCount: number;
+  competitiveEnabled: boolean;
+  unlockedBlueprintIds: BlueprintId[];
+  blueprints: BlueprintDefinition[];
+  /** @nullable */
+  corruptedRecordCount: number | null;
+  campaignNodes: BlueprintVaultResponseCampaignNodesItem[];
+  loadouts: BlueprintLoadout[];
+  mastery: BlueprintMastery[];
+}
+
+export interface BlueprintChallengeSession {
+  roomId: string;
+  inviteCode: string;
+  playerId: string;
+  sessionToken: string;
+  resumed: boolean;
+  scenarioId: string;
+  lumiiThresholdApproach: LumiiThresholdApproach;
+  campaignAssistance: string;
+}
+
+export type CosmeticLoadoutBodySlot =
+  (typeof CosmeticLoadoutBodySlot)[keyof typeof CosmeticLoadoutBodySlot];
+
+export const CosmeticLoadoutBodySlot = {
+  card_back: "card_back",
+  civilization_ambience: "civilization_ambience",
+  blueprint_presentation: "blueprint_presentation",
+  vault_seal: "vault_seal",
+} as const;
+
+export interface CosmeticLoadoutBody {
+  slot: CosmeticLoadoutBodySlot;
+  scopeKey: string;
+  /** @nullable */
+  itemId: string | null;
+}
+
+export interface CosmeticLoadoutResponse {
+  ok: boolean;
+  equippedItems: CosmeticLoadoutItem[];
+}
+
+export type TechnologyLineage =
+  (typeof TechnologyLineage)[keyof typeof TechnologyLineage];
+
+export const TechnologyLineage = {
+  energy: "energy",
+  ecology: "ecology",
+  causality: "causality",
+  transit: "transit",
+  memory: "memory",
+  infrastructure: "infrastructure",
+  concealment: "concealment",
+  containment: "containment",
+  fabrication: "fabrication",
+  accord: "accord",
+  reclamation: "reclamation",
+  boundary_science: "boundary_science",
+} as const;
+
+export type NaturalAffinity =
+  (typeof NaturalAffinity)[keyof typeof NaturalAffinity];
+
+export const NaturalAffinity = {
+  flare: "flare",
+  continuum: "continuum",
+  verdance: "verdance",
+  abyss: "abyss",
+  radiance: "radiance",
+} as const;
+
+export interface CivilizationIdentitySelection {
+  lineage: TechnologyLineage | null;
+  affinity: NaturalAffinity | null;
+  /** @nullable */
+  signatureArtifactId: string | null;
+  /** @nullable */
+  signatureLuminaryId: string | null;
+  signatureBlueprintId: BlueprintId | null;
+}
+
+export type CivilizationIdentitySummaryScaleType =
+  (typeof CivilizationIdentitySummaryScaleType)[keyof typeof CivilizationIdentitySummaryScaleType];
+
+export const CivilizationIdentitySummaryScaleType = {
+  NUMBER_0: 0,
+  NUMBER_1: 1,
+  NUMBER_2: 2,
+  NUMBER_3: 3,
+} as const;
+
+export type CivilizationIdentitySummary = CivilizationIdentitySelection & {
+  /** @nullable */
+  displayName: string | null;
+  scaleType: CivilizationIdentitySummaryScaleType;
+  scaleLabel: string;
+  /** @nullable */
+  projectEpithet: string | null;
+};
+
+export interface CivilizationIdentityUpdateResponse {
+  ok: boolean;
+  civilizationIdentity: CivilizationIdentitySummary;
 }
 
 export interface AccountInfo {
@@ -85,6 +714,9 @@ export interface GetMeResponse {
   email?: string | null;
   createdAt?: string;
   activeRooms: ActiveRoomEntry[];
+  clearance: BlueprintClearanceSummary;
+  cosmeticLoadout: CosmeticLoadoutItem[];
+  civilizationIdentity: CivilizationIdentitySummary;
 }
 
 export interface AccountWithToken {
@@ -139,7 +771,13 @@ export interface GameHistoryEntry {
   eminenceEarned: number;
   /** Number of human players in the game */
   totalPlayers: number;
+  civilizationIdentity?: CivilizationIdentitySummary | null;
 }
+
+/**
+ * Technology Archive, identity options, and classified Vault progression
+ */
+export type PlayerStatsResponseArchive = { [key: string]: unknown };
 
 export interface PlayerStatsResponse {
   gamesPlayed: number;
@@ -150,6 +788,9 @@ export interface PlayerStatsResponse {
   avgEminence: number;
   /** Most recent finished games, newest first (up to 20) */
   recentGames: GameHistoryEntry[];
+  matchHistory: GameHistoryEntry[];
+  /** Technology Archive, identity options, and classified Vault progression */
+  archive: PlayerStatsResponseArchive;
 }
 
 export interface FriendEntry {
@@ -280,6 +921,11 @@ export type ChallengeAcceptedResponsePlayer = {
   id: string;
   name: string;
   isHost: boolean;
+  /**
+   * Unique avatar assigned to the joining player in this room
+   * @nullable
+   */
+  avatarId?: string | null;
 };
 
 export interface ChallengeAcceptedResponse {
@@ -313,6 +959,17 @@ export const CreateRoomBodyCinematicMode = {
   epic: "epic",
 } as const;
 
+export type BlueprintPolicy =
+  (typeof BlueprintPolicy)[keyof typeof BlueprintPolicy];
+
+export const BlueprintPolicy = {
+  none: "none",
+  owned: "owned",
+  all: "all",
+  seasonal: "seasonal",
+  scenario: "scenario",
+} as const;
+
 export interface CreateRoomBody {
   hostName: string;
   /**
@@ -334,6 +991,13 @@ export interface CreateRoomBody {
    * @nullable
    */
   avatarId?: string | null;
+  gameMode?: GameMode;
+  /**
+   * Server-authored campaign scenario identifier
+   * @nullable
+   */
+  scenarioId?: string | null;
+  blueprintPolicy?: BlueprintPolicy;
 }
 
 export interface JoinRoomBody {
@@ -347,6 +1011,8 @@ export interface JoinRoomBody {
 
 export interface RejoinRoomBody {
   playerName: string;
+  /** Current game session token; required when recovering a guest seat */
+  sessionToken?: string;
 }
 
 export interface HostActionBody {
@@ -444,6 +1110,10 @@ export interface RoomInfo {
   cinematicMode: RoomInfoCinematicMode;
   /** @nullable */
   turnTimerSeconds?: number | null;
+  gameMode: GameMode;
+  /** @nullable */
+  scenarioId: string | null;
+  blueprintPolicy: BlueprintPolicy;
   players: RoomPlayer[];
 }
 
@@ -452,6 +1122,77 @@ export interface RoomWithPlayer {
   player: RoomPlayer;
   sessionToken: string;
 }
+
+/**
+ * Owner-only Blueprint assembly and secret targeting state
+ */
+export interface BlueprintPrivateState {
+  blueprintId: BlueprintId;
+  slotIndex: number;
+  matchedComponentIds: string[];
+  manifested: boolean;
+  /** @nullable */
+  secretTargetCardId?: string | null;
+  safePreManifestActionPlayerIds?: string[];
+  foundryRecoveryComponentIds?: string[];
+}
+
+export type ManifestedDevicePublicStateCovenantState =
+  (typeof ManifestedDevicePublicStateCovenantState)[keyof typeof ManifestedDevicePublicStateCovenantState];
+
+export const ManifestedDevicePublicStateCovenantState = {
+  intact: "intact",
+  broken: "broken",
+} as const;
+
+/**
+ * Public state revealed only after a Blueprint manifests
+ */
+export interface ManifestedDevicePublicState {
+  blueprintId: BlueprintId;
+  ownerPlayerId: string;
+  slotIndex: number;
+  state: BlueprintDeviceState;
+  covenantState: ManifestedDevicePublicStateCovenantState;
+  presentationVariant: BlueprintPresentationVariant;
+  foundryUses?: number;
+  foundryOverdriveAvailable?: boolean;
+  foundryRecoveredComponentCount?: number;
+  ascensionDeferral?: number;
+  /** @nullable */
+  ascensionLastCounterRound?: number | null;
+  foundryTier2Ready?: boolean;
+  foundryTier3Ready?: boolean;
+}
+
+export interface BlueprintManifestationEvent {
+  eventId: string;
+  blueprintId: BlueprintId;
+  ownerPlayerId: string;
+  slotIndex: number;
+  presentationVariant: BlueprintPresentationVariant;
+  createdAt: number;
+}
+
+export type BlueprintArtifactSnapshotTier =
+  (typeof BlueprintArtifactSnapshotTier)[keyof typeof BlueprintArtifactSnapshotTier];
+
+export const BlueprintArtifactSnapshotTier = {
+  NUMBER_1: 1,
+  NUMBER_2: 2,
+  NUMBER_3: 3,
+} as const;
+
+export type BlueprintArtifactSnapshotBonusAffinity =
+  (typeof BlueprintArtifactSnapshotBonusAffinity)[keyof typeof BlueprintArtifactSnapshotBonusAffinity];
+
+export const BlueprintArtifactSnapshotBonusAffinity = {
+  flare: "flare",
+  continuum: "continuum",
+  verdance: "verdance",
+  abyss: "abyss",
+  radiance: "radiance",
+} as const;
 
 /**
  * A complete set of Luminae Affinity counts.
@@ -463,6 +1204,115 @@ export interface AffinityCounts {
   abyss: number;
   radiance: number;
   singularity: number;
+}
+
+export interface BlueprintArtifactSnapshot {
+  id: string;
+  name: string;
+  tier: BlueprintArtifactSnapshotTier;
+  bonusAffinity: BlueprintArtifactSnapshotBonusAffinity;
+  eminence: number;
+  cost: AffinityCounts;
+  flavor: string;
+}
+
+export type BlueprintDetonationEventTrigger =
+  (typeof BlueprintDetonationEventTrigger)[keyof typeof BlueprintDetonationEventTrigger];
+
+export const BlueprintDetonationEventTrigger = {
+  forged: "forged",
+  encrypted: "encrypted",
+} as const;
+
+export type BlueprintDetonationEventHostileEffect =
+  (typeof BlueprintDetonationEventHostileEffect)[keyof typeof BlueprintDetonationEventHostileEffect];
+
+export const BlueprintDetonationEventHostileEffect = {
+  burn: "burn",
+  annihilation: "annihilation",
+  nullification: "nullification",
+  claim_cancellation: "claim_cancellation",
+} as const;
+
+export interface BlueprintDetonationEvent {
+  eventId: string;
+  blueprintId: BlueprintId;
+  ownerPlayerId: string;
+  triggeringPlayerId: string;
+  targetCardId: string;
+  /** Forge mold refilled after the target leaves, formatted as tier-slotIndex. */
+  targetSlotId?: string;
+  trigger?: BlueprintDetonationEventTrigger;
+  hostileEffect?: BlueprintDetonationEventHostileEffect;
+  targetArtifact?: BlueprintArtifactSnapshot;
+  collateralCardIds?: string[];
+  collateralArtifacts?: BlueprintArtifactSnapshot[];
+  interceptedByBlueprintId?: BlueprintId;
+  presentationVariant: BlueprintPresentationVariant;
+  createdAt: number;
+}
+
+export type ScenarioProtocolId =
+  (typeof ScenarioProtocolId)[keyof typeof ScenarioProtocolId];
+
+export const ScenarioProtocolId = {
+  sealed_protocol_01: "sealed_protocol_01",
+  sealed_protocol_02: "sealed_protocol_02",
+  sealed_protocol_03: "sealed_protocol_03",
+} as const;
+
+export interface ScenarioProtocolPublicState {
+  protocolId: ScenarioProtocolId;
+  ownerPlayerId: string;
+  slotIndex: number;
+  state: BlueprintDeviceState;
+  publicEffect: string;
+  foundryTier2Ready?: boolean;
+  foundryTier3Ready?: boolean;
+}
+
+export type ScenarioProtocolEventKind =
+  (typeof ScenarioProtocolEventKind)[keyof typeof ScenarioProtocolEventKind];
+
+export const ScenarioProtocolEventKind = {
+  manifestation: "manifestation",
+  effect: "effect",
+} as const;
+
+export type ScenarioProtocolEventTrigger =
+  (typeof ScenarioProtocolEventTrigger)[keyof typeof ScenarioProtocolEventTrigger];
+
+export const ScenarioProtocolEventTrigger = {
+  forged: "forged",
+  encrypted: "encrypted",
+} as const;
+
+export type ScenarioProtocolEventHostileEffect =
+  (typeof ScenarioProtocolEventHostileEffect)[keyof typeof ScenarioProtocolEventHostileEffect];
+
+export const ScenarioProtocolEventHostileEffect = {
+  burn: "burn",
+  annihilation: "annihilation",
+  nullification: "nullification",
+  claim_cancellation: "claim_cancellation",
+} as const;
+
+export interface ScenarioProtocolEvent {
+  eventId: string;
+  protocolId: ScenarioProtocolId;
+  ownerPlayerId: string;
+  slotIndex: number;
+  kind: ScenarioProtocolEventKind;
+  publicEffect: string;
+  triggeringPlayerId?: string;
+  targetCardId?: string;
+  trigger?: ScenarioProtocolEventTrigger;
+  hostileEffect?: ScenarioProtocolEventHostileEffect;
+  targetArtifact?: BlueprintArtifactSnapshot;
+  collateralCardIds?: string[];
+  collateralArtifacts?: BlueprintArtifactSnapshot[];
+  intercepted?: boolean;
+  createdAt: number;
 }
 
 export type ArtifactCardBonusAffinity =
@@ -583,6 +1433,22 @@ export const GamePlayerStateAiDifficulty = {
 } as const;
 
 /**
+ * Owner-only presentation snapshot before manifestation
+ */
+export type GamePlayerStateBlueprintPresentationVariants = {
+  [key: string]: BlueprintPresentationVariant;
+};
+
+/**
+ * Owner-only top Artifact of each Archive, revealed by Tide Architect
+ */
+export type GamePlayerStateTideArchiveTopCards = {
+  tier1: ArtifactCard | null;
+  tier2: ArtifactCard | null;
+  tier3: ArtifactCard | null;
+};
+
+/**
  * Pre-committed action to auto-execute when this player's turn arrives
  * @nullable
  */
@@ -605,12 +1471,29 @@ export interface GamePlayerState {
   eminence: number;
   reservedArtifacts: ArtifactCard[];
   forgedArtifactIds: string[];
+  /** Owner-only assembly and secret device state; omitted from opponent projections */
+  blueprintPrivateStates?: BlueprintPrivateState[];
+  /** Owner-only presentation snapshot before manifestation */
+  blueprintPresentationVariants?: GamePlayerStateBlueprintPresentationVariants;
+  /**
+   * Compatibility alias for public Projects revealed after manifestation
+   * @deprecated
+   */
+  manifestedBlueprintDevices?: ManifestedDevicePublicState[];
+  /** Public Manifested Projects revealed after completion */
+  manifestedBlueprintProjects?: ManifestedDevicePublicState[];
+  /** Artifact IDs consumed by Final Hunger; count only for Blueprint eligibility, not forged-card effects or victory tie-breaks */
+  assimilatedArtifactIds?: string[];
   /** Artifact IDs forged with zero Affinities spent (fully covered by bonuses at forge time) */
   discountedForgeIds: string[];
   forgedArtifacts: ArtifactCard[];
   isConnected: boolean;
   /** IDs of luminaries this player has claimed */
   claimedLuminaryIds: string[];
+  /** Owner-only top Artifact of each Archive, revealed by Tide Architect */
+  tideArchiveTopCards?: GamePlayerStateTideArchiveTopCards;
+  /** Whether this player retains Tide Architect's one-use Archive-top Forge */
+  tideArchiveForgeAvailable?: boolean;
   /**
    * Pre-committed action to auto-execute when this player's turn arrives
    * @nullable
@@ -626,6 +1509,10 @@ export interface GamePlayerState {
    * @nullable
    */
   civName: string | null;
+  /** Confirmed public identity loaded when the match begins */
+  civilizationIdentity?: CivilizationIdentitySummary | null;
+  /** Immutable account identity captured when the match begins */
+  civilizationIdentitySnapshot?: CivilizationIdentitySummary | null;
 }
 
 export type LuminaryActiveStateActiveAffinity =
@@ -696,6 +1583,7 @@ export type PendingLuminaryActivationEventEffectType =
 
 export const PendingLuminaryActivationEventEffectType = {
   summon: "summon",
+  action: "action",
   end_of_turn: "end_of_turn",
   start_of_turn: "start_of_turn",
 } as const;
@@ -728,6 +1616,8 @@ export interface PendingLuminaryActivationEvent {
   createdAt?: number;
   /** Artifact IDs targeted by this activation (e.g. condemned Artifacts for start_of_turn burn). Captured server-side before state mutations clear artifactMarkers. */
   targetCardIds?: string[];
+  /** Forge mold coordinates targeted by this activation, encoded as tier-slotIndex */
+  targetSlotIds?: string[];
   /** Legacy single-return Affinity retained for queued games created before Balance Due became global */
   affinityType?: PendingLuminaryActivationEventAffinityType;
   /**
@@ -737,6 +1627,12 @@ export interface PendingLuminaryActivationEvent {
   affinityAmount?: number;
   /** Authoritative player/Affinity pairs returned by a global activation such as Balance Due */
   affinityReturns?: LuminaryAffinityReturn[];
+  /** Victory threshold immediately before this activation changed it */
+  victoryRequirementBefore?: number;
+  /** Victory threshold immediately after this activation changed it */
+  victoryRequirementAfter?: number;
+  /** Signed victory-threshold delta presented by this activation */
+  victoryRequirementChange?: number;
 }
 
 export type ArtifactMarkerType =
@@ -769,6 +1665,21 @@ export const GameStateStatus = {
   lobby: "lobby",
   playing: "playing",
   finished: "finished",
+} as const;
+
+/**
+ * Normalized reason a finished game ended
+ * @nullable
+ */
+export type GameStateFinishReason =
+  | (typeof GameStateFinishReason)[keyof typeof GameStateFinishReason]
+  | null;
+
+export const GameStateFinishReason = {
+  win: "win",
+  frontier_exhaustion: "frontier_exhaustion",
+  surrender: "surrender",
+  withdrawal: "withdrawal",
 } as const;
 
 /**
@@ -825,6 +1736,16 @@ export type GameStatePendingTurnTransition = {
 export type GameStateArtifactMarkers = { [key: string]: ArtifactMarker };
 
 /**
+ * The first Nullified Artifact forged this game and whether the allied-player exemption applied.
+ * @nullable
+ */
+export type GameStateNullifiedFirstForge = {
+  cardId: string;
+  playerId: string;
+  exempt: boolean;
+} | null;
+
+/**
  * Owner-relative Forgotten Hour timing keyed by source playerId
  */
 export type GameStateForgottenHourCycle = {
@@ -847,6 +1768,18 @@ export type GameStatePendingLuminaryChoice = {
 export interface GameState {
   roomId: string;
   status: GameStateStatus;
+  /**
+   * Server-authored campaign scenario identifier
+   * @nullable
+   */
+  scenarioId: string | null;
+  /**
+   * Normalized reason a finished game ended
+   * @nullable
+   */
+  finishReason: GameStateFinishReason;
+  /** Immutable approach chosen for the Lumii Vault encounter */
+  lumiiThresholdApproach: LumiiThresholdApproach | null;
   /** Unix timestamp (ms) when this game instance was initialized */
   startedAt: number;
   /**
@@ -862,6 +1795,11 @@ export interface GameState {
   turnCount: number;
   /** Eminence required to trigger the final round */
   victoryRequirement: number;
+  /**
+   * Deprecated compatibility field; Void Seal was removed and this is always null
+   * @nullable
+   */
+  voidSealOwnerId?: string | null;
   cinematicMode: GameStateCinematicMode;
   affinityWell: AffinityCounts;
   forgeTier1: ArtifactCard[];
@@ -894,36 +1832,55 @@ export interface GameState {
   pendingSummonEvents: PendingSummonEvent[];
   /** Activation events queued for the short (~4s) per-effect cinematic overlay */
   pendingLuminaryActivationEvents: PendingLuminaryActivationEvent[];
+  /** Blueprint manifestation events awaiting synchronized presentation acknowledgement */
+  pendingBlueprintManifestationEvents: BlueprintManifestationEvent[];
+  /** Blueprint detonation events awaiting synchronized presentation acknowledgement */
+  pendingBlueprintDetonationEvents: BlueprintDetonationEvent[];
+  /** Anonymous public protocol devices used by identity-redacted scenarios */
+  scenarioProtocols: ScenarioProtocolPublicState[];
+  /** Anonymous scenario protocol events awaiting normal Blueprint acknowledgement */
+  pendingScenarioProtocolEvents: ScenarioProtocolEvent[];
   /** Durable turn-resolution cursor held until all Luminary presentation events are acknowledged */
   pendingTurnTransition: GameStatePendingTurnTransition;
   /** Development-only lease held while the in-game Luminary Sequence Lab still has staged presentations to resolve */
   devLuminarySequenceActive?: boolean;
   /** Active Artifact markers keyed by cardId (v0.8 — Forgotten/Condemned/Nullified/AvatarSeed) */
   artifactMarkers?: GameStateArtifactMarkers;
+  /**
+   * The first Nullified Artifact forged this game and whether the allied-player exemption applied.
+   * @nullable
+   */
+  nullifiedFirstForge?: GameStateNullifiedFirstForge;
   /** Owner-relative Forgotten Hour timing keyed by source playerId */
   forgottenHourCycle?: GameStateForgottenHourCycle;
-  /** Card IDs currently in deck with Avatar Seed markers (v0.8) */
-  avatarSeedDeckSeeds?: string[];
+  /** Permanent Forge molds carrying Avatar Seeds, encoded as tier-slotIndex */
+  avatarSeedMoldSlots?: string[];
   /**
    * Player ID who owns Avatar Seeds; null if inactive (v0.8)
    * @nullable
    */
   avatarSeedOwnerId?: string | null;
   /**
-   * Player ID if Final Hunger Assimilation is available this turn (v0.8)
+   * Player ID holding Final Hunger's one-use Assimilation action until it is consumed
    * @nullable
    */
   firstHungerAvailable?: string | null;
   /** Burn count accumulator for Catalyst Bloom since owner's last turn (v0.8) */
   catalystBloomBurnCount?: number;
-  /** True once Concordance Mandala Perfect Coherence has fired (v0.8) */
+  /** True once Concordance Mandala's 8-Radiance Perfect Coherence milestone has fired */
   concordanceMandalaTriggered?: boolean;
+  /** True once Concordance Mandala's 10-Radiance Perfect Coherence milestone has fired */
+  concordanceMandalaFinalTriggered?: boolean;
   /** True once The Glass Orchard Perfect Replication has fired (v0.8) */
   glassOrchardTriggered?: boolean;
   /** Ordered list of Burned Artifact IDs awaiting an effect that may return them to their Archives */
   burnPile?: string[];
   /** Ordered list of individual Burn events, including source Luminary and final destination */
   burnEvents?: BurnEvent[];
+  /** Artifacts permanently removed from this game by Annihilation */
+  annihilatedArtifactIds?: string[];
+  /** Campaign-only state that reveals Antimatter's Broken Covenant rider */
+  brokenCovenantDeclared?: boolean;
   /** True once the current player has used their core action this turn (Harness, Forge, or reserve); resets only when the staged Luminary resolution pipeline releases the next turn */
   coreActionUsed?: boolean;
   /** Set when the current player must choose the order to claim multiple simultaneous Luminaries */
@@ -938,16 +1895,19 @@ export const ActionRequestType = {
   harness_two_affinities: "harness_two_affinities",
   reserve_artifact: "reserve_artifact",
   forge_artifact: "forge_artifact",
+  foundry_forge_artifact: "foundry_forge_artifact",
+  recover_foundry_component: "recover_foundry_component",
   forge_reserved_artifact: "forge_reserved_artifact",
   pass: "pass",
   surrender: "surrender",
   toggle_luminary_affinity: "toggle_luminary_affinity",
   resolve_summon: "resolve_summon",
   resolve_luminary_activation: "resolve_luminary_activation",
+  resolve_blueprint_manifestation: "resolve_blueprint_manifestation",
+  resolve_blueprint_detonation: "resolve_blueprint_detonation",
   plan_action: "plan_action",
   execute_plan: "execute_plan",
   cancel_plan: "cancel_plan",
-  tutorial_fast_forward: "tutorial_fast_forward",
   set_civ_name: "set_civ_name",
   choose_luminary_order: "choose_luminary_order",
   assimilate: "assimilate",
@@ -968,14 +1928,34 @@ export const ActionRequestAffinity = {
 } as const;
 
 /**
+ * Deprecated compatibility field; ignored by the game engine
+ */
+export type ActionRequestVoidSealAffinity =
+  (typeof ActionRequestVoidSealAffinity)[keyof typeof ActionRequestVoidSealAffinity];
+
+export const ActionRequestVoidSealAffinity = {
+  flare: "flare",
+  continuum: "continuum",
+  verdance: "verdance",
+  abyss: "abyss",
+  radiance: "radiance",
+} as const;
+
+/**
  * Affinities to return when a Harness or reserve would exceed the 10-Affinity holding limit (sparse map — include only the Affinities being returned; for reserve_artifact use exactly 1 total when the holding limit is reached)
  */
 export type ActionRequestReturnAffinities = {
+  /** @minimum 0 */
   flare?: number;
+  /** @minimum 0 */
   continuum?: number;
+  /** @minimum 0 */
   verdance?: number;
+  /** @minimum 0 */
   abyss?: number;
+  /** @minimum 0 */
   radiance?: number;
+  /** @minimum 0 */
   singularity?: number;
 };
 
@@ -990,6 +1970,8 @@ export interface ActionRequest {
   affinities?: AffinityCounts;
   /** Affinity selected for a same-Affinity Harness; legacy Luminary toggle requests are rejected */
   affinity?: ActionRequestAffinity;
+  /** Deprecated compatibility field; ignored by the game engine */
+  voidSealAffinity?: ActionRequestVoidSealAffinity;
   cardId?: string;
   tier?: number;
   /** Luminary ID for Luminary-specific action payloads */
@@ -1004,8 +1986,39 @@ export interface ActionRequest {
   civName?: string;
   /** Ordered list of luminaryIds for choose_luminary_order action */
   orderedIds?: string[];
+  /** Explicit confirmation required for a Mantle-to-Orbit Foundry third use */
+  confirmOverdrive?: boolean;
 }
 
 export type GetGameStateParams = {
   sessionToken: string;
+};
+
+export type AcknowledgeArchitectRecordPresentation200 = {
+  ok: boolean;
+};
+
+export type RecordFirstPartyEvent202 = {
+  accepted: boolean;
+};
+
+export type WithdrawBlueprintClearanceChallengeBody = {
+  roomId: string;
+};
+
+export type WithdrawBlueprintClearanceChallenge200Status =
+  (typeof WithdrawBlueprintClearanceChallenge200Status)[keyof typeof WithdrawBlueprintClearanceChallenge200Status];
+
+export const WithdrawBlueprintClearanceChallenge200Status = {
+  classified: "classified",
+  challenge_ready: "challenge_ready",
+} as const;
+
+export type WithdrawBlueprintClearanceChallenge200 = {
+  roomId: string;
+  status: WithdrawBlueprintClearanceChallenge200Status;
+};
+
+export type AcknowledgeBlueprintVaultReveal200 = {
+  ok: boolean;
 };

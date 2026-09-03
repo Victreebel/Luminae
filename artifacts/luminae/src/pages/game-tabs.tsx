@@ -30,6 +30,11 @@ import {
   type CivilizationProfile,
 } from '@/lib/civilizationProfile';
 
+const BlueprintGamePanel = React.lazy(async () => {
+  const module = await import('@/components/blueprints/BlueprintGamePanel');
+  return { default: module.BlueprintGamePanel };
+});
+
 type SetState<T> = React.Dispatch<React.SetStateAction<T>>;
 
 interface GameTabSession {
@@ -191,8 +196,10 @@ export interface HandTabScope {
   forgedView: 'cards' | 'timeline';
   handleCancelPlan: () => void | Promise<void>;
   handleCardTap: (card: ArtifactCard, fromReserve: boolean) => void;
+  executeBlueprintAction: (payload: { type: 'recover_foundry_component'; cardId: string }) => void;
   isEditingCivName: boolean;
   isMyTurn: boolean;
+  isMyTurnForCoreAction: boolean;
   kardashevPalette: AffinityPalette;
   kardashevProgressFraction: number;
   kardashevTier: KardashevTier;
@@ -256,8 +263,10 @@ export function HandTab({ scope }: { scope: HandTabScope }) {
     forgedView,
     handleCancelPlan,
     handleCardTap,
+    executeBlueprintAction,
     isEditingCivName,
     isMyTurn,
+    isMyTurnForCoreAction,
     kardashevPalette,
     kardashevProgressFraction,
     kardashevTier,
@@ -287,6 +296,28 @@ export function HandTab({ scope }: { scope: HandTabScope }) {
     suppressedMarkerIds,
     victoryRequirement,
   } = scope;
+
+  const luminaryAllianceBonuses: Partial<Record<AffinityKey, number>> = {};
+  for (const alliance of state.luminaryAffinities ?? []) {
+    if (
+      alliance.ownerId !== session.playerId ||
+      state.turnCount <= alliance.summonedAtTurnCount
+    ) continue;
+    const affinity = alliance.activeAffinity as AffinityKey;
+    luminaryAllianceBonuses[affinity] = (luminaryAllianceBonuses[affinity] ?? 0) + 1;
+  }
+  const permanentAffinityEntries = AFFINITIES
+    .filter((affinity) => affinity !== 'singularity')
+    .map((affinity) => {
+      const artifactBonus = me?.bonuses[affinity as keyof AffinityCounts] ?? 0;
+      const allianceBonus = luminaryAllianceBonuses[affinity as AffinityKey] ?? 0;
+      return {
+        affinity: affinity as AffinityKey,
+        allianceBonus,
+        total: artifactBonus + allianceBonus,
+      };
+    })
+    .filter(({ total }) => total > 0);
 
   return (
     <div className="flex flex-col gap-5 p-4 pb-6">
@@ -374,6 +405,71 @@ export function HandTab({ scope }: { scope: HandTabScope }) {
         <EminenceProgress value={me?.eminence ?? 0} target={victoryRequirement} variant="monument" />
       </div>
 
+      {/* Civilization-wide permanent Affinity ledger */}
+      <section className="px-1" aria-labelledby="permanent-affinities-heading">
+        <div className="mb-2 flex items-center justify-between gap-3">
+          <h2
+            id="permanent-affinities-heading"
+            className="text-[10px] font-semibold uppercase text-muted-foreground"
+          >
+            Permanent Affinities
+          </h2>
+          {permanentAffinityEntries.some(({ allianceBonus }) => allianceBonus > 0) && (
+            <span className="text-[9px] text-yellow-400/65">✦ allied Luminary</span>
+          )}
+        </div>
+        {permanentAffinityEntries.length > 0 ? (
+          <div className="flex flex-wrap items-center gap-1.5">
+            {permanentAffinityEntries.map(({ affinity, allianceBonus, total }) => (
+              <div
+                key={affinity}
+                className="flex min-h-7 items-center gap-1 border border-white/10 bg-black/35 px-2 py-1"
+                title={allianceBonus > 0
+                  ? `${total} permanent ${AFFINITY_META[affinity].name}, including ${allianceBonus} from allied Luminaries`
+                  : `${total} permanent ${AFFINITY_META[affinity].name}`}
+              >
+                <AffinityToken color={affinity} size={13} />
+                <span className="text-xs font-bold tabular-nums text-white">×{total}</span>
+                {allianceBonus > 0 && (
+                  <span className="text-[9px] text-yellow-400/80" aria-label={`${allianceBonus} from allied Luminaries`}>
+                    ✦{allianceBonus}
+                  </span>
+                )}
+              </div>
+            ))}
+          </div>
+        ) : (
+          <p className="text-xs italic text-muted-foreground">No permanent Affinities yet.</p>
+        )}
+      </section>
+
+      {(
+        (me?.blueprintPrivateStates?.length ?? 0) > 0 ||
+        safePlayers.some((player) => (
+          player.manifestedBlueprintProjects?.length ??
+          player.manifestedBlueprintDevices?.length ??
+          0
+        ) > 0) ||
+        (state.scenarioProtocols?.length ?? 0) > 0
+      ) && (
+        <React.Suspense
+          fallback={<div className="h-24 animate-pulse border border-white/8 bg-white/[0.025]" aria-label="Loading Blueprint systems" />}
+        >
+          <BlueprintGamePanel
+            me={me}
+            players={safePlayers}
+            scenarioProtocols={state.scenarioProtocols ?? []}
+            loreCatalog={loreCatalog}
+            onOpenArtifact={openForgedCardSheet}
+            canUseCoreAction={isMyTurnForCoreAction}
+            onRecoverFoundryComponent={(cardId) => executeBlueprintAction({
+              type: 'recover_foundry_component',
+              cardId,
+            })}
+          />
+        </React.Suspense>
+      )}
+
       {/* Reserved Cards */}
       {myReservedCount > 0 && (
         <div>
@@ -393,14 +489,20 @@ export function HandTab({ scope }: { scope: HandTabScope }) {
 	              return (
 	                <div key={c.id} data-reserved-card-id={c.id} className="relative shrink-0 flex flex-col items-center gap-1" style={{ maxWidth: 90 }} title={cardTapTitle}>
                   <div className="relative">
-                    <ArtifactCardView
-                      card={c}
-                      tier={c.tier}
-                      onTap={() => handleCardTap(c, true)}
-                      tapped={selectedCard?.card.id === c.id}
-                      effectiveCosts={computeCosts(c, costMode)}
-                      hideStrike={costMode === 'needed_now'}
-                    />
+                    <button
+                      type="button"
+                      aria-label={`Open encrypted Artifact ${c.name}`}
+                      className="block rounded-xl border-0 bg-transparent p-0 text-left focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-amber-300/80"
+                      onClick={() => handleCardTap(c, true)}
+                    >
+                      <ArtifactCardView
+                        card={c}
+                        tier={c.tier}
+                        tapped={selectedCard?.card.id === c.id}
+                        effectiveCosts={computeCosts(c, costMode)}
+                        hideStrike={costMode === 'needed_now'}
+                      />
+                    </button>
 		                    {isPendingPlan && (
                           <PendingActionOverlay
                             label={plannedCardLabel}
@@ -456,110 +558,6 @@ export function HandTab({ scope }: { scope: HandTabScope }) {
         </button>
         {showForgedArtifacts && (
           <div className="p-3">
-            {/* Bonus summary — card bonuses + living luminary alliance bonuses */}
-            {(() => {
-              const lumAffinities: LuminaryActiveState[] = state.luminaryAffinities;
-              const tc: number = state.turnCount;
-              const myLumBonus: Partial<Record<AffinityKey, number>> = {};
-              for (const la of lumAffinities) {
-                if (la.ownerId !== session?.playerId || tc <= la.summonedAtTurnCount) continue;
-                const k = la.activeAffinity as AffinityKey;
-                myLumBonus[k] = (myLumBonus[k] ?? 0) + 1;
-              }
-              const hasAnyLumBonus = Object.values(myLumBonus).some(v => (v ?? 0) > 0);
-              const hasAnyBonus = hasAnyLumBonus || AFFINITIES.filter(c => c !== 'singularity').some(c => (me?.bonuses[c as keyof AffinityCounts] ?? 0) > 0);
-              return (
-                <div className="flex gap-1.5 flex-wrap mb-3 items-center">
-                  {AFFINITIES.filter(c => c !== 'singularity').map((c) => {
-                    const cardCount = me?.bonuses[c as keyof AffinityCounts] ?? 0;
-                    const lumCount = myLumBonus[c as AffinityKey] ?? 0;
-                    const total = cardCount + lumCount;
-                    if (total === 0) return null;
-                    return (
-                      <div key={c} className="flex items-center gap-1 bg-black/40 rounded-full px-2 py-0.5">
-                        <AffinityToken color={c as AffinityKey} size={12} />
-                        <span className="text-xs font-bold text-white">×{total}</span>
-                        {lumCount > 0 && <span className="text-[9px] text-yellow-400/80">✦</span>}
-                      </div>
-                    );
-                  })}
-                  {!hasAnyBonus && (
-                    <span className="text-xs text-muted-foreground italic">No bonuses yet</span>
-                  )}
-                  {hasAnyLumBonus && (
-                    <span className="text-[9px] text-yellow-400/60 ml-auto">✦ alliance</span>
-                  )}
-                </div>
-              );
-            })()}
-            {/* Claimed Luminary alliances — name + effect name, tap to reveal description */}
-            {(me?.claimedLuminaryIds ?? []).length > 0 && (
-              <div className="flex flex-col gap-1 mb-3">
-                {(me?.claimedLuminaryIds ?? []).map(lumId => {
-                  const lum = state.luminaries.find(l => l.id === lumId);
-                  if (!lum) return null;
-                  const visuals = getLuminaryVisuals(lumId);
-                  const primaryColor = visuals.primaryColor;
-                  const isExpanded = expandedLumEffects.has(lumId);
-                  const hasEffect = !!(lum.effectName || lum.effectDescription);
-                  return (
-                    <div key={lumId}>
-                      <div
-                        role={hasEffect ? 'button' : undefined}
-                        tabIndex={hasEffect ? 0 : undefined}
-                        aria-expanded={hasEffect ? isExpanded : undefined}
-                        className={`flex items-center gap-2 rounded-lg px-2 py-1.5 transition-colors${hasEffect ? ' cursor-pointer select-none' : ''}`}
-                        style={{ background: `${primaryColor}11`, border: `1px solid ${primaryColor}33` }}
-                        onClick={() => {
-                          if (!hasEffect) return;
-                          setExpandedLumEffects(prev => {
-                            const next = new Set(prev);
-                            if (next.has(lumId)) next.delete(lumId); else next.add(lumId);
-                            return next;
-                          });
-                        }}
-                        onKeyDown={(e) => {
-                          if (!hasEffect) return;
-                          if (e.key === 'Enter' || e.key === ' ') {
-                            e.preventDefault();
-                            setExpandedLumEffects(prev => {
-                              const next = new Set(prev);
-                              if (next.has(lumId)) next.delete(lumId); else next.add(lumId);
-                              return next;
-                            });
-                          }
-                        }}
-                      >
-                        <div className="shrink-0 rounded-md overflow-hidden">
-                          <LuminaryPanelArt luminaryId={lumId} width={24} height={24} claimed runtime />
-                        </div>
-                        <div className="flex-1 min-w-0">
-                          <p className="text-[11px] font-semibold text-white leading-tight truncate">{lum.name}</p>
-                          {lum.effectName && (
-                            <p className="text-[9px] font-semibold uppercase tracking-[0.1em] leading-none mt-0.5" style={{ color: primaryColor }}>{lum.effectName}</p>
-                          )}
-                        </div>
-                        {hasEffect && (
-                          <span className="text-[10px] text-muted-foreground shrink-0 leading-none">{isExpanded ? '▲' : '▼'}</span>
-                        )}
-                      </div>
-                      {isExpanded && lum.effectDescription && (
-                        <div className="mt-0.5 mx-0.5 rounded-lg px-3 py-2" style={{ background: `${primaryColor}0A`, border: `1px solid ${primaryColor}22` }}>
-                          {lumId === 'lum_compass' ? (
-                            <ForgottenHourDescription
-                              revealBlueprintText={Boolean(me?.forgedArtifacts?.length)}
-                              className="text-[10px] text-white/70 leading-relaxed"
-                            />
-                          ) : (
-                            <p className="text-[10px] text-white/70 leading-relaxed">{lum.effectDescription}</p>
-                          )}
-                        </div>
-                      )}
-                    </div>
-                  );
-                })}
-              </div>
-            )}
             {/* Cards / Timeline toggle */}
             {(me?.forgedArtifacts?.length ?? 0) > 0 && (
               <div className="flex gap-1 mb-3">
@@ -596,7 +594,13 @@ export function HandTab({ scope }: { scope: HandTabScope }) {
                     : [];
                   const bonusMeta = AFFINITY_META[c.bonusAffinity as AffinityKey];
                   return (
-                    <div key={c.id} className="flex items-center gap-2.5 py-2 cursor-pointer rounded hover:bg-white/5 px-1 -mx-1 transition-colors" onClick={() => openForgedCardSheet(c)}>
+                    <button
+                      key={c.id}
+                      type="button"
+                      className="flex w-full items-center gap-2.5 rounded px-1 py-2 text-left transition-colors hover:bg-white/5 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-amber-300/80"
+                      onClick={() => openForgedCardSheet(c)}
+                      aria-label={`View forged Artifact ${c.name}`}
+                    >
                       <span className="text-[10px] text-muted-foreground w-4 text-right shrink-0 tabular-nums">{idx + 1}</span>
                       <div className="flex-1 min-w-0">
                         <p className="text-[11px] font-semibold text-foreground leading-tight truncate">{c.name}</p>
@@ -615,7 +619,7 @@ export function HandTab({ scope }: { scope: HandTabScope }) {
                         <AffinityToken color={c.bonusAffinity as AffinityKey} size={9} />
                         <span className="text-[9px] font-semibold" style={{ color: bonusMeta?.glowHex ?? '#fff' }}>+1</span>
                       </div>
-                    </div>
+                    </button>
                   );
                 })}
               </div>
@@ -646,10 +650,12 @@ export function HandTab({ scope }: { scope: HandTabScope }) {
                 const vis = getLuminaryVisuals(lum.id);
                 const accentColor = lum.summonColor ?? vis.primaryColor;
                 const reqEntries = AFFINITIES.filter(c => (lum.requirements[c as keyof AffinityCounts] ?? 0) > 0);
+                const hasEffect = Boolean(lum.effectName || lum.effectDescription);
+                const isExpanded = expandedLumEffects.has(lum.id);
                 return (
                   <div
                     key={lum.id}
-                    className="flex items-center gap-2.5 py-1.5 px-2 rounded-xl"
+                    className="overflow-hidden rounded-xl"
                     style={{
                       background: claimedByMe
                         ? `${accentColor}18`
@@ -659,68 +665,106 @@ export function HandTab({ scope }: { scope: HandTabScope }) {
                       border: `1px solid ${claimedByMe ? accentColor + '44' : 'rgba(255,255,255,0.07)'}`,
                     }}
                   >
-                    {/* Tiny panel art */}
-                    <div className="shrink-0 rounded-md overflow-hidden">
-                      <LuminaryPanelArt luminaryId={lum.id} width={32} height={32} claimed={!!claimedByPlayer} runtime />
-                    </div>
-                    {/* Name + domain */}
-                    <div className="flex-1 min-w-0">
-                      <p className="text-[11px] font-semibold leading-tight truncate" style={{ color: claimedByMe ? accentColor : 'rgba(255,255,255,0.85)' }}>
-                        {lum.name}
-                      </p>
-                      <p className="text-[9px] text-muted-foreground leading-none truncate mt-0.5">{lum.domain}</p>
-                    </div>
-                    {/* Right: claimed badge OR progress chips */}
-                    <div className="shrink-0 flex items-center gap-1">
-                      {claimedByMe ? (
-                        <span
-                          className="text-[9px] font-bold px-1.5 py-0.5 rounded-full"
-                          style={{ background: accentColor + '33', color: accentColor, border: `1px solid ${accentColor}66` }}
-                        >
-                          ✓ Claimed
-                        </span>
-                      ) : claimedByPlayer ? (
-                        <span className="text-[9px] text-muted-foreground truncate max-w-[72px]">
-                          {claimedByPlayer.playerName}
-                        </span>
-                      ) : (
-                        <div className="flex items-center gap-0.5 flex-wrap justify-end max-w-[120px]">
-                          {reqEntries.map((c) => {
-                            const needed = lum.requirements[c as keyof AffinityCounts] ?? 0;
-                            const have = me?.bonuses?.[c as keyof AffinityCounts] ?? 0;
-                            const met = have >= needed;
-                            const meta = AFFINITY_META[c as AffinityKey];
-                            return (
-                              <div
-                                key={c}
-                                className="flex items-center gap-0.5 rounded px-1 py-0.5"
-                                style={{
-                                  background: met ? `${meta.glowHex}22` : 'rgba(0,0,0,0.35)',
-                                  border: `1px solid ${met ? meta.glowHex + '66' : 'rgba(255,255,255,0.12)'}`,
-                                  opacity: met ? 0.7 : 1,
-                                }}
-                                title={met ? `${meta.name} requirement met (${have}/${needed})` : `Need ${needed - have} more ${meta.name} (${have}/${needed})`}
-                              >
-                                <AffinityToken color={c as AffinityKey} size={8} />
-                                <span
-                                  className="text-[8px] font-bold leading-none tabular-nums"
-                                  style={{ color: met ? meta.glowHex : 'rgba(255,255,255,0.75)' }}
+                    <button
+                      type="button"
+                      className="flex w-full items-center gap-2.5 px-2 py-1.5 text-left"
+                      aria-expanded={hasEffect ? isExpanded : undefined}
+                      aria-label={hasEffect ? `${isExpanded ? 'Hide' : 'Show'} ${lum.name} effect` : lum.name}
+                      disabled={!hasEffect}
+                      onClick={() => {
+                        if (!hasEffect) return;
+                        setExpandedLumEffects((previous) => {
+                          const next = new Set(previous);
+                          if (next.has(lum.id)) next.delete(lum.id);
+                          else next.add(lum.id);
+                          return next;
+                        });
+                      }}
+                    >
+                      <div className="shrink-0 overflow-hidden rounded-md">
+                        <LuminaryPanelArt luminaryId={lum.id} width={32} height={32} claimed={!!claimedByPlayer} runtime />
+                      </div>
+                      <div className="min-w-0 flex-1">
+                        <p className="truncate text-[11px] font-semibold leading-tight" style={{ color: claimedByMe ? accentColor : 'rgba(255,255,255,0.85)' }}>
+                          {lum.name}
+                        </p>
+                        <p className="mt-0.5 truncate text-[9px] leading-none text-muted-foreground">{lum.domain}</p>
+                      </div>
+                      <div className="flex shrink-0 items-center gap-1">
+                        {claimedByMe ? (
+                          <span
+                            className="rounded-full px-1.5 py-0.5 text-[9px] font-bold"
+                            style={{ background: accentColor + '33', color: accentColor, border: `1px solid ${accentColor}66` }}
+                          >
+                            Allied
+                          </span>
+                        ) : claimedByPlayer ? (
+                          <span className="max-w-[72px] truncate text-[9px] text-muted-foreground">
+                            {claimedByPlayer.playerName}
+                          </span>
+                        ) : (
+                          <div className="flex max-w-[120px] flex-wrap items-center justify-end gap-0.5">
+                            {reqEntries.map((c) => {
+                              const needed = lum.requirements[c as keyof AffinityCounts] ?? 0;
+                              const have = me?.bonuses?.[c as keyof AffinityCounts] ?? 0;
+                              const met = have >= needed;
+                              const meta = AFFINITY_META[c as AffinityKey];
+                              return (
+                                <div
+                                  key={c}
+                                  className="flex items-center gap-0.5 rounded px-1 py-0.5"
+                                  style={{
+                                    background: met ? `${meta.glowHex}22` : 'rgba(0,0,0,0.35)',
+                                    border: `1px solid ${met ? meta.glowHex + '66' : 'rgba(255,255,255,0.12)'}`,
+                                    opacity: met ? 0.7 : 1,
+                                  }}
+                                  title={met ? `${meta.name} requirement met (${have}/${needed})` : `Need ${needed - have} more ${meta.name} (${have}/${needed})`}
                                 >
-                                  {met ? '✓' : `${have}/${needed}`}
-                                </span>
-                              </div>
-                            );
-                          })}
-                        </div>
-                      )}
-                      {/* Eminence value badge */}
-                      <EminenceBadge
-                        value={lum.eminence ?? 0}
-                        compact
-                        className="ml-1 shrink-0"
-                        title={getLuminaryEminenceTitle(lum.eminence ?? 0)}
-                      />
-                    </div>
+                                  <AffinityToken color={c as AffinityKey} size={8} />
+                                  <span
+                                    className="text-[8px] font-bold leading-none tabular-nums"
+                                    style={{ color: met ? meta.glowHex : 'rgba(255,255,255,0.75)' }}
+                                  >
+                                    {met ? '✓' : `${have}/${needed}`}
+                                  </span>
+                                </div>
+                              );
+                            })}
+                          </div>
+                        )}
+                        <EminenceBadge
+                          value={lum.eminence ?? 0}
+                          compact
+                          className="ml-1 shrink-0"
+                          title={getLuminaryEminenceTitle(lum.eminence ?? 0)}
+                        />
+                        {hasEffect && (
+                          isExpanded
+                            ? <ChevronUp className="h-3.5 w-3.5 text-muted-foreground" aria-hidden="true" />
+                            : <ChevronDown className="h-3.5 w-3.5 text-muted-foreground" aria-hidden="true" />
+                        )}
+                      </div>
+                    </button>
+                    {isExpanded && hasEffect && (
+                      <div
+                        className="border-t px-3 py-2"
+                        style={{ borderColor: `${accentColor}2f`, background: `${accentColor}0a` }}
+                      >
+                        {lum.effectName && (
+                          <p className="mb-1 text-[9px] font-semibold uppercase leading-none" style={{ color: accentColor }}>
+                            {lum.effectName}
+                          </p>
+                        )}
+                        {lum.id === 'lum_compass' ? (
+                          <ForgottenHourDescription
+                            revealBlueprintText={Boolean(me?.forgedArtifacts?.length)}
+                            className="text-[10px] leading-relaxed text-white/70"
+                          />
+                        ) : lum.effectDescription ? (
+                          <p className="text-[10px] leading-relaxed text-white/70">{lum.effectDescription}</p>
+                        ) : null}
+                      </div>
+                    )}
                   </div>
                 );
               })}
@@ -970,7 +1014,7 @@ export function LogTab({ scope }: { scope: LogTabScope }) {
 	                entry.summary.startsWith('pending action cleared') ||
 	                entry.summary.startsWith('planned move cleared') ||
 	                entry.summary.startsWith('planned move voided');
-              const isBurned = entry.summary.startsWith('The Final Hunger Assimilated') || /\bBurned\b/i.test(entry.summary);
+              const isBurned = /\bBurned\b/i.test(entry.summary);
               const affinityLabel = isAffinityChange ? (entry.summary.split(' to ').pop() ?? '') : '';
               const dotColor = AFFINITY_DOT_COLOR[affinityLabel] ?? '#888';
               return (

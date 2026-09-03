@@ -1,8 +1,32 @@
 import { act, fireEvent, render, screen } from '@testing-library/react';
 import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest';
-import { LuminaryActivationCinematic } from '../LuminaryActivationCinematic';
+import {
+  ANTICIPATE_MS,
+  getVisibleProcedureSteps,
+  HOLD_MS,
+  LuminaryActivationCinematic,
+  PAN_OUT_MS,
+  REVEAL_MS,
+} from '../LuminaryActivationCinematic';
+import { gameAudio } from '@/lib/audio';
+import { getLuminaryImageAssets } from '@/lib/luminaryAssets';
+
+vi.mock('@/lib/audio', async (importOriginal) => {
+  const actual = await importOriginal<typeof import('@/lib/audio')>();
+  return {
+    ...actual,
+    gameAudio: {
+      playActivationSting: vi.fn(),
+      playLuminaryEffectBeat: vi.fn(),
+      playOblivionThresholdShift: vi.fn(),
+      playVictoryRequirementShift: vi.fn(),
+      stopActivationSting: vi.fn(),
+    },
+  };
+});
 
 beforeEach(() => {
+  vi.clearAllMocks();
   vi.stubGlobal('matchMedia', vi.fn().mockImplementation((query: string) => ({
     matches: false,
     media: query,
@@ -21,6 +45,14 @@ afterEach(() => {
 });
 
 describe('LuminaryActivationCinematic phase integration', () => {
+  it('names threshold changes as victory requirements rather than victories', () => {
+    expect(getVisibleProcedureSteps([
+      { type: 'victoryRequirementChange', amount: 8 },
+    ])).toEqual([
+      expect.objectContaining({ label: 'VICTORY REQUIREMENT +8' }),
+    ]);
+  });
+
   it('keeps the full activation presentation when only its timeline is accelerated', () => {
     render(
       <LuminaryActivationCinematic
@@ -35,6 +67,55 @@ describe('LuminaryActivationCinematic phase integration', () => {
     const cinematic = screen.getByTestId('luminary-activation-cinematic');
     expect(cinematic).toHaveAttribute('data-presentation-mode', 'full');
     expect(cinematic).toHaveAttribute('data-timeline-playback-rate', '4');
+  });
+
+  it('reframes during release and waits for camera settlement before handoff', async () => {
+    vi.useFakeTimers();
+    let settleCamera: (() => void) | undefined;
+    const prepareResolution = vi.fn(() => new Promise<void>((resolve) => {
+      settleCamera = resolve;
+    }));
+    const onResolutionStart = vi.fn();
+    const onComplete = vi.fn();
+
+    render(
+      <LuminaryActivationCinematic
+        luminaryId="lum_forge"
+        effectType="summon"
+        luminaryName="The Iron Harbinger"
+        sourceOnly
+        prepareResolution={prepareResolution}
+        onResolutionStart={onResolutionStart}
+        onComplete={onComplete}
+      />,
+    );
+
+    await act(async () => {
+      await vi.advanceTimersByTimeAsync(ANTICIPATE_MS + REVEAL_MS + HOLD_MS - 1);
+    });
+    expect(prepareResolution).not.toHaveBeenCalled();
+
+    await act(async () => {
+      await vi.advanceTimersByTimeAsync(1);
+    });
+    expect(prepareResolution).toHaveBeenCalledOnce();
+    expect(screen.getByTestId('luminary-activation-cinematic')).toHaveAttribute(
+      'data-effect-phase',
+      'frame',
+    );
+
+    await act(async () => {
+      await vi.advanceTimersByTimeAsync(PAN_OUT_MS);
+    });
+    expect(onResolutionStart).not.toHaveBeenCalled();
+    expect(onComplete).not.toHaveBeenCalled();
+
+    await act(async () => {
+      settleCamera?.();
+      await Promise.resolve();
+    });
+    expect(onResolutionStart).toHaveBeenCalledOnce();
+    expect(onComplete).toHaveBeenCalledWith(false);
   });
 
   it('advances one reduced-motion beat without skipping the effect', async () => {
@@ -75,6 +156,61 @@ describe('LuminaryActivationCinematic phase integration', () => {
       await vi.runAllTimersAsync();
     });
     expect(onComplete).toHaveBeenCalledWith(false);
+    expect(gameAudio.playLuminaryEffectBeat).toHaveBeenCalledWith(
+      'suppression',
+      'target',
+      '#ffffff',
+      'lum_null',
+    );
+    expect(gameAudio.playLuminaryEffectBeat).toHaveBeenCalledWith(
+      'suppression',
+      'resolve',
+      '#ffffff',
+      'lum_null',
+    );
+    expect(gameAudio.playLuminaryEffectBeat).toHaveBeenCalledWith(
+      'suppression',
+      'aftermath',
+      '#ffffff',
+      'lum_null',
+    );
+  });
+
+  it('uses transparent runtime layers for Concordance in the compact activation', () => {
+    render(
+      <LuminaryActivationCinematic
+        luminaryId="lum_radiant"
+        effectType="summon"
+        luminaryName="Concordance Mandala"
+        reducedMotion
+        onComplete={vi.fn()}
+      />,
+    );
+
+    const composite = screen.getByTestId('radiant-entity-composite');
+    expect(composite).toHaveAttribute('data-runtime', 'true');
+    expect(composite.querySelectorAll('[data-radiant-layer]')).toHaveLength(3);
+    expect(composite.querySelector('[class*="lum-radiant"]')).toBeNull();
+  });
+
+  it('uses the current Final Hunger entity art instead of its legacy cinematic asset', () => {
+    render(
+      <LuminaryActivationCinematic
+        luminaryId="lum_hunger"
+        effectType="action"
+        luminaryName="The Final Hunger"
+        reducedMotion
+        onComplete={vi.fn()}
+      />,
+    );
+
+    const assets = getLuminaryImageAssets('lum_hunger');
+    const sourceImage = screen
+      .getByTestId('luminary-activation-entity')
+      .querySelector('img');
+
+    expect(sourceImage).toHaveAttribute('src', assets.entityRuntime);
+    expect(sourceImage).not.toHaveAttribute('src', assets.cinematicArt);
   });
 
   it('lets a named director use a source-only prelude', async () => {
@@ -111,8 +247,9 @@ describe('LuminaryActivationCinematic phase integration', () => {
     expect(onComplete).toHaveBeenCalledWith(false);
   });
 
-  it('keeps the reduced source pulse visible long enough to register', () => {
+  it('registers the reduced source pulse, then clears it before consequence motion', async () => {
     vi.useFakeTimers();
+    const onComplete = vi.fn();
 
     render(
       <LuminaryActivationCinematic
@@ -120,7 +257,7 @@ describe('LuminaryActivationCinematic phase integration', () => {
         effectType="summon"
         luminaryName="The Iron Harbinger"
         reducedMotion
-        onComplete={vi.fn()}
+        onComplete={onComplete}
       />,
     );
 
@@ -129,9 +266,18 @@ describe('LuminaryActivationCinematic phase integration', () => {
     expect(sourceImage).toHaveAttribute('loading', 'eager');
     expect(sourceImage).toHaveAttribute('decoding', 'sync');
 
-    act(() => vi.advanceTimersByTime(1_200));
+    await act(async () => {
+      await vi.advanceTimersByTimeAsync(REVEAL_MS + 100);
+    });
+
+    expect(entity).toBeInTheDocument();
+
+    await act(async () => {
+      await vi.advanceTimersByTimeAsync(HOLD_MS - 50);
+    });
 
     expect(screen.getByTestId('luminary-activation-cinematic')).toBeInTheDocument();
-    expect(entity).toBeInTheDocument();
+    expect(screen.queryByTestId('luminary-activation-entity')).toBeNull();
+    expect(onComplete).not.toHaveBeenCalled();
   });
 });

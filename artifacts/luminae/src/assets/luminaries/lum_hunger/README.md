@@ -5,4 +5,4 @@ Place artwork files here:
 - `entity.png` — freed entity, transparent background, 2:3 portrait
 - `aura.png` — optional portal aura, transparent bg, screen-blend safe
 
-Affinity: Abyss + Flare (abyss/flare)
+Affinity: Flare + Verdance + Radiance

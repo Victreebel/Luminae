@@ -105,7 +105,7 @@ export const LUMINARY_EFFECT_MAP: Record<string, Omit<LuminaryEffectAnimation, '
   lum_orchard: { affinities: ['verdance', 'radiance'],          tone: 'boon',        target: 'artifact',      isLingering: false },
   lum_pale:    { affinities: ['abyss', 'radiance'],             tone: 'curse',       target: 'player',        isLingering: false },
   lum_null:    { affinities: ['continuum', 'abyss', 'radiance'], tone: 'negation',    target: 'artifact',      isLingering: true  },
-  lum_hunger:  { affinities: ['flare', 'verdance', 'radiance'],  tone: 'consumption', target: 'pendingAction', isLingering: true  },
+  lum_hunger:  { affinities: ['flare', 'verdance', 'radiance'],  tone: 'consumption', target: 'artifact',      isLingering: false },
   lum_moth:    { affinities: ['flare'],                      tone: 'global',      target: 'artifact',      isLingering: false },
   lum_scholar: { affinities: ['continuum', 'radiance'],         tone: 'global',      target: 'artifact',      isLingering: false },
 };

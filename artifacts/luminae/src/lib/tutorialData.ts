@@ -1,4 +1,5 @@
 import { AFFINITY_KEYS, type AffinityKey } from "@/lib/affinityMeta";
+import type { FirstContactStance } from "@workspace/game-types";
 
 type TutorialBeatMode =
   | "listen"
@@ -24,7 +25,23 @@ type LumiiZone =
   | "needed-tab"
   | "luminary"
   | "card-cost"
-  | "player-panel";
+  | "player-panel"
+  | "opponent";
+
+export type TutorialHighlightZone =
+  | "well"
+  | "forge-btn"
+  | "hand"
+  | "storage"
+  | "forge-t1"
+  | "forge-t2"
+  | "forge-t3"
+  | "card-cost"
+  | "eminence"
+  | "discounted-tab"
+  | "needed-tab"
+  | "luminary"
+  | "verdance-bonus";
 
 interface TutorialDialogueLine {
   text: string;
@@ -36,7 +53,12 @@ type CompletionTrigger =
   | { type: "action"; action: TutorialAction }
   | { type: "auto"; ms: number }
   | { type: "animation" }
+  | { type: "opponent_action"; action: TutorialOpponentAction }
   | { type: "panel_view" };
+
+export type TutorialOpponentAction =
+  | { kind: "harness"; affinities: readonly AffinityKey[] }
+  | { kind: "forge"; cardId: string };
 
 type TutorialAction =
   | "harness"
@@ -48,18 +70,45 @@ type TutorialAction =
   | "cinematic_ff"
   | "forge_final";
 
-interface TutorialBeat {
+export type TutorialInteractionKind =
+  | "harness"
+  | "forge"
+  | "encrypt"
+  | "forge_reserved"
+  | "forge_final";
+
+export type TutorialInteractionTarget =
+  | { zone: "well"; harnessPattern: Readonly<Partial<Record<AffinityKey, number>>> }
+  | { zone: "forge" | "storage"; cardId: string };
+
+export interface TutorialInteractionPolicy {
+  substep: { min: number; max?: number };
+  availableFromDialogue: number | "last";
+  kind: TutorialInteractionKind;
+  target: TutorialInteractionTarget;
+  exactAction: "HARNESS" | "FORGE_ARTIFACT" | "RESERVE" | "FORGE_RESERVED";
+  completionEvent:
+    | "harness_completed"
+    | "artifact_forged"
+    | "artifact_encrypted"
+    | "encrypted_artifact_forged"
+    | "final_artifact_forged";
+  wrongNudge: string;
+}
+
+export interface TutorialBeat {
   id: string;
   mode: TutorialBeatMode;
   dialogue: TutorialDialogueLine[];
   lumiiZone: LumiiZone;
-  highlightZone?: string;
+  highlightZone?: TutorialHighlightZone;
   foregroundCardId?: string;
   completion: CompletionTrigger;
   wrongClickNudge?: string;
+  interactionPolicies?: readonly TutorialInteractionPolicy[];
   subSteps?: TutorialSubStep[];
   playerResponse?: string;
-  choices?: { label: string; value: string }[];
+  choices?: { label: string; value: FirstContactStance }[];
 }
 
 interface TutorialSubStep {
@@ -69,102 +118,39 @@ interface TutorialSubStep {
   wrongNudge?: string;
 }
 
-export interface TutorialCard {
-  id: string;
-  name: string;
-  flavor: string;
-  tier: 1 | 2 | 3;
-  bonusAffinity: AffinityKey;
-  eminence: number;
-  cost: Partial<Record<AffinityKey, number>>;
-}
-
-export const TUTORIAL_CARDS: Record<string, TutorialCard> = {
-  t1e01: {
-    id: "t1e01",
-    name: "Root Lattice",
-    flavor: "The first threads of Verdance take hold.",
-    tier: 1,
-    bonusAffinity: "verdance",
-    eminence: 0,
-    cost: { flare: 1, continuum: 1, radiance: 1 },
-  },
-  t1e07: {
-    id: "t1e07",
-    name: "Void Tendril",
-    flavor: "Growth reaches even into the Abyss.",
-    tier: 1,
-    bonusAffinity: "verdance",
-    eminence: 0,
-    cost: { abyss: 2, radiance: 1 },
-  },
-  t2e03: {
-    id: "t2e03",
-    name: "Verdant Emergence",
-    flavor: "From below the silence, life asserts itself.",
-    tier: 2,
-    bonusAffinity: "verdance",
-    eminence: 2,
-    cost: { verdance: 3, abyss: 3 },
-  },
-  t3e01: {
-    id: "t3e01",
-    name: "Canopy Ascendant",
-    flavor: "The forest remembers what the stars forgot.",
-    tier: 3,
-    bonusAffinity: "verdance",
-    eminence: 3,
-    cost: { continuum: 5, verdance: 3, radiance: 3 },
-  },
-  t3e02: {
-    id: "t3e02",
-    name: "Grove Sovereign",
-    flavor: "Where it chooses to grow, all else follows.",
-    tier: 3,
-    bonusAffinity: "verdance",
-    eminence: 4,
-    cost: { flare: 3, continuum: 6, abyss: 3 },
-  },
-  t3e03: {
-    id: "t3e03",
-    name: "Mycelial Throne",
-    flavor: "A network vast enough to remember everything.",
-    tier: 3,
-    bonusAffinity: "verdance",
-    eminence: 3,
-    cost: { continuum: 3, abyss: 5, radiance: 3 },
-  },
-  t3s04: {
-    id: "t3s04",
-    name: "Stellar Recursion",
-    flavor: "Time folded so many times it forgot its start.",
-    tier: 3,
-    bonusAffinity: "continuum",
-    eminence: 5,
-    cost: { flare: 3, continuum: 7, radiance: 3 },
-  },
-  t2e05: {
-    id: "t2e05",
-    name: "Verdance Bloom",
-    flavor: "A threshold crossed. Something distant stirs.",
-    tier: 2,
-    bonusAffinity: "verdance",
-    eminence: 2,
-    cost: { continuum: 5 },
-  },
+export const TUTORIAL_HARNESS_PATTERNS: Readonly<
+  Record<string, Readonly<Partial<Record<AffinityKey, number>>>>
+> = {
+  b8_first_harness: { flare: 1, continuum: 1, radiance: 1 },
+  b11_forge_reserved: { verdance: 2 },
 };
 
+
 export type TutorialForgeView = "all" | "discounted" | "needed";
+
+export interface TutorialChapter {
+  id: "arrival" | "board" | "actions" | "ascension";
+  label: string;
+  startBeatId: string;
+}
+
+export const TUTORIAL_CHAPTERS: readonly TutorialChapter[] = [
+  { id: "arrival", label: "Meet Lumii", startBeatId: "b0_contact" },
+  { id: "board", label: "Read the Board", startBeatId: "b5_affinities" },
+  { id: "actions", label: "Core Actions", startBeatId: "b8_first_harness" },
+  {
+    id: "ascension",
+    label: "Eminence & Luminaries",
+    startBeatId: "b14_win_condition",
+  },
+];
 
 export const TUTORIAL_BEATS: TutorialBeat[] = [
   {
     id: "b0_contact",
     mode: "listen",
     lumiiZone: "hidden",
-    dialogue: [
-      { text: "Hello…" },
-      { text: "Are you there?" },
-    ],
+    dialogue: [{ text: "Hello..." }, { text: "Are you there?" }],
     completion: { type: "dialogue" },
     playerResponse: "Who's there?",
   },
@@ -212,17 +198,10 @@ export const TUTORIAL_BEATS: TutorialBeat[] = [
     ],
     completion: { type: "dialogue" },
     choices: [
-      { label: "Take me there.", value: "go" },
+      { label: "Show me what lies beyond.", value: "curious" },
+      { label: "I'll follow, but I want answers.", value: "guarded" },
+      { label: "Then let's build.", value: "resolute" },
     ],
-  },
-  {
-    id: "b3b_farewell",
-    mode: "listen",
-    lumiiZone: "center",
-    dialogue: [
-      { text: "Very well. May we meet again." },
-    ],
-    completion: { type: "dialogue" },
   },
   {
     id: "b4_shatter",
@@ -237,8 +216,12 @@ export const TUTORIAL_BEATS: TutorialBeat[] = [
     lumiiZone: "center",
     dialogue: [
       { text: "Welcome to LUMINAe." },
-      { text: "Here, both the nature and technology of all life are determined by certain Affinities." },
-      { text: "They are the elemental forces of existence — the energy behind everything you will build." },
+      {
+        text: "Here, both the nature and technology of all life are determined by certain Affinities.",
+      },
+      {
+        text: "They are the elemental forces of existence - the energy behind everything you will build.",
+      },
       { text: "The five Affinities are..." },
     ],
     completion: { type: "dialogue" },
@@ -249,17 +232,6 @@ export const TUTORIAL_BEATS: TutorialBeat[] = [
     lumiiZone: "center",
     dialogue: [],
     completion: { type: "animation" },
-  },
-  {
-    id: "b5b_affinity_strategy",
-    mode: "listen",
-    lumiiZone: "center",
-    dialogue: [
-      { text: "If the goal of every species is survival, Affinities represent a survival strategy." },
-      { text: "For example, Flare embodies survival through transformation, and Verdance embodies survival through growth." },
-      { text: "In any case, devices forged through the Affinities will definitely lead your society to prosper!" },
-    ],
-    completion: { type: "dialogue" },
   },
   {
     id: "b5c_architect_assembly",
@@ -274,9 +246,17 @@ export const TUTORIAL_BEATS: TutorialBeat[] = [
     id: "b6_forge_appears",
     mode: "look",
     lumiiZone: "forge-t1",
+    highlightZone: "forge-t1",
     dialogue: [
-      { text: "Use The Forge to turn Affinities into Artifacts." },
-      { text: "Artifacts stay with your civilization and make matching future costs cheaper." },
+      {
+        text: "In a match, the Forge holds 12 Artifacts across three tiers. Here, I'll reveal only the Artifact we're learning.",
+      },
+      {
+        text: "The Affinity Well shows what you hold and what remains for everyone.",
+      },
+      {
+        text: "I'll take the other seat and play gently. After each of your actions, watch what I do before your next turn.",
+      },
     ],
     completion: { type: "dialogue" },
   },
@@ -285,8 +265,12 @@ export const TUTORIAL_BEATS: TutorialBeat[] = [
     mode: "look",
     lumiiZone: "forge-t1",
     foregroundCardId: "t1e01",
+    highlightZone: "forge-t1",
     dialogue: [
-      { text: "This is Root Lattice — your first artifact.", excited: true },
+      {
+        text: "This is Replication Spore, your first Artifact.",
+        excited: true,
+      },
     ],
     completion: { type: "dialogue" },
   },
@@ -297,67 +281,100 @@ export const TUTORIAL_BEATS: TutorialBeat[] = [
     foregroundCardId: "t1e01",
     highlightZone: "card-cost",
     dialogue: [
-      { text: "An Artifact's cost is shown at its base." },
-      { text: "Root Lattice costs 1 Flare, 1 Continuum, and 1 Radiance." },
-    ],
-    completion: { type: "dialogue" },
-  },
-  {
-    id: "b7b_cost_bridge",
-    mode: "look",
-    lumiiZone: "card-cost",
-    foregroundCardId: "t1e01",
-    highlightZone: "card-cost",
-    dialogue: [
-      { text: "Those costs are paid with Affinities harnessed from your Affinity Well." },
-      { text: "Let me show you how to use them." },
+      {
+        text: "Read an Artifact in this order: cost at the base, the Affinity bonus it grants when Forged, then its Eminence.",
+      },
+      { text: "Replication Spore costs 1 Flare, 1 Continuum, and 1 Radiance." },
     ],
     completion: { type: "dialogue" },
   },
   {
     id: "b8_first_harness",
     mode: "act",
-    lumiiZone: "card-cost",
+    lumiiZone: "well",
     highlightZone: "well",
     dialogue: [
-      { text: "This is the Affinity Well, through which the essence of the Universe flows." },
-      { text: "The large number shows how much of this shared reservoir you have harnessed. The small pips show how much is left to harness." },
-      { text: "Beware, heavy usage of a single Affinity by yourself and others can cause that Affinity to run dry." },
-      { text: "Taking Affinities is called Harnessing. For the 3-different action, select 1 Flare, 1 Continuum, and 1 Radiance, then press Harness." },
+      {
+        text: "In the Well, the large number shows the Affinity tokens you can spend. After you Forge, a smaller +number shows permanent bonuses. The pips show what remains for everyone.",
+      },
+      {
+        text: "First action: tap 1 Flare, 1 Continuum, and 1 Radiance, then press Harness.",
+      },
     ],
     completion: { type: "action", action: "harness" },
-    wrongClickNudge: "Tap the Affinity icons matching Root Lattice's cost.",
+    interactionPolicies: [{
+      substep: { min: 0, max: 0 },
+      availableFromDialogue: "last",
+      kind: "harness",
+      target: { zone: "well", harnessPattern: TUTORIAL_HARNESS_PATTERNS.b8_first_harness },
+      exactAction: "HARNESS",
+      completionEvent: "harness_completed",
+      wrongNudge: "Tap 1 Flare, 1 Continuum, and 1 Radiance, then Harness.",
+    }],
+    wrongClickNudge:
+      "Tap the Affinity icons matching Replication Spore's cost.",
+  },
+  {
+    id: "b8a_lumii_harness_three",
+    mode: "cinematic",
+    lumiiZone: "opponent",
+    dialogue: [
+      { text: "My turn. I'll take 1 Flare, 1 Continuum, and 1 Abyss." },
+    ],
+    completion: {
+      type: "opponent_action",
+      action: { kind: "harness", affinities: ["flare", "continuum", "abyss"] },
+    },
   },
   {
     id: "b9_first_forge",
     mode: "act",
-    lumiiZone: "well",
+    lumiiZone: "forge-t1",
     foregroundCardId: "t1e01",
-    highlightZone: "forge-btn",
+    highlightZone: "well",
     dialogue: [
-      { text: "Use the Affinities harnessed from the Well to pay the costs." },
-      { text: "For the Forge Artifact action, select Root Lattice and press Forge.", excited: true },
+      { text: "You now hold exactly what Replication Spore costs." },
+      {
+        text: "For the Forge Artifact action, select Replication Spore, press Forge, then Confirm.",
+        excited: true,
+      },
     ],
     completion: { type: "action", action: "forge_artifact" },
-    wrongClickNudge: "Tap Root Lattice, then press Forge.",
+    interactionPolicies: [{
+      substep: { min: 0 },
+      availableFromDialogue: "last",
+      kind: "forge",
+      target: { zone: "forge", cardId: "t1e01" },
+      exactAction: "FORGE_ARTIFACT",
+      completionEvent: "artifact_forged",
+      wrongNudge: "Select Replication Spore, then press Forge and Confirm.",
+    }],
+    wrongClickNudge: "Tap Replication Spore, then press Forge.",
+  },
+  {
+    id: "b9a_lumii_harness_two",
+    mode: "cinematic",
+    lumiiZone: "opponent",
+    dialogue: [
+      { text: "Now I'll take 2 Radiance. Watch the shared Well change." },
+    ],
+    completion: {
+      type: "opponent_action",
+      action: { kind: "harness", affinities: ["radiance", "radiance"] },
+    },
   },
   {
     id: "b9b_forge_complete",
-    mode: "listen",
+    mode: "look",
     lumiiZone: "verdance-panel",
-    highlightZone: "storage",
+    highlightZone: "verdance-bonus",
     dialogue: [
-      { text: "Root Lattice adds 1 Verdance to your civilization. Future Verdance costs are now 1 lower." },
-    ],
-    completion: { type: "dialogue" },
-  },
-  {
-    id: "b9c_transition",
-    mode: "listen",
-    lumiiZone: "storage",
-    highlightZone: "storage",
-    dialogue: [
-      { text: "Next, protect an artifact before someone else can claim it." },
+      {
+        text: "See +1 beside Verdance in the Well. That is a permanent bonus, not a token: it is never spent.",
+      },
+      {
+        text: "It stays in your Civilization and automatically lowers every future Verdance cost by 1.",
+      },
     ],
     completion: { type: "dialogue" },
   },
@@ -367,30 +384,52 @@ export const TUTORIAL_BEATS: TutorialBeat[] = [
     lumiiZone: "forge-t1",
     highlightZone: "forge-t1",
     dialogue: [
-      { text: "The Forge defaults to Needed, showing what remains after your bonuses and held Affinities." },
-      { text: "For the Encrypt Artifact action, select Void Tendril in Tier 1 and press Encrypt. Rivals cannot claim it while it waits for you." },
+      {
+        text: "For the Encrypt Artifact action, select Root Memory Valve, press Encrypt, then Confirm. It will wait only for you.",
+      },
     ],
     completion: { type: "action", action: "reserve" },
+    interactionPolicies: [{
+      substep: { min: 0 },
+      availableFromDialogue: "last",
+      kind: "encrypt",
+      target: { zone: "forge", cardId: "t1s08" },
+      exactAction: "RESERVE",
+      completionEvent: "artifact_encrypted",
+      wrongNudge: "Select Root Memory Valve, then press Encrypt and Confirm.",
+    }],
     wrongClickNudge: "Encrypt the highlighted artifact first.",
+  },
+  {
+    id: "b10a_lumii_harness_three",
+    mode: "cinematic",
+    lumiiZone: "opponent",
+    dialogue: [
+      { text: "My turn again: 1 Flare, 1 Radiance, and 1 Abyss." },
+    ],
+    completion: {
+      type: "opponent_action",
+      action: { kind: "harness", affinities: ["flare", "radiance", "abyss"] },
+    },
   },
   {
     id: "b10b_reserve_granted",
     mode: "listen",
     lumiiZone: "well",
-    highlightZone: "well",
+    highlightZone: "storage",
     dialogue: [
-      { text: "Encrypted artifacts are kept in the Singularity panel of your Affinity Well." },
-      { text: "Encrypting also grants 1 Singularity, which can cover one missing Affinity." },
-    ],
-    completion: { type: "dialogue" },
-  },
-  {
-    id: "b10c_needed_peek",
-    mode: "listen",
-    lumiiZone: "well",
-    highlightZone: "well",
-    dialogue: [
-      { text: "Use Full for printed cost, Discounted for cost after permanent bonuses, and Needed for what remains right now." },
+      {
+        text: "There it is... The current answers you quickly.",
+      },
+      {
+        text: "When an Architect Encrypts an Artifact, the five Affinities converge around it. The resulting current is called Singularity.",
+      },
+      {
+        text: "The Artifact waits behind the Singularity cell for you alone. Singularity can cover any one missing Affinity.",
+      },
+      {
+        text: "Replication Spore lowers Root Memory Valve's 4 Verdance cost to 3. Harness 2 Verdance; Singularity will cover the last one.",
+      },
     ],
     completion: { type: "dialogue" },
   },
@@ -400,37 +439,68 @@ export const TUTORIAL_BEATS: TutorialBeat[] = [
     lumiiZone: "well",
     highlightZone: "well",
     dialogue: [
-      { text: "Encrypted artifacts can still be forged from the Singularity panel." },
-      { text: "For the 2-of-one action, tap ×2 on Abyss, then Harness. Open Singularity and forge Void Tendril with the Singularity you earned.", excited: true },
+      { text: "Fourth action: tap ×2 on Verdance, then Harness." },
+    ],
+    completion: { type: "action", action: "harness" },
+    interactionPolicies: [{
+      substep: { min: 0 },
+      availableFromDialogue: 0,
+      kind: "harness",
+      target: { zone: "well", harnessPattern: TUTORIAL_HARNESS_PATTERNS.b11_forge_reserved },
+      exactAction: "HARNESS",
+      completionEvent: "harness_completed",
+      wrongNudge: "Use x2 on Verdance, then Harness.",
+    }],
+    wrongClickNudge: "Harness 2 Verdance.",
+  },
+  {
+    id: "b11a_lumii_forge",
+    mode: "cinematic",
+    lumiiZone: "opponent",
+    foregroundCardId: "t1s03",
+    highlightZone: "forge-t1",
+    dialogue: [
+      { text: "My turn. I'll Forge Null-Loop Anchor. Its Continuum bonus is permanent, even though it grants no Eminence." },
+    ],
+    completion: {
+      type: "opponent_action",
+      action: { kind: "forge", cardId: "t1s03" },
+    },
+  },
+  {
+    id: "b11b_forge_reserved",
+    mode: "act",
+    lumiiZone: "storage",
+    highlightZone: "storage",
+    dialogue: [
+      {
+        text: "Singularity is open. Choose Root Memory Valve, then press Forge and Confirm.",
+        excited: true,
+      },
     ],
     completion: { type: "action", action: "forge_reserved" },
-    wrongClickNudge: "Hold that Singularity for now. A harder path is coming.",
+    interactionPolicies: [{
+      substep: { min: 0 },
+      availableFromDialogue: 0,
+      kind: "forge_reserved",
+      target: { zone: "storage", cardId: "t1s08" },
+      exactAction: "FORGE_RESERVED",
+      completionEvent: "encrypted_artifact_forged",
+      wrongNudge: "Open Singularity and Forge Root Memory Valve.",
+    }],
+    wrongClickNudge: "Open Singularity and Forge Root Memory Valve.",
   },
   {
-    id: "b12_tier2",
-    mode: "act",
-    lumiiZone: "forge-t2",
-    highlightZone: "forge-t2",
+    id: "b11c_lumii_harness_three",
+    mode: "cinematic",
+    lumiiZone: "opponent",
     dialogue: [
-      { text: "Root Lattice and Void Tendril have already lowered Verdant Emergence's Verdance cost." },
-      { text: "I will supply 1 Verdance and 1 Abyss. Use Abyss ×2, then Harness it." },
-      { text: "Then forge Verdant Emergence. You will have exactly what it needs." },
+      { text: "I'll finish this exchange by taking 1 Flare, 1 Continuum, and 1 Radiance." },
     ],
-    completion: { type: "action", action: "forge_artifact" },
-    wrongClickNudge: "Harness 2 Abyss, then forge Verdant Emergence.",
-  },
-  {
-    id: "b13_tier3",
-    mode: "semiOpen",
-    lumiiZone: "forge-t3",
-    highlightZone: "forge-t3",
-    dialogue: [
-      { text: "Tier 3 artifacts demand a deeper store of Affinity." },
-      { text: "I will move 3 Continuum, 2 Radiance, and 1 Singularity from the shared Well to you." },
-      { text: "Then use Continuum ×2 and forge Canopy Ascendant." },
-    ],
-    completion: { type: "action", action: "forge_artifact" },
-    wrongClickNudge: "Gather the Affinity Canopy Ascendant needs first.",
+    completion: {
+      type: "opponent_action",
+      action: { kind: "harness", affinities: ["flare", "continuum", "radiance"] },
+    },
   },
   {
     id: "b14_win_condition",
@@ -438,8 +508,12 @@ export const TUTORIAL_BEATS: TutorialBeat[] = [
     lumiiZone: "eminence",
     highlightZone: "eminence",
     dialogue: [
-      { text: "Some artifacts also grant Eminence." },
-      { text: "The first civilization to reach 15 Eminence wins." },
+      {
+        text: "Artifacts with Eminence advance your score. Reaching 15 triggers the final round so every civilization receives equal turns.",
+      },
+      {
+        text: "Build enough matching permanent Artifact bonuses and a Luminary can awaken. Let's jump ahead a few turns.",
+      },
     ],
     completion: { type: "dialogue" },
   },
@@ -447,9 +521,7 @@ export const TUTORIAL_BEATS: TutorialBeat[] = [
     id: "b15_fast_forward",
     mode: "cinematic",
     lumiiZone: "top-center",
-    dialogue: [
-      { text: "Now I will let the centuries pass." },
-    ],
+    dialogue: [{ text: "A few turns later..." }],
     completion: { type: "animation" },
   },
   {
@@ -458,9 +530,9 @@ export const TUTORIAL_BEATS: TutorialBeat[] = [
     lumiiZone: "luminary",
     highlightZone: "luminary",
     dialogue: [
-      { text: "An irregularity has been detected..." },
+      { text: "One more Verdance Artifact will awaken the Verdant Oracle." },
     ],
-    playerResponse: "Irregularity?",
+    playerResponse: "Let's forge it.",
     completion: { type: "dialogue" },
   },
   {
@@ -470,22 +542,28 @@ export const TUTORIAL_BEATS: TutorialBeat[] = [
     foregroundCardId: "t2e05",
     highlightZone: "luminary",
     dialogue: [
-      { text: "A rulebreaker... A singularity at the edge of the observable cosmos..." },
-      { text: "Whatever it is, it feels... willful. As if a presence from a foreign reality is peeking through..." },
-      { text: "I've seen this before. We call these anomalies Luminaries." },
-      { text: "This one appears to be drawn to the Verdance that our civilization has accumulated." },
-      { text: "I will bring 5 Continuum. Forge Verdance Bloom to awaken it." },
+      { text: "I'll supply 4 Continuum. Your permanent bonus covers the fifth cost." },
+      {
+        text: "Select Epoch Graft Ledger, press Forge, then Confirm to awaken the Verdant Oracle.",
+      },
     ],
     completion: { type: "action", action: "forge_final" },
+    interactionPolicies: [{
+      substep: { min: 0 },
+      availableFromDialogue: "last",
+      kind: "forge_final",
+      target: { zone: "forge", cardId: "t2e05" },
+      exactAction: "FORGE_ARTIFACT",
+      completionEvent: "final_artifact_forged",
+      wrongNudge: "Select Epoch Graft Ledger, then press Forge and Confirm.",
+    }],
     wrongClickNudge: "Gather the affinities for the final artifact.",
   },
   {
     id: "b17_luminary",
     mode: "cinematic",
     lumiiZone: "luminary",
-    dialogue: [
-      { text: "The Verdant Oracle answers your civilization. Its Verdance cost bonus begins next turn." },
-    ],
+    dialogue: [],
     completion: { type: "animation" },
   },
   {
@@ -493,9 +571,21 @@ export const TUTORIAL_BEATS: TutorialBeat[] = [
     mode: "listen",
     lumiiZone: "center",
     dialogue: [
-      { text: "Your four core actions are: take 3 different Affinities, take 2 of one Affinity, Forge an Artifact, and Encrypt an Artifact." },
-      { text: "You have used those actions to build a civilization and awaken a Luminary." },
-      { text: "The first civilization to 15 Eminence wins. Other Affinities create other paths." },
+      {
+        text: "The Verdant Oracle answered your civilization.",
+      },
+      {
+        text: "Your four core actions are: take 3 different Affinities, take 2 of one Affinity, Forge an Artifact, and Encrypt an Artifact into private storage.",
+      },
+      {
+        text: "The Verdant Oracle grants 1 Eminence and immediately draws 1 Verdance from the Well.",
+      },
+      {
+        text: "Build matching bonuses to awaken Luminaries. After the final round, the civilization with the most Eminence wins.",
+      },
+      {
+        text: "Wait... something answered that convergence. No. Only an echo. For now.",
+      },
     ],
     completion: { type: "dialogue" },
   },
@@ -504,13 +594,116 @@ export const TUTORIAL_BEATS: TutorialBeat[] = [
 export const BEAT_INDEX: Record<string, number> = {};
 TUTORIAL_BEATS.forEach((b, i) => { BEAT_INDEX[b.id] = i; });
 
-export const T3_PURCHASABLE_IDS = ["t3e01", "t3e02", "t3e03"];
-export const T3_IMPOSSIBLE_ID = "t3s04";
-export const FAST_FORWARD_CARDS = ["t3e01", "t3e02", "t3e03"];
+const LEGACY_BEAT_ID_MIGRATIONS: Readonly<Record<string, string>> = {
+  b3b_farewell: "b3c_border",
+  b5b_affinity_strategy: "b5c_architect_assembly",
+  b7b_cost_bridge: "b8_first_harness",
+  b9c_transition: "b10_reserve",
+  b10c_needed_peek: "b11_forge_reserved",
+  b11a_lumii_harness_three: "b11a_lumii_forge",
+  b11c_lumii_forge: "b11c_lumii_harness_three",
+  b12_tier2: "b14_win_condition",
+  b13_tier3: "b14_win_condition",
+};
+
+export function resolveTutorialBeatIndex(beatId: string | null): number | null {
+  if (!beatId) return null;
+  const currentId = LEGACY_BEAT_ID_MIGRATIONS[beatId] ?? beatId;
+  return BEAT_INDEX[currentId] ?? null;
+}
+
+export function getTutorialChapter(beatIndex: number) {
+  const clampedBeat = Math.max(
+    0,
+    Math.min(beatIndex, TUTORIAL_BEATS.length - 1),
+  );
+  let chapterIndex = 0;
+  for (let index = 1; index < TUTORIAL_CHAPTERS.length; index += 1) {
+    const chapterStart = BEAT_INDEX[TUTORIAL_CHAPTERS[index].startBeatId];
+    if (chapterStart == null || clampedBeat < chapterStart) break;
+    chapterIndex = index;
+  }
+  return {
+    ...TUTORIAL_CHAPTERS[chapterIndex],
+    chapterIndex,
+    chapterNumber: chapterIndex + 1,
+    totalChapters: TUTORIAL_CHAPTERS.length,
+  };
+}
+
+/**
+ * The cinematic shell owns every beat before the playable board appears.
+ * Keep this tied to a beat ID so inserting narration cannot silently reroute
+ * a cinematic through the gameplay UI.
+ */
+export function usesTutorialCinematicPhase(beatIndex: number): boolean {
+  const firstGameplayBeat = BEAT_INDEX.b6_forge_appears;
+  return firstGameplayBeat != null && beatIndex < firstGameplayBeat;
+}
+
+export const FAST_FORWARD_FEATURED_CARDS = ["t1e07", "t2e03", "t3e01"];
+export const FAST_FORWARD_CARDS = [
+  ...FAST_FORWARD_FEATURED_CARDS,
+  "t3r01",
+  "t3s01",
+];
 export const FINAL_T2_ID = "t2e05";
 export const FIRST_FORGE_ID = "t1e01";
-export const RESERVE_CARD_ID = "t1e07";
-export const TIER2_SINGULARITY_ID = "t2e03";
+export const RESERVE_CARD_ID = "t1s08";
+export const LUMII_FORGE_ID = "t1s03";
+export const LUMII_FAST_FORWARD_EMINENCE = 9;
+
+export function getTutorialInteractionPolicy(
+  beatId: string,
+  subStep: number,
+): TutorialInteractionPolicy | null {
+  const beat = TUTORIAL_BEATS.find((candidate) => candidate.id === beatId);
+  return beat?.interactionPolicies?.find(({ substep }) => (
+    subStep >= substep.min && (substep.max == null || subStep <= substep.max)
+  )) ?? null;
+}
+
+export function isTutorialInteractionUnlocked(
+  beatId: string,
+  subStep: number,
+  dialogueLine: number,
+): boolean {
+  const beat = TUTORIAL_BEATS.find((candidate) => candidate.id === beatId);
+  const policy = getTutorialInteractionPolicy(beatId, subStep);
+  if (!beat || !policy) return false;
+  const firstAllowedLine = policy.availableFromDialogue === "last"
+    ? Math.max(0, beat.dialogue.length - 1)
+    : policy.availableFromDialogue;
+  return dialogueLine >= firstAllowedLine;
+}
+
+export function getTutorialHarnessPattern(
+  beatId: string,
+  subStep: number,
+): Readonly<Partial<Record<AffinityKey, number>>> | null {
+  const target = getTutorialInteractionPolicy(beatId, subStep)?.target;
+  return target?.zone === "well" ? target.harnessPattern : null;
+}
+
+export const TUTORIAL_FORGE_CARD_SLOTS: Readonly<
+  Record<string, { tier: 1 | 2 | 3; index: number }>
+> = {
+  [FIRST_FORGE_ID]: { tier: 1, index: 0 },
+  [RESERVE_CARD_ID]: { tier: 1, index: 1 },
+  [LUMII_FORGE_ID]: { tier: 1, index: 2 },
+  [FINAL_T2_ID]: { tier: 2, index: 0 },
+};
+
+export const TUTORIAL_FORGE_CARD_BY_BEAT: Readonly<Record<string, string>> = {
+  b6_forge_appears: FIRST_FORGE_ID,
+  b6b_root_lattice: FIRST_FORGE_ID,
+  b7_artifact_cost: FIRST_FORGE_ID,
+  b8_first_harness: FIRST_FORGE_ID,
+  b9_first_forge: FIRST_FORGE_ID,
+  b10_reserve: RESERVE_CARD_ID,
+  b11a_lumii_forge: LUMII_FORGE_ID,
+  b16_final_forge: FINAL_T2_ID,
+};
 
 export const VERDANCE_LUMINARY_ID = "lum_verdant";
 export const VERDANCE_LUMINARY_EMINENCE = 1;

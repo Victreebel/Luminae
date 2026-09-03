@@ -227,7 +227,8 @@ export async function syncAccountPreferences(
     } else {
       localStorage.removeItem("luminae_tutorial_seen");
     }
-    if (prefs.tutorialCompleted) {
+    const pendingTutorialClaim = localStorage.getItem("luminae_tutorial_completion_claim") !== null;
+    if (prefs.tutorialCompleted || pendingTutorialClaim) {
       localStorage.setItem("luminae_tutorial_completed", "1");
     } else {
       localStorage.removeItem("luminae_tutorial_completed");

@@ -56,6 +56,7 @@ interface StateOverrides {
   burnPile?: string[];
   catalystBloomBurnCount?: number;
   artifactMarkers?: MarkerMap;
+  avatarSeedMoldSlots?: string[];
 }
 
 const TWO_PLAYERS = [mp('mock-p1', 'Alpha'), mp('mock-p2', 'Beta')];
@@ -91,6 +92,7 @@ function base(o: StateOverrides = {}): GameState {
     burnPile: o.burnPile ?? [],
     catalystBloomBurnCount: o.catalystBloomBurnCount ?? 0,
     artifactMarkers: o.artifactMarkers ?? {},
+    avatarSeedMoldSlots: o.avatarSeedMoldSlots ?? [],
   } as unknown as GameState;
 }
 
@@ -122,19 +124,19 @@ export const MOCK_PROCEDURE_STATES: Record<string, MockProcedureEntry> = {
   },
 
   // 2. Tide Architect — The Observer Effect
-  //    DeckScry only — no Forge data needed.
+  //    Archive revelation only — no Forge mutation.
   lum_tide: {
     state: base(),
     ownerId: 'mock-p1',
-    description: 'Scries the T2 + T3 Archives with a Continuum bias. The Forge reorders with quiet inevitability.',
+    description: 'Reveals the top Artifact of all three Archives to the allied player and grants one direct Archive Forge.',
   },
 
   // 3. Verdant Oracle — Early Bloom
-  //    Pulse only — living affinity bonus; no card targeting.
+  //    Pulse, then move one Verdance token from the Well to the owner.
   lum_verdant: {
     state: base(),
     ownerId: 'mock-p1',
-    description: 'Pulse only — passive living-affinity bonus. Verdance Artifacts cost 1 less from the next turn.',
+    description: 'One Verdance token travels from the Affinity Well to the allied player.',
   },
 
   // 4. Void Warden — Oblivion
@@ -146,7 +148,7 @@ export const MOCK_PROCEDURE_STATES: Record<string, MockProcedureEntry> = {
   },
 
   // 5. Concordance Mandala — Perfect Coherence
-  //    Radiance Artifacts in The Forge -> +2 Eminence to owner.
+  //    A Radiance Artifact milestone resolves -> +2 Eminence to owner.
   lum_radiant: {
     state: base({
       forgeTier1: [mc('r1a', 1, 'radiance'), mc('r1b', 1, 'flare'), mc('r1c', 1, 'verdance')],
@@ -154,7 +156,7 @@ export const MOCK_PROCEDURE_STATES: Record<string, MockProcedureEntry> = {
       forgeTier3: [mc('r3a', 3, 'abyss'), mc('r3b', 3, 'flare'), mc('r3c', 3, 'verdance')],
     }),
     ownerId: 'mock-p1',
-    description: '2 Radiance Artifacts in The Forge. Both highlighted; owner gains +2 Eminence.',
+    description: 'A Perfect Coherence milestone resolves; Radiance Artifacts align and the owner gains +2 Eminence.',
   },
 
   // 6. Phoenix Paradox — Eternal Recurrence
@@ -200,15 +202,15 @@ export const MOCK_PROCEDURE_STATES: Record<string, MockProcedureEntry> = {
   },
 
   // 10. Seed Beyond Seasons — Avatar Seeds
-  //     Seeded residue planted on deck tops; badge appears when cards surface.
+  //     One permanent mold per tier is inscribed on arrival.
   lum_seed: {
-    state: base(),
+    state: base({ avatarSeedMoldSlots: ['1-1', '2-2', '3-0'] }),
     ownerId: 'mock-p1',
-    description: 'Seed glyphs planted in every Archive. The seeded badge appears when an Artifact manifests in The Forge.',
+    description: 'A random mold in each tier receives a permanent Avatar Seed sigil.',
   },
 
   // 11. Glass Orchard — Perfect Replication
-  //     Cheapest T1 card gets a boon CLAIM flash.
+  //     The first eligible Forge grants a second permanent bonus Affinity.
   lum_orchard: {
     state: base({
       forgeTier1: [
@@ -216,7 +218,7 @@ export const MOCK_PROCEDURE_STATES: Record<string, MockProcedureEntry> = {
       ],
     }),
     ownerId: 'mock-p1',
-    description: '3 T1 Artifacts. Cheapest (Flare T1, cost 3) is targeted with a boon CLAIM flash — free copy granted.',
+    description: 'The first Verdance- or Radiance-cost Forge grants a second permanent bonus Affinity matching that Artifact.',
   },
 
   // 12. Pale Merchant — Balance Due
@@ -246,11 +248,11 @@ export const MOCK_PROCEDURE_STATES: Record<string, MockProcedureEntry> = {
   },
 
   // 14. Final Hunger — Assimilation
-  //     Owner panel highlighted; pendingAction assimilate granted.
+  //     A selected face-up Artifact becomes a permanent Affinity bonus.
   lum_hunger: {
     state: base({ players: TWO_PLAYERS }),
     ownerId: 'mock-p1',
-    description: 'Owner panel highlighted. Assimilate pending action replaces the core action for one turn.',
+    description: 'Selected Artifact dissolves into the owner’s Civilization as +1 permanent Affinity.',
   },
 
   // 15. Null Sovereign — Black Domain

@@ -1,0 +1,363 @@
+.dev-detonation {
+  --card-w: clamp(150px, 20vmin, 210px);
+  --card-h: calc(var(--card-w) * 1.4);
+  position: relative;
+  min-height: 100dvh;
+  overflow: hidden;
+  color: #edf0f3;
+  background: #03050a;
+}
+
+.dev-detonation__grid {
+  position: absolute;
+  inset: 0;
+  opacity: 0.28;
+  background-image:
+    linear-gradient(rgba(94, 108, 130, 0.11) 1px, transparent 1px),
+    linear-gradient(90deg, rgba(94, 108, 130, 0.11) 1px, transparent 1px),
+    radial-gradient(circle at 50% 48%, rgba(125, 33, 18, 0.2), transparent 44%);
+  background-size:
+    42px 42px,
+    42px 42px,
+    100% 100%;
+}
+
+.dev-detonation__toolbar {
+  position: fixed;
+  z-index: 420;
+  left: 0;
+  right: 0;
+  top: 0;
+  min-height: 70px;
+  display: grid;
+  grid-template-columns: minmax(44px, 1fr) auto minmax(44px, 1fr);
+  align-items: center;
+  gap: 14px;
+  padding: 12px clamp(12px, 3vw, 36px);
+  background: linear-gradient(180deg, rgba(2, 4, 9, 0.94), rgba(2, 4, 9, 0));
+}
+
+.dev-detonation__toolbar > button,
+.dev-detonation__tools > button {
+  width: 44px;
+  height: 44px;
+  display: grid;
+  place-items: center;
+  border: 1px solid rgba(134, 148, 168, 0.32);
+  border-radius: 6px;
+  color: #c6cdd7;
+  background: rgba(5, 8, 14, 0.82);
+  cursor: pointer;
+}
+
+.dev-detonation__toolbar button:hover {
+  border-color: rgba(239, 174, 91, 0.68);
+  color: #f2cd8a;
+  background: rgba(31, 22, 13, 0.88);
+}
+
+.dev-detonation__toolbar svg {
+  width: 21px;
+  height: 21px;
+}
+
+.dev-detonation__resolution-controls {
+  min-width: 0;
+  display: flex;
+  align-items: stretch;
+  gap: 8px;
+}
+
+.dev-detonation__trigger-control {
+  display: grid;
+  grid-template-columns: repeat(2, minmax(92px, 1fr));
+  border: 1px solid rgba(119, 132, 151, 0.3);
+  border-radius: 6px;
+  overflow: hidden;
+  background: rgba(5, 8, 14, 0.88);
+}
+
+.dev-detonation__trigger-control button,
+.dev-detonation__covenant-toggle {
+  min-height: 40px;
+  padding: 0 14px;
+  border: 0;
+  color: #7f8997;
+  background: transparent;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  gap: 7px;
+  font-family: var(--app-font-mono);
+  font-size: 11px;
+  font-weight: 800;
+  letter-spacing: 0;
+  text-transform: uppercase;
+  cursor: pointer;
+}
+
+.dev-detonation__trigger-control button + button {
+  border-left: 1px solid rgba(119, 132, 151, 0.3);
+}
+
+.dev-detonation__trigger-control button.is-active {
+  color: #f1c46f;
+  background: rgba(126, 76, 22, 0.25);
+  box-shadow: inset 0 -2px #d88b33;
+}
+
+.dev-detonation__trigger-control svg,
+.dev-detonation__covenant-toggle svg {
+  width: 15px;
+  height: 15px;
+  flex: 0 0 auto;
+}
+
+.dev-detonation__covenant-toggle {
+  min-width: 158px;
+  border: 1px solid rgba(119, 132, 151, 0.3);
+  border-radius: 6px;
+  color: #91a596;
+  background: rgba(6, 13, 12, 0.88);
+}
+
+.dev-detonation__covenant-toggle.is-broken {
+  border-color: rgba(218, 87, 54, 0.55);
+  color: #ff8d69;
+  background: rgba(72, 19, 12, 0.66);
+  box-shadow: inset 0 -2px #d75032;
+}
+
+.dev-detonation__variant-control {
+  position: fixed;
+  z-index: 420;
+  left: 50%;
+  top: 70px;
+  width: min(92vw, 520px);
+  min-height: 34px;
+  display: grid;
+  grid-template-columns: repeat(4, minmax(0, 1fr));
+  overflow: hidden;
+  border: 1px solid rgba(119, 132, 151, 0.28);
+  border-radius: 6px;
+  background: rgba(4, 7, 13, 0.86);
+  transform: translateX(-50%);
+}
+
+.dev-detonation__variant-control button {
+  min-width: 0;
+  padding: 0 8px;
+  border: 0;
+  color: #707b89;
+  background: transparent;
+  font-family: var(--app-font-mono);
+  font-size: 10px;
+  font-weight: 800;
+  letter-spacing: 0;
+  text-transform: uppercase;
+  cursor: pointer;
+}
+
+.dev-detonation__variant-control button + button {
+  border-left: 1px solid rgba(119, 132, 151, 0.24);
+}
+
+.dev-detonation__variant-control button:hover,
+.dev-detonation__variant-control button.is-active {
+  color: #efbd69;
+  background: rgba(126, 76, 22, 0.2);
+}
+
+.dev-detonation__variant-control button.is-active {
+  box-shadow: inset 0 -2px #cc7c30;
+}
+
+.dev-detonation__tools {
+  justify-self: end;
+  display: flex;
+  align-items: center;
+  gap: 8px;
+}
+
+.dev-detonation__timer {
+  min-width: 84px;
+  color: #9ba9ba;
+  font-family: var(--app-font-mono);
+  font-size: 11px;
+  font-variant-numeric: tabular-nums;
+  text-align: right;
+}
+
+.dev-detonation__board {
+  position: absolute;
+  inset: 0;
+  display: grid;
+  place-items: center;
+  padding-top: 102px;
+}
+
+.dev-detonation__owner-hud {
+  position: absolute;
+  right: clamp(14px, 4vw, 54px);
+  top: clamp(124px, 18vh, 160px);
+  display: flex;
+  align-items: center;
+  gap: 12px;
+  padding: 9px 11px 9px 14px;
+  border-left: 2px solid #c9913e;
+  background: rgba(4, 7, 13, 0.76);
+}
+
+.dev-detonation__owner-hud > span {
+  color: #7d8998;
+  font-family: var(--app-font-mono);
+  font-size: 10px;
+  font-weight: 700;
+  text-transform: uppercase;
+  letter-spacing: 0;
+}
+
+.dev-detonation__owner-hud > div {
+  position: relative;
+  width: 38px;
+  height: 38px;
+  display: grid;
+  place-items: center;
+}
+
+.dev-detonation__owner-hud b {
+  position: absolute;
+  font-family: var(--app-font-serif);
+  font-size: 14px;
+  color: #fff5cf;
+}
+
+.dev-detonation__mold {
+  position: relative;
+  width: calc(var(--card-w) + 34px);
+  height: calc(var(--card-h) + 34px);
+  display: grid;
+  place-items: center;
+  border: 1px solid rgba(188, 110, 56, 0.32);
+  border-radius: 8px;
+  background: rgba(10, 10, 14, 0.72);
+  box-shadow:
+    inset 0 0 38px rgba(171, 55, 26, 0.1),
+    0 24px 70px rgba(0, 0, 0, 0.58);
+}
+
+.dev-detonation__mold::before,
+.dev-detonation__mold::after {
+  content: "";
+  position: absolute;
+  inset: 10px;
+  border: 1px solid rgba(119, 129, 145, 0.2);
+  border-radius: 6px;
+}
+
+.dev-detonation__mold::after {
+  inset: 50% -35vw auto;
+  height: 1px;
+  border: 0;
+  background: linear-gradient(
+    90deg,
+    transparent,
+    rgba(179, 105, 54, 0.42),
+    transparent
+  );
+}
+
+.dev-detonation__mold-label {
+  position: absolute;
+  top: -27px;
+  color: #636f7e;
+  font-family: var(--app-font-mono);
+  font-size: 10px;
+  font-weight: 700;
+  text-transform: uppercase;
+  letter-spacing: 0;
+}
+
+.dev-detonation__forge-rails {
+  position: absolute;
+  inset: 0;
+  pointer-events: none;
+}
+
+.dev-detonation__forge-rails span {
+  position: absolute;
+  left: 50%;
+  top: 50%;
+  width: min(80vw, 920px);
+  height: 1px;
+  background: linear-gradient(
+    90deg,
+    transparent,
+    rgba(120, 133, 151, 0.18),
+    transparent
+  );
+  transform: translate(-50%, -50%);
+}
+
+.dev-detonation__forge-rails span:nth-child(2) {
+  transform: translate(-50%, -50%) rotate(60deg);
+}
+
+.dev-detonation__forge-rails span:nth-child(3) {
+  transform: translate(-50%, -50%) rotate(-60deg);
+}
+
+@media (max-width: 720px) {
+  .dev-detonation__toolbar {
+    grid-template-columns: 44px minmax(0, 1fr) auto;
+    gap: 8px;
+  }
+
+  .dev-detonation__resolution-controls {
+    justify-self: center;
+    gap: 5px;
+  }
+
+  .dev-detonation__trigger-control {
+    grid-template-columns: repeat(2, 40px);
+  }
+
+  .dev-detonation__trigger-control button,
+  .dev-detonation__covenant-toggle {
+    min-width: 40px;
+    width: 40px;
+    padding: 0;
+  }
+
+  .dev-detonation__trigger-control span,
+  .dev-detonation__covenant-toggle span {
+    display: none;
+  }
+
+  .dev-detonation__timer {
+    display: none;
+  }
+
+  .dev-detonation__tools > button:first-of-type {
+    display: none;
+  }
+
+  .dev-detonation__owner-hud {
+    top: 116px;
+    right: 12px;
+  }
+
+  .dev-detonation__variant-control {
+    top: 66px;
+    width: calc(100vw - 24px);
+  }
+
+  .dev-detonation__variant-control button {
+    padding: 0 4px;
+    font-size: 8px;
+  }
+
+  .dev-detonation__owner-hud > span {
+    display: none;
+  }
+}

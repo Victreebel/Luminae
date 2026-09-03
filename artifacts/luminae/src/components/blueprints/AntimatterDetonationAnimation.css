@@ -1,0 +1,457 @@
+.antimatter-detonation {
+  --card-w: clamp(154px, 22vmin, 224px);
+  --card-h: calc(var(--card-w) * 1.4);
+  --detonation-hot: rgba(255, 96, 54, 0.8);
+  --detonation-glow: rgba(255, 54, 18, 0.62);
+  --detonation-flash: #ffd6b3;
+  --device-offset: 0vmin;
+  position: fixed;
+  inset: 0;
+  z-index: 360;
+  overflow: hidden;
+  pointer-events: none;
+  color: #f4f0e7;
+  isolation: isolate;
+}
+
+.antimatter-detonation__veil {
+  position: absolute;
+  inset: 0;
+  background:
+    radial-gradient(
+      circle at 50% 48%,
+      rgba(42, 8, 5, 0.38) 0,
+      rgba(3, 3, 8, 0.92) 42%,
+      #010207 78%
+    ),
+    rgba(0, 0, 0, 0.8);
+  backdrop-filter: blur(2px) saturate(0.72);
+}
+
+.antimatter-detonation__focal {
+  position: absolute;
+  left: 50%;
+  top: 48%;
+  width: 1px;
+  height: 1px;
+  z-index: 3;
+}
+
+.antimatter-detonation__device {
+  position: absolute;
+  left: -43vmin;
+  top: -27vmin;
+  width: 86vmin;
+  height: 54vmin;
+  min-width: 430px;
+  min-height: 270px;
+  margin-left: var(--device-offset);
+  overflow: hidden;
+  filter: saturate(0.94) contrast(1.12) brightness(0.82);
+}
+
+.antimatter-detonation__device img {
+  width: 100%;
+  height: 100%;
+  object-fit: contain;
+  object-position: center;
+}
+
+.antimatter-detonation__implosion-ring {
+  position: absolute;
+  left: -15vmin;
+  top: -11vmin;
+  width: 30vmin;
+  height: 22vmin;
+  min-width: 180px;
+  min-height: 132px;
+  border: 2px solid var(--detonation-hot);
+  border-radius: 50%;
+  box-shadow:
+    0 0 18px var(--detonation-glow),
+    inset 0 0 12px rgba(255, 192, 132, 0.22);
+}
+
+.antimatter-detonation__particle {
+  position: absolute;
+  left: -2px;
+  top: -1px;
+  width: 17px;
+  height: 2px;
+  border-radius: 1px;
+  transform-origin: center;
+  background: linear-gradient(90deg, transparent, var(--detonation-hot));
+  box-shadow: 0 0 7px var(--detonation-glow);
+}
+
+.antimatter-detonation__card-anchor {
+  position: absolute;
+  left: calc(var(--card-w) * -0.5);
+  top: calc(var(--card-h) * -0.5);
+  width: var(--card-w);
+  height: var(--card-h);
+  z-index: 5;
+  transform-origin: center;
+  filter-origin: center;
+}
+
+.antimatter-detonation__card-lock {
+  position: absolute;
+  inset: -6px;
+  border: 1px solid rgba(255, 117, 61, 0.9);
+  border-radius: 8px;
+  box-shadow:
+    0 0 22px rgba(255, 69, 30, 0.62),
+    inset 0 0 18px rgba(255, 72, 36, 0.2);
+}
+
+.antimatter-detonation__pinch {
+  position: absolute;
+  left: -14px;
+  top: -14px;
+  width: 28px;
+  height: 28px;
+  z-index: 7;
+  border-radius: 50%;
+  background: #000;
+  box-shadow:
+    0 0 0 1px rgba(255, 103, 54, 0.34),
+    0 0 28px rgba(255, 54, 18, 0.42);
+}
+
+.antimatter-detonation__flash {
+  position: absolute;
+  inset: -20%;
+  z-index: 8;
+  background: radial-gradient(
+    circle at 50% 48%,
+    #fff 0 1.5%,
+    var(--detonation-flash) 3%,
+    rgba(255, 89, 42, 0.82) 10%,
+    rgba(255, 63, 28, 0.12) 32%,
+    transparent 58%
+  );
+  mix-blend-mode: screen;
+}
+
+.antimatter-detonation__aftershock {
+  position: absolute;
+  z-index: 9;
+  left: calc(50% - 11vmin);
+  top: calc(48% - 8vmin);
+  width: 22vmin;
+  height: 16vmin;
+  min-width: 154px;
+  min-height: 112px;
+  border: 3px solid rgba(255, 226, 194, 0.86);
+  border-radius: 50%;
+  box-shadow:
+    0 0 18px rgba(255, 107, 64, 0.72),
+    inset 0 0 18px rgba(255, 76, 35, 0.26);
+}
+
+.antimatter-detonation__covenant-slot {
+  --card-w: clamp(88px, 13vmin, 124px);
+  --card-h: calc(var(--card-w) * 1.4);
+  position: absolute;
+  z-index: 10;
+  top: calc(48% - var(--card-h) * 0.5);
+  width: var(--card-w);
+  height: var(--card-h);
+}
+
+.antimatter-detonation__covenant-slot--left {
+  left: calc(17% - var(--card-w) * 0.5);
+}
+
+.antimatter-detonation__covenant-slot--right {
+  right: calc(17% - var(--card-w) * 0.5);
+}
+
+.antimatter-detonation__covenant-card {
+  position: relative;
+  width: var(--card-w);
+  height: var(--card-h);
+  transform-origin: center;
+  filter-origin: center;
+}
+
+.antimatter-detonation__covenant-label {
+  position: absolute;
+  z-index: 4;
+  left: 50%;
+  bottom: calc(100% + 7px);
+  width: max-content;
+  max-width: 34vw;
+  color: #ff7d54;
+  font-family: var(--app-font-mono);
+  font-size: clamp(8px, 0.9vw, 10px);
+  font-weight: 800;
+  letter-spacing: 0;
+  text-align: center;
+  text-transform: uppercase;
+  text-shadow: 0 2px 10px #000;
+  transform: translateX(-50%);
+}
+
+.antimatter-detonation__covenant-lock {
+  position: absolute;
+  z-index: 3;
+  inset: -5px;
+  border: 1px solid rgba(255, 83, 48, 0.92);
+  border-radius: 8px;
+  box-shadow:
+    0 0 22px rgba(255, 51, 24, 0.7),
+    inset 0 0 15px rgba(255, 58, 28, 0.28);
+}
+
+.antimatter-detonation__covenant-burst {
+  position: absolute;
+  z-index: 5;
+  inset: -12%;
+  border: 2px solid rgba(255, 211, 173, 0.82);
+  border-radius: 50%;
+  box-shadow:
+    0 0 22px rgba(255, 70, 29, 0.7),
+    inset 0 0 12px rgba(255, 84, 38, 0.26);
+  transform-origin: center;
+}
+
+.antimatter-detonation__outcome {
+  position: absolute;
+  z-index: 11;
+  left: 0;
+  right: 0;
+  top: calc(48% + min(25vmin, 208px));
+  width: auto;
+  padding: 0 max(6vw, calc((100vw - 660px) / 2));
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 5px;
+  text-align: center;
+  text-shadow: 0 2px 18px #000;
+}
+
+.antimatter-detonation__outcome strong {
+  max-width: 100%;
+  overflow-wrap: anywhere;
+  font-family: var(--app-font-serif);
+  font-size: clamp(24px, 4vw, 48px);
+  line-height: 1.04;
+  letter-spacing: 0;
+  color: #fff8ee;
+}
+
+.antimatter-detonation__eyebrow,
+.antimatter-detonation__covenant-outcome,
+.antimatter-detonation__owner {
+  font-family: var(--app-font-mono);
+  text-transform: uppercase;
+  letter-spacing: 0;
+}
+
+.antimatter-detonation__eyebrow {
+  color: #ff7b4c;
+  font-size: clamp(10px, 1.2vw, 13px);
+  font-weight: 800;
+}
+
+.antimatter-detonation__owner {
+  color: #e9c978;
+  font-size: clamp(10px, 1.3vw, 14px);
+  font-weight: 700;
+}
+
+.antimatter-detonation__covenant-outcome {
+  color: #ff936d;
+  font-size: clamp(9px, 1.1vw, 12px);
+  font-weight: 800;
+}
+
+.antimatter-detonation__reward {
+  position: absolute;
+  z-index: 12;
+  left: calc(50% - 36px);
+  top: calc(48% - 36px);
+  width: 72px;
+  height: 72px;
+  display: grid;
+  place-items: center;
+  filter: drop-shadow(0 0 16px rgba(246, 196, 80, 0.62));
+}
+
+.antimatter-detonation__reward b {
+  position: absolute;
+  color: #fff8d5;
+  font-family: var(--app-font-serif);
+  font-size: 21px;
+  line-height: 1;
+  text-shadow: 0 1px 5px #000;
+}
+
+.antimatter-detonation--reduced .antimatter-detonation__device,
+.antimatter-detonation--reduced
+  .antimatter-detonation__particle:nth-of-type(n + 13) {
+  display: none;
+}
+
+.antimatter-detonation--original {
+  --detonation-hot: rgba(241, 170, 76, 0.82);
+  --detonation-glow: rgba(103, 154, 209, 0.48);
+  --detonation-flash: #e9f3ff;
+  --device-offset: 9vmin;
+}
+
+.antimatter-detonation--original .antimatter-detonation__device {
+  filter: saturate(0.88) contrast(1.08) brightness(0.9);
+}
+
+.antimatter-detonation--original .antimatter-detonation__implosion-ring {
+  border-width: 1px;
+  box-shadow: 0 0 14px var(--detonation-glow);
+}
+
+.antimatter-detonation--asymmetric {
+  --detonation-hot: rgba(255, 91, 51, 0.84);
+  --detonation-glow: rgba(255, 68, 28, 0.58);
+  --device-offset: 4vmin;
+}
+
+.antimatter-detonation--asymmetric
+  .antimatter-detonation__implosion-ring:nth-child(even) {
+  margin-left: 4vmin;
+}
+
+.antimatter-detonation--lattice {
+  --detonation-hot: rgba(255, 129, 70, 0.84);
+  --detonation-glow: rgba(255, 93, 42, 0.6);
+  --detonation-flash: #fff0d4;
+  --device-offset: 4vmin;
+}
+
+.antimatter-detonation--lattice .antimatter-detonation__implosion-ring {
+  box-shadow:
+    0 0 17px var(--detonation-glow),
+    0 0 0 5px rgba(226, 188, 116, 0.08);
+}
+
+.antimatter-detonation--armored {
+  --detonation-hot: rgba(255, 103, 54, 0.9);
+  --detonation-glow: rgba(255, 61, 24, 0.7);
+  --detonation-flash: #ffe3bd;
+}
+
+.antimatter-detonation--armored .antimatter-detonation__device {
+  filter: saturate(0.9) contrast(1.18) brightness(0.88);
+}
+
+.antimatter-detonation--armored .antimatter-detonation__implosion-ring {
+  border-width: 3px;
+}
+
+@media (max-width: 700px) {
+  .antimatter-detonation {
+    --card-w: clamp(138px, 36vw, 186px);
+  }
+
+  .antimatter-detonation__device {
+    left: -56vw;
+    top: -35vw;
+    width: 112vw;
+    height: 70vw;
+    min-width: 360px;
+    min-height: 225px;
+  }
+
+  .antimatter-detonation__outcome {
+    top: calc(48% + min(31vw, 176px));
+  }
+
+  .antimatter-detonation__covenant-slot {
+    --card-w: clamp(72px, 22vw, 92px);
+  }
+
+  .antimatter-detonation__covenant-slot--left {
+    left: calc(14% - var(--card-w) * 0.5);
+  }
+
+  .antimatter-detonation__covenant-slot--right {
+    right: calc(14% - var(--card-w) * 0.5);
+  }
+
+  .antimatter-detonation__covenant-label {
+    max-width: 38vw;
+    white-space: normal;
+  }
+}
+
+/* The Vault preview can place the production effect inside a transformed
+   mobile board while the browser itself remains desktop-sized. */
+@container (max-width: 700px) {
+  .antimatter-detonation {
+    --card-w: clamp(138px, 36cqw, 186px);
+  }
+
+  .antimatter-detonation__outcome {
+    top: calc(48% + min(31cqw, 176px));
+    padding: 0 clamp(12px, 5cqw, 24px);
+  }
+
+  .antimatter-detonation__outcome strong {
+    font-size: clamp(20px, 8cqw, 34px);
+  }
+
+  .antimatter-detonation__eyebrow,
+  .antimatter-detonation__owner {
+    font-size: clamp(9px, 3cqw, 12px);
+  }
+
+  .antimatter-detonation__covenant-outcome {
+    font-size: clamp(8px, 2.6cqw, 11px);
+  }
+
+  .antimatter-detonation__covenant-slot {
+    --card-w: clamp(72px, 22cqw, 92px);
+  }
+
+  .antimatter-detonation__covenant-slot--left {
+    left: calc(14% - var(--card-w) * 0.5);
+  }
+
+  .antimatter-detonation__covenant-slot--right {
+    right: calc(14% - var(--card-w) * 0.5);
+  }
+
+  .antimatter-detonation__covenant-label {
+    max-width: 38cqw;
+    white-space: normal;
+  }
+}
+
+@media (max-height: 560px) and (orientation: landscape) {
+  .antimatter-detonation {
+    --card-w: clamp(112px, 24vh, 146px);
+  }
+
+  .antimatter-detonation__outcome {
+    left: 62%;
+    right: 2%;
+    top: 48%;
+    width: auto;
+    padding: 0;
+  }
+
+  .antimatter-detonation__covenant-slot {
+    --card-w: clamp(66px, 18vh, 92px);
+  }
+
+  .antimatter-detonation__covenant-slot--left {
+    left: calc(10% - var(--card-w) * 0.5);
+  }
+
+  .antimatter-detonation__covenant-slot--right {
+    left: calc(38% - var(--card-w) * 0.5);
+    right: auto;
+  }
+}

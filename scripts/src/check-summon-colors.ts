@@ -82,7 +82,7 @@ export interface CheckResult {
 export interface AuraCheckResult {
   /** auraStyle values in LUMINARY_VISUALS that are not in KNOWN_AURA_STYLES. */
   unrecognised: Array<{ id: string; auraStyle: string }>;
-  /** The set of recognised aura keys parsed from luminaryAssets.tsx. */
+  /** The set of recognised aura keys parsed from @workspace/game-types. */
   knownStyles: ReadonlySet<string>;
 }
 
@@ -173,7 +173,7 @@ export function parseKnownAuraStyles(src: string): ReadonlySet<string> {
     }
   }
   if (bracketClose === -1) {
-    throw new Error("Unterminated KNOWN_AURA_STYLES array in luminaryAssets.tsx");
+    throw new Error("Unterminated KNOWN_AURA_STYLES array in game-types/src/index.ts");
   }
 
   const arrayContent = src.slice(bracketOpen + 1, bracketClose);
@@ -186,7 +186,7 @@ export function parseKnownAuraStyles(src: string): ReadonlySet<string> {
 
   if (entries.size === 0) {
     throw new Error(
-      "KNOWN_AURA_STYLES array parsed as empty — check the constant in luminaryAssets.tsx."
+      "KNOWN_AURA_STYLES array parsed as empty — check the constant in game-types/src/index.ts."
     );
   }
 
@@ -380,13 +380,13 @@ export function parseAssetsColors(src: string): Map<string, ColorEntry> {
  * IDs present in the engine but missing from LUMINARY_VISUALS are errors.
  *
  * Also validates that every auraStyle value (in both files) belongs to
- * validStyles (derived from KNOWN_AURA_STYLES in luminaryAssets.tsx) — this
+ * validStyles (derived from KNOWN_AURA_STYLES in @workspace/game-types) — this
  * catches typos and invented styles before they can silently fall through the
  * runtime animation switch statement.
  *
  * @param validStyles - The authoritative set of recognised aura style strings,
  *   obtained by calling parseKnownAuraStyles() on the luminaryAssets.tsx source.
- *   KNOWN_AURA_STYLES in luminaryAssets.tsx is the single source of truth.
+ *   KNOWN_AURA_STYLES in @workspace/game-types is the single source of truth.
  */
 export function checkColors(
   engineColors: Map<string, ColorEntry>,

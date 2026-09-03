@@ -1,4 +1,50 @@
 import { createHmac, randomBytes } from "node:crypto";
+import {
+  type BlueprintArtifactSnapshot,
+  type ScenarioProtocolEvent,
+  type ScenarioProtocolPublicState,
+} from "@workspace/game-types";
+
+type ProjectedProject = {
+  blueprintId: string;
+  ownerPlayerId: string;
+  slotIndex: number;
+  state: string;
+  covenantState?: "intact" | "broken";
+  presentationVariant: string;
+  foundryUses?: number;
+  foundryOverdriveAvailable?: boolean;
+  foundryRecoveredComponentCount?: number;
+  ascensionDeferral?: number;
+  ascensionLastCounterRound?: number | null;
+  foundryTier2Ready?: boolean;
+  foundryTier3Ready?: boolean;
+};
+
+type ProjectedManifestationEvent = {
+  eventId: string;
+  blueprintId: string;
+  ownerPlayerId: string;
+  slotIndex: number;
+  presentationVariant?: string;
+  createdAt: number;
+};
+
+type ProjectedDetonationEvent = {
+  eventId: string;
+  blueprintId: string;
+  ownerPlayerId: string;
+  triggeringPlayerId: string;
+  targetCardId: string;
+  trigger?: "forged" | "encrypted";
+  hostileEffect?: "burn" | "annihilation" | "nullification" | "claim_cancellation";
+  targetArtifact?: BlueprintArtifactSnapshot;
+  collateralCardIds?: string[];
+  collateralArtifacts?: BlueprintArtifactSnapshot[];
+  interceptedByBlueprintId?: string;
+  presentationVariant?: string;
+  createdAt: number;
+};
 
 type AffinityCounts = {
   flare: number;
@@ -15,23 +61,39 @@ type ProjectedArtifact = {
   bonusAffinity: "flare" | "continuum" | "verdance" | "abyss" | "radiance";
   eminence: number;
   cost: AffinityCounts;
-  name: string;
-  flavor: string;
+  name?: string;
+  flavor?: string;
   bonusesAtForge?: AffinityCounts;
 };
 
 type ProjectedPlayer = {
   playerId: string;
+  isAi?: boolean;
   plannedAction: unknown;
   plannedActionCancelReason: unknown;
   reservedArtifacts: ProjectedArtifact[];
   privateReservedArtifactIds?: string[];
+  blueprintPrivateStates?: unknown[];
+  blueprintPresentationVariants?: Record<string, string>;
+  manifestedBlueprintProjects?: ProjectedProject[];
+  /** @deprecated Compatibility alias. */
+  manifestedBlueprintDevices?: ProjectedProject[];
+  tideArchiveTopCards?: {
+    tier1: ProjectedArtifact | null;
+    tier2: ProjectedArtifact | null;
+    tier3: ProjectedArtifact | null;
+  };
 };
 
 type ProjectableState = {
   players: ProjectedPlayer[];
   artifactMarkers?: Record<string, unknown>;
-  avatarSeedDeckSeeds?: string[];
+  scenarioId?: string | null;
+  actionLog?: Array<{ summary: string }>;
+  pendingBlueprintManifestationEvents?: ProjectedManifestationEvent[];
+  pendingBlueprintDetonationEvents?: ProjectedDetonationEvent[];
+  scenarioProtocols?: ScenarioProtocolPublicState[];
+  pendingScenarioProtocolEvents?: ScenarioProtocolEvent[];
 };
 
 const concealmentKey = randomBytes(32);
@@ -88,8 +150,25 @@ export function filterStateForPlayer<T extends ProjectableState>(
   const concealedArtifactIds = new Set<string>();
 
   const players = state.players.map((player) => {
-    const { privateReservedArtifactIds = [], ...publicPlayer } = player;
-    if (player.playerId === viewerPlayerId) return publicPlayer;
+    const {
+      privateReservedArtifactIds = [],
+      blueprintPrivateStates = [],
+      blueprintPresentationVariants,
+      tideArchiveTopCards,
+      ...publicPlayer
+    } = player;
+    if (player.playerId === viewerPlayerId) {
+      return {
+        ...publicPlayer,
+        blueprintPrivateStates,
+        ...(
+          blueprintPresentationVariants === undefined
+            ? {}
+            : { blueprintPresentationVariants }
+        ),
+        ...(tideArchiveTopCards === undefined ? {} : { tideArchiveTopCards }),
+      };
+    }
 
     const privateIds = new Set(privateReservedArtifactIds);
 
@@ -118,16 +197,11 @@ export function filterStateForPlayer<T extends ProjectableState>(
           ),
         );
 
-  const avatarSeedDeckSeeds = state.avatarSeedDeckSeeds?.map((artifactId) =>
-    concealedArtifactId(viewerPlayerId, "archive-seed", artifactId),
-  );
-
   // Player spreads preserve all state-specific fields. The cast acknowledges
   // that concealed cards intentionally omit any future secret card extensions.
   return {
     ...state,
     players,
     ...(artifactMarkers === undefined ? {} : { artifactMarkers }),
-    ...(avatarSeedDeckSeeds === undefined ? {} : { avatarSeedDeckSeeds }),
   } as T;
 }

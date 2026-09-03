@@ -12,7 +12,7 @@ export interface AffinityEmblemProps {
 
 /**
  * Unified affinity emblem renderer.
- * All six Affinities use PNG emblems with transparent backgrounds.
+ * The five natural Affinities and Architect-created Singularity use PNG emblems.
  * radiance → luminae_radiance_emblem_v2.png   (solar-gold starburst medallion)
  * singularity  → luminae_singularity_emblem_v1.png (prismatic crystalline diamond)
  * other → existing affinity coin PNGs

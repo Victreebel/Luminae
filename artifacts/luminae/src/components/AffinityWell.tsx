@@ -37,6 +37,9 @@ export interface AffinityWellCellsProps {
   harnessBlockedKeys?: Partial<Record<AffinityKey, number>>;
   forgeDeductions?: Partial<Record<AffinityKey, number>>;
   singularityAbsorbKey?: number;
+  allowedSingleAffinities?: readonly AffinityKey[];
+  allowedTakeTwoAffinities?: readonly AffinityKey[];
+  singularityInteractive?: boolean;
   onAffinityClick: (color: keyof AffinityCounts) => void;
   onPromoteToTake2: (color: AffinityKey) => void;
   onOpenReserved: () => void;
@@ -169,13 +172,16 @@ export function AffinityWellCells({
   harnessBlockedKeys,
   forgeDeductions,
   singularityAbsorbKey,
+  allowedSingleAffinities,
+  allowedTakeTwoAffinities,
+  singularityInteractive = true,
   onAffinityClick,
   onPromoteToTake2,
   onOpenReserved,
   onOpenForged,
 }: AffinityWellCellsProps) {
   const playerCount    = state.players.length;
-  const gaugeCapacity  = playerCount === 2 ? 4 : playerCount === 3 ? 5 : 7;
+  const gaugeCapacity  = playerCount <= 2 ? 4 : playerCount === 3 ? 5 : 7;
   const isPlanningMode = !isActivePlayer && canPlan;
   const affinityMap     = me.affinities as Partial<Record<AffinityKey, number>>;
   const bonusMap       = me.bonuses as Partial<Record<AffinityKey, number>>;
@@ -451,14 +457,38 @@ export function AffinityWellCells({
               const bankCount     = bankMap[c] ?? 0;
               const selectable    = isMyTurn || (!isActivePlayer && canPlan);
               const bankEmpty     = bankCount === 0;
-              const canTake2      = selectable && !isSingularity && bankCount >= 4 && pending !== 2;
+              const singleGateActive = allowedSingleAffinities !== undefined;
+              const takeTwoGateActive = allowedTakeTwoAffinities !== undefined;
+              const singleAllowed = !singleGateActive || allowedSingleAffinities.includes(c);
+              const takeTwoAllowed = !takeTwoGateActive || allowedTakeTwoAffinities.includes(c);
+              const canSelectSingle = selectable && !isSingularity && !bankEmpty && singleAllowed;
+              const canTake2      = selectable && !isSingularity && bankCount >= 4 && pending !== 2 && takeTwoAllowed;
               const showForgedLink = !isSingularity && bonus > 0;
+              const canOpenForged = showForgedLink && !selectable && (!singleGateActive || singleAllowed);
+              const mainInteractive = isSingularity
+                ? singularityInteractive
+                : canSelectSingle || canOpenForged;
               const gaugeFilledCount = Math.max(0, bankCount - pending);
               const tentativeCount   = heldCount + pending;
               const hasContent       = isSingularity
                 ? heldCount > 0 || reservedCount > 0
                 : heldCount > 0 || bonus > 0 || lumBonus > 0;
               const bankDim         = bankEmpty && !isSingularity && pending === 0;
+              const mainAriaLabel = isSingularity
+                ? `Singularity, ${heldCount} held. Convergence capacity ${gaugeFilledCount} of 5. ${reservedCount} of 3 encrypted Artifacts.`
+                : [
+                    `${meta.name}, ${heldCount} held`,
+                    pending > 0 ? `${pending} selected` : null,
+                    bonus + lumBonus > 0
+                      ? `${bonus + lumBonus} permanent ${bonus + lumBonus === 1 ? 'bonus' : 'bonuses'}`
+                      : null,
+                    `Reservoir ${gaugeFilledCount} of ${gaugeCapacity}`,
+                    canSelectSingle
+                      ? `Select one ${meta.name}`
+                      : canOpenForged
+                        ? `View permanent ${meta.name} bonuses`
+                        : null,
+                  ].filter(Boolean).join('. ');
 
               // ── Cell background style ──────────────────────────────────────
               const cellStyle: React.CSSProperties =
@@ -494,8 +524,9 @@ export function AffinityWellCells({
                   key={c}
                   data-testid="affinity-channel"
                   data-affinity={c}
+                  data-affinity-origin={isSingularity ? 'convergence' : 'natural'}
                   className="affinity-well-cell"
-                  style={{ display: 'flex', flexDirection: 'column', gap: 'var(--well-cell-stack-gap, 2px)', width: CELL_W, flexShrink: 0 }}
+                  style={{ position: 'relative', display: 'flex', flexDirection: 'column', gap: 'var(--well-cell-stack-gap, 2px)', width: CELL_W, flexShrink: 0 }}
                 >
                   {/* ── Main cell button ── */}
                   <motion.button
@@ -504,22 +535,23 @@ export function AffinityWellCells({
                     data-well-cell-style="instrument"
                     data-selected={pending > 0 ? 'true' : undefined}
                     data-reservoir-dry={bankDim ? 'true' : undefined}
-                    // Singularity always tappable; others need selectable + non-empty bank
-                    disabled={isSingularity ? false : !selectable && !showForgedLink || bankEmpty && !showForgedLink}
+                    data-tutorial-action-target={singleGateActive && singleAllowed && pending === 0 ? 'true' : undefined}
+                    data-tutorial-action-locked={singleGateActive && !singleAllowed ? 'true' : undefined}
+                    aria-label={mainAriaLabel}
+                    aria-pressed={!isSingularity && pending > 0 ? true : undefined}
+                    aria-description={isSingularity ? 'Created by Encrypting; cannot be Harnessed.' : undefined}
+                    title={isSingularity ? 'Created by Encrypting; cannot be Harnessed.' : undefined}
+                    disabled={!mainInteractive}
                     {...(isSingularity ? { 'data-singularity-well': '' } : { 'data-affinity-well': c })}
-                    whileTap={
-                      (isSingularity || (selectable && !bankEmpty) || showForgedLink)
-                        ? { opacity: 0.82 }
-                        : {}
-                    }
+                    whileTap={mainInteractive ? { opacity: 0.82 } : {}}
                     onClick={() => {
                       if (isDragging.current) return;
-                      if (isSingularity) {
+                      if (isSingularity && singularityInteractive) {
                         onOpenReserved();
-                      } else if (showForgedLink && !selectable) {
+                      } else if (canOpenForged) {
                         // Off-turn: tapping a cell with a forged bonus shows the forged list
                         onOpenForged(c);
-                      } else if (selectable && !bankEmpty) {
+                      } else if (canSelectSingle) {
                         // On turn and available in the Well: select this Affinity.
                         onAffinityClick(c as keyof AffinityCounts);
                       }
@@ -539,7 +571,7 @@ export function AffinityWellCells({
                           : 'default',
                       position: 'relative',
                       overflow: 'hidden',
-                      opacity: 1,
+                      opacity: mainInteractive || pending > 0 || !singleGateActive ? 1 : 0.34,
                       transition: 'opacity 0.35s ease',
                       ...cellStyle,
                     }}
@@ -743,6 +775,7 @@ export function AffinityWellCells({
                       {!isSingularity && (bonus + lumBonus > 0) && (
                         <motion.span
                           className="affinity-well-bonus-chip"
+                          data-affinity-bonus={c}
                           key={bonusPulseKeys[c] ?? 'static'}
                           initial={
                             bonusPulseKeys[c] !== undefined
@@ -780,7 +813,7 @@ export function AffinityWellCells({
                         }}
                       >
                         <span className="sr-only">
-                          Reservoir {gaugeFilledCount} of 5
+                          Convergence capacity {gaugeFilledCount} of 5
                         </span>
                         <HorizontalWellMeter
                           capacity={5}
@@ -825,12 +858,16 @@ export function AffinityWellCells({
                       data-singularity-reserve-target=""
                       data-cipher-landing={absorbFlash > 0 ? 'true' : undefined}
                       aria-label={`Open encrypted Artifacts, ${reservedCount} of 3`}
-                      whileTap={{ scale: 0.96 }}
+                      disabled={!singularityInteractive}
+                      tabIndex={singularityInteractive ? 0 : -1}
+                      animate={{ opacity: singularityInteractive ? 1 : 0.32 }}
+                      whileTap={singularityInteractive ? { scale: 0.96 } : {}}
                       onClick={(e) => {
-                        if (isDragging.current) return;
+                        if (!singularityInteractive || isDragging.current) return;
                         e.stopPropagation();
                         onOpenReserved();
                       }}
+                      style={{ pointerEvents: singularityInteractive ? 'auto' : 'none' }}
                       className="affinity-well-take2 affinity-well-singularity-footer"
                     >
                       <span>{reservedCount}/3</span>
@@ -882,6 +919,10 @@ export function AffinityWellCells({
                           type="button"
                           aria-label={takeTwoSelected ? `2 ${meta.name} selected` : `Take 2 ${meta.name}`}
                           aria-pressed={takeTwoSelected}
+                          disabled={!takeTwoInteractive}
+                          data-affinity-take-two={c}
+                          data-tutorial-action-target={takeTwoGateActive && takeTwoAllowed && !takeTwoSelected ? 'true' : undefined}
+                          data-tutorial-action-locked={takeTwoGateActive && !takeTwoAllowed ? 'true' : undefined}
                           tabIndex={canTake2 ? 0 : -1}
                           animate={{ opacity: takeTwoSelected || canTake2 ? 1 : 0.32 }}
                           transition={{ duration: 0.15 }}

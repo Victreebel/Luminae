@@ -1,7 +1,7 @@
 import { describe, expect, it } from 'vitest';
 import {
   DIRECTOR_ROUTES,
-  activationDirectorPreparesCamera,
+  activationDirectorForcesCamera,
 } from '../ActivationDirectorRouter';
 
 /**
@@ -22,8 +22,13 @@ describe('ActivationDirectorRouter registry', () => {
       'lum_ember:end_of_turn',
       'lum_ember:summon',
       'lum_forge:summon',
+      'lum_hunger:action',
       'lum_null:summon',
       'lum_pale:summon',
+      'lum_seed:action',
+      'lum_seed:end_of_turn',
+      'lum_seed:summon',
+      'lum_verdant:summon',
     ]);
   });
 
@@ -42,14 +47,18 @@ describe('ActivationDirectorRouter registry', () => {
     }
   });
 
-  it('keeps target-dependent directors in charge of their frame phase', () => {
-    expect(activationDirectorPreparesCamera('lum_ember', 'summon')).toBe(true);
-    expect(activationDirectorPreparesCamera('lum_ember', 'end_of_turn')).toBe(true);
-    expect(activationDirectorPreparesCamera('lum_compass', 'summon')).toBe(true);
-    expect(activationDirectorPreparesCamera('lum_compass', 'end_of_turn')).toBe(true);
-    expect(activationDirectorPreparesCamera('lum_forge', 'summon')).toBe(true);
-    expect(activationDirectorPreparesCamera('lum_null', 'summon')).toBe(true);
-    expect(activationDirectorPreparesCamera('lum_pale', 'summon')).toBe(true);
-    expect(activationDirectorPreparesCamera('lum_astral', 'start_of_turn')).toBe(false);
+  it('marks effects that require a forced whole-board frame', () => {
+    expect(activationDirectorForcesCamera('lum_ember', 'summon')).toBe(true);
+    expect(activationDirectorForcesCamera('lum_ember', 'end_of_turn')).toBe(true);
+    expect(activationDirectorForcesCamera('lum_compass', 'summon')).toBe(true);
+    expect(activationDirectorForcesCamera('lum_compass', 'end_of_turn')).toBe(true);
+    expect(activationDirectorForcesCamera('lum_forge', 'summon')).toBe(true);
+    expect(activationDirectorForcesCamera('lum_null', 'summon')).toBe(true);
+    expect(activationDirectorForcesCamera('lum_pale', 'summon')).toBe(true);
+    expect(activationDirectorForcesCamera('lum_seed', 'summon')).toBe(true);
+    expect(activationDirectorForcesCamera('lum_seed', 'end_of_turn')).toBe(true);
+    expect(activationDirectorForcesCamera('lum_seed', 'action')).toBe(false);
+    expect(activationDirectorForcesCamera('lum_verdant', 'summon')).toBe(false);
+    expect(activationDirectorForcesCamera('lum_astral', 'start_of_turn')).toBe(true);
   });
 });

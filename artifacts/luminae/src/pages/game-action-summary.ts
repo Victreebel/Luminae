@@ -18,13 +18,29 @@ export function getPlannedActionSummary(
     ...(state?.forgeTier2 ?? []),
     ...(state?.forgeTier3 ?? []),
     ...(player?.reservedArtifacts ?? []),
+    ...(player?.tideArchiveTopCards
+      ? [
+          player.tideArchiveTopCards.tier1,
+          player.tideArchiveTopCards.tier2,
+          player.tideArchiveTopCards.tier3,
+        ]
+      : []),
   ].filter(isArtifactCard);
 
   switch (action.type) {
     case 'forge_artifact':
     case 'forge_reserved_artifact': {
       const card = allCards.find((candidate) => candidate.id === action.cardId);
-      return card ? `Forge "${card.name}"` : 'Forge Artifact';
+      const source = action.luminaryId === 'lum_tide' ? ' from Archive' : '';
+      return card ? `Forge "${card.name}"${source}` : `Forge Artifact${source}`;
+    }
+    case 'foundry_forge_artifact': {
+      const card = allCards.find((candidate) => candidate.id === action.cardId);
+      return card ? `Foundry Forge "${card.name}"` : 'Foundry Forge Artifact';
+    }
+    case 'recover_foundry_component': {
+      const card = player?.forgedArtifacts.find((candidate) => candidate.id === action.cardId);
+      return card ? `Recover "${card.name}"` : 'Recover Foundry component';
     }
     case 'reserve_artifact': {
       if (action.cardId) {

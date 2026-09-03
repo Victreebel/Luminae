@@ -841,6 +841,9 @@ button,
   min-height: 296px;
   overflow: hidden;
   background:
+    radial-gradient(circle, rgba(255, 255, 255, 0.5) 0 0.7px, transparent 1.35px) 7% 13% / 86px 61px repeat,
+    radial-gradient(circle, rgba(182, 211, 255, 0.34) 0 0.85px, transparent 1.55px) 41% 29% / 142px 98px repeat,
+    radial-gradient(circle, rgba(255, 216, 154, 0.24) 0 0.75px, transparent 1.5px) 68% 72% / 178px 127px repeat,
     radial-gradient(ellipse 68% 80% at 50% -18%, rgba(123, 96, 189, 0.18), transparent 64%),
     radial-gradient(ellipse 54% 76% at 50% 112%, rgba(217, 172, 86, 0.1), transparent 68%),
     linear-gradient(180deg, rgba(4, 5, 12, 0.99), rgba(5, 7, 14, 0.99) 60%, rgba(2, 3, 8, 1));
@@ -868,21 +871,25 @@ button,
   position: absolute;
   inset: 0;
   background:
+    radial-gradient(circle, rgba(255, 255, 255, 0.95) 0 0.72px, transparent 1.45px) 11% 17% / 73px 53px repeat,
+    radial-gradient(circle, rgba(189, 218, 255, 0.72) 0 0.8px, transparent 1.55px) 37% 43% / 121px 89px repeat,
+    radial-gradient(circle, rgba(255, 226, 176, 0.52) 0 0.68px, transparent 1.4px) 78% 28% / 169px 119px repeat,
+    radial-gradient(circle, rgba(255, 255, 255, 0.38) 0 0.5px, transparent 1.25px) 3% 64% / 47px 37px repeat,
     radial-gradient(ellipse 36% 54% at 50% 48%, rgba(0, 0, 0, 0.58), transparent 78%),
     linear-gradient(180deg, rgba(0, 2, 5, 0.42), rgba(0, 1, 3, 0.8)),
     radial-gradient(circle at 14% 34%, rgba(255, 255, 255, 0.16) 0 1px, transparent 1.5px),
     radial-gradient(circle at 76% 20%, rgba(255, 255, 255, 0.12) 0 1px, transparent 1.5px),
     radial-gradient(circle at 88% 62%, rgba(255, 255, 255, 0.1) 0 1px, transparent 1.5px),
     var(--terminus-starfield-image) center 18% / cover no-repeat;
-  filter: grayscale(0.88) saturate(0.28) brightness(0.42) contrast(1.32);
-  opacity: 0.76;
+  filter: grayscale(0.72) saturate(0.42) brightness(0.54) contrast(1.26);
+  opacity: 0.84;
   pointer-events: none;
   z-index: 0;
 }
 
 .board-terminus-stars {
   z-index: 1;
-  opacity: 0.44;
+  opacity: 0.58;
   mix-blend-mode: screen;
 }
 
@@ -1090,7 +1097,7 @@ button,
   position: relative;
   isolation: isolate;
   display: grid;
-  grid-template-rows: 17px 25px minmax(16px, 1fr);
+  grid-template-rows: 17px minmax(0, 1fr);
   align-items: center;
   justify-items: center;
   width: 100%;
@@ -1174,6 +1181,15 @@ button,
   height: 14px;
 }
 
+.opponent-affinity-cell__count-row {
+  display: inline-flex;
+  min-width: 0;
+  align-items: center;
+  justify-content: center;
+  gap: 3px;
+  align-self: center;
+}
+
 .opponent-affinity-cell__count {
   align-self: center;
   color: #f7f2e8;
@@ -1188,13 +1204,43 @@ button,
     0 1px 2px #000;
 }
 
+.opponent-affinity-cell__permanent {
+  display: inline-flex;
+  flex: 0 0 auto;
+  align-items: center;
+  justify-content: center;
+  min-width: 18px;
+  padding: 2px 4px;
+  border: 1px solid color-mix(in srgb, var(--opponent-affinity-glow) 50%, transparent);
+  border-radius: 4px;
+  background: color-mix(in srgb, var(--opponent-affinity-color) 16%, rgba(0, 0, 0, 0.28));
+  color: var(--opponent-affinity-glow);
+  font-size: 9px;
+  font-weight: 900;
+  font-variant-numeric: tabular-nums;
+  letter-spacing: 0;
+  line-height: 1;
+  box-shadow: 0 0 7px color-mix(in srgb, var(--opponent-affinity-color) 34%, transparent);
+  text-shadow: 0 0 5px color-mix(in srgb, var(--opponent-affinity-color) 44%, transparent);
+}
+
 .opponent-affinity-cell[data-has-content="false"] .opponent-affinity-cell__count {
   color: color-mix(in srgb, var(--opponent-affinity-color) 38%, #333941);
   text-shadow: none;
 }
 
+.opponent-affinity-cell[data-has-content="false"] .opponent-affinity-cell__permanent {
+  border-color: color-mix(in srgb, var(--opponent-affinity-color) 18%, transparent);
+  color: color-mix(in srgb, var(--opponent-affinity-color) 42%, #333941);
+  background: transparent;
+  box-shadow: none;
+  text-shadow: none;
+}
+
 .opponent-affinity-cell__modifiers {
-  align-self: end;
+  position: absolute;
+  right: 4px;
+  bottom: 4px;
   display: flex;
   flex-direction: column;
   align-items: center;
@@ -1219,12 +1265,10 @@ button,
   text-shadow: 0 0 5px color-mix(in srgb, var(--opponent-affinity-color) 46%, transparent);
 }
 
-.opponent-affinity-cell__bonus {
-  color: #b8c9ff;
-}
-
 .opponent-affinity-cell__encrypted {
-  align-self: end;
+  position: absolute;
+  right: 4px;
+  bottom: 4px;
   font-size: 7px;
 }
 
@@ -1724,6 +1768,35 @@ button,
     0 1px 2px #000;
 }
 
+.affinity-well-symbol__terminal {
+  position: absolute;
+  z-index: 1;
+  bottom: 3px;
+  width: 6px;
+  height: 1px;
+  background: rgba(116, 132, 165, 0.28);
+  pointer-events: none;
+  transition: background-color 180ms ease, box-shadow 180ms ease;
+}
+
+.affinity-well-symbol__terminal--start {
+  left: 6px;
+  transform: rotate(-10deg);
+  transform-origin: right center;
+}
+
+.affinity-well-symbol__terminal--end {
+  right: 6px;
+  transform: rotate(10deg);
+  transform-origin: left center;
+}
+
+.affinity-well-symbol[data-has-progress="true"] .affinity-well-symbol__terminal--start,
+.affinity-well-symbol[data-progress-complete="true"] .affinity-well-symbol__terminal--end {
+  background: currentColor;
+  box-shadow: 0 0 5px color-mix(in srgb, currentColor 62%, transparent);
+}
+
 .affinity-well-symbol__keystone {
   position: absolute;
   z-index: 2;
@@ -1771,6 +1844,19 @@ button,
   bottom: 1px;
   width: 2px;
   height: 2px;
+}
+
+.affinity-well-symbol--compact .affinity-well-symbol__terminal {
+  bottom: 2px;
+  width: 3px;
+}
+
+.affinity-well-symbol--compact .affinity-well-symbol__terminal--start {
+  left: 3px;
+}
+
+.affinity-well-symbol--compact .affinity-well-symbol__terminal--end {
+  right: 3px;
 }
 
 .affinity-well-player {
@@ -2642,6 +2728,486 @@ button,
   .affinity-well-status {
     grid-area: status;
     justify-self: end;
+  }
+}
+
+/* The shortest phone landscape uses two Forge rows (controls + tiers) and a
+   horizontal split inside each Well channel. This preserves every card and a
+   44px target for both token actions without letting either surface scroll. */
+@media (max-height: 520px) and (orientation: landscape) {
+  .game-shell[data-board-presentation][data-board-viewport="phone-landscape"][data-board-density="cockpit"][data-board-layout][data-forge-density][data-side-affinity-well="true"]
+    > .affinity-well-panel[data-shared-affinity-well] {
+    --well-action-zone-h: 44px;
+    --well-take2-h: 44px;
+    grid-template-rows: 44px minmax(0, 1fr) 44px !important;
+    padding: 0 !important;
+  }
+
+  .game-shell[data-board-presentation][data-board-viewport="phone-landscape"][data-board-density="cockpit"][data-board-layout][data-forge-density][data-side-affinity-well="true"]
+    > .affinity-well-panel[data-shared-affinity-well] .affinity-well-header {
+    grid-template-rows: 44px !important;
+    height: 44px !important;
+    min-height: 44px !important;
+    max-height: 44px !important;
+    padding: 0 4px !important;
+  }
+
+  .game-shell[data-board-presentation][data-board-viewport="phone-landscape"][data-board-density="cockpit"][data-board-layout][data-forge-density][data-side-affinity-well="true"]
+    > .affinity-well-panel[data-shared-affinity-well] .affinity-well-dock-toggle,
+  .game-shell[data-board-presentation][data-board-viewport="phone-landscape"][data-board-density="cockpit"][data-board-layout][data-forge-density][data-side-affinity-well="true"]
+    > .affinity-well-panel[data-shared-affinity-well] .affinity-well-eminence {
+    width: 44px !important;
+    min-width: 44px !important;
+    height: 44px !important;
+    min-height: 44px !important;
+  }
+
+  .game-shell[data-board-presentation][data-board-viewport="phone-landscape"][data-board-density="cockpit"][data-board-layout][data-forge-density][data-side-affinity-well="true"]
+    > .affinity-well-panel[data-shared-affinity-well] .affinity-well-cells [data-well-carousel] > div {
+    display: grid !important;
+    grid-template-columns: repeat(3, minmax(0, 1fr)) !important;
+    grid-template-rows: repeat(2, minmax(0, 1fr)) !important;
+    gap: 2px !important;
+    padding: 1px !important;
+  }
+
+  .game-shell[data-board-presentation][data-board-viewport="phone-landscape"][data-board-density="cockpit"][data-board-layout][data-forge-density][data-side-affinity-well="true"]
+    > .affinity-well-panel[data-shared-affinity-well] .affinity-well-cell {
+    position: relative !important;
+    display: grid !important;
+    grid-template-columns: minmax(44px, 1fr) 44px !important;
+    grid-template-rows: minmax(44px, 1fr) !important;
+    width: 100% !important;
+    height: 100% !important;
+    min-width: 0 !important;
+    min-height: 0 !important;
+    gap: 0 !important;
+  }
+
+  .game-shell[data-board-presentation][data-board-viewport="phone-landscape"][data-board-density="cockpit"][data-board-layout][data-forge-density][data-side-affinity-well="true"]
+    > .affinity-well-panel[data-shared-affinity-well] .affinity-well-cell[data-affinity] .affinity-well-cell-button,
+  .game-shell[data-board-presentation][data-board-viewport="phone-landscape"][data-board-density="cockpit"][data-board-layout][data-forge-density][data-side-affinity-well="true"]
+    > .affinity-well-panel[data-shared-affinity-well] .affinity-well-cell[data-affinity="singularity"] .affinity-well-cell-button {
+    width: 100% !important;
+    height: 100% !important;
+    min-width: 44px !important;
+    min-height: 44px !important;
+    max-height: none !important;
+    flex: none !important;
+    border-radius: 7px 0 0 7px !important;
+  }
+
+  .game-shell[data-board-presentation][data-board-viewport="phone-landscape"][data-board-density="cockpit"][data-board-layout][data-forge-density][data-side-affinity-well="true"]
+    > .affinity-well-panel[data-shared-affinity-well] .affinity-well-cell .affinity-well-cell-button[data-well-cell-style="instrument"] {
+    grid-template-rows: 28px 16px 8px !important;
+    row-gap: 1px !important;
+  }
+
+  .game-shell[data-board-presentation][data-board-viewport="phone-landscape"][data-board-density="cockpit"][data-board-layout][data-forge-density][data-side-affinity-well="true"]
+    > .affinity-well-panel[data-shared-affinity-well] .affinity-well-take2 {
+    position: static !important;
+    inset: auto !important;
+    width: 44px !important;
+    min-width: 44px !important;
+    height: 100% !important;
+    min-height: 44px !important;
+    max-height: none !important;
+    margin: 0 !important;
+    padding: 0 !important;
+    border-radius: 0 7px 7px 0 !important;
+    font-size: 9px !important;
+  }
+
+  .game-shell[data-board-presentation][data-board-viewport="phone-landscape"][data-board-density="cockpit"][data-board-layout][data-forge-density][data-side-affinity-well="true"]
+    > .affinity-well-panel[data-shared-affinity-well] .affinity-well-action-zone {
+    height: 44px !important;
+    min-height: 44px !important;
+    max-height: 44px !important;
+  }
+}
+
+/* Artifact manifestation: the mold stays fixed while pale astral alloy rises,
+   cools into the authoritative Artifact, and its gameplay marks are struck in.
+   This layer intentionally uses only opacity and transforms so a mass refill
+   remains inexpensive on mobile GPUs. */
+.artifact-mold-cast {
+  --mold-cast-delay: 0ms;
+  --mold-cast-duration: 680ms;
+  position: absolute;
+  inset: 0;
+  z-index: 36;
+  overflow: hidden;
+  border-radius: inherit;
+  pointer-events: none;
+  isolation: isolate;
+  contain: paint;
+  animation: artifact-mold-cast-shell var(--mold-cast-duration) cubic-bezier(0.2, 0.72, 0.18, 1) var(--mold-cast-delay) both;
+}
+
+.artifact-mold-cast > span {
+  position: absolute;
+  display: block;
+  pointer-events: none;
+}
+
+/* The foundry's generic direct-child rule appears later in this stylesheet.
+   Keep the casting layer pinned to the cavity instead of letting it collapse
+   into a zero-height grid child in compact Forge layouts. */
+.forge-foundry-mold > .artifact-mold-cast {
+  position: absolute;
+  z-index: 36;
+}
+
+.artifact-mold-cast__cavity {
+  inset: 0;
+  z-index: 1;
+  background: #020609;
+  animation: artifact-mold-cast-cavity var(--mold-cast-duration) ease-out var(--mold-cast-delay) both;
+}
+
+.artifact-mold-cast__alloy {
+  left: -7%;
+  right: -7%;
+  bottom: -5%;
+  height: 112%;
+  z-index: 2;
+  overflow: hidden;
+  transform-origin: 50% 100%;
+  background:
+    linear-gradient(180deg, rgba(255,244,198,0.72) 0 1px, rgba(191,232,238,0.28) 2px, transparent 7px),
+    radial-gradient(ellipse at 36% 18%, rgba(244,252,255,0.52) 0 4%, transparent 17%),
+    radial-gradient(ellipse at 70% 42%, rgba(150,218,231,0.42) 0 4%, transparent 19%),
+    linear-gradient(104deg, #27353d 0%, #849d9e 21%, #3f6872 43%, #b8a46f 60%, #344850 81%, #789292 100%);
+  border-top: 1px solid rgba(255,241,190,0.78);
+  box-shadow:
+    inset 0 2px 0 rgba(209,244,248,0.22),
+    0 -2px 5px rgba(172,225,234,0.18);
+  animation: artifact-mold-cast-alloy var(--mold-cast-duration) cubic-bezier(0.24, 0.76, 0.18, 1) var(--mold-cast-delay) both;
+}
+
+.artifact-mold-cast__alloy-flow {
+  position: absolute;
+  display: block;
+  inset: -18% -24%;
+  background:
+    repeating-radial-gradient(ellipse at 50% 115%, transparent 0 11%, rgba(231,249,250,0.13) 12% 13%, transparent 15% 22%),
+    linear-gradient(90deg, transparent 0 18%, rgba(244,251,248,0.24) 31%, transparent 46% 64%, rgba(189,231,235,0.2) 76%, transparent 92%);
+  animation: artifact-mold-cast-flow var(--mold-cast-duration) ease-in-out var(--mold-cast-delay) both;
+}
+
+.artifact-mold-cast__cooling {
+  inset: 0;
+  z-index: 3;
+  background:
+    linear-gradient(118deg, rgba(5,13,18,0.94), rgba(55,91,101,0.76) 32%, rgba(155,150,112,0.5) 52%, rgba(11,27,34,0.9));
+  transform-origin: 50% 100%;
+  animation: artifact-mold-cast-cooling var(--mold-cast-duration) ease-out var(--mold-cast-delay) both;
+}
+
+.artifact-mold-cast__sheen {
+  top: -12%;
+  bottom: -12%;
+  left: -32%;
+  width: 16%;
+  z-index: 4;
+  opacity: 0;
+  transform: skewX(-11deg);
+  background: rgba(230,248,250,0.38);
+  animation: artifact-mold-cast-sheen var(--mold-cast-duration) ease-in-out var(--mold-cast-delay) both;
+}
+
+.artifact-mold-cast__inscription {
+  z-index: 5;
+  width: 18%;
+  aspect-ratio: 1;
+  border: 1px solid rgba(255,239,178,0.88);
+  opacity: 0;
+  transform: scale(1.85);
+  box-shadow: 0 0 0 1px rgba(152,209,226,0.32);
+  animation: artifact-mold-cast-inscription var(--mold-cast-duration) ease-out var(--mold-cast-delay) both;
+}
+
+.artifact-mold-cast__inscription--eminence {
+  top: 5%;
+  left: 5%;
+  clip-path: polygon(50% 0, 92% 26%, 82% 82%, 50% 100%, 18% 82%, 8% 26%);
+}
+
+.artifact-mold-cast__inscription--affinity {
+  top: 5%;
+  right: 5%;
+  border-radius: 50%;
+  animation-delay: calc(var(--mold-cast-delay) + 34ms);
+}
+
+.artifact-mold-cast__inscription--cost {
+  right: 8%;
+  bottom: 7%;
+  width: 28%;
+  aspect-ratio: 2 / 1;
+  border-radius: 3px;
+  animation-delay: calc(var(--mold-cast-delay) + 68ms);
+}
+
+.artifact-mold-cast--compact .artifact-mold-cast__inscription {
+  border-width: 1px;
+}
+
+.artifact-mold-cast--compact {
+  inset: 2px;
+  border-radius: 6px;
+}
+
+@keyframes artifact-mold-cast-shell {
+  0%, 16% { box-shadow: inset 0 0 20px rgba(0,0,0,0.94); }
+  48% { box-shadow: inset 0 0 17px rgba(226,248,255,0.72), 0 0 7px rgba(196,230,235,0.34); }
+  76% { box-shadow: inset 0 0 7px rgba(255,231,161,0.28), 0 0 4px rgba(255,231,161,0.2); }
+  100% { box-shadow: none; }
+}
+
+@keyframes artifact-mold-cast-cavity {
+  0%, 30% { opacity: 1; }
+  64% { opacity: 0.88; }
+  86%, 100% { opacity: 0; }
+}
+
+@keyframes artifact-mold-cast-alloy {
+  0% { opacity: 0.92; transform: scaleY(0.04); }
+  16% { opacity: 1; transform: scaleY(0.19); }
+  46% { opacity: 1; transform: scaleY(1); }
+  64% { opacity: 0.92; transform: scaleY(1); }
+  88%, 100% { opacity: 0; transform: scaleY(1); }
+}
+
+@keyframes artifact-mold-cast-flow {
+  0% { opacity: 0.3; transform: translate3d(-8%, 8%, 0) scale(1.08); }
+  42% { opacity: 0.9; transform: translate3d(8%, -4%, 0) scale(1); }
+  72% { opacity: 0.34; transform: translate3d(-2%, -9%, 0) scale(1.04); }
+  100% { opacity: 0; transform: translate3d(4%, -12%, 0) scale(1.04); }
+}
+
+@keyframes artifact-mold-cast-cooling {
+  0%, 42% { opacity: 0; transform: scaleY(0.12); }
+  55% { opacity: 0.72; transform: scaleY(1); }
+  69% { opacity: 0.42; transform: scaleY(1); }
+  88%, 100% { opacity: 0; transform: scaleY(1); }
+}
+
+@keyframes artifact-mold-cast-sheen {
+  0%, 47% { opacity: 0; transform: translate3d(0, 0, 0) skewX(-11deg); }
+  58% { opacity: 0.72; }
+  78% { opacity: 0; transform: translate3d(520%, 0, 0) skewX(-11deg); }
+  100% { opacity: 0; transform: translate3d(520%, 0, 0) skewX(-11deg); }
+}
+
+@keyframes artifact-mold-cast-inscription {
+  0%, 68% { opacity: 0; transform: scale(1.85); }
+  76% { opacity: 0.94; transform: scale(0.88); }
+  84% { opacity: 0.46; transform: scale(1); }
+  100% { opacity: 0; transform: scale(1.1); }
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .artifact-mold-cast,
+  .artifact-mold-cast > span {
+    animation-duration: 240ms !important;
+    animation-delay: 0ms !important;
+  }
+
+  .artifact-mold-cast__alloy-flow,
+  .artifact-mold-cast__sheen,
+  .artifact-mold-cast__inscription {
+    display: none;
+  }
+}
+
+.tutorial-completion-layout {
+  gap: 1.25rem;
+  padding-block: 4rem;
+}
+
+@media (max-height: 620px) {
+  .tutorial-completion-layout {
+    gap: 0.75rem;
+    padding-block: 1rem;
+  }
+}
+
+@media (max-width: 680px) and (max-height: 520px) and (orientation: landscape) {
+  .game-shell[data-board-presentation][data-board-viewport="phone-landscape"][data-board-density="cockpit"][data-board-layout][data-forge-density][data-side-affinity-well="true"]
+    > .game-main[data-active-tab="board"] .board-forge.board-forge--compact {
+    grid-template-columns: minmax(0, 1fr) !important;
+    grid-template-rows: 44px minmax(0, 1fr) !important;
+  }
+
+  .game-shell[data-board-presentation][data-board-viewport="phone-landscape"][data-board-density="cockpit"][data-board-layout][data-forge-density][data-side-affinity-well="true"]
+    > .game-main[data-active-tab="board"] .board-forge--compact .board-forge-controls {
+    grid-row: 1 !important;
+    width: 100% !important;
+    min-width: 0 !important;
+  }
+
+  .game-shell[data-board-presentation][data-board-viewport="phone-landscape"][data-board-density="cockpit"][data-board-layout][data-forge-density][data-side-affinity-well="true"]
+    > .game-main[data-active-tab="board"] .board-forge--compact [data-forge-tiers="true"] {
+    grid-row: 2 !important;
+    align-self: stretch !important;
+    width: 100% !important;
+    min-width: 0 !important;
+    height: 100% !important;
+    padding-inline: 2px !important;
+  }
+
+  .game-shell[data-board-presentation][data-board-viewport="phone-landscape"][data-board-density="cockpit"][data-board-layout][data-forge-density][data-side-affinity-well="true"]
+    > .game-main[data-active-tab="board"] .board-forge--compact .board-forge-shelf {
+    grid-template-columns: 40px minmax(0, 1fr) !important;
+    gap: 2px !important;
+    padding: 2px !important;
+  }
+
+  .game-shell[data-board-presentation][data-board-viewport="phone-landscape"][data-board-density="cockpit"][data-board-layout][data-forge-density][data-side-affinity-well="true"]
+    > .game-main[data-active-tab="board"] .board-forge--compact .board-forge-tier-name {
+    display: none !important;
+  }
+
+  .game-shell[data-board-presentation][data-board-viewport="phone-landscape"][data-board-density="cockpit"][data-board-layout][data-forge-density][data-side-affinity-well="true"]
+    > .game-main[data-active-tab="board"] .board-forge--compact .board-forge-shelf-content {
+    grid-template-columns: minmax(0, 1fr) 44px !important;
+    gap: 2px !important;
+  }
+
+  .game-shell[data-board-presentation][data-board-viewport="phone-landscape"][data-board-density="cockpit"][data-board-layout][data-forge-density][data-side-affinity-well="true"]
+    > .game-main[data-active-tab="board"] .board-forge--compact .board-forge-card-row {
+    gap: 1px !important;
+  }
+
+  .game-shell[data-board-presentation][data-board-viewport="phone-landscape"][data-board-density="cockpit"][data-board-layout][data-forge-density][data-side-affinity-well="true"]
+    > .game-main[data-active-tab="board"] .board-forge--compact .board-forge-archive-rail {
+    width: 44px !important;
+    min-width: 44px !important;
+  }
+}
+
+/* In constrained landscape, the Forge owns the first board viewport. Secondary
+   board information remains directly below it instead of forcing smaller cards. */
+@media (max-height: 520px) and (orientation: landscape) {
+  .game-shell[data-board-viewport="phone-landscape"][data-board-density="cockpit"][data-side-affinity-well="true"]
+    > .game-main[data-active-tab="board"] {
+    padding: 4px !important;
+    overflow-x: hidden !important;
+    overflow-y: auto !important;
+  }
+
+  .game-shell[data-board-viewport="phone-landscape"][data-board-density="cockpit"][data-side-affinity-well="true"]
+    > .game-main[data-active-tab="board"] .board-tab-main {
+    display: flex !important;
+    flex-direction: column !important;
+    width: 100% !important;
+    height: auto !important;
+    min-height: 0 !important;
+    gap: 0 !important;
+    padding: 0 !important;
+  }
+
+  .game-shell[data-board-viewport="phone-landscape"][data-board-density="cockpit"][data-side-affinity-well="true"]
+    > .game-main[data-active-tab="board"] .board-forge.board-forge--compact {
+    flex: 0 0 calc(100dvh - 54px) !important;
+    width: 100% !important;
+    height: calc(100dvh - 54px) !important;
+    min-height: calc(100dvh - 54px) !important;
+    margin: 0 !important;
+    grid-template-rows: 30px 44px minmax(0, 1fr) !important;
+  }
+
+  .game-shell[data-board-viewport="phone-landscape"][data-board-density="cockpit"][data-side-affinity-well="true"]
+    > .game-main[data-active-tab="board"] .board-forge--compact .board-forge-header {
+    height: 30px !important;
+    min-height: 30px !important;
+    padding: 2px 7px !important;
+  }
+
+  .game-shell[data-board-viewport="phone-landscape"][data-board-density="cockpit"][data-side-affinity-well="true"]
+    > .game-main[data-active-tab="board"] .board-forge--compact .board-forge-controls {
+    height: 44px !important;
+    min-height: 44px !important;
+    padding: 1px 7px !important;
+  }
+
+  .game-shell[data-board-viewport="phone-landscape"][data-board-density="cockpit"][data-side-affinity-well="true"]
+    > .game-main[data-active-tab="board"] .board-forge--compact .board-forge-controls button {
+    min-height: 40px !important;
+  }
+
+  .game-shell[data-board-viewport="phone-landscape"][data-board-density="cockpit"][data-side-affinity-well="true"]
+    > .game-main[data-active-tab="board"] .board-forge--compact [data-forge-tiers="true"] {
+    display: grid !important;
+    grid-template-columns: minmax(0, 1fr) !important;
+    grid-template-rows: repeat(3, minmax(0, 1fr)) !important;
+    width: 100% !important;
+    height: 100% !important;
+    min-height: 0 !important;
+    gap: 3px !important;
+    padding: 3px 4px !important;
+    overflow: hidden !important;
+  }
+
+  .game-shell[data-board-viewport="phone-landscape"][data-board-density="cockpit"][data-side-affinity-well="true"]
+    > .game-main[data-active-tab="board"] .board-forge--compact .board-forge-shelf {
+    display: grid !important;
+    grid-template-columns: clamp(48px, 9vw, 72px) minmax(0, 1fr) !important;
+    grid-template-rows: minmax(0, 1fr) !important;
+    width: 100% !important;
+    height: 100% !important;
+    min-height: 0 !important;
+    gap: 3px !important;
+    padding: 2px 4px !important;
+  }
+
+  .game-shell[data-board-viewport="phone-landscape"][data-board-density="cockpit"][data-side-affinity-well="true"]
+    > .game-main[data-active-tab="board"] .board-forge--compact .board-forge-tier-header,
+  .game-shell[data-board-viewport="phone-landscape"][data-board-density="cockpit"][data-side-affinity-well="true"]
+    > .game-main[data-active-tab="board"] .board-forge--compact .board-forge-shelf-content,
+  .game-shell[data-board-viewport="phone-landscape"][data-board-density="cockpit"][data-side-affinity-well="true"]
+    > .game-main[data-active-tab="board"] .board-forge--compact .board-forge-card-row,
+  .game-shell[data-board-viewport="phone-landscape"][data-board-density="cockpit"][data-side-affinity-well="true"]
+    > .game-main[data-active-tab="board"] .board-forge--compact .board-forge-archive-rail {
+    height: 100% !important;
+    min-height: 0 !important;
+  }
+
+  .game-shell[data-board-viewport="phone-landscape"][data-board-density="cockpit"][data-side-affinity-well="true"]
+    > .game-main[data-active-tab="board"] .board-forge--compact .board-forge-shelf-content {
+    display: grid !important;
+    grid-template-columns: minmax(0, 4fr) minmax(0, 1fr) !important;
+    width: 100% !important;
+    min-width: 0 !important;
+    gap: 3px !important;
+  }
+
+  .game-shell[data-board-viewport="phone-landscape"][data-board-density="cockpit"][data-side-affinity-well="true"]
+    > .game-main[data-active-tab="board"] .board-forge--compact .board-forge-card-row {
+    display: grid !important;
+    grid-template-columns: repeat(4, minmax(0, 1fr)) !important;
+    width: 100% !important;
+    min-width: 0 !important;
+    gap: 3px !important;
+    padding: 0 !important;
+  }
+
+  .game-shell[data-board-viewport="phone-landscape"][data-board-density="cockpit"][data-side-affinity-well="true"]
+    > .game-main[data-active-tab="board"] .board-forge--compact .forge-foundry-mold,
+  .game-shell[data-board-viewport="phone-landscape"][data-board-density="cockpit"][data-side-affinity-well="true"]
+    > .game-main[data-active-tab="board"] .board-forge--compact .board-forge-compact-chip,
+  .game-shell[data-board-viewport="phone-landscape"][data-board-density="cockpit"][data-side-affinity-well="true"]
+    > .game-main[data-active-tab="board"] .board-forge--compact .board-forge-compact-deck,
+  .game-shell[data-board-viewport="phone-landscape"][data-board-density="cockpit"][data-side-affinity-well="true"]
+    > .game-main[data-active-tab="board"] .board-forge--compact .board-forge-compact-deck > div:first-child {
+    justify-self: center !important;
+    width: auto !important;
+    max-width: 100% !important;
+    height: 100% !important;
+    min-width: 0 !important;
+    min-height: 0 !important;
+    aspect-ratio: 0.7 !important;
   }
 }
 
@@ -3830,18 +4396,26 @@ button,
     0 0 18px currentColor;
 }
 
+.lum-effect-announcement-card,
+.lum-effect-receipt {
+  --lum-effect-font-identity: 'Cinzel', Georgia, serif;
+  --lum-effect-font-readable: 'Inter', ui-sans-serif, system-ui, -apple-system, BlinkMacSystemFont, sans-serif;
+}
+
 .lum-effect-announcement-card {
+  position: relative;
   display: inline-flex;
   flex-direction: column;
   align-items: center;
-  gap: 0.32rem;
-  max-width: min(420px, calc(100vw - 2rem));
-  padding: 0.82rem 1.2rem 0.78rem;
+  gap: 0.42rem;
+  width: max-content;
+  max-width: min(520px, calc(100vw - 1.5rem));
+  padding: 0.9rem 1.15rem;
   border: 1px solid color-mix(in srgb, var(--lum-effect-primary, #ef4444) 58%, rgba(255, 244, 197, 0.54));
-  border-radius: 14px;
+  border-radius: 8px;
   background:
     radial-gradient(ellipse 78% 58% at 50% 0%, color-mix(in srgb, var(--lum-effect-primary, #ef4444) 28%, transparent) 0%, transparent 68%),
-    linear-gradient(180deg, rgba(15, 9, 16, 0.97), rgba(5, 5, 10, 0.96));
+    linear-gradient(180deg, rgba(15, 9, 16, 0.985), rgba(5, 5, 10, 0.98));
   box-shadow:
     0 0 0 1px rgba(0, 0, 0, 0.82),
     0 14px 38px rgba(0, 0, 0, 0.72),
@@ -3853,72 +4427,620 @@ button,
 
 .lum-effect-announcement-kicker,
 .lum-effect-announcement-subtitle {
-  font-family: 'Cinzel', 'Playfair Display', Georgia, serif;
-  font-size: clamp(0.62rem, 1.8vw, 0.72rem);
+  font-family: var(--lum-effect-font-readable);
+  font-size: 0.72rem;
   font-weight: 600;
-  letter-spacing: 0.2em;
-  line-height: 1.05;
+  letter-spacing: 0;
+  line-height: 1.25;
   text-transform: uppercase;
   color: color-mix(in srgb, var(--lum-effect-secondary, #fbbf24) 76%, white 12%);
   text-shadow:
-    0 1px 2px rgba(0, 0, 0, 1),
-    0 0 10px rgba(0, 0, 0, 0.92);
+    0 1px 2px rgba(0, 0, 0, 1);
 }
 
 .lum-effect-announcement-title {
-  font-family: var(--app-font-serif);
-  font-size: clamp(1.42rem, 5.9vw, 2.34rem);
-  font-weight: 800;
-  letter-spacing: 0.025em;
-  line-height: 1.02;
+  font-family: var(--lum-effect-font-identity);
+  font-size: 1rem;
+  font-weight: 600;
+  letter-spacing: 0;
+  line-height: 1.22;
+  text-transform: none;
   font-feature-settings: "kern" 1, "liga" 1;
+  font-kerning: normal;
   color: color-mix(in srgb, var(--lum-effect-primary, #ef4444) 86%, white 18%);
   text-shadow:
     0 2px 2px rgba(0, 0, 0, 1),
-    0 0 12px rgba(0, 0, 0, 0.9),
-    0 0 18px color-mix(in srgb, var(--lum-effect-primary, #ef4444) 70%, transparent);
+    0 0 12px color-mix(in srgb, var(--lum-effect-primary, #ef4444) 42%, transparent);
+}
+
+.lum-effect-announcement-card--identity .lum-effect-announcement-title {
+  font-family: var(--lum-effect-font-identity);
+  font-size: 2rem;
+  font-weight: 600;
+  line-height: 1.12;
+  text-transform: none;
+}
+
+.lum-effect-announcement-card--identity {
+  gap: 0.22rem;
+  padding: 0.35rem 2.25rem 0.25rem;
+  border: 0;
+  background: transparent;
+  box-shadow: none;
+}
+
+.lum-effect-announcement-card--identity .lum-effect-announcement-title {
+  color: color-mix(in srgb, var(--lum-effect-primary, #d6a24f) 78%, white 30%);
+  text-shadow:
+    0 2px 3px rgba(0, 0, 0, 1),
+    0 0 14px rgba(0, 0, 0, 0.96),
+    0 0 22px color-mix(in srgb, var(--lum-effect-primary, #d6a24f) 52%, transparent);
+}
+
+.lum-effect-announcement-card--identity .lum-effect-announcement-subtitle {
+  font-size: 0.66rem;
+  color: rgba(255, 248, 222, 0.82);
+  text-shadow:
+    0 1px 2px rgba(0, 0, 0, 1),
+    0 0 10px rgba(0, 0, 0, 0.96);
+}
+
+.lum-effect-announcement-card--identity .lum-effect-announcement-progress {
+  top: -0.55rem;
+  right: 0.35rem;
 }
 
 .lum-effect-announcement-subtitle {
   color: rgba(255, 247, 214, 0.88);
-  letter-spacing: 0.12em;
+  letter-spacing: 0;
+}
+
+.lum-effect-announcement-result {
+  max-width: 30ch;
+  font-family: var(--lum-effect-font-readable);
+  font-size: 1.45rem;
+  font-weight: 700;
+  line-height: 1.24;
+  color: rgba(255, 249, 226, 0.98);
+  text-wrap: pretty;
+  text-shadow:
+    0 2px 2px rgba(0, 0, 0, 1),
+    0 0 12px color-mix(in srgb, var(--lum-effect-primary, #ef4444) 34%, transparent);
+}
+
+.lum-effect-announcement-progress {
+  position: absolute;
+  top: 0.42rem;
+  right: 0.5rem;
+  min-width: 2rem;
+  padding: 0.18rem 0.36rem;
+  border: 1px solid rgba(255, 255, 255, 0.14);
+  border-radius: 5px;
+  background: rgba(0, 0, 0, 0.62);
+  color: rgba(255, 255, 255, 0.68);
+  font-family: var(--lum-effect-font-readable);
+  font-size: 0.68rem;
+  font-weight: 750;
+  line-height: 1;
 }
 
 .lum-effect-announcement-description {
-  max-width: 34em;
-  margin-top: 0.18rem;
-  font-family: var(--app-font-sans);
-  font-size: clamp(0.68rem, 1.9vw, 0.78rem);
-  font-weight: 520;
+  max-width: 32ch;
+  margin-top: 0.08rem;
+  font-family: var(--lum-effect-font-readable);
+  font-size: 1.02rem;
+  font-weight: 600;
   letter-spacing: 0;
-  line-height: 1.35;
-  color: rgba(244, 244, 248, 0.78);
-  text-wrap: balance;
+  line-height: 1.38;
+  color: rgba(248, 248, 252, 0.96);
+  text-wrap: pretty;
   text-shadow: 0 1px 2px rgba(0, 0, 0, 1);
 }
 
 .lum-effect-announcement-card--compact {
-  padding: 0.64rem 0.92rem 0.6rem;
-  border-radius: 12px;
-  gap: 0.24rem;
+  padding: 0.72rem 0.92rem;
+  border-radius: 7px;
+  gap: 0.34rem;
 }
 
-.lum-effect-announcement-card--compact .lum-effect-announcement-title {
-  font-size: clamp(1.22rem, 4.8vw, 1.88rem);
-  letter-spacing: 0.02em;
+.lum-effect-announcement-card--compact.lum-effect-announcement-card--identity .lum-effect-announcement-title {
+  font-size: 1.72rem;
 }
 
 .lum-effect-announcement-card--compact .lum-effect-announcement-description {
-  font-size: clamp(0.64rem, 1.75vw, 0.74rem);
+  font-size: 0.98rem;
+}
+
+.lum-effect-announcement-card--compact .lum-effect-announcement-result {
+  font-size: 1.3rem;
+}
+
+/* During an effect, readable copy occupies the navigation lane instead of
+   covering the board action that it explains. */
+.lum-effect-caption-rail {
+  --lum-effect-font-identity: 'Cinzel', Georgia, serif;
+  --lum-effect-font-readable: 'Inter', ui-sans-serif, system-ui, -apple-system, BlinkMacSystemFont, sans-serif;
+  position: fixed;
+  right: 0;
+  bottom: 0;
+  left: 0;
+  z-index: 9001;
+  display: flex;
+  box-sizing: border-box;
+  width: 100%;
+  min-width: 0;
+  height: max(58px, calc(48px + env(safe-area-inset-bottom, 0px)));
+  align-items: center;
+  padding: 4px 172px max(4px, env(safe-area-inset-bottom, 0px)) 18px;
+  overflow: hidden;
+  border-top: 1px solid color-mix(in srgb, var(--lum-effect-primary, #d6a24f) 60%, rgba(255, 245, 211, 0.26));
+  background:
+    radial-gradient(ellipse 40% 120% at 12% 50%, color-mix(in srgb, var(--lum-effect-primary, #d6a24f) 16%, transparent), transparent 72%),
+    linear-gradient(180deg, rgba(8, 12, 18, 0.99), rgba(3, 6, 11, 0.995));
+  box-shadow:
+    inset 0 1px rgba(255, 255, 255, 0.035),
+    0 -12px 28px rgba(0, 0, 0, 0.42),
+    0 -1px 18px color-mix(in srgb, var(--lum-effect-primary, #d6a24f) 14%, transparent);
+  color: rgba(250, 249, 244, 0.96);
+  pointer-events: none;
+  user-select: none;
+}
+
+.lum-effect-caption-rail__inner {
+  display: grid;
+  grid-template-columns: 14px max-content minmax(0, 1fr) auto;
+  align-items: center;
+  gap: 10px;
+  width: min(900px, 100%);
+  min-width: 0;
+  margin-inline: auto;
+}
+
+.lum-effect-caption-rail__signal {
+  display: block;
+  width: 9px;
+  height: 9px;
+  border: 1px solid color-mix(in srgb, var(--lum-effect-primary, #d6a24f) 82%, white 18%);
+  background: color-mix(in srgb, var(--lum-effect-primary, #d6a24f) 36%, rgba(4, 7, 12, 0.96));
+  box-shadow:
+    0 0 8px color-mix(in srgb, var(--lum-effect-primary, #d6a24f) 58%, transparent),
+    inset 0 0 4px rgba(255, 255, 255, 0.24);
+  transform: rotate(45deg);
+}
+
+.lum-effect-caption-rail__title {
+  padding-right: 12px;
+  border-right: 1px solid color-mix(in srgb, var(--lum-effect-primary, #d6a24f) 34%, rgba(255, 255, 255, 0.08));
+  color: color-mix(in srgb, var(--lum-effect-primary, #d6a24f) 78%, white 22%);
+  font-family: var(--lum-effect-font-identity);
+  font-size: 0.88rem;
+  font-weight: 600;
+  line-height: 1.2;
+  white-space: nowrap;
+  text-shadow: 0 0 10px color-mix(in srgb, var(--lum-effect-primary, #d6a24f) 34%, transparent);
+}
+
+.lum-effect-caption-rail__detail {
+  display: flex;
+  min-width: 0;
+  align-items: baseline;
+  gap: 0.48rem;
+  font-family: var(--lum-effect-font-readable);
+  line-height: 1.28;
+}
+
+.lum-effect-caption-rail__result {
+  flex: 0 0 auto;
+  color: rgba(255, 250, 231, 0.98);
+  font-size: 0.78rem;
+  font-weight: 750;
+}
+
+.lum-effect-caption-rail__description {
+  min-width: 0;
+  overflow: hidden;
+  color: rgba(231, 235, 242, 0.84);
+  font-size: 0.75rem;
+  font-weight: 550;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.lum-effect-caption-rail__progress {
+  min-width: 1.8rem;
+  padding: 0.18rem 0.32rem;
+  border: 1px solid rgba(255, 255, 255, 0.13);
+  border-radius: 4px;
+  background: rgba(0, 0, 0, 0.48);
+  color: rgba(255, 255, 255, 0.7);
+  font-family: var(--lum-effect-font-readable);
+  font-size: 0.64rem;
+  font-weight: 750;
+  line-height: 1;
+  text-align: center;
+}
+
+.lum-effect-skip-control--docked {
+  right: 10px !important;
+  bottom: max(4px, env(safe-area-inset-bottom, 0px)) !important;
+  height: 50px;
+  color: rgba(232, 237, 246, 0.7) !important;
+}
+
+.lum-effect-skip-control--docked > span {
+  font-family: var(--lum-effect-font-readable, 'Inter', ui-sans-serif, system-ui, sans-serif);
+  font-size: 9px !important;
+  letter-spacing: 0 !important;
+}
+
+@media (max-width: 480px) {
+  .lum-effect-caption-rail {
+    padding-right: 56px;
+    padding-left: 8px;
+  }
+
+  .lum-effect-caption-rail__inner {
+    grid-template-columns: 10px minmax(0, 1fr) auto;
+    grid-template-rows: auto auto;
+    gap: 1px 7px;
+  }
+
+  .lum-effect-caption-rail__signal {
+    grid-row: 1 / 3;
+    width: 7px;
+    height: 7px;
+  }
+
+  .lum-effect-caption-rail__title {
+    grid-column: 2;
+    padding-right: 0;
+    border-right: 0;
+    font-size: 0.72rem;
+    line-height: 1.15;
+  }
+
+  .lum-effect-caption-rail__detail {
+    grid-column: 2;
+    gap: 0.34rem;
+    font-size: 0.66rem;
+    line-height: 1.18;
+  }
+
+  .lum-effect-caption-rail__result,
+  .lum-effect-caption-rail__description {
+    font-size: 0.66rem;
+  }
+
+  .lum-effect-caption-rail__description {
+    display: -webkit-box;
+    overflow: hidden;
+    white-space: normal;
+    -webkit-box-orient: vertical;
+    -webkit-line-clamp: 2;
+  }
+
+  .lum-effect-caption-rail__progress {
+    grid-column: 3;
+    grid-row: 1 / 3;
+  }
+
+  .lum-effect-skip-control--docked {
+    right: 4px !important;
+    width: 48px;
+    justify-content: center;
+  }
+
+  .lum-effect-skip-control--docked > span {
+    display: none;
+  }
+}
+
+@media (max-height: 520px) and (orientation: landscape) {
+  .lum-effect-caption-rail {
+    right: 4px;
+    bottom: 4px;
+    left: auto;
+    width: clamp(248px, 34vw, 300px);
+    height: 80px;
+    padding: 5px 48px 5px 8px;
+    border: 1px solid color-mix(in srgb, var(--lum-effect-primary, #d6a24f) 52%, rgba(255, 245, 211, 0.18));
+  }
+
+  .lum-effect-caption-rail__inner {
+    grid-template-columns: 9px minmax(0, 1fr) auto;
+    grid-template-rows: auto minmax(0, 1fr);
+    gap: 2px 6px;
+  }
+
+  .lum-effect-caption-rail__signal {
+    grid-row: 1 / 3;
+    width: 7px;
+    height: 7px;
+  }
+
+  .lum-effect-caption-rail__title {
+    grid-column: 2;
+    padding-right: 0;
+    border-right: 0;
+    font-size: 0.68rem;
+  }
+
+  .lum-effect-caption-rail__detail {
+    grid-column: 2;
+    flex-direction: column;
+    gap: 1px;
+    line-height: 1.12;
+  }
+
+  .lum-effect-caption-rail__result,
+  .lum-effect-caption-rail__description {
+    font-size: 0.61rem;
+  }
+
+  .lum-effect-caption-rail__description {
+    display: -webkit-box;
+    overflow: hidden;
+    white-space: normal;
+    -webkit-box-orient: vertical;
+    -webkit-line-clamp: 2;
+  }
+
+  .lum-effect-caption-rail__progress {
+    grid-column: 3;
+    grid-row: 1 / 3;
+  }
+
+  .lum-effect-skip-control--docked {
+    right: 7px !important;
+    bottom: 5px !important;
+    width: 42px;
+    height: 70px;
+    justify-content: center;
+  }
+
+  .lum-effect-skip-control--docked > span {
+    display: none;
+  }
+}
+
+.lum-effect-receipt {
+  position: fixed;
+  top: max(4.5rem, calc(env(safe-area-inset-top, 0px) + 3.75rem));
+  left: 50%;
+  z-index: 8800;
+  display: grid;
+  grid-template-columns: minmax(0, 1fr) 2.5rem;
+  width: min(34rem, calc(100vw - 1rem));
+  overflow: hidden;
+  border: 1px solid color-mix(in srgb, var(--lum-effect-primary, #d6a24f) 60%, rgba(255, 246, 211, 0.42));
+  border-radius: 7px;
+  background:
+    linear-gradient(180deg, rgba(10, 13, 20, 0.98), rgba(4, 6, 11, 0.98));
+  box-shadow:
+    0 14px 38px rgba(0, 0, 0, 0.68),
+    0 0 24px color-mix(in srgb, var(--lum-effect-primary, #d6a24f) 22%, transparent),
+    inset 3px 0 color-mix(in srgb, var(--lum-effect-primary, #d6a24f) 74%, white 8%);
+  transform: translateX(-50%);
+  pointer-events: auto;
+}
+
+.lum-effect-receipt__body,
+.lum-effect-receipt__dismiss {
+  border: 0;
+  background: transparent;
+  color: inherit;
+}
+
+.lum-effect-receipt__body {
+  display: grid;
+  grid-template-columns: 1.65rem minmax(0, 1fr) 1.25rem;
+  align-items: start;
+  gap: 0.55rem;
+  min-width: 0;
+  padding: 0.7rem 0.55rem 0.7rem 0.85rem;
+  text-align: left;
+}
+
+.lum-effect-receipt__status {
+  display: grid;
+  width: 1.55rem;
+  height: 1.55rem;
+  place-items: center;
+  margin-top: 0.05rem;
+  border: 1px solid color-mix(in srgb, var(--lum-effect-primary, #d6a24f) 68%, white 8%);
+  border-radius: 50%;
+  background: color-mix(in srgb, var(--lum-effect-primary, #d6a24f) 20%, rgba(5, 7, 13, 0.96));
+  color: color-mix(in srgb, var(--lum-effect-primary, #d6a24f) 76%, white 24%);
+}
+
+.lum-effect-receipt__copy,
+.lum-effect-receipt__results,
+.lum-effect-receipt__result {
+  display: grid;
+  min-width: 0;
+}
+
+.lum-effect-receipt__copy {
+  gap: 0.18rem;
+}
+
+.lum-effect-receipt__kicker {
+  color: color-mix(in srgb, var(--lum-effect-secondary, #d6a24f) 66%, white 14%);
+  font-family: var(--lum-effect-font-readable);
+  font-size: 0.66rem;
+  font-weight: 800;
+  letter-spacing: 0;
+  line-height: 1.15;
+  text-transform: uppercase;
+}
+
+.lum-effect-receipt__results {
+  gap: 0.48rem;
+  margin-top: 0.08rem;
+}
+
+.lum-effect-receipt__result {
+  grid-template-columns: minmax(7rem, 0.42fr) minmax(0, 1fr);
+  gap: 0.55rem;
+  padding-top: 0.44rem;
+  border-top: 1px solid rgba(255, 255, 255, 0.09);
+}
+
+.lum-effect-receipt__title {
+  color: color-mix(in srgb, var(--lum-effect-primary, #d6a24f) 78%, white 20%);
+  font-family: var(--lum-effect-font-identity);
+  font-size: 0.82rem;
+  font-weight: 600;
+  letter-spacing: 0;
+  line-height: 1.35;
+}
+
+.lum-effect-receipt__collapsed-label {
+  color: rgba(249, 248, 242, 0.94);
+  font-family: var(--lum-effect-font-readable);
+  font-size: 0.82rem;
+  font-weight: 600;
+  letter-spacing: 0;
+  line-height: 1.35;
+}
+
+.lum-effect-receipt__description {
+  color: rgba(249, 248, 242, 0.94);
+  font-family: var(--lum-effect-font-readable);
+  font-size: 0.82rem;
+  font-weight: 600;
+  letter-spacing: 0;
+  line-height: 1.35;
+  text-wrap: pretty;
+}
+
+.lum-effect-receipt__collapsed-label {
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.lum-effect-receipt__toggle {
+  display: grid;
+  place-items: center;
+  margin-top: 0.2rem;
+  color: rgba(255, 255, 255, 0.55);
+}
+
+.lum-effect-receipt__dismiss {
+  display: grid;
+  width: 2.5rem;
+  min-height: 100%;
+  place-items: start center;
+  padding-top: 0.72rem;
+  border-left: 1px solid rgba(255, 255, 255, 0.08);
+  color: rgba(255, 255, 255, 0.55);
+}
+
+.lum-effect-receipt__body:focus-visible,
+.lum-effect-receipt__dismiss:focus-visible {
+  outline: 2px solid color-mix(in srgb, var(--lum-effect-primary, #d6a24f) 72%, white 28%);
+  outline-offset: -3px;
+}
+
+.lum-effect-receipt--collapsed {
+  width: min(22rem, calc(100vw - 1rem));
+}
+
+.lum-effect-receipt--collapsed .lum-effect-receipt__body {
+  align-items: center;
+  padding-block: 0.5rem;
+}
+
+.lum-effect-receipt--collapsed .lum-effect-receipt__status,
+.lum-effect-receipt--collapsed .lum-effect-receipt__toggle {
+  margin-top: 0;
+}
+
+/* Between chained effects, leave only a nonblocking outcome trace. The full
+   readable receipt expands after the Luminary presentation lane is clear. */
+.lum-effect-receipt--during-sequence {
+  right: 0.5rem;
+  left: auto;
+  grid-template-columns: minmax(0, 1fr);
+  width: min(26rem, calc(100vw - 1rem));
+  transform: none;
+  pointer-events: none;
+}
+
+.lum-effect-receipt--during-sequence .lum-effect-receipt__body {
+  grid-template-columns: 1.35rem minmax(0, 1fr);
+  gap: 0.45rem;
+  padding: 0.42rem 0.65rem;
+}
+
+.lum-effect-receipt--during-sequence .lum-effect-receipt__status {
+  width: 1.3rem;
+  height: 1.3rem;
+}
+
+.lum-effect-receipt--during-sequence .lum-effect-receipt__kicker,
+.lum-effect-receipt--during-sequence .lum-effect-receipt__toggle,
+.lum-effect-receipt--during-sequence .lum-effect-receipt__dismiss {
+  display: none;
+}
+
+.lum-effect-receipt--during-sequence .lum-effect-receipt__collapsed-label {
+  font-size: 0.76rem;
 }
 
 @media (max-width: 480px) {
   .lum-effect-announcement-card {
-    padding-inline: 0.86rem;
+    padding-inline: 0.92rem;
   }
 
   .lum-effect-announcement-title {
-    letter-spacing: 0.015em;
+    font-size: 0.92rem;
+  }
+
+  .lum-effect-announcement-card--identity .lum-effect-announcement-title,
+  .lum-effect-announcement-card--compact.lum-effect-announcement-card--identity .lum-effect-announcement-title {
+    font-size: 1.42rem;
+  }
+
+  .lum-effect-announcement-result,
+  .lum-effect-announcement-card--compact .lum-effect-announcement-result {
+    font-size: 1.18rem;
+  }
+
+  .lum-effect-announcement-description,
+  .lum-effect-announcement-card--compact .lum-effect-announcement-description {
+    font-size: 0.94rem;
+  }
+
+  .lum-effect-receipt__result {
+    grid-template-columns: 1fr;
+    gap: 0.12rem;
+  }
+
+  .lum-effect-receipt__description {
+    font-size: 0.8rem;
+  }
+
+  .lum-effect-receipt--during-sequence {
+    right: 0.35rem;
+    width: min(22rem, calc(100vw - 0.7rem));
+  }
+}
+
+@media (max-height: 520px) and (orientation: landscape) {
+  .lum-effect-receipt {
+    top: max(3.5rem, calc(env(safe-area-inset-top, 0px) + 3rem));
+    width: min(31rem, calc(100vw - 1rem));
+  }
+
+  .lum-effect-receipt__body {
+    padding-block: 0.48rem;
+  }
+
+  .lum-effect-receipt__results {
+    max-height: 5.5rem;
+    overflow-y: auto;
   }
 }
 
@@ -4121,6 +5243,82 @@ button,
   .aura-desc-shimmer {
     animation: none;
   }
+}
+
+/* Archive presentation preference. The crystalline depletion instrument is
+   the default; physical cards reuse the same rail and never affect game state. */
+.archive-vessel__card-stack,
+.archive-vessel__card-shadow,
+.archive-vessel__card-face {
+  position: absolute;
+  pointer-events: none;
+}
+
+.archive-vessel__card-stack {
+  top: 50%;
+  left: 50%;
+  width: min(76%, 52px);
+  aspect-ratio: 0.7;
+  transform: translate(-50%, -53%);
+  filter: drop-shadow(0 5px 5px rgba(0, 0, 0, 0.72));
+}
+
+.archive-vessel__card-shadow,
+.archive-vessel__card-face {
+  inset: 0;
+  overflow: hidden;
+  border: 1px solid rgba(222, 194, 122, 0.52);
+  border-radius: 3px;
+  background: #030509;
+  clip-path: polygon(4px 0, calc(100% - 4px) 0, 100% 4px, 100% calc(100% - 4px), calc(100% - 4px) 100%, 4px 100%, 0 calc(100% - 4px), 0 4px);
+}
+
+.archive-vessel__card-shadow--back {
+  transform: translate(5px, -3px);
+  border-color: rgba(147, 126, 80, 0.36);
+  background: linear-gradient(135deg, #17150f, #040507);
+}
+
+.archive-vessel__card-shadow--middle {
+  transform: translate(2.5px, -1.5px);
+  border-color: rgba(198, 169, 102, 0.44);
+  background: linear-gradient(135deg, #0d1012, #030507);
+}
+
+.archive-vessel__card-face {
+  z-index: 2;
+  box-shadow: inset 0 0 9px rgba(228, 193, 132, 0.12);
+}
+
+.archive-vessel__card-face > svg {
+  width: 100% !important;
+  height: 100% !important;
+}
+
+.game-shell[data-board-presentation="celestial"] .board-forge-archive > .archive-vessel[data-archive-presentation="cards"],
+.game-shell[data-board-presentation="celestial"][data-board-density][data-forge-density]
+  .board-forge .board-forge-archive > div.archive-vessel[data-archive-presentation="cards"]:first-child {
+  inset: 2px 3px 18px !important;
+  width: auto !important;
+  height: auto !important;
+  min-height: 0 !important;
+  transform: none !important;
+  overflow: visible !important;
+  background: transparent !important;
+  filter: none !important;
+}
+
+.archive-vessel[data-archive-presentation="cards"][data-archive-state="low"] .archive-vessel__card-stack {
+  opacity: 0.78;
+}
+
+.archive-vessel[data-archive-presentation="cards"][data-archive-state="critical"] .archive-vessel__card-stack {
+  opacity: 0.56;
+}
+
+.archive-vessel[data-archive-presentation="cards"][data-archive-state="empty"] .archive-vessel__card-stack {
+  opacity: 0.2;
+  filter: grayscale(0.8);
 }
 
 /* ── Tutorial keyword shimmer ───────────────────────────────────────────── */
@@ -4463,6 +5661,77 @@ button,
   position: relative;
   overflow: hidden;
 }
+
+/* Action sheets can place Forge and Encrypt side by side. Size their internal
+   instruments from the button width so the primary command always fits. */
+.btn-forge-idle,
+.btn-encrypt-idle {
+  container-type: inline-size;
+  min-width: 0;
+}
+
+.artifact-action-copy,
+.artifact-action-copy-stack {
+  min-width: 0;
+  max-width: 100%;
+}
+
+.artifact-action-label,
+.artifact-action-subtitle {
+  max-width: 100%;
+  white-space: nowrap;
+}
+
+@container (max-width: 190px) {
+  .artifact-action-medallion {
+    width: 52px !important;
+  }
+
+  .artifact-action-medallion-core {
+    width: 38px !important;
+    height: 38px !important;
+  }
+
+  .artifact-action-copy {
+    padding-inline: 10px !important;
+  }
+
+  .artifact-action-label {
+    font-size: 15px !important;
+    letter-spacing: 0 !important;
+  }
+
+  .artifact-action-subtitle {
+    overflow: hidden;
+    text-overflow: ellipsis;
+    font-size: 9px !important;
+    letter-spacing: 0 !important;
+  }
+}
+
+@container (max-width: 150px) {
+  .artifact-action-medallion {
+    width: 48px !important;
+  }
+
+  .artifact-action-medallion-core {
+    width: 34px !important;
+    height: 34px !important;
+  }
+
+  .artifact-action-copy {
+    padding-inline: 8px !important;
+  }
+
+  .artifact-action-label {
+    font-size: 14px !important;
+  }
+
+  .artifact-action-subtitle {
+    display: none;
+  }
+}
+
 .btn-encrypt-idle::before {
   content: '';
   position: absolute;
@@ -4939,14 +6208,15 @@ button,
 /* ── Luminary cinematic entity — silhouette reveal filter sequence ──────────
    CSS keyframe replaces framer-motion filter animation (brightness/saturate
    multi-stop sequence) to keep GPU-composited filter changes off the JS
-   animation thread. Duration must match ENTITY_DUR_S = 1.81s in
-   LuminaryActivationCinematic.tsx. Percentages match ENTITY_FILTER_TIMES.  */
+   animation thread. The inline duration follows the current playback profile;
+   percentages match ENTITY_FILTER_TIMES. */
 @keyframes lum-entity-reveal {
   0%    { filter: brightness(0.05) saturate(0);   }
   8.8%  { filter: brightness(0.15) saturate(0);   }
   17.5% { filter: brightness(0.45) saturate(0.4); }
   20%   { filter: brightness(1.0)  saturate(1.0); }
   24.8% { filter: brightness(1.0)  saturate(1.0); }
+  52.5% { filter: brightness(1.0)  saturate(1.0); }
   100%  { filter: brightness(0)    saturate(1.0); }
 }
 .lum-entity-reveal {
@@ -5808,6 +7078,72 @@ button,
   bottom: 3px;
 }
 
+.void-seal-marker {
+  position: absolute;
+  z-index: 65;
+  top: 3px;
+  left: 3px;
+  display: grid;
+  width: 23px;
+  height: 23px;
+  place-items: center;
+  border: 1px solid rgba(196, 170, 255, 0.38);
+  border-radius: 50%;
+  background: rgba(2, 2, 8, 0.88);
+  box-shadow: 0 0 0 1px rgba(0, 0, 0, 0.78), 0 0 10px rgba(139, 92, 246, 0.32);
+}
+
+.void-seal-glyph {
+  position: relative;
+  display: inline-block;
+  width: 18px;
+  height: 18px;
+  border: 1.5px solid rgba(216, 202, 255, 0.84);
+  border-radius: 50%;
+  background:
+    radial-gradient(circle, #020207 0 24%, rgba(167, 139, 250, 0.92) 27% 34%, transparent 37%),
+    conic-gradient(
+      from 0deg,
+      rgba(216, 202, 255, 0.9) 0 8deg,
+      transparent 8deg 82deg,
+      rgba(216, 202, 255, 0.9) 82deg 98deg,
+      transparent 98deg 172deg,
+      rgba(216, 202, 255, 0.9) 172deg 188deg,
+      transparent 188deg 262deg,
+      rgba(216, 202, 255, 0.9) 262deg 278deg,
+      transparent 278deg 352deg,
+      rgba(216, 202, 255, 0.9) 352deg 360deg
+    );
+  box-shadow: inset 0 0 5px rgba(139, 92, 246, 0.38), 0 0 7px rgba(139, 92, 246, 0.45);
+}
+
+.void-seal-glyph::after {
+  content: "";
+  position: absolute;
+  inset: 5px;
+  border-radius: 50%;
+  background: #010104;
+  box-shadow: 0 0 4px rgba(216, 202, 255, 0.7);
+}
+
+.void-seal-marker .void-seal-glyph {
+  width: 15px;
+  height: 15px;
+}
+
+.void-seal-marker .void-seal-glyph::after {
+  inset: 4px;
+}
+
+.void-seal-glyph--available {
+  animation: void-seal-breathe 3.6s ease-in-out infinite;
+}
+
+@keyframes void-seal-breathe {
+  0%, 100% { opacity: 0.74; transform: scale(0.96); }
+  50% { opacity: 1; transform: scale(1.04); }
+}
+
 .luminary-claimed-free-entity {
   position: absolute;
   z-index: 50;
@@ -5842,11 +7178,13 @@ button,
 
 .lum-portal-seal--idle-paused .luminary-claimed-summoned-backdrop,
 .lum-portal-seal--idle-paused .luminary-claimed-free-entity,
+.lum-portal-seal--idle-paused .void-seal-glyph,
 .lum-portal-seal--idle-paused .lum-radiant-ring,
 .lum-portal-seal--idle-paused .lum-radiant-core,
 .lum-portal-seal--idle-paused .lum-radiant-runtime-core::before,
 .game-shell[data-luminary-idle-suspended="true"] .luminary-claimed-summoned-backdrop,
 .game-shell[data-luminary-idle-suspended="true"] .luminary-claimed-free-entity,
+.game-shell[data-luminary-idle-suspended="true"] .void-seal-glyph,
 .game-shell[data-luminary-idle-suspended="true"] .lum-radiant-ring,
 .game-shell[data-luminary-idle-suspended="true"] .lum-radiant-core,
 .game-shell[data-luminary-idle-suspended="true"] .lum-radiant-runtime-core::before {
@@ -6086,26 +7424,11 @@ button,
   animation-fill-mode: backwards;
 }
 
-/* Node idle twinkle — opacity only; drift is dropped on mobile for perf.     */
-@keyframes lumii-node-twinkle {
-  0%, 100% { opacity: var(--lum-twinkle-lo, 0.6); }
-  50%       { opacity: 1; }
-}
-/* Spike twinkle + scale (scale dropped on mobile; opacity only)               */
-@keyframes lumii-spike-twinkle {
-  0%, 100% { opacity: var(--lum-spike-lo, 0.3); }
-  50%       { opacity: var(--lum-spike-hi, 0.7); }
-}
-/* Connection line stroke-opacity twinkle                                      */
-@keyframes lumii-edge-twinkle {
-  0%, 100% { stroke-opacity: var(--lum-edge-lo, 0.18); }
-  50%       { stroke-opacity: var(--lum-edge-hi, 0.42); }
-}
-/* Ember particle opacity + scale pulse (position is static on mobile)        */
-@keyframes lumii-ember {
-  0%   { opacity: 0;   scale: 0.6; }
-  55%  { opacity: 0.88; scale: 1.0; }
-  100% { opacity: 0;   scale: 0.2; }
+/* Ambient Lumii motes use a static position and opacity/scale pulse on mobile. */
+@keyframes lumii-mote {
+  0%   { opacity: 0.16; scale: 0.7; }
+  55%  { opacity: 0.98; scale: 1.1; }
+  100% { opacity: 0.12; scale: 0.42; }
 }
 /* Tether travelling dot — vertical (down/up)                                */
 @keyframes lumii-tether-dot-vert {
@@ -6151,27 +7474,43 @@ button,
   0%, 100% { transform: translateY(0); }
   50%       { transform: translateY(var(--lum-float-amp, -8px)); }
 }
+/* LumiiOrb identity hover: slow whole-presence drift after removing nodes.   */
+@keyframes lumii-orb-hover {
+  0%, 100% { transform: translateY(0); }
+  50%       { transform: translateY(var(--lum-hover-amp, -2px)); }
+}
+/* Node-free Lumii signature halo: a faint living lens around the identity core. */
+@keyframes lumii-signature-halo-breathe {
+  0%, 100% { opacity: var(--lum-signature-low, 0.46); transform: scale(0.985) rotate(-2.4deg) skewX(-1.4deg); }
+  50%      { opacity: var(--lum-signature-high, 0.74); transform: scale(1.028) rotate(1.5deg) skewX(1deg); }
+}
 
 /* ── CSS animation classes (duration/delay set inline via style props) ───── */
-.lumii-node-twinkle {
-  animation: lumii-node-twinkle var(--lum-dur, 2s) ease-in-out infinite;
+.lumii-mote {
+  animation: lumii-mote var(--lum-dur, 2s) ease-out infinite;
   animation-delay: var(--lum-delay, 0s);
   animation-fill-mode: backwards;
 }
-.lumii-spike-twinkle {
-  animation: lumii-spike-twinkle var(--lum-dur, 1.8s) ease-in-out infinite;
-  animation-delay: var(--lum-delay, 0s);
-  animation-fill-mode: backwards;
+.lumii-orb-hover {
+  animation: lumii-orb-hover var(--lum-hover-dur, 5.4s) ease-in-out infinite;
+  transform-box: fill-box;
+  transform-origin: center;
+  will-change: transform;
 }
-.lumii-edge-twinkle {
-  animation: lumii-edge-twinkle var(--lum-dur, 2.8s) ease-in-out infinite;
-  animation-delay: var(--lum-delay, 0s);
-  animation-fill-mode: backwards;
+.lumii-signature-halo {
+  animation: lumii-signature-halo-breathe 6.2s ease-in-out infinite;
+  filter:
+    drop-shadow(0 0 2.5px currentColor)
+    drop-shadow(0 0 8px color-mix(in srgb, currentColor 42%, transparent));
+  transform-box: fill-box;
+  transform-origin: center;
+  will-change: transform, opacity;
 }
-.lumii-ember {
-  animation: lumii-ember var(--lum-dur, 2s) ease-out infinite;
-  animation-delay: var(--lum-delay, 0s);
-  animation-fill-mode: backwards;
+.lumii-signature-halo--hostile {
+  animation-duration: 3.7s;
+  filter:
+    drop-shadow(0 0 2px currentColor)
+    drop-shadow(0 0 6px color-mix(in srgb, currentColor 34%, transparent));
 }
 .lumii-tether-dot-vert {
   animation: lumii-tether-dot-vert var(--lum-dur, 0.85s) ease-in-out infinite;
@@ -6203,13 +7542,12 @@ button,
 }
 
 /* ── TutorialDirector mobile CSS keyframes ─────────────────────────────────── */
-/* Guided play mirrors the phone board's primary-surface hierarchy: the complete
-   Forge remains visible as one overview and the Affinity Well becomes a 3x2
-   instrument grid. Tutorial-only selectors keep this geometry out of live play. */
+/* Guided play mirrors the compact phone board: all Forge cards remain visible
+   while the complete six-Affinity rail stays available beneath them. */
 @media (max-width: 600px) and (orientation: portrait) {
   .tutorial-gameplay[data-tutorial-gameplay="true"] {
-    --tutorial-well-core-h: clamp(52px, 9dvh, 74px);
-    --tutorial-well-h: calc((var(--tutorial-well-core-h) * 2) + 84px);
+    --tutorial-well-core-h: 66px;
+    --tutorial-well-h: 140px;
     --tutorial-card-w-max: calc((100vw - 44px) / 4);
     --tutorial-card-h: min(
       calc(var(--tutorial-card-w-max) / 0.7),
@@ -6407,8 +7745,8 @@ button,
     --well-cell-pad: 3px 2px 2px;
     --well-cell-gap: 1px;
     --well-cell-stack-gap: 1px;
-    --well-icon-size: clamp(18px, 3dvh, 24px);
-    --well-count-size: clamp(11px, 2dvh, 14px);
+    --well-icon-size: 23px;
+    --well-count-size: 14px;
     --well-label-size: 5.5px;
     --well-badge-size: 6px;
     --well-pip-size: 3px;
@@ -6431,7 +7769,7 @@ button,
   .tutorial-gameplay[data-tutorial-gameplay="true"] .tutorial-affinity-panel .affinity-well-cells > div > div,
   .tutorial-gameplay[data-tutorial-gameplay="true"] .tutorial-affinity-panel .affinity-well-cells [data-well-carousel] {
     width: 100% !important;
-    height: auto !important;
+    height: var(--tutorial-well-core-h) !important;
     min-width: 0 !important;
     min-height: 0 !important;
     overflow: hidden !important;
@@ -6439,11 +7777,11 @@ button,
 
   .tutorial-gameplay[data-tutorial-gameplay="true"] .tutorial-affinity-panel .affinity-well-cells [data-well-carousel] > div {
     display: grid !important;
-    grid-template-columns: repeat(3, minmax(0, 1fr));
-    grid-template-rows: repeat(2, var(--tutorial-well-core-h));
-    gap: 4px !important;
+    grid-template-columns: repeat(6, minmax(0, 1fr));
+    grid-template-rows: var(--tutorial-well-core-h);
+    gap: 3px !important;
     width: 100% !important;
-    padding: 4px !important;
+    padding: 2px 4px !important;
   }
 
   .tutorial-gameplay[data-tutorial-gameplay="true"] .tutorial-affinity-panel .affinity-well-cell,
@@ -6468,7 +7806,7 @@ button,
     top: 2px;
     right: 2px;
     z-index: 4;
-    width: 30px !important;
+    width: 25px !important;
     height: 22px !important;
     min-height: 22px !important;
     padding: 0 !important;
@@ -6488,6 +7826,11 @@ button,
   .tutorial-gameplay[data-tutorial-gameplay="true"] .tutorial-lumii:not([data-floating-dialogue="true"]) {
     left: 14px !important;
     top: 50% !important;
+  }
+
+  .tutorial-gameplay[data-tutorial-gameplay="true"] .tutorial-lumii[data-guidance-sheet-open="true"] {
+    left: 88% !important;
+    top: 18% !important;
   }
 
   .tutorial-gameplay[data-tutorial-gameplay="true"] .tutorial-lumii:not([data-floating-dialogue="true"]) > div {
@@ -6543,9 +7886,8 @@ button,
   }
 }
 
-/* Constrained phone landscape uses the same cockpit hierarchy as live play:
-   complete Forge at left, fully accessible Affinity Well at right, and a
-   reserved instruction strip below the Forge. */
+/* Base constrained-phone sizing. The live vertical composition is finalized
+   by the override at the end of this media section. */
 @media (max-height: 520px) and (orientation: landscape) {
   .tutorial-gameplay[data-tutorial-gameplay="true"] {
     --tutorial-landscape-well-w: clamp(260px, 34vw, 296px);
@@ -6861,6 +8203,11 @@ button,
     top: 50% !important;
   }
 
+  .tutorial-gameplay[data-tutorial-gameplay="true"] .tutorial-lumii[data-guidance-sheet-open="true"] {
+    left: 88% !important;
+    top: 18% !important;
+  }
+
   .tutorial-gameplay[data-tutorial-gameplay="true"] .tutorial-lumii:not([data-floating-dialogue="true"]) > div {
     transform: translate(-50%, -50%) scale(0.62) !important;
   }
@@ -6889,6 +8236,152 @@ button,
     font-size: 7px !important;
     line-height: 1 !important;
   }
+}
+
+/* Current phone landscape keeps the same vertical surface order as live play.
+   Forge tiers share one row so all twelve cards remain visible; the complete
+   Well stays full-width beneath them. */
+@media (max-height: 520px) and (orientation: landscape) {
+  .tutorial-gameplay[data-tutorial-gameplay="true"] {
+    --tutorial-landscape-well-h: 112px;
+    --tutorial-landscape-card-w: min(52px, calc((100vw - 120px) / 12));
+    --tutorial-landscape-card-h: calc(var(--tutorial-landscape-card-w) / 0.7);
+    display: grid !important;
+    grid-template-columns: minmax(0, 1fr) !important;
+    grid-template-rows: 46px minmax(0, 1fr) var(--tutorial-landscape-well-h) !important;
+  }
+
+  .tutorial-gameplay[data-tutorial-gameplay="true"] > header {
+    grid-column: 1;
+    grid-row: 1;
+  }
+
+  .tutorial-gameplay[data-tutorial-gameplay="true"] .tutorial-board-main {
+    grid-column: 1;
+    grid-row: 2;
+    padding-bottom: 0;
+  }
+
+  .tutorial-gameplay[data-tutorial-gameplay="true"] .tutorial-forge {
+    height: auto;
+  }
+
+  .tutorial-gameplay[data-tutorial-gameplay="true"] .tutorial-forge-layout {
+    display: grid;
+    grid-template-columns: repeat(3, minmax(0, 1fr));
+    grid-template-rows: 20px auto;
+    gap: 3px;
+  }
+
+  .tutorial-gameplay[data-tutorial-gameplay="true"] .tutorial-forge-controls {
+    grid-column: 1 / -1;
+    grid-row: 1;
+  }
+
+  .tutorial-gameplay[data-tutorial-gameplay="true"] .tutorial-forge-tier {
+    grid-row: 2;
+    width: auto;
+    height: calc(var(--tutorial-landscape-card-h) + 15px);
+  }
+
+  .tutorial-gameplay[data-tutorial-gameplay="true"] .tutorial-forge-tier-row {
+    grid-template-columns: 24px repeat(4, var(--tutorial-landscape-card-w));
+    justify-content: space-between;
+    gap: 2px !important;
+    height: var(--tutorial-landscape-card-h);
+    min-height: var(--tutorial-landscape-card-h) !important;
+  }
+
+  .tutorial-gameplay[data-tutorial-gameplay="true"] .tutorial-forge-card-shell {
+    --card-w: var(--tutorial-landscape-card-w);
+    --card-h: var(--tutorial-landscape-card-h);
+    width: var(--tutorial-landscape-card-w) !important;
+    height: var(--tutorial-landscape-card-h) !important;
+    min-width: var(--tutorial-landscape-card-w);
+    min-height: var(--tutorial-landscape-card-h);
+  }
+
+  .tutorial-gameplay[data-tutorial-gameplay="true"] .tutorial-forge-deck {
+    width: 24px;
+    min-width: 24px;
+    height: var(--tutorial-landscape-card-h);
+  }
+
+  .tutorial-gameplay[data-tutorial-gameplay="true"] .tutorial-forge-deck-stack {
+    width: 24px !important;
+    height: var(--tutorial-landscape-card-h) !important;
+  }
+
+  .tutorial-gameplay[data-tutorial-gameplay="true"] .tutorial-forge-deck-stack > div {
+    width: 22px !important;
+    height: calc(var(--tutorial-landscape-card-h) - 3px) !important;
+  }
+
+  .tutorial-gameplay[data-tutorial-gameplay="true"] .tutorial-affinity-panel {
+    --well-icon-size: 20px;
+    --well-count-size: 12px;
+    grid-column: 1;
+    grid-row: 3;
+    width: 100%;
+    height: var(--tutorial-landscape-well-h) !important;
+    padding: 1px 4px 3px !important;
+    border-top: 1px solid rgba(168, 197, 255, 0.24);
+    border-left: 0;
+  }
+
+  .tutorial-gameplay[data-tutorial-gameplay="true"] .tutorial-affinity-panel > .grid {
+    height: 28px;
+    min-height: 28px;
+  }
+
+  .tutorial-gameplay[data-tutorial-gameplay="true"] .tutorial-affinity-panel [data-tutorial-civilization-tab],
+  .tutorial-gameplay[data-tutorial-gameplay="true"] .tutorial-affinity-panel .tutorial-held-affinity-total {
+    display: flex !important;
+  }
+
+  .tutorial-gameplay[data-tutorial-gameplay="true"] .tutorial-affinity-panel .affinity-well-cells,
+  .tutorial-gameplay[data-tutorial-gameplay="true"] .tutorial-affinity-panel .affinity-well-cells > div,
+  .tutorial-gameplay[data-tutorial-gameplay="true"] .tutorial-affinity-panel .affinity-well-cells > div > div,
+  .tutorial-gameplay[data-tutorial-gameplay="true"] .tutorial-affinity-panel .affinity-well-cells [data-well-carousel] {
+    width: 100% !important;
+    height: 50px !important;
+  }
+
+  .tutorial-gameplay[data-tutorial-gameplay="true"] .tutorial-affinity-panel .affinity-well-cells [data-well-carousel] > div {
+    display: grid !important;
+    grid-template-columns: repeat(6, minmax(0, 1fr));
+    grid-template-rows: 50px;
+    gap: 3px !important;
+    width: 100% !important;
+    padding: 1px 4px !important;
+  }
+
+  .tutorial-gameplay[data-tutorial-gameplay="true"] .tutorial-affinity-panel .affinity-well-cell {
+    height: 50px;
+  }
+
+  .tutorial-gameplay[data-tutorial-gameplay="true"] .tutorial-affinity-panel .affinity-well-take2 {
+    width: 24px !important;
+    height: 20px !important;
+    min-height: 20px !important;
+  }
+
+  .tutorial-gameplay[data-tutorial-gameplay="true"] .tutorial-affinity-panel .tutorial-affinity-well > div:last-child {
+    height: 30px;
+    min-height: 30px;
+    padding: 2px !important;
+  }
+
+  .tutorial-gameplay[data-tutorial-gameplay="true"] .tutorial-affinity-panel .tutorial-affinity-well > div:last-child button {
+    height: 26px !important;
+  }
+
+  .tutorial-gameplay[data-tutorial-gameplay="true"] .tutorial-dialogue {
+    right: 8px !important;
+    bottom: calc(var(--tutorial-landscape-well-h) + 4px) !important;
+    left: 8px !important;
+  }
+
 }
 
 /* Hint text twinkle */
@@ -8107,6 +9600,14 @@ button,
 .forge-foundry-mold > * {
   position: relative;
   z-index: 1;
+}
+
+.game-shell[data-avatar-seed-placement-pending="true"] .avatar-seed-mold-mark {
+  opacity: 0;
+}
+
+.avatar-seed-mold-mark {
+  transition: opacity 180ms ease;
 }
 
 .forge-foundry-mold::before {
@@ -10340,6 +11841,10 @@ button,
   border-top: 1px solid rgba(255, 255, 255, 0.06);
 }
 
+.affinity-well-reservoir.affinity-well-singularity-details {
+  border-top: 0 !important;
+}
+
 .affinity-well-meter {
   min-height: var(--well-pip-size, 4px);
 }
@@ -10569,6 +12074,12 @@ button,
 
 .affinity-well-singularity-footer {
   overflow: visible !important;
+}
+
+.affinity-well-cell[data-affinity-origin="convergence"] {
+  box-shadow:
+    inset 1px 0 rgba(225, 218, 255, 0.44),
+    inset 5px 0 9px rgba(200, 176, 255, 0.08);
 }
 
 .affinity-well-cipher-landing {
@@ -10878,6 +12389,9 @@ button,
   border: 0 !important;
   border-radius: 0 !important;
   background:
+    radial-gradient(circle, rgba(255, 255, 255, 0.58) 0 0.65px, transparent 1.35px) 9% 18% / 72px 51px repeat,
+    radial-gradient(circle, rgba(176, 211, 255, 0.38) 0 0.85px, transparent 1.55px) 42% 31% / 124px 86px repeat,
+    radial-gradient(circle, rgba(255, 220, 164, 0.26) 0 0.72px, transparent 1.45px) 71% 76% / 168px 122px repeat,
     radial-gradient(ellipse 72% 94% at 50% 112%, rgba(22, 55, 67, 0.12), transparent 58%),
     linear-gradient(180deg, rgba(2, 6, 9, 0.88), rgba(0, 2, 4, 0.98)) !important;
   box-shadow:
@@ -10900,12 +12414,16 @@ button,
 }
 
 .game-shell[data-board-presentation="celestial"] .board-terminus-space {
-  opacity: 0.78 !important;
+  opacity: 0.88 !important;
   background:
+    radial-gradient(circle, rgba(255, 255, 255, 0.98) 0 0.68px, transparent 1.42px) 13% 21% / 67px 49px repeat,
+    radial-gradient(circle, rgba(181, 214, 255, 0.78) 0 0.78px, transparent 1.55px) 39% 46% / 111px 83px repeat,
+    radial-gradient(circle, rgba(255, 228, 184, 0.58) 0 0.64px, transparent 1.38px) 79% 33% / 151px 113px repeat,
+    radial-gradient(circle, rgba(255, 255, 255, 0.4) 0 0.48px, transparent 1.18px) 5% 69% / 43px 35px repeat,
     radial-gradient(ellipse 38% 62% at 50% 50%, rgba(0, 0, 0, 0.66), transparent 82%),
-    linear-gradient(180deg, rgba(0, 3, 7, 0.38), rgba(0, 1, 3, 0.82)),
+    linear-gradient(180deg, rgba(0, 3, 7, 0.22), rgba(0, 1, 3, 0.66)),
     var(--terminus-starfield-image) center 18% / cover no-repeat !important;
-  filter: grayscale(0.92) saturate(0.22) brightness(0.4) contrast(1.38);
+  filter: grayscale(0.72) saturate(0.42) brightness(0.56) contrast(1.28);
   transform: scale(1.035);
 }
 
@@ -11987,8 +13505,40 @@ button,
 }
 
 .game-shell[data-board-presentation="celestial"] > .game-bottom-nav button {
+  min-width: 0;
   border-radius: 0 !important;
   color: #87949a;
+}
+
+.game-bottom-nav-label {
+  display: block;
+  max-width: 100%;
+  min-width: 0;
+  line-height: 1;
+}
+
+.game-bottom-nav-label-full,
+.game-bottom-nav-label-short {
+  display: block;
+  max-width: 100%;
+  min-width: 0;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.game-bottom-nav-label-short {
+  display: none;
+}
+
+@media (max-width: 680px), (max-height: 520px) and (orientation: landscape) {
+  .game-bottom-nav-label-full {
+    display: none;
+  }
+
+  .game-bottom-nav-label-short {
+    display: block;
+  }
 }
 
 .game-shell[data-board-presentation="celestial"] > .game-bottom-nav button[aria-current="page"],
@@ -12391,6 +13941,18 @@ button,
   }
 }
 
+@media (max-width: 639px) {
+  .oom-shell:not([data-home-mode="home"]) .oom-home-hero {
+    display: none;
+  }
+
+  .oom-shell:not([data-home-mode="home"]) .oom-frame > .grid {
+    min-height: 0;
+    align-items: start;
+    gap: 0;
+  }
+}
+
 /* Canonical Affinity Well: one horizontal vessel rail at every density. */
 .game-shell[data-board-presentation="celestial"][data-celestial-affinity][data-board-density][data-forge-density] > .affinity-well-panel {
   grid-template-rows: 76px 174px 44px !important;
@@ -12630,7 +14192,7 @@ button,
   font-family: inherit !important;
 }
 
-.game-shell[data-board-presentation="celestial"][data-celestial-affinity] .affinity-well-reservoir {
+.game-shell[data-board-presentation="celestial"][data-celestial-affinity] .affinity-well-reservoir:not(.affinity-well-singularity-details) {
   border-top: 1px solid rgba(255, 255, 255, 0.06) !important;
 }
 
@@ -12663,7 +14225,7 @@ button,
   background: rgba(3, 2, 12, 0.94) !important;
 }
 
-/* Phone compression: expose all six affinities before allowing rail overflow. */
+/* Phone compression: expose five natural Affinities and Singularity before rail overflow. */
 @media (max-width: 680px) {
   .game-shell[data-board-presentation="celestial"][data-celestial-affinity][data-board-density]:has(> .affinity-well-panel[data-well-layout="stable"]) {
     grid-template-rows: 48px minmax(0, 1fr) 230px 58px !important;
@@ -13417,12 +14979,12 @@ button,
   }
 }
 
-/* Opponent comparison is a fixed three-line instrument: identity, forged
-   affinity bonuses, then held affinities. It must never grow the header. */
+/* Opponent comparison is a fixed two-line instrument: identity, then
+   forged/held affinity data. It must never grow the header. */
 .game-shell > .game-header .opponent-chip-shell--detailed {
   width: 104px;
-  height: 46px;
-  max-height: 46px;
+  height: 39px;
+  max-height: 39px;
   justify-content: center;
 }
 
@@ -13433,7 +14995,7 @@ button,
 
 .game-shell > .game-header .opponent-chip-details {
   width: 100%;
-  height: 17px;
+  height: 10px;
   margin: 1px 0 0;
   padding: 0 3px;
   gap: 1px;
@@ -13447,14 +15009,31 @@ button,
   grid-template-columns: repeat(5, minmax(0, 1fr));
   align-items: center;
   width: 100%;
-  height: 8px;
+  height: 10px;
   gap: 1px;
 }
 
 .game-shell > .game-header .opponent-chip-detail-row > span {
+  display: inline-flex;
+  align-items: baseline;
+  justify-content: center;
+  gap: 1px;
   min-width: 0 !important;
-  font-size: 7px !important;
-  line-height: 8px !important;
+  font-size: 6.5px !important;
+  line-height: 10px !important;
+}
+
+.game-shell > .game-header .opponent-chip-detail-row > span b,
+.game-shell > .game-header .opponent-chip-detail-row > span i,
+.game-shell > .game-header .opponent-chip-detail-row > span em {
+  min-width: 0;
+  font: inherit;
+  font-style: normal;
+  line-height: inherit;
+}
+
+.game-shell > .game-header .opponent-chip-detail-row > span i {
+  opacity: 0.44;
 }
 
 /* The phone header remains one bounded row with three equal opponent columns. */
@@ -13485,8 +15064,8 @@ button,
     width: 0 !important;
     min-width: 0 !important;
     max-width: 84px !important;
-    height: 44px !important;
-    max-height: 44px !important;
+    height: 37px !important;
+    max-height: 37px !important;
     justify-content: center !important;
   }
 
@@ -13528,7 +15107,7 @@ button,
   .game-shell > .game-header .opponent-chip-details {
     display: flex !important;
     width: 100% !important;
-    height: 17px !important;
+    height: 10px !important;
     margin: 1px 0 0 !important;
     padding: 0 3px !important;
     gap: 1px !important;
@@ -13542,14 +15121,18 @@ button,
     grid-template-columns: repeat(5, minmax(0, 1fr)) !important;
     align-items: center !important;
     width: 100% !important;
-    height: 8px !important;
+    height: 10px !important;
     gap: 1px !important;
   }
 
   .game-shell > .game-header .opponent-chip-detail-row > span {
+    display: inline-flex !important;
+    align-items: baseline !important;
+    justify-content: center !important;
+    gap: 1px !important;
     min-width: 0 !important;
-    font-size: 7px !important;
-    line-height: 8px !important;
+    font-size: 6px !important;
+    line-height: 10px !important;
   }
 
   .game-shell > .game-header > button,
@@ -14969,10 +16552,15 @@ button,
   border-radius: 8px !important;
 }
 
+.game-shell[data-board-presentation="celestial"] .board-opponents-body > div > .opponent-card-shell--details-open {
+  padding-bottom: 4px !important;
+}
+
 .game-shell[data-board-presentation="celestial"] .opponent-card-header {
   display: grid;
-  grid-template-columns: minmax(0, 1fr);
-  gap: 6px;
+  grid-template-columns: minmax(0, 1fr) auto;
+  align-items: center;
+  gap: 10px;
   margin-bottom: 0;
 }
 
@@ -14999,12 +16587,12 @@ button,
 
 .game-shell[data-board-presentation="celestial"] .opponent-card-metrics {
   display: grid;
-  grid-template-columns: minmax(0, 1fr) auto 28px;
+  grid-template-columns: auto auto 28px;
   min-width: 0;
   align-items: center;
-  gap: 7px;
-  padding-top: 5px;
-  border-top: 1px solid rgba(122, 145, 158, 0.16);
+  gap: 8px;
+  padding-top: 0;
+  border-top: 0;
 }
 
 .game-shell[data-board-presentation="celestial"] .opponent-stat-strip {
@@ -15012,7 +16600,7 @@ button,
   min-width: 0;
   align-items: center;
   justify-content: space-between;
-  gap: 8px;
+  gap: 7px;
 }
 
 .game-shell[data-board-presentation="celestial"] .opponent-stat-chip {
@@ -15070,6 +16658,10 @@ button,
 @media (max-width: 360px) {
   .game-shell[data-board-presentation="celestial"] .opponent-card-identity__civ {
     display: none;
+  }
+
+  .game-shell[data-board-presentation="celestial"] .opponent-card-header {
+    gap: 6px;
   }
 
   .game-shell[data-board-presentation="celestial"] .opponent-card-metrics {
@@ -15526,7 +17118,7 @@ button,
   }
 
   .game-shell[data-board-viewport="phone-landscape"][data-board-density="cockpit"] > .affinity-well-panel[data-shared-affinity-well] {
-    --well-action-zone-h: 42px;
+    --well-action-zone-h: 46px;
     --well-cell-pad: 2px;
     --well-cell-stack-gap: 1px;
     --well-icon-size: 22px;
@@ -15535,10 +17127,10 @@ button,
     --well-sub-label-size: 4.5px;
     --well-pip-size: 3px;
     --well-pip-gap: 1px;
-    --well-take2-h: 16px;
+    --well-take2-h: 44px;
     grid-area: well !important;
     display: grid !important;
-    grid-template-rows: 38px minmax(0, 1fr) 42px !important;
+    grid-template-rows: 38px minmax(0, 1fr) 46px !important;
     width: 100% !important;
     height: 100% !important;
     min-width: 0 !important;
@@ -15585,8 +17177,8 @@ button,
 
   .game-shell[data-board-viewport="phone-landscape"][data-board-density="cockpit"] > .affinity-well-panel[data-shared-affinity-well] .affinity-well-cells [data-well-carousel] > div {
     display: grid !important;
-    grid-template-columns: repeat(2, minmax(0, 1fr)) !important;
-    grid-template-rows: repeat(3, minmax(0, 1fr)) !important;
+    grid-template-columns: repeat(3, minmax(0, 1fr)) !important;
+    grid-template-rows: repeat(2, minmax(0, 1fr)) !important;
     width: 100% !important;
     height: 100% !important;
     min-width: 0 !important;
@@ -15606,31 +17198,31 @@ button,
 
   .game-shell[data-board-viewport="phone-landscape"][data-board-density="cockpit"] > .affinity-well-panel[data-shared-affinity-well] .affinity-well-cell[data-affinity] .affinity-well-cell-button {
     width: 100% !important;
-    height: calc(100% - 17px) !important;
+    height: calc(100% - 45px) !important;
     min-height: 0 !important;
     max-height: none !important;
     flex: 1 1 auto !important;
   }
 
   .game-shell[data-board-viewport="phone-landscape"][data-board-density="cockpit"] > .affinity-well-panel[data-shared-affinity-well] .affinity-well-cell[data-affinity="singularity"] .affinity-well-cell-button {
-    height: 100% !important;
-    flex-basis: 100% !important;
+    height: calc(100% - 45px) !important;
+    flex-basis: auto !important;
   }
 
   .game-shell[data-board-viewport="phone-landscape"][data-board-density="cockpit"] > .affinity-well-panel[data-shared-affinity-well] .affinity-well-take2 {
     position: static !important;
     width: 100% !important;
-    height: 16px !important;
-    min-height: 16px !important;
+    height: 44px !important;
+    min-height: 44px !important;
     padding: 0 !important;
     font-size: 7px !important;
   }
 
   .game-shell[data-board-viewport="phone-landscape"][data-board-density="cockpit"] > .affinity-well-panel[data-shared-affinity-well] .affinity-well-action-zone {
     width: 100% !important;
-    height: 42px !important;
-    min-height: 42px !important;
-    max-height: 42px !important;
+    height: 46px !important;
+    min-height: 46px !important;
+    max-height: 46px !important;
     margin-top: 0 !important;
     overflow-x: auto !important;
     overflow-y: hidden !important;
@@ -15863,11 +17455,19 @@ button,
    cockpit's Forge ownership at higher specificity so those legacy dimensions
    cannot reopen the collapsed Terminus or enlarge the compact shelves. */
 @media (max-height: 520px) and (orientation: landscape) {
+  .game-shell[data-board-presentation][data-board-viewport="phone-landscape"][data-board-density="cockpit"][data-board-layout][data-forge-density][data-side-affinity-well="true"] > .game-main[data-active-tab="board"] {
+    padding: 4px !important;
+    overflow-x: hidden !important;
+    overflow-y: auto !important;
+  }
+
   .game-shell[data-board-presentation][data-board-viewport="phone-landscape"][data-board-density="cockpit"][data-board-layout][data-forge-density] > .game-main[data-active-tab="board"] .board-tab-main {
     display: flex !important;
     flex: 0 0 auto !important;
     height: auto !important;
     min-height: 0 !important;
+    gap: 0 !important;
+    padding: 0 !important;
     overflow: visible !important;
   }
 
@@ -15889,29 +17489,35 @@ button,
   }
 
   .game-shell[data-board-presentation][data-board-viewport="phone-landscape"][data-board-density="cockpit"][data-board-layout][data-forge-density] .board-forge.board-forge--compact {
-    height: 270px !important;
-    min-height: 270px !important;
-    grid-template-rows: 28px 20px 222px !important;
+    flex: 0 0 calc(100dvh - 54px) !important;
+    height: calc(100dvh - 54px) !important;
+    min-height: calc(100dvh - 54px) !important;
+    grid-template-rows: 30px 44px minmax(0, 1fr) !important;
     overflow: hidden !important;
   }
 
   .game-shell[data-board-presentation][data-board-viewport="phone-landscape"][data-board-density="cockpit"][data-board-layout][data-forge-density] .board-forge--compact .board-forge-header {
-    min-height: 28px !important;
-    padding: 2px 8px !important;
+    height: 30px !important;
+    min-height: 30px !important;
+    max-height: 30px !important;
+    padding: 2px 7px !important;
   }
 
   .game-shell[data-board-presentation][data-board-viewport="phone-landscape"][data-board-density="cockpit"][data-board-layout][data-forge-density] .board-forge--compact .board-forge-controls {
-    min-height: 20px !important;
+    height: 44px !important;
+    min-height: 44px !important;
+    max-height: 44px !important;
     padding: 1px 7px !important;
   }
 
   .game-shell[data-board-presentation][data-board-viewport="phone-landscape"][data-board-density="cockpit"][data-board-layout][data-forge-density] .board-forge--compact [data-forge-tiers="true"] {
     display: grid !important;
     grid-template-columns: minmax(0, 1fr) !important;
-    grid-template-rows: repeat(3, 70px) !important;
+    grid-template-rows: repeat(3, minmax(0, 1fr)) !important;
     width: 100% !important;
-    height: 222px !important;
-    max-height: 222px !important;
+    height: 100% !important;
+    min-height: 0 !important;
+    max-height: none !important;
     gap: 3px !important;
     padding: 3px 4px !important;
     overflow: hidden !important;
@@ -15919,11 +17525,11 @@ button,
 
   .game-shell[data-board-presentation][data-board-viewport="phone-landscape"][data-board-density="cockpit"][data-board-layout][data-forge-density] .board-forge--compact .board-forge-shelf {
     display: grid !important;
-    grid-template-columns: 72px minmax(0, 1fr) !important;
-    grid-template-rows: 66px !important;
+    grid-template-columns: clamp(48px, 9vw, 72px) minmax(0, 1fr) !important;
+    grid-template-rows: minmax(0, 1fr) !important;
     width: 100% !important;
-    height: 70px !important;
-    min-height: 70px !important;
+    height: 100% !important;
+    min-height: 0 !important;
     gap: 3px !important;
     padding: 2px 4px !important;
     overflow: hidden !important;
@@ -15935,9 +17541,9 @@ button,
     grid-template-rows: auto auto !important;
     align-content: center !important;
     justify-items: start !important;
-    width: 72px !important;
-    height: 66px !important;
-    min-height: 66px !important;
+    width: 100% !important;
+    height: 100% !important;
+    min-height: 0 !important;
     margin: 0 !important;
     padding: 3px !important;
     gap: 3px !important;
@@ -15962,20 +17568,21 @@ button,
 
   .game-shell[data-board-presentation][data-board-viewport="phone-landscape"][data-board-density="cockpit"][data-board-layout][data-forge-density] .board-forge--compact .board-forge-shelf-content {
     display: grid !important;
-    grid-template-columns: minmax(0, 1fr) 35px !important;
+    grid-template-columns: minmax(0, 4fr) minmax(0, 1fr) !important;
     width: 100% !important;
-    height: 66px !important;
+    height: 100% !important;
     min-width: 0 !important;
+    min-height: 0 !important;
     gap: 3px !important;
   }
 
   .game-shell[data-board-presentation][data-board-viewport="phone-landscape"][data-board-density="cockpit"][data-board-layout][data-forge-density] .board-forge--compact .board-forge-card-row {
     display: grid !important;
-    grid-template-columns: repeat(4, 46px) !important;
-    grid-template-rows: 66px !important;
+    grid-template-columns: repeat(4, minmax(0, 1fr)) !important;
+    grid-template-rows: minmax(0, 1fr) !important;
     width: 100% !important;
-    height: 66px !important;
-    min-height: 66px !important;
+    height: 100% !important;
+    min-height: 0 !important;
     align-items: center !important;
     justify-content: space-around !important;
     gap: 2px !important;
@@ -15985,20 +17592,34 @@ button,
   }
 
   .game-shell[data-board-presentation][data-board-viewport="phone-landscape"][data-board-density="cockpit"][data-board-layout][data-forge-density] .board-forge--compact .board-forge-compact-chip {
-    width: 46px !important;
-    height: 66px !important;
-    min-width: 46px !important;
-    min-height: 66px !important;
+    justify-self: center !important;
+    width: auto !important;
+    max-width: 100% !important;
+    height: 100% !important;
+    min-width: 0 !important;
+    min-height: 0 !important;
     aspect-ratio: 0.7 !important;
   }
 
-  .game-shell[data-board-presentation][data-board-viewport="phone-landscape"][data-board-density="cockpit"][data-board-layout][data-forge-density] .board-forge--compact .board-forge-archive-rail,
+  .game-shell[data-board-presentation][data-board-viewport="phone-landscape"][data-board-density="cockpit"][data-board-layout][data-forge-density] .board-forge--compact .board-forge-archive-rail {
+    display: flex !important;
+    align-items: stretch !important;
+    justify-content: center !important;
+    width: 100% !important;
+    height: 100% !important;
+    min-width: 0 !important;
+    min-height: 0 !important;
+  }
+
   .game-shell[data-board-presentation][data-board-viewport="phone-landscape"][data-board-density="cockpit"][data-board-layout][data-forge-density] .board-forge--compact .board-forge-compact-deck,
   .game-shell[data-board-presentation][data-board-viewport="phone-landscape"][data-board-density="cockpit"][data-board-layout][data-forge-density] .board-forge--compact .board-forge-compact-deck > div:first-child {
-    width: 35px !important;
-    height: 66px !important;
-    min-width: 35px !important;
-    min-height: 66px !important;
+    justify-self: center !important;
+    width: auto !important;
+    max-width: 100% !important;
+    height: 100% !important;
+    min-width: 0 !important;
+    min-height: 0 !important;
+    aspect-ratio: 0.7 !important;
   }
 
   .game-shell[data-board-presentation][data-board-viewport="phone-landscape"][data-board-density="cockpit"][data-board-layout][data-forge-density="full"] .board-forge:not(.board-forge--compact) {
@@ -16242,6 +17863,10 @@ button,
 }
 
 @media (prefers-reduced-motion: reduce) {
+  .void-seal-glyph--available {
+    animation: none !important;
+  }
+
   .game-shell[data-board-presentation] .board-terminus
     .board-terminus-card-stage--awakened .luminary-claimed-free-entity {
     animation: none !important;
@@ -16325,5 +17950,1611 @@ button,
     > .board-aux-modules--left
     .board-aux-civ-scene {
     min-height: 120px;
+  }
+}
+
+@media (pointer: coarse) {
+  .oom-icon-button,
+  .oom-segmented > button,
+  .affinity-well-dock-toggle,
+  .game-bottom-nav button {
+    min-width: 44px !important;
+    min-height: 44px !important;
+  }
+
+  .affinity-well-take2,
+  .board-forge-controls button {
+    min-height: 44px;
+  }
+}
+
+/* Account store previews: deliberately static and inexpensive to render. */
+.store-item-preview {
+  position: relative;
+  aspect-ratio: 16 / 10;
+  overflow: hidden;
+  isolation: isolate;
+  border-bottom: 1px solid hsl(var(--border) / 0.55);
+  background: #060811;
+}
+
+.store-preview-starfield {
+  position: absolute;
+  inset: 0;
+  opacity: 0.82;
+  background-image:
+    radial-gradient(circle at 13% 24%, rgba(255, 255, 255, 0.9) 0 1px, transparent 1.5px),
+    radial-gradient(circle at 72% 18%, rgba(180, 210, 255, 0.78) 0 1px, transparent 1.5px),
+    radial-gradient(circle at 88% 68%, rgba(255, 225, 160, 0.72) 0 1px, transparent 1.5px),
+    radial-gradient(circle at 35% 80%, rgba(255, 255, 255, 0.52) 0 1px, transparent 1.5px);
+  background-size: 74px 64px, 92px 78px, 118px 104px, 146px 126px;
+}
+
+.store-preview-rarity {
+  position: absolute;
+  z-index: 5;
+  top: 10px;
+  right: 10px;
+  padding: 3px 7px;
+  border: 1px solid rgba(255, 255, 255, 0.17);
+  border-radius: 999px;
+  color: rgba(236, 240, 255, 0.78);
+  background: rgba(5, 7, 15, 0.82);
+  font-size: 9px;
+  font-weight: 700;
+  letter-spacing: 0;
+  text-transform: uppercase;
+}
+
+.store-preview-blueprint-device {
+  position: absolute;
+  z-index: 2;
+  inset: 0;
+  width: 100%;
+  height: 100%;
+  object-fit: cover;
+  object-position: center;
+}
+
+.store-item-preview:has(.store-preview-blueprint-device) .store-preview-starfield {
+  display: none;
+}
+
+.store-preview--astral-foundry {
+  background:
+    radial-gradient(circle at 50% 44%, rgba(48, 126, 198, 0.24), transparent 30%),
+    linear-gradient(135deg, #080a10 0%, #16120a 48%, #080b13 100%);
+}
+
+.store-preview-card-back {
+  position: absolute;
+  z-index: 2;
+  left: 50%;
+  top: 50%;
+  width: 72px;
+  height: 104px;
+  transform: translate(-50%, -48%) rotate(2deg);
+  border: 2px solid #c7a85b;
+  border-radius: 6px;
+  background:
+    radial-gradient(circle at 50% 47%, #64b8e6 0 4px, #173754 5px 12px, transparent 13px),
+    repeating-conic-gradient(from 22deg at 50% 47%, rgba(207, 177, 96, 0.58) 0 3deg, transparent 3deg 30deg),
+    linear-gradient(145deg, #090c13, #191509 55%, #06080e);
+  box-shadow:
+    0 16px 24px rgba(0, 0, 0, 0.55),
+    0 0 0 1px rgba(252, 221, 137, 0.26),
+    0 0 24px rgba(62, 153, 220, 0.18);
+}
+
+.store-preview-card-frame {
+  position: absolute;
+  inset: 6px;
+  border: 1px solid rgba(222, 188, 100, 0.72);
+  clip-path: polygon(11% 0, 89% 0, 100% 8%, 100% 92%, 89% 100%, 11% 100%, 0 92%, 0 8%);
+}
+
+.store-preview-card-core {
+  position: absolute;
+  left: 50%;
+  top: 47%;
+  width: 28px;
+  height: 28px;
+  transform: translate(-50%, -50%) rotate(45deg);
+  border: 1px solid rgba(246, 213, 126, 0.85);
+  box-shadow: inset 0 0 0 5px rgba(7, 13, 22, 0.9), 0 0 10px rgba(71, 171, 226, 0.35);
+}
+
+.store-preview-card-mark {
+  position: absolute;
+  left: 50%;
+  bottom: 8px;
+  transform: translateX(-50%);
+  color: rgba(226, 195, 113, 0.78);
+  font-family: Georgia, serif;
+  font-size: 9px;
+}
+
+.store-preview--void-radiance {
+  background:
+    radial-gradient(ellipse at 50% 56%, rgba(99, 53, 148, 0.34), transparent 38%),
+    linear-gradient(155deg, #050711 0%, #0f0b1c 54%, #04101a 100%);
+}
+
+.store-preview--black-market-key {
+  background:
+    radial-gradient(circle at 50% 50%, rgba(131, 230, 255, 0.13), transparent 30%),
+    linear-gradient(145deg, #030507 0%, #111319 52%, #05070b 100%);
+}
+
+.store-preview-decryption-key {
+  position: absolute;
+  z-index: 2;
+  left: 50%;
+  top: 52%;
+  width: 154px;
+  height: 92px;
+  transform: translate(-50%, -50%) rotate(-8deg);
+  color: rgba(209, 242, 250, 0.9);
+}
+
+.store-preview-decryption-key > svg {
+  position: absolute;
+  left: 50%;
+  top: 50%;
+  width: 132px;
+  height: 70px;
+  transform: translate(-50%, -50%);
+  stroke-width: 1.2;
+  filter: drop-shadow(0 0 5px rgba(128, 226, 255, 0.42));
+}
+
+.store-preview-decryption-key__halo {
+  position: absolute;
+  left: 20px;
+  top: 50%;
+  width: 58px;
+  height: 58px;
+  transform: translateY(-50%);
+  border: 1px solid rgba(152, 236, 255, 0.32);
+  border-radius: 50%;
+  box-shadow:
+    inset 0 0 16px rgba(98, 216, 244, 0.12),
+    0 0 24px rgba(79, 193, 223, 0.18);
+}
+
+.store-preview-decryption-key__cipher {
+  position: absolute;
+  left: 49px;
+  top: 50%;
+  width: 25px;
+  height: 25px;
+  transform: translate(-50%, -50%);
+  border: 1px solid rgba(232, 252, 255, 0.88);
+  border-radius: 50%;
+  box-shadow: 0 0 12px rgba(170, 239, 255, 0.55);
+}
+
+.store-preview-decryption-key__cipher i {
+  position: absolute;
+  left: 50%;
+  top: 50%;
+  width: 21px;
+  height: 1px;
+  transform-origin: center;
+  background: rgba(224, 249, 255, 0.75);
+}
+
+.store-preview-decryption-key__cipher i:nth-child(1) { transform: translate(-50%, -50%); }
+.store-preview-decryption-key__cipher i:nth-child(2) { transform: translate(-50%, -50%) rotate(60deg); }
+.store-preview-decryption-key__cipher i:nth-child(3) { transform: translate(-50%, -50%) rotate(120deg); }
+
+.store-preview-observatory {
+  position: absolute;
+  z-index: 2;
+  left: 50%;
+  top: 52%;
+  width: 128px;
+  height: 96px;
+  transform: translate(-50%, -50%);
+}
+
+.store-preview-orbit {
+  position: absolute;
+  left: 50%;
+  top: 43%;
+  border: 1px solid rgba(179, 127, 225, 0.62);
+  border-radius: 50%;
+  transform: translate(-50%, -50%) rotate(-14deg);
+}
+
+.store-preview-orbit--outer {
+  width: 116px;
+  height: 48px;
+  box-shadow: 0 0 12px rgba(126, 76, 188, 0.22);
+}
+
+.store-preview-orbit--inner {
+  width: 74px;
+  height: 74px;
+  transform: translate(-50%, -50%) rotate(24deg);
+  border-color: rgba(116, 195, 218, 0.48);
+}
+
+.store-preview-observatory-core {
+  position: absolute;
+  left: 50%;
+  top: 43%;
+  width: 34px;
+  height: 34px;
+  transform: translate(-50%, -50%);
+  border: 1px solid rgba(226, 200, 255, 0.82);
+  border-radius: 50%;
+  background: radial-gradient(circle at 37% 32%, #d8f3ff 0 5%, #7f5dad 22%, #171127 64%, #070812 100%);
+  box-shadow: 0 0 15px rgba(146, 98, 204, 0.5);
+}
+
+.store-preview-observatory-deck {
+  position: absolute;
+  left: 50%;
+  bottom: 3px;
+  width: 94px;
+  height: 15px;
+  transform: translateX(-50%);
+  border: 1px solid rgba(154, 189, 205, 0.46);
+  border-radius: 50% 50% 3px 3px;
+  background: linear-gradient(180deg, #182333, #070a12);
+  box-shadow: 0 8px 16px rgba(0, 0, 0, 0.5);
+}
+
+.lume-icon {
+  position: relative;
+  display: inline-grid;
+  place-items: center;
+  width: 1em;
+  height: 1em;
+  flex: 0 0 auto;
+  color: #fff3c8;
+  isolation: isolate;
+}
+
+.lume-icon__aura,
+.lume-icon__core,
+.lume-icon__crescent,
+.lume-icon__spark {
+  position: absolute;
+  pointer-events: none;
+}
+
+.lume-icon__aura {
+  inset: 9%;
+  border-radius: 50%;
+  background:
+    radial-gradient(circle at 50% 50%, rgba(255, 250, 219, 0.9), rgba(246, 201, 102, 0.26) 42%, transparent 70%);
+  filter: blur(1px);
+  opacity: 0.92;
+}
+
+.lume-icon__core {
+  inset: 18%;
+  border-radius: 50%;
+  background:
+    radial-gradient(circle at 36% 28%, #ffffff 0 13%, #fff1b7 30%, #f1b95d 58%, #3b6a78 100%);
+  box-shadow:
+    inset -0.08em -0.08em 0.12em rgba(21, 51, 67, 0.36),
+    0 0 0.18em rgba(255, 231, 156, 0.72),
+    0 0 0.45em rgba(102, 214, 235, 0.28);
+}
+
+.lume-icon__crescent {
+  right: 19%;
+  top: 17%;
+  width: 42%;
+  height: 66%;
+  border-right: 0.12em solid rgba(255, 255, 255, 0.88);
+  border-radius: 50%;
+  transform: rotate(16deg);
+  filter: drop-shadow(0 0 0.1em rgba(255, 250, 220, 0.9));
+}
+
+.lume-icon__spark {
+  left: 35%;
+  top: 28%;
+  width: 0.16em;
+  height: 0.16em;
+  border-radius: 50%;
+  background: #ffffff;
+  box-shadow:
+    0 0 0.18em rgba(255, 255, 255, 0.96),
+    0.18em 0.2em 0 -0.04em rgba(151, 230, 238, 0.72);
+}
+
+.lume-icon--gain .lume-icon__aura {
+  animation: lumeGainPulse 1.05s ease-out both;
+}
+
+.lume-icon--gain .lume-icon__spark {
+  animation: lumeSparkDrift 1.05s ease-out both;
+}
+
+.lume-icon--spend .lume-icon__core {
+  animation: lumeSpendThin 0.95s ease-out both;
+}
+
+.lume-balance-card {
+  position: relative;
+  overflow: hidden;
+  isolation: isolate;
+}
+
+.lume-balance-card__icon {
+  position: relative;
+  box-shadow:
+    inset 0 0 18px rgba(255, 226, 144, 0.08),
+    0 0 22px rgba(113, 204, 220, 0.1);
+}
+
+.lume-balance-burst {
+  position: absolute;
+  z-index: 3;
+  right: 100px;
+  top: 50%;
+  width: 92px;
+  height: 62px;
+  transform: translateY(-50%);
+  pointer-events: none;
+}
+
+.lume-balance-burst__orb {
+  position: absolute;
+  left: 50%;
+  top: 50%;
+  width: 26px;
+  height: 26px;
+  transform: translate(-50%, -50%);
+  opacity: 0;
+  animation: lumeOrbArrival 1.25s ease-out both;
+}
+
+.lume-balance-burst__amount {
+  position: absolute;
+  left: 50%;
+  bottom: 0;
+  transform: translateX(-50%);
+  color: rgba(255, 246, 213, 0.94);
+  font-family: var(--app-font-serif);
+  font-size: 13px;
+  font-weight: 800;
+  text-shadow:
+    0 0 8px rgba(255, 220, 126, 0.62),
+    0 1px 2px rgba(0, 0, 0, 0.62);
+  opacity: 0;
+  animation: lumeAmountFloat 1.2s ease-out both;
+}
+
+.lume-balance-burst__mote {
+  position: absolute;
+  width: 5px;
+  height: 5px;
+  border-radius: 50%;
+  background: rgba(255, 247, 218, 0.95);
+  box-shadow:
+    0 0 8px rgba(255, 229, 154, 0.86),
+    0 0 14px rgba(107, 214, 232, 0.26);
+  opacity: 0;
+}
+
+.lume-balance-burst__mote--one {
+  left: 14px;
+  top: 12px;
+  animation: lumeMoteGainOne 1.1s ease-out both;
+}
+
+.lume-balance-burst__mote--two {
+  left: 16px;
+  bottom: 18px;
+  animation: lumeMoteGainTwo 1.1s 0.04s ease-out both;
+}
+
+.lume-balance-burst__mote--three {
+  right: 12px;
+  top: 18px;
+  animation: lumeMoteGainThree 1.1s 0.08s ease-out both;
+}
+
+.lume-balance-burst--spend .lume-balance-burst__mote--one {
+  animation: lumeMoteSpendOne 1.05s ease-out both;
+}
+
+.lume-balance-burst--spend .lume-balance-burst__mote--two {
+  animation: lumeMoteSpendTwo 1.05s 0.04s ease-out both;
+}
+
+.lume-balance-burst--spend .lume-balance-burst__mote--three {
+  animation: lumeMoteSpendThree 1.05s 0.08s ease-out both;
+}
+
+.lume-balance-burst--spend .lume-balance-burst__amount {
+  color: rgba(188, 232, 238, 0.9);
+  text-shadow:
+    0 0 8px rgba(113, 210, 225, 0.42),
+    0 1px 2px rgba(0, 0, 0, 0.62);
+}
+
+@keyframes lumeGainPulse {
+  0% { transform: scale(0.58); opacity: 0; }
+  42% { transform: scale(1.26); opacity: 1; }
+  100% { transform: scale(1); opacity: 0.9; }
+}
+
+@keyframes lumeSparkDrift {
+  0% { transform: translate(-0.1em, 0.18em); opacity: 0; }
+  45% { transform: translate(0.08em, -0.04em); opacity: 1; }
+  100% { transform: translate(0, 0); opacity: 1; }
+}
+
+@keyframes lumeSpendThin {
+  0% { transform: scale(1); opacity: 1; }
+  48% { transform: scaleX(0.58) scaleY(1.04); opacity: 0.96; }
+  100% { transform: scale(1); opacity: 1; }
+}
+
+@keyframes lumeOrbArrival {
+  0% { transform: translate(-50%, -50%) scale(0.42); opacity: 0; }
+  42% { transform: translate(-50%, -58%) scale(1.12); opacity: 1; }
+  100% { transform: translate(-50%, -50%) scale(0.82); opacity: 0; }
+}
+
+@keyframes lumeAmountFloat {
+  0% { transform: translate(-50%, 5px); opacity: 0; }
+  22% { opacity: 1; }
+  100% { transform: translate(-50%, -10px); opacity: 0; }
+}
+
+@keyframes lumeMoteGainOne {
+  0% { transform: translate(-18px, 18px) scale(0.5); opacity: 0; }
+  24% { opacity: 1; }
+  100% { transform: translate(30px, 15px) scale(0.25); opacity: 0; }
+}
+
+@keyframes lumeMoteGainTwo {
+  0% { transform: translate(-10px, -18px) scale(0.5); opacity: 0; }
+  24% { opacity: 1; }
+  100% { transform: translate(31px, -5px) scale(0.25); opacity: 0; }
+}
+
+@keyframes lumeMoteGainThree {
+  0% { transform: translate(18px, -4px) scale(0.5); opacity: 0; }
+  24% { opacity: 1; }
+  100% { transform: translate(-28px, 8px) scale(0.25); opacity: 0; }
+}
+
+@keyframes lumeMoteSpendOne {
+  0% { transform: translate(26px, 16px) scale(0.35); opacity: 0; }
+  18% { opacity: 0.95; }
+  100% { transform: translate(-36px, -16px) scale(0.2); opacity: 0; }
+}
+
+@keyframes lumeMoteSpendTwo {
+  0% { transform: translate(28px, -2px) scale(0.35); opacity: 0; }
+  18% { opacity: 0.95; }
+  100% { transform: translate(-42px, 14px) scale(0.2); opacity: 0; }
+}
+
+@keyframes lumeMoteSpendThree {
+  0% { transform: translate(20px, -14px) scale(0.35); opacity: 0; }
+  18% { opacity: 0.95; }
+  100% { transform: translate(-34px, 2px) scale(0.2); opacity: 0; }
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .lume-icon--gain .lume-icon__aura,
+  .lume-icon--gain .lume-icon__spark,
+  .lume-icon--spend .lume-icon__core,
+  .lume-balance-burst__orb,
+  .lume-balance-burst__amount,
+  .lume-balance-burst__mote {
+    animation-duration: 0.01ms !important;
+    animation-iteration-count: 1 !important;
+  }
+}
+
+/* Account cosmetic: a low-cost observatory silhouette and slow aurora pass.
+   Only opacity and transform animate; the civilization canvas is untouched. */
+.civ-ambience-void-radiance {
+  position: absolute;
+  z-index: 2;
+  inset: 0;
+  overflow: hidden;
+  pointer-events: none;
+}
+
+.civ-ambience-void-radiance::before {
+  content: "";
+  position: absolute;
+  inset: 0;
+  background:
+    radial-gradient(ellipse at 50% 72%, rgba(137, 83, 190, 0.16), transparent 42%),
+    linear-gradient(180deg, rgba(13, 8, 28, 0.08), rgba(27, 13, 46, 0.2));
+}
+
+.civ-ambience-aurora {
+  position: absolute;
+  top: -25%;
+  width: 34%;
+  height: 150%;
+  opacity: 0.18;
+  background: linear-gradient(
+    90deg,
+    transparent,
+    rgba(116, 210, 228, 0.42),
+    rgba(152, 85, 205, 0.5),
+    transparent
+  );
+  transform: skewX(-14deg) translate3d(0, 0, 0);
+  animation: void-radiance-aurora-drift 16s ease-in-out infinite alternate;
+}
+
+.civ-ambience-aurora--left {
+  left: -8%;
+}
+
+.civ-ambience-aurora--right {
+  right: -5%;
+  opacity: 0.12;
+  animation-delay: -8s;
+  animation-direction: alternate-reverse;
+}
+
+.civ-ambience-observatory {
+  position: absolute;
+  left: 50%;
+  bottom: 8%;
+  width: clamp(64px, 17%, 124px);
+  aspect-ratio: 1.9;
+  transform: translateX(-50%);
+  border: 1px solid rgba(178, 151, 219, 0.48);
+  border-radius: 50% 50% 12% 12%;
+  background: linear-gradient(180deg, rgba(28, 25, 52, 0.78), rgba(3, 5, 12, 0.94));
+  box-shadow:
+    inset 0 1px 0 rgba(214, 232, 255, 0.18),
+    0 8px 14px rgba(0, 0, 0, 0.34);
+}
+
+.civ-ambience-observatory-core {
+  position: absolute;
+  left: 50%;
+  top: 26%;
+  width: 20%;
+  aspect-ratio: 1;
+  transform: translate(-50%, -50%);
+  border: 1px solid rgba(222, 205, 245, 0.7);
+  border-radius: 50%;
+  background: radial-gradient(circle at 38% 33%, #d9f4ff 0 7%, #72549a 28%, #0a0c18 72%);
+}
+
+.civ-ambience-observatory-orbit {
+  position: absolute;
+  left: 50%;
+  top: 26%;
+  border: 1px solid rgba(171, 128, 215, 0.5);
+  border-radius: 50%;
+  transform: translate(-50%, -50%) rotate(-12deg);
+  animation: void-radiance-orbit 18s linear infinite;
+}
+
+.civ-ambience-observatory-orbit--outer {
+  width: 72%;
+  height: 44%;
+}
+
+.civ-ambience-observatory-orbit--inner {
+  width: 44%;
+  height: 70%;
+  border-color: rgba(104, 190, 214, 0.46);
+  animation-duration: 13s;
+  animation-direction: reverse;
+}
+
+@keyframes void-radiance-aurora-drift {
+  from { transform: skewX(-14deg) translate3d(-8%, 0, 0); opacity: 0.11; }
+  to { transform: skewX(-8deg) translate3d(15%, 0, 0); opacity: 0.22; }
+}
+
+@keyframes void-radiance-orbit {
+  from { transform: translate(-50%, -50%) rotate(-12deg); }
+  to { transform: translate(-50%, -50%) rotate(348deg); }
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .civ-ambience-aurora,
+  .civ-ambience-observatory-orbit {
+    animation: none;
+  }
+}
+
+/* -------------------------------------------------------------------------- */
+/* Out-of-match product shell                                                  */
+/* -------------------------------------------------------------------------- */
+
+.oom-shell {
+  position: relative;
+  isolation: isolate;
+  min-height: 100dvh;
+  color: hsl(var(--foreground));
+  background: #050611;
+}
+
+.oom-backdrop,
+.oom-backdrop__cosmos,
+.oom-backdrop__scrim,
+.oom-backdrop__horizon {
+  position: fixed;
+  inset: 0;
+  pointer-events: none;
+}
+
+.oom-backdrop {
+  z-index: -1;
+  overflow: hidden;
+  background: #050611;
+}
+
+.oom-backdrop__cosmos {
+  background-size: cover;
+  background-position: center;
+  opacity: 0.62;
+  transform: scale(1.015);
+}
+
+.oom-backdrop__scrim {
+  background:
+    linear-gradient(180deg, rgba(5, 6, 17, 0.58) 0%, rgba(5, 6, 17, 0.78) 44%, rgba(5, 6, 17, 0.96) 100%),
+    linear-gradient(90deg, rgba(5, 6, 17, 0.8) 0%, rgba(5, 6, 17, 0.22) 50%, rgba(5, 6, 17, 0.8) 100%);
+}
+
+.oom-backdrop__horizon {
+  inset: 52% 0 auto;
+  height: 1px;
+  background: linear-gradient(90deg, transparent 8%, rgba(132, 162, 255, 0.13) 34%, rgba(228, 196, 114, 0.18) 50%, rgba(132, 162, 255, 0.13) 66%, transparent 92%);
+}
+
+.oom-topbar {
+  position: relative;
+  z-index: 30;
+  min-height: 60px;
+  border-bottom: 1px solid rgba(149, 164, 215, 0.18);
+  background: rgba(5, 6, 17, 0.9);
+  box-shadow: 0 10px 30px rgba(0, 0, 0, 0.18);
+}
+
+.oom-topbar__inner {
+  width: min(100% - 28px, 1180px);
+  min-height: 60px;
+  margin: 0 auto;
+  display: grid;
+  grid-template-columns: minmax(0, 1fr) auto minmax(0, 1fr);
+  align-items: center;
+  gap: 14px;
+}
+
+.oom-topbar__side {
+  display: flex;
+  min-width: 0;
+  align-items: center;
+  gap: 8px;
+}
+
+.oom-topbar__side--right {
+  justify-content: flex-end;
+}
+
+.oom-topbar__center {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  min-width: 0;
+}
+
+.oom-wordmark-button {
+  display: inline-flex;
+  align-items: center;
+  border: 0;
+  background: transparent;
+  padding: 4px 0;
+  cursor: pointer;
+}
+
+.oom-wordmark {
+  position: relative;
+  display: inline-grid;
+  width: max-content;
+  min-width: 172px;
+  min-height: 32px;
+  place-items: center;
+  isolation: isolate;
+}
+
+.oom-wordmark__text {
+  position: relative;
+  z-index: 1;
+  display: block;
+  margin: 0;
+  color: transparent;
+  background: linear-gradient(
+    105deg,
+    #06060f 0%, #06060f 6%,
+    #ff9070 10%, #ff6b52 13%, #ff9070 16%,
+    #06060f 20%, #06060f 27%,
+    #ffe08a 31%, #ffc43d 34%, #ffe08a 37%,
+    #06060f 41%, #06060f 48%,
+    #50e890 52%, #2ecc71 55%, #50e890 58%,
+    #06060f 62%, #06060f 69%,
+    #8090ff 73%, #607aff 76%, #8090ff 79%,
+    #06060f 83%, #06060f 87%,
+    #5c20b8 91%, #7028d0 93%, #5c20b8 95%,
+    #06060f 99%, #06060f 100%
+  );
+  background-size: 400% 100%;
+  background-clip: text;
+  -webkit-background-clip: text;
+  -webkit-text-fill-color: transparent;
+  font-family: 'Cinzel Decorative', 'Cinzel', Georgia, serif;
+  font-size: 22px;
+  font-weight: 900;
+  letter-spacing: 0.12em;
+  line-height: 1;
+  white-space: nowrap;
+  filter:
+    drop-shadow(0 0 1px rgba(255, 255, 255, 0.78))
+    drop-shadow(0 0 10px rgba(160, 140, 255, 0.24));
+  animation: oom-wordmark-shimmer 50s linear infinite;
+}
+
+.oom-wordmark__aura,
+.oom-wordmark__rule {
+  display: none;
+}
+
+.oom-wordmark--hero {
+  grid-template-rows: 1fr auto 1fr;
+  width: min(100%, 430px);
+  min-height: 104px;
+  padding: 4px 12px;
+}
+
+.oom-wordmark--hero .oom-wordmark__text {
+  font-size: 52px;
+  letter-spacing: 0.15em;
+  filter:
+    drop-shadow(0 0 1px rgba(255, 255, 255, 0.82))
+    drop-shadow(0 0 18px rgba(160, 140, 255, 0.3))
+    drop-shadow(0 0 40px rgba(100, 80, 180, 0.15));
+}
+
+.oom-wordmark--hero .oom-wordmark__aura {
+  position: absolute;
+  top: 50%;
+  left: 50%;
+  display: block;
+  z-index: -1;
+  width: 118%;
+  height: 150%;
+  border-radius: 50%;
+  background: radial-gradient(ellipse, rgba(100, 80, 180, 0.15) 0%, transparent 70%);
+  transform: translate(-50%, -50%);
+  pointer-events: none;
+  animation: oom-wordmark-pulse 4s ease-in-out infinite;
+}
+
+.oom-wordmark--hero .oom-wordmark__rule {
+  position: relative;
+  z-index: 1;
+  display: flex;
+  width: 70%;
+  align-items: center;
+  gap: 10px;
+}
+
+.oom-wordmark--hero .oom-wordmark__rule::before,
+.oom-wordmark--hero .oom-wordmark__rule::after {
+  width: 50%;
+  height: 1px;
+  content: "";
+}
+
+.oom-wordmark--hero .oom-wordmark__rule::before {
+  background: linear-gradient(to right, transparent, rgba(255, 255, 255, 0.16));
+}
+
+.oom-wordmark--hero .oom-wordmark__rule::after {
+  background: linear-gradient(to left, transparent, rgba(255, 255, 255, 0.16));
+}
+
+.oom-wordmark--hero .oom-wordmark__rule > span {
+  width: 5px;
+  height: 5px;
+  flex: 0 0 auto;
+  border: 1px solid rgba(255, 255, 255, 0.28);
+  transform: rotate(45deg);
+}
+
+.oom-wordmark--hero .oom-wordmark__rule--top {
+  align-self: end;
+}
+
+.oom-wordmark--hero .oom-wordmark__rule--bottom {
+  align-self: start;
+}
+
+.oom-hero-motto {
+  margin-bottom: 0;
+  color: rgba(222, 225, 246, 0.76);
+  font-family: 'Cinzel', Georgia, serif;
+  font-size: 12px;
+  font-weight: 500;
+  letter-spacing: 0.32em;
+  line-height: 1.5;
+  text-transform: uppercase;
+  text-shadow: 0 0 12px rgba(129, 142, 210, 0.2);
+}
+
+@keyframes oom-wordmark-shimmer {
+  from { background-position: -200% center; }
+  to { background-position: 200% center; }
+}
+
+@keyframes oom-wordmark-pulse {
+  0%, 100% { opacity: 0.55; }
+  50% { opacity: 0.85; }
+}
+
+.oom-frame {
+  position: relative;
+  z-index: 1;
+  width: min(100% - 32px, 1120px);
+  margin: 0 auto;
+}
+
+.oom-panel {
+  border: 1px solid rgba(143, 158, 211, 0.22);
+  border-radius: 8px;
+  background:
+    linear-gradient(180deg, rgba(18, 20, 40, 0.91), rgba(8, 10, 25, 0.94));
+  box-shadow:
+    inset 0 1px 0 rgba(255, 255, 255, 0.04),
+    0 18px 54px rgba(0, 0, 0, 0.25);
+}
+
+.oom-panel--gold {
+  border-color: rgba(220, 184, 92, 0.38);
+  background:
+    linear-gradient(180deg, rgba(42, 32, 23, 0.94), rgba(15, 13, 21, 0.96));
+}
+
+.oom-panel--quiet {
+  background: rgba(8, 10, 25, 0.76);
+  box-shadow: inset 0 1px 0 rgba(255, 255, 255, 0.025);
+}
+
+.oom-kicker {
+  margin: 0 0 5px;
+  color: rgba(155, 178, 244, 0.72);
+  font-family: 'Cinzel', serif;
+  font-size: 10px;
+  font-weight: 700;
+  line-height: 1;
+  letter-spacing: 0.2em;
+  text-transform: uppercase;
+}
+
+.oom-section-heading {
+  display: flex;
+  min-width: 0;
+  align-items: flex-end;
+  justify-content: space-between;
+  gap: 16px;
+}
+
+.oom-section-heading h2 {
+  margin: 0;
+  color: rgba(244, 246, 255, 0.96);
+  font-family: 'Cinzel', serif;
+  font-size: 20px;
+  font-weight: 700;
+  line-height: 1.1;
+  letter-spacing: 0;
+}
+
+.oom-section-heading__detail {
+  flex: 0 0 auto;
+  color: hsl(var(--muted-foreground));
+  font-size: 12px;
+}
+
+.oom-icon-button {
+  display: inline-flex;
+  width: 38px;
+  height: 38px;
+  align-items: center;
+  justify-content: center;
+  border: 1px solid rgba(143, 158, 211, 0.18);
+  border-radius: 7px;
+  color: hsl(var(--muted-foreground));
+  background: rgba(17, 19, 36, 0.72);
+  transition: border-color 160ms ease, background-color 160ms ease, color 160ms ease;
+}
+
+.oom-icon-button:hover {
+  border-color: rgba(157, 178, 245, 0.42);
+  color: hsl(var(--foreground));
+  background: rgba(30, 34, 61, 0.92);
+}
+
+.oom-icon-button:focus-visible,
+.oom-action-primary:focus-visible,
+.oom-action-secondary:focus-visible,
+.oom-segmented > button:focus-visible {
+  outline: 2px solid rgba(154, 190, 255, 0.88);
+  outline-offset: 2px;
+}
+
+@media (min-width: 640px) {
+  .oom-icon-button--label {
+    width: auto;
+    gap: 7px;
+    padding-inline: 11px;
+  }
+}
+
+.oom-action-primary,
+.oom-action-secondary {
+  display: flex;
+  min-height: 54px;
+  width: 100%;
+  align-items: center;
+  justify-content: center;
+  gap: 10px;
+  border-radius: 8px;
+  font-size: 15px;
+  font-weight: 750;
+  transition: transform 150ms ease, border-color 150ms ease, background-color 150ms ease, box-shadow 150ms ease;
+}
+
+.oom-action-primary {
+  border: 1px solid rgba(155, 187, 244, 0.76);
+  color: #f8fbff;
+  background: linear-gradient(180deg, #4a8bd9, #2e67ae);
+  box-shadow:
+    0 10px 28px rgba(45, 103, 174, 0.28),
+    inset 0 1px 0 rgba(255, 255, 255, 0.25),
+    inset 0 -1px 0 rgba(224, 193, 110, 0.16);
+  text-shadow: 0 1px 1px rgba(0, 0, 0, 0.34);
+}
+
+.oom-action-primary:hover {
+  transform: translateY(-1px);
+  background: linear-gradient(180deg, #5a99e4, #3775c2);
+  box-shadow:
+    0 13px 34px rgba(45, 103, 174, 0.36),
+    inset 0 1px 0 rgba(255, 255, 255, 0.3),
+    inset 0 -1px 0 rgba(224, 193, 110, 0.2);
+}
+
+.oom-action-secondary {
+  border: 1px solid rgba(143, 158, 211, 0.25);
+  color: rgba(239, 243, 255, 0.94);
+  background: rgba(25, 28, 51, 0.88);
+}
+
+.oom-action-secondary:hover {
+  transform: translateY(-1px);
+  border-color: rgba(157, 178, 245, 0.46);
+  background: rgba(35, 39, 69, 0.94);
+}
+
+.oom-action-primary:disabled,
+.oom-action-secondary:disabled {
+  transform: none;
+  cursor: not-allowed;
+  opacity: 0.46;
+  box-shadow: none;
+}
+
+.oom-segmented {
+  display: grid;
+  grid-auto-flow: column;
+  grid-auto-columns: 1fr;
+  gap: 4px;
+  padding: 4px;
+  border: 1px solid rgba(143, 158, 211, 0.16);
+  border-radius: 8px;
+  background: rgba(7, 9, 22, 0.72);
+}
+
+.oom-segmented > button {
+  min-width: 0;
+  min-height: 38px;
+  border: 1px solid transparent;
+  border-radius: 6px;
+  color: hsl(var(--muted-foreground));
+  background: transparent;
+  font-size: 13px;
+  font-weight: 700;
+  transition: color 150ms ease, background-color 150ms ease, border-color 150ms ease;
+}
+
+.oom-segmented > button[data-active="true"] {
+  border-color: rgba(143, 178, 255, 0.3);
+  color: rgba(248, 250, 255, 0.98);
+  background: rgba(72, 116, 193, 0.26);
+  box-shadow: inset 0 1px 0 rgba(255, 255, 255, 0.06);
+}
+
+.oom-divider {
+  height: 1px;
+  background: linear-gradient(90deg, transparent, rgba(143, 158, 211, 0.23) 16%, rgba(143, 158, 211, 0.23) 84%, transparent);
+}
+
+@media (max-width: 720px) {
+  .oom-topbar__inner {
+    width: min(100% - 20px, 1180px);
+    gap: 8px;
+  }
+
+  .oom-wordmark {
+    min-width: 148px;
+    min-height: 28px;
+  }
+
+  .oom-wordmark__text {
+    font-size: 19px;
+  }
+
+  .oom-wordmark--hero {
+    width: min(100%, 390px);
+    min-height: 96px;
+    padding-inline: 6px;
+  }
+
+  .oom-wordmark--hero .oom-wordmark__text {
+    font-size: 42px;
+    letter-spacing: 0.13em;
+  }
+
+  .oom-wordmark--hero .oom-wordmark__aura {
+    width: 100%;
+  }
+
+  .oom-hero-motto {
+    font-size: 12px;
+    letter-spacing: 0.26em;
+  }
+
+  .oom-home-teaching {
+    margin-top: 16px;
+    gap: 8px;
+    font-size: 16px;
+  }
+
+  .oom-home-affinity-icon {
+    width: 20px;
+    height: 20px;
+  }
+
+  .oom-frame {
+    width: min(100% - 20px, 1120px);
+  }
+
+  .oom-section-heading h2 {
+    font-size: 18px;
+  }
+
+  .oom-backdrop__cosmos {
+    opacity: 0.54;
+    transform: none;
+  }
+
+  .oom-panel {
+    box-shadow:
+      inset 0 1px 0 rgba(255, 255, 255, 0.035),
+      0 12px 34px rgba(0, 0, 0, 0.22);
+  }
+}
+
+@media (max-width: 380px) {
+  .oom-section-heading {
+    flex-direction: column;
+    align-items: flex-start;
+    gap: 4px;
+  }
+
+  .oom-section-heading__detail {
+    max-width: 100%;
+    line-height: 1.35;
+  }
+
+  .oom-wordmark--hero .oom-wordmark__text {
+    font-size: 36px;
+    letter-spacing: 0.1em;
+  }
+
+  .oom-hero-motto {
+    font-size: 10px;
+    letter-spacing: 0.12em;
+    white-space: nowrap;
+  }
+
+  .oom-home-teaching {
+    gap: 6px;
+    font-size: 13px;
+  }
+
+  .oom-home-affinity-icon {
+    width: 16px;
+    height: 16px;
+  }
+
+  .oom-eminence-teaching-line {
+    gap: 4px;
+    font-size: 13px;
+    white-space: nowrap;
+  }
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .oom-wordmark__text {
+    background: linear-gradient(105deg, #d9ddff 0%, #fff0bd 44%, #bda9ff 72%, #eef0ff 100%);
+    background-clip: text;
+    -webkit-background-clip: text;
+    -webkit-text-fill-color: transparent;
+    animation: none;
+  }
+
+  .oom-wordmark__aura {
+    animation: none !important;
+  }
+
+  .oom-action-primary,
+  .oom-action-secondary {
+    transition: none;
+  }
+}
+
+/* -------------------------------------------------------------------------
+   Release layout contract
+
+   Compact means the complete twelve-card Forge is visible without scrolling.
+   The Forge precedes lower-priority Terminus and opponent decoration, while
+   the Affinity Well remains a first-class dock or side instrument.
+   ------------------------------------------------------------------------- */
+
+@media (max-width: 600px) and (orientation: portrait) {
+  .game-shell[data-board-presentation][data-board-viewport="phone-portrait"][data-forge-density="compact"] {
+    display: grid !important;
+    grid-template-columns: minmax(0, 1fr) !important;
+    grid-template-rows: 48px minmax(0, 1fr) auto 58px !important;
+    grid-template-areas: "header" "main" "well" "nav" !important;
+    width: 100% !important;
+    height: 100dvh !important;
+    max-width: none !important;
+    gap: 0 !important;
+    padding: 0 !important;
+    overflow: hidden !important;
+  }
+
+  .game-shell[data-board-viewport="phone-portrait"] > .game-header {
+    grid-area: header !important;
+    width: 100% !important;
+    height: 48px !important;
+    min-height: 48px !important;
+  }
+
+  .game-shell[data-board-viewport="phone-portrait"] > .game-main[data-active-tab="board"] {
+    grid-area: main !important;
+    display: block !important;
+    width: 100% !important;
+    min-width: 0 !important;
+    min-height: 0 !important;
+    padding: 0 !important;
+    overflow-x: hidden !important;
+    overflow-y: auto !important;
+    overscroll-behavior-y: contain;
+  }
+
+  .game-shell[data-board-viewport="phone-portrait"] > .game-main[data-active-tab="board"] .board-tab-main {
+    display: flex !important;
+    flex-direction: column !important;
+    gap: 0 !important;
+    min-height: 0 !important;
+    padding: 0 !important;
+  }
+
+  .game-shell[data-board-viewport="phone-portrait"] > .game-main[data-active-tab="board"] .board-forge {
+    order: 1 !important;
+  }
+
+  .game-shell[data-board-viewport="phone-portrait"] > .game-main[data-active-tab="board"] .board-terminus {
+    order: 2 !important;
+  }
+
+  .game-shell[data-board-viewport="phone-portrait"] > .game-main[data-active-tab="board"] .board-opponents {
+    order: 3 !important;
+  }
+
+  .game-shell[data-board-viewport="phone-portrait"] > .affinity-well-panel[data-shared-affinity-well] {
+    grid-area: well !important;
+    position: relative !important;
+    inset: auto !important;
+    width: 100% !important;
+    min-width: 0 !important;
+    max-height: min(48dvh, 330px) !important;
+    overflow: hidden !important;
+  }
+
+  .game-shell[data-board-viewport="phone-portrait"][data-board-density][data-board-layout]
+    > .affinity-well-panel[data-shared-affinity-well][data-well-expanded="false"] {
+    display: grid !important;
+    grid-template-rows: 52px 0 0 !important;
+    height: 52px !important;
+    min-height: 52px !important;
+    max-height: 52px !important;
+  }
+
+  .game-shell[data-board-viewport="phone-portrait"][data-board-density][data-board-layout]
+    > .affinity-well-panel[data-shared-affinity-well][data-well-expanded="false"] .affinity-well-header {
+    width: 100% !important;
+    height: 52px !important;
+    min-height: 52px !important;
+    padding: 5px 9px !important;
+  }
+
+  .game-shell[data-board-viewport="phone-portrait"][data-board-density][data-board-layout]
+    > .affinity-well-panel[data-shared-affinity-well][data-well-expanded="false"] .affinity-well-cells,
+  .game-shell[data-board-viewport="phone-portrait"][data-board-density][data-board-layout]
+    > .affinity-well-panel[data-shared-affinity-well][data-well-expanded="false"] .affinity-well-action-zone {
+    display: none !important;
+  }
+
+  .game-shell[data-board-viewport="phone-portrait"] > .game-bottom-nav {
+    grid-area: nav !important;
+    width: 100% !important;
+    min-height: 58px !important;
+  }
+
+  .game-shell[data-board-viewport="phone-portrait"] .board-forge.board-forge--compact {
+    --forge-chip-w: 100%;
+    --forge-chip-h: auto;
+    display: grid !important;
+    grid-template-rows: 40px 48px auto !important;
+    width: 100% !important;
+    height: auto !important;
+    min-height: 0 !important;
+    overflow: hidden !important;
+  }
+
+  .game-shell[data-board-viewport="phone-portrait"] .board-forge--compact .board-forge-header {
+    height: 40px !important;
+    min-height: 40px !important;
+    padding: 4px 9px !important;
+  }
+
+  .game-shell[data-board-viewport="phone-portrait"] .board-forge--compact .board-forge-controls {
+    display: flex !important;
+    width: 100% !important;
+    height: 48px !important;
+    min-height: 48px !important;
+    gap: 3px !important;
+    padding: 2px 5px !important;
+    overflow-x: auto !important;
+    overflow-y: hidden !important;
+  }
+
+  .game-shell[data-board-viewport="phone-portrait"] .board-forge--compact .board-forge-controls button {
+    min-height: 44px !important;
+  }
+
+  .game-shell[data-board-viewport="phone-portrait"] .board-forge--compact [data-forge-tiers="true"] {
+    display: grid !important;
+    grid-template-columns: minmax(0, 1fr) !important;
+    grid-template-rows: repeat(3, max-content) !important;
+    width: 100% !important;
+    height: auto !important;
+    min-height: 0 !important;
+    gap: 2px !important;
+    padding: 2px 4px 4px !important;
+    overflow: hidden !important;
+  }
+
+  .game-shell[data-board-viewport="phone-portrait"] .board-forge--compact .board-forge-shelf {
+    display: grid !important;
+    grid-template-columns: minmax(0, 1fr) !important;
+    grid-template-rows: 14px auto !important;
+    width: 100% !important;
+    height: auto !important;
+    min-height: 0 !important;
+    gap: 1px !important;
+    padding: 1px 2px !important;
+    overflow: hidden !important;
+  }
+
+  .game-shell[data-board-viewport="phone-portrait"] .board-forge--compact .board-forge-tier-header {
+    display: flex !important;
+    width: 100% !important;
+    height: 14px !important;
+    min-height: 14px !important;
+    margin: 0 !important;
+    padding: 0 2px !important;
+  }
+
+  .game-shell[data-board-viewport="phone-portrait"] .board-forge--compact .board-forge-shelf-content {
+    display: grid !important;
+    grid-template-columns: minmax(0, 4fr) minmax(0, 1fr) !important;
+    width: 100% !important;
+    min-width: 0 !important;
+    gap: 3px !important;
+  }
+
+  .game-shell[data-board-viewport="phone-portrait"] .board-forge--compact .board-forge-card-row {
+    display: grid !important;
+    grid-template-columns: repeat(4, minmax(0, 1fr)) !important;
+    width: 100% !important;
+    height: auto !important;
+    min-width: 0 !important;
+    min-height: 0 !important;
+    gap: 3px !important;
+    padding: 0 !important;
+    margin: 0 !important;
+    overflow: hidden !important;
+  }
+
+  .game-shell[data-board-viewport="phone-portrait"] .board-forge--compact .forge-foundry-mold,
+  .game-shell[data-board-viewport="phone-portrait"] .board-forge--compact .board-forge-compact-chip,
+  .game-shell[data-board-viewport="phone-portrait"] .board-forge--compact .board-forge-archive-rail,
+  .game-shell[data-board-viewport="phone-portrait"] .board-forge--compact .board-forge-compact-deck,
+  .game-shell[data-board-viewport="phone-portrait"] .board-forge--compact .board-forge-compact-deck > div:first-child {
+    width: 100% !important;
+    height: auto !important;
+    min-width: 0 !important;
+    min-height: 0 !important;
+    aspect-ratio: 0.7 !important;
+  }
+}
+
+@media (max-width: 360px) and (orientation: portrait) {
+  .game-shell[data-board-viewport="phone-portrait"] .board-forge-controls > span:first-child {
+    display: none !important;
+  }
+}
+
+@media (max-height: 520px) and (orientation: landscape) {
+  .game-shell[data-board-presentation][data-board-viewport="phone-landscape"][data-board-density="cockpit"][data-side-affinity-well="true"] {
+    grid-template-columns: minmax(0, 1fr) clamp(270px, 34vw, 304px) !important;
+  }
+
+  .game-shell[data-board-viewport="phone-landscape"][data-board-density="cockpit"] > .game-main[data-active-tab="board"] .board-tab-main {
+    display: flex !important;
+    flex-direction: column !important;
+    height: auto !important;
+    padding: 0 !important;
+  }
+
+  .game-shell[data-board-viewport="phone-landscape"][data-board-density="cockpit"] .board-forge {
+    order: 1 !important;
+  }
+
+  .game-shell[data-board-viewport="phone-landscape"][data-board-density="cockpit"] .board-terminus {
+    order: 2 !important;
+    height: 40px !important;
+    min-height: 40px !important;
+  }
+
+  .game-shell[data-board-viewport="phone-landscape"][data-board-density="cockpit"] .board-forge.board-forge--compact {
+    height: 304px !important;
+    min-height: 304px !important;
+    grid-template-rows: 44px 44px 216px !important;
+  }
+
+  .game-shell[data-board-viewport="phone-landscape"][data-board-density="cockpit"] .board-forge--compact .board-forge-header,
+  .game-shell[data-board-viewport="phone-landscape"][data-board-density="cockpit"] .board-forge--compact .board-forge-controls {
+    height: 44px !important;
+    min-height: 44px !important;
+    padding: 2px 7px !important;
+  }
+
+  .game-shell[data-board-viewport="phone-landscape"][data-board-density="cockpit"] .board-forge--compact .board-forge-controls button {
+    min-height: 40px !important;
+  }
+
+  .game-shell[data-board-viewport="phone-landscape"][data-board-density="cockpit"] .board-forge--compact .board-forge-card-row {
+    grid-template-columns: repeat(4, 46px) !important;
+  }
+
+  .game-shell[data-board-viewport="phone-landscape"][data-board-density="cockpit"] .board-forge--compact .board-forge-shelf-content {
+    grid-template-columns: minmax(0, 1fr) 46px !important;
+  }
+
+  .game-shell[data-board-viewport="phone-landscape"][data-board-density="cockpit"] .board-forge--compact .forge-foundry-mold,
+  .game-shell[data-board-viewport="phone-landscape"][data-board-density="cockpit"] .board-forge--compact .board-forge-compact-chip,
+  .game-shell[data-board-viewport="phone-landscape"][data-board-density="cockpit"] .board-forge--compact .board-forge-archive-rail,
+  .game-shell[data-board-viewport="phone-landscape"][data-board-density="cockpit"] .board-forge--compact .board-forge-compact-deck,
+  .game-shell[data-board-viewport="phone-landscape"][data-board-density="cockpit"] .board-forge--compact .board-forge-compact-deck > div:first-child {
+    width: 46px !important;
+    height: 66px !important;
+    min-width: 46px !important;
+    min-height: 66px !important;
+    aspect-ratio: 0.7 !important;
+  }
+
+  .game-shell[data-board-viewport="phone-landscape"][data-board-density="cockpit"] > .affinity-well-panel .affinity-well-cells [data-well-carousel] > div {
+    grid-template-columns: repeat(3, minmax(0, 1fr)) !important;
+    grid-template-rows: repeat(2, minmax(0, 1fr)) !important;
+  }
+
+  .game-shell[data-board-viewport="phone-landscape"][data-board-density="cockpit"] > .affinity-well-panel .affinity-well-cell[data-affinity] .affinity-well-cell-button {
+    height: calc(100% - 45px) !important;
+    min-height: 44px !important;
+  }
+
+  .game-shell[data-board-viewport="phone-landscape"][data-board-density="cockpit"] > .affinity-well-panel .affinity-well-cell[data-affinity="singularity"] .affinity-well-cell-button {
+    height: 100% !important;
+  }
+
+  .game-shell[data-board-viewport="phone-landscape"][data-board-density="cockpit"] > .affinity-well-panel .affinity-well-take2 {
+    height: 44px !important;
+    min-height: 44px !important;
+    font-size: 9px !important;
+  }
+}
+
+@media (min-width: 681px) and (min-height: 521px) and (orientation: landscape) {
+  .game-shell[data-board-presentation][data-side-affinity-well="true"][data-board-layout="base"] {
+    display: grid !important;
+    grid-template-columns: minmax(0, 1fr) clamp(270px, 28vw, 330px) !important;
+    grid-template-rows: 56px minmax(0, 1fr) 56px !important;
+    grid-template-areas: "header header" "main well" "nav nav" !important;
+    width: min(100%, 1320px) !important;
+    max-width: 1320px !important;
+    height: 100dvh !important;
+    margin: 0 auto !important;
+    gap: 6px !important;
+    padding: 0 6px 6px !important;
+  }
+
+  .game-shell[data-side-affinity-well="true"] > .game-header { grid-area: header !important; }
+  .game-shell[data-side-affinity-well="true"] > .game-main { grid-area: main !important; }
+  .game-shell[data-side-affinity-well="true"] > .affinity-well-panel { grid-area: well !important; }
+  .game-shell[data-side-affinity-well="true"] > .game-bottom-nav { grid-area: nav !important; }
+
+  .game-shell[data-side-affinity-well="true"] > .game-main[data-active-tab="board"] .board-tab-main {
+    display: flex !important;
+    flex-direction: column !important;
+  }
+
+  .game-shell[data-side-affinity-well="true"] > .game-main[data-active-tab="board"] .board-forge { order: 1 !important; }
+  .game-shell[data-side-affinity-well="true"] > .game-main[data-active-tab="board"] .board-terminus { order: 2 !important; }
+}
+
+@media (min-width: 1600px) and (min-height: 900px) and (orientation: landscape) {
+  .game-shell[data-board-presentation][data-side-affinity-well="true"][data-board-layout="left-civ"] {
+    grid-template-columns: 280px minmax(0, 920px) 280px !important;
+    grid-template-rows: 56px minmax(0, 1fr) 56px !important;
+    grid-template-areas: ". header ." "leftaux main well" ". nav ." !important;
+    width: 1520px !important;
+    max-width: 1520px !important;
+    column-gap: 12px !important;
+  }
+
+  .game-shell[data-board-layout="left-civ"] > .affinity-well-panel {
+    grid-area: well !important;
+    height: 100% !important;
+    max-height: none !important;
+  }
+}
+
+@media (max-width: 680px) and (orientation: portrait) {
+  .game-shell[data-board-viewport="phone-portrait"][data-board-density][data-board-layout]
+    > .affinity-well-panel[data-shared-affinity-well][data-well-expanded="true"] {
+    --well-take2-h: 44px;
+  }
+
+  .game-shell[data-board-viewport="phone-portrait"][data-board-density][data-board-layout]
+    > .affinity-well-panel[data-shared-affinity-well][data-well-expanded="true"] .affinity-well-dock-toggle,
+  .game-shell[data-board-viewport="phone-portrait"][data-board-density][data-board-layout]
+    > .affinity-well-panel[data-shared-affinity-well][data-well-expanded="true"] .affinity-well-eminence {
+    width: 44px !important;
+    min-width: 44px !important;
+    height: 44px !important;
+    min-height: 44px !important;
+  }
+
+  .game-shell[data-board-viewport="phone-portrait"][data-board-density][data-board-layout]
+    > .affinity-well-panel[data-shared-affinity-well][data-well-expanded="true"] .affinity-well-cell {
+    height: 118px !important;
+  }
+
+  .game-shell[data-board-viewport="phone-portrait"][data-board-density][data-board-layout]
+    > .affinity-well-panel[data-shared-affinity-well][data-well-expanded="true"]
+    .affinity-well-cell[data-affinity] .affinity-well-cell-button,
+  .game-shell[data-board-viewport="phone-portrait"][data-board-density][data-board-layout]
+    > .affinity-well-panel[data-shared-affinity-well][data-well-expanded="true"]
+    .affinity-well-cell[data-affinity="singularity"] .affinity-well-cell-button[data-well-cell-style="instrument"] {
+    height: 74px !important;
+    min-height: 74px !important;
+    max-height: 74px !important;
+    flex: 0 0 74px !important;
+    padding-bottom: 3px !important;
+  }
+
+  .game-shell[data-board-viewport="phone-portrait"][data-board-density][data-board-layout]
+    > .affinity-well-panel[data-shared-affinity-well][data-well-expanded="true"]
+    .affinity-well-cell .affinity-well-cell-button[data-well-cell-style="instrument"] {
+    grid-template-rows: 30px 17px 8px !important;
+    row-gap: 1px !important;
+  }
+
+  .game-shell[data-board-viewport="phone-portrait"][data-board-density][data-board-layout]
+    > .affinity-well-panel[data-shared-affinity-well][data-well-expanded="true"] .affinity-well-take2 {
+    position: static !important;
+    inset: auto !important;
+    width: 100% !important;
+    min-width: 0 !important;
+    height: 44px !important;
+    min-height: 44px !important;
+    max-height: 44px !important;
+    margin: 0 !important;
+    padding: 0 !important;
+    border-radius: 0 0 7px 7px !important;
+  }
+}
+
+/* Phone interaction targets stay at least 44px without changing card geometry. */
+@media (max-width: 680px) {
+  .game-shell > .game-header > button,
+  .game-shell > .game-header > [data-radix-menu-root] {
+    flex-basis: 44px !important;
+    width: 44px !important;
+    min-width: 44px !important;
+  }
+
+  .game-shell > .game-header .opponent-chip-shell,
+  .game-shell > .game-header .opponent-chip-shell:not(.opponent-chip-shell--detailed),
+  .game-shell > .game-header [data-opponent-chip],
+  .game-shell > .game-header .opponent-chip-shell:not(.opponent-chip-shell--detailed) [data-opponent-chip] {
+    height: 44px !important;
+    min-height: 44px !important;
+    max-height: 44px !important;
+  }
+
+  .game-shell[data-board-presentation="celestial"] .board-opponents-toggle {
+    min-height: 44px !important;
+  }
+}
+
+@media (max-height: 520px) and (orientation: landscape) {
+  .game-shell > .game-header .opponent-chip-shell,
+  .game-shell > .game-header .opponent-chip-shell:not(.opponent-chip-shell--detailed),
+  .game-shell > .game-header [data-opponent-chip],
+  .game-shell > .game-header .opponent-chip-shell:not(.opponent-chip-shell--detailed) [data-opponent-chip] {
+    height: 44px !important;
+    min-height: 44px !important;
+    max-height: 44px !important;
+  }
+
+  .game-shell .board-forge [role="group"][aria-label="Cost view"] button,
+  .game-shell .board-forge [data-testid="forge-density-toggle"],
+  .game-shell[data-board-presentation="celestial"] .board-opponents-toggle {
+    height: 44px !important;
+    min-height: 44px !important;
+  }
+
+  .game-shell > .game-bottom-nav {
+    height: 44px !important;
+    min-height: 44px !important;
+    grid-template-rows: 44px !important;
+  }
+
+  .game-shell > .game-bottom-nav button {
+    height: 44px !important;
+    min-height: 44px !important;
   }
 }

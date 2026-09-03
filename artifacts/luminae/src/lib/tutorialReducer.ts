@@ -1,15 +1,14 @@
 import type { AffinityKey } from "@/lib/affinityMeta";
+import type { FirstContactStance } from "@workspace/game-types";
+import { TUTORIAL_CARDS, type TutorialCard } from "@/lib/tutorialCards";
 import {
   TUTORIAL_BEATS,
-  TUTORIAL_CARDS,
-  T3_PURCHASABLE_IDS,
-  T3_IMPOSSIBLE_ID,
-  FINAL_T2_ID,
-  FIRST_FORGE_ID,
-  RESERVE_CARD_ID,
-  TIER2_SINGULARITY_ID,
+  FAST_FORWARD_CARDS,
+  LUMII_FAST_FORWARD_EMINENCE,
   VERDANCE_LUMINARY_EMINENCE,
-  type TutorialCard,
+  getTutorialInteractionPolicy,
+  isTutorialInteractionUnlocked,
+  type TutorialOpponentAction,
   type TutorialForgeView,
 } from "@/lib/tutorialData";
 
@@ -22,22 +21,24 @@ export interface TutState {
   affinities: Record<AffinityKey, number>;
   wellBank: Record<AffinityKey, number>;
   bonuses: Record<AffinityKey, number>;
+  lumiiAffinities: Record<AffinityKey, number>;
+  lumiiBonuses: Record<AffinityKey, number>;
+  lumiiForged: string[];
+  lumiiEminence: number;
   reserved: string[];
   forged: string[];
   eminence: number;
   wellSel: Partial<Record<AffinityKey, number>>;
   nudge: string | null;
   view: TutorialForgeView;
-  t3choice: string | null;
   ffDone: boolean;
-  tier3PlanVersion: number;
-  tier3GrantPending: boolean;
-  tier2GrantPending: boolean;
-  tier2DeliveryComplete: boolean;
   finalGrantPending: boolean;
   finalDeliveryComplete: boolean;
   lumDone: boolean;
   showLuminary: boolean;
+  firstContactStance: FirstContactStance | null;
+  completed: boolean;
+  completionId: string | null;
   navigateTo: string | null;
   animTrigger?: { type: "forge"; eminence: number; name: string; cardId: string } | { type: "harness"; affinities: AffinityKey[] };
 }
@@ -52,11 +53,16 @@ const INIT_BONUSES: Record<AffinityKey, number> = {
 export const INIT_STATE: TutState = {
   beat: 0, dlgLine: 0, subStep: 0,
   affinities: { ...INIT_AFFINITIES },
-  wellBank: { flare: 7, continuum: 7, verdance: 7, abyss: 7, radiance: 7, singularity: 5 },
+  wellBank: { flare: 4, continuum: 4, verdance: 4, abyss: 4, radiance: 4, singularity: 5 },
   bonuses: { ...INIT_BONUSES },
+  lumiiAffinities: { ...INIT_AFFINITIES },
+  lumiiBonuses: { ...INIT_BONUSES },
+  lumiiForged: [],
+  lumiiEminence: 0,
   reserved: [], forged: [], eminence: 0,
   wellSel: {}, nudge: null, view: "needed",
-  t3choice: null, ffDone: false, tier3PlanVersion: 0, tier3GrantPending: false, tier2GrantPending: false, tier2DeliveryComplete: false, finalGrantPending: false, finalDeliveryComplete: false, lumDone: false, showLuminary: false,
+  ffDone: false, finalGrantPending: false, finalDeliveryComplete: false, lumDone: false, showLuminary: false,
+  firstContactStance: null, completed: false, completionId: null,
   navigateTo: null,
 };
 
@@ -65,7 +71,8 @@ export type TAction =
   | { type: "NEXT_BEAT" }
   | { type: "RESET" }
   | { type: "PLAYER_RESPONSE" }
-  | { type: "BRANCH_CHOICE"; choice: "go" | "home" }
+  | { type: "CHOOSE_FIRST_CONTACT"; stance: FirstContactStance }
+  | { type: "COMPLETE_TUTORIAL"; completionId: string }
   | { type: "SEL_AFF"; affinity: AffinityKey; delta: 1 | 2 | -1 }
   | { type: "CLEAR_SEL" }
   | { type: "HARNESS" }
@@ -75,13 +82,9 @@ export type TAction =
   | { type: "SET_VIEW"; view: TutorialForgeView }
   | { type: "NUDGE"; msg: string | null }
   | { type: "FF_DONE" }
-  | { type: "INIT_TIER3_PLAN" }
-  | { type: "START_TIER2_DELIVERY" }
-  | { type: "GRANT_TIER2_RESERVE" }
-  | { type: "START_TIER3_DELIVERY" }
-  | { type: "GRANT_TIER3_RESERVE" }
   | { type: "START_FINAL_DELIVERY" }
   | { type: "GRANT_FINAL_RESERVE" }
+  | { type: "COMPLETE_LUMII_TURN" }
   | { type: "LUM_DONE" }
   | { type: "PANEL_VIEWED" }
   | { type: "JUMP_BEAT"; toIndex: number };
@@ -138,49 +141,161 @@ function applyForge(s: TutState, cardId: string): Partial<TutState> {
   const card = TUTORIAL_CARDS[cardId];
   if (!card) return {};
   const heldAfterForge = spendAffinitiesForArtifact(s.affinities, card, s.bonuses);
+  const wellAfterForge = { ...s.wellBank };
+  for (const affinity of Object.keys(heldAfterForge) as AffinityKey[]) {
+    const spent = (s.affinities[affinity] ?? 0) - (heldAfterForge[affinity] ?? 0);
+    if (spent > 0) wellAfterForge[affinity] = (wellAfterForge[affinity] ?? 0) + spent;
+  }
   const newBonuses = { ...s.bonuses };
   if (card.bonusAffinity !== "singularity") {
     newBonuses[card.bonusAffinity] = (newBonuses[card.bonusAffinity] ?? 0) + 1;
   }
   return {
     affinities: heldAfterForge,
+    wellBank: wellAfterForge,
     bonuses: newBonuses,
     forged: [...s.forged, cardId],
     eminence: s.eminence + card.eminence,
   };
 }
 
+function applyTimeSkip(s: TutState): Pick<TutState, "forged" | "bonuses" | "eminence" | "lumiiEminence"> {
+  const forged = [...s.forged];
+  const bonuses = { ...s.bonuses };
+  let eminence = s.eminence;
+
+  for (const cardId of FAST_FORWARD_CARDS) {
+    const card = TUTORIAL_CARDS[cardId];
+    if (!card || forged.includes(cardId)) continue;
+    forged.push(cardId);
+    bonuses[card.bonusAffinity] = (bonuses[card.bonusAffinity] ?? 0) + 1;
+    eminence += card.eminence;
+  }
+
+  return {
+    forged,
+    bonuses,
+    eminence,
+    lumiiEminence: Math.max(s.lumiiEminence, LUMII_FAST_FORWARD_EMINENCE),
+  };
+}
+
+function applyLumiiTurn(s: TutState, action: TutorialOpponentAction): Partial<TutState> | null {
+  if (action.kind === "harness") {
+    const counts = action.affinities.reduce<Partial<Record<AffinityKey, number>>>((result, affinity) => {
+      result[affinity] = (result[affinity] ?? 0) + 1;
+      return result;
+    }, {});
+    const amounts = Object.values(counts);
+    const isThreeDifferent = action.affinities.length === 3 && amounts.length === 3;
+    const isTwoSame = action.affinities.length === 2 && amounts.length === 1 && amounts[0] === 2;
+    if (!isThreeDifferent && !isTwoSame) return null;
+
+    for (const [affinity, amount] of Object.entries(counts) as [AffinityKey, number][]) {
+      const available = s.wellBank[affinity] ?? 0;
+      if (available < amount || (amount === 2 && available < 4)) return null;
+    }
+
+    const lumiiAffinities = { ...s.lumiiAffinities };
+    const wellBank = { ...s.wellBank };
+    for (const [affinity, amount] of Object.entries(counts) as [AffinityKey, number][]) {
+      lumiiAffinities[affinity] = (lumiiAffinities[affinity] ?? 0) + amount;
+      wellBank[affinity] = Math.max(0, (wellBank[affinity] ?? 0) - amount);
+    }
+    return { lumiiAffinities, wellBank };
+  }
+
+  const card = TUTORIAL_CARDS[action.cardId];
+  if (!card || !canAfford(card, s.lumiiAffinities, s.lumiiBonuses)) return null;
+  const lumiiAffinities = spendAffinitiesForArtifact(s.lumiiAffinities, card, s.lumiiBonuses);
+  const wellBank = { ...s.wellBank };
+  for (const affinity of Object.keys(lumiiAffinities) as AffinityKey[]) {
+    const spent = (s.lumiiAffinities[affinity] ?? 0) - (lumiiAffinities[affinity] ?? 0);
+    if (spent > 0) wellBank[affinity] = (wellBank[affinity] ?? 0) + spent;
+  }
+  const lumiiBonuses = { ...s.lumiiBonuses };
+  lumiiBonuses[card.bonusAffinity] = (lumiiBonuses[card.bonusAffinity] ?? 0) + 1;
+  return {
+    lumiiAffinities,
+    lumiiBonuses,
+    wellBank,
+    lumiiForged: [...s.lumiiForged, action.cardId],
+    lumiiEminence: s.lumiiEminence + card.eminence,
+  };
+}
+
+function matchesHarnessPattern(
+  selection: Partial<Record<AffinityKey, number>>,
+  pattern: Readonly<Partial<Record<AffinityKey, number>>>,
+): boolean {
+  return Object.entries(selection).every(
+    ([affinity, count]) => !count || pattern[affinity as AffinityKey] === count,
+  ) && Object.entries(pattern).every(
+    ([affinity, count]) => (selection[affinity as AffinityKey] ?? 0) === count,
+  );
+}
+
 // ─── Reducer ──────────────────────────────────────────────────────────────────
 export function tutorialReducer(s: TutState, a: TAction): TutState {
+  if (a.type === "RESET") return { ...INIT_STATE };
   const beat = TUTORIAL_BEATS[s.beat];
+  if (!beat) return s;
   const isLastDlg = s.dlgLine >= beat.dialogue.length - 1;
+  const interactionPolicy = getTutorialInteractionPolicy(beat.id, s.subStep);
+  const interactionUnlocked = isTutorialInteractionUnlocked(beat.id, s.subStep, s.dlgLine);
 
   switch (a.type) {
     case "NEXT_DLG": {
       if (!isLastDlg) return { ...s, dlgLine: s.dlgLine + 1, nudge: null };
-      if (beat.id === "b3b_farewell") {
-        return { ...s, navigateTo: "/" };
-      }
       if (beat.completion.type === "dialogue") {
+        if (s.beat >= TUTORIAL_BEATS.length - 1) {
+          return { ...s, dlgLine: Math.max(0, beat.dialogue.length - 1), nudge: null };
+        }
         const nextBeat = s.beat + 1;
         return { ...s, beat: nextBeat, dlgLine: 0, subStep: 0, nudge: null };
       }
       return { ...s, dlgLine: s.dlgLine, nudge: null };
     }
 
+    case "COMPLETE_TUTORIAL": {
+      if (beat.id !== "b18_victory" || !isLastDlg || s.completed) return s;
+      return { ...s, completed: true, completionId: a.completionId, nudge: null };
+    }
+
     case "NEXT_BEAT": {
+      if (beat.completion.type !== "animation") return s;
       const nextBeat = s.beat + 1;
       if (nextBeat >= TUTORIAL_BEATS.length) return s;
       return { ...s, beat: nextBeat, dlgLine: 0, subStep: 0, nudge: null, wellSel: {} };
     }
 
     case "SEL_AFF": {
-      const cur = s.wellSel[a.affinity] ?? 0;
-      const next = Math.max(0, cur + a.delta);
-      const newSel = { ...s.wellSel, [a.affinity]: next };
       if (a.delta < 0) {
+        const cur = s.wellSel[a.affinity] ?? 0;
+        const next = Math.max(0, cur + a.delta);
+        const newSel = { ...s.wellSel, [a.affinity]: next };
         return { ...s, wellSel: newSel, nudge: null };
       }
+
+      const guidedPattern = interactionUnlocked && interactionPolicy?.target.zone === "well"
+        ? interactionPolicy.target.harnessPattern
+        : null;
+      if (!guidedPattern) {
+        return { ...s, wellSel: {}, nudge: interactionPolicy?.wrongNudge ?? beat.wrongClickNudge ?? "Follow Lumii's current action." };
+      }
+
+      const currentSelectionIsValid = Object.entries(s.wellSel).every(
+        ([affinity, count]) => !count || guidedPattern[affinity as AffinityKey] === count,
+      );
+      const baseSelection = currentSelectionIsValid ? s.wellSel : {};
+      const cur = baseSelection[a.affinity] ?? 0;
+      const expected = guidedPattern[a.affinity] ?? 0;
+      if (cur !== 0 || expected !== a.delta) {
+        return { ...s, wellSel: {}, nudge: interactionPolicy?.wrongNudge ?? beat.wrongClickNudge ?? "Follow Lumii's highlighted Harness pattern." };
+      }
+
+      const next = cur + a.delta;
+      const newSel = { ...baseSelection, [a.affinity]: next };
       const totalSel = Object.values(newSel).reduce((a, b) => a + b, 0);
       if (totalSel > 10) return { ...s, nudge: "You have reached the affinity limit. Release some first." };
       const maxSingle = Math.max(0, ...Object.values(newSel).filter(v => v > 0));
@@ -195,15 +310,18 @@ export function tutorialReducer(s: TutState, a: TAction): TutState {
       return { ...s, wellSel: {}, nudge: null };
 
     case "HARNESS": {
+      if (interactionPolicy?.exactAction !== "HARNESS" || !interactionUnlocked) {
+        return { ...s, nudge: interactionPolicy?.wrongNudge ?? beat.wrongClickNudge ?? "Follow Lumii's current action." };
+      }
       const sel = s.wellSel;
       const total = Object.values(sel).reduce((a, b) => a + b, 0);
       if (total === 0) return { ...s, nudge: "Select the affinities you need first." };
 
       const selectedAmounts = Object.values(sel).filter((count) => count > 0);
-      const isUpToThreeDifferent = selectedAmounts.length >= 1 && selectedAmounts.length <= 3 && selectedAmounts.every((count) => count === 1);
+      const isThreeDifferent = selectedAmounts.length === 3 && selectedAmounts.every((count) => count === 1);
       const isTwoOfSame = selectedAmounts.length === 1 && selectedAmounts[0] === 2;
-      if (!isUpToThreeDifferent && !isTwoOfSame) {
-        return { ...s, nudge: "Harness up to 3 different affinities, or 2 of the same affinity." };
+      if (!isThreeDifferent && !isTwoOfSame) {
+        return { ...s, nudge: "Harness exactly 3 different affinities, or 2 of the same affinity." };
       }
       for (const [affinity, count] of Object.entries(sel) as [AffinityKey, number][]) {
         if (count > (s.wellBank[affinity] ?? 0)) {
@@ -216,30 +334,15 @@ export function tutorialReducer(s: TutState, a: TAction): TutState {
 
       const beatId = beat.id;
 
-      if (beatId === "b8_first_harness") {
-        if ((sel.flare ?? 0) !== 1 || (sel.continuum ?? 0) !== 1 || (sel.radiance ?? 0) !== 1) {
-          return { ...s, nudge: "Not yet. Follow the cost first — Flare, Continuum, and Radiance." };
-        }
-      }
-
-      if (beatId === "b11_forge_reserved" && s.subStep === 0) {
-        if ((sel.abyss ?? 0) !== 2) {
-          return { ...s, nudge: "Gather 2 Abyss affinities to forge the encrypted artifact." };
-        }
-      }
-
-      if (beatId === "b12_tier2" && s.subStep === 0) {
-        if ((sel.abyss ?? 0) !== 2) {
-          return { ...s, nudge: "Gather 2 Abyss affinities. Lumii's delivery covers the remaining cost." };
-        }
-      }
-
-      if (beatId === "b13_tier3") {
-        const required: Array<Partial<Record<AffinityKey, number>>> = [{ continuum: 2 }];
-        const expected = required[s.subStep];
-        if (!expected || Object.entries(sel).some(([affinity, count]) => count !== (expected[affinity as AffinityKey] ?? 0)) || Object.entries(expected).some(([affinity, count]) => (sel[affinity as AffinityKey] ?? 0) !== count)) {
-          return { ...s, nudge: "Follow the highlighted Harness pattern." };
-        }
+      const guidedPattern = interactionPolicy?.target.zone === "well"
+        ? interactionPolicy.target.harnessPattern
+        : null;
+      if (guidedPattern && !matchesHarnessPattern(sel, guidedPattern)) {
+        return {
+          ...s,
+          wellSel: {},
+          nudge: interactionPolicy?.wrongNudge ?? beat.wrongClickNudge ?? "Follow Lumii's highlighted Harness pattern.",
+        };
       }
 
       const heldAfterHarness = { ...s.affinities };
@@ -256,17 +359,8 @@ export function tutorialReducer(s: TutState, a: TAction): TutState {
       if (beatId === "b8_first_harness") {
         return { ...s, affinities: heldAfterHarness, wellBank: remainingWell, wellSel: {}, nudge: null, beat: s.beat + 1, dlgLine: 0, subStep: 0, animTrigger: harnessTrigger };
       }
-      if (beatId === "b12_tier2" && s.subStep === 0) {
-        return {
-          ...s,
-          affinities: heldAfterHarness,
-          wellBank: remainingWell,
-          wellSel: {},
-          nudge: null,
-          dlgLine: beat.dialogue.length - 1,
-          subStep: nextSubStep,
-          animTrigger: harnessTrigger,
-        };
+      if (beatId === "b11_forge_reserved") {
+        return { ...s, affinities: heldAfterHarness, wellBank: remainingWell, wellSel: {}, nudge: null, beat: s.beat + 1, dlgLine: 0, subStep: 0, animTrigger: harnessTrigger };
       }
       return { ...s, affinities: heldAfterHarness, wellBank: remainingWell, wellSel: {}, nudge: null, subStep: nextSubStep, animTrigger: harnessTrigger };
     }
@@ -278,27 +372,39 @@ export function tutorialReducer(s: TutState, a: TAction): TutState {
     case "RESERVE": {
       const cardId = a.cardId;
       const beatId = beat.id;
-      if (beatId === "b10_reserve") {
-        if (cardId !== RESERVE_CARD_ID) {
-          return { ...s, nudge: "Encrypt the highlighted artifact." };
+      if (
+        interactionPolicy?.exactAction === "RESERVE"
+        && interactionPolicy.completionEvent === "artifact_encrypted"
+        && interactionUnlocked
+        && beatId === "b10_reserve"
+      ) {
+        if (interactionPolicy.target.zone !== "forge" || cardId !== interactionPolicy.target.cardId) {
+          return { ...s, nudge: interactionPolicy.wrongNudge };
         }
         const heldAfterReserve = { ...s.affinities, singularity: (s.affinities.singularity ?? 0) + 1 };
         return {
           ...s,
           reserved: [...s.reserved, cardId],
           affinities: heldAfterReserve,
+          wellBank: {
+            ...s.wellBank,
+            singularity: Math.max(0, (s.wellBank.singularity ?? 0) - 1),
+          },
           beat: s.beat + 1,
           dlgLine: 0,
           subStep: 0,
           nudge: null,
         };
       }
-      return s;
+      return { ...s, nudge: interactionPolicy?.wrongNudge ?? "That is not the right action yet." };
     }
 
     case "FORGE_ARTIFACT": {
       const cardId = a.cardId;
       const beatId = beat.id;
+      if (interactionPolicy?.exactAction !== "FORGE_ARTIFACT" || !interactionUnlocked) {
+        return { ...s, nudge: interactionPolicy?.wrongNudge ?? beat.wrongClickNudge ?? "That is not the right moment." };
+      }
       const card = TUTORIAL_CARDS[cardId];
       if (!card) return s;
 
@@ -308,57 +414,24 @@ export function tutorialReducer(s: TutState, a: TAction): TutState {
 
       const forgeTrigger = { type: "forge" as const, eminence: card.eminence, name: card.name, cardId };
 
-      if (beatId === "b9_first_forge") {
-        if (cardId !== FIRST_FORGE_ID) {
-          return { ...s, nudge: "Forge the artifact Lumii highlighted." };
+      if (interactionPolicy.completionEvent === "artifact_forged" && beatId === "b9_first_forge") {
+        if (interactionPolicy.target.zone !== "forge" || cardId !== interactionPolicy.target.cardId) {
+          return { ...s, nudge: interactionPolicy.wrongNudge };
         }
         return { ...s, ...applyForge(s, cardId), beat: s.beat + 1, dlgLine: 0, subStep: 0, nudge: null, animTrigger: forgeTrigger };
       }
 
-      if (beatId === "b12_tier2") {
-        if (cardId !== TIER2_SINGULARITY_ID) {
-          return { ...s, nudge: "Forge the Verdance artifact Lumii highlighted." };
-        }
-        if (s.subStep < 1) {
-          return { ...s, nudge: "Gather the required affinities first." };
-        }
-        return { ...s, ...applyForge(s, cardId), beat: s.beat + 1, dlgLine: 0, subStep: 0, nudge: null, view: "needed", animTrigger: forgeTrigger };
-      }
-
-      if (beatId === "b13_tier3") {
-        if (cardId === T3_IMPOSSIBLE_ID) {
-          return { ...s, nudge: beat.wrongClickNudge ?? "That path is beyond this society's reach for now." };
-        }
-        if (cardId !== T3_PURCHASABLE_IDS[0]) {
-          return { ...s, nudge: "Forge Canopy Ascendant, the artifact Lumii highlighted." };
-        }
-        const forgeResult = applyForge(s, cardId);
-        const t13Trigger = { type: "forge" as const, eminence: card.eminence, name: card.name, cardId };
-        return {
-          ...s,
-          ...forgeResult,
-          t3choice: cardId,
-          beat: s.beat + 1,
-          dlgLine: 0,
-          subStep: 0,
-          nudge: null,
-          animTrigger: t13Trigger,
-        };
-      }
-
-      if (beatId === "b16_final_forge") {
-        if (cardId !== FINAL_T2_ID) {
-          return { ...s, nudge: "Forge the final artifact Lumii highlighted." };
+      if (interactionPolicy.completionEvent === "final_artifact_forged" && beatId === "b16_final_forge") {
+        if (interactionPolicy.target.zone !== "forge" || cardId !== interactionPolicy.target.cardId) {
+          return { ...s, nudge: interactionPolicy.wrongNudge };
         }
         if (!s.finalDeliveryComplete) {
           return { ...s, nudge: "Wait for Lumii's Continuum delivery." };
         }
         const forgeResult = applyForge(s, cardId);
-        const totalEm = (forgeResult.eminence ?? s.eminence) + VERDANCE_LUMINARY_EMINENCE;
         return {
           ...s,
           ...forgeResult,
-          eminence: totalEm,
           beat: s.beat + 1,
           dlgLine: 0,
           subStep: 0,
@@ -368,21 +441,21 @@ export function tutorialReducer(s: TutState, a: TAction): TutState {
         };
       }
 
-      return { ...s, nudge: "That is not the right moment." };
+      return { ...s, nudge: interactionPolicy?.wrongNudge ?? "That is not the right moment." };
     }
 
     case "FORGE_RESERVED": {
       const cardId = a.cardId;
       const beatId = beat.id;
+      if (interactionPolicy?.exactAction !== "FORGE_RESERVED" || !interactionUnlocked) {
+        return { ...s, nudge: interactionPolicy?.wrongNudge ?? beat.wrongClickNudge ?? "That is not the right action yet." };
+      }
       const card = TUTORIAL_CARDS[cardId];
       if (!card) return s;
 
-      if (beatId === "b11_forge_reserved") {
-        if (cardId !== RESERVE_CARD_ID) {
-          return { ...s, nudge: "Forge the encrypted artifact." };
-        }
-        if (s.subStep < 1) {
-          return { ...s, nudge: "Gather the required affinities first." };
+      if (interactionPolicy.completionEvent === "encrypted_artifact_forged" && beatId === "b11b_forge_reserved") {
+        if (interactionPolicy.target.zone !== "storage" || cardId !== interactionPolicy.target.cardId) {
+          return { ...s, nudge: interactionPolicy.wrongNudge };
         }
         if (!canAfford(card, s.affinities, s.bonuses)) {
           return { ...s, nudge: "Gather the required affinities first." };
@@ -399,24 +472,41 @@ export function tutorialReducer(s: TutState, a: TAction): TutState {
           animTrigger: { type: "forge" as const, eminence: card.eminence, name: card.name, cardId },
         };
       }
-      return s;
+      return { ...s, nudge: interactionPolicy?.wrongNudge ?? "That is not the right action yet." };
     }
 
-    case "BRANCH_CHOICE": {
-      const farewellIdx = TUTORIAL_BEATS.findIndex(b => b.id === "b3b_farewell");
+    case "COMPLETE_LUMII_TURN": {
+      if (beat.completion.type !== "opponent_action") return s;
+      const result = applyLumiiTurn(s, beat.completion.action);
+      if (!result || s.beat >= TUTORIAL_BEATS.length - 1) return s;
+      return {
+        ...s,
+        ...result,
+        beat: s.beat + 1,
+        dlgLine: 0,
+        subStep: 0,
+        nudge: null,
+        wellSel: {},
+        animTrigger: undefined,
+      };
+    }
+
+    case "CHOOSE_FIRST_CONTACT": {
+      if (beat.id !== "b3c_border" || !isLastDlg) return s;
       const shatterIdx  = TUTORIAL_BEATS.findIndex(b => b.id === "b4_shatter");
-      if (a.choice === "home") {
-        return { ...s, beat: farewellIdx, dlgLine: 0, subStep: 0, nudge: null };
-      }
-      return { ...s, beat: shatterIdx, dlgLine: 0, subStep: 0, nudge: null };
+      return {
+        ...s,
+        firstContactStance: a.stance,
+        beat: shatterIdx,
+        dlgLine: 0,
+        subStep: 0,
+        nudge: null,
+      };
     }
-
-    case "RESET":
-      return { ...INIT_STATE };
 
     case "PLAYER_RESPONSE": {
       const beat = TUTORIAL_BEATS[s.beat];
-      if (!beat) return s;
+      if (!beat?.playerResponse || !isLastDlg) return s;
       if (beat.completion.type === "dialogue") {
         return { ...s, beat: s.beat + 1, dlgLine: 0, subStep: 0, nudge: null };
       }
@@ -427,12 +517,11 @@ export function tutorialReducer(s: TutState, a: TAction): TutState {
       return { ...s, nudge: a.msg };
 
     case "FF_DONE": {
-      // The time skip reveals the dormant Luminary; it does not forge unseen
-      // artifacts or grant invisible Verdance depth.
+      if (beat.id !== "b15_fast_forward" || s.ffDone) return s;
       return {
         ...s,
+        ...applyTimeSkip(s),
         ffDone: true,
-        affinities: { ...s.affinities, continuum: (s.affinities.continuum ?? 0) + 3 },
         beat: s.beat + 1,
         dlgLine: 0,
         subStep: 0,
@@ -440,72 +529,13 @@ export function tutorialReducer(s: TutState, a: TAction): TutState {
       };
     }
 
-    case "INIT_TIER3_PLAN": {
-      if (beat.id !== "b13_tier3" || s.tier3PlanVersion >= 3) return s;
-      return {
-        ...s,
-        // Older saved tutorials reached Tier 3 with the former free-forge
-        // path. Restart this lesson at its first legal Harness pattern.
-        affinities: { flare: 0, continuum: 0, verdance: 0, abyss: 0, radiance: 0, singularity: 0 },
-        wellBank: { flare: 7, continuum: 7, verdance: 7, abyss: 7, radiance: 7, singularity: 5 },
-        wellSel: {},
-        dlgLine: 0,
-        subStep: 0,
-        nudge: null,
-        tier3PlanVersion: 3,
-        tier3GrantPending: false,
-      };
-    }
-
-    // A forge lesson must never point at a card the player cannot reach after
-    // its one instructed Harness. Lumii supplies the calculated remaining gap.
-    case "START_TIER2_DELIVERY": {
-      if (beat.id !== "b12_tier2" || s.subStep !== 0 || s.tier2GrantPending || s.tier2DeliveryComplete) return s;
-      return { ...s, tier2GrantPending: true, wellSel: {}, nudge: null };
-    }
-
-    case "GRANT_TIER2_RESERVE": {
-      if (beat.id !== "b12_tier2" || !s.tier2GrantPending) return s;
-      // After the guided two-Abyss Harness, this supply makes Verdant
-      // Emergence genuinely affordable using its printed, post-bonus cost.
-      return {
-        ...s,
-        affinities: { ...s.affinities, verdance: (s.affinities.verdance ?? 0) + 1, abyss: (s.affinities.abyss ?? 0) + 1 },
-        wellBank: {
-          ...s.wellBank,
-          verdance: Math.max(0, (s.wellBank.verdance ?? 0) - 1),
-          abyss: Math.max(0, (s.wellBank.abyss ?? 0) - 1),
-        },
-        tier2GrantPending: false,
-        tier2DeliveryComplete: true,
-      };
-    }
-
-    case "START_TIER3_DELIVERY": {
-      if (beat.id !== "b13_tier3" || s.tier3PlanVersion !== 3 || s.tier3GrantPending) return s;
-      return { ...s, tier3GrantPending: true, wellSel: {}, nudge: null };
-    }
-
-    case "GRANT_TIER3_RESERVE": {
-      if (beat.id !== "b13_tier3" || !s.tier3GrantPending) return s;
-      return {
-        ...s,
-        // The two Continuum from the next legal Harness complete this cost.
-        // Three Verdance bonuses already erase Canopy's Verdance cost.
-        affinities: { ...s.affinities, continuum: 3, radiance: 2, singularity: 1 },
-        wellBank: {
-          ...s.wellBank,
-          continuum: Math.max(0, s.wellBank.continuum - 3),
-          radiance: Math.max(0, s.wellBank.radiance - 2),
-          singularity: Math.max(0, s.wellBank.singularity - 1),
-        },
-        tier3GrantPending: false,
-        tier3PlanVersion: 4,
-      };
-    }
-
     case "START_FINAL_DELIVERY": {
-      if (beat.id !== "b16_final_forge" || s.finalGrantPending || s.finalDeliveryComplete) return s;
+      if (
+        beat.id !== "b16_final_forge"
+        || !interactionUnlocked
+        || s.finalGrantPending
+        || s.finalDeliveryComplete
+      ) return s;
       return { ...s, finalGrantPending: true, wellSel: {}, nudge: null };
     }
 
@@ -513,8 +543,8 @@ export function tutorialReducer(s: TutState, a: TAction): TutState {
       if (beat.id !== "b16_final_forge" || !s.finalGrantPending) return s;
       return {
         ...s,
-        affinities: { ...s.affinities, continuum: (s.affinities.continuum ?? 0) + 5 },
-        wellBank: { ...s.wellBank, continuum: Math.max(0, (s.wellBank.continuum ?? 0) - 5) },
+        affinities: { ...s.affinities, continuum: (s.affinities.continuum ?? 0) + 4 },
+        wellBank: { ...s.wellBank, continuum: Math.max(0, (s.wellBank.continuum ?? 0) - 4) },
         finalGrantPending: false,
         finalDeliveryComplete: true,
       };
@@ -522,7 +552,18 @@ export function tutorialReducer(s: TutState, a: TAction): TutState {
 
 
     case "LUM_DONE":
-      return { ...s, lumDone: true, beat: s.beat + 1, dlgLine: 0, subStep: 0, nudge: null };
+      if (beat.id !== "b17_luminary" || s.lumDone) return s;
+      return {
+        ...s,
+        lumDone: true,
+        beat: s.beat + 1,
+        dlgLine: 0,
+        subStep: 0,
+        nudge: null,
+        eminence: s.eminence + VERDANCE_LUMINARY_EMINENCE,
+        affinities: { ...s.affinities, verdance: (s.affinities.verdance ?? 0) + 1 },
+        wellBank: { ...s.wellBank, verdance: Math.max(0, (s.wellBank.verdance ?? 0) - 1) },
+      };
 
     case "PANEL_VIEWED": {
       const beat = TUTORIAL_BEATS[s.beat];

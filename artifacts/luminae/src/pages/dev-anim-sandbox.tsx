@@ -127,7 +127,7 @@ const SANDBOX_LUMINARIES: SandboxLuminary[] = [
     id: "lum_compass",
     name: "???",
     domain: "Erasure",
-    eminence: 0,
+    eminence: 1,
     flavor:
       "Everyone remembers something happened, but no one recalls what was lost.",
   },
@@ -2595,7 +2595,7 @@ function describeAftermath(steps: AnimationTimelineStep[]): AftermathLine[] {
           seeded: "#22c55e",
         };
         lines.push({
-          label: `${step.keyword.toUpperCase()} residue → ${target}${step.victoryRequirementChange !== undefined ? ` · victory +${step.victoryRequirementChange}` : ""}`,
+          label: `${step.keyword.toUpperCase()} residue → ${target}${step.victoryRequirementChange !== undefined ? ` · victory requirement +${step.victoryRequirementChange}` : ""}`,
           color: kwColors[step.keyword] ?? "#94a3b8",
         });
         break;
@@ -2635,6 +2635,15 @@ function describeAftermath(steps: AnimationTimelineStep[]): AftermathLine[] {
         lines.push({
           label: `Affinity returned from ${n} player${n !== 1 ? "s" : ""}`,
           color: "#60a5fa",
+        });
+        break;
+      }
+      case "affinityGain": {
+        const n = step.playerIds.length;
+        const affinity = step.affinityType ? ` ${step.affinityType}` : "";
+        lines.push({
+          label: `+${step.amount}${affinity} permanent Affinity → ${n > 1 ? `${n} players` : "owner"}`,
+          color: "#4ade80",
         });
         break;
       }
@@ -2773,7 +2782,7 @@ function describeStep(step: AnimationTimelineStep): string {
     case "residue": {
       const n = step.targetIds.length;
       const threshold = step.victoryRequirementChange !== undefined
-        ? ` · victory +${step.victoryRequirementChange}`
+        ? ` · victory requirement +${step.victoryRequirementChange}`
         : "";
       return `residue:${step.keyword} · ${n > 0 ? `${n} card${n !== 1 ? "s" : ""}` : "deck tops"}${threshold}`;
     }
@@ -2797,6 +2806,10 @@ function describeStep(step: AnimationTimelineStep): string {
       const t = step.affinityType ? ` (${step.affinityType})` : "";
       const amount = step.amount ? ` × ${step.amount}` : "";
       return `affinityReturn${t}${amount} · ${step.playerIds.length} player${step.playerIds.length !== 1 ? "s" : ""}`;
+    }
+    case "affinityGain": {
+      const affinity = step.affinityType ? ` ${step.affinityType}` : "";
+      return `affinityGain · +${step.amount}${affinity} → ${step.playerIds.length} player${step.playerIds.length !== 1 ? "s" : ""}`;
     }
     case "deckScry": {
       const tiers = step.tierIds.map((t) => t.replace("tier", "T")).join("+");
@@ -2830,6 +2843,8 @@ function stepPipColor(step: AnimationTimelineStep): string {
       return "#fbbf24";
     case "affinityReturn":
       return "#60a5fa";
+    case "affinityGain":
+      return "#4ade80";
     case "deckScry":
       return "#c084fc";
     case "pendingAction":
@@ -3694,7 +3709,7 @@ export default function DevAnimSandbox() {
   );
 
   // One representative arrival-color hex per AffinityKey that maps through FANFARE_COLOR_MAP.
-  // Any hex not in the map falls back to 'singularity' inside playLuminaryFanfare().
+  // Unknown and gold hexes fall back to neutral Radiance in playLuminaryFanfare().
   const FANFARE_PRESET_COLORS: Record<AffinityKey, string> = {
     flare: "#ff5a3c",
     continuum: "#60a5fa",
@@ -3746,6 +3761,23 @@ export default function DevAnimSandbox() {
     burn_pile_particle:
       "Press Play to preview the BurnPileParticle — a charred fragment that arcs from the burned slot to the burn-pile chip.",
   };
+
+  const activationProcedure = active
+    ? LUMINARY_ANIMATION_CONFIG[active.id]?.procedureSteps
+    : undefined;
+  const victoryRequirementStep = activationProcedure?.find((step) => (
+    step.type === "victoryRequirementChange" ||
+    (step.type === "residue" && step.victoryRequirementChange !== undefined)
+  ));
+  const victoryRequirementChange = victoryRequirementStep?.type === "victoryRequirementChange"
+    ? victoryRequirementStep.amount
+    : victoryRequirementStep?.type === "residue"
+      ? victoryRequirementStep.victoryRequirementChange
+      : undefined;
+  const previewVictoryRequirementBefore = victoryRequirementChange !== undefined ? 15 : undefined;
+  const previewVictoryRequirementAfter = victoryRequirementChange !== undefined
+    ? 15 + victoryRequirementChange
+    : undefined;
 
   return (
     <div className="dark min-h-[100dvh] bg-background text-foreground flex flex-col">
@@ -4619,6 +4651,9 @@ export default function DevAnimSandbox() {
           effectType={activationEffectType}
           luminaryName={active.name}
           triggeringPlayerName="Preview Player"
+          procedure={activationProcedure}
+          victoryRequirementBefore={previewVictoryRequirementBefore}
+          victoryRequirementAfter={previewVictoryRequirementAfter}
           onComplete={() => setActive(null)}
         />
       )}

@@ -1,0 +1,1132 @@
+.antimatter-blueprint-card {
+  --bp-line: rgba(197, 220, 237, 0.18);
+  --bp-muted: rgba(220, 230, 238, 0.58);
+  --bp-brass: #c9a967;
+  position: relative;
+  display: grid;
+  grid-template-columns: minmax(250px, 0.92fr) minmax(430px, 1.72fr) minmax(154px, 0.52fr);
+  width: min(1080px, 100%);
+  min-height: 360px;
+  overflow: hidden;
+  border: 1px solid rgba(183, 203, 220, 0.28);
+  border-radius: 8px;
+  color: #f0f4f7;
+  background: #080c12;
+  box-shadow:
+    0 26px 70px rgba(0, 0, 0, 0.48),
+    inset 0 0 0 1px rgba(255, 255, 255, 0.025);
+  isolation: isolate;
+}
+
+.antimatter-blueprint-card::before,
+.antimatter-blueprint-card::after {
+  position: absolute;
+  z-index: 5;
+  width: 54px;
+  height: 5px;
+  content: "";
+  background: var(--bp-brass);
+}
+
+.antimatter-blueprint-card::before {
+  top: 0;
+  left: 0;
+}
+
+.antimatter-blueprint-card::after {
+  right: 0;
+  bottom: 0;
+}
+
+.antimatter-blueprint-card--manifested {
+  --bp-line: rgba(255, 183, 96, 0.24);
+  --bp-brass: #ef9e55;
+  border-color: rgba(240, 157, 80, 0.5);
+  box-shadow:
+    0 26px 70px rgba(0, 0, 0, 0.5),
+    0 0 38px rgba(239, 99, 52, 0.13),
+    inset 0 0 0 1px rgba(255, 202, 138, 0.05);
+}
+
+.antimatter-blueprint-card__art {
+  position: relative;
+  min-width: 0;
+  overflow: hidden;
+  border-right: 1px solid var(--bp-line);
+  background: #030509;
+}
+
+.antimatter-blueprint-card__device-image {
+  position: absolute;
+  inset: 0;
+  width: 100%;
+  height: 100%;
+  object-fit: cover;
+  object-position: 54% center;
+  filter: saturate(0.94) contrast(1.05);
+}
+
+.antimatter-blueprint-card__art-shade {
+  position: absolute;
+  inset: 0;
+  background:
+    linear-gradient(90deg, rgba(3, 5, 9, 0.04), rgba(3, 5, 9, 0.02) 60%, rgba(3, 5, 9, 0.86)),
+    linear-gradient(0deg, rgba(3, 5, 9, 0.92), transparent 40%, rgba(3, 5, 9, 0.1));
+}
+
+.antimatter-blueprint-card__device-label {
+  position: absolute;
+  top: 18px;
+  left: 18px;
+  padding: 5px 7px;
+  color: rgba(231, 239, 244, 0.7);
+  border-left: 2px solid var(--bp-brass);
+  background: rgba(2, 4, 8, 0.68);
+  font-family: var(--app-font-mono);
+  font-size: 7px;
+  line-height: 1;
+  text-transform: uppercase;
+  letter-spacing: 0;
+}
+
+.antimatter-blueprint-card__serial,
+.antimatter-blueprint-card__scale {
+  position: absolute;
+  bottom: 18px;
+  font-family: var(--app-font-mono);
+  font-size: 9px;
+  line-height: 1;
+  letter-spacing: 0;
+  text-transform: uppercase;
+}
+
+.antimatter-blueprint-card__serial { left: 18px; color: rgba(225, 235, 242, 0.64); }
+.antimatter-blueprint-card__scale { right: 18px; color: var(--bp-brass); }
+
+.antimatter-blueprint-card__record {
+  display: flex;
+  min-width: 0;
+  flex-direction: column;
+  padding: 23px 24px 18px;
+  background:
+    linear-gradient(135deg, rgba(20, 29, 39, 0.94), rgba(7, 11, 16, 0.98)),
+    repeating-linear-gradient(0deg, transparent 0 23px, rgba(255, 255, 255, 0.018) 24px);
+}
+
+.antimatter-blueprint-card__header {
+  display: flex;
+  align-items: flex-start;
+  justify-content: space-between;
+  gap: 14px;
+  padding-bottom: 12px;
+  border-bottom: 1px solid var(--bp-line);
+}
+
+.antimatter-blueprint-card__header p,
+.antimatter-blueprint-card__state-mark + p {
+  margin: 0 0 5px;
+  color: var(--bp-brass);
+  font-family: var(--app-font-mono);
+  font-size: 9px;
+  font-weight: 700;
+  line-height: 1.2;
+  text-transform: uppercase;
+  letter-spacing: 0;
+}
+
+.antimatter-blueprint-card__header h2 {
+  margin: 0;
+  color: #f5f0e8;
+  font-family: var(--app-font-serif);
+  font-size: clamp(23px, 2.25vw, 34px);
+  font-weight: 500;
+  line-height: 1.04;
+  letter-spacing: 0;
+}
+
+.antimatter-blueprint-card__privacy {
+  display: inline-flex;
+  flex: 0 0 auto;
+  align-items: center;
+  gap: 6px;
+  padding: 6px 8px;
+  color: rgba(227, 237, 244, 0.72);
+  border: 1px solid rgba(197, 220, 237, 0.16);
+  border-radius: 3px;
+  background: rgba(255, 255, 255, 0.025);
+  font-family: var(--app-font-mono);
+  font-size: 8px;
+  line-height: 1;
+  text-transform: uppercase;
+  letter-spacing: 0;
+  white-space: nowrap;
+}
+
+.antimatter-blueprint-card__privacy svg { width: 11px; height: 11px; }
+.antimatter-blueprint-card--manifested .antimatter-blueprint-card__privacy { color: #ffd0a3; border-color: rgba(255, 159, 80, 0.28); }
+
+.antimatter-blueprint-card__flavor {
+  max-width: 54ch;
+  margin: 13px 0 10px;
+  color: rgba(222, 229, 235, 0.62);
+  font-family: var(--app-font-serif);
+  font-size: 12px;
+  font-style: italic;
+  line-height: 1.45;
+  letter-spacing: 0;
+}
+
+.antimatter-blueprint-card__effect {
+  margin-bottom: 12px;
+  padding: 9px 11px;
+  border-left: 2px solid var(--bp-brass);
+  background: rgba(255, 255, 255, 0.025);
+}
+
+.antimatter-blueprint-card__effect > span {
+  display: block;
+  margin-bottom: 4px;
+  color: var(--bp-brass);
+  font-family: var(--app-font-mono);
+  font-size: 7px;
+  font-weight: 700;
+  text-transform: uppercase;
+  letter-spacing: 0;
+}
+
+.antimatter-blueprint-card__effect p {
+  margin: 0;
+  color: rgba(231, 237, 241, 0.72);
+  font-size: 9px;
+  line-height: 1.4;
+  letter-spacing: 0;
+}
+
+.antimatter-blueprint-card__covenant-effect {
+  display: grid;
+  grid-template-columns: 14px auto minmax(0, 1fr);
+  align-items: center;
+  gap: 6px;
+  margin-top: 8px;
+  padding-top: 8px;
+  color: #ffb099;
+  border-top: 1px solid rgba(240, 103, 72, 0.25);
+}
+
+.antimatter-blueprint-card__covenant-effect svg { width: 12px; height: 12px; }
+.antimatter-blueprint-card__covenant-effect strong { font-family: var(--app-font-mono); font-size: 7px; text-transform: uppercase; letter-spacing: 0; }
+.antimatter-blueprint-card__covenant-effect span { color: rgba(241, 220, 213, 0.76); font-size: 8px; line-height: 1.3; letter-spacing: 0; }
+
+.antimatter-blueprint-card__sockets {
+  display: grid;
+  grid-template-columns: repeat(2, minmax(0, 1fr));
+  gap: 8px 12px;
+}
+
+.antimatter-blueprint-card__socket {
+  display: grid;
+  grid-template-columns: 44px minmax(0, 1fr);
+  min-width: 0;
+  align-items: center;
+  gap: 9px;
+  padding: 5px 0;
+  color: inherit;
+  text-align: left;
+  border-bottom: 1px solid rgba(203, 221, 234, 0.1);
+  background: transparent;
+  transition: border-color 140ms ease, background-color 140ms ease;
+}
+
+.antimatter-blueprint-card__socket:hover {
+  border-bottom-color: rgba(207, 226, 239, 0.28);
+  background: rgba(255, 255, 255, 0.025);
+}
+
+.antimatter-blueprint-card__socket:focus-visible {
+  outline: 1px solid #8bc8e8;
+  outline-offset: 2px;
+}
+
+.antimatter-blueprint-card__socket-image {
+  position: relative;
+  display: grid;
+  width: 44px;
+  height: 44px;
+  overflow: hidden;
+  place-items: center;
+  color: rgba(216, 229, 238, 0.34);
+  border: 1px solid rgba(190, 213, 230, 0.18);
+  border-radius: 3px;
+  background: rgba(255, 255, 255, 0.025);
+}
+
+.antimatter-blueprint-card__socket-image > img { width: 100%; height: 100%; object-fit: cover; }
+.antimatter-blueprint-card__socket-state {
+  position: absolute;
+  right: 2px;
+  bottom: 2px;
+  display: grid;
+  width: 14px;
+  height: 14px;
+  place-items: center;
+  color: rgba(223, 233, 239, 0.82);
+  border: 1px solid rgba(206, 223, 234, 0.22);
+  border-radius: 50%;
+  background: rgba(7, 12, 17, 0.9);
+}
+
+.antimatter-blueprint-card__socket-state[data-matched="true"] {
+  color: #081009;
+  border-color: transparent;
+  background: #a7e4bd;
+}
+
+.antimatter-blueprint-card__socket-state svg { width: 8px; height: 8px; stroke-width: 2.4; }
+
+.antimatter-blueprint-card__socket-copy {
+  display: flex;
+  min-width: 0;
+  flex-direction: column;
+  gap: 1px;
+}
+
+.antimatter-blueprint-card__socket-copy span,
+.antimatter-blueprint-card__socket-copy small {
+  overflow: hidden;
+  font-family: var(--app-font-mono);
+  text-overflow: ellipsis;
+  text-transform: uppercase;
+  white-space: nowrap;
+  letter-spacing: 0;
+}
+
+.antimatter-blueprint-card__socket-copy span { color: var(--bp-muted); font-size: 7px; }
+.antimatter-blueprint-card__socket-copy strong { overflow: hidden; color: #e7edf1; font-size: 10px; font-weight: 650; line-height: 1.25; text-overflow: ellipsis; white-space: nowrap; }
+.antimatter-blueprint-card__socket-copy small { color: rgba(202, 219, 230, 0.42); font-size: 7px; }
+.antimatter-blueprint-card__socket[data-complete="false"] .antimatter-blueprint-card__socket-image img {
+  opacity: 0.48;
+  filter: grayscale(0.78) saturate(0.45);
+}
+
+.antimatter-blueprint-card__socket[data-complete="false"] .antimatter-blueprint-card__socket-copy strong { color: rgba(211, 224, 233, 0.58); }
+
+.antimatter-blueprint-card__socket--flare[data-complete="true"] .antimatter-blueprint-card__socket-image { border-color: rgba(244, 90, 51, 0.45); }
+.antimatter-blueprint-card__socket--radiance[data-complete="true"] .antimatter-blueprint-card__socket-image { border-color: rgba(239, 204, 106, 0.5); }
+.antimatter-blueprint-card__socket--protocol[data-complete="true"] .antimatter-blueprint-card__socket-image { border-color: rgba(90, 169, 228, 0.5); }
+.antimatter-blueprint-card__socket--abyss[data-complete="true"] .antimatter-blueprint-card__socket-image { border-color: rgba(153, 112, 205, 0.5); }
+
+.antimatter-blueprint-card__constraints {
+  display: flex;
+  min-width: 0;
+  align-items: center;
+  gap: 13px;
+  margin-top: auto;
+  padding-top: 12px;
+  color: rgba(214, 227, 235, 0.48);
+  font-family: var(--app-font-mono);
+  font-size: 7px;
+  text-transform: uppercase;
+  letter-spacing: 0;
+}
+
+.antimatter-blueprint-card__constraints span { display: inline-flex; align-items: center; gap: 4px; white-space: nowrap; }
+.antimatter-blueprint-card__constraints svg { width: 10px; height: 10px; }
+
+.antimatter-blueprint-card__status {
+  display: flex;
+  min-width: 0;
+  align-items: center;
+  flex-direction: column;
+  padding: 22px 14px 17px;
+  text-align: center;
+  border-left: 1px solid var(--bp-line);
+  background: #090d12;
+}
+
+.antimatter-blueprint-card__state-mark {
+  display: grid;
+  width: 48px;
+  height: 48px;
+  margin-bottom: 13px;
+  place-items: center;
+  color: #a9c9de;
+  border: 1px solid rgba(157, 199, 226, 0.3);
+  border-radius: 50%;
+  background: rgba(104, 161, 196, 0.07);
+  box-shadow: 0 0 24px rgba(95, 165, 207, 0.1);
+}
+
+.antimatter-blueprint-card--manifested .antimatter-blueprint-card__state-mark {
+  color: #ffc487;
+  border-color: rgba(255, 155, 67, 0.48);
+  background: rgba(190, 60, 20, 0.1);
+  box-shadow: 0 0 28px rgba(243, 80, 32, 0.18);
+}
+
+.antimatter-blueprint-card__state-mark svg { width: 22px; height: 22px; stroke-width: 1.4; }
+.antimatter-blueprint-card__status > p { margin: 0 0 2px; color: var(--bp-muted); font-family: var(--app-font-mono); font-size: 8px; text-transform: uppercase; letter-spacing: 0; }
+.antimatter-blueprint-card__status > strong { color: #f3efe7; font-family: var(--app-font-serif); font-size: 28px; font-weight: 500; line-height: 1; letter-spacing: 0; }
+.antimatter-blueprint-card--manifested .antimatter-blueprint-card__status > strong { color: #ffc07c; text-transform: uppercase; }
+
+.antimatter-blueprint-card__meter {
+  display: grid;
+  grid-template-columns: repeat(4, 1fr);
+  width: 100%;
+  gap: 3px;
+  margin-top: 12px;
+}
+
+.antimatter-blueprint-card__meter span { height: 3px; background: rgba(200, 219, 231, 0.12); }
+.antimatter-blueprint-card__meter span[data-filled="true"] { background: #85bedc; box-shadow: 0 0 8px rgba(89, 177, 224, 0.35); }
+
+.antimatter-blueprint-card__rewards {
+  display: grid;
+  grid-template-columns: repeat(2, minmax(0, 1fr));
+  width: 100%;
+  margin-top: auto;
+  border-top: 1px solid var(--bp-line);
+  border-bottom: 1px solid var(--bp-line);
+}
+
+.antimatter-blueprint-card__rewards > div {
+  display: flex;
+  min-width: 0;
+  align-items: center;
+  flex-direction: column;
+  padding: 12px 4px;
+}
+
+.antimatter-blueprint-card__rewards > div + div { border-left: 1px solid var(--bp-line); }
+
+.antimatter-blueprint-card__rewards span,
+.antimatter-blueprint-card__rewards small,
+.antimatter-blueprint-card__action-rule span {
+  color: var(--bp-muted);
+  font-family: var(--app-font-mono);
+  font-size: 6px;
+  line-height: 1.2;
+  text-align: center;
+  text-transform: uppercase;
+  letter-spacing: 0;
+}
+
+.antimatter-blueprint-card__rewards strong { color: var(--bp-brass); font-family: var(--app-font-serif); font-size: 24px; font-weight: 500; line-height: 1; letter-spacing: 0; }
+.antimatter-blueprint-card__action-rule { padding-top: 14px; }
+.antimatter-blueprint-card__action-rule span { color: var(--bp-brass); font-weight: 700; }
+.antimatter-blueprint-card__action-rule p { margin: 5px 0 0; color: rgba(219, 228, 234, 0.58); font-size: 9px; line-height: 1.35; letter-spacing: 0; }
+
+.antimatter-blueprint-face {
+  --face-accent: #d5b56d;
+  position: relative;
+  width: min(960px, 100%);
+  aspect-ratio: 1.5;
+  min-height: 0;
+  overflow: hidden;
+  color: #f2f4f5;
+  border: 1px solid rgba(213, 224, 232, 0.38);
+  border-radius: 8px;
+  background: #030509;
+  box-shadow:
+    0 28px 76px rgba(0, 0, 0, 0.54),
+    inset 0 0 0 1px rgba(255, 255, 255, 0.025);
+  isolation: isolate;
+}
+
+.antimatter-blueprint-face::before {
+  position: absolute;
+  z-index: 7;
+  inset: 8px;
+  content: "";
+  border: 1px solid rgba(222, 232, 238, 0.12);
+  border-radius: 4px;
+  pointer-events: none;
+}
+
+.antimatter-blueprint-face::after {
+  position: absolute;
+  z-index: 8;
+  top: 0;
+  left: 0;
+  width: 76px;
+  height: 3px;
+  content: "";
+  background: var(--face-accent);
+  pointer-events: none;
+}
+
+.antimatter-blueprint-face--manifested {
+  --face-accent: #f0a15b;
+  border-color: rgba(241, 157, 81, 0.56);
+  box-shadow:
+    0 28px 76px rgba(0, 0, 0, 0.56),
+    0 0 34px rgba(239, 92, 35, 0.12),
+    inset 0 0 0 1px rgba(255, 207, 151, 0.04);
+}
+
+.antimatter-blueprint-face__device {
+  position: absolute;
+  inset: 0;
+  width: 100%;
+  height: 100%;
+  object-fit: cover;
+  object-position: center;
+  filter: saturate(1.02) contrast(1.025);
+}
+
+.antimatter-blueprint-face__scrim {
+  position: absolute;
+  inset: 0;
+  background:
+    linear-gradient(180deg, rgba(2, 4, 7, 0.72) 0%, transparent 14%, transparent 72%, rgba(2, 4, 7, 0.2) 100%),
+    linear-gradient(90deg, rgba(2, 4, 7, 0.34), transparent 28%, transparent 74%, rgba(2, 4, 7, 0.16));
+  pointer-events: none;
+}
+
+.antimatter-blueprint-face__header {
+  position: absolute;
+  z-index: 4;
+  top: 19px;
+  right: 20px;
+  left: 20px;
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 18px;
+  color: rgba(232, 239, 244, 0.72);
+  font-family: var(--app-font-mono);
+  font-size: 8px;
+  line-height: 1;
+  text-transform: uppercase;
+  text-shadow: 0 1px 9px #020307;
+  letter-spacing: 0;
+}
+
+.antimatter-blueprint-face__privacy {
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+  color: var(--face-accent);
+}
+
+.antimatter-blueprint-face__privacy svg { width: 11px; height: 11px; }
+
+.antimatter-blueprint-face__hotspots {
+  position: absolute;
+  z-index: 3;
+  inset: 0;
+  pointer-events: none;
+}
+
+.antimatter-blueprint-face__hotspot {
+  position: absolute;
+  display: grid;
+  width: 24px;
+  height: 24px;
+  padding: 0;
+  place-items: center;
+  color: #fff3dd;
+  border: 1px solid color-mix(in srgb, var(--face-accent) 78%, white 22%);
+  border-radius: 50%;
+  background: rgba(3, 6, 10, 0.76);
+  box-shadow:
+    0 0 0 3px rgba(3, 6, 10, 0.3),
+    0 0 14px color-mix(in srgb, var(--face-accent) 26%, transparent);
+  transform: translate(-50%, -50%);
+  transition: color 140ms ease, border-color 140ms ease, background-color 140ms ease, transform 140ms ease;
+  pointer-events: auto;
+}
+
+.antimatter-blueprint-face__hotspot::before {
+  position: absolute;
+  inset: 3px;
+  content: "";
+  border: 1px solid rgba(255, 243, 220, 0.32);
+  border-radius: 50%;
+}
+
+.antimatter-blueprint-face__hotspot::after {
+  position: absolute;
+  bottom: calc(100% + 8px);
+  left: 50%;
+  width: max-content;
+  max-width: 138px;
+  padding: 5px 7px;
+  content: attr(data-label);
+  color: rgba(244, 239, 231, 0.92);
+  border: 1px solid rgba(218, 229, 237, 0.2);
+  border-radius: 3px;
+  background: rgba(3, 6, 10, 0.94);
+  font-family: var(--app-font-mono);
+  font-size: 7px;
+  line-height: 1;
+  text-transform: uppercase;
+  opacity: 0;
+  transform: translate(-50%, 4px);
+  transition: opacity 120ms ease, transform 120ms ease;
+  pointer-events: none;
+  letter-spacing: 0;
+}
+
+.antimatter-blueprint-face__hotspot:hover,
+.antimatter-blueprint-face__hotspot:focus-visible {
+  color: #fff;
+  border-color: #fff0d2;
+  background: rgba(90, 42, 18, 0.86);
+  transform: translate(-50%, -50%) scale(1.08);
+}
+
+.antimatter-blueprint-face__hotspot:hover::after,
+.antimatter-blueprint-face__hotspot:focus-visible::after {
+  opacity: 1;
+  transform: translate(-50%, 0);
+}
+
+.antimatter-blueprint-face__hotspot:focus-visible { outline: 2px solid #a8d8f1; outline-offset: 3px; }
+.antimatter-blueprint-face__hotspot[data-complete="false"] { color: rgba(222, 231, 237, 0.64); border-style: dashed; border-color: rgba(203, 219, 229, 0.46); box-shadow: 0 0 0 3px rgba(3, 6, 10, 0.28); }
+.antimatter-blueprint-face__hotspot > span { position: relative; z-index: 1; font-family: var(--app-font-mono); font-size: 7px; font-weight: 800; line-height: 1; }
+
+.antimatter-blueprint-face__rail {
+  position: absolute;
+  z-index: 4;
+  right: 0;
+  bottom: 0;
+  left: 0;
+  display: grid;
+  grid-template-columns: minmax(0, 1fr) auto;
+  min-height: 86px;
+  align-items: center;
+  gap: 18px;
+  padding: 9px 20px 8px;
+  border-top: 1px solid rgba(218, 230, 238, 0.14);
+  background: rgba(3, 6, 10, 0.44);
+  text-shadow: 0 1px 8px rgba(0, 0, 0, 0.92);
+}
+
+.antimatter-blueprint-face__identity {
+  display: flex;
+  min-width: 0;
+  justify-content: center;
+  flex-direction: column;
+}
+
+.antimatter-blueprint-face__identity p {
+  margin: 0 0 3px;
+  color: var(--face-accent);
+  font-family: var(--app-font-mono);
+  font-size: 6px;
+  font-weight: 700;
+  text-transform: uppercase;
+  letter-spacing: 0;
+}
+
+.antimatter-blueprint-face__identity h2 {
+  margin: 0;
+  color: #f7f1e8;
+  font-family: var(--app-font-serif);
+  font-size: clamp(24px, 2.7vw, 31px);
+  font-weight: 500;
+  line-height: 1;
+  white-space: nowrap;
+  letter-spacing: 0;
+}
+
+.antimatter-blueprint-face__effect {
+  display: block;
+  margin-top: 4px;
+  line-height: 1.25;
+}
+
+.antimatter-blueprint-face__effect strong {
+  margin-right: 5px;
+  color: var(--face-accent);
+  font-family: var(--app-font-mono);
+  font-size: 6px;
+  text-transform: uppercase;
+  letter-spacing: 0;
+}
+
+.antimatter-blueprint-face__effect span {
+  color: rgba(230, 237, 242, 0.8);
+  font-size: 8px;
+  letter-spacing: 0;
+}
+
+.antimatter-blueprint-face__covenant-effect {
+  position: absolute;
+  z-index: 5;
+  right: 0;
+  bottom: 86px;
+  left: 0;
+  display: flex;
+  min-height: 34px;
+  align-items: center;
+  justify-content: center;
+  gap: 7px;
+  padding: 7px 18px;
+  color: #ffb29b;
+  border-top: 1px solid rgba(241, 105, 70, 0.42);
+  border-bottom: 1px solid rgba(241, 105, 70, 0.26);
+  background: rgba(31, 7, 8, 0.82);
+  box-shadow: 0 -8px 22px rgba(21, 4, 6, 0.26);
+  backdrop-filter: blur(5px);
+}
+
+.antimatter-blueprint-face__covenant-effect svg { width: 12px; height: 12px; flex: 0 0 auto; }
+.antimatter-blueprint-face__covenant-effect strong { flex: 0 0 auto; font-family: var(--app-font-mono); font-size: 7px; text-transform: uppercase; letter-spacing: 0; }
+.antimatter-blueprint-face__covenant-effect span { min-width: 0; color: rgba(244, 223, 217, 0.84); font-size: 8px; line-height: 1.25; letter-spacing: 0; }
+
+.antimatter-blueprint-face__footer {
+  display: flex;
+  min-width: 88px;
+  align-self: stretch;
+  border-left: 1px solid rgba(211, 226, 236, 0.13);
+}
+
+.antimatter-blueprint-face__footer > span {
+  display: flex;
+  min-width: 0;
+  align-items: center;
+  justify-content: center;
+  flex-direction: column;
+  gap: 4px;
+  padding: 8px 10px;
+}
+
+.antimatter-blueprint-face__footer small { color: rgba(211, 225, 234, 0.48); font-family: var(--app-font-mono); font-size: 6px; text-align: center; text-transform: uppercase; letter-spacing: 0; }
+.antimatter-blueprint-face__footer strong { max-width: 100%; color: #eee9e1; font-size: 11px; font-weight: 650; line-height: 1.15; text-align: center; text-transform: uppercase; white-space: normal; letter-spacing: 0; }
+
+.antimatter-component-sheet {
+  --component-accent: #88c9ec;
+  max-height: min(78dvh, 680px);
+  overflow-y: auto;
+  padding: 0 !important;
+  color: #edf2f5;
+  border-color: color-mix(in srgb, var(--component-accent) 38%, transparent) !important;
+  background: #070b11 !important;
+  box-shadow: 0 -24px 80px rgba(0, 0, 0, 0.68) !important;
+}
+
+.antimatter-component-sheet--flare { --component-accent: #f36d45; }
+.antimatter-component-sheet--radiance { --component-accent: #e7c776; }
+.antimatter-component-sheet--protocol { --component-accent: #72b8e7; }
+.antimatter-component-sheet--abyss { --component-accent: #aa82d6; }
+
+.antimatter-component-sheet::before {
+  position: absolute;
+  top: 0;
+  left: 0;
+  width: 100%;
+  height: 3px;
+  content: "";
+  background: var(--component-accent);
+  box-shadow: 0 0 20px color-mix(in srgb, var(--component-accent) 48%, transparent);
+}
+
+.antimatter-component-sheet > button {
+  z-index: 2;
+  display: grid;
+  width: 36px;
+  height: 36px;
+  place-items: center;
+  color: rgba(231, 239, 244, 0.7);
+  border: 1px solid rgba(206, 222, 234, 0.18);
+  border-radius: 4px;
+  background: rgba(7, 11, 17, 0.84);
+}
+
+.antimatter-component-sheet > button:hover { color: white; opacity: 1; }
+
+.antimatter-component-sheet__inner {
+  display: grid;
+  grid-template-columns: minmax(190px, 270px) minmax(0, 1fr);
+  width: min(980px, calc(100% - 48px));
+  align-items: start;
+  gap: clamp(24px, 4vw, 52px);
+  margin: 0 auto;
+  padding: 28px 48px 28px 0;
+}
+
+.antimatter-component-sheet__art {
+  position: relative;
+  position: sticky;
+  top: 28px;
+  width: 100%;
+  max-height: 410px;
+  aspect-ratio: 0.7;
+  overflow: hidden;
+  margin: 0;
+  border: 1px solid color-mix(in srgb, var(--component-accent) 44%, transparent);
+  border-radius: 5px;
+  background: #020407;
+  box-shadow: 0 18px 44px rgba(0, 0, 0, 0.42);
+}
+
+.antimatter-component-sheet__art::after {
+  position: absolute;
+  inset: 0;
+  content: "";
+  background: linear-gradient(0deg, rgba(2, 4, 8, 0.94), transparent 42%);
+  pointer-events: none;
+}
+
+.antimatter-component-sheet__art img {
+  width: 100%;
+  height: 100%;
+  object-fit: cover;
+}
+
+.antimatter-component-sheet__art figcaption {
+  position: absolute;
+  z-index: 1;
+  right: 13px;
+  bottom: 12px;
+  left: 13px;
+  color: rgba(234, 241, 245, 0.68);
+  font-family: var(--app-font-mono);
+  font-size: 8px;
+  text-transform: uppercase;
+  letter-spacing: 0;
+}
+
+.antimatter-component-sheet__record { min-width: 0; }
+
+.antimatter-component-sheet__eyebrow {
+  margin: 0 0 8px;
+  color: var(--component-accent);
+  font-family: var(--app-font-mono);
+  font-size: 9px;
+  font-weight: 700;
+  text-transform: uppercase;
+  letter-spacing: 0;
+}
+
+.antimatter-component-sheet__title {
+  margin: 0;
+  color: #f4efe7 !important;
+  font-family: var(--app-font-serif);
+  font-size: clamp(30px, 4vw, 48px) !important;
+  font-weight: 500 !important;
+  line-height: 1.02 !important;
+  letter-spacing: 0 !important;
+}
+
+.antimatter-component-sheet__section-label {
+  display: block;
+  margin-top: 15px;
+  color: rgba(205, 221, 232, 0.48);
+  font-family: var(--app-font-mono);
+  font-size: 7px;
+  text-transform: uppercase;
+  letter-spacing: 0;
+}
+
+.antimatter-component-sheet__description {
+  max-width: 60ch;
+  margin: 4px 0 20px;
+  color: rgba(221, 231, 237, 0.68) !important;
+  font-size: 13px !important;
+  line-height: 1.55 !important;
+  letter-spacing: 0;
+}
+
+.antimatter-component-sheet__facts {
+  display: grid;
+  grid-template-columns: repeat(4, minmax(0, 1fr));
+  border-top: 1px solid rgba(203, 221, 233, 0.13);
+  border-bottom: 1px solid rgba(203, 221, 233, 0.13);
+}
+
+.antimatter-component-sheet__facts > div {
+  min-width: 0;
+  padding: 13px 15px;
+}
+
+.antimatter-component-sheet__facts > div:first-child { padding-left: 0; }
+.antimatter-component-sheet__facts > div + div { border-left: 1px solid rgba(203, 221, 233, 0.1); }
+
+.antimatter-component-sheet__facts span,
+.antimatter-component-sheet__requirement span,
+.antimatter-component-sheet__economy > div > span,
+.antimatter-component-sheet__lore > span {
+  display: block;
+  margin-bottom: 4px;
+  color: rgba(205, 221, 232, 0.48);
+  font-family: var(--app-font-mono);
+  font-size: 7px;
+  text-transform: uppercase;
+  letter-spacing: 0;
+}
+
+.antimatter-component-sheet__facts strong {
+  display: block;
+  overflow: hidden;
+  color: #e8eef2;
+  font-size: 12px;
+  font-weight: 650;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+  letter-spacing: 0;
+}
+
+.antimatter-component-sheet__facts strong[data-matched="true"] { color: #a7e4bd; }
+
+.antimatter-component-sheet__economy {
+  display: grid;
+  grid-template-columns: minmax(0, 1fr) 92px;
+  margin-top: 18px;
+  border-bottom: 1px solid rgba(203, 221, 233, 0.1);
+}
+
+.antimatter-component-sheet__economy > div {
+  min-width: 0;
+  padding: 0 13px 13px;
+}
+
+.antimatter-component-sheet__economy > div:first-child { padding-left: 0; }
+.antimatter-component-sheet__economy > div + div { border-left: 1px solid rgba(203, 221, 233, 0.1); }
+.antimatter-component-sheet__economy > div > strong { color: #eee9e1; font-family: var(--app-font-serif); font-size: 20px; font-weight: 500; }
+
+.antimatter-component-sheet__costs {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 5px;
+}
+
+.antimatter-component-sheet__costs > span {
+  display: inline-flex;
+  align-items: center;
+  gap: 4px;
+  padding: 3px 6px;
+  border: 1px solid rgba(211, 226, 236, 0.13);
+  border-radius: 3px;
+  background: rgba(255, 255, 255, 0.025);
+}
+
+.antimatter-component-sheet__costs strong { color: #f0f3f5; font-size: 10px; }
+.antimatter-component-sheet__costs img { width: 14px; height: 14px; object-fit: contain; }
+
+.antimatter-component-sheet__requirement {
+  margin-top: 21px;
+  padding: 11px 14px;
+  border-left: 2px solid var(--component-accent);
+  background: rgba(255, 255, 255, 0.025);
+}
+
+.antimatter-component-sheet__requirement strong {
+  color: #edf1f3;
+  font-family: var(--app-font-serif);
+  font-size: 16px;
+  font-weight: 500;
+  letter-spacing: 0;
+}
+
+.antimatter-component-sheet__lore {
+  margin-top: 20px;
+  padding-top: 16px;
+  border-top: 1px solid rgba(203, 221, 233, 0.11);
+}
+
+.antimatter-component-sheet__lore p {
+  max-width: 70ch;
+  margin: 7px 0 0;
+  color: rgba(232, 236, 239, 0.78);
+  font-family: var(--app-font-serif);
+  font-size: 14px;
+  font-style: italic;
+  line-height: 1.55;
+  letter-spacing: 0;
+}
+
+.antimatter-component-sheet__metadata {
+  display: grid;
+  grid-template-columns: repeat(2, minmax(0, 1fr));
+  gap: 0 20px;
+  margin: 18px 0 0;
+  border-top: 1px solid rgba(203, 221, 233, 0.1);
+}
+
+.antimatter-component-sheet__metadata > div {
+  min-width: 0;
+  padding: 10px 0;
+  border-bottom: 1px solid rgba(203, 221, 233, 0.08);
+}
+
+.antimatter-component-sheet__metadata dt {
+  margin-bottom: 3px;
+  color: rgba(205, 221, 232, 0.43);
+  font-family: var(--app-font-mono);
+  font-size: 6px;
+  text-transform: uppercase;
+  letter-spacing: 0;
+}
+
+.antimatter-component-sheet__metadata dd {
+  margin: 0;
+  color: rgba(229, 235, 239, 0.72);
+  font-size: 10px;
+  line-height: 1.35;
+  letter-spacing: 0;
+}
+
+@media (max-width: 900px) {
+  .antimatter-blueprint-card {
+    grid-template-columns: 34% minmax(0, 1fr);
+    min-height: 210px;
+  }
+
+  .antimatter-blueprint-card__device-label { top: 10px; left: 10px; padding: 4px 5px; font-size: 5px; }
+  .antimatter-blueprint-card__serial { left: 10px; bottom: 10px; font-size: 6px; }
+  .antimatter-blueprint-card__scale { right: 10px; bottom: 10px; font-size: 6px; }
+
+  .antimatter-blueprint-card__record { padding: 12px 12px 10px; }
+  .antimatter-blueprint-card__header { gap: 7px; padding-bottom: 7px; }
+  .antimatter-blueprint-card__header p { margin-bottom: 3px; font-size: 6px; }
+  .antimatter-blueprint-card__header h2 { font-size: clamp(14px, 4.1vw, 19px); }
+  .antimatter-blueprint-card__privacy { padding: 4px; font-size: 0; }
+  .antimatter-blueprint-card__privacy svg { width: 10px; height: 10px; }
+  .antimatter-blueprint-card__flavor,
+  .antimatter-blueprint-card__effect,
+  .antimatter-blueprint-card__constraints { display: none; }
+  .antimatter-blueprint-card__sockets { grid-template-columns: repeat(2, minmax(0, 1fr)); gap: 3px 8px; margin-top: 6px; }
+  .antimatter-blueprint-card__socket { grid-template-columns: 27px minmax(0, 1fr); gap: 5px; padding: 4px 0; }
+  .antimatter-blueprint-card__socket-image { width: 27px; height: 27px; }
+  .antimatter-blueprint-card__socket-state { right: 1px; bottom: 1px; width: 10px; height: 10px; }
+  .antimatter-blueprint-card__socket-state svg { width: 6px; height: 6px; }
+  .antimatter-blueprint-card__socket-copy span { font-size: 5px; }
+  .antimatter-blueprint-card__socket-copy strong { font-size: 7px; }
+  .antimatter-blueprint-card__socket-copy small { font-size: 5px; }
+
+  .antimatter-blueprint-card__status {
+    position: absolute;
+    right: 12px;
+    bottom: 10px;
+    display: grid;
+    grid-template-columns: auto auto;
+    width: auto;
+    align-items: center;
+    gap: 2px 7px;
+    padding: 0;
+    text-align: right;
+    border: 0;
+    background: transparent;
+  }
+
+  .antimatter-blueprint-card__state-mark,
+  .antimatter-blueprint-card__rewards,
+  .antimatter-blueprint-card__action-rule { display: none; }
+  .antimatter-blueprint-card__status > p { grid-column: 1; grid-row: 1; margin: 0; font-size: 5px; }
+  .antimatter-blueprint-card__status > strong { grid-column: 1; grid-row: 2; font-size: 14px; }
+  .antimatter-blueprint-card__meter { grid-column: 2; grid-row: 1 / span 2; width: 38px; margin: 0; }
+
+  .antimatter-blueprint-face__header { top: 14px; right: 15px; left: 15px; font-size: 6px; }
+  .antimatter-blueprint-face__rail {
+    grid-template-columns: minmax(0, 1fr) auto;
+    min-height: 84px;
+    gap: 12px;
+    padding: 8px 14px;
+  }
+  .antimatter-blueprint-face__identity p { margin-bottom: 2px; font-size: 5px; }
+  .antimatter-blueprint-face__identity h2 { font-size: clamp(20px, 3.8vw, 28px); }
+  .antimatter-blueprint-face__effect { margin-top: 4px; }
+  .antimatter-blueprint-face__effect strong { font-size: 5px; }
+  .antimatter-blueprint-face__effect span { font-size: 6px; }
+  .antimatter-blueprint-face__footer small { font-size: 5px; }
+  .antimatter-blueprint-face__footer strong { font-size: 9px; }
+  .antimatter-blueprint-face__covenant-effect { bottom: 84px; min-height: 30px; padding: 6px 12px; }
+  .antimatter-blueprint-face__covenant-effect strong,
+  .antimatter-blueprint-face__covenant-effect span { font-size: 6px; }
+
+  .antimatter-component-sheet__inner {
+    grid-template-columns: minmax(110px, 160px) minmax(0, 1fr);
+    width: calc(100% - 28px);
+    gap: 22px;
+    padding: 20px 42px 20px 0;
+  }
+
+  .antimatter-component-sheet__title { font-size: clamp(24px, 5vw, 34px) !important; }
+  .antimatter-component-sheet__description { margin: 4px 0 16px; font-size: 11px !important; }
+  .antimatter-component-sheet__facts > div { padding: 10px 8px; }
+  .antimatter-component-sheet__facts > div:first-child { padding-left: 0; }
+  .antimatter-component-sheet__facts strong { font-size: 10px; }
+  .antimatter-component-sheet__requirement { margin-top: 14px; }
+  .antimatter-component-sheet__requirement strong { font-size: 13px; }
+}
+
+@media (max-width: 430px) {
+  .antimatter-blueprint-card { grid-template-columns: 31% minmax(0, 1fr); min-height: 190px; }
+  .antimatter-blueprint-card__device-label { top: 7px; left: 7px; }
+  .antimatter-blueprint-card__record { padding: 10px 9px 8px; }
+  .antimatter-blueprint-card__header h2 { font-size: 13px; }
+  .antimatter-blueprint-card__socket { grid-template-columns: 24px minmax(0, 1fr); gap: 4px; }
+  .antimatter-blueprint-card__socket-image { width: 24px; height: 24px; }
+  .antimatter-blueprint-card__socket-copy strong { font-size: 6px; }
+  .antimatter-blueprint-card__socket-copy small { display: none; }
+  .antimatter-blueprint-card__status { right: 9px; bottom: 7px; }
+
+  .antimatter-blueprint-face__device { width: 100%; object-position: center; }
+  .antimatter-blueprint-face__scrim {
+    background:
+      linear-gradient(180deg, rgba(2, 4, 7, 0.72) 0%, transparent 15%, transparent 70%, rgba(2, 4, 7, 0.24) 100%),
+      linear-gradient(90deg, rgba(2, 4, 7, 0.2), transparent 35%, transparent 74%, rgba(2, 4, 7, 0.12));
+  }
+  .antimatter-blueprint-face__header { top: 11px; right: 11px; left: 11px; font-size: 5px; }
+  .antimatter-blueprint-face__privacy { font-size: 0; }
+  .antimatter-blueprint-face__privacy svg { width: 10px; height: 10px; }
+  .antimatter-blueprint-face__rail {
+    grid-template-columns: minmax(0, 1fr) auto;
+    min-height: 72px;
+    gap: 6px;
+    padding: 6px 8px;
+  }
+  .antimatter-blueprint-face__identity p { margin-bottom: 2px; font-size: 4px; }
+  .antimatter-blueprint-face__identity h2 { font-size: 15px; line-height: 1; }
+  .antimatter-blueprint-face__effect { margin-top: 3px; line-height: 1.2; }
+  .antimatter-blueprint-face__effect strong { margin-right: 3px; font-size: 4px; }
+  .antimatter-blueprint-face__effect span { font-size: 5px; }
+  .antimatter-blueprint-face__footer { min-width: 44px; }
+  .antimatter-blueprint-face__footer > span { gap: 2px; padding: 3px 2px; }
+  .antimatter-blueprint-face__footer small { font-size: 4px; }
+  .antimatter-blueprint-face__footer strong { font-size: 7px; }
+  .antimatter-blueprint-face__hotspot { width: 18px; height: 18px; box-shadow: 0 0 0 2px rgba(3, 6, 10, 0.3); }
+  .antimatter-blueprint-face__hotspot::before { inset: 2px; }
+  .antimatter-blueprint-face__hotspot::after { display: none; }
+  .antimatter-blueprint-face__hotspot > span { font-size: 5px; }
+  .antimatter-blueprint-face__covenant-effect { bottom: 72px; min-height: 32px; gap: 4px; padding: 5px 8px; }
+  .antimatter-blueprint-face__covenant-effect svg { width: 9px; height: 9px; }
+  .antimatter-blueprint-face__covenant-effect strong { font-size: 5px; }
+  .antimatter-blueprint-face__covenant-effect span { font-size: 5px; }
+
+  .antimatter-component-sheet { max-height: 82dvh; }
+  .antimatter-component-sheet > button { top: 12px; right: 12px; width: 32px; height: 32px; }
+  .antimatter-component-sheet__inner {
+    grid-template-columns: 88px minmax(0, 1fr);
+    width: calc(100% - 20px);
+    align-items: start;
+    gap: 12px;
+    padding: 18px 34px 18px 0;
+  }
+  .antimatter-component-sheet__art { position: static; }
+  .antimatter-component-sheet__art figcaption { right: 6px; bottom: 6px; left: 6px; font-size: 5px; }
+  .antimatter-component-sheet__eyebrow { margin-bottom: 5px; font-size: 6px; }
+  .antimatter-component-sheet__title { font-size: 20px !important; }
+  .antimatter-component-sheet__description { margin: 7px 0 10px; font-size: 9px !important; line-height: 1.4 !important; }
+  .antimatter-component-sheet__facts span { font-size: 5px; }
+  .antimatter-component-sheet__facts strong { font-size: 8px; }
+  .antimatter-component-sheet__facts > div { padding: 7px 5px; }
+  .antimatter-component-sheet__section-label { margin-top: 8px; font-size: 5px; }
+  .antimatter-component-sheet__economy { grid-template-columns: minmax(0, 1fr) 54px; margin-top: 10px; }
+  .antimatter-component-sheet__economy > div { padding: 0 6px 8px; }
+  .antimatter-component-sheet__costs > span { padding: 2px 4px; }
+  .antimatter-component-sheet__costs strong { font-size: 8px; }
+  .antimatter-component-sheet__costs img { width: 11px; height: 11px; }
+  .antimatter-component-sheet__requirement { margin-top: 9px; padding: 7px 8px; }
+  .antimatter-component-sheet__requirement span { font-size: 5px; }
+  .antimatter-component-sheet__requirement strong { font-size: 10px; }
+  .antimatter-component-sheet__lore { margin-top: 10px; padding-top: 9px; }
+  .antimatter-component-sheet__lore > span { font-size: 5px; }
+  .antimatter-component-sheet__lore p { margin-top: 4px; font-size: 10px; line-height: 1.4; }
+  .antimatter-component-sheet__metadata { grid-template-columns: 1fr; gap: 0; margin-top: 10px; }
+  .antimatter-component-sheet__metadata > div { padding: 7px 0; }
+  .antimatter-component-sheet__metadata dt { font-size: 5px; }
+  .antimatter-component-sheet__metadata dd { font-size: 8px; }
+}

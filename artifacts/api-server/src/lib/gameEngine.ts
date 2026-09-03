@@ -5,25 +5,45 @@
 import { z } from "zod";
 import {
   AFFINITY_KEYS,
+  ARTIFACT_CATALOG,
+  BLUEPRINT_DEFINITIONS,
   compareVictoryStandings,
+  getTurnOrderEminenceCompensation,
   KNOWN_AURA_STYLES,
   LUMINARY_IDS,
+  NATURAL_AFFINITY_KEYS,
   STANDARD_AFFINITY_KEYS,
 } from '@workspace/game-types';
 import type {
   AffinityCounts,
   AffinityKey,
+  ArtifactId,
+  ArtifactDefinition,
   AuraStyle,
+  BlueprintDetonationEvent,
+  BlueprintArtifactSnapshot,
+  BlueprintId,
+  BlueprintManifestationEvent,
+  BlueprintPresentationVariant,
+  BlueprintPrivateState,
+  CovenantState,
+  CivilizationIdentitySummary,
   LuminaryId,
+  LumiiThresholdApproach,
+  ManifestedProjectPublicState,
+  NaturalAffinityKey,
   StandardAffinityKey,
 } from '@workspace/game-types';
 import { getCardLore } from "./cardLore";
+import { GUIDED_LUMII_AVATAR_ID } from "./avatarAssignment";
+
+export { getTurnOrderEminenceCompensation } from '@workspace/game-types';
 
 export interface LuminaryAffinity {
   luminaryId: string;
   ownerId: string;
-  activeAffinity: StandardAffinityKey;
-  eligibleAffinities: StandardAffinityKey[];
+  activeAffinity: NaturalAffinityKey;
+  eligibleAffinities: NaturalAffinityKey[];
   summonedAtTurnCount: number;
 }
 
@@ -58,15 +78,15 @@ export interface LuminaryAffinityReturn {
   affinityAmount: number;
 }
 
-/** Emitted each time a Luminary's mechanical effect fires (arrival cutscene,
- *  end-of-turn hook, start-of-turn hook).  Clients consume it to trigger
+/** Emitted each time a Luminary's mechanical effect fires (arrival, action,
+ *  end-of-turn hook, start-of-turn hook). Clients consume it to trigger
  *  the 4-second activation cinematic overlay, then send
  *  resolve_luminary_activation to pop it from the queue. */
 export interface PendingLuminaryActivationEvent {
   eventId: string;
   luminaryId: string;
   /** Which hook fired this event. */
-  effectType: "summon" | "end_of_turn" | "start_of_turn";
+  effectType: "summon" | "action" | "end_of_turn" | "start_of_turn";
   /** Player ID who owns the Luminary (for display / color choice). */
   triggeringPlayerId: string;
   createdAt?: number;
@@ -77,16 +97,25 @@ export interface PendingLuminaryActivationEvent {
    * artifactMarkers before the client animation runs).
    */
   targetCardIds?: string[];
+  /** Forge mold coordinates targeted by this activation, encoded as `tier-slotIndex`. */
+  targetSlotIds?: string[];
   /** Legacy single-return payload retained for queued games created before Balance Due became global. */
-  affinityType?: StandardAffinityKey;
+  affinityType?: NaturalAffinityKey;
   /** Legacy single-return amount retained for queued games created before Balance Due became global. */
   affinityAmount?: number;
   /** Authoritative player/Affinity pairs returned by a global activation such as Balance Due. */
   affinityReturns?: LuminaryAffinityReturn[];
+  /** Victory threshold immediately before this activation changed it. */
+  victoryRequirementBefore?: number;
+  /** Victory threshold immediately after this activation changed it. */
+  victoryRequirementAfter?: number;
+  /** Signed threshold delta presented by this activation. */
+  victoryRequirementChange?: number;
 }
 
 const ERR_ARTIFACT_NOT_IN_FORGE = "Artifact is no longer in The Forge";
 const ERR_CANNOT_ENCRYPT_DURING_FORGOTTEN_HOUR = "Cannot encrypt during The Forgotten Hour";
+const ERR_CANNOT_ENCRYPT_NULLIFIED = "Nullified Artifacts cannot be Encrypted";
 
 export type ArtifactMarkerType = 'forgotten' | 'condemned' | 'nullified' | 'avatar_seed';
 
@@ -181,30 +210,25 @@ function removeArtifactBrands(
 export interface AvatarSeedState {
   ownerId: string;
   summonedAtTurnCount: number;
-  /** Pending Eminence accumulated from opponents forging seeded Artifacts. */
-  pendingEminence: number;
-  /** Artifact IDs with Avatar Seed tokens still sitting at the top of their source deck. */
-  deckSeeds: string[];
-  /** True once the end-of-next-turn payout has fired (prevents double-pay). */
-  payoutDone: boolean;
+  /** Permanent seeded Forge molds, encoded as `tier-slotIndex`. */
+  moldSlots: string[];
 }
 
-export interface ArtifactCard {
-  id: string;
-  tier: 1 | 2 | 3;
-  bonusAffinity: StandardAffinityKey;
-  eminence: number;
-  cost: AffinityCounts;
-}
+export type ArtifactCard = Pick<
+  ArtifactDefinition,
+  "id" | "tier" | "bonusAffinity" | "eminence" | "cost"
+>;
 
 export {
   KNOWN_AURA_STYLES,
   LUMINARY_IDS,
+  NATURAL_AFFINITY_KEYS,
   STANDARD_AFFINITY_KEYS,
   type AffinityCounts,
   type AffinityKey,
   type AuraStyle,
   type LuminaryId,
+  type NaturalAffinityKey,
   type StandardAffinityKey,
 };
 
@@ -237,8 +261,22 @@ export interface InitialBoardSnapshot {
   firstPlayerId?: string | null;
 }
 
-interface InitializeGameOptions {
+export interface InitializeGameOptions {
   replayBoard?: InitialBoardSnapshot | null;
+  /** Balance-audit override; normal matches use playerCount + 1. */
+  luminaryCountOverride?: number;
+  /** Apply the ordinary-match compensation for players acting after the opener. */
+  applyTurnOrderCompensation?: boolean;
+  blueprintSetups?: Record<string, {
+    blueprintIds: BlueprintId[];
+    presentationVariants?: Partial<Record<BlueprintId, BlueprintPresentationVariant>>;
+  }>;
+  civilizationIdentities?: Record<string, CivilizationIdentitySummary | null>;
+  /**
+   * Development-only balance candidate. The ruleset is retained in server
+   * memory, never in the normal serialized match document.
+   */
+  balanceRuleset?: Readonly<BalanceRuleset>;
 }
 
 export interface PlayerGameState {
@@ -246,6 +284,10 @@ export interface PlayerGameState {
   playerName: string;
   /** Custom civilization name set by the player. Falls back to "{playerName}'s Civilization" on the client when absent. */
   civName?: string;
+  /** Confirmed public account identity loaded when the match begins. */
+  civilizationIdentity?: CivilizationIdentitySummary | null;
+  /** Immutable account identity captured when the match begins. */
+  civilizationIdentitySnapshot?: CivilizationIdentitySummary | null;
   affinities: AffinityCounts;
   bonuses: AffinityCounts;
   eminence: number;
@@ -253,13 +295,31 @@ export interface PlayerGameState {
   /** Reserved Artifact IDs drawn blind from an Archive. Never exposed to non-owners. */
   privateReservedArtifactIds?: string[];
   forgedArtifactIds: string[];
+  /** Lifetime-in-this-match Forge actions by Artifact ID, including Artifacts later removed. */
+  artifactForgeCounts?: Record<string, number>;
+  /**
+   * Artifacts consumed by Final Hunger. These count only for Blueprint
+   * eligibility, never as forged Artifacts for effects or victory tie-breaks.
+   */
+  assimilatedArtifactIds?: string[];
   /** Artifact IDs forged at zero Affinity cost (fully covered by bonuses). */
   discountedForgeIds: string[];
   /** Per-card bonus snapshot captured at forge time. Key = card ID. Added in bonus-snapshot feature. */
   forgedArtifactBonusSnapshots?: Record<string, AffinityCounts>;
-  /** Card IDs forged while Forgotten; future Blueprint checks must ignore these cards. */
+  /** Card IDs whose active brands prevent future Blueprint use after forging. */
   blueprintBlockedCardIds?: string[];
+  /** Owner-only Blueprint assembly and secret-device information. */
+  blueprintPrivateStates?: BlueprintPrivateState[];
+  blueprintPresentationVariants?: Partial<Record<BlueprintId, BlueprintPresentationVariant>>;
+  /** Public Projects manifested by this civilization. */
+  manifestedBlueprintProjects?: ManifestedProjectPublicState[];
+  /** @deprecated Compatibility alias for pre-v2 saves and clients. */
+  manifestedBlueprintDevices?: ManifestedProjectPublicState[];
+  /** True until Tide Architect's ally uses their one Archive-top Forge. */
+  tideArchiveForgeAvailable?: boolean;
   luminaries: string[];
+  /** Luminary alliances formed in this match, keyed by Luminary ID. */
+  luminaryAllianceCounts?: Record<string, number>;
   isConnected: boolean;
   plannedAction: ActionPayload | null;
   plannedActionCancelReason: string | null;
@@ -286,7 +346,7 @@ export interface BurnEvent {
   sourceName?: string;
   /** Player who owns the Luminary that triggered the burn. */
   ownerPlayerId?: string;
-  /** Player whose action caused the burn (e.g. the Assimilation actor). */
+  /** Player whose action caused the burn. */
   triggeredByPlayerId?: string;
   /** Final destination after the Burn resolves. */
   destination: "burn_pile" | "archive";
@@ -311,8 +371,10 @@ export interface PendingTurnTransition {
 interface DevLuminarySequenceStage {
   playerId: string;
   luminaryIds: string[];
-  includeEndOfTurnEffects: boolean;
-  includeStartOfTurnEffects: boolean;
+  includeNextTurnEffects?: boolean;
+  /** Compatibility with development snapshots captured before the unified control. */
+  includeEndOfTurnEffects?: boolean;
+  includeStartOfTurnEffects?: boolean;
   /** Last production-like phase released into the presentation queue. */
   phase?: "arrivals" | "end_of_turn" | "start_of_turn";
 }
@@ -333,7 +395,7 @@ export interface GameStateData {
   roundNumber: number;
   turnCount: number;
   phase: "playing" | "last_round" | "finished";
-  finishReason?: "win" | "surrender";
+  finishReason?: "win" | "frontier_exhaustion" | "surrender" | "withdrawal";
   victoryRequirement?: number;
   cinematicMode?: "standard" | "epic";
   affinityWell: AffinityCounts;
@@ -366,6 +428,8 @@ export interface GameStateData {
   pendingSummonEvents: PendingSummonEvent[];
   /** Activation events queued for the short (~4s) per-effect cinematic overlay. */
   pendingLuminaryActivationEvents: PendingLuminaryActivationEvent[];
+  pendingBlueprintManifestationEvents: BlueprintManifestationEvent[];
+  pendingBlueprintDetonationEvents: BlueprintDetonationEvent[];
   /** Staged turn handoff held until all Luminary resolutions are presented. */
   pendingTurnTransition?: PendingTurnTransition | null;
   /** DEV-only delayed-effect cursor advanced after all arrival effects finish. */
@@ -374,6 +438,12 @@ export interface GameStateData {
   devLuminarySequenceActive?: boolean;
   /** Card markers: Forgotten / Condemned / Nullified / Avatar Seed (v0.8+). */
   artifactMarkers?: Record<string, ArtifactMarker>;
+  /** The first Nullified Artifact forged this game and whether its allied-player exemption applied. */
+  nullifiedFirstForge?: {
+    cardId: string;
+    playerId: string;
+    exempt: boolean;
+  } | null;
   /** Owner-relative repeat timing for ??? / The Forgotten Hour. */
   forgottenHourCycle?: Record<string, ForgottenHourCycleState>;
   /** Delayed one-time recovery state for Phoenix Paradox / Eternal Recurrence. */
@@ -382,12 +452,26 @@ export interface GameStateData {
   avatarSeedState?: AvatarSeedState;
   /** Count of distinct burn effects since end of Catalyst Bloom owner's last turn (v0.8+). */
   catalystBloomBurnCount?: number;
-  /** True once Concordance Mandala's Perfect Coherence has fired (one per game, v0.8+). */
+  /** True once Concordance Mandala's 8-Radiance Perfect Coherence milestone has fired. */
   concordanceMandalaTriggered?: boolean;
+  /** True once Concordance Mandala's 10-Radiance Perfect Coherence milestone has fired. */
+  concordanceMandalaFinalTriggered?: boolean;
   /** True once Glass Orchard's Perfect Replication has fired (one per game, v0.8+). */
   glassOrchardTriggered?: boolean;
-  /** PlayerId if Final Hunger Assimilation is available this turn (cleared on use or turn end, v0.8+). */
+  /** Campaign-only state that reveals Antimatter's Covenant rider once declared. */
+  brokenCovenantDeclared?: boolean;
+  /** Public Covenant state authored per civilization by the match mode. */
+  covenantStateByPlayerId?: Record<string, CovenantState>;
+  /** Whether the current civilization began its turn with a legal Tier II claim. */
+  tierTwoOpportunityAtTurnStart?: boolean;
+  /** Whether any legal Tier II claim was attempted this turn. */
+  tierTwoClaimMadeThisTurn?: boolean;
+  /** Approach chosen at the Lumii Vault threshold. Immutable for this encounter. */
+  lumiiThresholdApproach?: LumiiThresholdApproach;
+  /** PlayerId holding Final Hunger's one-use Assimilation action until it is consumed. */
   firstHungerAvailable?: string | null;
+  /** @deprecated Legacy save/client field. Always normalized and projected as null. */
+  voidSealOwnerId?: string | null;
   /**
    * Set when a player simultaneously qualifies for multiple Luminaries at depth-0 of
    * checkLuminaries.  The player must choose claim order before any other turn action
@@ -402,6 +486,8 @@ export interface GameStateData {
   burnPile: string[];
   /** Per-card burn event log — one entry per card burned, carries tier and source Luminary. */
   burnEvents: BurnEvent[];
+  /** Artifacts permanently removed by Annihilation rather than Burn. */
+  annihilatedArtifactIds: string[];
   /**
    * Set to true when the current player has consumed their one core action this
    * turn (Forge, reserve, Harness, assimilate). Prevents a second core
@@ -410,10 +496,299 @@ export interface GameStateData {
    * complete resolution pipeline releases the incoming player.
    */
   coreActionUsed?: boolean;
+  /**
+   * Runtime facts required to replay an explicitly attached experimental
+   * ruleset after a JSON/database round-trip. Production games omit this
+   * field, and formatGameState deliberately does not project it publicly.
+   */
+  experimentalBalanceState?: {
+    rulesetId: string;
+    focusedReservationIdsByPlayerId?: Record<string, string[]>;
+    contactedLuminaryIds?: string[];
+    /**
+     * Persistent Luminary effects that production stores as one global flag are
+     * owner-relative when an experimental nonexclusive relationship is active.
+     * Keeping this state inside the opt-in experimental envelope prevents the
+     * candidate from changing or migrating ordinary matches.
+     */
+    luminaryOwnerStateByPlayerId?: Record<string, {
+      concordanceMandalaTriggered?: boolean;
+      concordanceMandalaFinalTriggered?: boolean;
+      catalystBloomBurnCount?: number;
+      glassOrchardTriggered?: boolean;
+      firstHungerAvailable?: boolean;
+    }>;
+  };
+}
+
+export interface BalanceRuleset {
+  id: string;
+  endCondition: "eminence" | "eminence_and_reach";
+  luminaryBaseEminence: "printed" | "none";
+  luminaryEligibility: "effective_bonuses" | "artifact_bonuses";
+  luminaryClaimLimitPerAction: null | 1;
+  luminaryContact: "exclusive" | "nonexclusive";
+  encryptReward: "portable_singularity" | "artifact_bound_focus" | "none";
+  advancedPayment: "current" | "minimum_one" | "minimum_one_lineage_waiver";
+  blueprintSlots: 1 | 2;
+}
+
+export const DEFAULT_BALANCE_RULESET: Readonly<BalanceRuleset> = Object.freeze({
+  id: "control",
+  endCondition: "eminence",
+  luminaryBaseEminence: "printed",
+  luminaryEligibility: "effective_bonuses",
+  luminaryClaimLimitPerAction: null,
+  luminaryContact: "exclusive",
+  encryptReward: "portable_singularity",
+  advancedPayment: "current",
+  blueprintSlots: 2,
+});
+
+function balanceCandidate(
+  id: string,
+  changes: Partial<Omit<BalanceRuleset, "id">>,
+): Readonly<BalanceRuleset> {
+  return Object.freeze({ ...DEFAULT_BALANCE_RULESET, id, ...changes });
+}
+
+/**
+ * Named, isolated candidates used by the balance laboratory. None is selected
+ * by normal game initialization; `control` documents the production baseline.
+ */
+export const BALANCE_RULESET_CANDIDATES: Readonly<Record<string, Readonly<BalanceRuleset>>> =
+  Object.freeze({
+    control: DEFAULT_BALANCE_RULESET,
+    reach_gate: balanceCandidate("reach_gate", {
+      endCondition: "eminence_and_reach",
+    }),
+    luminary_relationship: balanceCandidate("luminary_relationship", {
+      luminaryBaseEminence: "none",
+    }),
+    luminary_artifact_eligibility: balanceCandidate("luminary_artifact_eligibility", {
+      luminaryBaseEminence: "none",
+      luminaryEligibility: "artifact_bonuses",
+      luminaryClaimLimitPerAction: 1,
+    }),
+    luminary_nonexclusive_contact: balanceCandidate("luminary_nonexclusive_contact", {
+      luminaryBaseEminence: "none",
+      luminaryEligibility: "artifact_bonuses",
+      luminaryClaimLimitPerAction: 1,
+      luminaryContact: "nonexclusive",
+    }),
+    focus: balanceCandidate("focus", {
+      encryptReward: "artifact_bound_focus",
+    }),
+    encrypt_none: balanceCandidate("encrypt_none", {
+      encryptReward: "none",
+    }),
+    payment_floor: balanceCandidate("payment_floor", {
+      advancedPayment: "minimum_one",
+    }),
+    lineage_floor: balanceCandidate("lineage_floor", {
+      advancedPayment: "minimum_one_lineage_waiver",
+    }),
+    integrated: balanceCandidate("integrated", {
+      endCondition: "eminence_and_reach",
+      luminaryBaseEminence: "none",
+      luminaryEligibility: "artifact_bonuses",
+      luminaryClaimLimitPerAction: 1,
+      luminaryContact: "exclusive",
+      encryptReward: "artifact_bound_focus",
+      advancedPayment: "minimum_one_lineage_waiver",
+      blueprintSlots: 2,
+    }),
+  });
+
+export function getBalanceRulesetCandidate(id: string): Readonly<BalanceRuleset> | null {
+  const normalizedId = id.trim().toLowerCase().replace(/-/g, "_");
+  const alias = normalizedId === "reach" ? "reach_gate" : normalizedId;
+  return BALANCE_RULESET_CANDIDATES[alias] ?? null;
+}
+
+export interface BalanceSimulationOverrides {
+  /** Preserve Luminary qualification and effects while removing only the arrival Eminence award. */
+  suppressLuminaryBaseEminence?: boolean;
+  /** Audit whether repeat alliances, rather than first claims, create turn-order snowballing. */
+  maxLuminaryClaimsPerPlayer?: number;
+}
+
+const balanceSimulationOverrides = new WeakMap<GameStateData, BalanceSimulationOverrides>();
+const balanceRulesets = new WeakMap<GameStateData, BalanceRuleset>();
+
+/** Attach an experimental ruleset without adding it to serialized match state. */
+export function setBalanceRuleset(
+  state: GameStateData,
+  ruleset: Readonly<BalanceRuleset> | null,
+): void {
+  if (!ruleset) {
+    balanceRulesets.delete(state);
+    delete state.experimentalBalanceState;
+    return;
+  }
+  balanceRulesets.set(state, { ...ruleset });
+  if (
+    state.experimentalBalanceState &&
+    state.experimentalBalanceState.rulesetId !== ruleset.id
+  ) {
+    // Runtime facts from a different candidate must never leak into this one.
+    delete state.experimentalBalanceState;
+  }
+  // Persist only a candidate sentinel, never the rules object. This lets the
+  // database-backed turn loop detect that its intentionally process-local room
+  // mapping was lost after a server restart instead of silently continuing the
+  // experiment under production semantics.
+  if (ruleset.id !== DEFAULT_BALANCE_RULESET.id && !state.experimentalBalanceState) {
+    state.experimentalBalanceState = { rulesetId: ruleset.id };
+  }
+  pruneArtifactBoundFocus(state);
+}
+
+/** Resolve the attached candidate, or a fresh production-default snapshot. */
+export function getBalanceRuleset(state: GameStateData): BalanceRuleset {
+  return { ...(balanceRulesets.get(state) ?? DEFAULT_BALANCE_RULESET) };
+}
+
+function ensureExperimentalBalanceState(state: GameStateData): NonNullable<GameStateData["experimentalBalanceState"]> {
+  const ruleset = getBalanceRuleset(state);
+  if (state.experimentalBalanceState?.rulesetId !== ruleset.id) {
+    state.experimentalBalanceState = { rulesetId: ruleset.id };
+  }
+  return state.experimentalBalanceState;
+}
+
+function hasArtifactBoundFocus(
+  state: GameStateData,
+  playerId: string,
+  cardId: string,
+): boolean {
+  return state.experimentalBalanceState?.rulesetId === getBalanceRuleset(state).id &&
+    (state.experimentalBalanceState.focusedReservationIdsByPlayerId?.[playerId] ?? [])
+      .includes(cardId);
+}
+
+function markArtifactBoundFocus(
+  state: GameStateData,
+  playerId: string,
+  cardId: string,
+): void {
+  const runtime = ensureExperimentalBalanceState(state);
+  if (!runtime.focusedReservationIdsByPlayerId) {
+    runtime.focusedReservationIdsByPlayerId = {};
+  }
+  const ids = runtime.focusedReservationIdsByPlayerId[playerId] ?? [];
+  if (!ids.includes(cardId)) ids.push(cardId);
+  runtime.focusedReservationIdsByPlayerId[playerId] = ids;
+}
+
+function consumeArtifactBoundFocus(
+  state: GameStateData,
+  playerId: string,
+  cardId: string,
+): void {
+  const runtime = state.experimentalBalanceState;
+  const byPlayer = runtime?.focusedReservationIdsByPlayerId;
+  if (!runtime || !byPlayer) return;
+  const remaining = (byPlayer[playerId] ?? []).filter((id) => id !== cardId);
+  if (remaining.length > 0) byPlayer[playerId] = remaining;
+  else delete byPlayer[playerId];
+  if (Object.keys(byPlayer).length === 0) delete runtime.focusedReservationIdsByPlayerId;
+}
+
+function pruneArtifactBoundFocus(state: GameStateData): void {
+  const runtime = state.experimentalBalanceState;
+  const byPlayer = runtime?.focusedReservationIdsByPlayerId;
+  if (!runtime || !byPlayer) return;
+  for (const [playerId, focusedIds] of Object.entries(byPlayer)) {
+    const reserved = new Set(
+      state.players.find((player) => player.playerId === playerId)?.reservedArtifactIds ?? [],
+    );
+    const remaining = focusedIds.filter((cardId) => reserved.has(cardId));
+    if (remaining.length > 0) byPlayer[playerId] = remaining;
+    else delete byPlayer[playerId];
+  }
+  if (Object.keys(byPlayer).length === 0) delete runtime.focusedReservationIdsByPlayerId;
+}
+
+function hasRecordedLuminaryContact(state: GameStateData, luminaryId: string): boolean {
+  return state.experimentalBalanceState?.rulesetId === getBalanceRuleset(state).id &&
+    (state.experimentalBalanceState.contactedLuminaryIds ?? []).includes(luminaryId);
+}
+
+function recordLuminaryContact(state: GameStateData, luminaryId: string): void {
+  const runtime = ensureExperimentalBalanceState(state);
+  if (!runtime.contactedLuminaryIds) runtime.contactedLuminaryIds = [];
+  if (!runtime.contactedLuminaryIds.includes(luminaryId)) {
+    runtime.contactedLuminaryIds.push(luminaryId);
+  }
+}
+
+type ExperimentalLuminaryOwnerState = NonNullable<
+  NonNullable<GameStateData["experimentalBalanceState"]>["luminaryOwnerStateByPlayerId"]
+>[string];
+
+function experimentalLuminaryOwnerState(
+  state: GameStateData,
+  playerId: string,
+): ExperimentalLuminaryOwnerState {
+  const runtime = ensureExperimentalBalanceState(state);
+  if (!runtime.luminaryOwnerStateByPlayerId) runtime.luminaryOwnerStateByPlayerId = {};
+  const ownerState = runtime.luminaryOwnerStateByPlayerId[playerId] ?? {};
+  runtime.luminaryOwnerStateByPlayerId[playerId] = ownerState;
+  return ownerState;
+}
+
+function usesOwnerRelativeLuminaryState(state: GameStateData): boolean {
+  return getBalanceRuleset(state).luminaryContact === "nonexclusive";
+}
+
+function glassOrchardHasTriggered(state: GameStateData, playerId: string): boolean {
+  return usesOwnerRelativeLuminaryState(state)
+    ? experimentalLuminaryOwnerState(state, playerId).glassOrchardTriggered === true
+    : state.glassOrchardTriggered === true;
+}
+
+function markGlassOrchardTriggered(state: GameStateData, playerId: string): void {
+  if (usesOwnerRelativeLuminaryState(state)) {
+    experimentalLuminaryOwnerState(state, playerId).glassOrchardTriggered = true;
+  } else {
+    state.glassOrchardTriggered = true;
+  }
+}
+
+function firstHungerIsAvailable(state: GameStateData, playerId: string): boolean {
+  return usesOwnerRelativeLuminaryState(state)
+    ? experimentalLuminaryOwnerState(state, playerId).firstHungerAvailable === true
+    : state.firstHungerAvailable === playerId;
+}
+
+function grantFirstHunger(state: GameStateData, playerId: string): void {
+  if (usesOwnerRelativeLuminaryState(state)) {
+    experimentalLuminaryOwnerState(state, playerId).firstHungerAvailable = true;
+  } else {
+    state.firstHungerAvailable = playerId;
+  }
+}
+
+function consumeFirstHunger(state: GameStateData, playerId: string): void {
+  if (usesOwnerRelativeLuminaryState(state)) {
+    delete experimentalLuminaryOwnerState(state, playerId).firstHungerAvailable;
+  } else if (state.firstHungerAvailable === playerId) {
+    state.firstHungerAvailable = null;
+  }
+}
+
+/** Audit-only controls kept outside serialized game state so production matches cannot inherit them. */
+export function setBalanceSimulationOverrides(
+  state: GameStateData,
+  overrides: BalanceSimulationOverrides | null,
+): void {
+  if (overrides) balanceSimulationOverrides.set(state, { ...overrides });
+  else balanceSimulationOverrides.delete(state);
 }
 
 const ACTION_LOG_MAX = 100;
-const AFFINITY_LABEL: Record<StandardAffinityKey, string> = {
+const AFFINITY_LABEL: Record<NaturalAffinityKey, string> = {
   flare: "Flare",
   continuum: "Continuum",
   verdance: "Verdance",
@@ -431,135 +806,13 @@ function pushLog(state: GameStateData, entry: ActionLogEntry): void {
 
 // ─── Card Catalog ────────────────────────────────────────────────────────────
 
-function affinityCost(
-  flare: number,
-  continuum: number,
-  verdance: number,
-  abyss: number,
-  radiance: number,
-): AffinityCounts {
-  return {
-    flare: flare,
-    continuum: continuum,
-    verdance: verdance,
-    abyss: abyss,
-    radiance: radiance,
-    singularity: 0,
-  };
-}
-
-const CARD_CATALOG: ArtifactCard[] = [
-  // ─── Tier 1 (40 cards — 8 per Affinity) ──────────────────────────────────
-  // Flare bonus
-  { id: "t1r01", tier: 1, bonusAffinity: "flare", eminence: 0, cost: affinityCost(0, 0, 1, 1, 1) },
-  { id: "t1r02", tier: 1, bonusAffinity: "flare", eminence: 0, cost: affinityCost(0, 0, 1, 2, 0) },
-  { id: "t1r03", tier: 1, bonusAffinity: "flare", eminence: 0, cost: affinityCost(0, 1, 1, 0, 1) },
-  { id: "t1r04", tier: 1, bonusAffinity: "flare", eminence: 0, cost: affinityCost(0, 2, 0, 0, 0) },
-  { id: "t1r05", tier: 1, bonusAffinity: "flare", eminence: 0, cost: affinityCost(0, 0, 0, 2, 2) },
-  { id: "t1r06", tier: 1, bonusAffinity: "flare", eminence: 0, cost: affinityCost(0, 2, 1, 0, 0) },
-  { id: "t1r07", tier: 1, bonusAffinity: "flare", eminence: 0, cost: affinityCost(0, 0, 2, 2, 0) },
-  { id: "t1r08", tier: 1, bonusAffinity: "flare", eminence: 1, cost: affinityCost(0, 0, 0, 0, 4) },
-  // Continuum bonus
-  { id: "t1s01", tier: 1, bonusAffinity: "continuum", eminence: 0, cost: affinityCost(1, 0, 1, 0, 1) },
-  { id: "t1s02", tier: 1, bonusAffinity: "continuum", eminence: 0, cost: affinityCost(2, 0, 1, 0, 0) },
-  { id: "t1s03", tier: 1, bonusAffinity: "continuum", eminence: 0, cost: affinityCost(1, 0, 0, 1, 1) },
-  { id: "t1s04", tier: 1, bonusAffinity: "continuum", eminence: 0, cost: affinityCost(1, 0, 0, 0, 2) },
-  { id: "t1s05", tier: 1, bonusAffinity: "continuum", eminence: 0, cost: affinityCost(0, 0, 0, 2, 2) },
-  { id: "t1s06", tier: 1, bonusAffinity: "continuum", eminence: 0, cost: affinityCost(1, 0, 2, 0, 0) },
-  { id: "t1s07", tier: 1, bonusAffinity: "continuum", eminence: 0, cost: affinityCost(2, 0, 0, 2, 0) },
-  { id: "t1s08", tier: 1, bonusAffinity: "continuum", eminence: 1, cost: affinityCost(0, 0, 4, 0, 0) },
-  // Verdance bonus
-  { id: "t1e01", tier: 1, bonusAffinity: "verdance", eminence: 0, cost: affinityCost(1, 1, 0, 0, 1) },
-  { id: "t1e02", tier: 1, bonusAffinity: "verdance", eminence: 0, cost: affinityCost(0, 2, 0, 1, 0) },
-  { id: "t1e03", tier: 1, bonusAffinity: "verdance", eminence: 0, cost: affinityCost(1, 1, 0, 1, 0) },
-  { id: "t1e04", tier: 1, bonusAffinity: "verdance", eminence: 0, cost: affinityCost(0, 3, 0, 0, 0) },
-  { id: "t1e05", tier: 1, bonusAffinity: "verdance", eminence: 0, cost: affinityCost(2, 0, 0, 0, 2) },
-  { id: "t1e06", tier: 1, bonusAffinity: "verdance", eminence: 0, cost: affinityCost(0, 1, 0, 1, 2) },
-  { id: "t1e07", tier: 1, bonusAffinity: "verdance", eminence: 0, cost: affinityCost(0, 0, 0, 2, 1) },
-  { id: "t1e08", tier: 1, bonusAffinity: "verdance", eminence: 1, cost: affinityCost(0, 0, 0, 4, 0) },
-  // Abyss bonus
-  { id: "t1o01", tier: 1, bonusAffinity: "abyss", eminence: 0, cost: affinityCost(0, 1, 1, 0, 1) },
-  { id: "t1o02", tier: 1, bonusAffinity: "abyss", eminence: 0, cost: affinityCost(0, 1, 0, 0, 2) },
-  { id: "t1o03", tier: 1, bonusAffinity: "abyss", eminence: 0, cost: affinityCost(1, 0, 1, 0, 1) },
-  { id: "t1o04", tier: 1, bonusAffinity: "abyss", eminence: 0, cost: affinityCost(0, 0, 2, 1, 0) },
-  { id: "t1o05", tier: 1, bonusAffinity: "abyss", eminence: 0, cost: affinityCost(2, 1, 0, 0, 0) },
-  { id: "t1o06", tier: 1, bonusAffinity: "abyss", eminence: 0, cost: affinityCost(0, 2, 2, 0, 0) },
-  { id: "t1o07", tier: 1, bonusAffinity: "abyss", eminence: 0, cost: affinityCost(1, 0, 0, 1, 2) },
-  { id: "t1o08", tier: 1, bonusAffinity: "abyss", eminence: 1, cost: affinityCost(0, 4, 0, 0, 0) },
-  // Radiance bonus
-  { id: "t1p01", tier: 1, bonusAffinity: "radiance", eminence: 0, cost: affinityCost(1, 1, 0, 1, 0) },
-  { id: "t1p02", tier: 1, bonusAffinity: "radiance", eminence: 0, cost: affinityCost(0, 1, 0, 2, 0) },
-  { id: "t1p03", tier: 1, bonusAffinity: "radiance", eminence: 0, cost: affinityCost(1, 0, 1, 1, 0) },
-  { id: "t1p04", tier: 1, bonusAffinity: "radiance", eminence: 0, cost: affinityCost(2, 0, 0, 0, 1) },
-  { id: "t1p05", tier: 1, bonusAffinity: "radiance", eminence: 0, cost: affinityCost(0, 2, 0, 0, 2) },
-  { id: "t1p06", tier: 1, bonusAffinity: "radiance", eminence: 0, cost: affinityCost(1, 0, 1, 0, 2) },
-  { id: "t1p07", tier: 1, bonusAffinity: "radiance", eminence: 0, cost: affinityCost(0, 0, 1, 2, 1) },
-  { id: "t1p08", tier: 1, bonusAffinity: "radiance", eminence: 1, cost: affinityCost(0, 0, 4, 0, 0) },
-
-  // ─── Tier 2 (30 cards — 6 per Affinity) ──────────────────────────────────
-  // Flare bonus
-  { id: "t2r01", tier: 2, bonusAffinity: "flare", eminence: 1, cost: affinityCost(0, 2, 0, 3, 2) },
-  { id: "t2r02", tier: 2, bonusAffinity: "flare", eminence: 2, cost: affinityCost(0, 1, 4, 2, 0) },
-  { id: "t2r03", tier: 2, bonusAffinity: "flare", eminence: 2, cost: affinityCost(3, 0, 0, 0, 3) },
-  { id: "t2r04", tier: 2, bonusAffinity: "flare", eminence: 1, cost: affinityCost(2, 0, 2, 0, 2) },
-  { id: "t2r05", tier: 2, bonusAffinity: "flare", eminence: 2, cost: affinityCost(0, 3, 0, 2, 2) },
-  { id: "t2r06", tier: 2, bonusAffinity: "flare", eminence: 2, cost: affinityCost(0, 0, 0, 5, 0) },
-  // Continuum bonus
-  { id: "t2s01", tier: 2, bonusAffinity: "continuum", eminence: 1, cost: affinityCost(2, 0, 3, 0, 2) },
-  { id: "t2s02", tier: 2, bonusAffinity: "continuum", eminence: 2, cost: affinityCost(4, 0, 0, 2, 1) },
-  { id: "t2s03", tier: 2, bonusAffinity: "continuum", eminence: 2, cost: affinityCost(0, 3, 0, 0, 3) },
-  { id: "t2s04", tier: 2, bonusAffinity: "continuum", eminence: 1, cost: affinityCost(0, 0, 2, 0, 3) },
-  { id: "t2s05", tier: 2, bonusAffinity: "continuum", eminence: 2, cost: affinityCost(5, 0, 0, 0, 0) },
-  { id: "t2s06", tier: 2, bonusAffinity: "continuum", eminence: 2, cost: affinityCost(2, 0, 0, 3, 2) },
-  // Verdance bonus
-  { id: "t2e01", tier: 2, bonusAffinity: "verdance", eminence: 1, cost: affinityCost(3, 2, 0, 0, 2) },
-  { id: "t2e02", tier: 2, bonusAffinity: "verdance", eminence: 2, cost: affinityCost(2, 4, 0, 1, 0) },
-  { id: "t2e03", tier: 2, bonusAffinity: "verdance", eminence: 2, cost: affinityCost(0, 0, 3, 3, 0) },
-  { id: "t2e04", tier: 2, bonusAffinity: "verdance", eminence: 1, cost: affinityCost(0, 2, 0, 2, 2) },
-  { id: "t2e05", tier: 2, bonusAffinity: "verdance", eminence: 2, cost: affinityCost(0, 5, 0, 0, 0) },
-  { id: "t2e06", tier: 2, bonusAffinity: "verdance", eminence: 2, cost: affinityCost(2, 0, 0, 2, 3) },
-  // Abyss bonus
-  { id: "t2o01", tier: 2, bonusAffinity: "abyss", eminence: 1, cost: affinityCost(0, 2, 2, 0, 3) },
-  { id: "t2o02", tier: 2, bonusAffinity: "abyss", eminence: 2, cost: affinityCost(1, 0, 2, 0, 4) },
-  { id: "t2o03", tier: 2, bonusAffinity: "abyss", eminence: 2, cost: affinityCost(3, 0, 0, 3, 0) },
-  { id: "t2o04", tier: 2, bonusAffinity: "abyss", eminence: 1, cost: affinityCost(2, 0, 3, 0, 2) },
-  { id: "t2o05", tier: 2, bonusAffinity: "abyss", eminence: 2, cost: affinityCost(0, 0, 5, 0, 0) },
-  { id: "t2o06", tier: 2, bonusAffinity: "abyss", eminence: 2, cost: affinityCost(2, 3, 0, 0, 2) },
-  // Radiance bonus
-  { id: "t2p01", tier: 2, bonusAffinity: "radiance", eminence: 1, cost: affinityCost(2, 3, 0, 2, 0) },
-  { id: "t2p02", tier: 2, bonusAffinity: "radiance", eminence: 2, cost: affinityCost(0, 2, 1, 4, 0) },
-  { id: "t2p03", tier: 2, bonusAffinity: "radiance", eminence: 2, cost: affinityCost(0, 0, 3, 0, 3) },
-  { id: "t2p04", tier: 2, bonusAffinity: "radiance", eminence: 1, cost: affinityCost(3, 2, 0, 0, 2) },
-  { id: "t2p05", tier: 2, bonusAffinity: "radiance", eminence: 2, cost: affinityCost(0, 0, 0, 0, 5) },
-  { id: "t2p06", tier: 2, bonusAffinity: "radiance", eminence: 2, cost: affinityCost(0, 2, 3, 2, 0) },
-
-  // ─── Tier 3 (20 cards — 4 per Affinity) ──────────────────────────────────
-  // Flare bonus
-  { id: "t3r01", tier: 3, bonusAffinity: "flare", eminence: 3, cost: affinityCost(3, 0, 0, 5, 3) },
-  { id: "t3r02", tier: 3, bonusAffinity: "flare", eminence: 4, cost: affinityCost(0, 0, 3, 6, 3) },
-  { id: "t3r03", tier: 3, bonusAffinity: "flare", eminence: 3, cost: affinityCost(0, 5, 0, 3, 3) },
-  { id: "t3r04", tier: 3, bonusAffinity: "flare", eminence: 5, cost: affinityCost(0, 0, 7, 3, 3) },
-  // Continuum bonus
-  { id: "t3s01", tier: 3, bonusAffinity: "continuum", eminence: 3, cost: affinityCost(5, 3, 0, 0, 3) },
-  { id: "t3s02", tier: 3, bonusAffinity: "continuum", eminence: 4, cost: affinityCost(6, 3, 0, 3, 0) },
-  { id: "t3s03", tier: 3, bonusAffinity: "continuum", eminence: 3, cost: affinityCost(3, 0, 5, 3, 0) },
-  { id: "t3s04", tier: 3, bonusAffinity: "continuum", eminence: 5, cost: affinityCost(3, 7, 0, 0, 3) },
-  // Verdance bonus
-  { id: "t3e01", tier: 3, bonusAffinity: "verdance", eminence: 3, cost: affinityCost(0, 5, 3, 0, 3) },
-  { id: "t3e02", tier: 3, bonusAffinity: "verdance", eminence: 4, cost: affinityCost(3, 6, 0, 3, 0) },
-  { id: "t3e03", tier: 3, bonusAffinity: "verdance", eminence: 3, cost: affinityCost(0, 3, 0, 5, 3) },
-  { id: "t3e04", tier: 3, bonusAffinity: "verdance", eminence: 5, cost: affinityCost(3, 3, 7, 0, 0) },
-  // Abyss bonus
-  { id: "t3o01", tier: 3, bonusAffinity: "abyss", eminence: 3, cost: affinityCost(0, 3, 5, 3, 0) },
-  { id: "t3o02", tier: 3, bonusAffinity: "abyss", eminence: 4, cost: affinityCost(0, 3, 6, 0, 3) },
-  { id: "t3o03", tier: 3, bonusAffinity: "abyss", eminence: 3, cost: affinityCost(3, 0, 3, 0, 5) },
-  { id: "t3o04", tier: 3, bonusAffinity: "abyss", eminence: 5, cost: affinityCost(0, 3, 3, 7, 0) },
-  // Radiance bonus
-  { id: "t3p01", tier: 3, bonusAffinity: "radiance", eminence: 3, cost: affinityCost(3, 0, 3, 5, 0) },
-  { id: "t3p02", tier: 3, bonusAffinity: "radiance", eminence: 4, cost: affinityCost(3, 0, 3, 0, 6) },
-  { id: "t3p03", tier: 3, bonusAffinity: "radiance", eminence: 3, cost: affinityCost(5, 0, 3, 0, 3) },
-  { id: "t3p04", tier: 3, bonusAffinity: "radiance", eminence: 5, cost: affinityCost(0, 3, 0, 3, 7) },
-];
+const CARD_CATALOG: ArtifactCard[] = ARTIFACT_CATALOG.map((artifact) => ({
+  id: artifact.id,
+  tier: artifact.tier,
+  bonusAffinity: artifact.bonusAffinity,
+  eminence: artifact.eminence,
+  cost: { ...artifact.cost },
+}));
 
 export const LUMINARIES: LuminaryDef[] = [
   // ── Mono-color Luminaries ───────────────────────────────────────────────────
@@ -574,7 +827,7 @@ export const LUMINARIES: LuminaryDef[] = [
     summonSecondaryColor: "#7f1d1d",
     auraStyle: "fire",
     effectName: "Rupture of the Still",
-    effectDescription: "On arrival, burns all Tier III Artifacts whose Flare cost is 4 or less, forcing those slots to immediately redraw.",
+    effectDescription: "On arrival, burn every face-up Tier III Artifact with a Flare cost below 5, then immediately refill each vacated Forge position.",
   },
   {
     id: "lum_tide",
@@ -587,7 +840,7 @@ export const LUMINARIES: LuminaryDef[] = [
     summonSecondaryColor: "#e2e8f0",
     auraStyle: "tide",
     effectName: "The Observer Effect",
-    effectDescription: "On arrival, scries the Tier II and Tier III Archives and reorders them so Continuum Artifacts surface first.",
+    effectDescription: "The allied player may view the top Artifact of each Archive. Once, the allied player may Forge an Artifact on the top of an Archive.",
   },
   {
     id: "lum_verdant",
@@ -600,7 +853,7 @@ export const LUMINARIES: LuminaryDef[] = [
     summonSecondaryColor: "#166534",
     auraStyle: "verdant",
     effectName: "Early Bloom",
-    effectDescription: "Living Luminary bonus — starting the turn after this Luminary arrives, you gain +1 Verdance toward every Artifact you forge while you own it.",
+    effectDescription: "On arrival, gain 1 Verdance token from the Affinity Well.",
   },
   {
     id: "lum_void",
@@ -614,7 +867,7 @@ export const LUMINARIES: LuminaryDef[] = [
     summonSecondaryColor: "#0a0a14",
     auraStyle: "void",
     effectName: "Oblivion",
-    effectDescription: "On arrival, raises the shared victory requirement by 5. This Luminary awards no Eminence to its claimer.",
+    effectDescription: "On arrival, raise the shared victory requirement by 5. This Luminary awards no Eminence.",
   },
   {
     id: "lum_radiant",
@@ -627,7 +880,7 @@ export const LUMINARIES: LuminaryDef[] = [
     summonSecondaryColor: "#2ecc71",
     auraStyle: "radiant",
     effectName: "Perfect Coherence",
-    effectDescription: "Once per game, when you end a turn with 8 or more Radiance Artifacts forged, you immediately gain +2 Eminence.",
+    effectDescription: "Once, when you end your turn with at least 8 Radiance Artifacts, gain +2 Eminence. Once, when you end your turn with at least 10 Radiance Artifacts, gain +2 Eminence.",
   },
   // ── Dual-color Luminaries ────────────────────────────────────────────────────
   {
@@ -673,14 +926,14 @@ export const LUMINARIES: LuminaryDef[] = [
     id: "lum_compass",
     name: "???",
     domain: "Erasure",
-    eminence: 0,
+    eminence: 1,
     requirements: { flare: 0, continuum: 4, verdance: 0, abyss: 4, radiance: 0, singularity: 0 },
     flavor: "Everyone remembers something happened, but no one recalls what was lost.",
     summonColor: "#2563eb",
     summonSecondaryColor: "#0a0a14",
     auraStyle: "distorted",
     effectName: "The Forgotten Hour",
-    effectDescription: "On arrival, raises the shared victory requirement by 1 and marks all currently face-up Forge Artifacts as Forgotten. Forgotten marks last only until the source player's next end of turn, and players cannot Encrypt during that window. After the marks expire, 12 owner-turn cycles pass; then Forgotten Hour returns at the source player's end of turn. Artifacts forged while Forgotten award 0 Eminence and cannot be used for blueprints.",
+    effectDescription: "On arrival, raise the shared victory requirement by 1 and mark every face-up Forge Artifact as Forgotten. Until the ally's next end of turn, only the ally may Encrypt. Artifacts forged while Forgotten award 0 Eminence and cannot be used for Blueprints. After the marks expire, wait 12 of the ally's turns, then mark the face-up Forge Artifacts as Forgotten again without raising the victory requirement.",
   },
   {
     id: "lum_seed",
@@ -693,7 +946,7 @@ export const LUMINARIES: LuminaryDef[] = [
     summonSecondaryColor: "#4ade80",
     auraStyle: "compass",
     effectName: "Avatar Seeds",
-    effectDescription: "On arrival, places Avatar Seed tokens on the next Artifact in each Archive. When an opponent forges a seeded Artifact, you earn pending Eminence paid out at the end of your next turn.",
+    effectDescription: "On arrival, permanently mark one random mold in each tier with an Avatar Seed. At the end of every turn, each unseeded Artifact occupying one of those molds becomes Seeded. When an opponent forges a Seeded Artifact, you gain 1 permanent Affinity matching that Artifact's bonus Affinity.",
   },
   {
     id: "lum_orchard",
@@ -706,7 +959,7 @@ export const LUMINARIES: LuminaryDef[] = [
     summonSecondaryColor: "#fef9c3",
     auraStyle: "verdant",
     effectName: "Perfect Replication",
-    effectDescription: "Once per game, the first time you forge an Artifact, a free copy of your cheapest-cost Tier I Artifact is added to your collection.",
+    effectDescription: "Once per game, when you first forge an Artifact whose cost includes Verdance or Radiance, gain a second permanent bonus Affinity matching that Artifact.",
   },
   {
     id: "lum_pale",
@@ -719,7 +972,7 @@ export const LUMINARIES: LuminaryDef[] = [
     summonSecondaryColor: "#0a0a14",
     auraStyle: "pale",
     effectName: "Balance Due",
-    effectDescription: "On arrival, each player returns 2 tokens of every Affinity they hold at half or more of its starting supply.",
+    effectDescription: "On arrival, each player returns 2 tokens of every Affinity, including Singularity, that they hold at half or more of its starting supply (rounded up).",
   },
   // ── Triple-color Luminaries (2–4 Eminence) ──────────────────────────────────
   {
@@ -733,7 +986,7 @@ export const LUMINARIES: LuminaryDef[] = [
     summonSecondaryColor: "#7b1fa2",
     auraStyle: "fire",
     effectName: "Cinder Mandate",
-    effectDescription: "On arrival, mark each face-up Artifact as Condemned unless its forge cost includes 3 or more Flare, Abyss, or Radiance. At the end of your next turn, burn each remaining Condemned Artifact and refill its Forge slot.",
+    effectDescription: "On arrival, mark each face-up Forge Artifact as Condemned unless its cost includes at least 3 of Flare, Abyss, or Radiance. At the end of your next turn, burn each remaining Condemned Artifact and refill its Forge position.",
   },
   {
     id: "lum_hunger",
@@ -746,7 +999,7 @@ export const LUMINARIES: LuminaryDef[] = [
     summonSecondaryColor: "#4ade80",
     auraStyle: "oracle",
     effectName: "Assimilation",
-    effectDescription: "On arrival, you may replace your forge action this turn with Assimilation — copy the bonus affinity of any Artifact in your collection as a permanent bonus.",
+    effectDescription: "Once after arrival, you may replace your Forge action with Assimilation. Assimilate any face-up Artifact for free: gain its permanent bonus Affinity and no Eminence. It counts as owned only for Blueprints.",
   },
   {
     id: "lum_null",
@@ -759,7 +1012,7 @@ export const LUMINARIES: LuminaryDef[] = [
     summonSecondaryColor: "#0a0a14",
     auraStyle: "null",
     effectName: "Black Domain",
-    effectDescription: "On arrival, marks all face-up Tier III Artifacts that do not require all three of Continuum, Abyss, and Radiance as Nullified — they award 0 Eminence when forged.",
+    effectDescription: "On arrival, mark all face-up Tier III Artifacts that do not require all three of Continuum, Abyss, and Radiance as Nullified. Nullified Artifacts award 0 Eminence, cannot be used for Blueprints, and cannot be Encrypted. If the first Nullified Artifact forged this game is forged by the allied player, it is unaffected by Nullified.",
   },
   // ── Deferred / Inactive Luminaries (not in active arrival pool) ────────────
   {
@@ -792,77 +1045,16 @@ export const LUMINARIES: LuminaryDef[] = [
 export const CARD_MAP = new Map<string, ArtifactCard>(
   CARD_CATALOG.map((c) => [c.id, c]),
 );
+const ARTIFACT_BUILT_ON = new Map<string, readonly ArtifactId[]>(
+  ARTIFACT_CATALOG.map((artifact) => [artifact.id, artifact.builtOn]),
+);
 export const LUMINARY_MAP = new Map<string, LuminaryDef>(
   LUMINARIES.map((l) => [l.id, l]),
 );
 
-// ─── Kardashev tier helpers ──────────────────────────────────────────────────
-
-/**
- * Compute the player's Kardashev tier from their forged Artifact IDs and the
- * set of Artifact IDs forged entirely through permanent Affinity bonuses.
- * Logic mirrors getKardashevTier in the frontend kardashev.ts.
- */
-function computeKardashevTier(
-  forgedArtifactIds: ReadonlyArray<string>,
-  discountedForgeIds: ReadonlyArray<string>,
-): 0 | 1 | 2 | 3 {
-  if (forgedArtifactIds.length === 0) return 0;
-
-  const discountedSet = new Set(discountedForgeIds);
-  const cards: Array<{ id: string; tier: number }> = [];
-  for (const id of forgedArtifactIds) {
-    const c = CARD_MAP.get(id);
-    if (c) cards.push({ id, tier: c.tier });
-  }
-
-  const tier1 = cards.filter((c) => c.tier === 1);
-  const tier2 = cards.filter((c) => c.tier === 2);
-  const tier3 = cards.filter((c) => c.tier === 3);
-
-  if (tier3.some((c) => discountedSet.has(c.id))) return 3;
-  if (tier3.length > 0 || tier2.some((c) => discountedSet.has(c.id))) return 2;
-  if (tier2.length > 0 || tier1.some((c) => discountedSet.has(c.id))) return 1;
-  return 0;
-}
-
-function kardashevTierLabel(tier: 1 | 2 | 3): string {
-  if (tier === 1) return "Kardashev Type I";
-  if (tier === 2) return "Kardashev Type II";
-  return "Kardashev Type III";
-}
-
-/**
- * Check whether the player's Kardashev tier advanced after a forge action and,
- * if so, push a milestone entry to the action log.
- *
- * @param oldTier Tier computed before the Artifact was added.
- * @param isDiscount Whether the Artifact was forged with zero Affinities spent.
- * @param cardTier Tier of the forged Artifact (1, 2, or 3).
- */
-function checkKardashevAdvance(
-  state: GameStateData,
-  player: PlayerGameState,
-  oldTier: 0 | 1 | 2 | 3,
-  isDiscount: boolean,
-  cardTier: number,
-): void {
-  const newTier = computeKardashevTier(
-    player.forgedArtifactIds,
-    player.discountedForgeIds,
-  );
-  if (newTier <= oldTier) return;
-
-  const reason = isDiscount
-    ? `Tier ${cardTier} Artifact forged entirely on bonuses`
-    : `Tier ${cardTier} Artifact forged`;
-
-  pushLog(state, {
-    playerId: player.playerId,
-    playerName: player.playerName,
-    summary: `reached ${kardashevTierLabel(newTier as 1 | 2 | 3)} (${reason})`,
-    turn: state.roundNumber,
-  });
+function ensureCivilizationIdentitySnapshot(player: PlayerGameState): void {
+  if (player.civilizationIdentitySnapshot || !player.civilizationIdentity) return;
+  player.civilizationIdentitySnapshot = { ...player.civilizationIdentity };
 }
 
 // Luminaries in the active arrival pool for v0.8.
@@ -895,6 +1087,24 @@ function shuffle<T>(arr: T[]): T[] {
 
 export function zeroAffinities(): AffinityCounts {
   return { flare: 0, continuum: 0, verdance: 0, abyss: 0, radiance: 0, singularity: 0 };
+}
+
+function incrementUsageCount(
+  counts: Record<string, number> | undefined,
+  id: string,
+): Record<string, number> {
+  const next = counts ?? {};
+  next[id] = (next[id] ?? 0) + 1;
+  return next;
+}
+
+function usageCountsFromIds(ids: unknown): Record<string, number> {
+  const counts: Record<string, number> = {};
+  if (!Array.isArray(ids)) return counts;
+  for (const id of ids) {
+    if (typeof id === "string") counts[id] = (counts[id] ?? 0) + 1;
+  }
+  return counts;
 }
 
 function affinityWellForPlayerCount(count: number): AffinityCounts {
@@ -996,7 +1206,10 @@ export function initializeGame(
     );
 
     // Luminaries: pick playerCount+1 from illustrated pool only
-    const lumCount = Math.min(playerCount + 1, AVAILABLE_LUMINARIES.length);
+    const lumCount = Math.min(
+      options.luminaryCountOverride ?? playerCount + 1,
+      AVAILABLE_LUMINARIES.length,
+    );
     activeLuminaries = shuffle(AVAILABLE_LUMINARIES.map((l) => l.id)).slice(
       0,
       lumCount,
@@ -1010,22 +1223,52 @@ export function initializeGame(
     deckTier3 = tier3Ids.slice(4);
   }
 
-  const playerStates: PlayerGameState[] = players.map((p) => ({
-    playerId: p.id,
-    playerName: p.name,
-    affinities: zeroAffinities(),
-    bonuses: zeroAffinities(),
-    eminence: 0,
-    reservedArtifactIds: [],
-    privateReservedArtifactIds: [],
-    forgedArtifactIds: [],
-    discountedForgeIds: [],
-    blueprintBlockedCardIds: [],
-    luminaries: [],
-    isConnected: true,
-    plannedAction: null,
-    plannedActionCancelReason: null,
-  }));
+  const playerStates: PlayerGameState[] = players.map((p) => {
+    const blueprintSetup = options.blueprintSetups?.[p.id];
+    const configuredBlueprintIds = blueprintSetup?.blueprintIds ?? [];
+    // Production setup already supplies its ordinary slot count. Only an
+    // explicitly attached experiment constrains the setup payload here.
+    const blueprintIds = options.balanceRuleset
+      ? configuredBlueprintIds.slice(0, options.balanceRuleset.blueprintSlots)
+      : configuredBlueprintIds;
+    return {
+      playerId: p.id,
+      playerName: p.name,
+      civilizationIdentity: options.civilizationIdentities?.[p.id] ?? null,
+      civilizationIdentitySnapshot: options.civilizationIdentities?.[p.id]
+        ? { ...options.civilizationIdentities[p.id]! }
+        : null,
+      affinities: zeroAffinities(),
+      bonuses: zeroAffinities(),
+      eminence: 0,
+      reservedArtifactIds: [],
+      privateReservedArtifactIds: [],
+      forgedArtifactIds: [],
+      artifactForgeCounts: {},
+      assimilatedArtifactIds: [],
+      discountedForgeIds: [],
+      blueprintBlockedCardIds: [],
+      blueprintPrivateStates: blueprintIds.map(
+        (blueprintId, slotIndex): BlueprintPrivateState => ({
+          blueprintId,
+          slotIndex,
+          matchedComponentIds: [],
+          manifested: false,
+          secretTargetCardId: null,
+          safePreManifestActionPlayerIds: [],
+        }),
+      ),
+      blueprintPresentationVariants: blueprintSetup?.presentationVariants ?? {},
+      manifestedBlueprintProjects: [],
+      manifestedBlueprintDevices: [],
+      tideArchiveForgeAvailable: false,
+      luminaries: [],
+      luminaryAllianceCounts: {},
+      isConnected: true,
+      plannedAction: null,
+      plannedActionCancelReason: null,
+    };
+  });
 
   const startedAt = Date.now();
   const replayFirstPlayerIndex = replayBoard?.firstPlayerId
@@ -1036,7 +1279,27 @@ export function initializeGame(
     : Math.floor(Math.random() * playerStates.length);
   const startingPlayer = playerStates[startingPlayerIndex];
 
-  return {
+  if (
+    options.applyTurnOrderCompensation &&
+    options.balanceRuleset?.luminaryBaseEminence !== "none"
+  ) {
+    for (const [seat, player] of playerStates.entries()) {
+      const openingPosition =
+        (seat - startingPlayerIndex + playerStates.length) % playerStates.length;
+      player.eminence = getTurnOrderEminenceCompensation(
+        openingPosition,
+        playerStates.length,
+        victoryRequirement,
+      );
+    }
+  }
+
+  const compensatedPlayers = Array.from(
+    { length: Math.max(0, playerStates.length - 1) },
+    (_, offset) => playerStates[(startingPlayerIndex + offset + 1) % playerStates.length]!,
+  ).filter((player) => player.eminence > 0);
+
+  const initialState: GameStateData = {
     startedAt,
     initialBoard: makeInitialBoardSnapshot(
       {
@@ -1073,9 +1336,19 @@ export function initializeGame(
     luminaryAffinities: [],
     pendingSummonEvents: [],
     pendingLuminaryActivationEvents: [],
+    pendingBlueprintManifestationEvents: [],
+    pendingBlueprintDetonationEvents: [],
     pendingTurnTransition: null,
+    nullifiedFirstForge: null,
     forgottenHourCycle: {},
     phoenixRecurrence: undefined,
+    brokenCovenantDeclared: false,
+    covenantStateByPlayerId: Object.fromEntries(
+      playerStates.map((player) => [player.playerId, "intact" as const]),
+    ),
+    tierTwoOpportunityAtTurnStart: false,
+    tierTwoClaimMadeThisTurn: false,
+    voidSealOwnerId: null,
     players: playerStates,
     winnerId: null,
     winTriggerLuminaryId: null,
@@ -1087,19 +1360,31 @@ export function initializeGame(
         summary: `goes first (chosen at random)`,
         turn: 0,
       },
+      ...compensatedPlayers.map((player) => ({
+        playerId: player.playerId,
+        playerName: player.playerName,
+        summary: `begins with ${player.eminence} Eminence for acting after the opener`,
+        turn: 0,
+      })),
     ],
     turnTimerSeconds: null,
     turnDeadline: null,
     version: 1,
     burnPile: [],
     burnEvents: [],
+    annihilatedArtifactIds: [],
     coreActionUsed: false,
   };
+  if (options.balanceRuleset) setBalanceRuleset(initialState, options.balanceRuleset);
+  beginTierTwoOpportunity(initialState, startingPlayer);
+  return initialState;
 }
 
 /** Actions that consume the player's one core action per turn. */
 const CORE_ACTIONS = new Set([
   "forge_artifact",
+  "foundry_forge_artifact",
+  "recover_foundry_component",
   "forge_reserved_artifact",
   "reserve_artifact",
   "harness_three_affinities",
@@ -1115,6 +1400,8 @@ type ActionType =
   | "harness_two_affinities"
   | "reserve_artifact"
   | "forge_artifact"
+  | "foundry_forge_artifact"
+  | "recover_foundry_component"
   | "forge_reserved_artifact"
   | "assimilate"
   | "pass"
@@ -1122,18 +1409,22 @@ type ActionType =
   | "toggle_luminary_affinity"
   | "resolve_summon"
   | "resolve_luminary_activation"
+  | "resolve_blueprint_manifestation"
+  | "resolve_blueprint_detonation"
   | "plan_action"
   | "execute_plan"
   | "cancel_plan"
-  | "tutorial_fast_forward"
   | "set_civ_name"
   | "choose_luminary_order";
 
 export interface ActionPayload {
   type: ActionType;
   affinities?: Partial<AffinityCounts>;
-  /** Used by same-Affinity Harness actions and legacy Luminary Affinity payloads. */
-  affinity?: StandardAffinityKey;
+  /**
+   * Used by same-Affinity Harness actions, legacy Luminary Affinity payloads,
+   * and the natural requirement selected by an Artifact-bound Focus Forge.
+   */
+  affinity?: NaturalAffinityKey;
   returnAffinities?: Partial<AffinityCounts>;
   cardId?: string;
   tier?: 1 | 2 | 3;
@@ -1143,13 +1434,17 @@ export interface ActionPayload {
   civName?: string;
   /** Ordered list of luminaryIds for choose_luminary_order action. */
   orderedIds?: string[];
+  /** Required acknowledgment before the Foundry's third, destructive use. */
+  confirmOverdrive?: boolean;
+  /** @deprecated Retained for wire compatibility; Void Seal no longer has an effect. */
+  voidSealAffinity?: NaturalAffinityKey;
 }
 
 // ─── Luminary Affinity Helpers ────────────────────────────────────────────────
 
 function randomActiveAffinity(
-  eligible: StandardAffinityKey[],
-): StandardAffinityKey {
+  eligible: NaturalAffinityKey[],
+): NaturalAffinityKey {
   if (eligible.length === 0) return "flare";
   const index = Math.min(
     eligible.length - 1,
@@ -1201,10 +1496,624 @@ function effectiveCost(
 ): AffinityCounts {
   const bonuses = bonusOverride ?? player.bonuses;
   const result = zeroAffinities();
-  for (const color of STANDARD_AFFINITY_KEYS) {
+  for (const color of NATURAL_AFFINITY_KEYS) {
     result[color] = Math.max(0, card.cost[color] - bonuses[color]);
   }
+  result.singularity = Math.max(0, card.cost.singularity - bonuses.singularity);
   return result;
+}
+
+function manifestedProjects(player: PlayerGameState): ManifestedProjectPublicState[] {
+  const canonical = player.manifestedBlueprintProjects;
+  const compatibility = player.manifestedBlueprintDevices;
+  const projects = canonical && compatibility && canonical !== compatibility
+    ? canonical.length === 0 && compatibility.length > 0
+      ? compatibility
+      : canonical
+    : canonical ?? compatibility ?? [];
+  player.manifestedBlueprintProjects = projects;
+  player.manifestedBlueprintDevices = projects;
+  return projects;
+}
+
+function getManifestedProject(
+  player: PlayerGameState,
+  blueprintId: BlueprintId,
+): ManifestedProjectPublicState | undefined {
+  return manifestedProjects(player).find(
+    (project) => project.blueprintId === blueprintId,
+  );
+}
+
+function covenantStateForPlayer(
+  state: GameStateData,
+  playerId: string,
+): CovenantState {
+  return state.covenantStateByPlayerId?.[playerId] ??
+    (state.brokenCovenantDeclared ? "broken" : "intact");
+}
+
+function foundryForgeCost(
+  card: ArtifactCard,
+  player: PlayerGameState,
+  bonusOverride?: AffinityCounts,
+): AffinityCounts {
+  const bonuses = bonusOverride ?? player.bonuses;
+  const result = zeroAffinities();
+  for (const affinity of NATURAL_AFFINITY_KEYS) {
+    const reducedPrintedCost = card.cost[affinity] > 0
+      ? card.cost[affinity] - 1
+      : 0;
+    result[affinity] = Math.max(0, reducedPrintedCost - bonuses[affinity]);
+  }
+  result.singularity = Math.max(0, card.cost.singularity - bonuses.singularity);
+  return result;
+}
+
+interface ExperimentalForgeCostResolution {
+  cost: AffinityCounts;
+  /** A payment floor cannot be covered by portable Singularity. */
+  paymentFloorSatisfied: boolean;
+  focusAttached: boolean;
+  focusSelectionError?: string;
+}
+
+function firstPositiveNaturalCost(cost: AffinityCounts): NaturalAffinityKey | null {
+  return NATURAL_AFFINITY_KEYS.find((affinity) => cost[affinity] > 0) ?? null;
+}
+
+/**
+ * Resolve only the opt-in Focus / advanced-payment candidates. Foundry,
+ * recovery, Assimilation, and other special free claims never call this path.
+ */
+function resolveExperimentalForgeCost(
+  state: GameStateData,
+  player: PlayerGameState,
+  card: ArtifactCard,
+  ordinaryCost: AffinityCounts,
+  options: { reserved: boolean; focusAffinity?: NaturalAffinityKey },
+): ExperimentalForgeCostResolution {
+  const ruleset = getBalanceRuleset(state);
+  const cost = { ...ordinaryCost };
+  const focusAttached = options.reserved &&
+    ruleset.encryptReward === "artifact_bound_focus" &&
+    hasArtifactBoundFocus(state, player.playerId, card.id);
+  const isAdvancedArtifact = card.tier === 2 || card.tier === 3;
+  const hasLineageConnection = isAdvancedArtifact &&
+    ruleset.advancedPayment === "minimum_one_lineage_waiver" &&
+    (ARTIFACT_BUILT_ON.get(card.id) ?? []).some(
+      (artifactId) => player.forgedArtifactIds.includes(artifactId),
+    );
+  // Focus is bound to exactly the encrypted card. Its owner chooses which
+  // still-positive printed-natural component to reduce after ordinary
+  // permanent discounts. A sole eligible component resolves automatically;
+  // a fully discounted card consumes Focus harmlessly when Forged.
+  if (focusAttached) {
+    const eligibleAffinities = NATURAL_AFFINITY_KEYS.filter(
+      (affinity) => cost[affinity] > 0,
+    );
+    if (
+      options.focusAffinity !== undefined &&
+      !eligibleAffinities.includes(options.focusAffinity)
+    ) {
+      return {
+        cost,
+        paymentFloorSatisfied: true,
+        focusAttached,
+        focusSelectionError: "Focus must target a remaining natural Artifact requirement",
+      };
+    }
+    if (eligibleAffinities.length > 1 && options.focusAffinity === undefined) {
+      return {
+        cost,
+        paymentFloorSatisfied: true,
+        focusAttached,
+        focusSelectionError: "Choose which natural Artifact requirement Focus reduces",
+      };
+    }
+    const affinity = options.focusAffinity ?? eligibleAffinities[0];
+    if (affinity) cost[affinity]--;
+  }
+
+  // A valid direct Built On link substitutes one remaining natural
+  // requirement. The lineage connection itself waives the minimum-payment
+  // floor, including when this substitution removes the last requirement.
+  if (hasLineageConnection) {
+    const affinity = firstPositiveNaturalCost(cost);
+    if (affinity) cost[affinity]--;
+  }
+
+  const usesPaymentFloor = isAdvancedArtifact && ruleset.advancedPayment !== "current";
+  const naturalCostIsZero = NATURAL_AFFINITY_KEYS.every(
+    (affinity) => cost[affinity] === 0,
+  );
+  const lineageWaivesFloor = hasLineageConnection;
+  if (usesPaymentFloor && naturalCostIsZero && !lineageWaivesFloor) {
+    const heldAffinity = NATURAL_AFFINITY_KEYS.find(
+      (affinity) => player.affinities[affinity] > 0,
+    );
+    if (!heldAffinity) {
+      return { cost, paymentFloorSatisfied: false, focusAttached };
+    }
+    // Encoding the floor on an actually-held natural Affinity makes the normal
+    // payment path auto-spend it while preventing Singularity substitution.
+    cost[heldAffinity] = 1;
+  }
+
+  return { cost, paymentFloorSatisfied: true, focusAttached };
+}
+
+function removeForgedImplementation(
+  state: GameStateData,
+  player: PlayerGameState,
+  artifactId: ArtifactId,
+): void {
+  const index = player.forgedArtifactIds.indexOf(artifactId);
+  if (index === -1) return;
+  const card = CARD_MAP.get(artifactId);
+  player.forgedArtifactIds.splice(index, 1);
+  player.discountedForgeIds = player.discountedForgeIds.filter((id) => id !== artifactId);
+  player.blueprintBlockedCardIds = (player.blueprintBlockedCardIds ?? []).filter(
+    (id) => id !== artifactId,
+  );
+  if (card) {
+    player.bonuses[card.bonusAffinity] = Math.max(
+      0,
+      player.bonuses[card.bonusAffinity] - 1,
+    );
+    player.eminence = Math.max(0, player.eminence - card.eminence);
+  }
+  if (player.forgedArtifactBonusSnapshots) {
+    delete player.forgedArtifactBonusSnapshots[artifactId];
+  }
+  if (state.artifactMarkers) delete state.artifactMarkers[artifactId];
+}
+
+function resolveFoundryOverdrive(
+  state: GameStateData,
+  player: PlayerGameState,
+  foundry: ManifestedProjectPublicState,
+): void {
+  const componentIds = BLUEPRINT_DEFINITIONS.bp_mantle_to_orbit_foundry.components.map(
+    (component) => component.artifactId,
+  );
+  for (const artifactId of componentIds) {
+    removeForgedImplementation(state, player, artifactId);
+  }
+
+  const privateState = findPrivateBlueprintState(player, "bp_mantle_to_orbit_foundry");
+  if (foundry.covenantState === "broken") {
+    foundry.state = "recovering";
+    foundry.foundryRecoveredComponentCount = 0;
+    if (privateState) privateState.foundryRecoveryComponentIds = [...componentIds];
+  } else {
+    foundry.state = "deactivated";
+    foundry.foundryOverdriveAvailable = false;
+    state.deckTier1.push(...componentIds);
+  }
+
+  checkBlueprintManifestations(state, player);
+  pushLog(state, {
+    playerId: player.playerId,
+    playerName: player.playerName,
+    summary: foundry.covenantState === "broken"
+      ? "Overdrove the Mantle-to-Orbit Foundry; recovery plans preserved"
+      : "Overdrove the Mantle-to-Orbit Foundry; its host world collapsed",
+    turn: state.roundNumber,
+  });
+}
+
+function activeAscensionProjects(state: GameStateData): ManifestedProjectPublicState[] {
+  return state.players.flatMap((player) =>
+    manifestedProjects(player).filter(
+      (project) => project.blueprintId === "bp_ascension_registry" && project.state === "active",
+    ),
+  );
+}
+
+function clearAscensionDeferrals(state: GameStateData): void {
+  for (const registry of activeAscensionProjects(state)) {
+    registry.ascensionDeferral = 0;
+  }
+}
+
+function recordTierTwoClaim(state: GameStateData): void {
+  state.tierTwoClaimMadeThisTurn = true;
+  clearAscensionDeferrals(state);
+}
+
+function hasLegalTierTwoClaim(
+  state: GameStateData,
+  player: PlayerGameState,
+): boolean {
+  const cards = state.forgeTier2
+    .map((artifactId) => CARD_MAP.get(artifactId))
+    .filter((card): card is ArtifactCard => card?.tier === 2);
+  if (cards.length === 0) return false;
+
+  const bonuses = effectiveAffinityBonuses(state, player);
+  if (cards.some((card) => {
+    const resolution = resolveExperimentalForgeCost(
+      state,
+      player,
+      card,
+      effectiveCost(card, player, bonuses),
+      { reserved: false },
+    );
+    return resolution.paymentFloorSatisfied && canAfford(resolution.cost, player.affinities);
+  })) {
+    return true;
+  }
+
+  const foundry = getManifestedProject(player, "bp_mantle_to_orbit_foundry");
+  if (
+    foundry?.state === "active" &&
+    cards.some((card) => canAfford(foundryForgeCost(card, player, bonuses), player.affinities))
+  ) {
+    return true;
+  }
+
+  return player.reservedArtifactIds.length < 3 &&
+    !isForgottenHourBlockingPlayer(state, player.playerId) &&
+    cards.some((card) => !markerHasBrand(state.artifactMarkers?.[card.id], "nullified"));
+}
+
+function beginTierTwoOpportunity(state: GameStateData, player: PlayerGameState): void {
+  state.tierTwoOpportunityAtTurnStart = hasLegalTierTwoClaim(state, player);
+  state.tierTwoClaimMadeThisTurn = false;
+}
+
+export function refreshTurnStartTechnologyOpportunity(state: GameStateData): void {
+  const currentPlayer = state.players[state.currentPlayerIndex];
+  if (currentPlayer) beginTierTwoOpportunity(state, currentPlayer);
+}
+
+function resolveAscensionDeferral(
+  state: GameStateData,
+  endingPlayer: PlayerGameState,
+): void {
+  if (!state.tierTwoOpportunityAtTurnStart || state.tierTwoClaimMadeThisTurn) return;
+
+  for (const registry of activeAscensionProjects(state)) {
+    if (registry.ownerPlayerId === endingPlayer.playerId) continue;
+    if (registry.ascensionLastCounterRound === state.roundNumber) continue;
+    registry.ascensionDeferral = Math.min(2, (registry.ascensionDeferral ?? 0) + 1);
+    registry.ascensionLastCounterRound = state.roundNumber;
+    const owner = state.players.find((player) => player.playerId === registry.ownerPlayerId);
+    if (!owner) continue;
+
+    pushLog(state, {
+      playerId: owner.playerId,
+      playerName: owner.playerName,
+      summary: `Ascension Registry recorded ${endingPlayer.playerName}'s Tier II deferral (${registry.ascensionDeferral}/2)`,
+      turn: state.roundNumber,
+    });
+    if (registry.ascensionDeferral < 2) continue;
+
+    owner.eminence += 2;
+    if (registry.covenantState === "broken") {
+      registry.ascensionDeferral = 0;
+    } else {
+      registry.state = "spent";
+    }
+    pushLog(state, {
+      playerId: owner.playerId,
+      playerName: owner.playerName,
+      summary: "Ascension Registry entered judgment: +2 Eminence",
+      turn: state.roundNumber,
+    });
+  }
+}
+
+function blueprintVariant(
+  player: PlayerGameState,
+  blueprintId: BlueprintId,
+): BlueprintPresentationVariant {
+  return player.blueprintPresentationVariants?.[blueprintId] ?? "armored";
+}
+
+function eligibleBlueprintArtifactIds(player: PlayerGameState): Set<string> {
+  const blocked = new Set(player.blueprintBlockedCardIds ?? []);
+  return new Set(
+    [...(player.forgedArtifactIds ?? [])]
+      .filter((artifactId) => !blocked.has(artifactId)),
+  );
+}
+
+function findPrivateBlueprintState(
+  player: PlayerGameState,
+  blueprintId: BlueprintId,
+): BlueprintPrivateState | undefined {
+  return player.blueprintPrivateStates?.find(
+    (blueprint) => blueprint.blueprintId === blueprintId,
+  );
+}
+
+function randomFaceUpTierTwo(state: GameStateData): ArtifactId | null {
+  if (state.forgeTier2.length === 0) return null;
+  return (state.forgeTier2[Math.floor(Math.random() * state.forgeTier2.length)] as ArtifactId) ?? null;
+}
+
+function publicTierTwoDesirability(
+  state: GameStateData,
+  owner: PlayerGameState,
+  artifactId: ArtifactId,
+): number {
+  const card = CARD_MAP.get(artifactId);
+  if (!card) return 0;
+  return state.players
+    .filter((player) => player.playerId !== owner.playerId)
+    .reduce((total, player) => {
+      const bonuses = effectiveAffinityBonuses(state, player);
+      const cost = effectiveCost(card, player, bonuses);
+      const deficit = NATURAL_AFFINITY_KEYS.reduce(
+        (sum, affinity) => sum + Math.max(0, cost[affinity] - player.affinities[affinity]),
+        0,
+      );
+      const affordable = canAfford(cost, player.affinities) ? 60 : 0;
+      const nearTerm = Math.max(0, 24 - deficit * 6);
+      const specialization = player.bonuses[card.bonusAffinity] * 3;
+      return total + affordable + nearTerm + specialization + card.eminence * 8;
+    }, 0);
+}
+
+function selectAntimatterTarget(
+  state: GameStateData,
+  owner: PlayerGameState,
+): ArtifactId | null {
+  if (!state.lumiiThresholdApproach || owner.playerName !== "Lumii") {
+    return randomFaceUpTierTwo(state);
+  }
+  const ranked = (state.forgeTier2 as ArtifactId[])
+    .map((artifactId, boardIndex) => ({
+      artifactId,
+      boardIndex,
+      score: publicTierTwoDesirability(state, owner, artifactId),
+    }))
+    .sort((left, right) => right.score - left.score || left.boardIndex - right.boardIndex);
+  if (ranked.length === 0) return null;
+  if (ranked.length === 1) return ranked[0].artifactId;
+
+  const roll = Math.random();
+  if (roll < 0.6) return ranked[0].artifactId;
+  if (roll < 0.85 || ranked.length === 2) return ranked[1].artifactId;
+  const remainder = ranked.slice(2);
+  return remainder[Math.floor(Math.random() * remainder.length)]?.artifactId ?? ranked[0].artifactId;
+}
+
+function retargetUnavailableAntimatterCharges(state: GameStateData): void {
+  for (const owner of state.players) {
+    const privateState = findPrivateBlueprintState(owner, "bp_antimatter_detonator");
+    const device = getManifestedProject(owner, "bp_antimatter_detonator");
+    if (!privateState?.manifested || device?.state !== "armed") continue;
+    if ((privateState.safePreManifestActionPlayerIds?.length ?? 0) > 0) {
+      privateState.secretTargetCardId = null;
+      continue;
+    }
+    if (
+      privateState.secretTargetCardId &&
+      state.forgeTier2.includes(privateState.secretTargetCardId)
+    ) {
+      continue;
+    }
+    privateState.secretTargetCardId = selectAntimatterTarget(state, owner);
+  }
+}
+
+function settlePreManifestAction(state: GameStateData, playerId: string): void {
+  for (const owner of state.players) {
+    for (const privateState of owner.blueprintPrivateStates ?? []) {
+      if (!privateState.safePreManifestActionPlayerIds?.includes(playerId)) continue;
+      privateState.safePreManifestActionPlayerIds =
+        privateState.safePreManifestActionPlayerIds.filter((id) => id !== playerId);
+    }
+  }
+  retargetUnavailableAntimatterCharges(state);
+}
+
+function checkBlueprintManifestations(state: GameStateData, player: PlayerGameState): void {
+  const eligibleArtifacts = eligibleBlueprintArtifactIds(player);
+  const privateStates = [...(player.blueprintPrivateStates ?? [])]
+    .sort((left, right) => left.slotIndex - right.slotIndex);
+
+  for (const privateState of privateStates) {
+    const definition = BLUEPRINT_DEFINITIONS[privateState.blueprintId];
+    if (!definition) continue;
+    privateState.matchedComponentIds = definition.components
+      .map((component) => component.artifactId)
+      .filter((artifactId) => eligibleArtifacts.has(artifactId));
+    if (privateState.manifested) continue;
+    if (privateState.matchedComponentIds.length !== definition.components.length) continue;
+
+    privateState.manifested = true;
+    const presentationVariant = blueprintVariant(player, privateState.blueprintId);
+    const project: ManifestedProjectPublicState = {
+      blueprintId: privateState.blueprintId,
+      ownerPlayerId: player.playerId,
+      slotIndex: privateState.slotIndex,
+      state: definition.initialProjectState,
+      covenantState: covenantStateForPlayer(state, player.playerId),
+      presentationVariant,
+      ...(privateState.blueprintId === "bp_mantle_to_orbit_foundry"
+        ? { foundryUses: 0, foundryOverdriveAvailable: false }
+        : {}),
+      ...(privateState.blueprintId === "bp_ascension_registry"
+        ? { ascensionDeferral: 0, ascensionLastCounterRound: null }
+        : {}),
+    };
+    manifestedProjects(player).push(project);
+    ensureCivilizationIdentitySnapshot(player);
+    if (privateState.blueprintId === "bp_antimatter_detonator") {
+      privateState.safePreManifestActionPlayerIds = state.players
+        .filter((candidate) => candidate.plannedAction !== null)
+        .map((candidate) => candidate.playerId);
+      privateState.secretTargetCardId = privateState.safePreManifestActionPlayerIds.length > 0
+        ? null
+        : selectAntimatterTarget(state, player);
+    } else if (definition.manifestationEminence > 0) {
+      player.eminence += definition.manifestationEminence;
+    }
+
+    const event: BlueprintManifestationEvent = {
+      eventId: `${privateState.blueprintId}-manifest-v${state.version}-${Date.now()}-${privateState.slotIndex}`,
+      blueprintId: privateState.blueprintId,
+      ownerPlayerId: player.playerId,
+      slotIndex: privateState.slotIndex,
+      presentationVariant,
+      createdAt: Date.now(),
+    };
+    state.pendingBlueprintManifestationEvents.push(event);
+    pushLog(state, {
+      playerId: player.playerId,
+      playerName: player.playerName,
+      summary: `${definition.name} manifested`,
+      turn: state.roundNumber,
+    });
+  }
+}
+
+function annihilateOwnedTierOneArtifact(
+  state: GameStateData,
+  player: PlayerGameState,
+  artifactId: string,
+): void {
+  const index = player.forgedArtifactIds.indexOf(artifactId);
+  if (index === -1) return;
+  const card = CARD_MAP.get(artifactId);
+  player.forgedArtifactIds.splice(index, 1);
+  if (card) {
+    player.bonuses[card.bonusAffinity] = Math.max(0, player.bonuses[card.bonusAffinity] - 1);
+    player.eminence = Math.max(0, player.eminence - card.eminence);
+  }
+  if (player.forgedArtifactBonusSnapshots) delete player.forgedArtifactBonusSnapshots[artifactId];
+  if (state.artifactMarkers) delete state.artifactMarkers[artifactId];
+  if (!state.annihilatedArtifactIds.includes(artifactId)) {
+    state.annihilatedArtifactIds.push(artifactId);
+  }
+  checkBlueprintManifestations(state, player);
+}
+
+type AntimatterClaimResult = "none" | "intercepted" | "detonated";
+
+function snapshotBlueprintArtifact(cardId: string): BlueprintArtifactSnapshot | undefined {
+  const card = CARD_MAP.get(cardId);
+  if (!card) return undefined;
+  const lore = getCardLore(cardId);
+  return {
+    id: card.id,
+    name: lore.name,
+    tier: card.tier,
+    bonusAffinity: card.bonusAffinity,
+    eminence: card.eminence,
+    cost: { ...card.cost },
+    flavor: lore.flavor,
+  };
+}
+
+function resolveAntimatterClaim(
+  state: GameStateData,
+  claimant: PlayerGameState,
+  targetCardId: string,
+  submittedBeforeManifestation: boolean,
+  trigger: "forged" | "encrypted",
+): AntimatterClaimResult {
+  const candidates = state.players
+    .flatMap((owner, ownerIndex) => {
+      const privateState = findPrivateBlueprintState(owner, "bp_antimatter_detonator");
+      const device = getManifestedProject(owner, "bp_antimatter_detonator");
+      return privateState?.secretTargetCardId === targetCardId && device?.state === "armed"
+        ? [{ owner, ownerIndex, privateState, device }]
+        : [];
+    })
+    .sort((left, right) =>
+      left.ownerIndex - right.ownerIndex || left.device.slotIndex - right.device.slotIndex,
+    );
+  const candidate = candidates[0];
+  if (!candidate) return "none";
+  if (
+    submittedBeforeManifestation &&
+    candidate.privateState.safePreManifestActionPlayerIds?.includes(claimant.playerId)
+  ) {
+    return "none";
+  }
+
+  const worldshield = getManifestedProject(claimant, "bp_worldshield_covenant");
+  if (
+    worldshield?.state === "vigilant" &&
+    claimant.playerId !== candidate.owner.playerId
+  ) {
+    candidate.device.state = "spent";
+    candidate.privateState.secretTargetCardId = null;
+    if (worldshield.covenantState === "intact") worldshield.state = "spent";
+    state.pendingBlueprintDetonationEvents.push({
+      eventId: `bp-antimatter-intercept-v${state.version}-${Date.now()}`,
+      blueprintId: "bp_antimatter_detonator",
+      ownerPlayerId: candidate.owner.playerId,
+      triggeringPlayerId: claimant.playerId,
+      targetCardId,
+      trigger,
+      hostileEffect: "annihilation",
+      targetArtifact: snapshotBlueprintArtifact(targetCardId),
+      interceptedByBlueprintId: "bp_worldshield_covenant",
+      presentationVariant: candidate.device.presentationVariant,
+      createdAt: Date.now(),
+    });
+    pushLog(state, {
+      playerId: claimant.playerId,
+      playerName: claimant.playerName,
+      summary: "Worldshield Covenant intercepted an Antimatter charge",
+      turn: state.roundNumber,
+    });
+    return "intercepted";
+  }
+
+  candidate.device.state = "spent";
+  candidate.privateState.secretTargetCardId = null;
+  if (!state.annihilatedArtifactIds.includes(targetCardId)) {
+    state.annihilatedArtifactIds.push(targetCardId);
+  }
+  if (state.artifactMarkers) delete state.artifactMarkers[targetCardId];
+
+  const collateralCardIds: string[] = [];
+  const collateralArtifacts: BlueprintArtifactSnapshot[] = [];
+  if (candidate.device.covenantState === "broken") {
+    const eligible = shuffle(
+      claimant.forgedArtifactIds.filter((artifactId) => CARD_MAP.get(artifactId)?.tier === 1),
+    ).slice(0, 2);
+    for (const artifactId of eligible) {
+      const snapshot = snapshotBlueprintArtifact(artifactId);
+      if (snapshot) collateralArtifacts.push(snapshot);
+      annihilateOwnedTierOneArtifact(state, claimant, artifactId);
+      collateralCardIds.push(artifactId);
+    }
+  }
+
+  const forgeRow = state.forgeTier2;
+  const targetSlotIndex = forgeRow.indexOf(targetCardId);
+  refillForgeSlot(state, forgeRow, state.deckTier2, targetCardId);
+  candidate.owner.eminence += 2;
+  state.pendingBlueprintDetonationEvents.push({
+    eventId: `bp-antimatter-detonate-v${state.version}-${Date.now()}`,
+    blueprintId: "bp_antimatter_detonator",
+    ownerPlayerId: candidate.owner.playerId,
+    triggeringPlayerId: claimant.playerId,
+    targetCardId,
+    targetSlotId: targetSlotIndex >= 0 ? `2-${targetSlotIndex}` : undefined,
+    trigger,
+    targetArtifact: snapshotBlueprintArtifact(targetCardId),
+    collateralCardIds,
+    collateralArtifacts,
+    presentationVariant: candidate.device.presentationVariant,
+    createdAt: Date.now(),
+  });
+  pushLog(state, {
+    playerId: candidate.owner.playerId,
+    playerName: candidate.owner.playerName,
+    summary: `Antimatter Detonator Annihilated ${getCardLore(targetCardId).name}: +2 Eminence`,
+    turn: state.roundNumber,
+  });
+  retargetUnavailableAntimatterCharges(state);
+  return "detonated";
 }
 
 function canAfford(
@@ -1212,7 +2121,7 @@ function canAfford(
   playerAffinities: AffinityCounts,
 ): boolean {
   let singularityNeeded = 0;
-  for (const color of STANDARD_AFFINITY_KEYS) {
+  for (const color of NATURAL_AFFINITY_KEYS) {
     const deficit = Math.max(0, cost[color] - playerAffinities[color]);
     singularityNeeded += deficit;
   }
@@ -1226,10 +2135,11 @@ function payForgeCost(
   player: PlayerGameState,
   bank: AffinityCounts,
   bonusOverride?: AffinityCounts,
+  costOverride?: AffinityCounts,
 ): void {
-  const needed = effectiveCost(card, player, bonusOverride);
+  const needed = costOverride ?? effectiveCost(card, player, bonusOverride);
   let singularityUsed = 0;
-  for (const color of STANDARD_AFFINITY_KEYS) {
+  for (const color of NATURAL_AFFINITY_KEYS) {
     const fromAffinities = Math.min(needed[color], player.affinities[color]);
     player.affinities[color] -= fromAffinities;
     bank[color] += fromAffinities;
@@ -1295,6 +2205,10 @@ function applyLuminaryBatch(
   orderedIds: string[],
   cascadeDepth: number,
 ): void {
+  const ruleset = getBalanceRuleset(state);
+  const claimedIds = ruleset.luminaryClaimLimitPerAction === 1
+    ? orderedIds.slice(0, 1)
+    : orderedIds;
   // Ensure the events array exists before the COMMIT phase appends to it.
   if (!Array.isArray(state.pendingSummonEvents)) {
     state.pendingSummonEvents = [];
@@ -1304,13 +2218,27 @@ function applyLuminaryBatch(
   // All Eminence grants and win-trigger attribution happen here, atomically,
   // before any applySummonEffect call mutates the Forge or Affinity Well.
   const oblivionLumIds: string[] = [];
+  const summonEffectIds: string[] = [];
   const eminenceAwards: Array<{ lumId: string; before: number; after: number }> = [];
-  for (const lumId of orderedIds) {
+  for (const lumId of claimedIds) {
     const lum = LUMINARY_MAP.get(lumId)!;
+    const priorRelationship = isLuminaryAlreadyClaimed(state, lumId);
+    const priorContact = priorRelationship || hasRecordedLuminaryContact(state, lumId);
+    const triggersSummonEffect = ruleset.luminaryContact === "exclusive" || !priorContact;
+    if (ruleset.luminaryContact === "nonexclusive") {
+      recordLuminaryContact(state, lumId);
+    }
 
     // Register the claim.
-    player.luminaries.push(lumId);
-    const eligible = STANDARD_AFFINITY_KEYS.filter((c) => lum.requirements[c] > 0);
+    if (!player.luminaries.includes(lumId)) player.luminaries.push(lumId);
+    player.luminaryAllianceCounts = incrementUsageCount(player.luminaryAllianceCounts, lumId);
+    if (ruleset.luminaryContact === "nonexclusive") {
+      // These are per-civilization relationship entitlements rather than
+      // replayable global arrival effects.
+      if (lumId === "lum_tide") player.tideArchiveForgeAvailable = true;
+      if (lumId === "lum_hunger") grantFirstHunger(state, player.playerId);
+    }
+    const eligible = NATURAL_AFFINITY_KEYS.filter((c) => lum.requirements[c] > 0);
     const activeAffinity = randomActiveAffinity(eligible);
     // Remove any stale entry for the same lum+player before inserting the fresh
     // one.  Duplicate entries can arise if a dev-rewind clears player.luminaries
@@ -1327,16 +2255,20 @@ function applyLuminaryBatch(
       summonedAtTurnCount: state.turnCount,
     });
 
-    if (lum.oblivion) {
+    if (triggersSummonEffect) summonEffectIds.push(lumId);
+    if (triggersSummonEffect && lum.oblivion) {
       oblivionLumIds.push(lumId);
-      if (lumId === "lum_void") {
-        pushActivationEvent(state, lumId, "summon", player.playerId);
-      }
     }
 
     const eminenceBeforeSummon = player.eminence;
-    if (lum.eminence > 0) {
-      player.eminence += lum.eminence;
+    const luminaryEminence = (
+      balanceSimulationOverrides.get(state)?.suppressLuminaryBaseEminence ||
+      ruleset.luminaryBaseEminence === "none"
+    )
+      ? 0
+      : lum.eminence;
+    if (luminaryEminence > 0) {
+      player.eminence += luminaryEminence;
       eminenceAwards.push({
         lumId,
         before: eminenceBeforeSummon,
@@ -1345,7 +2277,7 @@ function applyLuminaryBatch(
       pushLog(state, {
         playerId: player.playerId,
         playerName: player.playerName,
-        summary: `Drew the favor of ${lum.name} (+${lum.eminence} Eminence)`,
+        summary: `Drew the favor of ${lum.name} (+${luminaryEminence} Eminence)`,
         turn: state.roundNumber,
       });
     } else {
@@ -1361,7 +2293,9 @@ function applyLuminaryBatch(
     // matches the server-side effect sequence.  eventId uses the current
     // version (before the post-action increment) to produce a stable unique
     // key.  The idempotency guard prevents double-push if somehow called twice.
-    const eventId = `${lumId}-v${state.version}`;
+    const eventId = ruleset.luminaryContact === "nonexclusive"
+      ? `${lumId}-${player.playerId}-v${state.version}`
+      : `${lumId}-v${state.version}`;
     if (!state.pendingSummonEvents.some((e) => e.eventId === eventId)) {
       state.pendingSummonEvents.push({
         eventId,
@@ -1370,6 +2304,13 @@ function applyLuminaryBatch(
         createdAt: Date.now(),
       });
     }
+
+    if (
+      ruleset.luminaryContact === "nonexclusive" &&
+      state.players.every((candidate) => candidate.luminaries.includes(lumId))
+    ) {
+      state.activeLuminaries = state.activeLuminaries.filter((id) => id !== lumId);
+    }
   }
 
   // ── (3) EFFECTS ────────────────────────────────────────────────────────────
@@ -1377,7 +2318,7 @@ function applyLuminaryBatch(
   // Effects see the fully-committed Eminence totals from phase (2).
   // Because the player chose this order, each successive effect already benefits
   // from all earlier Luminaries' passive bonuses being active.
-  for (const lumId of orderedIds) {
+  for (const lumId of summonEffectIds) {
     applySummonEffect(state, player, lumId, state.turnCount);
   }
 
@@ -1386,7 +2327,16 @@ function applyLuminaryBatch(
   // full summon/effect sequence has resolved.
   for (const lumId of oblivionLumIds) {
     const lum = LUMINARY_MAP.get(lumId)!;
-    state.victoryRequirement = getVictoryRequirement(state) + lum.oblivion!;
+    const victoryRequirementBefore = getVictoryRequirement(state);
+    state.victoryRequirement = victoryRequirementBefore + lum.oblivion!;
+    const victoryRequirementAfter = getVictoryRequirement(state);
+    if (lumId === "lum_void") {
+      pushActivationEvent(state, lumId, "summon", player.playerId, undefined, {
+        victoryRequirementBefore,
+        victoryRequirementAfter,
+        victoryRequirementChange: lum.oblivion!,
+      });
+    }
     pushLog(state, {
       playerId: player.playerId,
       playerName: player.playerName,
@@ -1398,7 +2348,9 @@ function applyLuminaryBatch(
   const victoryRequirement = getVictoryRequirement(state);
   if (state.phase === "playing" && !state.winTriggerLuminaryId) {
     const winningAward = eminenceAwards.find(
-      (award) => award.before < victoryRequirement && award.after >= victoryRequirement,
+      (award) => award.before < victoryRequirement &&
+        award.after >= victoryRequirement &&
+        playerSatisfiesEndCondition(state, player),
     );
     if (winningAward) {
       state.winTriggerLuminaryId = winningAward.lumId;
@@ -1408,7 +2360,7 @@ function applyLuminaryBatch(
   // ── (5) CASCADE RE-ENTRY ───────────────────────────────────────────────────
   // One re-entry pass at depth 1 to catch claims unlocked by summon effects.
   // Depth-1 passes do not recurse further to prevent infinite loops.
-  if (cascadeDepth === 0) {
+  if (cascadeDepth === 0 && ruleset.luminaryClaimLimitPerAction !== 1) {
     checkLuminaries(state, player, 1);
   }
   // Depth-1: no further cascade.  If multiple new candidates exist, they are
@@ -1421,17 +2373,23 @@ function checkLuminaries(
   player: PlayerGameState,
   cascadeDepth = 0,
 ): void {
+  const claimCap = balanceSimulationOverrides.get(state)?.maxLuminaryClaimsPerPlayer;
+  if (claimCap != null && player.luminaries.length >= claimCap) return;
+  const ruleset = getBalanceRuleset(state);
+
   // ── (1) COLLECT ────────────────────────────────────────────────────────────
   // Compute bonuses once for the entire collection scan.
-  const liveBonuses = effectiveAffinityBonuses(state, player);
+  const eligibilityBonuses = ruleset.luminaryEligibility === "artifact_bonuses"
+    ? player.bonuses
+    : effectiveAffinityBonuses(state, player);
   const toSummon: string[] = [];
   for (const lumId of state.activeLuminaries) {
     if (player.luminaries.includes(lumId)) continue;
-    if (isLuminaryAlreadyClaimed(state, lumId)) continue;
+    if (ruleset.luminaryContact === "exclusive" && isLuminaryAlreadyClaimed(state, lumId)) continue;
     const lum = LUMINARY_MAP.get(lumId);
     if (!lum) continue;
-    const qualifies = STANDARD_AFFINITY_KEYS.every(
-      (c) => liveBonuses[c] >= lum.requirements[c],
+    const qualifies = NATURAL_AFFINITY_KEYS.every(
+      (affinity) => eligibilityBonuses[affinity] >= lum.requirements[affinity],
     );
     if (qualifies) toSummon.push(lumId);
   }
@@ -1467,8 +2425,8 @@ function isLuminaryAlreadyClaimed(state: GameStateData, luminaryId: string): boo
 
 /**
  * Remove an Artifact from the Forge and refill its slot from the deck.
- * Handles marker cleanup (removes marker from the removed card) and
- * Avatar Seed token transfer (if the incoming deck card was seeded).
+ * Handles marker cleanup on the removed Artifact. Avatar Seeds belong to mold
+ * positions, so replacement Artifacts remain unseeded until the end of a turn.
  * Returns the ID of the card that now occupies the slot, or null if the slot
  * was collapsed (deck empty).
  */
@@ -1487,21 +2445,11 @@ function refillForgeSlot(
   if (deck.length > 0) {
     const newId = deck.shift()!;
     forgeRow[idx] = newId;
-    // Transfer Avatar Seed token if the incoming card was seeded in the deck.
-    if (state.avatarSeedState) {
-      const si = state.avatarSeedState.deckSeeds.indexOf(newId);
-      if (si !== -1) {
-        state.avatarSeedState.deckSeeds.splice(si, 1);
-        addArtifactBrand(state, newId, {
-          type: "avatar_seed",
-          ownerId: state.avatarSeedState.ownerId,
-          summonedAtTurnCount: state.avatarSeedState.summonedAtTurnCount,
-        });
-      }
-    }
+    retargetUnavailableAntimatterCharges(state);
     return newId;
   } else {
     forgeRow.splice(idx, 1);
+    retargetUnavailableAntimatterCharges(state);
     return null;
   }
 }
@@ -1509,54 +2457,70 @@ function refillForgeSlot(
 // ─── v0.8 Burn / Scry Helpers ─────────────────────────────────────────────────
 
 /** Sum of all Affinity costs on an Artifact (used for lowest-cost comparisons). */
-function markerSuppressesForgeValue(marker?: ArtifactMarker | null): boolean {
+function markerSuppressesForgeValue(
+  marker?: ArtifactMarker | null,
+  ignoreNullified = false,
+): boolean {
   return getArtifactBrands(marker).some(
-    (brand) => brand.type === "forgotten" || brand.type === "condemned" || brand.type === "nullified",
+    (brand) => brand.type === "forgotten" ||
+      brand.type === "condemned" ||
+      (brand.type === "nullified" && !ignoreNullified),
   );
 }
 
-function isForgottenHourActive(state: GameStateData): boolean {
-  const activeCycle = Object.values(state.forgottenHourCycle ?? {}).some(
-    (cycle) => cycle?.cooldownOwnerTurnsRemaining === null,
-  );
-  if (activeCycle) return true;
-
-  return Object.values(state.artifactMarkers ?? {}).some((marker) => markerHasBrand(marker, "forgotten"));
+function isForgottenHourBlockingPlayer(state: GameStateData, playerId: string): boolean {
+  const activeOwnerIds = new Set<string>();
+  for (const [ownerId, cycle] of Object.entries(state.forgottenHourCycle ?? {})) {
+    if (cycle?.cooldownOwnerTurnsRemaining === null) activeOwnerIds.add(ownerId);
+  }
+  for (const marker of Object.values(state.artifactMarkers ?? {})) {
+    for (const brand of getArtifactBrands(marker)) {
+      if (brand.type === "forgotten") activeOwnerIds.add(brand.ownerId);
+    }
+  }
+  if (activeOwnerIds.size === 0) return false;
+  if (activeOwnerIds.has(playerId)) return false;
+  if (
+    usesOwnerRelativeLuminaryState(state) &&
+    state.players.find((player) => player.playerId === playerId)?.luminaries.includes("lum_compass")
+  ) {
+    return false;
+  }
+  return true;
 }
 
-function markBlueprintBlockedIfForgotten(
+function resolveNullifiedForge(
+  state: GameStateData,
+  playerId: string,
+  cardId: string,
+  marker?: ArtifactMarker | null,
+): boolean {
+  const nullifiedOwners = getArtifactBrands(marker)
+    .filter((brand) => brand.type === "nullified")
+    .map((brand) => brand.ownerId);
+  if (nullifiedOwners.length === 0 || state.nullifiedFirstForge) return false;
+
+  const exempt = nullifiedOwners.includes(playerId) || (
+    usesOwnerRelativeLuminaryState(state) &&
+    state.players.find((player) => player.playerId === playerId)?.luminaries.includes("lum_null") === true
+  );
+  state.nullifiedFirstForge = { cardId, playerId, exempt };
+  return exempt;
+}
+
+function markBlueprintBlockedByBrand(
   player: PlayerGameState,
   cardId: string,
   marker?: ArtifactMarker | null,
+  nullifiedExempt = false,
 ): void {
-  if (!markerHasBrand(marker, "forgotten")) return;
+  const blocked = markerHasBrand(marker, "forgotten") ||
+    (markerHasBrand(marker, "nullified") && !nullifiedExempt);
+  if (!blocked) return;
   if (!Array.isArray(player.blueprintBlockedCardIds)) player.blueprintBlockedCardIds = [];
   if (!player.blueprintBlockedCardIds.includes(cardId)) {
     player.blueprintBlockedCardIds.push(cardId);
   }
-}
-
-/**
- * Scry top `count` cards of the given tier's deck and reorder:
- * cards with `keepColor` in their cost stay on top (original order),
- * cards without `keepColor` go to the bottom (original order).
- */
-function scryAndReorder(
-  state: GameStateData,
-  tier: 1 | 2 | 3,
-  keepColor: StandardAffinityKey,
-): void {
-  const deck = getDeckForTier(state, tier);
-  if (deck.length === 0) return;
-  const scryCount = Math.min(3, deck.length);
-  const scried = deck.splice(0, scryCount);
-  const keep = scried.filter((id) => {
-    const card = CARD_MAP.get(id);
-    return card && (card.cost[keepColor] ?? 0) > 0;
-  });
-  const bottom = scried.filter((id) => !keep.includes(id));
-  deck.unshift(...keep);
-  deck.push(...bottom);
 }
 
 /**
@@ -1565,18 +2529,147 @@ function scryAndReorder(
  * cards were burned in that effect.
  */
 function incrementBloomCount(state: GameStateData): void {
-  const bloomClaimed = state.players.some((p) => p.luminaries.includes("lum_bloom"));
-  if (bloomClaimed) {
+  const bloomOwners = state.players.filter((player) => player.luminaries.includes("lum_bloom"));
+  if (usesOwnerRelativeLuminaryState(state)) {
+    for (const owner of bloomOwners) {
+      const ownerState = experimentalLuminaryOwnerState(state, owner.playerId);
+      ownerState.catalystBloomBurnCount = (ownerState.catalystBloomBurnCount ?? 0) + 1;
+    }
+  } else if (bloomOwners.length > 0) {
     state.catalystBloomBurnCount = (state.catalystBloomBurnCount ?? 0) + 1;
   }
+}
+
+type ValidatedAffinityReturn =
+  | { success: true; entries: Array<[AffinityKey, number]> }
+  | { success: false; error: string };
+
+/** Validate the exact, whole-token return required by the 10-Affinity limit. */
+function validateExactAffinityReturn(
+  returnMap: Partial<AffinityCounts> | undefined,
+  expectedCount: number,
+  holdings: AffinityCounts,
+): ValidatedAffinityReturn {
+  const entries: Array<[AffinityKey, number]> = [];
+  let totalReturned = 0;
+
+  for (const affinity of AFFINITY_KEYS) {
+    const count = returnMap?.[affinity] ?? 0;
+    if (!Number.isInteger(count) || count < 0) {
+      return {
+        success: false,
+        error: "Return counts must be non-negative whole numbers",
+      };
+    }
+    if (count > holdings[affinity]) {
+      return {
+        success: false,
+        error: `Cannot return ${AFFINITY_LABEL[affinity as NaturalAffinityKey] ?? "Singularity"} you do not hold`,
+      };
+    }
+    if (count > 0) entries.push([affinity, count]);
+    totalReturned += count;
+  }
+
+  if (totalReturned !== expectedCount) {
+    return {
+      success: false,
+      error: `Must return exactly ${expectedCount} ${expectedCount === 1 ? "Affinity" : "Affinities"} to stay within the 10-Affinity limit`,
+    };
+  }
+
+  return { success: true, entries };
+}
+
+function isProtectedPlannedClaimLegal(
+  state: GameStateData,
+  player: PlayerGameState,
+  cardId: string,
+): boolean {
+  const action = player.plannedAction;
+  if (!action || action.cardId !== cardId) return false;
+  const card = CARD_MAP.get(cardId);
+  if (!card || !getForgeRowForTier(state, card.tier).includes(cardId)) return false;
+
+  if (action.type === "forge_artifact" || action.type === "foundry_forge_artifact") {
+    const bonuses = effectiveAffinityBonuses(state, player);
+    if (action.type === "foundry_forge_artifact") {
+      const foundry = getManifestedProject(player, "bp_mantle_to_orbit_foundry");
+      return card.tier === 2 && foundry?.state === "active" &&
+        canAfford(foundryForgeCost(card, player, bonuses), player.affinities);
+    }
+    const resolution = resolveExperimentalForgeCost(
+      state,
+      player,
+      card,
+      effectiveCost(card, player, bonuses),
+      { reserved: false },
+    );
+    return resolution.paymentFloorSatisfied && canAfford(resolution.cost, player.affinities);
+  }
+  if (action.type !== "reserve_artifact") return false;
+  if (isForgottenHourBlockingPlayer(state, player.playerId)) return false;
+  if (player.reservedArtifactIds.length >= 3) return false;
+  if (markerHasBrand(state.artifactMarkers?.[cardId], "nullified")) return false;
+
+  const held = AFFINITY_KEYS.reduce(
+    (total, affinity) => total + (player.affinities[affinity] ?? 0),
+    0,
+  );
+  if (getBalanceRuleset(state).encryptReward !== "portable_singularity") return true;
+  if (state.affinityWell.singularity <= 0 || held < 10) return true;
+  return validateExactAffinityReturn(
+    action.returnAffinities,
+    1,
+    player.affinities,
+  ).success;
+}
+
+function interceptHostilePlannedClaim(
+  state: GameStateData,
+  cardId: string,
+  sourcePlayerId: string | undefined,
+  hostileEffect: NonNullable<BlueprintDetonationEvent["hostileEffect"]>,
+): boolean {
+  const protectedPlayer = state.players.find((candidate) => {
+    if (candidate.playerId === sourcePlayerId) return false;
+    const worldshield = getManifestedProject(candidate, "bp_worldshield_covenant");
+    return worldshield?.state === "vigilant" &&
+      isProtectedPlannedClaimLegal(state, candidate, cardId);
+  });
+  if (!protectedPlayer) return false;
+
+  const worldshield = getManifestedProject(protectedPlayer, "bp_worldshield_covenant");
+  if (!worldshield) return false;
+  if (worldshield.covenantState === "intact") worldshield.state = "spent";
+  state.pendingBlueprintDetonationEvents.push({
+    eventId: `bp-worldshield-${hostileEffect}-v${state.version}-${Date.now()}-${cardId}`,
+    blueprintId: "bp_worldshield_covenant",
+    ownerPlayerId: protectedPlayer.playerId,
+    triggeringPlayerId: sourcePlayerId ?? "system",
+    targetCardId: cardId,
+    hostileEffect,
+    targetArtifact: snapshotBlueprintArtifact(cardId),
+    interceptedByBlueprintId: "bp_worldshield_covenant",
+    presentationVariant: "armored",
+    createdAt: Date.now(),
+  });
+  pushLog(state, {
+    playerId: protectedPlayer.playerId,
+    playerName: protectedPlayer.playerName,
+    summary: `Worldshield Covenant prevented a hostile ${hostileEffect.replace("_", " ")} against ${getCardLore(cardId).name}`,
+    turn: state.roundNumber,
+  });
+  return true;
 }
 
 /**
  * Shared "burn" primitive — the single authoritative path for all Luminary burn effects.
  *
  * Emits one `BurnEvent`, routes the card to the Burn Pile or corresponding
- * Archive according to Eternal Recurrence, increments the Catalyst Bloom
- * accumulator, optionally pushes a per-card log, then refills the Forge slot.
+ * Archive according to Eternal Recurrence, optionally pushes a per-card log,
+ * then refills the Forge slot. The caller records Catalyst Bloom once after the
+ * complete burn effect resolves, regardless of how many Artifacts it burned.
  *
  * Pass `suppressLog = true` when the caller will push its own aggregate log
  * entry instead of per-card entries.
@@ -1591,9 +2684,18 @@ function burnCard(
   sourceLuminaryId: string,
   suppressLog = false,
   opts?: { triggeredByPlayerId?: string },
-): void {
+): boolean {
   if (!Array.isArray(state.burnPile)) state.burnPile = [];
   if (!Array.isArray(state.burnEvents)) state.burnEvents = [];
+  const burntLore = getCardLore(cardId);
+  const lum = LUMINARIES.find((l) => l.id === sourceLuminaryId);
+  const owner = opts?.triggeredByPlayerId
+    ? state.players.find((player) => player.playerId === opts.triggeredByPlayerId)
+    : state.players.find((player) => player.luminaries.includes(sourceLuminaryId));
+  if (interceptHostilePlannedClaim(state, cardId, owner?.playerId, "burn")) {
+    return false;
+  }
+
   const recurrenceActive = state.players.some((p) => p.luminaries.includes("lum_astral"));
   const destination: BurnEvent["destination"] = recurrenceActive ? "archive" : "burn_pile";
   if (recurrenceActive) {
@@ -1602,11 +2704,6 @@ function burnCard(
   } else if (!state.burnPile.includes(cardId)) {
     state.burnPile.push(cardId);
   }
-
-  // Resolve lookup values shared by the event payload and the log entry.
-  const burntLore = getCardLore(cardId);
-  const lum = LUMINARIES.find((l) => l.id === sourceLuminaryId);
-  const owner = state.players.find((p) => p.luminaries.includes(sourceLuminaryId));
 
   state.burnEvents.push({
     eventId: `burn-${state.turnCount}-${state.burnEvents.length}-${cardId}`,
@@ -1621,9 +2718,6 @@ function burnCard(
     destination,
     turn: state.turnCount,
   });
-
-  // Increment Catalyst Bloom accumulator — each individual card burn counts.
-  incrementBloomCount(state);
 
   if (!suppressLog) {
     // Push a per-card burn log entry attributed to the Luminary owner.
@@ -1642,6 +2736,7 @@ function burnCard(
   }
 
   refillForgeSlot(state, getForgeRowForTier(state, tier), getDeckForTier(state, tier), cardId);
+  return true;
 }
 
 // ─── v0.8 On-Summon Effect Helpers ────────────────────────────────────────────
@@ -1694,26 +2789,24 @@ function applySummonEffect_avatarSeeds(
   player: PlayerGameState,
   summonedAtTurnCount: number,
 ): string[] {
-  const deckSeeds: string[] = [];
+  const moldSlots: string[] = [];
   for (const tier of [1, 2, 3] as const) {
-    const deck = getDeckForTier(state, tier);
-    for (const id of deck.slice(0, 2)) {
-      if (!deckSeeds.includes(id)) deckSeeds.push(id);
-    }
+    const forgeRow = getForgeRowForTier(state, tier);
+    if (forgeRow.length === 0) continue;
+    const slotIndex = Math.floor(Math.random() * forgeRow.length);
+    moldSlots.push(`${tier}-${slotIndex}`);
   }
   state.avatarSeedState = {
     ownerId: player.playerId,
     summonedAtTurnCount,
-    pendingEminence: 0,
-    deckSeeds,
-    payoutDone: false,
+    moldSlots,
   };
   pushLog(state, {
     playerId: player.playerId, playerName: player.playerName,
-    summary: `Seed Beyond Seasons — Avatar Seeds: ${deckSeeds.length} future manifestation(s) seeded in the Archives`,
+    summary: `Seed Beyond Seasons — Avatar Seeds: ${moldSlots.length} permanent Forge mold(s) marked`,
     turn: state.roundNumber,
   });
-  return deckSeeds;
+  return moldSlots;
 }
 
 function applySummonEffect_balanceDue(
@@ -1813,6 +2906,9 @@ function applySummonEffect_blackDomain(
       (card.cost.abyss ?? 0) === 0 ||
       (card.cost.radiance ?? 0) === 0
     ) {
+      if (interceptHostilePlannedClaim(state, id, player.playerId, "nullification")) {
+        continue;
+      }
       if (addArtifactBrand(state, id, {
         type: "nullified",
         ownerId: player.playerId,
@@ -1843,20 +2939,72 @@ function pushActivationEvent(
   effectType: PendingLuminaryActivationEvent["effectType"],
   triggeringPlayerId: string,
   targetCardIds?: string[],
-  affinityResult?: Pick<PendingLuminaryActivationEvent, "affinityType" | "affinityAmount" | "affinityReturns">,
+  eventDetails?: Pick<
+    PendingLuminaryActivationEvent,
+    | "affinityType"
+    | "affinityAmount"
+    | "affinityReturns"
+    | "targetSlotIds"
+    | "victoryRequirementBefore"
+    | "victoryRequirementAfter"
+    | "victoryRequirementChange"
+  >,
 ): void {
   if (!Array.isArray(state.pendingLuminaryActivationEvents)) {
     state.pendingLuminaryActivationEvents = [];
   }
   state.pendingLuminaryActivationEvents.push({
-    eventId: `${luminaryId}-${effectType}-v${state.version}-${Date.now()}`,
+    eventId: `${luminaryId}-${effectType}-v${state.version}-${Date.now()}-${state.pendingLuminaryActivationEvents.length}`,
     luminaryId,
     effectType,
     triggeringPlayerId,
     createdAt: Date.now(),
     ...(targetCardIds && targetCardIds.length > 0 ? { targetCardIds } : {}),
-    ...affinityResult,
+    ...eventDetails,
   });
+}
+
+function applyAvatarSeedImbuement(
+  state: GameStateData,
+  card: ArtifactCard,
+  marker: ArtifactMarker | null | undefined,
+  forgingPlayerId: string,
+  targetSlotId?: string,
+): PlayerGameState[] {
+  const seedBrand = getArtifactBrands(marker).find((brand) => brand.type === "avatar_seed");
+  if (!seedBrand) return [];
+
+  const alliedPlayers = usesOwnerRelativeLuminaryState(state)
+    ? state.players.filter(
+        (candidate) => candidate.playerId !== forgingPlayerId && candidate.luminaries.includes("lum_seed"),
+      )
+    : state.players.filter(
+        (candidate) => candidate.playerId === seedBrand.ownerId && candidate.playerId !== forgingPlayerId,
+      );
+
+  for (const alliedPlayer of alliedPlayers) {
+    alliedPlayer.bonuses[card.bonusAffinity] =
+      (alliedPlayer.bonuses[card.bonusAffinity] ?? 0) + 1;
+    pushLog(state, {
+      playerId: alliedPlayer.playerId,
+      playerName: alliedPlayer.playerName,
+      summary: `Seed Beyond Seasons — Avatar Imbuement: ${AFFINITY_LABEL[card.bonusAffinity]} permanent Affinity gained from a Seeded Artifact`,
+      turn: state.roundNumber,
+    });
+    pushActivationEvent(
+      state,
+      "lum_seed",
+      "action",
+      alliedPlayer.playerId,
+      [card.id],
+      {
+        affinityType: card.bonusAffinity,
+        affinityAmount: 1,
+        ...(targetSlotId ? { targetSlotIds: [targetSlotId] } : {}),
+      },
+    );
+  }
+  return alliedPlayers;
 }
 
 function applySummonEffect(
@@ -1873,31 +3021,72 @@ function applySummonEffect(
         const card = CARD_MAP.get(cardId);
         return card != null && (card.cost.flare ?? 0) < 5;
       });
+      const burnedTargets: string[] = [];
       for (const cardId of targets) {
         if (state.forgeTier3.includes(cardId)) {
-          burnCard(state, cardId, 3, "lum_moth", true);
+          if (burnCard(state, cardId, 3, "lum_moth", true)) {
+            burnedTargets.push(cardId);
+          }
         }
       }
-      if (targets.length > 0) {
+      if (burnedTargets.length > 0) {
+        incrementBloomCount(state);
         pushLog(state, {
           playerId: player.playerId, playerName: player.playerName,
-          summary: `Red Moth — Rupture of the Still: burned ${targets.length} Tier III Artifact${targets.length === 1 ? "" : "s"} costing 4 or less Flare`,
+          summary: `Red Moth — Rupture of the Still: burned ${burnedTargets.length} Tier III Artifact${burnedTargets.length === 1 ? "" : "s"} costing 4 or less Flare`,
           turn: state.roundNumber,
         });
       }
-      pushActivationEvent(state, lumId, "summon", player.playerId, targets);
+      pushActivationEvent(state, lumId, "summon", player.playerId, burnedTargets);
       break;
     }
     case "lum_tide": {
-      // The Observer Effect: scry+reorder top 3 of T2 and T3 decks by Continuum.
-      scryAndReorder(state, 2, "continuum");
-      scryAndReorder(state, 3, "continuum");
+      // The Observer Effect grants private, persistent Archive-top visibility
+      // and one normal-cost Forge directly from an Archive. No arrival choice.
+      player.tideArchiveForgeAvailable = true;
       pushLog(state, {
         playerId: player.playerId, playerName: player.playerName,
-        summary: `Tide Architect — The Observer Effect: Archives reordered (Continuum Artifacts promoted)`,
+        summary: `Tide Architect — The Observer Effect: Archive tops revealed; one Archive Forge available`,
         turn: state.roundNumber,
       });
       pushActivationEvent(state, lumId, "summon", player.playerId);
+      break;
+    }
+    case "lum_verdant": {
+      // Early Bloom is automatic and must never interrupt arrival resolution
+      // with a hand-limit choice. If the owner cannot hold another token, the
+      // presentation still fires with an authoritative zero-gain payload.
+      const heldAffinityCount = AFFINITY_KEYS.reduce(
+        (total, affinity) => total + (player.affinities[affinity] ?? 0),
+        0,
+      );
+      const affinityAmount = state.affinityWell.verdance > 0 && heldAffinityCount < 10
+        ? 1
+        : 0;
+      if (affinityAmount > 0) {
+        state.affinityWell.verdance -= affinityAmount;
+        player.affinities.verdance += affinityAmount;
+        pushLog(state, {
+          playerId: player.playerId,
+          playerName: player.playerName,
+          summary: `Verdant Oracle — Early Bloom: gained ${affinityAmount} Verdance from the Affinity Well`,
+          turn: state.roundNumber,
+        });
+      } else {
+        const reason = state.affinityWell.verdance <= 0
+          ? "no Verdance remained in the Affinity Well"
+          : "the 10-token Affinity limit was already reached";
+        pushLog(state, {
+          playerId: player.playerId,
+          playerName: player.playerName,
+          summary: `Verdant Oracle — Early Bloom: no token gained (${reason})`,
+          turn: state.roundNumber,
+        });
+      }
+      pushActivationEvent(state, lumId, "summon", player.playerId, undefined, {
+        affinityType: "verdance",
+        affinityAmount,
+      });
       break;
     }
     case "lum_forge": {
@@ -1905,7 +3094,7 @@ function applySummonEffect(
       // randomize each complete tier pool, then manifest four new Artifacts per row.
       // This is explicitly not a Burn: it emits no BurnEvent and never touches
       // the Burn Pile, Phoenix recurrence, or burn-dependent payouts.
-      const returnedIds = resetForgeThroughArchives(state);
+      const returnedIds = resetForgeThroughArchives(state, player.playerId);
       pushLog(state, {
         playerId: player.playerId,
         playerName: player.playerName,
@@ -1928,21 +3117,23 @@ function applySummonEffect(
         summary: `Phoenix Paradox — Eternal Recurrence manifested; existing Burned Artifacts will return at the beginning of ${player.playerName}'s next turn`,
         turn: state.roundNumber,
       });
-      pushActivationEvent(state, lumId, "summon", player.playerId);
       break;
     }
     case "lum_compass": {
       // The Forgotten Hour: mark all face-up Forge cards as Forgotten.
+      const victoryRequirementBefore = getVictoryRequirement(state);
       const forgottenIds = applySummonEffect_forgottenHour(state, player, summonedAtTurnCount);
-      pushActivationEvent(state, lumId, "summon", player.playerId, forgottenIds);
+      const victoryRequirementAfter = getVictoryRequirement(state);
+      pushActivationEvent(state, lumId, "summon", player.playerId, forgottenIds, {
+        victoryRequirementBefore,
+        victoryRequirementAfter,
+        victoryRequirementChange: victoryRequirementAfter - victoryRequirementBefore,
+      });
       break;
     }
     case "lum_seed": {
-      // Avatar Seeds: reveal and mark top 2 cards of each deck.
-      // The frontend plays Seed's activation announcement before the board-level
-      // deck-seeding flourish so the seeded strike does not appear without its cue.
-      const seededIds = applySummonEffect_avatarSeeds(state, player, summonedAtTurnCount);
-      pushActivationEvent(state, lumId, "summon", player.playerId, seededIds);
+      const moldSlots = applySummonEffect_avatarSeeds(state, player, summonedAtTurnCount);
+      pushActivationEvent(state, lumId, "summon", player.playerId, undefined, { targetSlotIds: moldSlots });
       break;
     }
     case "lum_pale": {
@@ -1970,14 +3161,14 @@ function applySummonEffect(
       break;
     }
     case "lum_hunger": {
-      // Assimilation: enable this turn's Assimilation action for the claimer.
-      state.firstHungerAvailable = player.playerId;
+      // The one-use action is granted silently. Its activation presentation is
+      // queued only when the owner actually uses Assimilation.
+      grantFirstHunger(state, player.playerId);
       pushLog(state, {
         playerId: player.playerId, playerName: player.playerName,
-        summary: `Final Hunger — Assimilation available: choose a face-up Artifact to Burn for Eminence`,
+        summary: `Final Hunger — Assimilation is available once`,
         turn: state.roundNumber,
       });
-      pushActivationEvent(state, lumId, "summon", player.playerId);
       break;
     }
     case "lum_scholar": {
@@ -2008,7 +3199,6 @@ function applySummonEffect(
       break;
     }
     // Passive / delayed effects — nothing on summon:
-    // lum_verdant: cheaper cost, no arrival effect.
     // lum_void: Oblivion threshold change is handled after this call.
     // lum_radiant (Concordance Mandala): delayed end-of-turn check.
     // lum_bloom (Catalyst Bloom): delayed end-of-turn check.
@@ -2026,17 +3216,40 @@ function applySummonEffect(
  * action, but before turnCount advances to the incoming turn.
  */
 function applyEndOfTurnEffects(state: GameStateData, player: PlayerGameState): void {
-  // ── Concordance Mandala (lum_radiant): +2 Eminence if ≥8 Radiance Artifacts ──
-  if (player.luminaries.includes("lum_radiant") && !state.concordanceMandalaTriggered) {
+  // ── Concordance Mandala: one +2 payout at 8 and another at 10 Radiance Artifacts ──
+  if (player.luminaries.includes("lum_radiant")) {
     const radianceArtifacts = player.forgedArtifactIds.filter(
       (id) => CARD_MAP.get(id)?.bonusAffinity === "radiance",
     ).length;
-    if (radianceArtifacts >= 8) {
+    const ownerState = usesOwnerRelativeLuminaryState(state)
+      ? experimentalLuminaryOwnerState(state, player.playerId)
+      : null;
+    const mandalaTriggered = ownerState
+      ? ownerState.concordanceMandalaTriggered === true
+      : state.concordanceMandalaTriggered === true;
+    const mandalaFinalTriggered = ownerState
+      ? ownerState.concordanceMandalaFinalTriggered === true
+      : state.concordanceMandalaFinalTriggered === true;
+
+    if (radianceArtifacts >= 8 && !mandalaTriggered) {
       player.eminence += 2;
-      state.concordanceMandalaTriggered = true;
+      if (ownerState) ownerState.concordanceMandalaTriggered = true;
+      else state.concordanceMandalaTriggered = true;
       pushLog(state, {
         playerId: player.playerId, playerName: player.playerName,
-        summary: `Concordance Mandala — Perfect Coherence: 8+ Radiance Artifacts → +2 Eminence`,
+        summary: `Concordance Mandala — Perfect Coherence: 8 Radiance Artifacts → +2 Eminence`,
+        turn: state.roundNumber,
+      });
+      pushActivationEvent(state, "lum_radiant", "end_of_turn", player.playerId);
+    }
+
+    if (radianceArtifacts >= 10 && !mandalaFinalTriggered) {
+      player.eminence += 2;
+      if (ownerState) ownerState.concordanceMandalaFinalTriggered = true;
+      else state.concordanceMandalaFinalTriggered = true;
+      pushLog(state, {
+        playerId: player.playerId, playerName: player.playerName,
+        summary: `Concordance Mandala — Perfect Coherence: 10 Radiance Artifacts → +2 Eminence`,
         turn: state.roundNumber,
       });
       pushActivationEvent(state, "lum_radiant", "end_of_turn", player.playerId);
@@ -2045,7 +3258,12 @@ function applyEndOfTurnEffects(state: GameStateData, player: PlayerGameState): v
 
   // ── Catalyst Bloom (lum_bloom): +1 Eminence per burn effect since last turn ──
   if (player.luminaries.includes("lum_bloom")) {
-    const burnEffects = state.catalystBloomBurnCount ?? 0;
+    const ownerState = usesOwnerRelativeLuminaryState(state)
+      ? experimentalLuminaryOwnerState(state, player.playerId)
+      : null;
+    const burnEffects = ownerState
+      ? ownerState.catalystBloomBurnCount ?? 0
+      : state.catalystBloomBurnCount ?? 0;
     if (burnEffects > 0) {
       player.eminence += burnEffects;
       pushLog(state, {
@@ -2055,43 +3273,8 @@ function applyEndOfTurnEffects(state: GameStateData, player: PlayerGameState): v
       });
       pushActivationEvent(state, "lum_bloom", "end_of_turn", player.playerId);
     }
-    state.catalystBloomBurnCount = 0; // Reset for next period.
-  }
-
-  // ── Seed Beyond Seasons (lum_seed): payout pending Eminence at end of next turn ──
-  const seedLa = state.luminaryAffinities.find(
-    (x) => x.luminaryId === "lum_seed" && x.ownerId === player.playerId,
-  );
-  if (
-    seedLa &&
-    state.avatarSeedState?.ownerId === player.playerId &&
-    !state.avatarSeedState.payoutDone &&
-    state.turnCount > seedLa.summonedAtTurnCount
-  ) {
-    const pending = state.avatarSeedState.pendingEminence;
-    if (pending > 0) {
-      player.eminence += pending;
-      pushLog(state, {
-        playerId: player.playerId, playerName: player.playerName,
-        summary: `Seed Beyond Seasons — Avatar Seeds: +${pending} pending Eminence paid out`,
-        turn: state.roundNumber,
-      });
-      pushActivationEvent(state, "lum_seed", "end_of_turn", player.playerId);
-    }
-    state.avatarSeedState.payoutDone = true;
-    // Remove all remaining Avatar Seed tokens from deck tops, the Forge, and
-    // reserved Artifacts (tracked through deckSeeds and artifactMarkers).
-    state.avatarSeedState.deckSeeds = [];
-    if (state.artifactMarkers) {
-      for (const id of Object.keys(state.artifactMarkers)) {
-        removeArtifactBrands(state, id, (brand) => brand.type === "avatar_seed");
-      }
-    }
-    pushLog(state, {
-      playerId: player.playerId, playerName: player.playerName,
-      summary: `Seed Beyond Seasons — Avatar Seed tokens expired and cleared`,
-      turn: state.roundNumber,
-    });
+    if (ownerState) ownerState.catalystBloomBurnCount = 0;
+    else state.catalystBloomBurnCount = 0; // Reset for next period.
   }
 
   // ── Forgotten Hour (lum_compass): clear, wait 12 owner turns, then repeat ──
@@ -2156,27 +3339,63 @@ function applyEndOfTurnEffects(state: GameStateData, player: PlayerGameState): v
       // Capture IDs before the burn loop clears them from artifactMarkers.
       // The client animation procedure needs these IDs to drive the burn
       // cinematic even after state.artifactMarkers has been cleared by burnCard.
-      const condemnedCardIds = condemned.map(([id]) => id);
+      const burnedCardIds: string[] = [];
       let burnCount = 0;
       for (const [cardId] of condemned) {
         for (const tier of [1, 2, 3] as const) {
           const forgeRow = getForgeRowForTier(state, tier);
           if (forgeRow.includes(cardId)) {
-            burnCard(state, cardId, tier, "lum_ember");
-            burnCount++;
+            if (burnCard(state, cardId, tier, "lum_ember", false, {
+              triggeredByPlayerId: player.playerId,
+            })) {
+              burnedCardIds.push(cardId);
+              burnCount++;
+            }
             break;
           }
         }
         // Marker already removed by burnCard → refillForgeSlot.
       }
       if (burnCount > 0) {
+        incrementBloomCount(state);
         pushLog(state, {
           playerId: player.playerId, playerName: player.playerName,
           summary: `Ember Sovereign — Cinder Mandate: burned ${burnCount} Condemned Artifact(s)`,
           turn: state.roundNumber,
         });
-        pushActivationEvent(state, "lum_ember", "end_of_turn", player.playerId, condemnedCardIds);
+        pushActivationEvent(state, "lum_ember", "end_of_turn", player.playerId, burnedCardIds);
       }
+    }
+  }
+
+  // ── Seed Beyond Seasons: occupied Avatar Seed molds brand unseeded Artifacts ──
+  const avatarSeeds = state.avatarSeedState;
+  if (avatarSeeds) {
+    const newlySeededIds: string[] = [];
+    for (const slotKey of avatarSeeds.moldSlots) {
+      const [tierText, slotText] = slotKey.split("-");
+      const tier = Number(tierText);
+      const slotIndex = Number(slotText);
+      if (![1, 2, 3].includes(tier) || !Number.isInteger(slotIndex)) continue;
+      const artifactId = getForgeRowForTier(state, tier as 1 | 2 | 3)[slotIndex];
+      if (!artifactId || markerHasBrand(state.artifactMarkers?.[artifactId], "avatar_seed")) continue;
+      if (addArtifactBrand(state, artifactId, {
+        type: "avatar_seed",
+        ownerId: avatarSeeds.ownerId,
+        summonedAtTurnCount: avatarSeeds.summonedAtTurnCount,
+      })) {
+        newlySeededIds.push(artifactId);
+      }
+    }
+    if (newlySeededIds.length > 0) {
+      const owner = state.players.find((candidate) => candidate.playerId === avatarSeeds.ownerId);
+      pushLog(state, {
+        playerId: avatarSeeds.ownerId,
+        playerName: owner?.playerName ?? "Unknown",
+        summary: `Seed Beyond Seasons — Avatar Seeds: ${newlySeededIds.length} Artifact(s) became Seeded`,
+        turn: state.roundNumber,
+      });
+      pushActivationEvent(state, "lum_seed", "end_of_turn", avatarSeeds.ownerId, newlySeededIds);
     }
   }
 }
@@ -2192,6 +3411,7 @@ function applyStartOfTurnEffects(state: GameStateData, player: PlayerGameState):
   // ── Phoenix Paradox: return the pre-manifestation Burn Pile once ──
   const recurrence = state.phoenixRecurrence;
   if (
+    state.finishReason !== "frontier_exhaustion" &&
     recurrence?.recoveryPending &&
     recurrence.ownerId === player.playerId &&
     state.turnCount > recurrence.summonedAtTurnCount
@@ -2206,10 +3426,12 @@ function applyStartOfTurnEffects(state: GameStateData, player: PlayerGameState):
     state.burnPile = state.burnPile.filter((cardId) => !returnedIds.includes(cardId));
 
     let refilled = 0;
+    const refilledSlotIds: string[] = [];
     for (const tier of [1, 2, 3] as const) {
       const forgeRow = getForgeRowForTier(state, tier);
       const archive = getDeckForTier(state, tier);
       while (forgeRow.length < 4 && archive.length > 0) {
+        refilledSlotIds.push(`${tier}-${forgeRow.length}`);
         forgeRow.push(archive.shift()!);
         refilled++;
       }
@@ -2223,13 +3445,22 @@ function applyStartOfTurnEffects(state: GameStateData, player: PlayerGameState):
         summary: `Phoenix Paradox — Eternal Recurrence: returned ${returnedIds.length} Burned Artifact(s) to their Archives${refilled > 0 ? ` and refilled ${refilled} Forge position(s)` : ""}`,
         turn: state.roundNumber,
       });
-      pushActivationEvent(state, "lum_astral", "start_of_turn", player.playerId, returnedIds);
+      pushActivationEvent(
+        state,
+        "lum_astral",
+        "start_of_turn",
+        player.playerId,
+        returnedIds,
+        refilledSlotIds.length > 0 ? { targetSlotIds: refilledSlotIds } : undefined,
+      );
     }
   }
 }
 
 export interface DevLuminarySequenceOptions {
   luminaryIds: string[];
+  includeNextTurnEffects?: boolean;
+  /** Compatibility with callers using the former implementation-facing controls. */
   includeEndOfTurnEffects?: boolean;
   includeStartOfTurnEffects?: boolean;
 }
@@ -2250,10 +3481,15 @@ function removeArtifactsFromSharedZones(state: GameStateData, artifactIds: Set<s
   state.deckTier3 = state.deckTier3.filter((id) => !artifactIds.has(id));
   state.burnPile = state.burnPile.filter((id) => !artifactIds.has(id));
   for (const otherPlayer of state.players) {
+    for (const artifactId of artifactIds) {
+      consumeArtifactBoundFocus(state, otherPlayer.playerId, artifactId);
+    }
     otherPlayer.reservedArtifactIds = otherPlayer.reservedArtifactIds.filter((id) => !artifactIds.has(id));
     otherPlayer.privateReservedArtifactIds =
       otherPlayer.privateReservedArtifactIds?.filter((id) => !artifactIds.has(id));
     otherPlayer.forgedArtifactIds = otherPlayer.forgedArtifactIds.filter((id) => !artifactIds.has(id));
+    otherPlayer.assimilatedArtifactIds = (otherPlayer.assimilatedArtifactIds ?? [])
+      .filter((id) => !artifactIds.has(id));
     otherPlayer.discountedForgeIds = otherPlayer.discountedForgeIds.filter((id) => !artifactIds.has(id));
   }
 }
@@ -2273,12 +3509,31 @@ function clearDevLuminaryResidue(
   playerId: string,
   selectedIds: Set<string>,
 ): void {
-  if (selectedIds.has("lum_radiant")) state.concordanceMandalaTriggered = false;
-  if (selectedIds.has("lum_orchard")) state.glassOrchardTriggered = false;
+  const experimentalOwnerState = usesOwnerRelativeLuminaryState(state)
+    ? experimentalLuminaryOwnerState(state, playerId)
+    : null;
+  if (selectedIds.has("lum_radiant")) {
+    if (experimentalOwnerState) {
+      delete experimentalOwnerState.concordanceMandalaTriggered;
+      delete experimentalOwnerState.concordanceMandalaFinalTriggered;
+    } else {
+      state.concordanceMandalaTriggered = false;
+      state.concordanceMandalaFinalTriggered = false;
+    }
+  }
+  if (selectedIds.has("lum_orchard")) {
+    if (experimentalOwnerState) delete experimentalOwnerState.glassOrchardTriggered;
+    else state.glassOrchardTriggered = false;
+  }
   if (selectedIds.has("lum_astral")) state.phoenixRecurrence = undefined;
   if (selectedIds.has("lum_seed")) state.avatarSeedState = undefined;
-  if (selectedIds.has("lum_hunger") && state.firstHungerAvailable === playerId) {
-    state.firstHungerAvailable = null;
+  if (selectedIds.has("lum_tide")) {
+    const player = state.players.find((candidate) => candidate.playerId === playerId);
+    if (player) player.tideArchiveForgeAvailable = false;
+  }
+  if (selectedIds.has("lum_hunger")) consumeFirstHunger(state, playerId);
+  if (selectedIds.has("lum_void") && state.voidSealOwnerId === playerId) {
+    state.voidSealOwnerId = null;
   }
   if (selectedIds.has("lum_compass") && state.forgottenHourCycle) {
     delete state.forgottenHourCycle[playerId];
@@ -2322,17 +3577,27 @@ function primeDevEndOfTurnEffects(
     player.forgedArtifactIds = [...new Set(player.forgedArtifactIds)];
     player.bonuses.radiance = Math.max(player.bonuses.radiance, radianceIds.length);
     refillDevForgeRows(state);
-    state.concordanceMandalaTriggered = false;
+    if (usesOwnerRelativeLuminaryState(state)) {
+      const ownerState = experimentalLuminaryOwnerState(state, player.playerId);
+      delete ownerState.concordanceMandalaTriggered;
+      delete ownerState.concordanceMandalaFinalTriggered;
+    } else {
+      state.concordanceMandalaTriggered = false;
+      state.concordanceMandalaFinalTriggered = false;
+    }
   }
 
   if (selectedIds.has("lum_bloom")) {
-    state.catalystBloomBurnCount = Math.max(2, state.catalystBloomBurnCount ?? 0);
+    if (usesOwnerRelativeLuminaryState(state)) {
+      const ownerState = experimentalLuminaryOwnerState(state, player.playerId);
+      ownerState.catalystBloomBurnCount = Math.max(2, ownerState.catalystBloomBurnCount ?? 0);
+    } else {
+      state.catalystBloomBurnCount = Math.max(2, state.catalystBloomBurnCount ?? 0);
+    }
   }
 
   if (selectedIds.has("lum_seed") && state.avatarSeedState?.ownerId === player.playerId) {
     state.avatarSeedState.summonedAtTurnCount = state.turnCount - 1;
-    state.avatarSeedState.pendingEminence = Math.max(2, state.avatarSeedState.pendingEminence);
-    state.avatarSeedState.payoutDone = false;
   }
 
 }
@@ -2349,11 +3614,14 @@ function primeDevStartOfTurnEffects(
   recurrence.summonedAtTurnCount = state.turnCount - 1;
   recurrence.recoveryPending = true;
   if (state.burnPile.length === 0) {
-    const seededBurnIds = [
-      state.deckTier1.shift(),
-      state.deckTier2.shift(),
-      state.deckTier3.shift(),
-    ].filter((id): id is string => !!id);
+    const seededBurnIds: string[] = [];
+    for (const tier of [1, 2, 3] as const) {
+      const forgeRow = getForgeRowForTier(state, tier);
+      const seededBurnId = forgeRow.pop();
+      if (!seededBurnId) continue;
+      if (state.artifactMarkers) delete state.artifactMarkers[seededBurnId];
+      seededBurnIds.push(seededBurnId);
+    }
     state.burnPile.push(...seededBurnIds);
   }
 }
@@ -2361,7 +3629,9 @@ function primeDevStartOfTurnEffects(
 function hasPendingLuminaryPresentation(state: GameStateData): boolean {
   return (
     (state.pendingSummonEvents?.length ?? 0) > 0 ||
-    (state.pendingLuminaryActivationEvents?.length ?? 0) > 0
+    (state.pendingLuminaryActivationEvents?.length ?? 0) > 0 ||
+    (state.pendingBlueprintManifestationEvents?.length ?? 0) > 0 ||
+    (state.pendingBlueprintDetonationEvents?.length ?? 0) > 0
   );
 }
 
@@ -2393,11 +3663,14 @@ function advanceDevLuminarySequenceStage(state: GameStateData): void {
   }
 
   const selectedIds = new Set(stage.luminaryIds);
+  const includeNextTurnEffects = stage.includeNextTurnEffects ?? !!(
+    stage.includeEndOfTurnEffects || stage.includeStartOfTurnEffects
+  );
   while (state.devLuminarySequenceStage && !hasPendingLuminaryPresentation(state)) {
     const phase = stage.phase ?? "arrivals";
     if (phase === "arrivals") {
       stage.phase = "end_of_turn";
-      if (stage.includeEndOfTurnEffects) {
+      if (includeNextTurnEffects) {
         primeDevEndOfTurnEffects(state, player, selectedIds);
         applyEndOfTurnEffects(state, player);
       }
@@ -2405,7 +3678,7 @@ function advanceDevLuminarySequenceStage(state: GameStateData): void {
     }
     if (phase === "end_of_turn") {
       stage.phase = "start_of_turn";
-      if (stage.includeStartOfTurnEffects) {
+      if (includeNextTurnEffects) {
         primeDevStartOfTurnEffects(state, player, selectedIds);
         applyStartOfTurnEffects(state, player);
       }
@@ -2478,7 +3751,7 @@ export function runDevLuminarySequence(
   // baseline has no qualifying holdings. The real game never receives this staging.
   if (orderedIds.includes("lum_pale")) {
     const startingSupply = affinityWellForPlayerCount(state.players.length);
-    const stagedAffinities: readonly StandardAffinityKey[] = [
+    const stagedAffinities: readonly NaturalAffinityKey[] = [
       "flare",
       "continuum",
       "verdance",
@@ -2496,12 +3769,14 @@ export function runDevLuminarySequence(
 
   applyLuminaryBatch(state, player, orderedIds, 1);
 
-  if (options.includeEndOfTurnEffects || options.includeStartOfTurnEffects) {
+  const includeNextTurnEffects = options.includeNextTurnEffects ?? !!(
+    options.includeEndOfTurnEffects || options.includeStartOfTurnEffects
+  );
+  if (includeNextTurnEffects) {
     state.devLuminarySequenceStage = {
       playerId: player.playerId,
       luminaryIds: orderedIds,
-      includeEndOfTurnEffects: !!options.includeEndOfTurnEffects,
-      includeStartOfTurnEffects: !!options.includeStartOfTurnEffects,
+      includeNextTurnEffects: true,
       phase: "arrivals",
     };
   } else {
@@ -2514,8 +3789,7 @@ export function runDevLuminarySequence(
     type: "dev_luminary_sequence",
     playerId,
     luminaryIds: orderedIds,
-    includeEndOfTurnEffects: !!options.includeEndOfTurnEffects,
-    includeStartOfTurnEffects: !!options.includeStartOfTurnEffects,
+    includeNextTurnEffects,
   };
 
   return {
@@ -2535,9 +3809,37 @@ function getVictoryRequirement(state: GameStateData): number {
   return Math.max(WIN_THRESHOLD, state.victoryRequirement ?? WIN_THRESHOLD);
 }
 
-function checkWin(state: GameStateData): boolean {
+function requiredTierThreeReach(victoryRequirement: number): number {
+  if (victoryRequirement < 20) return 0;
+  if (victoryRequirement < 25) return 1;
+  return 2;
+}
+
+function playerSatisfiesEndCondition(
+  state: GameStateData,
+  player: PlayerGameState,
+): boolean {
   const victoryRequirement = getVictoryRequirement(state);
-  return state.players.some((p) => p.eminence >= victoryRequirement);
+  if (player.eminence < victoryRequirement) return false;
+  if (getBalanceRuleset(state).endCondition === "eminence") return true;
+  const requiredTierThree = requiredTierThreeReach(victoryRequirement);
+  // Reach records operational mastery achieved during the epoch. Destruction
+  // of a particular implementation does not erase that discovery, so the
+  // lifetime Forge ledger remains authoritative after Annihilation/removal.
+  const forgedTierThree = new Set([
+    ...player.forgedArtifactIds.filter(
+      (artifactId) => CARD_MAP.get(artifactId)?.tier === 3,
+    ),
+    ...Object.entries(player.artifactForgeCounts ?? {})
+      .filter(([, count]) => count > 0)
+      .map(([artifactId]) => artifactId)
+      .filter((artifactId) => CARD_MAP.get(artifactId)?.tier === 3),
+  ]).size;
+  return forgedTierThree >= requiredTierThree;
+}
+
+function checkWin(state: GameStateData): boolean {
+  return state.players.some((player) => playerSatisfiesEndCondition(state, player));
 }
 
 function forgeAndArchivesAreEmpty(state: GameStateData): boolean {
@@ -2599,6 +3901,8 @@ function plannedActionAlreadyResolvedForPlayer(
 
   const isCardClaimAction =
     action.type === "forge_artifact" ||
+    action.type === "foundry_forge_artifact" ||
+    action.type === "recover_foundry_component" ||
     action.type === "forge_reserved_artifact" ||
     action.type === "reserve_artifact" ||
     action.type === "assimilate";
@@ -2610,6 +3914,10 @@ function plannedActionAlreadyResolvedForPlayer(
   }
 
   if (player.reservedArtifactIds.includes(action.cardId)) {
+    return true;
+  }
+
+  if ((player.assimilatedArtifactIds ?? []).includes(action.cardId)) {
     return true;
   }
 
@@ -2655,30 +3963,71 @@ function recordFailedPlannedAction(
 function hasPendingLuminaryEvents(state: GameStateData): boolean {
   return (
     (state.pendingSummonEvents?.length ?? 0) > 0 ||
-    (state.pendingLuminaryActivationEvents?.length ?? 0) > 0
+    (state.pendingLuminaryActivationEvents?.length ?? 0) > 0 ||
+    (state.pendingBlueprintManifestationEvents?.length ?? 0) > 0 ||
+    (state.pendingBlueprintDetonationEvents?.length ?? 0) > 0
   );
+}
+
+function getOpeningPlayerIndex(state: GameStateData): number {
+  const firstPlayerId =
+    state.openingTurnOrder?.firstPlayerId ?? state.initialBoard?.firstPlayerId;
+  if (firstPlayerId) {
+    const openingPlayerIndex = state.players.findIndex(
+      (player) => player.playerId === firstPlayerId,
+    );
+    if (openingPlayerIndex >= 0) return openingPlayerIndex;
+  }
+
+  // Games saved before openingTurnOrder existed always used seat 0 as their
+  // round boundary. Preserve that behavior when no opening player is known.
+  return 0;
+}
+
+function isRoundBoundary(state: GameStateData, nextPlayerIndex: number): boolean {
+  return nextPlayerIndex === getOpeningPlayerIndex(state);
 }
 
 function finishGameIfNeeded(
   state: GameStateData,
   nextPlayerIndex: number,
 ): void {
-  if (forgeAndArchivesAreEmpty(state)) {
-    state.phase = "finished";
-    state.finishReason = "win";
-    assignWinner(state);
-    return;
-  }
+  const frontierExhausted = forgeAndArchivesAreEmpty(state);
+  let exhaustionClosing = state.finishReason === "frontier_exhaustion";
 
-  if (state.phase === "playing" && checkWin(state)) {
+  if (frontierExhausted && state.phase !== "finished") {
     state.phase = "last_round";
+    // Stored during the closing round so a persisted match cannot confuse an
+    // exhaustion close with an Eminence close. Public formatting still reports
+    // no finishReason until phase === finished.
+    state.finishReason = "frontier_exhaustion";
+    exhaustionClosing = true;
   }
 
-  if (state.phase !== "last_round" || nextPlayerIndex !== 0) return;
+  const victoryRequirementMet = checkWin(state);
+  if (state.phase === "last_round" && !exhaustionClosing && !frontierExhausted && !victoryRequirementMet) {
+    state.phase = "playing";
+    delete state.finishReason;
+    state.winTriggerLuminaryId = null;
+  }
+
+  if (state.phase === "playing" && victoryRequirementMet) {
+    state.phase = "last_round";
+    delete state.finishReason;
+  }
+
+  if (state.phase !== "last_round" || !isRoundBoundary(state, nextPlayerIndex)) return;
 
   state.phase = "finished";
-  state.finishReason = "win";
-  assignWinner(state);
+  state.finishReason = state.finishReason === "frontier_exhaustion"
+    ? "frontier_exhaustion"
+    : "win";
+  const eligibleScoreWinners =
+    state.finishReason === "win" &&
+    getBalanceRuleset(state).endCondition === "eminence_and_reach"
+      ? state.players.filter((player) => playerSatisfiesEndCondition(state, player))
+      : state.players;
+  assignWinner(state, eligibleScoreWinners);
 }
 
 /**
@@ -2702,7 +4051,10 @@ function continuePendingTurnTransition(state: GameStateData): void {
       const endingPlayer = state.players.find(
         (player) => player.playerId === transition.endingPlayerId,
       );
-      if (endingPlayer) applyEndOfTurnEffects(state, endingPlayer);
+      if (endingPlayer) {
+        resolveAscensionDeferral(state, endingPlayer);
+        applyEndOfTurnEffects(state, endingPlayer);
+      }
       continue;
     }
 
@@ -2729,7 +4081,7 @@ function continuePendingTurnTransition(state: GameStateData): void {
         return;
       }
 
-      if (nextPlayerIndex === 0) state.roundNumber++;
+      if (isRoundBoundary(state, nextPlayerIndex)) state.roundNumber++;
       transition.stage = "after_start_effects";
       transition.nextPlayerIndex = nextPlayerIndex;
 
@@ -2749,6 +4101,7 @@ function continuePendingTurnTransition(state: GameStateData): void {
       nextPlayerIndex < state.players.length
     ) {
       state.currentPlayerIndex = nextPlayerIndex;
+      beginTierTwoOpportunity(state, state.players[nextPlayerIndex]);
     }
     state.coreActionUsed = false;
     state.pendingTurnTransition = null;
@@ -2781,16 +4134,26 @@ function validatePlannedAction(
   action: ActionPayload,
 ): { ok: boolean; error?: string } {
   const clone: GameStateData = JSON.parse(JSON.stringify(state));
+  const attachedRuleset = balanceRulesets.get(state);
+  if (attachedRuleset) setBalanceRuleset(clone, attachedRuleset);
+  const attachedSimulationOverrides = balanceSimulationOverrides.get(state);
+  if (attachedSimulationOverrides) {
+    setBalanceSimulationOverrides(clone, attachedSimulationOverrides);
+  }
   const idx = clone.players.findIndex((p) => p.playerId === playerId);
   if (idx === -1) return { ok: false, error: "Player not found" };
   // Planning is the sole gameplay exception to presentation gates. Validate
   // against the post-presentation state without consuming real events.
   clone.pendingSummonEvents = [];
   clone.pendingLuminaryActivationEvents = [];
+  clone.pendingBlueprintManifestationEvents = [];
+  clone.pendingBlueprintDetonationEvents = [];
   clone.pendingLuminaryChoice = null;
   continuePendingTurnTransition(clone);
   clone.pendingSummonEvents = [];
   clone.pendingLuminaryActivationEvents = [];
+  clone.pendingBlueprintManifestationEvents = [];
+  clone.pendingBlueprintDetonationEvents = [];
   clone.pendingTurnTransition = null;
   clone.currentPlayerIndex = idx;
   clone.coreActionUsed = false;
@@ -2811,6 +4174,7 @@ export function applyAction(
   if (playerIdx === -1) return { success: false, error: "Player not found" };
   if (state.phase === "finished")
     return { success: false, error: "Game is over" };
+  pruneArtifactBoundFocus(state);
 
   // Auto-expire stale pending summon events.  If a client disconnects before
   // sending resolve_summon, the event would otherwise gate planned-action
@@ -2875,10 +4239,11 @@ export function applyAction(
   const allowedDuringLuminaryResolution =
     action.type === "resolve_summon" ||
     action.type === "resolve_luminary_activation" ||
+    action.type === "resolve_blueprint_manifestation" ||
+    action.type === "resolve_blueprint_detonation" ||
     action.type === "choose_luminary_order" ||
     action.type === "plan_action" ||
-    action.type === "cancel_plan" ||
-    action.type === "tutorial_fast_forward";
+    action.type === "cancel_plan";
   if (luminaryResolutionActive && !allowedDuringLuminaryResolution) {
     return {
       success: false,
@@ -2892,9 +4257,10 @@ export function applyAction(
     action.type !== "toggle_luminary_affinity" &&
     action.type !== "resolve_summon" &&
     action.type !== "resolve_luminary_activation" &&
+    action.type !== "resolve_blueprint_manifestation" &&
+    action.type !== "resolve_blueprint_detonation" &&
     action.type !== "plan_action" &&
     action.type !== "cancel_plan" &&
-    action.type !== "tutorial_fast_forward" &&
     action.type !== "set_civ_name" &&
     action.type !== "choose_luminary_order";
   if (isTurnGated && state.currentPlayerIndex !== playerIdx) {
@@ -2908,6 +4274,7 @@ export function applyAction(
   }
 
   const player = state.players[playerIdx];
+  let actionSummaryOverride: string | null = null;
 
   switch (action.type) {
     case "toggle_luminary_affinity": {
@@ -2932,9 +4299,9 @@ export function applyAction(
     }
     case "harness_three_affinities": {
       const selected = action.affinities ?? {};
-      const colors = STANDARD_AFFINITY_KEYS.filter((c) => (selected[c] ?? 0) > 0);
-      if (colors.length < 1 || colors.length > 3)
-        return { success: false, error: "Must select 1–3 different affinities" };
+      const colors = NATURAL_AFFINITY_KEYS.filter((c) => (selected[c] ?? 0) > 0);
+      if (colors.length !== 3)
+        return { success: false, error: "Must select exactly 3 different affinities" };
       if (new Set(colors).size !== colors.length)
         return { success: false, error: "Must be different affinities" };
       for (const c of colors) {
@@ -2943,7 +4310,7 @@ export function applyAction(
         if (state.affinityWell[c] < 1)
           return { success: false, error: `No ${AFFINITY_LABEL[c]} available` };
       }
-      const totalHeld = STANDARD_AFFINITY_KEYS.reduce((s, c) => s + player.affinities[c], 0) + player.affinities.singularity;
+      const totalHeld = NATURAL_AFFINITY_KEYS.reduce((s, c) => s + player.affinities[c], 0) + player.affinities.singularity;
       const postTakeTotal = totalHeld + colors.length;
       for (const c of colors) {
         player.affinities[c]++;
@@ -2951,30 +4318,19 @@ export function applyAction(
       }
       if (postTakeTotal > 10) {
         const excessCount = postTakeTotal - 10;
-        const returnMap = action.returnAffinities ?? {};
-        const returnColorsWithSingularity = (Object.keys(returnMap) as AffinityKey[]).filter((c) => (returnMap[c] ?? 0) > 0);
-        // Validate: all return counts must be non-negative integers
-        for (const c of returnColorsWithSingularity) {
-          const count = returnMap[c] ?? 0;
-          if (!Number.isInteger(count) || count < 0) {
-            for (const col of colors) { player.affinities[col]--; state.affinityWell[col]++; }
-            return { success: false, error: "Return counts must be non-negative integers" };
+        const validatedReturn = validateExactAffinityReturn(
+          action.returnAffinities,
+          excessCount,
+          player.affinities,
+        );
+        if (!validatedReturn.success) {
+          for (const c of colors) {
+            player.affinities[c]--;
+            state.affinityWell[c]++;
           }
+          return { success: false, error: validatedReturn.error };
         }
-        const totalReturned = returnColorsWithSingularity.reduce((s, c) => s + (returnMap[c] ?? 0), 0);
-        if (totalReturned < excessCount) {
-          for (const c of colors) { player.affinities[c]--; state.affinityWell[c]++; }
-          return { success: false, error: `Must return ${excessCount} Affinity to stay within the 10-Affinity limit` };
-        }
-        for (const c of returnColorsWithSingularity) {
-          const count = returnMap[c] ?? 0;
-          if ((player.affinities[c] ?? 0) < count) {
-            for (const col of colors) { player.affinities[col]--; state.affinityWell[col]++; }
-            return { success: false, error: `Cannot return ${AFFINITY_LABEL[c as StandardAffinityKey] ?? "Singularity"} you do not hold` };
-          }
-        }
-        for (const c of returnColorsWithSingularity) {
-          const count = returnMap[c] ?? 0;
+        for (const [c, count] of validatedReturn.entries) {
           player.affinities[c] -= count;
           state.affinityWell[c] += count;
         }
@@ -2985,40 +4341,27 @@ export function applyAction(
 
     case "harness_two_affinities": {
       const color = action.affinity;
-      if (!color || !STANDARD_AFFINITY_KEYS.includes(color))
+      if (!color || !NATURAL_AFFINITY_KEYS.includes(color))
         return { success: false, error: "Invalid affinity" };
       if (state.affinityWell[color] < 4)
         return { success: false, error: "Need at least 4 in the well to harness 2" };
-      const totalHeld = STANDARD_AFFINITY_KEYS.reduce((s, c) => s + player.affinities[c], 0) + player.affinities.singularity;
+      const totalHeld = NATURAL_AFFINITY_KEYS.reduce((s, c) => s + player.affinities[c], 0) + player.affinities.singularity;
       const postTakeTotal = totalHeld + 2;
       player.affinities[color] += 2;
       state.affinityWell[color] -= 2;
       if (postTakeTotal > 10) {
         const excessCount = postTakeTotal - 10;
-        const returnMap = action.returnAffinities ?? {};
-        const returnColorsWithSingularity = (Object.keys(returnMap) as AffinityKey[]).filter((c) => (returnMap[c] ?? 0) > 0);
-        // Validate: all return counts must be non-negative integers
-        for (const c of returnColorsWithSingularity) {
-          const count = returnMap[c] ?? 0;
-          if (!Number.isInteger(count) || count < 0) {
-            player.affinities[color] -= 2; state.affinityWell[color] += 2;
-            return { success: false, error: "Return counts must be non-negative integers" };
-          }
+        const validatedReturn = validateExactAffinityReturn(
+          action.returnAffinities,
+          excessCount,
+          player.affinities,
+        );
+        if (!validatedReturn.success) {
+          player.affinities[color] -= 2;
+          state.affinityWell[color] += 2;
+          return { success: false, error: validatedReturn.error };
         }
-        const totalReturned = returnColorsWithSingularity.reduce((s, c) => s + (returnMap[c] ?? 0), 0);
-        if (totalReturned < excessCount) {
-          player.affinities[color] -= 2; state.affinityWell[color] += 2;
-          return { success: false, error: `Must return ${excessCount} Affinity to stay within the 10-Affinity limit` };
-        }
-        for (const c of returnColorsWithSingularity) {
-          const count = returnMap[c] ?? 0;
-          if ((player.affinities[c] ?? 0) < count) {
-            player.affinities[color] -= 2; state.affinityWell[color] += 2;
-            return { success: false, error: `Cannot return ${AFFINITY_LABEL[c as StandardAffinityKey] ?? "Singularity"} you do not hold` };
-          }
-        }
-        for (const c of returnColorsWithSingularity) {
-          const count = returnMap[c] ?? 0;
+        for (const [c, count] of validatedReturn.entries) {
           player.affinities[c] -= count;
           state.affinityWell[c] += count;
         }
@@ -3028,7 +4371,7 @@ export function applyAction(
     }
 
     case "reserve_artifact": {
-      if (isForgottenHourActive(state))
+      if (isForgottenHourBlockingPlayer(state, playerId))
         return { success: false, error: ERR_CANNOT_ENCRYPT_DURING_FORGOTTEN_HOUR };
       if (player.reservedArtifactIds.length >= 3)
         return { success: false, error: "Cannot reserve more than 3 Artifacts" };
@@ -3038,43 +4381,42 @@ export function applyAction(
       if (action.cardId && (state.burnPile ?? []).includes(action.cardId))
         return { success: false, error: "Artifact has been burned" };
 
+      const encryptReward = getBalanceRuleset(state).encryptReward;
+
       // ── Hand-limit pre-check (must happen before any state mutation) ──────────
-      // Reserving awards 1 Singularity from the Well. If the player already holds
-      // 10 Affinities and the Singularity supply is non-empty, that would make 11.
-      // In that case, require a returnAffinities payload specifying exactly 1
-      // Affinity to return. Validate before touching any state.
+      // Only the production portable-Singularity reward can overflow holdings.
+      // Focus is card-bound state, and the no-reward candidate adds nothing.
       const _totalHeldBeforeSingularity =
-        STANDARD_AFFINITY_KEYS.reduce((s, c) => s + player.affinities[c], 0) + player.affinities.singularity;
-      const _singularityWouldOverflow = state.affinityWell.singularity > 0 && _totalHeldBeforeSingularity >= 10;
+        NATURAL_AFFINITY_KEYS.reduce((s, c) => s + player.affinities[c], 0) + player.affinities.singularity;
+      const _singularityWouldOverflow = encryptReward === "portable_singularity" &&
+        state.affinityWell.singularity > 0 &&
+        _totalHeldBeforeSingularity >= 10;
+      let _returnEntries: Array<[AffinityKey, number]> = [];
       if (_singularityWouldOverflow) {
-        const _returnMap = action.returnAffinities ?? {};
-        const _returnColorsWF = (Object.keys(_returnMap) as AffinityKey[]).filter(
-          (c) => (_returnMap[c] ?? 0) > 0,
+        const _validatedReturn = validateExactAffinityReturn(
+          action.returnAffinities,
+          1,
+          player.affinities,
         );
-        const _totalReturned = _returnColorsWF.reduce((s, c) => s + (_returnMap[c] ?? 0), 0);
-        if (_totalReturned < 1) {
-          return { success: false, error: "Return one Affinity to reserve this Artifact (limit 10)" };
+        if (!_validatedReturn.success) {
+          return { success: false, error: _validatedReturn.error };
         }
-        for (const c of _returnColorsWF) {
-          if ((player.affinities[c] ?? 0) < (_returnMap[c] ?? 0)) {
-            return {
-              success: false,
-              error: `Cannot return ${AFFINITY_LABEL[c as StandardAffinityKey] ?? "Singularity"} you do not hold`,
-            };
-          }
-        }
+        _returnEntries = _validatedReturn.entries;
       }
 
-      // Award a Singularity Affinity after applying any validated return.
-      const _awardSingularity = () => {
+      // Apply the candidate reward only after the Artifact has successfully
+      // moved to reserve. Focus never enters the Well or the player's holdings.
+      const _awardEncryptReward = (reservedCardId: string) => {
+        if (encryptReward === "artifact_bound_focus") {
+          markArtifactBoundFocus(state, player.playerId, reservedCardId);
+          return;
+        }
+        if (encryptReward === "none") return;
         if (state.affinityWell.singularity <= 0) return;
         if (_singularityWouldOverflow) {
-          const returnMap = action.returnAffinities!;
-          for (const c of (Object.keys(returnMap) as AffinityKey[]).filter(
-            (k) => (returnMap[k] ?? 0) > 0,
-          )) {
-            player.affinities[c] -= returnMap[c]!;
-            state.affinityWell[c] += returnMap[c]!;
+          for (const [c, count] of _returnEntries) {
+            player.affinities[c] -= count;
+            state.affinityWell[c] += count;
           }
         }
         player.affinities.singularity++;
@@ -3089,24 +4431,12 @@ export function applyAction(
         const deck = getDeckForTier(state, tier);
         if (deck.length === 0)
           return { success: false, error: "Archive is empty" };
+        if (tier === 2) recordTierTwoClaim(state);
         const blindId = deck.shift()!;
-        // Avatar Seed: if the drawn card was seeded in the deck, transfer the token
-        // to artifactMarkers so it follows the card into the reserved pile.
-        if (state.avatarSeedState && !state.avatarSeedState.payoutDone) {
-          const si = state.avatarSeedState.deckSeeds.indexOf(blindId);
-          if (si !== -1) {
-            state.avatarSeedState.deckSeeds.splice(si, 1);
-            addArtifactBrand(state, blindId, {
-              type: "avatar_seed",
-              ownerId: state.avatarSeedState.ownerId,
-              summonedAtTurnCount: state.avatarSeedState.summonedAtTurnCount,
-            });
-          }
-        }
         player.reservedArtifactIds.push(blindId);
         if (!player.privateReservedArtifactIds) player.privateReservedArtifactIds = [];
         player.privateReservedArtifactIds.push(blindId);
-        _awardSingularity();
+        _awardEncryptReward(blindId);
         break;
       }
 
@@ -3116,6 +4446,22 @@ export function applyAction(
       const forgeRow = getForgeRowForTier(state, card.tier as 1 | 2 | 3);
       if (!forgeRow.includes(action.cardId))
         return { success: false, error: ERR_ARTIFACT_NOT_IN_FORGE };
+      if (markerHasBrand(state.artifactMarkers?.[action.cardId], "nullified")) {
+        return { success: false, error: ERR_CANNOT_ENCRYPT_NULLIFIED };
+      }
+      if (card.tier === 2) recordTierTwoClaim(state);
+
+      const antimatterResult = resolveAntimatterClaim(
+        state,
+        player,
+        action.cardId,
+        _isAutoExec,
+        "encrypted",
+      );
+      if (antimatterResult === "detonated") {
+        actionSummaryOverride = `triggered an Antimatter charge while Encrypting ${getCardLore(action.cardId).name}; action consumed`;
+        break;
+      }
 
       // Reserve from the Forge. Save the marker before the slot is refilled so
       // it follows the Artifact into the reserved pile.
@@ -3123,61 +4469,113 @@ export function applyAction(
       player.reservedArtifactIds.push(action.cardId);
       refillForgeSlot(state, forgeRow, getDeckForTier(state, card.tier as 1 | 2 | 3), action.cardId);
       if (reserveMarker) {
-        const retainedBrands = getArtifactBrands(reserveMarker).filter(
-          (brand) => brand.type !== "avatar_seed" ||
-            (state.avatarSeedState !== undefined && !state.avatarSeedState.payoutDone),
-        );
-        const retainedMarker = buildArtifactMarker(retainedBrands);
+        const retainedMarker = buildArtifactMarker(getArtifactBrands(reserveMarker));
         if (retainedMarker) {
           if (!state.artifactMarkers) state.artifactMarkers = {};
           state.artifactMarkers[action.cardId] = retainedMarker;
         }
       }
-      _awardSingularity();
+      _awardEncryptReward(action.cardId);
       break;
     }
 
+    case "foundry_forge_artifact":
     case "forge_artifact": {
       if (!action.cardId) return { success: false, error: "cardId required" };
       const card = CARD_MAP.get(action.cardId);
       if (!card) return { success: false, error: "Artifact not found" };
+      const usingFoundry = action.type === "foundry_forge_artifact";
+      const foundry = usingFoundry
+        ? getManifestedProject(player, "bp_mantle_to_orbit_foundry")
+        : undefined;
+      if (usingFoundry) {
+        if (!foundry || foundry.state !== "active") {
+          return { success: false, error: "Mantle-to-Orbit Foundry is not active" };
+        }
+        if (card.tier !== 2) {
+          return { success: false, error: "Foundry Forge can claim only Tier II Artifacts" };
+        }
+        if ((foundry.foundryUses ?? 0) >= 2 && action.confirmOverdrive !== true) {
+          return { success: false, error: "Confirm Overdrive before the Foundry's third use" };
+        }
+      }
 
       if ((state.burnPile ?? []).includes(action.cardId))
         return { success: false, error: "Artifact has been burned" };
 
       const forgeRow = getForgeRowForTier(state, card.tier as 1 | 2 | 3);
-      if (!forgeRow.includes(action.cardId))
+      const forgeSlotIndex = forgeRow.indexOf(action.cardId);
+      const archive = getDeckForTier(state, card.tier as 1 | 2 | 3);
+      const isTideArchiveForge =
+        !usingFoundry &&
+        forgeSlotIndex === -1 &&
+        player.tideArchiveForgeAvailable === true &&
+        player.luminaries.includes("lum_tide") &&
+        archive[0] === action.cardId;
+      if (forgeSlotIndex === -1 && !isTideArchiveForge)
         return { success: false, error: ERR_ARTIFACT_NOT_IN_FORGE };
       const liveAffinityBonuses = effectiveAffinityBonuses(state, player);
-      const eff = effectiveCost(card, player, liveAffinityBonuses);
-      if (!canAfford(eff, player.affinities))
+      const ordinaryForgeCost = usingFoundry
+        ? foundryForgeCost(card, player, liveAffinityBonuses)
+        : effectiveCost(card, player, liveAffinityBonuses);
+      const forgeCostResolution = usingFoundry
+        ? {
+            cost: ordinaryForgeCost,
+            paymentFloorSatisfied: true,
+            focusAttached: false,
+          }
+        : resolveExperimentalForgeCost(
+            state,
+            player,
+            card,
+            ordinaryForgeCost,
+            { reserved: false },
+          );
+      const eff = forgeCostResolution.cost;
+      if (!forgeCostResolution.paymentFloorSatisfied || !canAfford(eff, player.affinities))
         return { success: false, error: "Cannot afford this Artifact" };
-      const kardashevBefore = computeKardashevTier(player.forgedArtifactIds, player.discountedForgeIds);
-
+      if (card.tier === 2) recordTierTwoClaim(state);
+      const antimatterResult = resolveAntimatterClaim(
+        state,
+        player,
+        action.cardId,
+        _isAutoExec,
+        "forged",
+      );
+      if (antimatterResult === "detonated") {
+        actionSummaryOverride = `triggered an Antimatter charge while ${usingFoundry ? "using Foundry Forge on" : "Forging"} ${getCardLore(action.cardId).name}; action consumed`;
+        break;
+      }
       // Read the marker before refillForgeSlot removes it.
       const forgeMarker = (state.artifactMarkers ?? {})[action.cardId];
-      const markerSuppressesEminence = markerSuppressesForgeValue(forgeMarker);
+      const nullifiedExempt = resolveNullifiedForge(state, playerId, action.cardId, forgeMarker);
+      const markerSuppressesEminence = markerSuppressesForgeValue(forgeMarker, nullifiedExempt);
 
-      // Avatar Seed: if forged by an opponent, increment pending.
-      const forgeSeedBrand = getArtifactBrands(forgeMarker).find(
-        (brand) => brand.type === "avatar_seed",
+      payForgeCost(
+        card,
+        player,
+        state.affinityWell,
+        liveAffinityBonuses,
+        eff,
       );
-      if (forgeSeedBrand && forgeSeedBrand.ownerId !== playerId) {
-        if (state.avatarSeedState && !state.avatarSeedState.payoutDone) {
-          state.avatarSeedState.pendingEminence++;
-        }
-      }
-
-      payForgeCost(card, player, state.affinityWell, liveAffinityBonuses);
       player.forgedArtifactIds.push(action.cardId);
-      const isZeroCostForge = Object.values(eff).every((v) => v === 0);
+      player.artifactForgeCounts = incrementUsageCount(player.artifactForgeCounts, action.cardId);
+      const isZeroCostForge = !usingFoundry && Object.values(eff).every((v) => v === 0);
       if (isZeroCostForge) {
         player.discountedForgeIds.push(action.cardId);
       }
       if (!player.forgedArtifactBonusSnapshots) player.forgedArtifactBonusSnapshots = {};
       player.forgedArtifactBonusSnapshots[action.cardId] = { ...liveAffinityBonuses };
-      markBlueprintBlockedIfForgotten(player, action.cardId, forgeMarker);
+      markBlueprintBlockedByBrand(player, action.cardId, forgeMarker, nullifiedExempt);
       player.bonuses[card.bonusAffinity]++;
+
+      const seedAllies = applyAvatarSeedImbuement(
+        state,
+        card,
+        forgeMarker,
+        playerId,
+        forgeSlotIndex >= 0 ? `${card.tier}-${forgeSlotIndex}` : undefined,
+      );
 
       // Marked cards grant 0 Eminence; unmarked/avatar-seeded grant normal printed value.
       player.eminence += markerSuppressesEminence ? 0 : card.eminence;
@@ -3185,22 +4583,98 @@ export function applyAction(
       // The Glass Orchard — Perfect Replication: first forge with Verdance or Radiance cost.
       if (
         !markerSuppressesEminence &&
-        !state.glassOrchardTriggered &&
         player.luminaries.includes("lum_orchard") &&
+        !glassOrchardHasTriggered(state, player.playerId) &&
         (card.cost.verdance > 0 || card.cost.radiance > 0)
       ) {
         player.bonuses[card.bonusAffinity]++;
-        state.glassOrchardTriggered = true;
+        markGlassOrchardTriggered(state, player.playerId);
         pushLog(state, {
           playerId: player.playerId, playerName: player.playerName,
           summary: `The Glass Orchard — Perfect Replication: +1 extra ${AFFINITY_LABEL[card.bonusAffinity]} bonus`,
           turn: state.roundNumber,
         });
+        pushActivationEvent(state, "lum_orchard", "action", player.playerId, [card.id], {
+          affinityType: card.bonusAffinity,
+          affinityAmount: 1,
+        });
       }
 
-      refillForgeSlot(state, forgeRow, getDeckForTier(state, card.tier as 1 | 2 | 3), action.cardId);
+      if (isTideArchiveForge) {
+        archive.shift();
+        if (state.artifactMarkers) delete state.artifactMarkers[action.cardId];
+        player.tideArchiveForgeAvailable = false;
+      } else {
+        refillForgeSlot(state, forgeRow, archive, action.cardId);
+      }
+      if (usingFoundry && foundry) {
+        foundry.foundryUses = (foundry.foundryUses ?? 0) + 1;
+        foundry.foundryOverdriveAvailable = foundry.foundryUses >= 2;
+        state.pendingBlueprintDetonationEvents.push({
+          eventId: `bp-foundry-forge-v${state.version}-${Date.now()}-${card.id}`,
+          blueprintId: "bp_mantle_to_orbit_foundry",
+          ownerPlayerId: player.playerId,
+          triggeringPlayerId: player.playerId,
+          targetCardId: card.id,
+          targetArtifact: snapshotBlueprintArtifact(card.id),
+          presentationVariant: foundry.presentationVariant,
+          createdAt: Date.now(),
+        });
+        if (foundry.foundryUses >= 3) {
+          resolveFoundryOverdrive(state, player, foundry);
+        }
+      }
+      checkBlueprintManifestations(state, player);
       checkLuminaries(state, player);
-      checkKardashevAdvance(state, player, kardashevBefore, isZeroCostForge, card.tier);
+      for (const seedAlly of seedAllies) checkLuminaries(state, seedAlly);
+      break;
+    }
+
+    case "recover_foundry_component": {
+      if (!action.cardId) return { success: false, error: "cardId required" };
+      const artifactId = action.cardId as ArtifactId;
+      const card = CARD_MAP.get(artifactId);
+      const foundry = getManifestedProject(player, "bp_mantle_to_orbit_foundry");
+      const privateState = findPrivateBlueprintState(player, "bp_mantle_to_orbit_foundry");
+      if (!card || card.tier !== 1) {
+        return { success: false, error: "Foundry recovery requires a Tier I component" };
+      }
+      if (!foundry || foundry.state !== "recovering" || foundry.covenantState !== "broken") {
+        return { success: false, error: "Mantle-to-Orbit Foundry is not awaiting recovery" };
+      }
+      if (!privateState?.foundryRecoveryComponentIds?.includes(artifactId)) {
+        return { success: false, error: "Artifact is not in this Foundry's recovery group" };
+      }
+
+      player.forgedArtifactIds.push(artifactId);
+      player.artifactForgeCounts = incrementUsageCount(player.artifactForgeCounts, artifactId);
+      if (!player.forgedArtifactBonusSnapshots) player.forgedArtifactBonusSnapshots = {};
+      player.forgedArtifactBonusSnapshots[artifactId] = {
+        ...effectiveAffinityBonuses(state, player),
+      };
+      player.bonuses[card.bonusAffinity]++;
+      player.eminence += card.eminence;
+      privateState.foundryRecoveryComponentIds = privateState.foundryRecoveryComponentIds.filter(
+        (id) => id !== artifactId,
+      );
+      foundry.foundryRecoveredComponentCount =
+        BLUEPRINT_DEFINITIONS.bp_mantle_to_orbit_foundry.components.length -
+        privateState.foundryRecoveryComponentIds.length;
+
+      if (privateState.foundryRecoveryComponentIds.length === 0) {
+        foundry.state = "active";
+        foundry.foundryUses = 0;
+        foundry.foundryOverdriveAvailable = false;
+        pushLog(state, {
+          playerId: player.playerId,
+          playerName: player.playerName,
+          summary: "Mantle-to-Orbit Foundry reactivated from its preserved plans",
+          turn: state.roundNumber,
+        });
+      }
+
+      checkBlueprintManifestations(state, player);
+      checkLuminaries(state, player);
       break;
     }
 
@@ -3212,70 +4686,93 @@ export function applyAction(
       const card = CARD_MAP.get(action.cardId);
       if (!card) return { success: false, error: "Artifact not found" };
       const liveBonusesReserved = effectiveAffinityBonuses(state, player);
-      const eff = effectiveCost(card, player, liveBonusesReserved);
-      if (!canAfford(eff, player.affinities))
-        return { success: false, error: "Cannot afford this Artifact" };
-      const kardashevBeforeReserved = computeKardashevTier(player.forgedArtifactIds, player.discountedForgeIds);
-
-      // Avatar Seed: the token follows the card into the reserved pile (v0.8 spec).
-      // If forged by an opponent, accumulate +1 pending Eminence on The Seed Beyond Seasons.
-      // If forged by the owner, just remove the token — no pending.
-      const reservedMarker = (state.artifactMarkers ?? {})[action.cardId];
-      const reservedMarkerSuppressesEminence = markerSuppressesForgeValue(reservedMarker);
-      const reservedSeedBrand = getArtifactBrands(reservedMarker).find(
-        (brand) => brand.type === "avatar_seed",
+      const reservedCostResolution = resolveExperimentalForgeCost(
+        state,
+        player,
+        card,
+        effectiveCost(card, player, liveBonusesReserved),
+        { reserved: true, focusAffinity: action.affinity },
       );
-      if (reservedSeedBrand && state.avatarSeedState && !state.avatarSeedState.payoutDone) {
-        if (reservedSeedBrand.ownerId !== playerId) {
-          state.avatarSeedState.pendingEminence++;
-        }
-        // Token is consumed on forge regardless of who forges.
+      if (reservedCostResolution.focusSelectionError) {
+        return { success: false, error: reservedCostResolution.focusSelectionError };
       }
+      const eff = reservedCostResolution.cost;
+      if (!reservedCostResolution.paymentFloorSatisfied || !canAfford(eff, player.affinities))
+        return { success: false, error: "Cannot afford this Artifact" };
+      const reservedMarker = (state.artifactMarkers ?? {})[action.cardId];
+      const reservedNullifiedExempt = resolveNullifiedForge(state, playerId, action.cardId, reservedMarker);
+      const reservedMarkerSuppressesEminence = markerSuppressesForgeValue(
+        reservedMarker,
+        reservedNullifiedExempt,
+      );
       // Clean up any marker (Forgotten/Condemned/Nullified/AvatarSeed) now that the card is forged.
       if (state.artifactMarkers) delete state.artifactMarkers[action.cardId];
 
-      payForgeCost(card, player, state.affinityWell, liveBonusesReserved);
+      payForgeCost(
+        card,
+        player,
+        state.affinityWell,
+        liveBonusesReserved,
+        eff,
+      );
+      if (reservedCostResolution.focusAttached) {
+        // A successful Forge consumes the binding even when no remaining
+        // natural requirement existed for Focus to reduce.
+        consumeArtifactBoundFocus(state, player.playerId, action.cardId);
+      }
       player.reservedArtifactIds.splice(idx, 1);
       if (player.privateReservedArtifactIds) {
         const privateIdx = player.privateReservedArtifactIds.indexOf(action.cardId);
         if (privateIdx !== -1) player.privateReservedArtifactIds.splice(privateIdx, 1);
       }
       player.forgedArtifactIds.push(action.cardId);
+      player.artifactForgeCounts = incrementUsageCount(player.artifactForgeCounts, action.cardId);
       const isDiscountReserved = Object.values(eff).every((v) => v === 0);
       if (isDiscountReserved) {
         player.discountedForgeIds.push(action.cardId);
       }
       if (!player.forgedArtifactBonusSnapshots) player.forgedArtifactBonusSnapshots = {};
       player.forgedArtifactBonusSnapshots[action.cardId] = { ...liveBonusesReserved };
-      markBlueprintBlockedIfForgotten(player, action.cardId, reservedMarker);
+      markBlueprintBlockedByBrand(player, action.cardId, reservedMarker, reservedNullifiedExempt);
       player.bonuses[card.bonusAffinity]++;
+      const reservedSeedAllies = applyAvatarSeedImbuement(
+        state,
+        card,
+        reservedMarker,
+        playerId,
+      );
       player.eminence += reservedMarkerSuppressesEminence ? 0 : card.eminence;
 
       // The Glass Orchard — Perfect Replication (reserved forge path).
       if (
         !reservedMarkerSuppressesEminence &&
-        !state.glassOrchardTriggered &&
         player.luminaries.includes("lum_orchard") &&
+        !glassOrchardHasTriggered(state, player.playerId) &&
         (card.cost.verdance > 0 || card.cost.radiance > 0)
       ) {
         player.bonuses[card.bonusAffinity]++;
-        state.glassOrchardTriggered = true;
+        markGlassOrchardTriggered(state, player.playerId);
         pushLog(state, {
           playerId: player.playerId, playerName: player.playerName,
           summary: `The Glass Orchard — Perfect Replication: +1 extra ${AFFINITY_LABEL[card.bonusAffinity]} bonus`,
           turn: state.roundNumber,
         });
+        pushActivationEvent(state, "lum_orchard", "action", player.playerId, [card.id], {
+          affinityType: card.bonusAffinity,
+          affinityAmount: 1,
+        });
       }
 
+      checkBlueprintManifestations(state, player);
       checkLuminaries(state, player);
-      checkKardashevAdvance(state, player, kardashevBeforeReserved, isDiscountReserved, card.tier);
+      for (const seedAlly of reservedSeedAllies) checkLuminaries(state, seedAlly);
       break;
     }
 
     case "assimilate": {
-      // Final Hunger — Assimilation: one-time action replacing the forge on the summon turn.
-      if (!state.firstHungerAvailable || state.firstHungerAvailable !== playerId) {
-        return { success: false, error: "Assimilation is not available this turn" };
+      // Final Hunger — Assimilation: one-time replacement for a Forge action.
+      if (!firstHungerIsAvailable(state, playerId)) {
+        return { success: false, error: "Assimilation is not available" };
       }
       if (!action.cardId) return { success: false, error: "cardId required" };
       const assimCard = CARD_MAP.get(action.cardId);
@@ -3283,49 +4780,36 @@ export function applyAction(
       const assimilationForgeRow = getForgeRowForTier(state, assimCard.tier as 1 | 2 | 3);
       if (!assimilationForgeRow.includes(action.cardId))
         return { success: false, error: ERR_ARTIFACT_NOT_IN_FORGE };
-      if (assimCard.cost.flare === 0 && assimCard.cost.verdance === 0 && assimCard.cost.radiance === 0)
-        return { success: false, error: "Target must have Flare, Verdance, or Radiance in its cost" };
 
-      // Cost: printed base cost, reduced by player's card-derived bonuses for Flare (flare),
-      // Verdance (verdance), and Radiance (radiance) only. Continuum/Abyss/Singularity costs
-      // are paid in full from the printed cost. Luminary bonuses do not apply here.
-      const assimCost: AffinityCounts = { ...assimCard.cost } as AffinityCounts;
-      assimCost.flare   = Math.max(0, (assimCost.flare   ?? 0) - (player.bonuses.flare   ?? 0));
-      assimCost.verdance = Math.max(0, (assimCost.verdance ?? 0) - (player.bonuses.verdance ?? 0));
-      assimCost.radiance  = Math.max(0, (assimCost.radiance  ?? 0) - (player.bonuses.radiance  ?? 0));
-      if (!canAfford(assimCost, player.affinities))
-        return { success: false, error: "Cannot afford Assimilation" };
-
-      // Pay manually with the reduced cost (payForgeCost uses normal effective cost).
-      let singularityUsed = 0;
-      for (const c of STANDARD_AFFINITY_KEYS) {
-        const needed = assimCost[c] ?? 0;
-        const avail = player.affinities[c] ?? 0;
-        const fromOwn = Math.min(needed, avail);
-        player.affinities[c] -= fromOwn;
-        state.affinityWell[c] += fromOwn;
-        singularityUsed += needed - fromOwn;
-      }
-      player.affinities.singularity -= singularityUsed;
-      state.affinityWell.singularity += singularityUsed;
-
-      // Burn via shared burnCard — emits BurnEvent, increments Catalyst Bloom, refills slot.
-      burnCard(state, action.cardId, assimCard.tier as 1 | 2 | 3, "lum_hunger", false, { triggeredByPlayerId: playerId });
-
-      // Grant printed Eminence + 2 bonus.
-      const assimilationEminence = assimCard.eminence + 2;
-      player.eminence += assimilationEminence;
+      if (!Array.isArray(player.assimilatedArtifactIds)) player.assimilatedArtifactIds = [];
+      player.assimilatedArtifactIds.push(action.cardId);
+      player.bonuses[assimCard.bonusAffinity] =
+        (player.bonuses[assimCard.bonusAffinity] ?? 0) + 1;
+      refillForgeSlot(
+        state,
+        assimilationForgeRow,
+        getDeckForTier(state, assimCard.tier as 1 | 2 | 3),
+        action.cardId,
+      );
 
       // Assimilation is consumed.
-      state.firstHungerAvailable = null;
+      consumeFirstHunger(state, playerId);
 
       const assimLore = getCardLore(action.cardId);
       pushLog(state, {
         playerId: player.playerId, playerName: player.playerName,
-        summary: `The Final Hunger Assimilated ${assimLore.name}: it was Burned, and you gained ${assimilationEminence} Eminence.`,
+        summary: `The Final Hunger Assimilated ${assimLore.name}: +1 ${AFFINITY_LABEL[assimCard.bonusAffinity]} permanent Affinity, 0 Eminence.`,
         turn: state.roundNumber,
       });
-      checkLuminaries(state, player);
+      pushActivationEvent(
+        state,
+        "lum_hunger",
+        "action",
+        player.playerId,
+        [action.cardId],
+        { affinityType: assimCard.bonusAffinity, affinityAmount: 1 },
+      );
+      checkBlueprintManifestations(state, player);
       break;
     }
 
@@ -3335,7 +4819,13 @@ export function applyAction(
     }
 
     case "surrender": {
-      // Player surrenders; end the game with them as last place
+      if (state.players.length !== 2) {
+        return {
+          success: false,
+          error: "Surrender is only available in two-player matches",
+        };
+      }
+      // Head-to-head surrender ends the game with the opponent as winner.
       state.phase = "finished";
       state.finishReason = "surrender";
       // Clear any win-trigger from a mid-game Luminary summon — the fanfare
@@ -3380,6 +4870,9 @@ export function applyAction(
       if (!Array.isArray(state.pendingLuminaryActivationEvents)) {
         state.pendingLuminaryActivationEvents = [];
       }
+      const resolvedActivation = state.pendingLuminaryActivationEvents.find(
+        (event) => event.eventId === eventId,
+      );
       const lenBefore = state.pendingLuminaryActivationEvents.length;
       state.pendingLuminaryActivationEvents = state.pendingLuminaryActivationEvents.filter(
         (e) => e.eventId !== eventId,
@@ -3389,7 +4882,46 @@ export function applyAction(
         return { success: true };
       }
       state.lastAction = { type: "resolve_luminary_activation", playerId, eventId };
+      if (
+        resolvedActivation?.luminaryId === "lum_hunger" &&
+        resolvedActivation.effectType === "action"
+      ) {
+        const owner = state.players.find(
+          (candidate) => candidate.playerId === resolvedActivation.triggeringPlayerId,
+        );
+        if (owner) checkLuminaries(state, owner);
+      }
       advanceDevLuminarySequenceStage(state);
+      continuePendingTurnTransition(state);
+      state.version++;
+      return { success: true };
+    }
+
+    case "resolve_blueprint_manifestation": {
+      const { eventId } = action;
+      const before = state.pendingBlueprintManifestationEvents.length;
+      state.pendingBlueprintManifestationEvents = state.pendingBlueprintManifestationEvents.filter(
+        (event) => event.eventId !== eventId,
+      );
+      if (state.pendingBlueprintManifestationEvents.length === before) {
+        return { success: true };
+      }
+      state.lastAction = { type: "resolve_blueprint_manifestation", playerId, eventId };
+      continuePendingTurnTransition(state);
+      state.version++;
+      return { success: true };
+    }
+
+    case "resolve_blueprint_detonation": {
+      const { eventId } = action;
+      const before = state.pendingBlueprintDetonationEvents.length;
+      state.pendingBlueprintDetonationEvents = state.pendingBlueprintDetonationEvents.filter(
+        (event) => event.eventId !== eventId,
+      );
+      if (state.pendingBlueprintDetonationEvents.length === before) {
+        return { success: true };
+      }
+      state.lastAction = { type: "resolve_blueprint_detonation", playerId, eventId };
       continuePendingTurnTransition(state);
       state.version++;
       return { success: true };
@@ -3405,16 +4937,30 @@ export function applyAction(
       if (state.pendingLuminaryChoice.playerId !== playerId) {
         return { success: false, error: "This choice belongs to another player" };
       }
-      if (state.currentPlayerIndex !== playerIdx) {
-        return { success: false, error: "Not your turn" };
-      }
       const { orderedIds } = action;
       if (!orderedIds || !Array.isArray(orderedIds)) {
         return { success: false, error: "orderedIds required" };
       }
       const candidates = state.pendingLuminaryChoice.candidates;
-      if (orderedIds.length !== candidates.length) {
-        return { success: false, error: "orderedIds must list all candidates exactly once" };
+      const onePerAction = getBalanceRuleset(state).luminaryClaimLimitPerAction === 1;
+      const validLength = onePerAction
+        ? orderedIds.length === 1 || orderedIds.length === candidates.length
+        : orderedIds.length === candidates.length;
+      if (!validLength) {
+        return {
+          success: false,
+          error: onePerAction
+            ? "orderedIds must select one candidate (or rank all candidates with the selection first)"
+            : "orderedIds must list all candidates exactly once",
+        };
+      }
+      if (new Set(orderedIds).size !== orderedIds.length) {
+        return {
+          success: false,
+          error: onePerAction
+            ? "orderedIds must not repeat candidates"
+            : "orderedIds must list all candidates exactly once",
+        };
       }
       for (const id of orderedIds) {
         if (!candidates.includes(id)) {
@@ -3435,7 +4981,17 @@ export function applyAction(
       // upcoming turn.  Validate legality first via a dry-run clone.
       const inner = action.plannedActionData;
       if (!inner) return { success: false, error: "No plannedActionData provided" };
-      const disallowed: ActionType[] = ["plan_action", "cancel_plan", "resolve_summon", "resolve_luminary_activation", "surrender", "pass"];
+      settlePreManifestAction(state, playerId);
+      const disallowed: ActionType[] = [
+        "plan_action",
+        "cancel_plan",
+        "resolve_summon",
+        "resolve_luminary_activation",
+        "resolve_blueprint_manifestation",
+        "resolve_blueprint_detonation",
+        "surrender",
+        "pass",
+      ];
       if (disallowed.includes(inner.type)) {
         return { success: false, error: `Cannot plan a '${inner.type}' action` };
       }
@@ -3481,88 +5037,10 @@ export function applyAction(
       // Non-turn-gated: cancel any standing planned action.
       player.plannedAction = null;
       player.plannedActionCancelReason = null;
+      settlePreManifestAction(state, playerId);
       // Stamp lastAction so the broadcast does not carry a stale Forge action
       // type, which would confuse animation-queue gating on the client.
       state.lastAction = { type: "cancel_plan", playerId };
-      state.version++;
-      return { success: true };
-    }
-
-    case "tutorial_fast_forward": {
-      // Non-turn-gated tutorial action. Sets up a scripted endgame state where
-      // the player is one Verdance Artifact away from summoning lum_verdant and
-      // winning. Uses specific card IDs to guarantee a deterministic scenario.
-      const ENDGAME_FORGED = [
-        "t2e01", "t2e02", "t2e03", "t2e04", "t2e06", // 5 Verdance bonuses, 8 Eminence
-        "t2r01", "t2r02", "t2r03",                    // 3 Flare bonuses, 5 Eminence
-      ];                                                 // total: 13 Eminence, 5 Verdance bonuses
-      const ENDGAME_RESERVED = ["t1e07"]; // verdance, cost abyss=2 radiance=1
-      const allEndgameCards = [...ENDGAME_FORGED, ...ENDGAME_RESERVED];
-
-      // Remove scripted Artifacts from the Forge and deck pools.
-      for (const arr of [
-        state.forgeTier1, state.forgeTier2, state.forgeTier3,
-        state.deckTier1,   state.deckTier2,   state.deckTier3,
-      ]) {
-        for (const id of allEndgameCards) {
-          const idx = arr.indexOf(id);
-          if (idx >= 0) arr.splice(idx, 1);
-        }
-      }
-
-      // Refill Forge rows to four face-up Artifacts from the remaining decks.
-      while (state.forgeTier1.length < 4 && state.deckTier1.length > 0) {
-        state.forgeTier1.push(state.deckTier1.shift()!);
-      }
-      while (state.forgeTier2.length < 4 && state.deckTier2.length > 0) {
-        state.forgeTier2.push(state.deckTier2.shift()!);
-      }
-      while (state.forgeTier3.length < 4 && state.deckTier3.length > 0) {
-        state.forgeTier3.push(state.deckTier3.shift()!);
-      }
-
-      // Ensure lum_verdant is an active Luminary for this game
-      if (!state.activeLuminaries.includes("lum_verdant")) {
-        state.activeLuminaries.push("lum_verdant");
-      }
-
-      // Set up the player's endgame state
-      player.forgedArtifactIds = [...ENDGAME_FORGED];
-      player.reservedArtifactIds  = [...ENDGAME_RESERVED];
-      player.privateReservedArtifactIds = [];
-      player.affinities  = { flare: 0, continuum: 0, verdance: 0, abyss: 3, radiance: 2, singularity: 0 };
-      player.bonuses   = { flare: 3, continuum: 0, verdance: 5, abyss: 0, radiance: 0, singularity: 0 };
-      player.eminence    = 13;
-      player.luminaries = [];
-      // Clear any luminaryAffinities entries owned by this player so that a
-      // subsequent Luminary summon starts with a fresh summonedAtTurnCount.
-      // Without this, stale entries from a previous summon satisfy timing checks
-      // immediately and cause effects (e.g. Cinder Mandate burn) to fire on the
-      // wrong turn.
-      state.luminaryAffinities = state.luminaryAffinities.filter(
-        (x) => x.ownerId !== player.playerId,
-      );
-      // Clear any Forge markers (condemned, forgotten, nullified) owned by
-      // this player so the board is clean for the next test.
-      if (state.artifactMarkers) {
-        for (const id of Object.keys(state.artifactMarkers)) {
-          removeArtifactBrands(state, id, (brand) => brand.ownerId === player.playerId);
-        }
-      }
-      player.plannedAction = null;
-      player.plannedActionCancelReason = null;
-
-      // Ensure it is the player's turn
-      state.currentPlayerIndex = playerIdx;
-
-      // Advance turnCount so living Luminary bonuses are not artificially blocked
-      if (state.turnCount < 20) state.turnCount = 20;
-      if (state.roundNumber < 5) state.roundNumber = 5;
-
-      // Clear any pending summon events
-      state.pendingSummonEvents = [];
-
-      state.lastAction = { type: "tutorial_fast_forward", playerId };
       state.version++;
       return { success: true };
     }
@@ -3576,7 +5054,7 @@ export function applyAction(
   pushLog(state, {
     playerId,
     playerName: player.playerName,
-    summary: describeAction(action, player),
+    summary: actionSummaryOverride ?? describeAction(action, player),
     turn: state.roundNumber,
   });
   // Mark the core action slot as consumed until the full resolution pipeline
@@ -3584,6 +5062,7 @@ export function applyAction(
   if (CORE_ACTIONS.has(action.type)) {
     state.coreActionUsed = true;
   }
+  if (_isAutoExec) settlePreManifestAction(state, playerId);
   state.version++;
   
   // Begin the durable resolution pipeline. It advances synchronously when no
@@ -3601,7 +5080,7 @@ function describeAction(action: ActionPayload, _player: PlayerGameState): string
   switch (action.type) {
     case "harness_three_affinities": {
       const sel = action.affinities ?? {};
-      const parts = STANDARD_AFFINITY_KEYS
+      const parts = NATURAL_AFFINITY_KEYS
         .filter((c) => (sel[c] ?? 0) > 0)
         .map((c) => `${sel[c]} ${AFFINITY_LABEL[c]}`);
       const base = parts.length === 0
@@ -3611,7 +5090,7 @@ function describeAction(action: ActionPayload, _player: PlayerGameState): string
       if (ret) {
         const retParts = (Object.keys(ret) as AffinityKey[])
           .filter((c) => (ret[c] ?? 0) > 0)
-          .map((c) => `${ret[c]} ${AFFINITY_LABEL[c as StandardAffinityKey] ?? "Singularity"}`);
+          .map((c) => `${ret[c]} ${AFFINITY_LABEL[c as NaturalAffinityKey] ?? "Singularity"}`);
         if (retParts.length > 0) return `${base} (returned ${retParts.join(", ")})`;
       }
       return base;
@@ -3624,7 +5103,7 @@ function describeAction(action: ActionPayload, _player: PlayerGameState): string
       if (ret) {
         const retParts = (Object.keys(ret) as AffinityKey[])
           .filter((c) => (ret[c] ?? 0) > 0)
-          .map((c) => `${ret[c]} ${AFFINITY_LABEL[c as StandardAffinityKey] ?? "Singularity"}`);
+          .map((c) => `${ret[c]} ${AFFINITY_LABEL[c as NaturalAffinityKey] ?? "Singularity"}`);
         if (retParts.length > 0) return `${base} (returned ${retParts.join(", ")})`;
       }
       return base;
@@ -3635,7 +5114,7 @@ function describeAction(action: ActionPayload, _player: PlayerGameState): string
         ? (() => {
             const parts = (Object.keys(ret) as AffinityKey[])
               .filter((c) => (ret[c] ?? 0) > 0)
-              .map((c) => `${ret[c]} ${AFFINITY_LABEL[c as StandardAffinityKey] ?? "Singularity"}`);
+              .map((c) => `${ret[c]} ${AFFINITY_LABEL[c as NaturalAffinityKey] ?? "Singularity"}`);
             return parts.length > 0 ? ` (returned ${parts.join(", ")})` : "";
           })()
         : "";
@@ -3647,16 +5126,38 @@ function describeAction(action: ActionPayload, _player: PlayerGameState): string
         ? `Encrypted a concealed Tier ${action.tier} Artifact from the Archive`
         : "Encrypted an Artifact") + retSuffix;
     }
+    case "foundry_forge_artifact":
     case "forge_artifact":
     case "forge_reserved_artifact": {
       if (action.cardId) {
         const card = CARD_MAP.get(action.cardId);
         const lore = getCardLore(action.cardId);
-        const verb = action.type === "forge_reserved_artifact" ? "Forged reserved" : "Forged";
+        const verb = action.type === "foundry_forge_artifact"
+          ? action.confirmOverdrive
+            ? "Overdrove the Foundry to Forge"
+            : "Used Foundry Forge on"
+          : action.type === "forge_reserved_artifact"
+          ? "Forged reserved"
+          : action.luminaryId === "lum_tide"
+            ? "Forged from an Archive"
+            : "Forged";
         const eminence = card?.eminence ?? 0;
         return `${verb} "${lore.name}"${eminence ? ` (+${eminence} Eminence)` : ""}`;
       }
       return "Forged an Artifact";
+    }
+    case "recover_foundry_component": {
+      const lore = action.cardId ? getCardLore(action.cardId) : null;
+      return lore
+        ? `Re-Forged "${lore.name}" from the Foundry recovery group`
+        : "Re-Forged a Foundry component";
+    }
+    case "assimilate": {
+      if (!action.cardId) return "Used Assimilation";
+      const card = CARD_MAP.get(action.cardId);
+      const lore = getCardLore(action.cardId);
+      const bonus = card ? AFFINITY_LABEL[card.bonusAffinity] : "Affinity";
+      return `Assimilated "${lore.name}" (+1 ${bonus}, 0 Eminence)`;
     }
     case "pass":
       return "Time expired — turn passed";
@@ -3687,23 +5188,36 @@ function getDeckForTier(state: GameStateData, tier: 1 | 2 | 3): string[] {
  * the board presentation (Tier III, Tier II, Tier I) so clients can map the
  * activation payload back to the twelve original slots.
  */
-function resetForgeThroughArchives(state: GameStateData): string[] {
+function resetForgeThroughArchives(state: GameStateData, sourcePlayerId: string): string[] {
   const returnedIds: string[] = [];
 
   for (const tier of [3, 2, 1] as const) {
     const forgeRow = getForgeRowForTier(state, tier);
     const archive = getDeckForTier(state, tier);
-    const returnedFromRow = [...forgeRow];
+    const protectedSlots = new Map<number, string>();
+    const returnedFromRow = forgeRow.filter((cardId, slotIndex) => {
+      const protectedClaim = interceptHostilePlannedClaim(
+        state,
+        cardId,
+        sourcePlayerId,
+        "claim_cancellation",
+      );
+      if (protectedClaim) protectedSlots.set(slotIndex, cardId);
+      return !protectedClaim;
+    });
     returnedIds.push(...returnedFromRow);
 
     const randomizedPool = shuffle([...archive, ...returnedFromRow]);
-    const nextRow = randomizedPool.slice(0, 4);
-    const nextArchive = randomizedPool.slice(nextRow.length);
+    const nextRow = forgeRow.map((_, slotIndex) =>
+      protectedSlots.get(slotIndex) ?? randomizedPool.shift()!,
+    );
+    const nextArchive = randomizedPool;
 
     forgeRow.splice(0, forgeRow.length, ...nextRow);
     archive.splice(0, archive.length, ...nextArchive);
   }
 
+  retargetUnavailableAntimatterCharges(state);
   return returnedIds;
 }
 
@@ -3721,6 +5235,13 @@ export function normalizeState(raw: unknown): GameStateData {
   }
   if (!("openingTurnOrder" in state)) {
     state.openingTurnOrder = null;
+  }
+  if (
+    !state.covenantStateByPlayerId ||
+    typeof state.covenantStateByPlayerId !== "object" ||
+    Array.isArray(state.covenantStateByPlayerId)
+  ) {
+    state.covenantStateByPlayerId = {};
   }
   if (Array.isArray(state.players)) {
     state.players = (state.players as Record<string, unknown>[]).map((p) => {
@@ -3749,6 +5270,63 @@ export function normalizeState(raw: unknown): GameStateData {
         };
       }
       if (!Array.isArray(p.blueprintBlockedCardIds)) p = { ...p, blueprintBlockedCardIds: [] };
+      if (!Array.isArray(p.blueprintPrivateStates)) p = { ...p, blueprintPrivateStates: [] };
+      const legacyProjects = Array.isArray(p.manifestedBlueprintProjects)
+        ? p.manifestedBlueprintProjects
+        : Array.isArray(p.manifestedBlueprintDevices)
+          ? p.manifestedBlueprintDevices
+          : [];
+      const covenantByPlayer = state.covenantStateByPlayerId as Record<string, CovenantState>;
+      const playerId = typeof p.playerId === "string" ? p.playerId : "";
+      const fallbackCovenant: CovenantState = state.brokenCovenantDeclared === true
+        ? "broken"
+        : "intact";
+      const normalizedProjects = (legacyProjects as Array<Record<string, unknown>>).map((project) => {
+        const covenantState: CovenantState = project.covenantState === "broken"
+          ? "broken"
+          : project.covenantState === "intact"
+            ? "intact"
+            : covenantByPlayer[playerId] ?? fallbackCovenant;
+        const isLegacyFoundry = project.blueprintId === "bp_mantle_to_orbit_foundry";
+        const inferredFoundryUses = isLegacyFoundry && typeof project.foundryUses !== "number"
+          ? (project.foundryTier2Ready === false ? 1 : 0) +
+            (project.foundryTier3Ready === false ? 1 : 0)
+          : project.foundryUses;
+        const legacyState = project.state === "ready" ? "active" : project.state;
+        return {
+          ...project,
+          state: legacyState,
+          covenantState,
+          ...(isLegacyFoundry
+            ? {
+                foundryUses: Math.min(2, Math.max(0, Number(inferredFoundryUses ?? 0))),
+                foundryOverdriveAvailable: Number(inferredFoundryUses ?? 0) >= 2,
+              }
+            : {}),
+        };
+      });
+      p = {
+        ...p,
+        manifestedBlueprintProjects: normalizedProjects,
+        manifestedBlueprintDevices: normalizedProjects,
+      };
+      if (!p.blueprintPresentationVariants || typeof p.blueprintPresentationVariants !== "object" || Array.isArray(p.blueprintPresentationVariants)) {
+        p = { ...p, blueprintPresentationVariants: {} };
+      }
+      if (!Array.isArray(p.assimilatedArtifactIds)) p = { ...p, assimilatedArtifactIds: [] };
+      if (!p.artifactForgeCounts || typeof p.artifactForgeCounts !== "object" || Array.isArray(p.artifactForgeCounts)) {
+        p = { ...p, artifactForgeCounts: usageCountsFromIds(p.forgedArtifactIds) };
+      }
+      if (!p.luminaryAllianceCounts || typeof p.luminaryAllianceCounts !== "object" || Array.isArray(p.luminaryAllianceCounts)) {
+        p = { ...p, luminaryAllianceCounts: usageCountsFromIds(p.luminaries) };
+      }
+      if (typeof p.tideArchiveForgeAvailable !== "boolean") {
+        p = {
+          ...p,
+          // Existing games with Tide already claimed gain the redesigned use.
+          tideArchiveForgeAvailable: (p.luminaries as string[]).includes("lum_tide"),
+        };
+      }
       // ensure forgedArtifactBonusSnapshots exists (added in bonus-snapshot feature)
       if (!p.forgedArtifactBonusSnapshots || typeof p.forgedArtifactBonusSnapshots !== 'object' || Array.isArray(p.forgedArtifactBonusSnapshots)) {
         p = { ...p, forgedArtifactBonusSnapshots: {} };
@@ -3779,6 +5357,12 @@ export function normalizeState(raw: unknown): GameStateData {
   if (!Array.isArray(state.pendingLuminaryActivationEvents)) {
     state.pendingLuminaryActivationEvents = [];
   }
+  if (!Array.isArray(state.pendingBlueprintManifestationEvents)) {
+    state.pendingBlueprintManifestationEvents = [];
+  }
+  if (!Array.isArray(state.pendingBlueprintDetonationEvents)) {
+    state.pendingBlueprintDetonationEvents = [];
+  }
   // Older persisted games have already advanced around any legacy pending
   // cinematic events. Never infer a transition retroactively.
   if (!("pendingTurnTransition" in state)) {
@@ -3795,6 +5379,18 @@ export function normalizeState(raw: unknown): GameStateData {
   // ensure v0.8 fields exist (optional fields default to absent; guard avoids runtime errors)
   if (typeof state.artifactMarkers !== "object" || state.artifactMarkers === null || Array.isArray(state.artifactMarkers)) {
     state.artifactMarkers = {};
+  }
+  if (
+    state.nullifiedFirstForge !== null &&
+    (
+      typeof state.nullifiedFirstForge !== "object" ||
+      Array.isArray(state.nullifiedFirstForge) ||
+      typeof (state.nullifiedFirstForge as Record<string, unknown>).cardId !== "string" ||
+      typeof (state.nullifiedFirstForge as Record<string, unknown>).playerId !== "string" ||
+      typeof (state.nullifiedFirstForge as Record<string, unknown>).exempt !== "boolean"
+    )
+  ) {
+    state.nullifiedFirstForge = null;
   }
   if (typeof state.forgottenHourCycle !== "object" || state.forgottenHourCycle === null || Array.isArray(state.forgottenHourCycle)) {
     state.forgottenHourCycle = {};
@@ -3845,18 +5441,124 @@ export function normalizeState(raw: unknown): GameStateData {
   if (typeof state.concordanceMandalaTriggered !== "boolean") {
     state.concordanceMandalaTriggered = false;
   }
+  if (typeof state.concordanceMandalaFinalTriggered !== "boolean") {
+    state.concordanceMandalaFinalTriggered = false;
+  }
   if (typeof state.glassOrchardTriggered !== "boolean") {
     state.glassOrchardTriggered = false;
   }
   if (!("firstHungerAvailable" in state)) {
     state.firstHungerAvailable = null;
   }
+  // Retain the legacy field for save/client compatibility, but the removed
+  // Void Seal mechanic must never be restored from an older game snapshot.
+  state.voidSealOwnerId = null;
   // ensure burnPile and burnEvents exist (added in Burn keyword feature)
   if (!Array.isArray(state.burnPile)) {
     state.burnPile = [];
   }
   if (!Array.isArray(state.burnEvents)) {
     state.burnEvents = [];
+  }
+  if (!Array.isArray(state.annihilatedArtifactIds)) {
+    state.annihilatedArtifactIds = [];
+  }
+  if (typeof state.brokenCovenantDeclared !== "boolean") {
+    state.brokenCovenantDeclared = false;
+  }
+  const covenantByPlayer = state.covenantStateByPlayerId as Record<string, CovenantState>;
+  for (const player of (state.players as PlayerGameState[] | undefined) ?? []) {
+    if (covenantByPlayer[player.playerId] !== "broken") {
+      covenantByPlayer[player.playerId] = state.brokenCovenantDeclared ? "broken" : "intact";
+    }
+  }
+  if (typeof state.tierTwoOpportunityAtTurnStart !== "boolean") {
+    state.tierTwoOpportunityAtTurnStart = false;
+  }
+  if (typeof state.tierTwoClaimMadeThisTurn !== "boolean") {
+    state.tierTwoClaimMadeThisTurn = false;
+  }
+  if (
+    state.lumiiThresholdApproach !== "kinship" &&
+    state.lumiiThresholdApproach !== "inquiry" &&
+    state.lumiiThresholdApproach !== "dominion"
+  ) {
+    state.lumiiThresholdApproach = undefined;
+  }
+  if (state.experimentalBalanceState !== undefined) {
+    const experimental = state.experimentalBalanceState as Partial<NonNullable<
+      GameStateData["experimentalBalanceState"]
+    >>;
+    if (!experimental || typeof experimental !== "object" || typeof experimental.rulesetId !== "string") {
+      delete state.experimentalBalanceState;
+    } else {
+      experimental.contactedLuminaryIds = Array.isArray(experimental.contactedLuminaryIds)
+        ? [...new Set(experimental.contactedLuminaryIds.filter((id): id is string => typeof id === "string"))]
+        : undefined;
+      if (
+        !experimental.focusedReservationIdsByPlayerId ||
+        typeof experimental.focusedReservationIdsByPlayerId !== "object" ||
+        Array.isArray(experimental.focusedReservationIdsByPlayerId)
+      ) {
+        experimental.focusedReservationIdsByPlayerId = undefined;
+      } else {
+        experimental.focusedReservationIdsByPlayerId = Object.fromEntries(
+          Object.entries(experimental.focusedReservationIdsByPlayerId)
+            .map(([playerId, ids]) => [
+              playerId,
+              Array.isArray(ids)
+                ? [...new Set(ids.filter((id): id is string => typeof id === "string"))]
+                : [],
+            ])
+            .filter(([, ids]) => (ids as string[]).length > 0),
+        );
+      }
+      if (
+        !experimental.luminaryOwnerStateByPlayerId ||
+        typeof experimental.luminaryOwnerStateByPlayerId !== "object" ||
+        Array.isArray(experimental.luminaryOwnerStateByPlayerId)
+      ) {
+        experimental.luminaryOwnerStateByPlayerId = undefined;
+      } else {
+        experimental.luminaryOwnerStateByPlayerId = Object.fromEntries(
+          Object.entries(experimental.luminaryOwnerStateByPlayerId)
+            .filter(([, value]) => value !== null && typeof value === "object" && !Array.isArray(value))
+            .map(([playerId, value]) => {
+              const rawOwnerState = value as Record<string, unknown>;
+              const burnCount = rawOwnerState.catalystBloomBurnCount;
+              return [playerId, {
+                ...(rawOwnerState.concordanceMandalaTriggered === true
+                  ? { concordanceMandalaTriggered: true }
+                  : {}),
+                ...(rawOwnerState.concordanceMandalaFinalTriggered === true
+                  ? { concordanceMandalaFinalTriggered: true }
+                  : {}),
+                ...(typeof burnCount === "number" && Number.isInteger(burnCount) && burnCount >= 0
+                  ? { catalystBloomBurnCount: burnCount }
+                  : {}),
+                ...(rawOwnerState.glassOrchardTriggered === true
+                  ? { glassOrchardTriggered: true }
+                  : {}),
+                ...(rawOwnerState.firstHungerAvailable === true
+                  ? { firstHungerAvailable: true }
+                  : {}),
+              }];
+            }),
+        );
+      }
+      state.experimentalBalanceState = experimental as NonNullable<
+        GameStateData["experimentalBalanceState"]
+      >;
+    }
+  }
+  if (
+    state.phase === "finished" &&
+    state.finishReason !== "win" &&
+    state.finishReason !== "frontier_exhaustion" &&
+    state.finishReason !== "surrender" &&
+    state.finishReason !== "withdrawal"
+  ) {
+    state.finishReason = "win";
   }
   // ensure coreActionUsed exists (added in double-action exploit prevention)
   if (typeof state.coreActionUsed !== "boolean") {
@@ -3904,9 +5606,34 @@ export function normalizeState(raw: unknown): GameStateData {
     !Array.isArray(state.avatarSeedState)
   ) {
     const avatarSeedState = state.avatarSeedState as Record<string, unknown>;
-    if (typeof avatarSeedState.pendingEminence !== "number") {
-      avatarSeedState.pendingEminence = 0;
+    const rawSlots = Array.isArray(avatarSeedState.moldSlots)
+      ? avatarSeedState.moldSlots.filter((slot): slot is string => typeof slot === "string")
+      : [];
+    const validByTier = new Map<number, string>();
+    for (const slot of rawSlots) {
+      const [tierText, slotText] = slot.split("-");
+      const tier = Number(tierText);
+      const slotIndex = Number(slotText);
+      if (![1, 2, 3].includes(tier) || !Number.isInteger(slotIndex)) continue;
+      const row = getForgeRowForTier(state as unknown as GameStateData, tier as 1 | 2 | 3);
+      if (Array.isArray(row) && slotIndex >= 0 && slotIndex < row.length && !validByTier.has(tier)) {
+        validByTier.set(tier, `${tier}-${slotIndex}`);
+      }
     }
+    const summonedAt = typeof avatarSeedState.summonedAtTurnCount === "number"
+      ? avatarSeedState.summonedAtTurnCount
+      : 0;
+    for (const tier of [1, 2, 3] as const) {
+      if (validByTier.has(tier)) continue;
+      const row = getForgeRowForTier(state as unknown as GameStateData, tier);
+      if (Array.isArray(row) && row.length > 0) {
+        validByTier.set(tier, `${tier}-${(summonedAt + tier * 7) % row.length}`);
+      }
+    }
+    avatarSeedState.moldSlots = [...validByTier.values()];
+    delete avatarSeedState.pendingEminence;
+    delete avatarSeedState.deckSeeds;
+    delete avatarSeedState.payoutDone;
   }
 
   // migrate old action log summaries: "Glass Orchard — Perfect Replication" → "The Glass Orchard — Perfect Replication"
@@ -3980,6 +5707,7 @@ export function formatGameState(
   connectedPlayerIds: Set<string>,
   avatarMap?: Map<string, string | null>,
   aiMap?: Map<string, { isAi: boolean; aiDifficulty: AiDifficulty | null }>,
+  scenarioId: string | null = null,
 ) {
   const forgeTier1 = stateData.forgeTier1
     .map((id) => CARD_MAP.get(id))
@@ -3996,14 +5724,27 @@ export function formatGameState(
   const luminaries = stateData.activeLuminaries
     .map((id) => LUMINARY_MAP.get(id))
     .filter(Boolean) as LuminaryDef[];
+  const formatArchiveTop = (cardId: string | undefined): ArtifactCard | null => {
+    const card = cardId ? CARD_MAP.get(cardId) : undefined;
+    return card ? withLore(card) : null;
+  };
 
   const players = stateData.players.map((p) => {
     const aiEntry = aiMap?.get(p.playerId);
+    const tideArchiveTopCards = p.luminaries.includes("lum_tide")
+      ? {
+          tier1: formatArchiveTop(stateData.deckTier1[0]),
+          tier2: formatArchiveTop(stateData.deckTier2[0]),
+          tier3: formatArchiveTop(stateData.deckTier3[0]),
+        }
+      : undefined;
     return {
       playerId: p.playerId,
       playerName: p.playerName,
       civName: p.civName ?? null,
-      avatarId: avatarMap?.get(p.playerId) ?? null,
+      avatarId: aiEntry?.isAi && aiEntry.aiDifficulty === "passive"
+        ? GUIDED_LUMII_AVATAR_ID
+        : avatarMap?.get(p.playerId) ?? null,
       isAi: aiEntry?.isAi ?? false,
       aiDifficulty: aiEntry?.aiDifficulty ?? null,
       affinities: p.affinities,
@@ -4015,6 +5756,7 @@ export function formatGameState(
         .map((c) => withLore(c as ArtifactCard)),
       privateReservedArtifactIds: p.privateReservedArtifactIds ?? [],
       forgedArtifactIds: p.forgedArtifactIds,
+      assimilatedArtifactIds: p.assimilatedArtifactIds ?? [],
       discountedForgeIds: p.discountedForgeIds ?? [],
       forgedArtifacts: p.forgedArtifactIds
         .map((id) => CARD_MAP.get(id))
@@ -4026,14 +5768,21 @@ export function formatGameState(
         }),
       isConnected: connectedPlayerIds.has(p.playerId),
       claimedLuminaryIds: p.luminaries ?? [],
+      tideArchiveTopCards,
+      tideArchiveForgeAvailable: p.tideArchiveForgeAvailable === true,
       plannedAction: p.plannedAction ?? null,
       plannedActionCancelReason: p.plannedActionCancelReason ?? null,
+      blueprintPrivateStates: p.blueprintPrivateStates ?? [],
+      manifestedBlueprintProjects: manifestedProjects(p),
+      manifestedBlueprintDevices: manifestedProjects(p),
     };
   });
 
   return {
     roomId,
     status: stateData.phase === "finished" ? "finished" : status,
+    scenarioId,
+    finishReason: stateData.phase === "finished" ? stateData.finishReason ?? "win" : null,
     startedAt: stateData.startedAt ?? 0,
     openingTurnOrder: stateData.openingTurnOrder ?? null,
     canReplaySameBoard: !!stateData.initialBoard,
@@ -4063,20 +5812,33 @@ export function formatGameState(
     version: stateData.version,
     pendingSummonEvents: stateData.pendingSummonEvents ?? [],
     pendingLuminaryActivationEvents: stateData.pendingLuminaryActivationEvents ?? [],
+    pendingBlueprintManifestationEvents: stateData.pendingBlueprintManifestationEvents ?? [],
+    pendingBlueprintDetonationEvents: stateData.pendingBlueprintDetonationEvents ?? [],
+    scenarioProtocols: [],
+    pendingScenarioProtocolEvents: [],
     pendingTurnTransition: stateData.pendingTurnTransition ?? null,
     devLuminarySequenceActive: stateData.devLuminarySequenceActive === true,
     pendingLuminaryChoice: stateData.pendingLuminaryChoice ?? null,
     // v0.8 marker / effect state exposed to clients
     artifactMarkers: stateData.artifactMarkers ?? {},
+    nullifiedFirstForge: stateData.nullifiedFirstForge ?? null,
     forgottenHourCycle: stateData.forgottenHourCycle ?? {},
-    avatarSeedDeckSeeds: stateData.avatarSeedState?.deckSeeds ?? [],
+    avatarSeedMoldSlots: stateData.avatarSeedState?.moldSlots ?? [],
     avatarSeedOwnerId: stateData.avatarSeedState?.ownerId ?? null,
     firstHungerAvailable: stateData.firstHungerAvailable ?? null,
+    voidSealOwnerId: null,
     catalystBloomBurnCount: stateData.catalystBloomBurnCount ?? 0,
     concordanceMandalaTriggered: stateData.concordanceMandalaTriggered ?? false,
+    concordanceMandalaFinalTriggered: stateData.concordanceMandalaFinalTriggered ?? false,
     glassOrchardTriggered: stateData.glassOrchardTriggered ?? false,
+    brokenCovenantDeclared: stateData.brokenCovenantDeclared === true,
+    covenantStateByPlayerId: stateData.covenantStateByPlayerId ?? {},
+    lumiiThresholdApproach: scenarioId === "blueprint_clearance_lumii"
+      ? stateData.lumiiThresholdApproach ?? "inquiry"
+      : null,
     burnPile: stateData.burnPile ?? [],
     burnEvents: stateData.burnEvents ?? [],
+    annihilatedArtifactIds: stateData.annihilatedArtifactIds ?? [],
     coreActionUsed: stateData.coreActionUsed ?? false,
   };
 }

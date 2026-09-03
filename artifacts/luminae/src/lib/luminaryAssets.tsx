@@ -1,4 +1,4 @@
-import React, { useEffect, useLayoutEffect, useRef, useState } from 'react';
+import React, { useCallback, useEffect, useLayoutEffect, useRef, useState } from 'react';
 import { createPortal } from 'react-dom';
 import { useFocusTrap } from '@/hooks/use-focus-trap';
 import { motion, AnimatePresence, useReducedMotion } from 'framer-motion';
@@ -9,6 +9,7 @@ import { ARRIVAL_CUTSCENE_BEATS_MS, gameAudio } from './audio';
 import { KNOWN_AURA_STYLES } from '@workspace/game-types';
 import type { AuraStyle, LuminaryId } from '@workspace/game-types';
 import { BOARD_CARD_W, BOARD_CARD_H } from './constants';
+import { LUMINARY_RUNTIME_ART } from './luminaryArtManifest';
 export { BOARD_CARD_W, BOARD_CARD_H };
 
 // ─── Types ────────────────────────────────────────────────────────────────────
@@ -55,9 +56,9 @@ interface LuminaryVisuals {
 }
 
 // ─── Illustrated Asset Discovery ──────────────────────────────────────────────
-// Vite scans the luminaries asset folder at build time using import.meta.glob.
-// Files that do not exist simply won't appear in the map — no crash, no error.
-// Missing slots fall back to the procedural SVG art automatically.
+// Production loads only the bounded textures listed in luminaryArtManifest.ts.
+// Missing slots fall back to the panel texture or procedural SVG art without
+// pulling full-resolution source images into the runtime bundle.
 //
 // ─── HOW TO ADD REAL ILLUSTRATED ASSETS ──────────────────────────────────────
 // Drop files into:
@@ -80,12 +81,13 @@ interface LuminaryVisuals {
 //
 // Supported formats: .webp (preferred), .png, .jpg
 //
-// All 12 Luminary IDs:
+// All 17 Luminary IDs:
 //   lum_ember   lum_tide    lum_verdant lum_void    lum_radiant lum_astral
 //   lum_forge   lum_pale    lum_bloom   lum_compass lum_oracle  lum_null
+//   lum_hunger  lum_moth    lum_seed    lum_orchard lum_scholar
 //
-// No code changes are needed after dropping files — the glob picks them up on
-// the next build / Vite HMR reload automatically.
+// Before publication, create bounded panel_runtime, entity_runtime, and
+// cinematic textures as appropriate, then add them to luminaryArtManifest.ts.
 // ─────────────────────────────────────────────────────────────────────────────
 
 // ─── Illustrated Asset Allow-list ─────────────────────────────────────────────
@@ -95,7 +97,7 @@ interface LuminaryVisuals {
 // Update this list when a new panel passes the panel hard-rules review and is
 // accepted for publication. Panels pending regeneration must NOT be added here.
 //
-// Accepted panels (14):
+// Accepted panels (17):
 //   lum_ember   — accepted (gold standard)
 //   lum_forge   — accepted (gold standard)
 //   lum_verdant — accepted (gold standard)
@@ -132,29 +134,10 @@ const ILLUSTRATED_IDS = new Set<string>([
   'lum_scholar',
 ]);
 
-const _luminaryImageModules = import.meta.glob<{ default: string }>([
-  '../assets/luminaries/*/panel.{webp,png,jpg}',
-  '../assets/luminaries/*/panel_runtime.webp',
-  '../assets/luminaries/*/entity.{webp,png,jpg}',
-  '../assets/luminaries/*/entity_runtime.webp',
-  '../assets/luminaries/*/cinematic.{webp,png,jpg}',
-  '../assets/luminaries/lum_radiant/Radiant 1.png',
-  '../assets/luminaries/lum_radiant/Radiant 2.png',
-  '../assets/luminaries/lum_radiant/Radiant 3.png',
-  '../assets/luminaries/lum_radiant/radiant_1_runtime.webp',
-  '../assets/luminaries/lum_radiant/radiant_2_runtime.webp',
-  '../assets/luminaries/lum_radiant/radiant_3_runtime.webp',
-], { eager: true });
-
-// Flat lookup: "lum_ember/panel" → resolved asset URL
-const _luminaryImageMap: Record<string, string> = {};
-for (const [path, mod] of Object.entries(_luminaryImageModules)) {
-  // path shape: ../assets/luminaries/lum_ember/panel.webp
-  const match = path.match(/luminaries\/([^/]+)\/([^/]+)\.[^.]+$/);
-  if (match) {
-    const [, id, slot] = match;
-    _luminaryImageMap[`${id}/${slot}`] = mod.default;
-  }
+const _luminaryImageMap: Record<string, string> = { ...LUMINARY_RUNTIME_ART };
+for (const index of [1, 2, 3] as const) {
+  const runtime = _luminaryImageMap[`lum_radiant/radiant_${index}_runtime`];
+  if (runtime) _luminaryImageMap[`lum_radiant/Radiant ${index}`] = runtime;
 }
 
 function _getLuminaryImage(
@@ -162,7 +145,14 @@ function _getLuminaryImage(
   slot: 'panel' | 'panel_runtime' | 'entity' | 'entity_runtime' | 'background' | 'cinematic',
 ): string | null {
   if (!ILLUSTRATED_IDS.has(id)) return null;
-  return _luminaryImageMap[`${id}/${slot}`] ?? null;
+  const runtimeSlot = slot === 'panel'
+    ? 'panel_runtime'
+    : slot === 'entity'
+      ? 'entity_runtime'
+      : slot;
+  return _luminaryImageMap[`${id}/${runtimeSlot}`]
+    ?? _luminaryImageMap[`${id}/panel_runtime`]
+    ?? null;
 }
 
 /** Illustrated image slots for one Luminary. null = not yet available → fallback to procedural art. */
@@ -478,15 +468,6 @@ function TideEyeOverlay({
             <ellipse cx={cx - irisR * 0.28} cy={cy - irisR * 0.24}
               rx={irisR * 0.05} ry={irisR * 0.04}
               fill="rgba(255,255,255,0.88)" />
-            {/* Eyelid — static half-closed at 15% (blink-neutral) */}
-            <path d={`M ${cx - scleraRX * 1.04} ${cy - scleraRY * 0.08}
-                      Q ${cx - scleraRX * 0.52} ${cy - scleraRY * 0.82}
-                      ${cx} ${cy - scleraRY * 0.82}
-                      Q ${cx + scleraRX * 0.52} ${cy - scleraRY * 0.82}
-                      ${cx + scleraRX * 1.04} ${cy - scleraRY * 0.08}
-                      L ${cx + scleraRX * 1.04} ${cy - scleraRY * 1.30}
-                      L ${cx - scleraRX * 1.04} ${cy - scleraRY * 1.30} Z`}
-              fill="#f8fafb" opacity="0.88" />
           </g>
         ) : (
           <motion.g
@@ -673,10 +654,24 @@ function RadiantEntity({ size = 140, className = '' }: { size?: number; classNam
  * `size` is a CSS length string applied to both width and height of the square
  * container (e.g. '75vmin').  Returns null if the layer images aren't loaded.
  */
-export function RadiantLivingEntityComposite({ size = '75vmin' }: { size?: string }) {
-  const ring = _luminaryImageMap['lum_radiant/Radiant 1'] ?? null;
-  const body = _luminaryImageMap['lum_radiant/Radiant 2'] ?? null;
-  const core = _luminaryImageMap['lum_radiant/Radiant 3'] ?? null;
+export function RadiantLivingEntityComposite({
+  size = '75vmin',
+  runtime = false,
+  animate = true,
+}: {
+  size?: string;
+  runtime?: boolean;
+  animate?: boolean;
+}) {
+  const ring = runtime
+    ? (_luminaryImageMap['lum_radiant/radiant_1_runtime'] ?? _luminaryImageMap['lum_radiant/Radiant 1'] ?? null)
+    : (_luminaryImageMap['lum_radiant/Radiant 1'] ?? null);
+  const body = runtime
+    ? (_luminaryImageMap['lum_radiant/radiant_2_runtime'] ?? _luminaryImageMap['lum_radiant/Radiant 2'] ?? null)
+    : (_luminaryImageMap['lum_radiant/Radiant 2'] ?? null);
+  const core = runtime
+    ? (_luminaryImageMap['lum_radiant/radiant_3_runtime'] ?? _luminaryImageMap['lum_radiant/Radiant 3'] ?? null)
+    : (_luminaryImageMap['lum_radiant/Radiant 3'] ?? null);
 
   if (!ring || !body || !core) return null;
 
@@ -687,26 +682,30 @@ export function RadiantLivingEntityComposite({ size = '75vmin' }: { size?: strin
   const absfill: React.CSSProperties = { position: 'absolute', inset: 0 };
 
   return (
-    <div style={{ position: 'relative', width: size, height: size, flexShrink: 0 }}>
+    <div
+      data-testid="radiant-entity-composite"
+      data-runtime={runtime ? 'true' : 'false'}
+      style={{ position: 'relative', width: size, height: size, flexShrink: 0 }}
+    >
       {/* Single float wrapper so all layers bob in sync */}
-      <div className="lum-idle-float" style={absfill}>
+      <div className={animate ? 'lum-idle-float' : undefined} style={absfill}>
         {/* Ring — slow CCW spin, permanent glow */}
         <div
-          className="lum-radiant-ring-pulse"
+          className={animate ? 'lum-radiant-ring-pulse' : undefined}
           style={{ ...absfill, transform: 'scale(1.25) translateY(-3px)', transformOrigin: 'center center' }}
         >
-          <img src={ring} draggable={false} alt="" className="lum-radiant-ring" style={layerImg} />
+          <img src={ring} draggable={false} alt="" className={animate ? 'lum-radiant-ring' : undefined} data-radiant-layer="ring" style={layerImg} />
         </div>
         {/* Body */}
         <div style={{ ...absfill, transform: 'scale(1.1)', transformOrigin: 'center center' }}>
-          <img src={body} draggable={false} alt="" style={layerImg} />
+          <img src={body} draggable={false} alt="" data-radiant-layer="body" style={layerImg} />
         </div>
         {/* Core orb — slow CW spin, glow pulse */}
         <div
-          className="lum-radiant-core-pulse"
+          className={animate ? 'lum-radiant-core-pulse' : undefined}
           style={{ ...absfill, transform: 'translateY(-5px) scale(0.20)', transformOrigin: 'center center' }}
         >
-          <img src={core} draggable={false} alt="" className="lum-radiant-core" style={layerImg} />
+          <img src={core} draggable={false} alt="" className={animate ? 'lum-radiant-core' : undefined} data-radiant-layer="core" style={layerImg} />
         </div>
       </div>
     </div>
@@ -1082,11 +1081,12 @@ function PaleEntity({ size = 140, className = '' }: { size?: number; className?:
 }
 
 // ── The Final Hunger (lum_hunger) ─────────────────────────────────────────────
-// Nanite swarm intelligence — Abyss + Flare.
+// Living nanite swarm intelligence — Flare + Verdance + Radiance.
 // Background crossfade layers (background1/2) were removed to reduce GPU load.
 // Only the static entity PNG is rendered now — fast, no animation churn.
 function HungerEntity({ size = 140, className = '' }: { size?: number; className?: string }) {
-  const entity = _getLuminaryImage('lum_hunger', 'entity');
+  const entity = _getLuminaryImage('lum_hunger', 'entity_runtime')
+    ?? _getLuminaryImage('lum_hunger', 'entity');
   const w = size;
   const h = Math.round(size * 1.5);
   return (
@@ -3973,7 +3973,7 @@ function LuminaryArrivalCutsceneFull({
   useEffect(() => { onFlashRef.current = onFlash; }, [onFlash]);
   const onCompleteRef = useRef(onComplete);
   useEffect(() => { onCompleteRef.current = onComplete; }, [onComplete]);
-  const logArrivalCutsceneDebug = (stage: string, detail: Record<string, unknown> = {}) => {
+  const logArrivalCutsceneDebug = useCallback((stage: string, detail: Record<string, unknown> = {}) => {
     if (typeof window === 'undefined') return;
     const debugParams = new URLSearchParams(window.location.search);
     if (debugParams.get('debugArrival') !== '1' && debugParams.get('debugCutscene') !== '1') return;
@@ -3983,10 +3983,14 @@ function LuminaryArrivalCutsceneFull({
       luminaryName,
       ...detail,
     })}`);
-  };
+  }, [luminaryId, luminaryName]);
+  const logArrivalCutsceneDebugRef = useRef(logArrivalCutsceneDebug);
+  useEffect(() => {
+    logArrivalCutsceneDebugRef.current = logArrivalCutsceneDebug;
+  }, [logArrivalCutsceneDebug]);
 
   useEffect(() => {
-    logArrivalCutsceneDebug('mount', {
+    logArrivalCutsceneDebugRef.current('mount', {
       domain,
       eminence,
       claimedBy,
@@ -3999,7 +4003,7 @@ function LuminaryArrivalCutsceneFull({
       },
     });
     return () => {
-      logArrivalCutsceneDebug('unmount');
+      logArrivalCutsceneDebugRef.current('unmount');
     };
   }, []); // eslint-disable-line react-hooks/exhaustive-deps
 
@@ -4008,7 +4012,7 @@ function LuminaryArrivalCutsceneFull({
       phase,
       awaitingDismiss,
     });
-  }, [phase, awaitingDismiss, luminaryId, luminaryName]);
+  }, [phase, awaitingDismiss, logArrivalCutsceneDebug]);
 
   // Fire all cutscene sound effects pre-scheduled against AudioContext time.
   // Runs exactly once on mount; respects the user's mute setting internally.
@@ -4026,7 +4030,7 @@ function LuminaryArrivalCutsceneFull({
       idx++;
       const next = PHASES[idx] ?? 'done';
       setPhase(next);
-      logArrivalCutsceneDebug('advance', { next });
+      logArrivalCutsceneDebugRef.current('advance', { next });
       if (next === 'flashing') onFlashRef.current?.();
 
       if (next === 'revealed') {
@@ -4035,7 +4039,7 @@ function LuminaryArrivalCutsceneFull({
         setAwaitingDismiss(true);
         dismissRef.current = () => {
           if (cancelled || !dismissRef.current) return;
-          logArrivalCutsceneDebug('dismiss');
+          logArrivalCutsceneDebugRef.current('dismiss');
           dismissRef.current = null; // guard against double-fire
           setAwaitingDismiss(false);
           advance(); // advances idx → fading, then done
@@ -4045,7 +4049,7 @@ function LuminaryArrivalCutsceneFull({
 
       if (next !== 'done') setTimeout(advance, PHASE_DURATIONS[next]);
       else setTimeout(() => {
-        logArrivalCutsceneDebug('complete');
+        logArrivalCutsceneDebugRef.current('complete');
         onCompleteRef.current();
       }, 80);
     }
@@ -5217,7 +5221,8 @@ function LuminaryArrivalCutsceneFull({
                           </>
                         );
                       })() : luminaryId === 'lum_hunger' ? (() => {
-                        const hEnt = _getLuminaryImage('lum_hunger', 'entity');
+                        const hEnt = _getLuminaryImage('lum_hunger', 'entity_runtime')
+                          ?? _getLuminaryImage('lum_hunger', 'entity');
                         return (
                           <div style={{ position: 'relative', width: ENT_W, height: ENT_H }}>
                             {hEnt && (
@@ -6040,7 +6045,8 @@ export const LuminaryIdleOverlay = React.memo(function LuminaryIdleOverlay({
 
     // ── lum_hunger: entity only — backgrounds removed for performance ──
     if (luminaryId === 'lum_hunger') {
-      const hEnt = _getLuminaryImage('lum_hunger', 'entity');
+      const hEnt = _getLuminaryImage('lum_hunger', 'entity_runtime')
+        ?? _getLuminaryImage('lum_hunger', 'entity');
       return (
         <div className={isIdle ? 'lum-claimed-hover' : undefined} style={{ position: 'relative', width: IDLE_W, height: IDLE_H }}>
           {hEnt && (

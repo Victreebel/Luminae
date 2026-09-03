@@ -1,6 +1,10 @@
 #!/usr/bin/env tsx
 /**
- * Headless AI-vs-AI game simulation for Luminae balance testing.
+ * Legacy exploratory AI-vs-AI simulation.
+ *
+ * Do not use this script for certification or production balance conclusions.
+ * Its event handling and winner fallback predate the authoritative deterministic
+ * matrix in simulateArtifacts.ts, which is the controlling balance harness.
  *
  * Usage:
  *   pnpm --filter @workspace/api-server run simulate

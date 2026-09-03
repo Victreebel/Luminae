@@ -35,7 +35,7 @@ export const MARKER_META: Record<
     bg:       'rgba(4,8,22,0.95)',
     border:   '#1c3b6e',
     text:     '#6080c0',
-    meaning:  'This Artifact awards 0 Eminence while marked.',
+    meaning:  'This Artifact awards 0 Eminence, cannot be used for Blueprints, and cannot be Encrypted. The first Nullified Artifact forged this game ignores these penalties if forged by the allied player.',
     duration: 'Persists while this Artifact remains marked.',
   },
   avatar_seed: {
@@ -43,8 +43,8 @@ export const MARKER_META: Record<
     bg:       'rgba(4,18,12,0.95)',
     border:   '#1a5c3a',
     text:     '#4cc88a',
-    meaning:  'If an opponent forges this Artifact, the source player gains pending Eminence.',
-    duration: 'Active until an opponent forges this Artifact.',
+    meaning:  'If an opponent forges this Artifact, the allied player gains its matching permanent Affinity bonus.',
+    duration: 'Persists with the Artifact until it is forged or leaves play.',
   },
   burned: {
     label:    'Burned',
@@ -95,7 +95,7 @@ export function ForgottenHourDescription({
   return (
     <p className={className}>
       On arrival, raises the shared victory requirement by 1 and marks all currently face-up Forge Artifacts as Forgotten.
-      {' '}Forgotten marks last only until the source player's next end of turn, and players cannot Encrypt during that window. After the marks expire, 12 owner-turn cycles pass; then Forgotten Hour returns at the source player's end of turn. Artifacts forged while Forgotten award 0 Eminence and cannot be used for{' '}
+      {' '}Forgotten marks last only until the source player's next end of turn; this Luminary's ally may still Encrypt, but other players cannot. After the marks expire, 12 owner-turn cycles pass; then Forgotten Hour returns at the source player's end of turn. Artifacts forged while Forgotten award 0 Eminence and cannot be used for{' '}
       <BlueprintRedaction revealed={revealBlueprintText} />.
     </p>
   );
@@ -2474,11 +2474,11 @@ function PaleMerchantFx() {
   );
 }
 
-// Tide Architect — left-to-right card-flip scry wave over Tier III then Tier II
+// Tide Architect — left-to-right revelation wave across all three Archives.
 // Continuum/Continuum palette: deep blue, ice-blue, cool cyan.
 // A vertical sweep bar travels left to right across the Forge; as it passes each
-// column a brief flip-shimmer panel lights up, suggesting card faces being
-// revealed.  Prismatic glints fire at each reveal point.
+// column a brief flip-shimmer panel lights up, suggesting Archive tops becoming
+// visible to the allied player. Prismatic glints fire at each reveal point.
 // Total duration: ~2.0 s.
 const SCRY_COLS = 8 as const; // 4 Tier-III + 4 Tier-II columns
 function TideScryFx() {

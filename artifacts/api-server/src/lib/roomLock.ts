@@ -7,9 +7,9 @@ import { logger } from './logger';
 
 const queues = new Map<string, Promise<unknown>>();
 
-// Safety net: if a task passed to withRoomLock hangs indefinitely (e.g. an
-// unhandled DB promise that never settles), release the lock after this many
-// milliseconds so subsequent actions are not permanently blocked.
+// Report a stalled room operation without violating serialization. Releasing
+// the lock while the original task is still running would allow two mutations
+// to race against the same room state.
 const LOCK_TIMEOUT_MS = 30_000;
 
 export async function withRoomLock<T>(
@@ -35,8 +35,7 @@ export async function withRoomLock<T>(
     };
     // Watchdog: forcibly release the lock if fn() never settles.
     const timeout = setTimeout(() => {
-      logger.error({ roomId }, 'Room lock held >30 s — releasing to prevent deadlock');
-      doRelease();
+      logger.error({ roomId }, 'Room lock held >30 s; subsequent room actions remain queued');
     }, LOCK_TIMEOUT_MS);
     return fn().finally(() => {
       clearTimeout(timeout);

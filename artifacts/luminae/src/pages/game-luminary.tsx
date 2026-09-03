@@ -5,6 +5,10 @@ import { AFFINITY_META, AFFINITY_KEYS, type AffinityKey } from '@/lib/affinityMe
 import { LuminaryClaimedEntityArt, LuminaryPanelArt } from '@/lib/luminaryAssets';
 import { AFFINITIES } from './game-constants';
 import { EminenceBadge, AffinityToken } from './game-card';
+import {
+  activeBalanceLabCandidate,
+  balanceLabRemovesLuminaryEminence,
+} from '@/lib/balanceLabClient';
 import { PlayerAvatar } from './game-player';
 
 export function getLuminaryEminenceTitle(value: number) {
@@ -388,7 +392,9 @@ export function LuminaryCard({
       return (playerBonuses?.[c as keyof AffinityCounts] ?? 0) >= printed;
     })
   );
-  const eminenceValue = luminary.eminence ?? 0;
+  const eminenceValue = balanceLabRemovesLuminaryEminence(activeBalanceLabCandidate())
+    ? 0
+    : luminary.eminence ?? 0;
 
   return (
     <motion.div

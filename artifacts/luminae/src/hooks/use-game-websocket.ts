@@ -34,6 +34,16 @@ type WebSocketHookParams = {
   onChatMessage?: (msg: ChatMessage) => void;
 };
 
+const LUMINAE_WEBSOCKET_PROTOCOL = 'luminae-v1';
+
+function websocketSessionProtocol(sessionToken: string): string {
+  return `luminae-session-${sessionToken}`;
+}
+
+export function shouldReconnectWebSocket(closeCode: number): boolean {
+  return closeCode !== 1000 && closeCode !== 1008;
+}
+
 export function useGameWebsocket({
   roomId,
   sessionToken,
@@ -89,12 +99,18 @@ export function useGameWebsocket({
 
   const connect = useCallback(() => {
     if (!sessionToken) return;
-    if (wsRef.current?.readyState === WebSocket.OPEN) return;
+    if (
+      wsRef.current?.readyState === WebSocket.OPEN
+      || wsRef.current?.readyState === WebSocket.CONNECTING
+    ) return;
 
     const protocol = window.location.protocol === 'https:' ? 'wss:' : 'ws:';
-    const wsUrl = `${protocol}//${window.location.host}/ws?roomId=${roomId}&sessionToken=${sessionToken}`;
+    const wsUrl = `${protocol}//${window.location.host}/ws?roomId=${encodeURIComponent(roomId)}`;
     
-    const ws = new WebSocket(wsUrl);
+    const ws = new WebSocket(wsUrl, [
+      LUMINAE_WEBSOCKET_PROTOCOL,
+      websocketSessionProtocol(sessionToken),
+    ]);
     wsRef.current = ws;
 
     ws.onopen = () => {
@@ -188,6 +204,14 @@ export function useGameWebsocket({
     ws.onclose = (event: CloseEvent) => {
       setIsConnected(false);
       wsRef.current = null;
+
+      if (!shouldReconnectWebSocket(event.code)) {
+        setIsReconnecting(false);
+        console.warn(
+          `[luminae] game WebSocket closed permanently (code=${event.code}, wasClean=${event.wasClean})`,
+        );
+        return;
+      }
 
       // Emit a warning so Playwright / DevTools can detect the drop
       // immediately — before the reconnect attempt opens a new socket.

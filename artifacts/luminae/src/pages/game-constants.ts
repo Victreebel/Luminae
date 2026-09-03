@@ -1,33 +1,13 @@
 import { AFFINITY_KEYS, type AffinityKey } from "@/lib/affinityMeta";
 import cardTier1Bg from "@assets/generated_images/card_tier1.png";
 import cardTier3Bg from "@assets/generated_images/card_tier3.png";
+export { CARD_ART, CARD_RUNTIME_ART } from "@/lib/cardArtManifest";
 
 export function hexRgba(hex: string, alpha: number): string {
   const r = parseInt(hex.slice(1, 3), 16) || 0;
   const g = parseInt(hex.slice(3, 5), 16) || 0;
   const b = parseInt(hex.slice(5, 7), 16) || 0;
   return `rgba(${r},${g},${b},${alpha})`;
-}
-
-const CARD_ART_MODULES = import.meta.glob("../assets/cards/*.png", {
-  eager: true,
-  query: "?url",
-  import: "default",
-}) as Record<string, string>;
-const CARD_RUNTIME_ART_MODULES = import.meta.glob("../assets/cards/runtime/*.webp", {
-  eager: true,
-  query: "?url",
-  import: "default",
-}) as Record<string, string>;
-export const CARD_ART: Record<string, string> = {};
-export const CARD_RUNTIME_ART: Record<string, string> = {};
-for (const [path, url] of Object.entries(CARD_ART_MODULES)) {
-  const id = path.split("/").pop()!.replace(".png", "");
-  CARD_ART[id] = url;
-}
-for (const [path, url] of Object.entries(CARD_RUNTIME_ART_MODULES)) {
-  const id = path.split("/").pop()!.replace(".webp", "");
-  CARD_RUNTIME_ART[id] = url;
 }
 
 export const AFFINITIES: AffinityKey[] = [...AFFINITY_KEYS];

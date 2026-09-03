@@ -9,8 +9,25 @@ import type { MarkerType } from './game-luminary-effects';
 import type { CostMode, SelectedCard } from './game-types';
 import { ForgeCardSlot } from './game-board-forge-card-slot';
 import { ForgeDeckPile } from './game-board-forge-deck';
+import type { MoldCastCue } from './game-mold-casting';
 
 type MotionAnimate = React.ComponentProps<typeof motion.div>['animate'];
+
+export function withPersistentAvatarSeedMolds<T>(
+  cards: readonly (T | null)[],
+  tier: 1 | 2 | 3,
+  moldSlots: readonly string[],
+): (T | null)[] {
+  let lastSeededMold = -1;
+  for (const slotKey of moldSlots) {
+    const [slotTier, slotIndex] = slotKey.split('-').map(Number);
+    if (slotTier !== tier || !Number.isInteger(slotIndex) || slotIndex < 0 || slotIndex > 3) continue;
+    lastSeededMold = Math.max(lastSeededMold, slotIndex);
+  }
+
+  const visibleMoldCount = Math.max(cards.length, lastSeededMold + 1);
+  return Array.from({ length: visibleMoldCount }, (_, index) => cards[index] ?? null);
+}
 
 export interface BoardForgeProps {
   brandDelayMap: Map<string, number>;
@@ -46,7 +63,7 @@ export interface BoardForgeProps {
   plannedCardId: string | null;
   plannedCardLabel: string;
   plannedDeckTier: number | null;
-  refillingSlots: Set<string>;
+  refillingSlots: Map<string, MoldCastCue>;
   revealBlueprintText: boolean;
   selectedCard: SelectedCard | null;
   setCostMode: React.Dispatch<React.SetStateAction<CostMode>>;
@@ -260,7 +277,7 @@ function ForgeCostControls({
       } : undefined}
     >
       <span className="text-[9px] font-bold uppercase tracking-widest shrink-0" style={{ color: 'rgba(255,255,255,0.25)' }}>Cost View</span>
-      <div className="flex items-center bg-secondary/50 rounded-full border border-border/30 p-0.5 gap-0.5">
+      <div className="flex items-center bg-secondary/50 rounded-full border border-border/30 p-0.5 gap-0.5" role="group" aria-label="Cost view">
         {([
           { mode: 'printed' as CostMode, label: 'Full', title: 'Show original printed cost' },
           { mode: 'after_bonuses' as CostMode, label: 'Discounted', title: 'Cost after your permanent bonuses' },
@@ -272,8 +289,9 @@ function ForgeCostControls({
               key={mode}
               type="button"
               title={title}
+              aria-pressed={costMode === mode}
               onClick={() => setCostMode(mode)}
-              className={`text-[9px] font-semibold px-2 py-0.5 rounded-full transition-all leading-none ${costMode === mode ? 'bg-primary text-primary-foreground shadow-sm' : 'text-muted-foreground hover:text-foreground'}`}
+              className={`min-w-11 text-[9px] font-semibold px-2 py-0.5 rounded-full transition-all leading-none ${costMode === mode ? 'bg-primary text-primary-foreground shadow-sm' : 'text-muted-foreground hover:text-foreground'}`}
               style={isTutorialFilterHighlight ? {
                 boxShadow: '0 0 0 1.5px rgba(168,85,247,0.8), 0 0 8px 2px rgba(168,85,247,0.4)',
                 color: costMode === mode ? undefined : 'rgba(200,170,255,0.9)',
@@ -297,7 +315,7 @@ function ForgeCostControls({
         title={isLandscapeCockpit ? 'Landscape cockpit uses compact Forge view' : forgeCompact ? 'Switch to full Forge view' : 'Switch to compact view'}
         aria-label={forgeCompact ? 'Switch to full Forge view' : 'Switch to compact Forge view'}
         aria-pressed={forgeCompact}
-        aria-disabled={isLandscapeCockpit}
+        disabled={isLandscapeCockpit}
       >
         <LayoutGrid className="h-3 w-3 shrink-0" />
         <span className="text-[9px] font-bold uppercase tracking-wide leading-none">Compact</span>
@@ -382,9 +400,9 @@ function ForgeTierShelves({
   tutorialStep,
 }: BoardForgeProps) {
   const rows = [
-    { tier: 3, cards: state.forgeTier3, deck: state.deckCounts.tier3, tierIdx: 0 },
-    { tier: 2, cards: state.forgeTier2, deck: state.deckCounts.tier2, tierIdx: 1 },
-    { tier: 1, cards: state.forgeTier1, deck: state.deckCounts.tier1, tierIdx: 2 },
+    { tier: 3, cards: withPersistentAvatarSeedMolds(state.forgeTier3, 3, state.avatarSeedMoldSlots ?? []), deck: state.deckCounts.tier3, tierIdx: 0 },
+    { tier: 2, cards: withPersistentAvatarSeedMolds(state.forgeTier2, 2, state.avatarSeedMoldSlots ?? []), deck: state.deckCounts.tier2, tierIdx: 1 },
+    { tier: 1, cards: withPersistentAvatarSeedMolds(state.forgeTier1, 1, state.avatarSeedMoldSlots ?? []), deck: state.deckCounts.tier1, tierIdx: 2 },
   ] as Array<{ tier: 1 | 2 | 3; cards: (ArtifactCard | null)[]; deck: number; tierIdx: number }>;
 
   return (
@@ -406,21 +424,31 @@ function ForgeTierShelves({
             ? 'rgba(205, 159, 84, 0.62)'
             : 'rgba(166, 132, 82, 0.44)';
         const tierRoman = row.tier === 3 ? 'III' : row.tier === 2 ? 'II' : 'I';
+        const observedTopCard = row.tier === 1
+          ? me?.tideArchiveTopCards?.tier1
+          : row.tier === 2
+            ? me?.tideArchiveTopCards?.tier2
+            : me?.tideArchiveTopCards?.tier3;
         const isDeckPending = plannedDeckTier === row.tier;
         const deckDisabled = !isDeckPending && (row.deck === 0 || !me || (!isMyTurn && !canPlan));
         const deckTitle = isDeckPending
-          ? 'Cancel pending encrypt'
-          : row.deck === 0 ? 'Archive empty' : 'Encrypt a concealed Artifact';
+          ? `Cancel ${plannedCardLabel.toLowerCase()}`
+          : row.deck === 0
+            ? 'Archive empty'
+            : observedTopCard
+              ? `Inspect ${observedTopCard.name} atop this Archive`
+              : 'Encrypt a concealed Artifact';
         const deckPile = (
           <ForgeDeckPile
             deckCount={row.deck}
             deckDisabled={deckDisabled}
             deckTitle={deckTitle}
             isDeckPending={isDeckPending}
+            isObserved={!!observedTopCard}
+            pendingLabel={plannedCardLabel}
             forgeCompact={forgeCompact}
             onCancelPlan={handleCancelPlan}
             onDeckTap={() => handleDeckTap(row.tier)}
-            showAvatarSeed={!!state?.avatarSeedDeckSeeds && state.avatarSeedDeckSeeds.length > 0}
             tier={row.tier}
           />
         );

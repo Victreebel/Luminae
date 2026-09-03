@@ -138,7 +138,7 @@ export const AffinityWellPanel = React.memo(function AffinityWellPanel({ scope }
   const affinityHoldings = (me.affinities ?? {}) as AffinitySelection;
   const affinityBonuses = (me.bonuses ?? {}) as AffinitySelection;
   const affinityBank = (state.affinityWell ?? {}) as AffinitySelection;
-  const standardReservoirCapacity = state.players.length === 2 ? 4 : state.players.length === 3 ? 5 : 7;
+  const standardReservoirCapacity = state.players.length <= 2 ? 4 : state.players.length === 3 ? 5 : 7;
   const compactAffinityLabel = (AFFINITIES as AffinityKey[]).map((affinity) => {
     const meta = AFFINITY_META[affinity];
     const held = affinityHoldings[affinity] ?? 0;
@@ -418,10 +418,12 @@ export const AffinityWellPanel = React.memo(function AffinityWellPanel({ scope }
                           </motion.button>
                         )}
                       </AnimatePresence>
-                      <Button variant="outline" size="sm" className="h-7 w-7 p-0 rounded-lg" onClick={handleUndoAffinity} title="Undo last affinity">
+                      <Button variant="outline" size="sm" className="h-11 w-11 p-0 rounded-lg" onClick={handleUndoAffinity} title="Undo last affinity" aria-label="Undo last affinity">
                         <Undo2 className="h-3.5 w-3.5" />
                       </Button>
-                      <Button variant="outline" size="sm" className="h-7 w-7 p-0 rounded-lg"
+                      <Button variant="outline" size="sm" className="h-11 w-11 p-0 rounded-lg"
+                        title="Clear selected affinities"
+                        aria-label="Clear selected affinities"
                         onClick={() => { setActionMode('none'); setSelectedAffinities({}); setAffinityHistory([]); setPrePromotionHistory(null); }}>
                         <X className="h-3.5 w-3.5" />
                       </Button>
@@ -457,13 +459,15 @@ export const AffinityWellPanel = React.memo(function AffinityWellPanel({ scope }
                                 `linear-gradient(90deg, ${firstMeta?.hex ?? '#ffffff'}55, rgba(255,255,255,0.10), ${selMetas[selMetas.length - 1]?.meta.hex ?? firstMeta?.hex ?? '#ffffff'}55)`,
                               ].join(', ');
                           return (
-	                            <motion.div
-	                              role="button"
+                            <motion.button
+                              type="button"
                                   data-testid="harness-button"
-	                              whileTap={{ scale: 0.93, transition: { duration: 0.07 } }}
-                              className={`relative h-7 px-3 rounded-lg overflow-hidden flex items-center justify-center border transition-all duration-500 shrink-0 ${!harnessLegality.ok ? 'opacity-40 cursor-not-allowed' : 'cursor-pointer'}`}
+                              whileTap={{ scale: 0.93, transition: { duration: 0.07 } }}
+                              className="relative h-11 min-h-11 px-3 rounded-lg overflow-hidden flex items-center justify-center border transition-all duration-500 shrink-0 cursor-pointer"
                               style={{ background: 'rgba(255,255,255,0.03)', borderColor, boxShadow: hasColors ? `inset 0 1px 0 rgba(255,255,255,0.18), 0 0 14px ${firstMeta.hex}44` : 'inset 0 1px 0 rgba(255,255,255,0.08)', touchAction: 'manipulation' }}
-                              onClick={harnessLegality.ok ? () => { setHarnessPulseKey(k => k + 1); confirmAffinities(); } : undefined}
+                              disabled={!harnessLegality.ok}
+                              aria-label={harnessLegality.ok ? harnessLegality.reason : 'Select a valid Harness combination'}
+                              onClick={() => { setHarnessPulseKey(k => k + 1); confirmAffinities(); }}
                             >
                               {selMetas.length > 0 && (
                                 <div key={harnessPulseKey} className={harnessPulseKey > 0 ? 'harness-press-flash' : ''} style={{ position: 'absolute', width: '220%', height: '220%', top: '-60%', left: '-60%' }}>
@@ -484,7 +488,7 @@ export const AffinityWellPanel = React.memo(function AffinityWellPanel({ scope }
                                   )}
                                 </AnimatePresence>
                               </span>
-                            </motion.div>
+                            </motion.button>
                           );
                         })()
                       ) : canPlan && !coreActionSubmitted && harnessLegality.ok ? (
@@ -494,10 +498,11 @@ export const AffinityWellPanel = React.memo(function AffinityWellPanel({ scope }
                           );
                           const planHasColors = planSelKeys.length > 0;
                           return (
-                            <motion.div
-                              role="button"
+                            <motion.button
+                              type="button"
                               whileTap={{ scale: 0.93, transition: { duration: 0.07 } }}
-                              className="relative h-7 px-2.5 rounded-lg overflow-hidden flex items-center justify-center border transition-all duration-500 shrink-0 cursor-pointer"
+                              className="relative h-11 min-h-11 px-2.5 rounded-lg overflow-hidden flex items-center justify-center border transition-all duration-500 shrink-0 cursor-pointer"
+                              aria-label={`Plan ${harnessLegality.reason}`}
                               style={{ background: planHasColors ? 'rgba(82,48,10,0.82)' : 'rgba(44,28,10,0.74)', borderColor: planHasColors ? 'rgba(251,191,36,0.55)' : 'rgba(251,191,36,0.28)', boxShadow: planHasColors ? 'inset 0 1px 0 rgba(255,255,255,0.12), 0 0 8px rgba(251,191,36,0.18)' : 'inset 0 1px 0 rgba(255,255,255,0.06)', touchAction: 'manipulation' }}
                               onClick={async () => {
                                 let sent = false;
@@ -535,7 +540,7 @@ export const AffinityWellPanel = React.memo(function AffinityWellPanel({ scope }
                                   )}
                                 </AnimatePresence>
                               </span>
-                            </motion.div>
+                            </motion.button>
                           );
                         })()
                       ) : null}
@@ -582,7 +587,8 @@ export const AffinityWellPanel = React.memo(function AffinityWellPanel({ scope }
                       })()}
                     </div>
                     <button type="button" onClick={cancelReturnPhase}
-                      className="h-7 w-7 rounded-lg flex items-center justify-center bg-white/5 hover:bg-white/10 text-white/50 hover:text-white/80 transition-colors"
+                      aria-label="Cancel Affinity return"
+                      className="h-11 w-11 rounded-lg flex items-center justify-center bg-white/5 hover:bg-white/10 text-white/50 hover:text-white/80 transition-colors focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-white/60"
                     >
                       <X className="h-3.5 w-3.5" />
                     </button>
@@ -598,7 +604,7 @@ export const AffinityWellPanel = React.memo(function AffinityWellPanel({ scope }
                       const meta = AFFINITY_META[c as AffinityKey];
                       const isMarkedReturn = returning > 0;
                       const totalSel = Object.values(returnSelections).reduce((a, b) => a + (b ?? 0), 0);
-                      const canAdd = available > 0 && totalSel < returnPhase.excessCount + 5;
+                      const canAdd = available > 0 && totalSel < returnPhase.excessCount;
                       return (
                         <div key={c} className="affinity-return-phase__option flex flex-col items-center gap-0.5">
                           <motion.button type="button" whileTap={canAdd ? { scale: 0.88 } : {}}
@@ -632,7 +638,7 @@ export const AffinityWellPanel = React.memo(function AffinityWellPanel({ scope }
                   </div>
                   {(() => {
                     const sel = Object.values(returnSelections).reduce((a, b) => a + (b ?? 0), 0);
-                    const ready = sel >= returnPhase.excessCount;
+                    const ready = sel === returnPhase.excessCount;
                     return (
                       <motion.button type="button" whileTap={ready ? { scale: 0.96 } : {}} disabled={!ready} onClick={confirmReturnPhase}
                         className="affinity-return-phase__confirm w-full h-9 rounded-xl text-sm font-bold transition-all"

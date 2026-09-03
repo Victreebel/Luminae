@@ -2,6 +2,7 @@ import { describe, expect, it } from 'vitest';
 import {
   canCommitPlannedAction,
   canUsePlanningEngine,
+  getPlannedActionInfo,
   getTurnPresentationKey,
   type PlannedActionCommitContext,
 } from '../pages/game-planning';
@@ -88,5 +89,21 @@ describe('planning engine availability', () => {
       ...availableContext,
       hasLocalPlayer: false,
     })).toBe(false);
+  });
+});
+
+describe('Tide Architect Archive Forge planning', () => {
+  it('anchors the pending Forge to its Archive tier', () => {
+    expect(getPlannedActionInfo({
+      type: 'forge_artifact',
+      cardId: 'artifact-top',
+      luminaryId: 'lum_tide',
+      tier: 2,
+    })).toEqual({
+      actionType: 'forge_artifact',
+      cardId: 'artifact-top',
+      deckTier: 2,
+      label: 'Archive Forge pending',
+    });
   });
 });

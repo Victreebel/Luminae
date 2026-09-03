@@ -16,7 +16,7 @@
  */
 
 import { motion } from 'framer-motion';
-import { useEffect, useState } from 'react';
+import { useEffect, useRef, useState } from 'react';
 import type { ReactNode } from 'react';
 import type { ArtifactCard } from '@workspace/api-client-react';
 import { ArtifactCardView, EminenceSigil } from './game-card';
@@ -252,6 +252,7 @@ export interface ForgeAnimationProps {
   eminenceTarget?: number;
   eminenceTargetSelector?: string | null;
   onEminenceImpact?: (amount: number) => void;
+  onForgeStamped?: () => void;
   /** In compact Forge view, skip the lift-to-center step and stamp the card in place. */
   isCompact?: boolean;
   isForgottenForge?: boolean;
@@ -271,6 +272,7 @@ export interface OpponentForgeAnimationProps {
   spentColors?: AffinityKey[];
   eminenceTargetSelector?: string | null;
   onEminenceImpact?: (amount: number) => void;
+  onForgeStamped?: () => void;
   /** When true, skip the lift-to-centre; stamp lands directly on the chip. */
   isCompact?: boolean;
   isForgottenForge?: boolean;
@@ -291,6 +293,7 @@ export function ForgeAnimation({
   eminenceTarget,
   eminenceTargetSelector,
   onEminenceImpact,
+  onForgeStamped,
   playerName,
   isCompact,
   isForgottenForge = false,
@@ -361,10 +364,17 @@ export function ForgeAnimation({
   }, [animKey, isCompact, isForgottenForge, spentColors]);
 
   const [stamped, setStamped] = useState(false);
+  const onForgeStampedRef = useRef(onForgeStamped);
   useEffect(() => {
-    const id = setTimeout(() => setStamped(true), STAMP_HIT * 1000);
+    onForgeStampedRef.current = onForgeStamped;
+  }, [onForgeStamped]);
+  useEffect(() => {
+    const id = setTimeout(() => {
+      setStamped(true);
+      onForgeStampedRef.current?.();
+    }, STAMP_HIT * 1000);
     return () => clearTimeout(id);
-  }, []);
+  }, [animKey]);
 
   const [eminenceSeparated, setEminenceSeparated] = useState(false);
   useEffect(() => {
@@ -836,11 +846,12 @@ export interface AbridgedForgeAnimationProps {
   onEminenceImpact?: (amount: number) => void;
   /** Called when the card finishes shrinking into the destination. */
   onComplete?: () => void;
+  onForgeStamped?: () => void;
   isForgottenForge?: boolean;
 }
 
 export function AbridgedForgeAnimation({
-  animKey, card, cardFace, tier, startRect, destPos, destinationKind, ownerName, spentColors, eminence = 0, eminenceTotal, eminenceTarget, eminenceTargetSelector, onEminenceImpact, onComplete, isForgottenForge = false,
+  animKey, card, cardFace, tier, startRect, destPos, destinationKind, ownerName, spentColors, eminence = 0, eminenceTotal, eminenceTarget, eminenceTargetSelector, onEminenceImpact, onComplete, onForgeStamped, isForgottenForge = false,
 }: AbridgedForgeAnimationProps) {
   const { x: sx, y: sy, w, h } = startRect;
   const dx = destPos ? destPos.x - sx - w / 2 : 0;
@@ -852,6 +863,15 @@ export function AbridgedForgeAnimation({
     const id = setTimeout(() => gameAudio.playForgottenForge(), 40);
     return () => clearTimeout(id);
   }, [animKey, isForgottenForge, spentColors]);
+
+  const onForgeStampedRef = useRef(onForgeStamped);
+  useEffect(() => {
+    onForgeStampedRef.current = onForgeStamped;
+  }, [onForgeStamped]);
+  useEffect(() => {
+    const id = setTimeout(() => onForgeStampedRef.current?.(), 180);
+    return () => clearTimeout(id);
+  }, [animKey]);
 
   return (
     <motion.div
@@ -940,7 +960,7 @@ export function AbridgedForgeAnimation({
 // destination differs: chipCenter (opponent avatar pill) instead of destPos.
 
 export function OpponentForgeAnimation({
-  animKey, card, tier, startRect, chipCenter, ownerName, eminence: eminenceProp, eminenceTotal, eminenceTarget, spentColors: spentColorsProp, eminenceTargetSelector, onEminenceImpact, isCompact, isForgottenForge = false,
+  animKey, card, tier, startRect, chipCenter, ownerName, eminence: eminenceProp, eminenceTotal, eminenceTarget, spentColors: spentColorsProp, eminenceTargetSelector, onEminenceImpact, onForgeStamped, isCompact, isForgottenForge = false,
 }: OpponentForgeAnimationProps) {
   const { x: sx, y: sy, w, h } = startRect;
   const { accent, accentGlow, accentDark } = resolveAccent(card.bonusAffinity);
@@ -1003,10 +1023,17 @@ export function OpponentForgeAnimation({
   }, [animKey, card.bonusAffinity, isCompact, isForgottenForge, spentColorsProp]);
 
   const [stamped, setStamped] = useState(false);
+  const onForgeStampedRef = useRef(onForgeStamped);
   useEffect(() => {
-    const id = setTimeout(() => setStamped(true), STAMP_HIT * 1000);
+    onForgeStampedRef.current = onForgeStamped;
+  }, [onForgeStamped]);
+  useEffect(() => {
+    const id = setTimeout(() => {
+      setStamped(true);
+      onForgeStampedRef.current?.();
+    }, STAMP_HIT * 1000);
     return () => clearTimeout(id);
-  }, []);
+  }, [animKey]);
 
   const subDur  = ARC_END - STAMP_HIT;
   const tSpring = 0.040 / subDur;

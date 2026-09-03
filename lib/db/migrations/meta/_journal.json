@@ -43,6 +43,104 @@
       "when": 1783213200000,
       "tag": "0005_room_cinematic_mode",
       "breakpoints": true
+    },
+    {
+      "idx": 6,
+      "version": "7",
+      "when": 1785927600000,
+      "tag": "0006_account_store",
+      "breakpoints": true
+    },
+    {
+      "idx": 7,
+      "version": "7",
+      "when": 1785949200000,
+      "tag": "0007_account_cosmetic_loadout",
+      "breakpoints": true
+    },
+    {
+      "idx": 8,
+      "version": "7",
+      "when": 1786208400000,
+      "tag": "0008_blueprint_account_foundation",
+      "breakpoints": true
+    },
+    {
+      "idx": 9,
+      "version": "7",
+      "when": 1786294800000,
+      "tag": "0009_remove_fixed_cosmetic_loadout",
+      "breakpoints": true
+    },
+    {
+      "idx": 10,
+      "version": "7",
+      "when": 1786381200000,
+      "tag": "0010_lumii_vault_encounter",
+      "breakpoints": true
+    },
+    {
+      "idx": 11,
+      "version": "7",
+      "when": 1786467600000,
+      "tag": "0011_lumii_vault_mystery",
+      "breakpoints": true
+    },
+    {
+      "idx": 12,
+      "version": "7",
+      "when": 1786554000000,
+      "tag": "0012_lumii_dialogue_memory",
+      "breakpoints": true
+    },
+    {
+      "idx": 13,
+      "version": "7",
+      "when": 1786640400000,
+      "tag": "0013_black_market_decryption_key",
+      "breakpoints": true
+    },
+    {
+      "idx": 14,
+      "version": "7",
+      "when": 1786726800000,
+      "tag": "0014_lumii_dialogue_graph_constraint",
+      "breakpoints": true
+    },
+    {
+      "idx": 15,
+      "version": "7",
+      "when": 1786813200000,
+      "tag": "0015_architect_record_campaign",
+      "breakpoints": true
+    },
+    {
+      "idx": 16,
+      "version": "7",
+      "when": 1786899600000,
+      "tag": "0016_blueprint_clearance_three_wins",
+      "breakpoints": true
+    },
+    {
+      "idx": 17,
+      "version": "7",
+      "when": 1786986000000,
+      "tag": "0017_technology_system_v2",
+      "breakpoints": true
+    },
+    {
+      "idx": 18,
+      "version": "7",
+      "when": 1788062400000,
+      "tag": "0018_restore_five_win_clearance",
+      "breakpoints": true
+    },
+    {
+      "idx": 19,
+      "version": "7",
+      "when": 1788148800000,
+      "tag": "0019_restore_dialogue_path_constraint",
+      "breakpoints": true
     }
   ]
 }

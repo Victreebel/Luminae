@@ -16,9 +16,10 @@ export function getPresentIds(accountIds: string[]): Set<string> {
   );
 }
 
-setInterval(() => {
+const cleanupTimer = setInterval(() => {
   const cutoff = Date.now() - ONLINE_THRESHOLD_MS;
   for (const [id, ts] of presenceMap) {
     if (ts < cutoff) presenceMap.delete(id);
   }
 }, 60_000);
+cleanupTimer.unref();

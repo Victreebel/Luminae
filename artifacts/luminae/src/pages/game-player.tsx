@@ -1,10 +1,11 @@
 import React from 'react';
 import { motion } from 'framer-motion';
 import { ChevronDown } from 'lucide-react';
-import { getAvatarForPlayer } from '@/lib/avatars';
+import { getAvatarForPlayer, LUMII_AVATAR_ID } from '@/lib/avatars';
 import { opponentTurnVariants } from './game-constants';
 import { AFFINITY_META, AFFINITY_KEYS, type AffinityKey } from '@/lib/affinityMeta';
 import { EminenceDiamond } from './game-card';
+import { LumiiOrb } from '@/components/LumiiTutorial';
 
 const NON_FLUX_KEYS = AFFINITY_KEYS.filter(k => k !== 'singularity');
 
@@ -20,6 +21,20 @@ export const PlayerAvatar = React.memo(function PlayerAvatar({
   opponentRecipientId?: string;
 }) {
   const avatar = getAvatarForPlayer(avatarId);
+  if (avatarId === LUMII_AVATAR_ID) {
+    return (
+      <div
+        data-opponent-avatar={opponentRecipientId}
+        className="grid shrink-0 place-items-center overflow-hidden rounded-full border-2 bg-[#050719]"
+        style={{ width: size, height: size, borderColor: `${avatar.accent}88` }}
+        title={name}
+        role="img"
+        aria-label={name}
+      >
+        <LumiiOrb size={size * 0.88} highlightZone={null} />
+      </div>
+    );
+  }
   return (
     <div
       data-opponent-avatar={opponentRecipientId}
@@ -129,20 +144,22 @@ export function OpponentChip({
           className="opponent-chip-details"
           style={{
             display: 'flex',
-            flexDirection: 'column',
+            flexDirection: 'row',
           }}
         >
-          {/* Row 1: artifact counts per affinity */}
-          <div className="opponent-chip-detail-row" data-opponent-stat-row="artifacts">
+          <div className="opponent-chip-detail-row" data-opponent-stat-row="summary">
             {NON_FLUX_KEYS.map(key => {
               const meta = AFFINITY_META[key];
-              const val = artifactTotals?.[key] ?? 0;
+              const artifactVal = artifactTotals?.[key] ?? 0;
+              const affinityVal = affinityTotals[key] ?? 0;
+              const active = artifactVal > 0 || affinityVal > 0;
               return (
                 <span
                   key={key}
-                  title={`${meta.name} artifacts: ${val}`}
+                  title={`${meta.name}: ${artifactVal} artifacts / ${affinityVal} affinity tokens`}
+                  aria-label={`${meta.name}: ${artifactVal} artifacts, ${affinityVal} affinity tokens`}
                   style={{
-                    color: val > 0 ? meta.hex : 'rgba(255,255,255,0.15)',
+                    color: active ? meta.hex : 'rgba(255,255,255,0.15)',
                     fontSize: 9,
                     fontWeight: 700,
                     lineHeight: 1,
@@ -151,32 +168,9 @@ export function OpponentChip({
                     fontVariantNumeric: 'tabular-nums',
                   }}
                 >
-                  {val}
-                </span>
-              );
-            })}
-          </div>
-
-          {/* Row 2: affinity token counts */}
-          <div className="opponent-chip-detail-row" data-opponent-stat-row="affinities">
-            {NON_FLUX_KEYS.map(key => {
-              const meta = AFFINITY_META[key];
-              const val = affinityTotals[key] ?? 0;
-              return (
-                <span
-                  key={key}
-                  title={`${meta.name} affinity tokens: ${val}`}
-                  style={{
-                    color: val > 0 ? meta.hex : 'rgba(255,255,255,0.15)',
-                    fontSize: 9,
-                    fontWeight: 700,
-                    lineHeight: 1,
-                    minWidth: 9,
-                    textAlign: 'center',
-                    fontVariantNumeric: 'tabular-nums',
-                  }}
-                >
-                  {val}
+                  <b>{artifactVal}</b>
+                  <i aria-hidden="true">/</i>
+                  <em>{affinityVal}</em>
                 </span>
               );
             })}

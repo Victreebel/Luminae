@@ -1,10 +1,15 @@
 # LUMINAe_ARTIFACT_REPLACEMENT_TABLE_v0.4_UTILITY_FIRST_LORE.md
 
+> **Partially superseded:** Tier I and II remain historical input to the shared
+> registry. All Tier III names, lore, forms, lineage, and art are replaced by
+> `LUMINAe_TECHNOLOGY_SYSTEM_v2.0.md`.
+
 ## Status
 
-**Exact artifact replacement table / implementation planning source.**
+**Historical exact replacement table. Superseded for technology hierarchy and
+the listed v1.0 deltas by `LUMINAe_TECHNOLOGY_SYSTEM_v1.0.md`.**
 
-This v0.4 revision preserves v0.3 mechanics and scale-as-capability logic, but changes card-facing presentation so each artifact first states its practical usefulness, then places the mysterious/poetic lore beneath it in italics.
+This v0.4 revision preserves v0.3 mechanics and scale-as-capability logic, but changes card-facing presentation so each artifact first states its practical usefulness, then places the mysterious/poetic lore beneath it in italics. Its component-only treatment of Tier III is retained here for history and is no longer canonical.
 
 This document supersedes `LUMINAe_ARTIFACT_REPLACEMENT_TABLE_v0.3_SCALE_AS_CAPABILITY.md`. It uses `LUMINAe_BLUEPRINT_TO_ARTIFACT_DEPENDENCY_MAP_v0.2.md` as the planning anchor.
 

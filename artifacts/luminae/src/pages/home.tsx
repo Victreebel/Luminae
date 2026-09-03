@@ -1,7 +1,7 @@
-import { useState, useEffect, useCallback } from "react";
+import { useState, useEffect, useCallback, useLayoutEffect, useRef } from "react";
 import { useEscapeToClose } from "@/hooks/use-escape-to-close";
 import { useLocation } from "wouter";
-import { loadTutorialProgress, clearTutorialProgress, hasTutorialBeenCompleted, getIntroSeenBeat, clearIntroSeen } from "@/lib/tutorialProgress";
+import { loadTutorialProgress, clearTutorialProgress, hasTutorialBeenCompleted, hasTutorialSeen, clearIntroSeen } from "@/lib/tutorialProgress";
 import { TUTORIAL_BEATS } from "@/lib/tutorialData";
 import { setPendingStartBeat } from "@/lib/tutorialStartBeat";
 import { TutorialStartModal } from "@/components/tutorial/TutorialStartModal";
@@ -19,7 +19,7 @@ import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { saveSession, getSession, clearSession } from "@/lib/session";
-import { getAccountToken, type ActiveGame } from "@/lib/accountSession";
+import { type ActiveGame } from "@/lib/accountSession";
 import { getGameState } from "@workspace/api-client-react";
 import { getSavedAvatarId, saveAvatarId, getAvatarForPlayer } from "@/lib/avatars";
 import { AvatarPicker } from "@/components/AvatarPicker";
@@ -27,27 +27,90 @@ import { LoginRegisterForm } from "@/components/LoginRegisterForm";
 import { useAccount } from "@/contexts/AccountContext";
 import { useToast } from "@/hooks/use-toast";
 import { motion, AnimatePresence } from "framer-motion";
-import { Users, Plus, ArrowRight, Clock, ChevronDown, ChevronUp, LogIn, UserPlus, LayoutDashboard, LogOut, X, BookOpen, RefreshCw } from "lucide-react";
-import backgroundCosmos from "@assets/generated_images/background_cosmos.png";
+import {
+  Plus,
+  ArrowRight,
+  ArrowLeft,
+  Clock,
+  ChevronDown,
+  ChevronUp,
+  LogIn,
+  UserPlus,
+  LayoutDashboard,
+  LogOut,
+  X,
+  BookOpen,
+  Play,
+  Hash,
+  Archive,
+  ShieldCheck,
+} from "lucide-react";
+import {
+  LuminaeWordmark,
+  OutOfMatchBackdrop,
+  OutOfMatchHeader,
+  OutOfMatchSectionHeading,
+} from "@/components/out-of-match/OutOfMatchChrome";
+import { EminenceSigil } from "@/components/EminenceSigil";
+import flareAffinity from "@/assets/affinity/home/flare.png";
+import radianceAffinity from "@/assets/affinity/home/radiance.png";
+import verdanceAffinity from "@/assets/affinity/home/verdance.png";
+import continuumAffinity from "@/assets/affinity/home/continuum.png";
+import abyssAffinity from "@/assets/affinity/home/abyss.png";
+import tierOneArtifact from "@/assets/cards/runtime/t1p01.webp";
+import tierTwoArtifact from "@/assets/cards/runtime/t2p01.webp";
+import tierThreeArtifact from "@/assets/cards/runtime/t3p01.webp";
 
 type Mode = "home" | "create" | "join" | "auth";
+
+const HOME_AFFINITIES = [
+  { name: "Flare", image: flareAffinity, glow: "#FF8A6A" },
+  { name: "Radiance", image: radianceAffinity, glow: "#F5E8B8" },
+  { name: "Verdance", image: verdanceAffinity, glow: "#5BE197" },
+  { name: "Continuum", image: continuumAffinity, glow: "#7090FF" },
+  { name: "Abyss", image: abyssAffinity, glow: "#CC70F0" },
+] as const;
+const HOME_ARTIFACT_TIERS = [
+  { tier: "I", image: tierOneArtifact, width: 20, height: 28, border: "#82A9B9" },
+  { tier: "II", image: tierTwoArtifact, width: 23, height: 32, border: "#D8C079" },
+  { tier: "III", image: tierThreeArtifact, width: 26, height: 36, border: "#B895EA" },
+] as const;
 
 export default function Home() {
   const [, setLocation] = useLocation();
   const { toast } = useToast();
   const { account, token, isLoading: accountLoading, logout } = useAccount();
   const [confirmLogout, setConfirmLogout] = useState(false);
-  const [tutorialSeen] = useState(() => !!localStorage.getItem("luminae_tutorial_seen"));
-  const [tutorialCompleted] = useState(() => hasTutorialBeenCompleted());
+  const [tutorialSeen, setTutorialSeen] = useState(() => hasTutorialSeen());
+  const [tutorialCompleted, setTutorialCompleted] = useState(() => hasTutorialBeenCompleted());
   const [showTutorialModal, setShowTutorialModal] = useState(false);
   const [tutorialHasProgress, setTutorialHasProgress] = useState(false);
   const [tutorialSavedBeat, setTutorialSavedBeat] = useState<number | null>(null);
   const [showCinematic, setShowCinematic] = useState(false);
+  const [activeSession, setActiveSession] = useState(() => getSession());
+  const [mode, setMode] = useState<Mode>("home");
+  const [avatarId, setAvatarId] = useState(() => getSavedAvatarId());
+  const [showAvatarPicker, setShowAvatarPicker] = useState(false);
+  const [hostName, setHostName] = useState("");
+  const [maxPlayers, setMaxPlayers] = useState(2);
+  const [matchMode, setMatchMode] = useState<"standard" | "custom">("standard");
+  const [victoryRequirement, setVictoryRequirement] = useState<15 | 20 | 25>(20);
+  const [turnTimer, setTurnTimer] = useState<string>("0");
+  const [playerName, setPlayerName] = useState("");
+  const [inviteCode, setInviteCode] = useState("");
+  const mainScrollRef = useRef<HTMLElement | null>(null);
+
+  useLayoutEffect(() => {
+    if (mainScrollRef.current) mainScrollRef.current.scrollTop = 0;
+  }, [mode]);
+
   const handleLogout = async () => {
     await logout();
+    setActiveSession(null);
     setConfirmLogout(false);
     setMode("home");
   };
+
   const handleTutorialChoice = useCallback((choice: "begin" | "resume" | "start-over" | "cancel") => {
     if (choice === "cancel") {
       setShowTutorialModal(false);
@@ -60,12 +123,18 @@ export default function Home() {
       setPendingStartBeat(0);
     } else if (choice === "begin") {
       clearTutorialProgress();
-      const introSkipBeat = getIntroSeenBeat();
-      setPendingStartBeat(introSkipBeat ?? 0);
+      setPendingStartBeat(0);
     } else {
       const saved = loadTutorialProgress();
       setPendingStartBeat(saved ?? 0);
     }
+    setShowCinematic(true);
+  }, []);
+
+  const handleTutorialChapter = useCallback((beat: number) => {
+    clearTutorialProgress();
+    setPendingStartBeat(beat);
+    setShowTutorialModal(false);
     setShowCinematic(true);
   }, []);
 
@@ -74,48 +143,26 @@ export default function Home() {
     setLocation("/tutorial");
   }, [setLocation]);
 
-  const [activeSession, setActiveSession] = useState(() => getSession());
-  const [mode, setMode] = useState<Mode>("home");
-  const [avatarId, setAvatarId] = useState(() => getSavedAvatarId());
-  const [showAvatarPicker, setShowAvatarPicker] = useState(false);
-
-  const [hostName, setHostName] = useState("");
-  const [maxPlayers, setMaxPlayers] = useState(2);
-  const [victoryRequirement, setVictoryRequirement] = useState<15 | 20 | 25>(15);
-  const [turnTimer, setTurnTimer] = useState<string>("0");
-  const [playerName, setPlayerName] = useState("");
-  const [inviteCode, setInviteCode] = useState("");
-
   useEscapeToClose([
-    { isOpen: showCinematic,     onClose: () => setShowCinematic(false) },
+    { isOpen: showCinematic, onClose: () => setShowCinematic(false) },
     { isOpen: showTutorialModal, onClose: () => setShowTutorialModal(false) },
-    { isOpen: showAvatarPicker,  onClose: () => setShowAvatarPicker(false) },
-    { isOpen: confirmLogout,     onClose: () => setConfirmLogout(false) },
+    { isOpen: showAvatarPicker, onClose: () => setShowAvatarPicker(false) },
+    { isOpen: confirmLogout, onClose: () => setConfirmLogout(false) },
   ]);
 
-  // If account user has active games, redirect to dashboard; otherwise stay on home with name prefilled
   useEffect(() => {
-    if (accountLoading) return;
-    if (!account || !token) return;
-
-    // Check URL params — ?newgame=1 always stays on home
+    if (accountLoading || !account || !token) return;
     const params = new URLSearchParams(window.location.search);
-    if (params.get("newgame") === "1") return;
+    if (params.get("newgame") === "1" || params.get("menu") === "1") return;
 
-    // Auto-navigate: single playing game → go directly to game; multiple/other → dashboard
     const base = import.meta.env.BASE_URL?.replace(/\/$/, "") ?? "";
-    fetch(`${base}/api/auth/me/games`, {
-      headers: { Authorization: `Bearer ${token}` },
-    })
-      .then((r) => r.json())
-      .then((d: { games?: ActiveGame[] }) => {
-        const games = d.games ?? [];
+    fetch(`${base}/api/auth/me/games`, { headers: { Authorization: `Bearer ${token}` } })
+      .then((response) => response.json())
+      .then((data: { games?: ActiveGame[] }) => {
+        const games = data.games ?? [];
         if (games.length === 0) return;
-
-        const playingGames = games.filter((g) => g.status === "playing");
-
+        const playingGames = games.filter((game) => game.status === "playing");
         if (games.length === 1 && playingGames.length === 1) {
-          // Exactly one in-progress game — restore the session token and go straight in
           const game = playingGames[0];
           saveSession({
             roomId: game.roomId,
@@ -128,16 +175,14 @@ export default function Home() {
           });
           setLocation(`/game/${game.roomId}`);
         } else {
-          // Multiple games or a single lobby game — let the dashboard handle it
           setLocation("/dashboard");
         }
       })
       .catch(() => {
-        // network error — stay on home
+        // A dashboard redirect is optional; the menu remains usable offline.
       });
   }, [account, token, accountLoading, setLocation]);
 
-  // Pre-fill from URL ?invite= param
   useEffect(() => {
     const params = new URLSearchParams(window.location.search);
     const code = params.get("invite");
@@ -147,13 +192,28 @@ export default function Home() {
     }
   }, []);
 
-  // Pre-fill name from account username
   useEffect(() => {
     if (account?.username) {
       setHostName(account.username);
       setPlayerName(account.username);
     }
   }, [account]);
+
+  useEffect(() => {
+    setActiveSession(getSession());
+  }, [account?.id, token]);
+
+  useEffect(() => {
+    if (accountLoading) return;
+    setTutorialSeen(hasTutorialSeen());
+    setTutorialCompleted(hasTutorialBeenCompleted());
+  }, [account?.id, accountLoading]);
+
+  const blueprintCleared = account?.clearance?.status === "cleared";
+
+  useEffect(() => {
+    if (!blueprintCleared) setMatchMode("standard");
+  }, [blueprintCleared]);
 
   const handleAvatarSelect = (id: string) => {
     setAvatarId(id);
@@ -162,12 +222,15 @@ export default function Home() {
 
   const createRoom = useCreateRoom();
   const joinRoom = useJoinRoom();
-  const rejoinRoom = useRejoinRoom();
+  const rejoinRoom = useRejoinRoom({
+    request: token
+      ? { headers: { Authorization: `Bearer ${token}` } }
+      : undefined,
+  });
   const { refetch: fetchRoom } = useGetRoomByInviteCode(inviteCode, {
     query: { enabled: false, queryKey: getGetRoomByInviteCodeQueryKey(inviteCode) },
   });
 
-  // Validate the saved session — clear it if the game is finished or the room is gone
   useEffect(() => {
     const session = getSession();
     if (!session) return;
@@ -179,9 +242,6 @@ export default function Home() {
         }
       })
       .catch((error: { status?: number }) => {
-        // A dev-server restart or brief connection failure must not destroy an
-        // otherwise valid match session. Only discard it when the server has
-        // explicitly rejected it or the room no longer exists.
         if (error.status === 401 || error.status === 403 || error.status === 404) {
           clearSession();
           setActiveSession(null);
@@ -189,32 +249,38 @@ export default function Home() {
       });
   }, []);
 
-  const accountToken = getAccountToken();
-
   const handleCreate = async () => {
     const name = account?.username ?? hostName;
     if (!name.trim()) return;
     try {
-      const res = await createRoom.mutateAsync({
-        data: { hostName: name, maxPlayers, victoryRequirement, cinematicMode: "standard", turnTimerSeconds: parseInt(turnTimer) || null, avatarId },
-        ...(accountToken ? { headers: { Authorization: `Bearer ${accountToken}` } } : {}),
+      const response = await createRoom.mutateAsync({
+        data: {
+          hostName: name,
+          maxPlayers,
+          victoryRequirement,
+          cinematicMode: "standard",
+          turnTimerSeconds: parseInt(turnTimer) || null,
+          avatarId,
+          gameMode: matchMode,
+          blueprintPolicy: matchMode === "custom" ? "owned" : "none",
+        },
+        ...(token ? { headers: { Authorization: `Bearer ${token}` } } : {}),
       });
       saveSession({
-        roomId: res.room.id,
-        inviteCode: res.room.inviteCode,
-        playerId: res.player.id,
-        sessionToken: res.sessionToken,
-        playerName: res.player.name,
+        roomId: response.room.id,
+        inviteCode: response.room.inviteCode,
+        playerId: response.player.id,
+        sessionToken: response.sessionToken,
+        playerName: response.player.name,
         isHost: true,
-        avatarId,
+        avatarId: response.player.avatarId ?? undefined,
       });
-      setLocation(`/lobby/${res.room.id}`);
-    } catch (err: unknown) {
-      const msg =
-        err instanceof ApiError
-          ? (err.data as { error?: string } | null)?.error ?? err.message
-          : err instanceof Error ? err.message : "An error occurred";
-      toast({ variant: "destructive", title: "Error creating room", description: msg });
+      setLocation(`/lobby/${response.room.id}`);
+    } catch (error: unknown) {
+      const message = error instanceof ApiError
+        ? (error.data as { error?: string } | null)?.error ?? error.message
+        : error instanceof Error ? error.message : "An error occurred";
+      toast({ variant: "destructive", title: "Error creating room", description: message });
     }
   };
 
@@ -226,35 +292,39 @@ export default function Home() {
       if (!roomInfo) throw new Error("Room not found");
       const isPlaying = roomInfo.status !== "lobby";
       const alreadyMember = roomInfo.players?.some(
-        (p) => !p.isAi && p.name.toLowerCase() === name.trim().toLowerCase(),
+        (player) => !player.isAi && player.name.toLowerCase() === name.trim().toLowerCase(),
       );
-      const res =
-        isPlaying || alreadyMember
-          ? await rejoinRoom.mutateAsync({ roomId: roomInfo.id, data: { playerName: name } })
-          : await joinRoom.mutateAsync({ roomId: roomInfo.id, data: { playerName: name, avatarId } });
+      const savedSession = getSession();
+      const existingSessionToken = savedSession?.roomId === roomInfo.id
+        ? savedSession.sessionToken
+        : undefined;
+      const response = isPlaying || alreadyMember
+        ? await rejoinRoom.mutateAsync({
+            roomId: roomInfo.id,
+            data: { playerName: name, sessionToken: existingSessionToken },
+          })
+        : await joinRoom.mutateAsync({ roomId: roomInfo.id, data: { playerName: name, avatarId } });
       saveSession({
-        roomId: res.room.id,
-        inviteCode: res.room.inviteCode,
-        playerId: res.player.id,
-        sessionToken: res.sessionToken,
-        playerName: res.player.name,
-        isHost: res.player.isHost,
-        avatarId,
+        roomId: response.room.id,
+        inviteCode: response.room.inviteCode,
+        playerId: response.player.id,
+        sessionToken: response.sessionToken,
+        playerName: response.player.name,
+        isHost: response.player.isHost,
+        avatarId: response.player.avatarId ?? undefined,
       });
-      if (res.room.status !== "lobby") setLocation(`/game/${res.room.id}`);
-      else setLocation(`/lobby/${res.room.id}`);
-    } catch (err: unknown) {
-      const msg =
-        err instanceof ApiError
-          ? (err.data as { error?: string } | null)?.error ?? err.message
-          : err instanceof Error ? err.message : "An error occurred";
-      toast({ variant: "destructive", title: "Error joining room", description: msg });
+      setLocation(response.room.status !== "lobby" ? `/game/${response.room.id}` : `/lobby/${response.room.id}`);
+    } catch (error: unknown) {
+      const message = error instanceof ApiError
+        ? (error.data as { error?: string } | null)?.error ?? error.message
+        : error instanceof Error ? error.message : "An error occurred";
+      toast({ variant: "destructive", title: "Error joining room", description: message });
     }
   };
 
   const handleRejoin = async () => {
     const session = getSession();
-    if (!session || !session.roomId || !session.sessionToken) {
+    if (!session?.roomId || !session.sessionToken) {
       setMode("join");
       return;
     }
@@ -267,15 +337,17 @@ export default function Home() {
         return;
       }
       setLocation(state.status === "playing" ? `/game/${session.roomId}` : `/lobby/${session.roomId}`);
-    } catch (err: unknown) {
-      const msg = err instanceof Error ? err.message : "An error occurred";
-      toast({ variant: "destructive", title: "Couldn't rejoin", description: msg });
+    } catch (error: unknown) {
+      toast({
+        variant: "destructive",
+        title: "Couldn't rejoin",
+        description: error instanceof Error ? error.message : "An error occurred",
+      });
     }
   };
 
   const hasSavedSession = !!activeSession?.roomId && !!activeSession?.sessionToken;
 
-  // Show loading state while checking account
   if (accountLoading) {
     return (
       <div className="h-[100dvh] flex items-center justify-center bg-background">
@@ -284,546 +356,426 @@ export default function Home() {
     );
   }
 
+  const openTutorial = () => {
+    const saved = loadTutorialProgress();
+    const hasMidProgress = saved !== null && saved > 0 && saved < TUTORIAL_BEATS.length - 1;
+    setTutorialHasProgress(hasMidProgress);
+    setTutorialSavedBeat(hasMidProgress ? saved : null);
+    setShowTutorialModal(true);
+  };
+
   return (
-    <div className="h-[100dvh] flex flex-col bg-background text-foreground relative overflow-hidden">
-      {/* Cosmic background */}
-      <div
-        className="absolute inset-0 pointer-events-none"
-        style={{ backgroundImage: `url(${backgroundCosmos})`, backgroundSize: "cover", backgroundPosition: "center" }}
-      />
-      <div className="absolute inset-0 bg-background/75 pointer-events-none" />
-      <div
-        className="absolute inset-0 opacity-30 pointer-events-none"
-        style={{ backgroundImage: "radial-gradient(circle at 50% 0%, hsl(var(--primary) / 0.5) 0%, transparent 55%)" }}
-      />
-
-      {/* Logo area */}
-      <div className="relative z-10 flex-none pt-[116px] pb-4 flex flex-col items-center gap-3">
-        <style>{`
-          @keyframes home-shimmer {
-            0%   { background-position: -200% center; }
-            100% { background-position: 200% center; }
-          }
-          @keyframes home-pulse-glow {
-            0%, 100% { opacity: 0.55; }
-            50%       { opacity: 0.85; }
-          }
-          .home-luminae-title {
-            font-family: 'Cinzel Decorative', 'Cinzel', serif;
-            font-weight: 900;
-            letter-spacing: 0.15em;
-            line-height: 1;
-            margin: 0;
-            color: transparent;
-            background: linear-gradient(105deg,
-              #06060f  0%, #06060f  6%,
-              #ff9070 10%, #FF6B52 13%, #ff9070 16%,
-              #06060f 20%, #06060f 27%,
-              #ffe08a 31%, #FFC43D 34%, #ffe08a 37%,
-              #06060f 41%, #06060f 48%,
-              #50e890 52%, #2ECC71 55%, #50e890 58%,
-              #06060f 62%, #06060f 69%,
-              #8090ff 73%, #607AFF 76%, #8090ff 79%,
-              #06060f 83%, #06060f 87%,
-              #5c20b8 91%, #7028d0 93%, #5c20b8 95%,
-              #06060f 99%, #06060f 100%
-            );
-            background-size: 400% 100%;
-            -webkit-background-clip: text;
-            background-clip: text;
-            -webkit-text-fill-color: transparent;
-            animation: home-shimmer 50s linear infinite;
-            filter: drop-shadow(0 0 1px rgba(255,255,255,0.8))
-                    drop-shadow(0 0 18px rgba(160,140,255,0.3))
-                    drop-shadow(0 0 40px rgba(100,80,180,0.15));
-          }
-        `}</style>
-
-        {/* Pulsing radial glow */}
-        <div style={{
-          position: "absolute", width: 500, height: 200, borderRadius: "50%",
-          background: "radial-gradient(ellipse, rgba(100,80,180,0.12) 0%, transparent 70%)",
-          top: "50%", left: "50%", transform: "translate(-50%, -50%)",
-          pointerEvents: "none", animation: "home-pulse-glow 4s ease-in-out infinite",
-        }} />
-
-        {/* Corner brackets */}
-        {([{ top: 8, left: 8 }, { top: 8, right: 8 }, { bottom: 8, left: 8 }, { bottom: 8, right: 8 }] as const).map((pos, i) => (
-          <div key={i} style={{
-            position: "absolute", width: 18, height: 18,
-            borderTop: i < 2 ? "1px solid rgba(200,210,255,0.2)" : undefined,
-            borderBottom: i >= 2 ? "1px solid rgba(200,210,255,0.2)" : undefined,
-            borderLeft: i % 2 === 0 ? "1px solid rgba(200,210,255,0.2)" : undefined,
-            borderRight: i % 2 === 1 ? "1px solid rgba(200,210,255,0.2)" : undefined,
-            ...pos,
-          }} />
-        ))}
-
-        {/* Top decorative rule */}
-        <motion.div
-          initial={{ opacity: 0 }}
-          animate={{ opacity: 1 }}
-          transition={{ delay: 0.08 }}
-          style={{ width: "70%", display: "flex", alignItems: "center", gap: 10, position: "relative", zIndex: 1 }}
-        >
-          <div style={{ flex: 1, height: 1, background: "linear-gradient(to right, transparent, rgba(255,255,255,0.15))" }} />
-          <div style={{ width: 5, height: 5, transform: "rotate(45deg)", border: "1px solid rgba(255,255,255,0.25)" }} />
-          <div style={{ flex: 1, height: 1, background: "linear-gradient(to left, transparent, rgba(255,255,255,0.15))" }} />
-        </motion.div>
-
-        <motion.h1
-          className="home-luminae-title text-5xl"
-          initial={{ opacity: 0, y: 10 }}
-          animate={{ opacity: 1, y: 0 }}
-          transition={{ duration: 0.45, delay: 0.12 }}
-          style={{ position: "relative", zIndex: 1 }}
-        >
-          LUMINAE
-        </motion.h1>
-
-        {/* Bottom decorative rule */}
-        <motion.div
-          initial={{ opacity: 0 }}
-          animate={{ opacity: 1 }}
-          transition={{ delay: 0.22 }}
-          style={{ width: "70%", display: "flex", alignItems: "center", gap: 10, position: "relative", zIndex: 1 }}
-        >
-          <div style={{ flex: 1, height: 1, background: "linear-gradient(to right, transparent, rgba(255,255,255,0.15))" }} />
-          <div style={{ width: 5, height: 5, transform: "rotate(45deg)", border: "1px solid rgba(255,255,255,0.25)" }} />
-          <div style={{ flex: 1, height: 1, background: "linear-gradient(to left, transparent, rgba(255,255,255,0.15))" }} />
-        </motion.div>
-
-        <motion.p
-          initial={{ opacity: 0 }}
-          animate={{ opacity: 1 }}
-          transition={{ delay: 0.28 }}
-          style={{ margin: 0, fontSize: 9, letterSpacing: "0.45em", color: "rgba(200,210,255,0.35)", textTransform: "uppercase", fontFamily: "'Cinzel', serif", fontWeight: 400, position: "relative", zIndex: 1 }}
-        >
-          Harness · Forge · Ascend
-        </motion.p>
-
-        {/* Avatar selector — shown for guest modes */}
-        {mode !== "auth" && (
-          <motion.div
-            initial={{ opacity: 0, y: 8 }}
-            animate={{ opacity: 1, y: 0 }}
-            transition={{ delay: 0.35 }}
-            className="w-full max-w-sm px-5"
+    <div className="oom-shell h-[100dvh] overflow-hidden flex flex-col" data-home-mode={mode}>
+      <OutOfMatchBackdrop />
+      <OutOfMatchHeader
+        center={<span className="hidden sm:block oom-kicker !mb-0">Main Menu</span>}
+        right={account ? (
+          <button
+            type="button"
+            onClick={() => setLocation("/dashboard")}
+            aria-label={`Open Command Center for ${account.username}`}
+            title="Open Command Center"
+            className="flex min-w-0 items-center gap-2 rounded-md border border-white/10 bg-white/[0.035] px-3 py-2 text-sm text-foreground/85 hover:bg-white/[0.07]"
           >
-            <button
-              type="button"
-              onClick={() => setShowAvatarPicker((v) => !v)}
-              className="w-full flex items-center gap-3 rounded-2xl border border-border/50 bg-card/50 px-3 py-2.5 hover:border-border transition-colors"
+            <LayoutDashboard className="h-4 w-4 shrink-0 text-primary" />
+            <span className="hidden max-w-[160px] truncate sm:block">{account.username}</span>
+          </button>
+        ) : (
+          <button type="button" onClick={() => setMode("auth")} className="oom-icon-button" aria-label="Sign in" title="Sign in">
+            <LogIn className="h-4 w-4" />
+          </button>
+        )}
+      />
+
+      <main ref={mainScrollRef} className="oom-frame flex-1 min-h-0 overflow-y-auto py-5 sm:py-8">
+        <div className="grid min-h-full items-center gap-6 lg:grid-cols-[minmax(0,0.82fr)_minmax(400px,520px)] lg:gap-12">
+          <section className="oom-home-hero min-w-0 w-full px-2 py-4 text-center lg:px-4 lg:text-left">
+            <motion.p initial={{ opacity: 0 }} animate={{ opacity: 1 }} className="oom-kicker">
+              Cosmic civilization strategy
+            </motion.p>
+            <motion.h1
+              initial={{ opacity: 0, y: 8 }}
+              animate={{ opacity: 1, y: 0 }}
+              className="m-0 flex justify-center lg:justify-start"
             >
-              <div
-                className="w-10 h-10 rounded-xl overflow-hidden shrink-0 border-2"
-                style={{ borderColor: `${getAvatarForPlayer(avatarId).accent}88` }}
-              >
-                <img src={getAvatarForPlayer(avatarId).image} alt="" className="w-full h-full object-cover" draggable={false} />
-              </div>
-              <div className="flex-1 text-left min-w-0">
-                <div className="text-[10px] font-semibold uppercase tracking-wider text-muted-foreground">Your avatar</div>
-                <div className="text-sm font-semibold truncate">{getAvatarForPlayer(avatarId).name}</div>
-              </div>
-              {showAvatarPicker ? <ChevronUp className="h-4 w-4 text-muted-foreground shrink-0" /> : <ChevronDown className="h-4 w-4 text-muted-foreground shrink-0" />}
-            </button>
-            <AnimatePresence>
-              {showAvatarPicker && (
-                <motion.div
-                  initial={{ opacity: 0, height: 0 }}
-                  animate={{ opacity: 1, height: "auto" }}
-                  exit={{ opacity: 0, height: 0 }}
-                  className="overflow-hidden"
-                >
-                  <div className="pt-3">
-                    <AvatarPicker selectedId={avatarId} onSelect={(id) => { handleAvatarSelect(id); setShowAvatarPicker(false); }} />
-                  </div>
-                  <div className="pt-2 pb-1 border-t border-border/30 mt-3">
+              <LuminaeWordmark className="oom-wordmark--hero" />
+            </motion.h1>
+            <motion.p
+              initial={{ opacity: 0 }}
+              animate={{ opacity: 1 }}
+              transition={{ delay: 0.08 }}
+              className="oom-hero-motto mt-4"
+            >
+              Harness. Forge. Ascend.
+            </motion.p>
+            <motion.div
+              initial={{ opacity: 0, y: 4 }}
+              animate={{ opacity: 1, y: 0 }}
+              transition={{ delay: 0.14, duration: 0.28 }}
+              className="oom-home-teaching mx-auto mt-3 flex max-w-lg flex-col items-center gap-1.5 text-sm text-foreground/75 lg:mx-0 lg:items-start lg:gap-2 lg:text-[15px]"
+            >
+              <p className="m-0 flex flex-wrap items-center justify-center gap-x-2 gap-y-1 lg:justify-start">
+                <span>Harness cosmic Affinities</span>
+                <span className="inline-flex items-center gap-0.5 whitespace-nowrap" role="img" aria-label="Flare, Radiance, Verdance, Continuum, and Abyss affinity tokens">
+                  {HOME_AFFINITIES.map((affinity) => (
+                    <img key={affinity.name} src={affinity.image} alt="" aria-hidden="true" className="oom-home-affinity-icon h-[17px] w-[17px] object-contain lg:h-[19px] lg:w-[19px]" />
+                  ))}
+                </span>
+              </p>
+              <p className="m-0 flex flex-wrap items-center justify-center gap-x-2 gap-y-1 lg:justify-start">
+                <span>Forge more powerful artifacts</span>
+                <span className="inline-flex h-[33px] items-end gap-1.5 whitespace-nowrap lg:h-[37px]" role="img" aria-label="Tier I, Tier II, and Tier III Artifact progression">
+                  {HOME_ARTIFACT_TIERS.map((artifact) => (
+                    <span
+                      key={artifact.tier}
+                      aria-hidden="true"
+                      className="relative origin-bottom shrink-0 overflow-hidden rounded-[3px] bg-black/60 lg:scale-110"
+                      style={{
+                        width: artifact.width,
+                        height: artifact.height,
+                        border: `1px solid ${artifact.border}`,
+                        boxShadow: `0 0 6px ${artifact.border}44, 0 2px 4px rgba(0,0,0,0.75)`,
+                      }}
+                    >
+                      <img src={artifact.image} alt="" className="absolute inset-0 h-full w-full object-cover" />
+                      <span className="absolute inset-0 bg-gradient-to-b from-transparent via-transparent to-black/80" />
+                      <span className="absolute inset-[1px] rounded-[2px] border border-white/15" />
+                      <span className="absolute inset-x-0 bottom-[1px] text-center font-serif text-[7px] font-bold leading-none text-white drop-shadow-sm">{artifact.tier}</span>
+                    </span>
+                  ))}
+                </span>
+              </p>
+              <p className="oom-eminence-teaching-line m-0 flex items-center justify-center gap-2 font-medium text-[#E4C982] lg:justify-start">
+                <span>Gain Eminence</span>
+                <span className="origin-center drop-shadow-[0_0_7px_rgba(231,188,82,0.28)] lg:scale-110" aria-hidden="true">
+                  <EminenceSigil size={32} value={15} target={15} />
+                </span>
+                <span>Become a Legend</span>
+              </p>
+            </motion.div>
+          </section>
+
+          <motion.section
+            initial={{ opacity: 0, y: 12 }}
+            animate={{ opacity: 1, y: 0 }}
+            transition={{ duration: 0.24 }}
+            className="oom-panel min-w-0 w-full p-4 sm:p-5"
+            data-testid="home-command-panel"
+          >
+            <AnimatePresence mode="wait" initial={false}>
+              {mode === "home" && (
+                <motion.div key="home" initial={{ opacity: 0 }} animate={{ opacity: 1 }} exit={{ opacity: 0 }} className="space-y-4">
+                  <OutOfMatchSectionHeading eyebrow="Command" title="Play Luminae" detail={account ? "Signed in" : "Guest play"} />
+
+                  {activeSession && (
                     <button
                       type="button"
-                      onClick={() => window.location.reload()}
-                      className="w-full flex items-center gap-2 px-3 py-2 rounded-xl text-sm text-muted-foreground hover:text-foreground hover:bg-white/5 transition-colors"
+                      onClick={handleRejoin}
+                      disabled={!hasSavedSession}
+                      className="w-full rounded-lg border border-primary/40 bg-primary/10 px-4 py-3 text-left transition-colors hover:bg-primary/16 disabled:opacity-50"
                     >
-                      <RefreshCw className="h-3.5 w-3.5 shrink-0" />
-                      Refresh page
+                      <span className="flex items-center justify-between gap-3">
+                        <span className="min-w-0">
+                          <span className="block text-[10px] font-bold uppercase tracking-[0.16em] text-primary">Continue match</span>
+                          <span className="mt-1 block truncate text-sm font-semibold text-foreground">{activeSession.playerName}</span>
+                        </span>
+                        <span className="flex shrink-0 items-center gap-1 text-sm font-bold text-primary">
+                          Resume <ArrowRight className="h-4 w-4" />
+                        </span>
+                      </span>
                     </button>
+                  )}
+
+                  <div className="grid gap-3 sm:grid-cols-2">
+                    <button type="button" className="oom-action-primary" onClick={() => setMode("create")}>
+                      <Play className="h-4 w-4 fill-current" />
+                      New Match
+                    </button>
+                    <button type="button" className="oom-action-secondary" onClick={() => setMode("join")}>
+                      <Hash className="h-4 w-4" />
+                      Join with Code
+                    </button>
+                  </div>
+
+                  <div className="oom-divider" />
+
+                  <button
+                    type="button"
+                    onClick={openTutorial}
+                    className="flex w-full items-center gap-3 rounded-lg px-2 py-2 text-left transition-colors hover:bg-white/[0.04]"
+                  >
+                    <span className="flex h-9 w-9 shrink-0 items-center justify-center rounded-md border border-primary/25 bg-primary/10 text-primary">
+                      <BookOpen className="h-4 w-4" />
+                    </span>
+                    <span className="min-w-0 flex-1">
+                      <span className="block text-sm font-semibold text-foreground">
+                        {tutorialCompleted ? "Replay Tutorial" : tutorialSeen ? "Continue Tutorial" : "Learn with Lumii"}
+                      </span>
+                      <span className="mt-0.5 block text-xs text-muted-foreground">
+                        {tutorialCompleted ? "Practice the four core actions again" : tutorialSeen ? "Pick up where you left off" : "Practice the four core actions with Lumii"}
+                      </span>
+                    </span>
+                    <ArrowRight className="h-4 w-4 shrink-0 text-muted-foreground" />
+                  </button>
+
+                  {blueprintCleared && (
+                    <button
+                      type="button"
+                      onClick={() => setLocation("/dashboard/archive/vault")}
+                      className="flex w-full items-center gap-3 rounded-lg px-2 py-2 text-left transition-colors hover:bg-white/[0.04]"
+                    >
+                      <span className="flex h-9 w-9 shrink-0 items-center justify-center rounded-md border border-[#D9BC73]/30 bg-[#D9BC73]/10 text-[#E4C982]">
+                        <Archive className="h-4 w-4" />
+                      </span>
+                      <span className="min-w-0 flex-1">
+                        <span className="block text-sm font-semibold text-foreground">Enter Vault</span>
+                        <span className="mt-0.5 block text-xs text-muted-foreground">Review your sealed Architect Record</span>
+                      </span>
+                      <ArrowRight className="h-4 w-4 shrink-0 text-muted-foreground" />
+                    </button>
+                  )}
+
+                  <div className="oom-divider" />
+
+                  <div>
+                    <button
+                      type="button"
+                      onClick={() => setShowAvatarPicker((open) => !open)}
+                      className="flex w-full items-center gap-3 rounded-lg px-2 py-2 text-left transition-colors hover:bg-white/[0.04]"
+                    >
+                      <span
+                        className="h-9 w-9 shrink-0 overflow-hidden rounded-md border"
+                        style={{ borderColor: `${getAvatarForPlayer(avatarId).accent}88` }}
+                      >
+                        <img src={getAvatarForPlayer(avatarId).image} alt="" className="h-full w-full object-cover" draggable={false} />
+                      </span>
+                      <span className="min-w-0 flex-1">
+                        <span className="block text-[10px] font-bold uppercase tracking-[0.14em] text-muted-foreground">Player identity</span>
+                        <span className="block truncate text-sm font-semibold">{getAvatarForPlayer(avatarId).name}</span>
+                      </span>
+                      {showAvatarPicker ? <ChevronUp className="h-4 w-4 text-muted-foreground" /> : <ChevronDown className="h-4 w-4 text-muted-foreground" />}
+                    </button>
+                    <AnimatePresence initial={false}>
+                      {showAvatarPicker && (
+                        <motion.div initial={{ height: 0, opacity: 0 }} animate={{ height: "auto", opacity: 1 }} exit={{ height: 0, opacity: 0 }} className="overflow-hidden">
+                          <div className="pt-3">
+                            <AvatarPicker selectedId={avatarId} onSelect={(id) => { handleAvatarSelect(id); setShowAvatarPicker(false); }} />
+                          </div>
+                        </motion.div>
+                      )}
+                    </AnimatePresence>
+                  </div>
+
+                  {account ? (
+                    <div className="flex items-center justify-between gap-3 rounded-lg bg-black/20 px-3 py-2.5">
+                      <div className="min-w-0">
+                        <span className="block text-[10px] font-bold uppercase tracking-[0.14em] text-muted-foreground">Signed in</span>
+                        <span className="block truncate text-sm font-semibold">{account.username}</span>
+                      </div>
+                      <div className="flex shrink-0 items-center gap-1">
+                        <Button size="sm" variant="outline" className="h-9 rounded-md gap-1.5" onClick={() => setLocation("/dashboard")}>
+                          <LayoutDashboard className="h-3.5 w-3.5" /> Command
+                        </Button>
+                        {confirmLogout ? (
+                          <>
+                            <Button size="sm" variant="destructive" className="h-9 rounded-md" onClick={handleLogout}>Sign out</Button>
+                            <Button size="icon" variant="ghost" className="h-9 w-9 rounded-md" onClick={() => setConfirmLogout(false)} title="Cancel">
+                              <X className="h-3.5 w-3.5" />
+                            </Button>
+                          </>
+                        ) : (
+                          <Button size="icon" variant="ghost" className="h-9 w-9 rounded-md text-muted-foreground" onClick={() => setConfirmLogout(true)} title="Sign out">
+                            <LogOut className="h-3.5 w-3.5" />
+                          </Button>
+                        )}
+                      </div>
+                    </div>
+                  ) : (
+                    <button type="button" onClick={() => setMode("auth")} className="flex w-full items-center justify-between rounded-lg bg-black/20 px-3 py-2.5 text-left hover:bg-black/30">
+                      <span>
+                        <span className="block text-sm font-semibold">Create a free account</span>
+                        <span className="block text-xs text-muted-foreground">Keep games, history, and cosmetics together</span>
+                      </span>
+                      <UserPlus className="h-4 w-4 text-primary" />
+                    </button>
+                  )}
+                </motion.div>
+              )}
+
+              {mode === "create" && (
+                <motion.div key="create" initial={{ opacity: 0, x: 12 }} animate={{ opacity: 1, x: 0 }} exit={{ opacity: 0, x: -12 }} className="space-y-5">
+                  <div className="flex items-center gap-3">
+                    <button type="button" className="oom-icon-button" onClick={() => setMode("home")} title="Back" aria-label="Back">
+                      <ArrowLeft className="h-4 w-4" />
+                    </button>
+                    <div className="min-w-0 flex-1">
+                      <OutOfMatchSectionHeading eyebrow="Match setup" title="Create a Lobby" detail={`${maxPlayers} players · ${matchMode === "custom" ? "Blueprint Custom" : "Core Game"} · ${victoryRequirement === 15 ? "Quick 15" : victoryRequirement === 20 ? "Standard 20" : "Epic 25"}`} />
+                    </div>
+                  </div>
+
+                  {!account ? (
+                    <div className="space-y-1.5">
+                      <Label htmlFor="hostName">Your name</Label>
+                      <Input id="hostName" value={hostName} onChange={(event) => setHostName(event.target.value)} placeholder="e.g. Stargazer" className="h-12 rounded-md bg-input/60" onKeyDown={(event) => event.key === "Enter" && handleCreate()} />
+                    </div>
+                  ) : (
+                    <div className="rounded-lg border border-primary/25 bg-primary/8 px-3 py-2.5 text-sm">
+                      Playing as <span className="font-bold text-primary">{account.username}</span>
+                    </div>
+                  )}
+
+                  {blueprintCleared && (
+                    <div className="space-y-2">
+                      <Label>Mode</Label>
+                      <div className="oom-segmented" role="radiogroup" aria-label="Match mode">
+                        <button
+                          type="button"
+                          role="radio"
+                          aria-checked={matchMode === "standard"}
+                          data-active={matchMode === "standard"}
+                          onClick={() => setMatchMode("standard")}
+                        >
+                          <ShieldCheck className="h-3.5 w-3.5" aria-hidden="true" />
+                          Core Game
+                        </button>
+                        <button
+                          type="button"
+                          role="radio"
+                          aria-checked={matchMode === "custom"}
+                          data-active={matchMode === "custom"}
+                          onClick={() => setMatchMode("custom")}
+                          title="Use your Custom Blueprint loadout"
+                        >
+                          <ShieldCheck className="h-3.5 w-3.5" aria-hidden="true" />
+                          Blueprint Custom
+                        </button>
+                      </div>
+                      <p className="text-xs text-muted-foreground">Vault-cleared Blueprint loadouts are available.</p>
+                    </div>
+                  )}
+
+                  <div className="space-y-2">
+                    <Label>Players</Label>
+                    <div className="oom-segmented" role="radiogroup" aria-label="Player count">
+                      {[2, 3, 4].map((count) => (
+                        <button key={count} type="button" role="radio" aria-checked={maxPlayers === count} data-active={maxPlayers === count} onClick={() => setMaxPlayers(count)}>{count}</button>
+                      ))}
+                    </div>
+                  </div>
+
+                  <div className="space-y-2">
+                    <Label>Match format</Label>
+                    <div className="oom-segmented" role="radiogroup" aria-label="Match format">
+                      {([15, 20, 25] as const).map((target) => (
+                        <button key={target} type="button" role="radio" aria-checked={victoryRequirement === target} data-active={victoryRequirement === target} onClick={() => setVictoryRequirement(target)}>
+                          {target === 15 ? "Quick · 15" : target === 20 ? "Standard · 20" : "Epic · 25"}
+                        </button>
+                      ))}
+                    </div>
+                    <p className="text-xs text-muted-foreground">
+                      {victoryRequirement === 15
+                        ? "Quick: a shorter Tier I–II race"
+                        : victoryRequirement === 20
+                          ? "Standard: the primary balanced civilization arc"
+                          : "Epic: the longest arc · balance remains provisional"}
+                    </p>
+                  </div>
+
+                  <div className="space-y-2">
+                    <Label htmlFor="turnTimer" className="flex items-center gap-1.5"><Clock className="h-3.5 w-3.5" /> Turn timer</Label>
+                    <Select value={turnTimer} onValueChange={setTurnTimer}>
+                      <SelectTrigger id="turnTimer" className="h-12 rounded-md bg-input/60"><SelectValue /></SelectTrigger>
+                      <SelectContent>
+                        <SelectItem value="0">No timer</SelectItem>
+                        <SelectItem value="30">30 seconds</SelectItem>
+                        <SelectItem value="60">60 seconds</SelectItem>
+                        <SelectItem value="90">90 seconds</SelectItem>
+                        <SelectItem value="120">2 minutes</SelectItem>
+                      </SelectContent>
+                    </Select>
+                  </div>
+
+                  <button type="button" className="oom-action-primary" onClick={handleCreate} disabled={(!account && !hostName.trim()) || createRoom.isPending}>
+                    <Plus className="h-4 w-4" />
+                    {createRoom.isPending
+                      ? "Creating Lobby..."
+                      : matchMode === "custom"
+                        ? "Create Blueprint Lobby"
+                        : "Create Lobby"}
+                  </button>
+                </motion.div>
+              )}
+
+              {mode === "join" && (
+                <motion.div key="join" initial={{ opacity: 0, x: 12 }} animate={{ opacity: 1, x: 0 }} exit={{ opacity: 0, x: -12 }} className="space-y-5">
+                  <div className="flex items-center gap-3">
+                    <button type="button" className="oom-icon-button" onClick={() => setMode("home")} title="Back">
+                      <ArrowLeft className="h-4 w-4" />
+                    </button>
+                    <div className="min-w-0 flex-1">
+                      <OutOfMatchSectionHeading eyebrow="Invitation" title="Join a Match" detail="8 or 10 characters" />
+                    </div>
+                  </div>
+
+                  <div className="space-y-1.5">
+                    <Label htmlFor="inviteCode">Invite code</Label>
+                    <Input id="inviteCode" value={inviteCode} onChange={(event) => setInviteCode(event.target.value.toUpperCase())} placeholder="XXXXXXXXXX" className="h-14 rounded-md bg-input/60 text-center font-mono text-xl tracking-[0.18em] uppercase" maxLength={10} />
+                  </div>
+
+                  {!account ? (
+                    <div className="space-y-1.5">
+                      <Label htmlFor="playerName">Your name</Label>
+                      <Input id="playerName" value={playerName} onChange={(event) => setPlayerName(event.target.value)} placeholder="e.g. Void Walker" className="h-12 rounded-md bg-input/60" onKeyDown={(event) => event.key === "Enter" && handleJoin()} />
+                    </div>
+                  ) : (
+                    <div className="rounded-lg border border-primary/25 bg-primary/8 px-3 py-2.5 text-sm">
+                      Joining as <span className="font-bold text-primary">{account.username}</span>
+                    </div>
+                  )}
+
+                  <button type="button" className="oom-action-primary" onClick={handleJoin} disabled={(!account && !playerName.trim()) || ![8, 10].includes(inviteCode.length) || joinRoom.isPending}>
+                    <ArrowRight className="h-4 w-4" />
+                    {joinRoom.isPending ? "Joining Match..." : "Enter Lobby"}
+                  </button>
+                </motion.div>
+              )}
+
+              {mode === "auth" && (
+                <motion.div key="auth" initial={{ opacity: 0, x: 12 }} animate={{ opacity: 1, x: 0 }} exit={{ opacity: 0, x: -12 }} className="space-y-5">
+                  <div className="flex items-center gap-3">
+                    <button type="button" className="oom-icon-button" onClick={() => setMode("home")} title="Back">
+                      <ArrowLeft className="h-4 w-4" />
+                    </button>
+                    <div className="min-w-0 flex-1">
+                      <OutOfMatchSectionHeading eyebrow="Luminae account" title="Keep Your Progress" />
+                    </div>
+                  </div>
+                  <div className="rounded-lg border border-white/10 bg-black/20 p-4">
+                    <LoginRegisterForm onSuccess={() => setMode("home")} />
                   </div>
                 </motion.div>
               )}
             </AnimatePresence>
-          </motion.div>
-        )}
-      </div>
-
-      {/* Main content */}
-      <div className="relative z-10 flex-1 flex flex-col px-5 pb-8 overflow-y-auto">
-        <AnimatePresence mode="wait">
-          {mode === "home" && (
-            <motion.div
-              key="home"
-              initial={{ opacity: 0, y: 20 }}
-              animate={{ opacity: 1, y: 0 }}
-              exit={{ opacity: 0, y: -20 }}
-              transition={{ duration: 0.2 }}
-              className="flex flex-col gap-4 max-w-sm mx-auto w-full"
-            >
-              {/* Resume session banner */}
-              {activeSession && (
-                <div className="rounded-2xl border border-primary/40 bg-primary/10 p-4 flex items-center justify-between gap-3">
-                  <div>
-                    <div className="text-xs text-primary font-semibold uppercase tracking-wider mb-0.5">Active game</div>
-                    <div className="font-bold text-sm">{activeSession.playerName}</div>
-                  </div>
-                  <Button size="sm" className="shrink-0" onClick={handleRejoin} disabled={!hasSavedSession}>
-                    Resume <ArrowRight className="h-3.5 w-3.5 ml-1" />
-                  </Button>
-                </div>
-              )}
-
-              {/* Quick game actions */}
-              <Button
-                size="lg"
-                className="w-full h-16 text-lg font-bold rounded-2xl gap-3"
-                onClick={() => setMode("create")}
-              >
-                <Plus className="h-5 w-5" />
-                Quick Game — Create
-              </Button>
-              <Button
-                variant="secondary"
-                size="lg"
-                className="w-full h-16 text-lg font-bold rounded-2xl gap-3"
-                onClick={() => setMode("join")}
-              >
-                <Users className="h-5 w-5" />
-                Join Game
-              </Button>
-
-              {/* Tutorial */}
-              <button
-                type="button"
-                onClick={() => {
-                  const saved = loadTutorialProgress();
-                  setTutorialHasProgress(saved !== null);
-                  setTutorialSavedBeat(saved);
-                  setShowTutorialModal(true);
-                }}
-                className="w-full flex items-center gap-3 rounded-2xl border border-border/40 bg-card/40 px-5 py-3.5 text-left hover:border-border/70 hover:bg-card/60 transition-colors"
-              >
-                <div className="w-9 h-9 rounded-xl bg-primary/10 border border-primary/20 flex items-center justify-center shrink-0">
-                  <BookOpen className="h-4.5 w-4.5 text-primary" />
-                </div>
-                <div className="flex-1 min-w-0">
-                  <div className="font-semibold text-sm">
-                    {tutorialCompleted ? "Replay Tutorial" : tutorialSeen ? "Continue Tutorial" : "New? Try the Tutorial"}
-                  </div>
-                  <div className="text-xs text-muted-foreground mt-0.5">
-                    {tutorialCompleted
-                      ? "You've already completed the tutorial — jump straight in?"
-                      : tutorialSeen
-                        ? "Pick up where you left off with Lumii"
-                        : "Guide your civilization to legend: Harness, Forge, arrive, ascend"}
-                  </div>
-                </div>
-                <ArrowRight className="h-4 w-4 text-muted-foreground shrink-0" />
-              </button>
-
-              {/* Account CTA — guest vs signed-in */}
-              {account ? (
-                <div className="rounded-2xl border border-primary/30 bg-primary/10 p-4 flex items-center justify-between gap-3">
-                  <div className="min-w-0">
-                    <div className="text-[10px] font-semibold uppercase tracking-wider text-primary/70 mb-0.5">Signed in</div>
-                    <div className="font-bold text-sm truncate">{account.username}</div>
-                  </div>
-                  <div className="flex gap-2 shrink-0">
-                    <Button
-                      size="sm"
-                      variant="outline"
-                      className="h-9 rounded-xl gap-1.5 text-xs border-primary/30 hover:bg-primary/20"
-                      onClick={() => setLocation("/dashboard")}
-                    >
-                      <LayoutDashboard className="h-3.5 w-3.5" />
-                      Dashboard
-                    </Button>
-                    {confirmLogout ? (
-                      <div className="flex items-center gap-1">
-                        <Button
-                          size="sm"
-                          variant="destructive"
-                          className="h-9 rounded-xl gap-1.5 text-xs"
-                          onClick={handleLogout}
-                        >
-                          <LogOut className="h-3.5 w-3.5" />
-                          Sign out
-                        </Button>
-                        <Button
-                          size="sm"
-                          variant="ghost"
-                          className="h-9 w-9 rounded-xl p-0 text-muted-foreground"
-                          onClick={() => setConfirmLogout(false)}
-                          title="Cancel"
-                        >
-                          <X className="h-3.5 w-3.5" />
-                        </Button>
-                      </div>
-                    ) : (
-                      <Button
-                        size="sm"
-                        variant="ghost"
-                        className="h-9 rounded-xl gap-1.5 text-xs text-muted-foreground hover:text-foreground hover:bg-secondary"
-                        onClick={() => setConfirmLogout(true)}
-                        title="Sign out"
-                      >
-                        <LogOut className="h-3.5 w-3.5" />
-                        Sign out
-                      </Button>
-                    )}
-                  </div>
-                </div>
-              ) : (
-                <div className="rounded-2xl border border-border/50 bg-card/60 p-4 space-y-3">
-                  <div>
-                    <div className="text-xs font-semibold uppercase tracking-wider text-muted-foreground mb-1">
-                      Save progress & play with friends
-                    </div>
-                    <p className="text-xs text-muted-foreground">
-                      Create a free account to resume games across sessions, track active games, and challenge friends directly.
-                    </p>
-                  </div>
-                  <div className="flex gap-2">
-                    <Button
-                      variant="outline"
-                      className="flex-1 h-10 text-sm rounded-xl gap-1.5"
-                      onClick={() => setMode("auth")}
-                    >
-                      <LogIn className="h-3.5 w-3.5" />
-                      Sign In
-                    </Button>
-                    <Button
-                      className="flex-1 h-10 text-sm rounded-xl gap-1.5 bg-primary/80 hover:bg-primary"
-                      onClick={() => setMode("auth")}
-                    >
-                      <UserPlus className="h-3.5 w-3.5" />
-                      Create Account
-                    </Button>
-                  </div>
-                </div>
-              )}
-            </motion.div>
-          )}
-
-          {mode === "auth" && (
-            <motion.div
-              key="auth"
-              initial={{ opacity: 0, x: 40 }}
-              animate={{ opacity: 1, x: 0 }}
-              exit={{ opacity: 0, x: -40 }}
-              transition={{ duration: 0.22 }}
-              className="flex flex-col gap-5 max-w-sm mx-auto w-full"
-            >
-              <button
-                type="button"
-                onClick={() => setMode("home")}
-                className="text-sm text-muted-foreground flex items-center gap-1 hover:text-foreground transition-colors self-start"
-              >
-                ← Back
-              </button>
-              <h2 className="text-2xl font-serif font-bold">Account</h2>
-              <div className="rounded-2xl border border-border/50 bg-card/70 p-5">
-                <LoginRegisterForm onSuccess={() => setMode("home")} />
-              </div>
-            </motion.div>
-          )}
-
-          {mode === "create" && (
-            <motion.div
-              key="create"
-              initial={{ opacity: 0, x: 40 }}
-              animate={{ opacity: 1, x: 0 }}
-              exit={{ opacity: 0, x: -40 }}
-              transition={{ duration: 0.22 }}
-              className="flex flex-col gap-5 max-w-sm mx-auto w-full"
-            >
-              <button
-                type="button"
-                onClick={() => setMode("home")}
-                className="text-sm text-muted-foreground flex items-center gap-1 hover:text-foreground transition-colors self-start"
-              >
-                ← Back
-              </button>
-              <h2 className="text-2xl font-serif font-bold">New Game</h2>
-
-              {!account && (
-                <div className="space-y-1.5">
-                  <Label htmlFor="hostName" className="text-sm font-medium">Your name</Label>
-                  <Input
-                    id="hostName"
-                    value={hostName}
-                    onChange={(e) => setHostName(e.target.value)}
-                    placeholder="e.g. Stargazer"
-                    className="h-13 text-base bg-input/60 rounded-xl"
-                    onKeyDown={(e) => e.key === "Enter" && handleCreate()}
-                  />
-                </div>
-              )}
-
-              {account && (
-                <div className="rounded-xl border border-primary/30 bg-primary/10 px-4 py-3 text-sm">
-                  Playing as <span className="font-bold text-primary">{account.username}</span>
-                </div>
-              )}
-
-              <div className="space-y-1.5">
-                <Label className="text-sm font-medium">Players: {maxPlayers}</Label>
-                <div className="flex gap-2">
-                  {[2, 3, 4].map((n) => (
-                    <button
-                      key={n}
-                      type="button"
-                      onClick={() => setMaxPlayers(n)}
-                      className={`flex-1 h-12 rounded-xl font-bold text-base border transition-colors ${maxPlayers === n ? "bg-primary text-primary-foreground border-primary" : "bg-secondary/60 border-border text-muted-foreground"}`}
-                    >
-                      {n}
-                    </button>
-                  ))}
-                </div>
-              </div>
-
-              <div className="space-y-1.5">
-                <Label className="text-sm font-medium">Eminence target: {victoryRequirement}</Label>
-                <div className="flex gap-2">
-                  {([15, 20, 25] as const).map((target) => (
-                    <button
-                      key={target}
-                      type="button"
-                      onClick={() => setVictoryRequirement(target)}
-                      className={`flex-1 h-12 rounded-xl font-bold text-base border transition-colors ${victoryRequirement === target ? "bg-primary text-primary-foreground border-primary" : "bg-secondary/60 border-border text-muted-foreground"}`}
-                    >
-                      {target}
-                    </button>
-                  ))}
-                </div>
-              </div>
-
-              <div className="space-y-1.5">
-                <Label htmlFor="turnTimer" className="text-sm font-medium flex items-center gap-1.5">
-                  <Clock className="h-3.5 w-3.5" /> Turn timer
-                </Label>
-                <Select value={turnTimer} onValueChange={setTurnTimer}>
-                  <SelectTrigger id="turnTimer" className="h-13 text-base bg-input/60 rounded-xl">
-                    <SelectValue />
-                  </SelectTrigger>
-                  <SelectContent>
-                    <SelectItem value="0">No timer</SelectItem>
-                    <SelectItem value="30">30 seconds</SelectItem>
-                    <SelectItem value="60">60 seconds</SelectItem>
-                    <SelectItem value="90">90 seconds</SelectItem>
-                    <SelectItem value="120">2 minutes</SelectItem>
-                  </SelectContent>
-                </Select>
-              </div>
-
-              <Button
-                className="w-full h-14 text-lg font-bold rounded-2xl mt-2"
-                onClick={handleCreate}
-                disabled={(!account && !hostName.trim()) || createRoom.isPending}
-              >
-                {createRoom.isPending ? "Creating..." : "Create Room"}
-              </Button>
-            </motion.div>
-          )}
-
-          {mode === "join" && (
-            <motion.div
-              key="join"
-              initial={{ opacity: 0, x: 40 }}
-              animate={{ opacity: 1, x: 0 }}
-              exit={{ opacity: 0, x: -40 }}
-              transition={{ duration: 0.22 }}
-              className="flex flex-col gap-5 max-w-sm mx-auto w-full"
-            >
-              <button
-                type="button"
-                onClick={() => setMode("home")}
-                className="text-sm text-muted-foreground flex items-center gap-1 hover:text-foreground transition-colors self-start"
-              >
-                ← Back
-              </button>
-              <h2 className="text-2xl font-serif font-bold">Join Game</h2>
-
-              <div className="space-y-1.5">
-                <Label htmlFor="inviteCode" className="text-sm font-medium">Invite code</Label>
-                <Input
-                  id="inviteCode"
-                  value={inviteCode}
-                  onChange={(e) => setInviteCode(e.target.value.toUpperCase())}
-                  placeholder="8-character code"
-                  className="h-13 text-center text-xl font-mono tracking-[0.3em] bg-input/60 rounded-xl uppercase"
-                  maxLength={8}
-                />
-              </div>
-
-              {!account && (
-                <div className="space-y-1.5">
-                  <Label htmlFor="playerName" className="text-sm font-medium">Your name</Label>
-                  <Input
-                    id="playerName"
-                    value={playerName}
-                    onChange={(e) => setPlayerName(e.target.value)}
-                    placeholder="e.g. Void Walker"
-                    className="h-13 text-base bg-input/60 rounded-xl"
-                    onKeyDown={(e) => e.key === "Enter" && handleJoin()}
-                  />
-                </div>
-              )}
-
-              {account && (
-                <div className="rounded-xl border border-primary/30 bg-primary/10 px-4 py-3 text-sm">
-                  Joining as <span className="font-bold text-primary">{account.username}</span>
-                </div>
-              )}
-
-              <Button
-                className="w-full h-14 text-lg font-bold rounded-2xl bg-accent hover:bg-accent/90 text-accent-foreground mt-2"
-                onClick={handleJoin}
-                disabled={(!account && !playerName.trim()) || inviteCode.length < 8 || joinRoom.isPending}
-              >
-                {joinRoom.isPending ? "Joining..." : "Enter Game"}
-              </Button>
-            </motion.div>
-          )}
-        </AnimatePresence>
-      </div>
+          </motion.section>
+        </div>
+      </main>
 
       {showTutorialModal && (
         <TutorialStartModal
           hasProgress={tutorialHasProgress}
           savedBeat={tutorialSavedBeat ?? undefined}
           totalBeats={TUTORIAL_BEATS.length}
+          completed={tutorialCompleted}
           onChoice={handleTutorialChoice}
+          onSelectChapter={handleTutorialChapter}
         />
       )}
+      {showCinematic && <ThresholdCinematic onComplete={handleCinematicComplete} />}
 
-      {showCinematic && (
-        <ThresholdCinematic onComplete={handleCinematicComplete} />
-      )}
-
-      {import.meta.env.DEV && (
-        <div className="absolute bottom-3 right-3 z-50 flex flex-col items-end gap-1">
-          <button
-            type="button"
-            onClick={() => setLocation("/dev/anim-sandbox")}
-            className="text-[10px] font-mono tracking-wider text-muted-foreground/40 hover:text-muted-foreground/70 transition-colors px-2 py-1 rounded border border-transparent hover:border-border/30"
-          >
-            dev: anim sandbox
-          </button>
-          <button
-            type="button"
-            onClick={() => setLocation("/dev/card-browser")}
-            className="text-[10px] font-mono tracking-wider text-muted-foreground/40 hover:text-muted-foreground/70 transition-colors px-2 py-1 rounded border border-transparent hover:border-border/30"
-          >
-            dev: card browser
-          </button>
+      {import.meta.env.DEV && new URLSearchParams(window.location.search).get("dev") === "1" && (
+        <div className="absolute bottom-3 right-3 z-50 hidden flex-col items-end gap-1 md:flex">
+          <button type="button" onClick={() => setLocation("/dev/anim-sandbox")} className="rounded border border-transparent px-2 py-1 font-mono text-[10px] tracking-wider text-muted-foreground/35 hover:border-border/30 hover:text-muted-foreground/70">dev: anim sandbox</button>
+          <button type="button" onClick={() => setLocation("/dev/card-browser")} className="rounded border border-transparent px-2 py-1 font-mono text-[10px] tracking-wider text-muted-foreground/35 hover:border-border/30 hover:text-muted-foreground/70">dev: card browser</button>
         </div>
       )}
     </div>

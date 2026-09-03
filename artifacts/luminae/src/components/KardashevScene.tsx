@@ -5,6 +5,7 @@ import { getCivilizationName, getSecondaryAffinityColor } from '@/lib/kardashev'
 import { useIsMobile } from '@/hooks/use-mobile';
 import { useRuntimePerformanceState } from '@/lib/runtimePerformance';
 import { AFFINITY_META } from '@/lib/affinityMeta';
+import { useCosmetics } from '@/contexts/CosmeticsContext';
 import {
   EMPTY_CIVILIZATION_PROFILE,
   type CivilizationLandmark,
@@ -1113,7 +1114,7 @@ function drawCivilizationLandmarkStructure(
   drawLandmarkPlatform(ctx, size, sceneTier, hull, color, outline, lineWidth);
 
   switch (landmark.trait) {
-    case 'ignition': {
+    case 'energy': {
       if (orbital) {
         drawRadiatorPanel(ctx, -size * 0.94, -size * 0.16, size * 0.46, size * 0.36, color, lineWidth);
         drawRadiatorPanel(ctx, size * 0.48, -size * 0.16, size * 0.46, size * 0.36, color, lineWidth);
@@ -1151,7 +1152,7 @@ function drawCivilizationLandmarkStructure(
       }
       break;
     }
-    case 'biosphere': {
+    case 'ecology': {
       if (orbital) {
         ctx.strokeStyle = hardOutline;
         ctx.lineWidth = size * 0.14;
@@ -1199,7 +1200,7 @@ function drawCivilizationLandmarkStructure(
       }
       break;
     }
-    case 'chronology': {
+    case 'causality': {
       ctx.fillStyle = hull;
       ctx.strokeStyle = hardOutline;
       ctx.fillRect(-size * 0.16, -size * 0.52, size * 0.32, size * 0.96);
@@ -1276,7 +1277,7 @@ function drawCivilizationLandmarkStructure(
       );
       break;
     }
-    case 'archive': {
+    case 'memory': {
       const towerCount = 2 + complexity;
       for (let tower = 0; tower < towerCount; tower += 1) {
         const normalized = towerCount === 1 ? 0 : tower / (towerCount - 1);
@@ -1310,7 +1311,7 @@ function drawCivilizationLandmarkStructure(
       drawStructureLight(ctx, 0, -size * 0.68 * variant, size * 0.05, color, lightAlpha);
       break;
     }
-    case 'lattice': {
+    case 'infrastructure': {
       const towers = [
         { x: -0.55, height: 0.63 },
         { x: 0, height: 0.9 * variant },
@@ -1356,7 +1357,7 @@ function drawCivilizationLandmarkStructure(
       }
       break;
     }
-    case 'veil': {
+    case 'concealment': {
       ctx.fillStyle = 'rgba(3,5,9,0.46)';
       ctx.beginPath();
       ctx.moveTo(-size * 0.92, size * 0.38);
@@ -1429,7 +1430,7 @@ function drawCivilizationLandmarkStructure(
       }
       break;
     }
-    case 'replication': {
+    case 'fabrication': {
       ctx.strokeStyle = hardOutline;
       ctx.lineWidth = size * 0.12;
       ctx.beginPath();
@@ -1495,7 +1496,7 @@ function drawCivilizationLandmarkStructure(
       ctx.stroke();
       break;
     }
-    case 'entropy': {
+    case 'reclamation': {
       for (const x of [-0.66, -0.48, 0.48, 0.66]) {
         ctx.fillStyle = hull;
         ctx.strokeStyle = outline;
@@ -1518,7 +1519,7 @@ function drawCivilizationLandmarkStructure(
       drawStructureLight(ctx, 0, size * 0.02, size * 0.07, color, lightAlpha);
       break;
     }
-    case 'aperture': {
+    case 'boundary_science': {
       for (const side of [-1, 1]) {
         const x = side * size * 0.63;
         drawStructurePolygon(ctx, [
@@ -1583,7 +1584,7 @@ function drawCivilizationLandmarks(
   const points = landmarks.map((landmark, index) => (
     getCivilizationLandmarkPoint(landmark, tier, index, landmarks.length, w, h, t)
   ));
-  const connectedTraits: CivilizationTrait[] = ['transit', 'lattice', 'accord', 'archive'];
+  const connectedTraits: CivilizationTrait[] = ['transit', 'infrastructure', 'accord', 'memory'];
   const connectionWeight = connectedTraits.reduce(
     (sum, trait) => sum + profile.traitWeights[trait],
     0,
@@ -1789,10 +1790,10 @@ function KardashevCanvas({
     [palettePrimary, paletteSecondary, paletteAccent],
   );
   const civilizationSeed = profile.artifactCount > 0 ? profile.seed : 0;
-  const organicWeight = profile.traitCounts.biosphere + profile.traitCounts.replication;
+  const organicWeight = profile.traitCounts.ecology + profile.traitCounts.fabrication;
   const networkWeight = (
     profile.traitCounts.transit +
-    profile.traitCounts.lattice +
+    profile.traitCounts.infrastructure +
     profile.traitCounts.accord
   );
   const patchCount = Math.min(10, 6 + Math.floor(organicWeight / 2));
@@ -1986,6 +1987,8 @@ export function KardashevScene({
   maxDpr,
   allowMobileMotion = false,
 }: KardashevSceneProps) {
+  const voidRadianceEquipped = useCosmetics().equippedItemIds.civilization_ambience ===
+    'cosmetic.civilizationAmbience.voidRadianceObservatory.v1';
   const runtime = useRuntimePerformanceState();
   const runtimePaused = paused || !runtime.visible || (runtime.mobile && !allowMobileMotion);
   const civName = getCivilizationName(palette, tier);
@@ -2001,7 +2004,10 @@ export function KardashevScene({
 
   return (
     <SceneErrorBoundary>
-      <div className={className ?? "relative h-[220px] rounded-2xl overflow-hidden bg-black"}>
+      <div
+        className={className ?? "relative h-[220px] rounded-2xl overflow-hidden bg-black"}
+        data-cosmetic-ambience={voidRadianceEquipped ? "void-radiance-observatory" : undefined}
+      >
         <AnimatePresence mode="wait" initial={false}>
           <motion.div
             key={sceneKey}
@@ -2023,6 +2029,18 @@ export function KardashevScene({
             />
           </motion.div>
         </AnimatePresence>
+
+        {voidRadianceEquipped && (
+          <div className="civ-ambience-void-radiance" aria-hidden="true">
+            <span className="civ-ambience-aurora civ-ambience-aurora--left" />
+            <span className="civ-ambience-aurora civ-ambience-aurora--right" />
+            <span className="civ-ambience-observatory">
+              <span className="civ-ambience-observatory-core" />
+              <span className="civ-ambience-observatory-orbit civ-ambience-observatory-orbit--outer" />
+              <span className="civ-ambience-observatory-orbit civ-ambience-observatory-orbit--inner" />
+            </span>
+          </div>
+        )}
 
         {/* Civilization name — crossfades on tier or dominant affinity change */}
         <AnimatePresence initial={false}>

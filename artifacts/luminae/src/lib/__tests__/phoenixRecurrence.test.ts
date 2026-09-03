@@ -38,10 +38,11 @@ describe("Phoenix Paradox animation procedure", () => {
 
   it("keeps Forgotten Hour's victory rise on the branding step", () => {
     const state = {
+      ...minimalState,
       forgeTier1: ["t1-example"],
       forgeTier2: [],
       forgeTier3: [],
-    } as unknown as GameState;
+    };
 
     const summonSteps = resolveLuminaryProcedure("lum_compass", "summon", state, "p1");
     const summonResidue = summonSteps.find(step => step.type === "residue");

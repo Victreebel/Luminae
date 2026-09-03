@@ -13,7 +13,11 @@ import {
 import { getConnectedPlayerIds, sendToPlayer, filterStateForPlayer } from "./websocket";
 import { withRoomLock } from "./roomLock";
 import { logger } from "./logger";
-import { recordGameResult } from "./rematchManager";
+import { completeFinishedGame } from "./finishedGame";
+import { applyBalanceLabRoomRuleset } from "./balanceLabRooms";
+import { updateTurnDeadline } from "./turnDeadline";
+
+export { updateTurnDeadline } from "./turnDeadline";
 
 const timers = new Map<string, NodeJS.Timeout>();
 
@@ -62,6 +66,7 @@ async function expireTurn(roomId: string, expectedVersion: number): Promise<void
       if (!gs) return;
 
       const state = normalizeState(gs.state);
+      applyBalanceLabRoomRuleset(roomId, state);
       // Bail if state moved on (someone already acted)
       if (state.version !== expectedVersion) return;
       if (state.phase === "finished") return;
@@ -71,7 +76,9 @@ async function expireTurn(roomId: string, expectedVersion: number): Promise<void
       if (
         !!state.pendingTurnTransition ||
         (state.pendingSummonEvents?.length ?? 0) > 0 ||
-        (state.pendingLuminaryActivationEvents?.length ?? 0) > 0
+        (state.pendingLuminaryActivationEvents?.length ?? 0) > 0 ||
+        (state.pendingBlueprintManifestationEvents?.length ?? 0) > 0 ||
+        (state.pendingBlueprintDetonationEvents?.length ?? 0) > 0
       ) {
         return;
       }
@@ -89,19 +96,7 @@ async function expireTurn(roomId: string, expectedVersion: number): Promise<void
       updateTurnDeadline(state);
 
       const isFinished = (state.phase as string) === "finished";
-      if (isFinished) {
-        await db
-          .update(roomsTable)
-          .set({ status: "finished", updatedAt: new Date() })
-          .where(eq(roomsTable.id, roomId));
-        recordGameResult(
-          roomId,
-          state.players.map((p: { playerId: string; playerName: string }) => ({ id: p.playerId, name: p.playerName })),
-          (state as { winnerId?: string | null }).winnerId ?? null,
-        );
-      }
-
-      await db
+      const updated = await db
         .update(gameStatesTable)
         .set({
           state: state as unknown as Record<string, unknown>,
@@ -113,7 +108,10 @@ async function expireTurn(roomId: string, expectedVersion: number): Promise<void
             eq(gameStatesTable.roomId, roomId),
             eq(gameStatesTable.version, expectedVersion),
           ),
-        );
+        )
+        .returning({ roomId: gameStatesTable.roomId });
+      if (updated.length === 0) return;
+      if (isFinished) await completeFinishedGame(roomId, state);
 
       const connectedIds = getConnectedPlayerIds(roomId);
       const allPlayers = await db
@@ -136,6 +134,7 @@ async function expireTurn(roomId: string, expectedVersion: number): Promise<void
         connectedIds,
         avatarMap,
         aiMap,
+        room.scenarioId,
       );
       for (const p of allPlayers) {
         if (p.isAi) continue;
@@ -149,34 +148,5 @@ async function expireTurn(roomId: string, expectedVersion: number): Promise<void
     });
   } catch (err) {
     logger.error({ err, roomId }, "Error in turn-expiry handler");
-  }
-}
-
-/**
- * Mutates state.turnDeadline based on the room's configured timer. Call
- * AFTER applyAction succeeds to set the deadline for the *next* player's turn.
- *
- * When Luminary arrival or activation cutscenes are pending, the turn timer is
- * paused so the cinematic can finish before the next player is forced to act.
- * The timer resumes once the last pending event is resolved.
- */
-export function updateTurnDeadline(state: GameStateData): void {
-  if (state.phase === "finished") {
-    state.turnDeadline = null;
-    return;
-  }
-  // Pause the timer until the durable transition releases the incoming turn.
-  if (
-    !!state.pendingTurnTransition ||
-    (state.pendingSummonEvents?.length ?? 0) > 0 ||
-    (state.pendingLuminaryActivationEvents?.length ?? 0) > 0
-  ) {
-    state.turnDeadline = null;
-    return;
-  }
-  if (state.turnTimerSeconds && state.turnTimerSeconds > 0) {
-    state.turnDeadline = Date.now() + state.turnTimerSeconds * 1000;
-  } else {
-    state.turnDeadline = null;
   }
 }

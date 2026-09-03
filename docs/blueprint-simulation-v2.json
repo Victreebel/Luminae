@@ -1,0 +1,84 @@
+{
+  "schema": "luminae-blueprint-simulation/v2",
+  "generatedAt": "2026-08-15T19:12:03.331Z",
+  "seed": 7142031,
+  "gamesRequested": 1000,
+  "gamesCompleted": 1000,
+  "completionRate": 100,
+  "stalledGames": 0,
+  "stallReasons": {},
+  "averageTurns": 96.61,
+  "seatWinRates": [
+    24,
+    25.8,
+    27.4,
+    22.8
+  ],
+  "seatBiasPoints": 4.6,
+  "matchesWithManifestation": 290,
+  "matchManifestationRate": 29,
+  "secrecyFailures": 0,
+  "blueprints": {
+    "bp_antimatter_detonator": {
+      "assignedSeats": 1999,
+      "manifestations": 28,
+      "wins": 526,
+      "spentFinishes": 20,
+      "detonations": 18,
+      "interceptions": 2,
+      "name": "Antimatter Detonator",
+      "manifestationRate": 1.4,
+      "winRate": 26.31,
+      "winRateDeltaPoints": 1.31,
+      "detonationRate": 64.29
+    },
+    "bp_mantle_to_orbit_foundry": {
+      "assignedSeats": 2001,
+      "manifestations": 116,
+      "wins": 488,
+      "spentFinishes": 0,
+      "detonations": 0,
+      "interceptions": 0,
+      "name": "Mantle-to-Orbit Foundry",
+      "manifestationRate": 5.8,
+      "winRate": 24.39,
+      "winRateDeltaPoints": -0.61,
+      "detonationRate": null
+    },
+    "bp_ascension_registry": {
+      "assignedSeats": 2000,
+      "manifestations": 110,
+      "wins": 494,
+      "spentFinishes": 42,
+      "detonations": 0,
+      "interceptions": 0,
+      "name": "Ascension Registry",
+      "manifestationRate": 5.5,
+      "winRate": 24.7,
+      "winRateDeltaPoints": -0.3,
+      "detonationRate": null
+    },
+    "bp_worldshield_covenant": {
+      "assignedSeats": 2000,
+      "manifestations": 88,
+      "wins": 492,
+      "spentFinishes": 2,
+      "detonations": 0,
+      "interceptions": 0,
+      "name": "Worldshield Covenant",
+      "manifestationRate": 4.4,
+      "winRate": 24.6,
+      "winRateDeltaPoints": -0.4,
+      "detonationRate": null
+    }
+  },
+  "gates": {
+    "simulationCount": true,
+    "stability": true,
+    "matchManifestationWindow": false,
+    "winRateDelta": true,
+    "secrecy": "verified-by-tests",
+    "humanPlaytests": "pending",
+    "competitiveEnabled": false
+  }
+}

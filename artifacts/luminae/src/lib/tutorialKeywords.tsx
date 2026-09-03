@@ -41,8 +41,8 @@ const KEYWORDS: KeywordDef[] = [
   // ── Singularity ─────────────────────────────────────────────────────────
   {
     pattern: /\bSingularity\b/g,
-    color: "#FFC43D",       // singularity-yellow (matches --color-affinity-singularity)
-    glowColor: "#FFC43D",
+    color: "#E8E4FF",       // Architect convergence (matches --color-affinity-singularity)
+    glowColor: "#C8C0FF",
   },
 
   // ── Luminaries / Luminary ───────────────────────────────────────────────

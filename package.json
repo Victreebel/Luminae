@@ -22,6 +22,13 @@
     "typecheck": "pnpm run normalize:affinities && pnpm run lint:terminology && pnpm run lint:version-stamps && pnpm run lint:summon-colors && pnpm run lint:luminary-files && pnpm run typecheck:libs && pnpm -r --filter \"./artifacts/**\" --filter \"./scripts\" --if-present run typecheck"
   },
   "private": true,
+  "pnpm": {
+    "overrides": {
+      "body-parser": "^2.3.0",
+      "path-to-regexp": "^8.4.0",
+      "qs": "^6.15.2"
+    }
+  },
   "build": {
     "appId": "com.luminae.local",
     "productName": "Luminae",

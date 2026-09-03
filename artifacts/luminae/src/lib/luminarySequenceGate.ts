@@ -6,6 +6,10 @@ export interface LuminaryActivationLike {
   effectType: LuminaryActivationEffectType;
 }
 
+export interface DeferredBrandStrikeLike {
+  srcMeta: { lumId: string } | null;
+}
+
 export interface DelayedLuminaryResultLike {
   luminaryId: string;
   activationEventId?: string;
@@ -30,6 +34,35 @@ export interface LuminaryActivationResolutionSnapshot {
   seedBoardEffectActive: boolean;
   brandStrikeCount: number;
   animationLockUntil: number;
+}
+
+export function reconcileDeferredLuminaryActivations<T extends LuminaryActivationLike>(
+  deferred: readonly T[],
+  authoritative: readonly T[],
+  alreadyQueuedEventIds: ReadonlySet<string> = new Set(),
+): T[] {
+  const reconciled = new Map<string, T>();
+  for (const event of [...deferred, ...authoritative]) {
+    if (!alreadyQueuedEventIds.has(event.eventId)) {
+      reconciled.set(event.eventId, event);
+    }
+  }
+  return [...reconciled.values()];
+}
+
+export function partitionDeferredBrandStrikesByActivation<
+  TStrike extends DeferredBrandStrikeLike,
+  TActivation extends LuminaryActivationLike,
+>(strikes: readonly TStrike[], activations: readonly TActivation[]) {
+  const activationLuminaryIds = new Set(activations.map(event => event.luminaryId));
+  return {
+    owned: strikes.filter(strike => (
+      strike.srcMeta && activationLuminaryIds.has(strike.srcMeta.lumId)
+    )),
+    unowned: strikes.filter(strike => (
+      !strike.srcMeta || !activationLuminaryIds.has(strike.srcMeta.lumId)
+    )),
+  };
 }
 
 export interface LuminaryCameraLeaseSnapshot {

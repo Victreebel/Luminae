@@ -72,6 +72,7 @@ export function ChallengeInbox({ onWebSocketChallenge: _ws }: Props) {
           sessionToken: accepted.sessionToken,
           playerName: account?.username ?? "Player",
           isHost: false,
+          avatarId: accepted.player.avatarId ?? undefined,
         });
         toast({ title: "Challenge accepted!", description: `Joining room ${accepted.room.inviteCode}` });
         setIsOpen(false);
@@ -100,6 +101,8 @@ export function ChallengeInbox({ onWebSocketChallenge: _ws }: Props) {
         onClick={() => setIsOpen((v) => !v)}
         className="relative p-2 rounded-xl hover:bg-secondary transition-colors"
         aria-label="Challenge inbox"
+        aria-haspopup="dialog"
+        aria-expanded={isOpen}
       >
         <Swords className="h-5 w-5 text-muted-foreground" />
         {count > 0 && (
@@ -122,6 +125,7 @@ export function ChallengeInbox({ onWebSocketChallenge: _ws }: Props) {
                 exit={{ opacity: 0 }}
                 className="fixed inset-0 z-[9998]"
                 onClick={() => setIsOpen(false)}
+                data-oom-sound="close"
               />
 
               {/* Panel */}
@@ -145,6 +149,7 @@ export function ChallengeInbox({ onWebSocketChallenge: _ws }: Props) {
                     type="button"
                     onClick={() => setIsOpen(false)}
                     className="p-1 rounded-lg hover:bg-secondary transition-colors"
+                    aria-label="Close challenges"
                   >
                     <X className="h-4 w-4" />
                   </button>
@@ -184,6 +189,7 @@ export function ChallengeInbox({ onWebSocketChallenge: _ws }: Props) {
                             <Button
                               size="sm"
                               className="flex-1 h-8 text-xs rounded-lg gap-1"
+                              data-oom-sound="primary"
                               onClick={() => handleRespond(c, "accept")}
                               disabled={!!respondingId}
                             >

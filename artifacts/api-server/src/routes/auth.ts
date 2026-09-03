@@ -1,26 +1,73 @@
 import { Router, type IRouter } from "express";
-import { eq, and, inArray, isNull, count, desc } from "drizzle-orm";
+import { eq, and, inArray, isNull } from "drizzle-orm";
 import { db } from "@workspace/db";
 import {
   accountsTable,
   accountSessionsTable,
+  accountBlueprintClearanceTable,
   playersTable,
   roomsTable,
-  gameStatesTable,
 } from "@workspace/db";
 import bcrypt from "bcryptjs";
-import { randomBytes } from "crypto";
 import { z } from "zod";
 import { accountAuth } from "../lib/accountAuth";
+import { buildAccountArchiveFromPersistedStats } from "../lib/accountArchive";
+import { ensureAccountProgressBackfilled, readAccountProgress } from "../lib/accountProgress";
+import { getEquippedCosmeticItems } from "../lib/accountCosmetics";
+import {
+  isLumiiThresholdDialoguePathPrefix,
+  normalizeLumiiThresholdDialoguePath,
+  normalizeLumiiThresholdDialogueResolution,
+} from "../lib/blueprintClearance";
+import {
+  ARTIFACT_IDS,
+  BLUEPRINT_CLEARANCE_REQUIRED_WINS,
+  BLUEPRINT_DEFINITIONS,
+  BLUEPRINT_IDS,
+  LUMINARY_IDS,
+  NATURAL_AFFINITY_KEYS,
+  TECHNOLOGY_LINEAGES,
+  type CivilizationIdentitySelection,
+  type CivilizationIdentitySummary,
+} from "@workspace/game-types";
+import {
+  readAccountCivilizationIdentity,
+  validateCivilizationIdentitySelection,
+  writeAccountCivilizationIdentity,
+} from "../lib/accountIdentity";
 import type { Request } from "express";
+import {
+  generateAccountSessionToken,
+  hashAccountSessionToken,
+} from "../lib/accountSessionTokens";
 
 const router: IRouter = Router();
 
 const SALT_ROUNDS = 10;
 const SESSION_DAYS = 30;
+const INVALID_PASSWORD_HASH = bcrypt.hashSync("luminae-invalid-account", SALT_ROUNDS);
 
-function generateToken(): string {
-  return randomBytes(32).toString("hex");
+type AccountClearanceRow = typeof accountBlueprintClearanceTable.$inferSelect | undefined;
+
+function hasVaultThresholdAccess(clearance: AccountClearanceRow): boolean {
+  return Boolean(clearance) && (
+    clearance!.qualifyingWins >= BLUEPRINT_CLEARANCE_REQUIRED_WINS ||
+    clearance!.decryptionKeyBypassActiveAt != null
+  );
+}
+
+function publicClearanceStatus(clearance: AccountClearanceRow) {
+  if (clearance?.status === "cleared" || clearance?.status === "challenge_active") return clearance.status;
+  if (hasVaultThresholdAccess(clearance)) return "challenge_ready";
+  return "classified" as const;
+}
+
+function publicCipherDeactivated(clearance: AccountClearanceRow): boolean {
+  return Boolean(clearance?.cipherDeactivatedAt && clearance.qualifyingWins >= BLUEPRINT_CLEARANCE_REQUIRED_WINS);
+}
+
+function publicCovenantBroken(clearance: AccountClearanceRow): boolean {
+  return Boolean(clearance?.covenantBrokenAt && hasVaultThresholdAccess(clearance));
 }
 
 function sessionExpiry(): Date {
@@ -30,15 +77,33 @@ function sessionExpiry(): Date {
 }
 
 const RegisterBody = z.object({
-  username: z.string().min(2).max(32).regex(/^[a-zA-Z0-9_-]+$/, "Username can only contain letters, numbers, underscores, and hyphens"),
-  password: z.string().min(6),
-  email: z.string().email().optional(),
-});
+  username: z.string().trim().min(2).max(32).regex(/^[a-zA-Z0-9_-]+$/, "Username can only contain letters, numbers, underscores, and hyphens"),
+  password: z.string().min(10).max(128),
+  email: z.string().trim().toLowerCase().email().optional(),
+}).strict();
 
 const LoginBody = z.object({
-  username: z.string(),
-  password: z.string(),
-});
+  username: z.string().trim().min(1).max(32),
+  password: z.string().min(1).max(128),
+}).strict();
+
+const CivilizationIdentityBody = z.object({
+  lineage: z.enum(TECHNOLOGY_LINEAGES).nullable(),
+  affinity: z.enum(NATURAL_AFFINITY_KEYS).nullable(),
+  signatureArtifactId: z.string()
+    .refine((value) => ARTIFACT_IDS.includes(value as typeof ARTIFACT_IDS[number]), "Unknown Artifact")
+    .nullable(),
+  signatureLuminaryId: z.enum(LUMINARY_IDS).nullable(),
+  signatureBlueprintId: z.enum(BLUEPRINT_IDS).nullable(),
+}).strict();
+
+function asIdentitySnapshot(value: unknown): CivilizationIdentitySummary | null {
+  if (!value || typeof value !== "object") return null;
+  const candidate = value as Partial<CivilizationIdentitySummary>;
+  return typeof candidate.scaleType === "number" && typeof candidate.scaleLabel === "string"
+    ? candidate as CivilizationIdentitySummary
+    : null;
+}
 
 // POST /api/auth/register
 router.post("/auth/register", async (req, res): Promise<void> => {
@@ -75,23 +140,39 @@ router.post("/auth/register", async (req, res): Promise<void> => {
 
   const passwordHash = await bcrypt.hash(password, SALT_ROUNDS);
 
-  const [account] = await db
-    .insert(accountsTable)
-    .values({ username, email: email ?? null, passwordHash })
-    .returning();
+  const token = generateAccountSessionToken();
+  const expiresAt = sessionExpiry();
+  let account: typeof accountsTable.$inferSelect;
 
-  const token = generateToken();
-  const [session] = await db
-    .insert(accountSessionsTable)
-    .values({ accountId: account.id, token, expiresAt: sessionExpiry() })
-    .returning();
+  try {
+    account = await db.transaction(async (tx) => {
+      const [createdAccount] = await tx
+        .insert(accountsTable)
+        .values({ username, email: email ?? null, passwordHash })
+        .returning();
+      await tx
+        .insert(accountSessionsTable)
+        .values({
+          accountId: createdAccount.id,
+          token: hashAccountSessionToken(token),
+          expiresAt,
+        });
+      return createdAccount;
+    });
+  } catch (error) {
+    if (typeof error === "object" && error !== null && "code" in error && error.code === "23505") {
+      res.status(409).json({ error: "Username or email already in use" });
+      return;
+    }
+    throw error;
+  }
 
   req.log.info({ accountId: account.id }, "Account registered");
 
   res.status(201).json({
     account: { id: account.id, username: account.username, email: account.email },
-    token: session.token,
-    expiresAt: session.expiresAt,
+    token,
+    expiresAt,
   });
 });
 
@@ -111,29 +192,28 @@ router.post("/auth/login", async (req, res): Promise<void> => {
     .where(eq(accountsTable.username, username))
     .limit(1);
 
-  if (!account) {
+  const valid = await bcrypt.compare(password, account?.passwordHash ?? INVALID_PASSWORD_HASH);
+  if (!account || !valid) {
     res.status(401).json({ error: "Invalid username or password" });
     return;
   }
 
-  const valid = await bcrypt.compare(password, account.passwordHash);
-  if (!valid) {
-    res.status(401).json({ error: "Invalid username or password" });
-    return;
-  }
-
-  const token = generateToken();
-  const [session] = await db
+  const token = generateAccountSessionToken();
+  const expiresAt = sessionExpiry();
+  await db
     .insert(accountSessionsTable)
-    .values({ accountId: account.id, token, expiresAt: sessionExpiry() })
-    .returning();
+    .values({
+      accountId: account.id,
+      token: hashAccountSessionToken(token),
+      expiresAt,
+    });
 
   req.log.info({ accountId: account.id }, "Account logged in");
 
   res.json({
     account: { id: account.id, username: account.username, email: account.email },
-    token: session.token,
-    expiresAt: session.expiresAt,
+    token,
+    expiresAt,
   });
 });
 
@@ -151,16 +231,41 @@ router.post("/auth/logout", accountAuth, async (req: Request, res): Promise<void
 router.get("/auth/me", accountAuth, async (req: Request, res): Promise<void> => {
   const account = req.account!;
 
-  const playerRows = await db
-    .select({ player: playersTable, room: roomsTable })
-    .from(playersTable)
-    .innerJoin(roomsTable, eq(playersTable.roomId, roomsTable.id))
-    .where(
-      and(
-        eq(playersTable.accountId, account.id),
-        eq(playersTable.isAi, false),
+  await ensureAccountProgressBackfilled(account.id);
+
+  const [playerRows, clearanceRows, cosmeticLoadout, civilizationIdentity] = await Promise.all([
+    db
+      .select({ player: playersTable, room: roomsTable })
+      .from(playersTable)
+      .innerJoin(roomsTable, eq(playersTable.roomId, roomsTable.id))
+      .where(
+        and(
+          eq(playersTable.accountId, account.id),
+          eq(playersTable.isAi, false),
+        ),
       ),
-    );
+    db
+      .select()
+      .from(accountBlueprintClearanceTable)
+      .where(eq(accountBlueprintClearanceTable.accountId, account.id))
+      .limit(1),
+    getEquippedCosmeticItems(account.id),
+    readAccountCivilizationIdentity(account.id),
+  ]);
+  const clearance = clearanceRows[0];
+  const thresholdApproach = clearance?.thresholdApproach === "kinship" ||
+    clearance?.thresholdApproach === "inquiry" ||
+    clearance?.thresholdApproach === "dominion"
+    ? clearance.thresholdApproach
+    : null;
+  const storedDialoguePath = normalizeLumiiThresholdDialoguePath(clearance?.thresholdDialoguePath);
+  const thresholdDialoguePath = thresholdApproach && isLumiiThresholdDialoguePathPrefix(
+    thresholdApproach,
+    storedDialoguePath,
+  ) ? storedDialoguePath : [];
+  const visibleCosmeticLoadout = clearance?.status === "cleared"
+    ? cosmeticLoadout
+    : cosmeticLoadout.filter((item) => item.slot !== "blueprint_presentation");
 
   const activeRooms = playerRows
     .filter((r) => r.room.status !== "finished")
@@ -171,6 +276,8 @@ router.get("/auth/me", accountAuth, async (req: Request, res): Promise<void> => 
       sessionToken: r.player.sessionToken,
       playerId: r.player.id,
       isHost: r.player.isHost,
+      gameMode: r.room.gameMode,
+      scenarioId: r.room.scenarioId,
     }));
 
   res.json({
@@ -178,6 +285,23 @@ router.get("/auth/me", accountAuth, async (req: Request, res): Promise<void> => 
     username: account.username,
     email: account.email,
     createdAt: account.createdAt,
+    clearance: {
+      qualifyingWins: Math.min(clearance?.qualifyingWins ?? 0, BLUEPRINT_CLEARANCE_REQUIRED_WINS),
+      requiredWins: BLUEPRINT_CLEARANCE_REQUIRED_WINS,
+      status: publicClearanceStatus(clearance),
+      challengeRoomId: clearance?.challengeRoomId ?? null,
+      cipherDeactivated: publicCipherDeactivated(clearance),
+      thresholdApproach,
+      thresholdDialoguePath,
+      thresholdDialogueResolution: thresholdApproach
+        ? normalizeLumiiThresholdDialogueResolution(clearance?.thresholdDialogueResolution)
+        : null,
+      covenantBroken: publicCovenantBroken(clearance),
+      decryptionKeyBypassActive: clearance?.decryptionKeyBypassActiveAt != null,
+      revealPending: clearance?.status === "cleared" && clearance.completedAt != null && clearance.vaultRevealSeenAt == null,
+    },
+    cosmeticLoadout: visibleCosmeticLoadout,
+    civilizationIdentity,
     activeRooms,
   });
 });
@@ -254,121 +378,90 @@ router.get("/auth/me/games", accountAuth, async (req: Request, res): Promise<voi
 // GET /api/auth/me/stats — lifetime stats and recent game history for this account
 router.get("/auth/me/stats", accountAuth, async (req: Request, res): Promise<void> => {
   const account = req.account!;
-
-  // Find all finished rooms where this account had a human player
-  const finishedRows = await db
-    .select({
-      player: playersTable,
-      room: roomsTable,
-    })
-    .from(playersTable)
-    .innerJoin(roomsTable, eq(playersTable.roomId, roomsTable.id))
-    .where(
-      and(
-        eq(playersTable.accountId, account.id),
-        eq(playersTable.isAi, false),
-        eq(roomsTable.status, "finished"),
-      ),
-    )
-    .orderBy(desc(roomsTable.updatedAt));
-
-  if (finishedRows.length === 0) {
-    res.json({
-      gamesPlayed: 0,
-      wins: 0,
-      losses: 0,
-      ties: 0,
-      avgEminence: 0,
-      recentGames: [],
-    });
-    return;
-  }
-
-  const roomIds = finishedRows.map((r) => r.room.id);
-
-  // Load game states and human player counts for all finished rooms in parallel
-  const [gameStateRows, humanPlayerCounts] = await Promise.all([
-    db
-      .select()
-      .from(gameStatesTable)
-      .where(inArray(gameStatesTable.roomId, roomIds)),
-    db
-      .select({ roomId: playersTable.roomId, count: count() })
-      .from(playersTable)
-      .where(
-        and(
-          inArray(playersTable.roomId, roomIds),
-          eq(playersTable.isAi, false),
-        ),
-      )
-      .groupBy(playersTable.roomId),
-  ]);
-
-  const gameStateByRoomId = new Map(gameStateRows.map((gs) => [gs.roomId, gs.state as Record<string, unknown>]));
-  const humanCountByRoomId = new Map(humanPlayerCounts.map((r) => [r.roomId, Number(r.count)]));
-
-  // Tally stats
-  let wins = 0;
-  let losses = 0;
-  let ties = 0;
-  let totalEminence = 0;
-
-  interface GameHistoryEntry {
-    roomId: string;
-    inviteCode: string;
-    finishedAt: string;
-    result: "win" | "loss" | "tie";
-    eminenceEarned: number;
-    totalPlayers: number;
-  }
-
-  const recentGames: GameHistoryEntry[] = [];
-
-  for (const row of finishedRows) {
-    const state = gameStateByRoomId.get(row.room.id);
-    if (!state) continue;
-
-    const winnerId = state.winnerId as string | null;
-    const players = (state.players as Array<{ playerId: string; eminence: number }>) ?? [];
-
-    const playerData = players.find((p) => p.playerId === row.player.id);
-    const eminenceEarned = playerData?.eminence ?? 0;
-
-    let result: "win" | "loss" | "tie";
-    if (winnerId === null) {
-      result = "tie";
-      ties++;
-    } else if (winnerId === row.player.id) {
-      result = "win";
-      wins++;
-    } else {
-      result = "loss";
-      losses++;
-    }
-
-    totalEminence += eminenceEarned;
-
-    recentGames.push({
-      roomId: row.room.id,
-      inviteCode: row.room.inviteCode,
-      finishedAt: row.room.updatedAt.toISOString(),
-      result,
-      eminenceEarned,
-      totalPlayers: humanCountByRoomId.get(row.room.id) ?? players.length,
-    });
-  }
-
-  const gamesPlayed = wins + losses + ties;
-  const avgEminence = gamesPlayed > 0 ? totalEminence / gamesPlayed : 0;
+  const progress = await readAccountProgress(account.id);
+  const roomIds = [...new Set(progress.matchHistory.map((match) => match.roomId))];
+  const rooms = roomIds.length > 0
+    ? await db.select({ id: roomsTable.id, inviteCode: roomsTable.inviteCode })
+      .from(roomsTable)
+      .where(inArray(roomsTable.id, roomIds))
+    : [];
+  const inviteCodes = new Map(rooms.map((room) => [room.id, room.inviteCode]));
+  const archive = buildAccountArchiveFromPersistedStats({
+    artifacts: progress.artifactStats,
+    luminaries: progress.luminaryStats,
+    blueprints: progress.blueprintStats.map((entry) => ({
+      blueprintId: entry.blueprintId as typeof BLUEPRINT_IDS[number],
+      manifestationCount: entry.manifestations,
+    })),
+    qualifyingWins: progress.clearance?.qualifyingWins ?? 0,
+    clearanceStatus: publicClearanceStatus(progress.clearance),
+    challengeRoomId: progress.clearance?.challengeRoomId ?? null,
+    identitySelection: progress.identitySelection,
+    highestKardashevType: (progress.summary?.highestKardashevType ?? 0) as 0 | 1 | 2 | 3,
+    revealedProjectNames: progress.blueprintStats
+      .filter((entry) => entry.manifestations > 0 && entry.blueprintId in BLUEPRINT_DEFINITIONS)
+      .map((entry) => BLUEPRINT_DEFINITIONS[entry.blueprintId as typeof BLUEPRINT_IDS[number]].name),
+  });
+  const summary = progress.summary;
+  const gamesPlayed = summary?.gamesPlayed ?? 0;
+  const recentGames = progress.matchHistory.map((match) => ({
+    roomId: match.roomId,
+    inviteCode: inviteCodes.get(match.roomId) ?? "ARCHIVED",
+    finishedAt: match.finishedAt.toISOString(),
+    result: match.result as "win" | "loss" | "tie",
+    eminenceEarned: match.eminence,
+    totalPlayers: match.totalPlayers,
+    civilizationIdentity: asIdentitySnapshot(match.civilizationIdentitySnapshot),
+  }));
+  const avgEminence = gamesPlayed > 0
+    ? (summary?.totalEminence ?? 0) / gamesPlayed
+    : 0;
 
   res.json({
     gamesPlayed,
-    wins,
-    losses,
-    ties,
+    wins: summary?.wins ?? 0,
+    losses: summary?.losses ?? 0,
+    ties: summary?.ties ?? 0,
     avgEminence: Math.round(avgEminence * 10) / 10,
     recentGames: recentGames.slice(0, 20),
+    matchHistory: recentGames,
+    archive,
   });
+});
+
+// PUT /api/auth/me/civilization-identity — confirm an earned public identity.
+router.put("/auth/me/civilization-identity", accountAuth, async (req: Request, res): Promise<void> => {
+  const parsed = CivilizationIdentityBody.safeParse(req.body);
+  if (!parsed.success) {
+    res.status(400).json({ error: parsed.error.issues[0]?.message ?? "Invalid identity" });
+    return;
+  }
+
+  const account = req.account!;
+  const progress = await readAccountProgress(account.id);
+  const archive = buildAccountArchiveFromPersistedStats({
+    artifacts: progress.artifactStats,
+    luminaries: progress.luminaryStats,
+    blueprints: progress.blueprintStats.map((entry) => ({
+      blueprintId: entry.blueprintId as typeof BLUEPRINT_IDS[number],
+      manifestationCount: entry.manifestations,
+    })),
+    qualifyingWins: progress.clearance?.qualifyingWins ?? 0,
+    clearanceStatus: publicClearanceStatus(progress.clearance),
+    challengeRoomId: progress.clearance?.challengeRoomId ?? null,
+    identitySelection: progress.identitySelection,
+    highestKardashevType: (progress.summary?.highestKardashevType ?? 0) as 0 | 1 | 2 | 3,
+  });
+  const selection = parsed.data as CivilizationIdentitySelection;
+  const validationError = validateCivilizationIdentitySelection(selection, archive.identity.options);
+  if (validationError) {
+    res.status(403).json({ error: validationError });
+    return;
+  }
+
+  await writeAccountCivilizationIdentity(account.id, selection);
+  const civilizationIdentity = await readAccountCivilizationIdentity(account.id);
+  res.json({ ok: true, civilizationIdentity });
 });
 
 // GET /api/auth/me/preferences
@@ -386,15 +479,24 @@ router.get("/auth/me/preferences", accountAuth, async (req: Request, res): Promi
 });
 
 // PATCH /api/auth/me/preferences
+const HINT_KEYS = [
+  "luminae_swipe_hint_seen",
+  "luminae_undo_hint_seen",
+  "luminae_reserve_hint_seen",
+  "luminae_deck_reserve_hint_seen",
+  "luminae_forge_hint_seen",
+] as const;
 const PreferencesBody = z.object({
   skipCinematics: z.boolean().optional(),
   abridgedAnims: z.boolean().optional(),
   hintsEnabled: z.boolean().optional(),
   muted: z.boolean().optional(),
-  hintsSeen: z.array(z.string()).optional(),
+  hintsSeen: z.array(z.enum(HINT_KEYS)).max(HINT_KEYS.length)
+    .transform((keys) => [...new Set(keys)])
+    .optional(),
   tutorialSeen: z.boolean().optional(),
   tutorialCompleted: z.boolean().optional(),
-});
+}).strict();
 
 router.patch("/auth/me/preferences", accountAuth, async (req: Request, res): Promise<void> => {
   const parsed = PreferencesBody.safeParse(req.body);

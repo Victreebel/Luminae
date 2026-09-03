@@ -102,26 +102,25 @@ function resolveMoth(targetCardIds?: string[]): AnimationTimelineStep[] {
 }
 
 // 2. Tide Architect / The Observer Effect (lum_tide)
-//    luminaryPulse → deckScry Tier II/III (Continuum bias shimmers first) → forgeRefill (Forge refresh)
+//    luminaryPulse → all three Archive tops become visible to the ally.
 function resolveTide(): AnimationTimelineStep[] {
   return [
     pulse('lum_tide'),
-    { type: 'deckScry', tierIds: ['tier2', 'tier3'], affinityBias: 'continuum' },
-    { type: 'forgeRefill', slotIds: [] },
+    { type: 'deckScry', tierIds: ['tier1', 'tier2', 'tier3'], affinityBias: 'continuum' },
   ];
 }
 
 // 3. Verdant Oracle / Early Bloom (lum_verdant)
-//    luminaryPulse only — TargetBadge fallback ("BOON · AFFINITIES · LINGERING")
-//    is clearer for a living-affinity bonus than a bare ⬡ CLAIM [playerId] pill.
-function resolveVerdant(_s: GameState, _ownerId: string): AnimationTimelineStep[] {
+//    luminaryPulse → one Verdance token moves from the Well to the owner.
+function resolveVerdant(_s: GameState, ownerId: string): AnimationTimelineStep[] {
   return [
     pulse('lum_verdant'),
+    { type: 'affinityGain', playerIds: [ownerId], affinityType: 'verdance', amount: 1 },
   ];
 }
 
 // 4. Void Warden / Oblivion (lum_void)
-//    luminaryPulse → targetClaim all players (incl. claimer) → victory requirement +5
+//    luminaryPulse → targetClaim all players (incl. claimer) → victory requirement +8
 //    targetClaim ensures every player panel — including the claimer — is visibly
 //    highlighted before the shared win line moves outward.
 function resolveVoid(s: GameState): AnimationTimelineStep[] {
@@ -129,7 +128,7 @@ function resolveVoid(s: GameState): AnimationTimelineStep[] {
   return [
     pulse('lum_void'),
     { type: 'targetClaim', targetIds: players },
-    { type: 'victoryRequirementChange', amount: 5 },
+    { type: 'victoryRequirementChange', amount: 8 },
   ];
 }
 
@@ -221,30 +220,54 @@ function resolveCompass(
 }
 
 // 10. Seed Beyond Seasons / Avatar Seeds (lum_seed)
-//     luminaryPulse → deckScry all tiers → seeded residue on top Artifacts (shown on Forge entry)
-function resolveSeed(): AnimationTimelineStep[] {
+//     arrival: permanent mold placement
+//     end of turn: occupied unseeded molds brand their Artifacts
+//     opponent forge: matching permanent Affinity travels to the allied player
+function resolveSeed(
+  state: GameState,
+  effectType: EffectType,
+  ownerId: string,
+  targetCardIds: string[] = [],
+  targetSlotIds: string[] = [],
+  affinityType?: string,
+  affinityAmount = 1,
+): AnimationTimelineStep[] {
+  const moldTargets = targetSlotIds.length > 0
+    ? targetSlotIds
+    : (state.avatarSeedMoldSlots ?? []);
+  if (effectType === 'summon') {
+    return [
+      pulse('lum_seed'),
+      { type: 'targetClaim', targetIds: moldTargets },
+    ];
+  }
+  if (effectType === 'end_of_turn') {
+    return [
+      pulse('lum_seed'),
+      { type: 'targetClaim', targetIds: targetCardIds, keyword: 'seeded' },
+      residue('seeded', targetCardIds),
+    ];
+  }
   return [
     pulse('lum_seed'),
-    { type: 'deckScry', tierIds: ['tier1', 'tier2', 'tier3'], affinityBias: 'seeded' },
-    residue('seeded', []),  // targetIds resolve when seeded Artifacts enter the Forge
+    { type: 'targetClaim', targetIds: moldTargets.length > 0 ? moldTargets : targetCardIds },
+    { type: 'affinityGain', playerIds: [ownerId], affinityType, amount: affinityAmount },
   ];
 }
 
 // 11. Glass Orchard / Perfect Replication (lum_orchard)
-//     luminaryPulse → cheapest Tier I targetClaim → boon ConsequenceSnap
-//     No eminenceChange step — +0 EMN was actively misleading ("nothing happened").
-//     The CLAIM pill + golden boon flash communicates "you received something good."
-function resolveOrchard(s: GameState, _ownerId: string): AnimationTimelineStep[] {
-  const tier1Cards = t1(s);
-  const cheapest = tier1Cards.reduce<ArtifactCard | null>((min, c) => {
-    if (!min) return c;
-    const costOf = (card: ArtifactCard) =>
-      Object.values(card.cost ?? {}).reduce<number>((a, v) => a + (v as number), 0);
-    return costOf(c) < costOf(min) ? c : min;
-  }, null);
+//     The first eligible Forge grants one additional permanent bonus Affinity.
+//     The live trigger card is supplied by the Forge presentation layer.
+function resolveOrchard(
+  ownerId: string,
+  targetCardIds: string[] = [],
+  affinityType = 'verdance',
+  affinityAmount = 1,
+): AnimationTimelineStep[] {
   return [
     pulse('lum_orchard'),
-    { type: 'targetClaim', targetIds: cheapest ? [cheapest.id] : [] },
+    { type: 'targetClaim', targetIds: targetCardIds },
+    { type: 'affinityGain', playerIds: [ownerId], affinityType, amount: affinityAmount },
   ];
 }
 
@@ -280,7 +303,7 @@ function resolvePale(
 //     lookup for the end_of_turn path.
 function resolveEmber(
   s: GameState,
-  effectType: 'summon' | 'end_of_turn' | 'start_of_turn', // API enum kept ('summon' = arrival effect)
+  effectType: 'summon' | 'action' | 'end_of_turn' | 'start_of_turn',
   payloadIds?: string[],
 ): AnimationTimelineStep[] {
   if (effectType === 'end_of_turn' || effectType === 'start_of_turn') {
@@ -312,14 +335,18 @@ function resolveEmber(
 }
 
 // 14. Final Hunger / Assimilate (lum_hunger)
-//     On arrival: luminaryPulse → targetClaim owner → pendingAction assimilate
-//     targetClaim highlights the owner panel so the player knows who receives
-//     the assimilate replacement action before the ASSIMILATE pill appears.
-function resolveHunger(_s: GameState, ownerId: string): AnimationTimelineStep[] {
+//     The arrival silently grants the one-use action. When used, the activation
+//     claims the selected Artifact and resolves its permanent bonus Affinity.
+function resolveHunger(
+  ownerId: string,
+  targetCardIds: string[] = [],
+  affinityType?: string,
+  amount = 1,
+): AnimationTimelineStep[] {
   return [
     pulse('lum_hunger'),
-    { type: 'targetClaim', targetIds: [ownerId] },
-    { type: 'pendingAction', action: 'assimilate', ownerId },
+    { type: 'targetClaim', targetIds: targetCardIds },
+    { type: 'affinityGain', playerIds: [ownerId], affinityType, amount },
   ];
 }
 
@@ -342,7 +369,7 @@ function resolveNull(s: GameState, payloadIds?: string[]): AnimationTimelineStep
 
 // ── Master resolver ────────────────────────────────────────────────────────────
 
-type EffectType = 'summon' | 'end_of_turn' | 'start_of_turn'; // API enum kept ('summon' = arrival effect)
+type EffectType = 'summon' | 'action' | 'end_of_turn' | 'start_of_turn';
 
 /**
  * Resolves the animation procedure for a Luminary activation.
@@ -359,11 +386,14 @@ export function resolveLuminaryProcedure(
   ownerId: string,
   eventPayload?: {
     targetCardIds?: string[];
+    targetSlotIds?: string[];
     affinityReturns?: Array<{
       playerId: string;
       affinityType: string;
       affinityAmount: number;
     }>;
+    affinityType?: string;
+    affinityAmount?: number;
   },
 ): AnimationTimelineStep[] {
   if (!state) return [];
@@ -378,11 +408,29 @@ export function resolveLuminaryProcedure(
       case 'lum_bloom':   return resolveBloom(state, ownerId);
       case 'lum_forge':   return resolveForge(state, eventPayload?.targetCardIds);
       case 'lum_compass': return resolveCompass(state, effectType, eventPayload?.targetCardIds);
-      case 'lum_seed':    return resolveSeed();
-      case 'lum_orchard': return resolveOrchard(state, ownerId);
+      case 'lum_seed':    return resolveSeed(
+        state,
+        effectType,
+        ownerId,
+        eventPayload?.targetCardIds,
+        eventPayload?.targetSlotIds,
+        eventPayload?.affinityType,
+        eventPayload?.affinityAmount,
+      );
+      case 'lum_orchard': return resolveOrchard(
+        ownerId,
+        eventPayload?.targetCardIds,
+        eventPayload?.affinityType,
+        eventPayload?.affinityAmount,
+      );
       case 'lum_pale':    return resolvePale(eventPayload?.affinityReturns);
       case 'lum_ember':   return resolveEmber(state, effectType, eventPayload?.targetCardIds);
-      case 'lum_hunger':  return resolveHunger(state, ownerId);
+      case 'lum_hunger':  return resolveHunger(
+        ownerId,
+        eventPayload?.targetCardIds,
+        eventPayload?.affinityType,
+        eventPayload?.affinityAmount,
+      );
       case 'lum_null':    return resolveNull(state, eventPayload?.targetCardIds);
       default:            return [];
     }

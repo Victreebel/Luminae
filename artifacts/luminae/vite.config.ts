@@ -121,9 +121,7 @@ export default defineConfig({
     runtimeErrorOverlay(),
     VitePWA({
       registerType: "prompt",
-      // Let vite-plugin-pwa inject the manifest link tag and build the SW.
-      // We supply our own manifest.json from public/ so injectManifest picks
-      // it up; setting manifest:false would skip the <link> injection.
+      // Let vite-plugin-pwa generate one authoritative manifest and inject its link.
       includeAssets: [
         "favicon.svg",
         "favicon-32.png",
@@ -136,11 +134,11 @@ export default defineConfig({
         id: "/",
         name: "Luminae",
         short_name: "Luminae",
-        description: "Forge cosmic affinities. Claim eminence.",
+        description: "Harness cosmic Affinities. Forge Artifacts. Gain Eminence.",
         start_url: "/",
         scope: "/",
         display: "standalone",
-        orientation: "portrait",
+        orientation: "any",
         background_color: "#0a0c14",
         theme_color: "#0a0c14",
         categories: ["games", "entertainment"],
@@ -157,7 +155,7 @@ export default defineConfig({
             type: "image/jpeg",
             // @ts-expect-error form_factor not yet in vite-plugin-pwa types
             form_factor: "wide",
-            label: "Luminae game board",
+            label: "Luminae main menu",
           },
         ],
       },
