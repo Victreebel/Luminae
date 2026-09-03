@@ -5,6 +5,7 @@ import { getCivilizationName, getSecondaryAffinityColor } from '@/lib/kardashev'
 import { useIsMobile } from '@/hooks/use-mobile';
 import { useRuntimePerformanceState } from '@/lib/runtimePerformance';
 import { AFFINITY_META } from '@/lib/affinityMeta';
+import { useCosmetics } from '@/contexts/CosmeticsContext';
 import {
   EMPTY_CIVILIZATION_PROFILE,
   type CivilizationLandmark,
@@ -818,48 +819,80 @@ function drawGalaxy(
 ) {
   ctx.save();
   ctx.translate(cx, cy);
-  ctx.rotate(t * 0.018);
+  ctx.rotate(-0.16);
 
-  // Nebula glow behind arms — outer stop blends secondary affinity color when dual
-  const outerNebColor = secondaryColor ?? palette.accent;
-  const neb = ctx.createRadialGradient(0, 0, scale * 0.04, 0, 0, scale * 0.52);
-  neb.addColorStop(0, hexAlpha(palette.primary, 0.25));
-  neb.addColorStop(0.3, hexAlpha(palette.secondary, 0.12));
-  neb.addColorStop(0.65, hexAlpha(outerNebColor, secondaryColor ? 0.08 : 0.05));
+  const outerArmColor = secondaryColor ?? palette.secondary;
+  const neb = ctx.createLinearGradient(-scale * 1.4, -scale * 0.22, scale * 1.4, scale * 0.22);
+  neb.addColorStop(0, 'rgba(0,0,0,0)');
+  neb.addColorStop(0.18, hexAlpha(outerArmColor, secondaryColor ? 0.10 : 0.06));
+  neb.addColorStop(0.5, hexAlpha(palette.primary, 0.16));
+  neb.addColorStop(0.82, hexAlpha(palette.accent, 0.08));
   neb.addColorStop(1, 'rgba(0,0,0,0)');
   ctx.beginPath();
-  ctx.ellipse(0, 0, scale * 0.52, scale * 0.30, 0, 0, Math.PI * 2);
+  ctx.ellipse(0, 0, scale * 1.55, scale * 0.32, 0, 0, Math.PI * 2);
   ctx.fillStyle = neb;
   ctx.fill();
 
-  // Arm particles — outer arm (frac >= 0.65) uses secondary affinity color when dual
-  const outerArmColor = secondaryColor ?? palette.secondary;
+  const lanePhase = t * 0.018;
   const visiblePoints = Math.round(points.length * (0.22 + 0.78 * progressFraction));
   for (const p of points.slice(0, visiblePoints)) {
-    const ax = p.x * scale;
-    const ay = p.y * scale;
+    const ax = p.x * scale * 3.0;
+    const armCurve = Math.sin(p.x * 8.5 + lanePhase) * scale * 0.06;
+    const ay = p.y * scale * 0.66 + armCurve;
     const frac = Math.sqrt(p.x * p.x + p.y * p.y) / 0.5;
     const col = frac < 0.3
-      ? hexAlpha(palette.accent, p.alpha)
+      ? hexAlpha(palette.accent, p.alpha * 0.78)
       : frac < 0.65
-        ? hexAlpha(palette.primary, p.alpha * 0.85)
-        : hexAlpha(outerArmColor, p.alpha * 0.65);
+        ? hexAlpha(palette.primary, p.alpha * 0.68)
+        : hexAlpha(outerArmColor, p.alpha * 0.48);
     ctx.beginPath();
-    ctx.arc(ax, ay, p.r, 0, Math.PI * 2);
+    ctx.arc(ax, ay, p.r * 0.92, 0, Math.PI * 2);
     ctx.fillStyle = col;
     ctx.fill();
   }
 
-  // Bright core
-  const core = ctx.createRadialGradient(0, 0, 0, 0, 0, scale * 0.12);
-  core.addColorStop(0, 'rgba(255,255,255,0.95)');
-  core.addColorStop(0.15, hexAlpha(palette.accent, 0.75));
-  core.addColorStop(0.5, hexAlpha(palette.primary, 0.30));
-  core.addColorStop(1, 'rgba(0,0,0,0)');
-  ctx.beginPath();
-  ctx.arc(0, 0, scale * 0.12, 0, Math.PI * 2);
-  ctx.fillStyle = core;
-  ctx.fill();
+  const clusterCount = 5;
+  const routeAlpha = 0.08 + progressFraction * 0.08;
+  const clusterPoints = Array.from({ length: clusterCount }, (_, index) => {
+    const normalized = index / (clusterCount - 1);
+    const x = (normalized - 0.5) * scale * 2.35;
+    const y = Math.sin(index * 1.55 + 0.4) * scale * 0.13;
+    return { x, y };
+  });
+
+  ctx.strokeStyle = hexAlpha(palette.primary, routeAlpha);
+  ctx.lineWidth = Math.max(0.75, scale * 0.004);
+  for (let index = 0; index < clusterPoints.length - 1; index += 1) {
+    const current = clusterPoints[index]!;
+    const next = clusterPoints[index + 1]!;
+    ctx.beginPath();
+    ctx.moveTo(current.x, current.y);
+    ctx.quadraticCurveTo(
+      (current.x + next.x) * 0.5,
+      (current.y + next.y) * 0.5 - scale * 0.12,
+      next.x,
+      next.y,
+    );
+    ctx.stroke();
+  }
+
+  clusterPoints.forEach((point, index) => {
+    const nodeColor = index % 2 === 0 ? palette.accent : outerArmColor;
+    const pulse = 0.72 + 0.28 * Math.sin(t * 0.48 + index);
+    const radius = scale * (0.026 + index * 0.002);
+    const glow = ctx.createRadialGradient(point.x, point.y, 0, point.x, point.y, radius * 4.2);
+    glow.addColorStop(0, hexAlpha(nodeColor, 0.34 * pulse));
+    glow.addColorStop(0.45, hexAlpha(nodeColor, 0.12 * pulse));
+    glow.addColorStop(1, 'rgba(0,0,0,0)');
+    ctx.beginPath();
+    ctx.arc(point.x, point.y, radius * 4.2, 0, Math.PI * 2);
+    ctx.fillStyle = glow;
+    ctx.fill();
+    ctx.beginPath();
+    ctx.arc(point.x, point.y, Math.max(1.3, radius * 0.36), 0, Math.PI * 2);
+    ctx.fillStyle = hexAlpha(nodeColor, 0.72 * pulse);
+    ctx.fill();
+  });
 
   ctx.restore();
 }
@@ -1079,6 +1112,10 @@ function drawLandmarkPlatform(
   ], hull, outline, lineWidth);
 }
 
+function shouldRenderScaleHonestLandmarkTraces(): boolean {
+  return true;
+}
+
 function drawCivilizationLandmarkStructure(
   ctx: CanvasRenderingContext2D,
   landmark: CivilizationLandmark,
@@ -1086,6 +1123,52 @@ function drawCivilizationLandmarkStructure(
   t: number,
   sceneTier: KardashevTier,
 ) {
+  if (shouldRenderScaleHonestLandmarkTraces()) {
+    const color = AFFINITY_META[landmark.affinity].hex;
+    const phase = (landmark.seed % 1000) / 1000 * Math.PI * 2;
+    const pulse = 0.72 + 0.28 * Math.sin(t * 0.62 + phase);
+    const radius = Math.max(6, point.size * (sceneTier >= 2 ? 0.28 : 0.42));
+
+    ctx.save();
+    ctx.translate(point.x, point.y);
+    ctx.rotate(point.rotation);
+    ctx.globalAlpha = sceneTier === 0 ? 0.42 : 0.26 + (point.depth + 1) * 0.06;
+    ctx.lineCap = 'round';
+    ctx.lineJoin = 'round';
+
+    const glow = ctx.createRadialGradient(0, 0, 0, 0, 0, radius * 3.2);
+    glow.addColorStop(0, hexAlpha(color, 0.2 * pulse));
+    glow.addColorStop(0.42, hexAlpha(color, 0.075 * pulse));
+    glow.addColorStop(1, 'rgba(0,0,0,0)');
+    ctx.fillStyle = glow;
+    ctx.beginPath();
+    ctx.arc(0, 0, radius * 3.2, 0, Math.PI * 2);
+    ctx.fill();
+
+    ctx.strokeStyle = hexAlpha(color, sceneTier >= 2 ? 0.34 : 0.26);
+    ctx.lineWidth = Math.max(0.7, point.size * 0.018);
+    ctx.setLineDash([Math.max(2, radius * 0.45), Math.max(2, radius * 0.32)]);
+    ctx.beginPath();
+    if (sceneTier >= 2) {
+      ctx.ellipse(0, 0, radius * 1.55, radius * 0.72, 0, 0, Math.PI * 2);
+    } else {
+      ctx.ellipse(0, radius * 0.34, radius * 2.15, radius * 0.44, 0, 0, Math.PI * 2);
+    }
+    ctx.stroke();
+    ctx.setLineDash([]);
+
+    ctx.strokeStyle = hexAlpha(color, 0.22);
+    ctx.lineWidth = Math.max(0.6, point.size * 0.012);
+    ctx.beginPath();
+    ctx.moveTo(-radius * 1.7, sceneTier >= 2 ? 0 : radius * 0.36);
+    ctx.quadraticCurveTo(0, -radius * (sceneTier >= 2 ? 0.65 : 0.26), radius * 1.7, sceneTier >= 2 ? 0 : radius * 0.36);
+    ctx.stroke();
+
+    drawStructureLight(ctx, 0, 0, Math.max(1.1, radius * 0.12), color, 0.52 * pulse);
+    ctx.restore();
+    return;
+  }
+
   const color = AFFINITY_META[landmark.affinity].hex;
   const material = LANDMARK_MATERIALS[landmark.affinity];
   const phase = (landmark.seed % 1000) / 1000 * Math.PI * 2;
@@ -1986,6 +2069,8 @@ export function KardashevScene({
   maxDpr,
   allowMobileMotion = false,
 }: KardashevSceneProps) {
+  const voidRadianceEquipped = useCosmetics().equippedItemIds.civilization_ambience ===
+    'cosmetic.civilizationAmbience.voidRadianceObservatory.v1';
   const runtime = useRuntimePerformanceState();
   const runtimePaused = paused || !runtime.visible || (runtime.mobile && !allowMobileMotion);
   const civName = getCivilizationName(palette, tier);
@@ -2001,7 +2086,10 @@ export function KardashevScene({
 
   return (
     <SceneErrorBoundary>
-      <div className={className ?? "relative h-[220px] rounded-2xl overflow-hidden bg-black"}>
+      <div
+        className={className ?? "relative h-[220px] rounded-2xl overflow-hidden bg-black"}
+        data-cosmetic-ambience={voidRadianceEquipped ? "void-radiance-observatory" : undefined}
+      >
         <AnimatePresence mode="wait" initial={false}>
           <motion.div
             key={sceneKey}
@@ -2023,6 +2111,18 @@ export function KardashevScene({
             />
           </motion.div>
         </AnimatePresence>
+
+        {voidRadianceEquipped && (
+          <div className="civ-ambience-void-radiance" aria-hidden="true">
+            <span className="civ-ambience-aurora civ-ambience-aurora--left" />
+            <span className="civ-ambience-aurora civ-ambience-aurora--right" />
+            <span className="civ-ambience-observatory">
+              <span className="civ-ambience-observatory-core" />
+              <span className="civ-ambience-observatory-orbit civ-ambience-observatory-orbit--outer" />
+              <span className="civ-ambience-observatory-orbit civ-ambience-observatory-orbit--inner" />
+            </span>
+          </div>
+        )}
 
         {/* Civilization name — crossfades on tier or dominant affinity change */}
         <AnimatePresence initial={false}>

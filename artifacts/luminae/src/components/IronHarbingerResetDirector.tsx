@@ -9,19 +9,19 @@ import {
   type LuminaryEffectSequenceController,
 } from '@/lib/luminaryEffectSequence';
 import {
-  LuminaryEffectAnnouncement,
   LuminaryEffectSkipControl,
 } from './LuminaryEffectChrome';
 import {
   boundedLuminaryStagger,
   luminaryPacedDuration,
-  luminaryReadDuration,
   type LuminaryPlaybackMode,
 } from '@/lib/luminaryPresentationPacing';
+import { gameAudio } from '@/lib/audio';
+import { playLuminaryEffectPhaseSound } from '@/lib/luminaryEffectSound';
 
 type Tier = 1 | 2 | 3;
 
-const ANNOUNCE_MS = 180;
+const ANNOUNCE_MS = 80;
 const CAMERA_SETTLE_MS = 800;
 const TREMOR_MS = 550;
 const SHOCKWAVE_MS = 850;
@@ -227,14 +227,10 @@ export function IronHarbingerResetDirector({
   reducedMotion,
   playbackMode = 'standard',
   timelinePlaybackRate = 1,
-  triggeringPlayerName,
-  queuePosition = 1,
-  queueTotal = 1,
   actions,
   onComplete,
 }: IronHarbingerResetDirectorProps) {
   const sequenceRef = useRef<LuminaryEffectSequenceController | null>(null);
-  const announcementRef = useRef<HTMLDivElement | null>(null);
   const shockwaveRef = useRef<HTMLDivElement | null>(null);
   const actionsRef = useRef(actions);
   const onCompleteRef = useRef(onComplete);
@@ -251,6 +247,7 @@ export function IronHarbingerResetDirector({
   stateRef.current = state;
 
   useEffect(() => {
+    gameAudio.preloadImpactExtinctionShockwave();
     const slots = slotsRef.current;
     const slotKeys = slots.map(slot => slot.slotKey);
     const paced = (durationMs: number) => luminaryPacedDuration(
@@ -258,7 +255,7 @@ export function IronHarbingerResetDirector({
       playbackMode,
       timelinePlaybackRate,
     );
-    const announceMs = paced(ANNOUNCE_MS);
+    const announceMs = reducedMotion ? 0 : paced(ANNOUNCE_MS);
     const cameraSettleMs = paced(CAMERA_SETTLE_MS);
     const tremorMs = paced(TREMOR_MS);
     const shockwaveMs = paced(SHOCKWAVE_MS);
@@ -306,14 +303,6 @@ export function IronHarbingerResetDirector({
       dealVisualsRef.current = [];
       archiveVisualsRef.current.forEach(visual => visual.element.remove());
       archiveVisualsRef.current.clear();
-    };
-
-    const setAnnouncement = (description: string) => {
-      const descriptionElement =
-        announcementRef.current?.querySelector<HTMLElement>(
-          '.lum-effect-announcement-description',
-        );
-      if (descriptionElement) descriptionElement.textContent = description;
     };
 
     const createArchiveVisuals = () => {
@@ -447,7 +436,6 @@ export function IronHarbingerResetDirector({
     const runImpact = async (
       wait: (durationMs: number) => Promise<void>,
     ) => {
-      setAnnouncement('The Forge breaks from its molds.');
       createArchiveVisuals();
       createReturnVisuals();
       const shockwaveGeometry = positionShockwave();
@@ -462,6 +450,8 @@ export function IronHarbingerResetDirector({
       });
 
       // Beat one: the entire Forge becomes unstable before the force arrives.
+      gameAudio.playImpactExtinctionTremor();
+      gameAudio.playImpactExtinctionShockwave(tremorMs);
       returnVisualsRef.current.forEach((visual, index) => {
         const direction = index % 2 === 0 ? -1 : 1;
         trackAnimation(animate(
@@ -480,7 +470,6 @@ export function IronHarbingerResetDirector({
       });
       await wait(tremorMs);
 
-      setAnnouncement('A shockwave tears across the Forge.');
       const shockwave = shockwaveRef.current;
       if (shockwave && shockwaveGeometry) {
         shockwave.querySelectorAll<HTMLElement>('[data-impact-ring]').forEach(
@@ -550,21 +539,15 @@ export function IronHarbingerResetDirector({
         ));
       });
 
-      await wait(Math.max(
+      await wait(
         Math.max(shockwaveMs, waveLiftStaggerMs + liftMs) + impactHoldMs,
-        luminaryReadDuration(
-          'A shockwave tears across the Forge.',
-          playbackMode,
-          timelinePlaybackRate,
-        ),
-      ));
+      );
     };
 
     const returnArtifacts = async (
       wait: (durationMs: number) => Promise<void>,
       signal: AbortSignal,
     ) => {
-      setAnnouncement('All Forge Artifacts return to their Archives.');
       const durationMs = returnFlightMs;
       const staggerMs = returnStaggerMs;
 
@@ -618,20 +601,12 @@ export function IronHarbingerResetDirector({
         durationMs +
         Math.max(0, returnVisualsRef.current.length - 1) * staggerMs +
         90;
-      await wait(Math.max(
-        totalMs,
-        luminaryReadDuration(
-          'Artifacts return to their Archives.',
-          playbackMode,
-          timelinePlaybackRate,
-        ),
-      ));
+      await wait(totalMs);
     };
 
     const randomizeArchives = async (
       wait: (durationMs: number) => Promise<void>,
     ) => {
-      setAnnouncement('The Archives randomize.');
       actionsRef.current.playShuffle();
       archiveVisualsRef.current.forEach((visual, index) => {
         const crystal = visual.element.querySelector<HTMLElement>(
@@ -660,21 +635,13 @@ export function IronHarbingerResetDirector({
           },
         ));
       });
-      await wait(Math.max(
-        shuffleMs + paced(80),
-        luminaryReadDuration(
-          'The Archives randomize.',
-          playbackMode,
-          timelinePlaybackRate,
-        ),
-      ));
+      await wait(shuffleMs + paced(80));
     };
 
     const dealForge = async (
       wait: (durationMs: number) => Promise<void>,
       signal: AbortSignal,
     ) => {
-      setAnnouncement('The Forge manifests a new array.');
       const durationMs = dealFlightMs;
       const staggerMs = dealStaggerMs;
       const sortedSlots = [...slots].sort((a, b) => (
@@ -764,14 +731,7 @@ export function IronHarbingerResetDirector({
         durationMs +
         Math.max(0, sortedSlots.length - 1) * staggerMs +
         120;
-      await wait(Math.max(
-        totalMs,
-        luminaryReadDuration(
-          'The Forge manifests anew.',
-          playbackMode,
-          timelinePlaybackRate,
-        ),
-      ));
+      await wait(totalMs);
 
       archiveVisualsRef.current.forEach((visual) => {
         updateArchiveCount(visual.tier, visual.finalCount, false);
@@ -789,38 +749,13 @@ export function IronHarbingerResetDirector({
       { type: 'deckScry', tierIds: ['tier1', 'tier2', 'tier3'] },
       { type: 'forgeRefill', slotIds: slotKeys },
     ];
-    const impactEstimate = tremorMs + Math.max(
-      Math.max(shockwaveMs, waveLiftStaggerMs + liftMs) + impactHoldMs,
-      luminaryReadDuration(
-        'A shockwave tears across the Forge.',
-        playbackMode,
-        timelinePlaybackRate,
-      ),
-    );
-    const returnEstimate = Math.max(
-      returnFlightMs + Math.max(0, slots.length - 1) * returnStaggerMs + 90,
-      luminaryReadDuration(
-        'Artifacts return to their Archives.',
-        playbackMode,
-        timelinePlaybackRate,
-      ),
-    );
-    const shuffleEstimate = Math.max(
-      shuffleMs + paced(80),
-      luminaryReadDuration(
-        'The Archives randomize.',
-        playbackMode,
-        timelinePlaybackRate,
-      ),
-    );
-    const dealEstimate = Math.max(
-      dealFlightMs + Math.max(0, slots.length - 1) * dealStaggerMs + 120,
-      luminaryReadDuration(
-        'The Forge manifests anew.',
-        playbackMode,
-        timelinePlaybackRate,
-      ),
-    );
+    const impactEstimate =
+      tremorMs + Math.max(shockwaveMs, waveLiftStaggerMs + liftMs) + impactHoldMs;
+    const returnEstimate =
+      returnFlightMs + Math.max(0, slots.length - 1) * returnStaggerMs + 90;
+    const shuffleEstimate = shuffleMs + paced(80);
+    const dealEstimate =
+      dealFlightMs + Math.max(0, slots.length - 1) * dealStaggerMs + 120;
     const totalEstimate =
       announceMs + cameraSettleMs + impactEstimate + returnEstimate +
       shuffleEstimate + dealEstimate + aftermathMs + paced(250);
@@ -832,16 +767,7 @@ export function IronHarbingerResetDirector({
         {
           id: 'announce',
           durationMs: announceMs,
-          run: () => {
-            const announcement = announcementRef.current;
-            if (announcement) {
-              trackAnimation(animate(
-                announcement,
-                { opacity: [0, 1] },
-                { duration: reducedMotion ? 0.06 : 0.24, ease: 'easeOut' },
-              ));
-            }
-          },
+          reducedDurationMs: 0,
         },
         {
           id: 'frame',
@@ -873,24 +799,13 @@ export function IronHarbingerResetDirector({
         {
           id: 'aftermath',
           durationMs: aftermathMs,
-          run: () => {
-            const announcement = announcementRef.current;
-            if (announcement) {
-              trackAnimation(animate(
-                announcement,
-                { opacity: [1, 0] },
-                { duration: reducedMotion ? 0.06 : 0.24, ease: 'easeOut' },
-              ));
-            }
-          },
         },
       ],
       onPhaseChange: (phase) => {
-        if (announcementRef.current) {
-          announcementRef.current.dataset.effectPhase = phase;
-        }
+        playLuminaryEffectPhaseSound('lum_forge', phase, '#f97316');
       },
       onSkip: () => {
+        gameAudio.stopActivationSting();
         stopVisualWork();
         actionsRef.current.onFinish(slotKeys);
         removeVisuals();
@@ -911,6 +826,7 @@ export function IronHarbingerResetDirector({
     return () => {
       sequence.cancel();
       if (sequenceRef.current === sequence) sequenceRef.current = null;
+      gameAudio.stopActivationSting();
       stopVisualWork();
       actionsRef.current.onFinish(slotKeys);
       removeVisuals();
@@ -918,10 +834,6 @@ export function IronHarbingerResetDirector({
     // The director snapshots its authoritative event payload at mount.
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, []);
-
-  const queueLabel = queueTotal > 1
-    ? `ARRIVAL EFFECT · ${queuePosition} OF ${queueTotal}`
-    : 'ARRIVAL EFFECT';
 
   return createPortal(
     <div
@@ -931,26 +843,6 @@ export function IronHarbingerResetDirector({
       role="status"
       aria-label="Iron Harbinger is returning the Forge to the Archives"
     >
-      <div
-        ref={announcementRef}
-        className="absolute inset-0 flex items-center justify-center"
-        style={{
-          opacity: 0,
-          background:
-            'radial-gradient(ellipse at 50% 52%, rgba(249,115,22,0.11), rgba(0,0,0,0.08) 58%, transparent)',
-        }}
-      >
-        <LuminaryEffectAnnouncement
-          effectName="Impact Extinction"
-          luminaryName="The Iron Harbinger"
-          description="The Forge breaks from its molds."
-          triggeringPlayerName={triggeringPlayerName}
-          queueLabel={queueLabel}
-          primaryColor="#f97316"
-          secondaryColor="#d6a24f"
-        />
-      </div>
-
       <div
         ref={shockwaveRef}
         className="fixed pointer-events-none"

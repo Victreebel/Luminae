@@ -117,4 +117,5 @@ describe('LuminaryClaimedPortal', () => {
 
     expect(entityImage?.getAttribute('src')).toContain('entity_runtime.webp');
   });
+
 });

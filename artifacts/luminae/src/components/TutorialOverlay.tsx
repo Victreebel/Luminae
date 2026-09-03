@@ -3,6 +3,7 @@ import { motion, AnimatePresence } from "framer-motion";
 import { useLocation } from "wouter";
 import { X, ChevronRight, BookOpen } from "lucide-react";
 import type { GameState } from "@workspace/api-client-react";
+import { DEFAULT_VICTORY_REQUIREMENT } from "@workspace/game-types";
 import { clearSession } from "@/lib/session";
 import { useFocusTrap } from "@/hooks/use-focus-trap";
 
@@ -21,7 +22,7 @@ const TUTORIAL_STEPS: TutorialStep[] = [
     id: 0,
     title: "Step 1 of 5 — Harness Affinities",
     instruction:
-      "Affinities are the core resources of Luminae. On your turn, tap 3 different Affinity icons in the Well below, then tap Harness to collect them.",
+      "Affinities are the core resources of Luminae. During your century, tap 3 different Affinity icons in the Well below, then tap Harness to collect them.",
     actionHint: "Tap 3 different Affinity icons, then tap Harness",
     zone: "well",
     permittedActionTypes: ["harness_three_affinities"],
@@ -61,7 +62,7 @@ const TUTORIAL_STEPS: TutorialStep[] = [
     id: 4,
     title: "Step 5 of 5 — Meet the Luminaries",
     instruction:
-      "The top row shows Luminaries, distant rulebreakers at the edge of the observable universe. Each shows the Affinity bonuses required to awaken it. When your civilization meets those requirements, it breaks through automatically. Race to 15 Eminence to win!",
+      `The top row shows Luminaries, distant rulebreakers at the edge of the observable universe. Each shows the Affinity bonuses required to awaken it. When your civilization meets those requirements, it breaks through automatically. Race to ${DEFAULT_VICTORY_REQUIREMENT} Eminence to win!`,
     actionHint: "Read the above, then tap Got it to begin playing",
     zone: "luminaries",
     permittedActionTypes: [],

@@ -18,13 +18,27 @@ export function getPlannedActionSummary(
     ...(state?.forgeTier2 ?? []),
     ...(state?.forgeTier3 ?? []),
     ...(player?.reservedArtifacts ?? []),
+    ...(player?.tideArchiveTopCards
+      ? [
+          player.tideArchiveTopCards.tier1,
+          player.tideArchiveTopCards.tier2,
+          player.tideArchiveTopCards.tier3,
+        ]
+      : []),
   ].filter(isArtifactCard);
 
   switch (action.type) {
     case 'forge_artifact':
     case 'forge_reserved_artifact': {
       const card = allCards.find((candidate) => candidate.id === action.cardId);
-      return card ? `Forge "${card.name}"` : 'Forge Artifact';
+      const source = action.blueprintAction === 'foundry_overdrive'
+        ? ' with Foundry Overdrive'
+        : action.blueprintAction === 'foundry_sustainable'
+          ? ' with Foundry Forge'
+          : action.luminaryId === 'lum_tide'
+            ? ' from Archive'
+            : '';
+      return card ? `Forge "${card.name}"${source}` : `Forge Artifact${source}`;
     }
     case 'reserve_artifact': {
       if (action.cardId) {

@@ -1,6 +1,6 @@
 # Luminae — Complete Card Reference
 
-> **Engine-building race to 15 Eminence.** Collect colored Affinities, forge Artifacts for permanent bonuses, and summon Luminaries. First player to 15 Eminence wins; ties break on fewest forged Artifacts.
+> **Engine-building race to 20 Eminence.** Collect colored Affinities, forge Artifacts for permanent bonuses, and summon Luminaries. The standard target is 20 Eminence; custom games may use the shorter 15-Eminence format. The final round completes so every player receives equal turns, then highest Eminence wins; ties break on fewest forged Artifacts.
 
 ---
 
@@ -317,7 +317,7 @@ These require 4–5 bonuses of a single affinity.
 |----|------|--------|----|-------------|--------|
 | lum_tide | **The Tide Architect** | Tides | 2 | 4 Continuum | *The sea does not rage. It simply rises.* |
 | lum_verdant | **The Verdant Oracle** | Verdance | 1 | 5 Verdance | *She reads the future in the rings of trees that have not yet been planted.* |
-| lum_void | **The Void Warden** | Void | 2 | 4 Abyss | *In the space between stars, something watches without eyes.* |
+| lum_void | **The Void Warden** | Void | 2 | 6 Abyss | *In the space between stars, something watches without eyes.* |
 | lum_radiant | **The Radiant Keeper** | Light | 2 | 4 Radiance | *She holds back the dark not with fire, but with patience.* |
 
 > **Living Affinity:** Each of these Luminaries has exactly one required affinity, so its active affinity is fixed automatically.
@@ -333,7 +333,7 @@ These require at least 3 bonuses in each of two affinities (or 4 of one pair).
 | lum_astral | **The Astral Weaver** | Stars | 3 | 3 Flare + 3 Continuum | *Where stellar fire meets the deep cold, the astral web is woven.* |
 | lum_pale | **The Pale Merchant** | Balance | 3 | 3 Abyss + 3 Radiance | *Every transaction is a small death. Every debt, a small birth.* |
 | lum_bloom | **The Bloom Tyrant** | Wildgrowth | 3 | 4 Flare + 4 Verdance | *She tends the garden of conflict and harvests its strange flowers.* |
-| lum_compass | **The Stellar Guide** | Navigation | 3 | 4 Continuum + 4 Verdance | *The shortest path between two stars is a story.* |
+| lum_compass | **???** | Erasure | 1 | 4 Continuum + 4 Abyss | *Everyone remembers something happened, but no one recalls what was lost.* |
 | lum_forge | **The Iron Harbinger** | Ruin | 3 | 4 Verdance + 4 Abyss | *What he builds he eventually unmakes. Creation and ruin are the same song played in different keys.* |
 
 > **Living Affinity:** One of the two required affinity types is chosen at random when the Luminary arrives.
@@ -379,9 +379,9 @@ These require meaningful bonuses in three distinct affinities.
 
 | Em Awarded | Count | Names |
 |-----------|-------|-------|
-| 1 | 1 | The Verdant Oracle |
+| 1 | 2 | The Verdant Oracle, ??? |
 | 2 | 3 | The Tide Architect, The Void Warden, The Radiant Keeper |
-| 3 | 5 | The Astral Weaver, The Pale Merchant, The Bloom Tyrant, The Stellar Guide, The Iron Harbinger |
+| 3 | 4 | The Astral Weaver, The Pale Merchant, The Bloom Tyrant, The Iron Harbinger |
 | 4 | 3 | The Ember Sovereign, The Null Sovereign, The Cosmic Oracle |
 
 ---

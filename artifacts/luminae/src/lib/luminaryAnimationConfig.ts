@@ -32,6 +32,7 @@ export type AnimationArchetype =
   | 'recurrence'       // Burned Artifacts return to their tier Archives
   | 'scry'             // deck scry + Forge reorder shimmer
   | 'passiveBoon'      // persistent passive bonus on owner (no card residue)
+  | 'resourceTransfer' // one visible resource moves between two anchored UI targets
   | 'globalDisruption' // board-wide victory requirement or state pressure
   | 'thresholdPayoff'  // conditional owner eminenceChange when threshold or count met
   | 'forgeReset'       // all Forge Artifacts return, Archives randomize, rows redeal
@@ -40,7 +41,7 @@ export type AnimationArchetype =
   | 'replication'      // Artifact copy boon (no direct Eminence delta)
   | 'affinityReturn'    // compatibility step for returning Affinities above the limit
   | 'condemned'        // two-path: arrival → Condemned residue; end_of_turn → Burn
-  | 'assimilate';      // pendingAction replaces core action for one turn
+  | 'assimilate';      // one-use Forge replacement converts an Artifact to Affinity
 
 // ─── Config type ─────────────────────────────────────────────────────────────
 
@@ -107,10 +108,9 @@ export const LUMINARY_ANIMATION_CONFIG: Record<string, LuminaryAnimationConfig> 
     effectName: 'The Observer Effect',
     procedureSteps: [
       { type: 'luminaryPulse', luminaryId: 'lum_tide' },
-      { type: 'deckScry', tierIds: ['tier2', 'tier3'], affinityBias: 'continuum' },
-      { type: 'forgeRefill', slotIds: [] },
+      { type: 'deckScry', tierIds: ['tier1', 'tier2', 'tier3'], affinityBias: 'continuum' },
     ],
-    flavorLine: 'Continuum-affinity Artifacts surface through pale blue-white shimmer as the tide looks ahead; The Forge reorders with quiet inevitability, unhurried.',
+    flavorLine: 'The eye opens across all three Archives. Their next possibilities remain visible to the ally, and one may be drawn directly into the Forge.',
   },
 
   // 3. Verdant Oracle — Early Bloom
@@ -121,13 +121,13 @@ export const LUMINARY_ANIMATION_CONFIG: Record<string, LuminaryAnimationConfig> 
     affinities: ['verdance'],
     primaryColor: '#4ade80',
     secondaryColor: '#166534',
-    animationArchetype: 'passiveBoon',
+    animationArchetype: 'resourceTransfer',
     effectName: 'Early Bloom',
-    // luminaryPulse only — TargetBadge fallback shows "BOON · AFFINITIES · LINGERING"
     procedureSteps: [
       { type: 'luminaryPulse', luminaryId: 'lum_verdant' },
+      { type: 'affinityGain', playerIds: [], affinityType: 'verdance', amount: 1 },
     ],
-    flavorLine: 'A living root-pulse extends quietly around forge affordances — patient and never explosive; the affinity bonus takes hold the following turn.',
+    flavorLine: 'The shared Verdance channel flowers once, releasing a single token that travels cleanly into the allied civilization.',
   },
 
   // 4. Void Warden — Oblivion
@@ -143,7 +143,7 @@ export const LUMINARY_ANIMATION_CONFIG: Record<string, LuminaryAnimationConfig> 
     procedureSteps: [
       { type: 'luminaryPulse', luminaryId: 'lum_void' },
       { type: 'targetClaim', targetIds: [] },
-      { type: 'victoryRequirementChange', amount: 5 },
+      { type: 'victoryRequirementChange', amount: 8 },
     ],
     flavorLine: 'A silent dark ripple spreads board-wide — the warden watches from a distance, and the victory line recedes into the emptiness between stars.',
   },
@@ -257,11 +257,10 @@ export const LUMINARY_ANIMATION_CONFIG: Record<string, LuminaryAnimationConfig> 
     effectName: 'Avatar Seeds',
     procedureSteps: [
       { type: 'luminaryPulse', luminaryId: 'lum_seed' },
-      { type: 'deckScry', tierIds: ['tier1', 'tier2', 'tier3'], affinityBias: 'seeded' },
-      { type: 'residue', keyword: 'seeded', targetIds: [] },
+      { type: 'targetClaim', targetIds: [] },
     ],
     residueType: 'seeded',
-    flavorLine: 'Blue-green seed glyphs settle into every Archive; when a seeded Artifact manifests in The Forge, the marker quietly wakes.',
+    flavorLine: 'Blue-green seed glyphs inscribe one permanent mold in every tier; their occupants awaken as Seeded Artifacts at each end of turn.',
   },
 
   // 11. Glass Orchard — Perfect Replication
@@ -274,12 +273,12 @@ export const LUMINARY_ANIMATION_CONFIG: Record<string, LuminaryAnimationConfig> 
     secondaryColor: '#fef9c3',
     animationArchetype: 'replication',
     effectName: 'Perfect Replication',
-    // No eminenceChange — +0 EMN was misleading; CLAIM + boon ConsequenceSnap communicates the copy
+    // No eminenceChange: the effect grants one additional permanent bonus Affinity.
     procedureSteps: [
       { type: 'luminaryPulse', luminaryId: 'lum_orchard' },
       { type: 'targetClaim', targetIds: [] },
     ],
-    flavorLine: 'A glass-fruit refraction shimmer pulses over the copied Artifact before the copy enters the collection — the movement is clear and unhurried.',
+    flavorLine: 'The first forged Artifact with Verdance or Radiance in its cost refracts into a second permanent bonus Affinity matching that Artifact.',
   },
 
   // 12. Pale Merchant — Balance Due
@@ -334,9 +333,9 @@ export const LUMINARY_ANIMATION_CONFIG: Record<string, LuminaryAnimationConfig> 
     procedureSteps: [
       { type: 'luminaryPulse', luminaryId: 'lum_hunger' },
       { type: 'targetClaim', targetIds: [] },
-      { type: 'pendingAction', action: 'assimilate', ownerId: '' },
+      { type: 'affinityGain', playerIds: [], amount: 1 },
     ],
-    flavorLine: 'The assimilate replacement feels predatory, not opportunistic — on use, the selected Artifact burns with hunger-colored accent fragments under the canonical Burn animation; the core action is consumed, not supplemented.',
+    flavorLine: 'The selected Artifact breaks into a nanite cloud and its permanent Affinity is absorbed into the owner’s Civilization. It is Assimilated, not Burned or Forged.',
   },
 
   // 15. Null Sovereign — Black Domain

@@ -1,21 +1,34 @@
 import { useState } from "react";
-import type { Dispatch } from "react";
+import { ChevronDown, ChevronLeft, ChevronRight, ChevronUp, RotateCcw } from "lucide-react";
 import { TUTORIAL_BEATS } from "@/lib/tutorialData";
-import type { TAction } from "@/lib/tutorialReducer";
 
 interface Props {
   beatIndex: number;
-  dispatch: Dispatch<TAction>;
+  onJump: (toIndex: number) => void;
 }
 
-export function DevTutorialNav({ beatIndex, dispatch }: Props) {
+export function DevTutorialNav({ beatIndex, onJump }: Props) {
   const [open, setOpen] = useState(true);
   const total = TUTORIAL_BEATS.length;
   const beat = TUTORIAL_BEATS[beatIndex];
 
   function jump(toIndex: number) {
-    dispatch({ type: "JUMP_BEAT", toIndex });
+    onJump(Math.max(0, Math.min(toIndex, total - 1)));
   }
+
+  const navButtonStyle = (disabled = false) => ({
+    width: 30,
+    height: 28,
+    display: "inline-flex",
+    alignItems: "center",
+    justifyContent: "center",
+    background: disabled ? "rgba(255,255,255,0.04)" : "rgba(255,255,255,0.11)",
+    color: disabled ? "rgba(255,255,255,0.22)" : "#fff",
+    border: "1px solid rgba(255,255,255,0.14)",
+    borderRadius: 4,
+    cursor: disabled ? "not-allowed" : "pointer",
+    flexShrink: 0,
+  } as const);
 
   return (
     <div
@@ -32,13 +45,17 @@ export function DevTutorialNav({ beatIndex, dispatch }: Props) {
         color: "#e2c96a",
         pointerEvents: "all",
         overflow: "hidden",
-        minWidth: open ? 200 : 0,
+        minWidth: open ? 248 : 0,
+        boxShadow: "0 8px 28px rgba(0,0,0,0.48)",
       }}
     >
-      {/* Header row — always visible, click to toggle */}
-      <div
+      <button
+        type="button"
         onClick={() => setOpen(o => !o)}
+        aria-expanded={open}
+        aria-label={open ? "Collapse developer scene navigator" : "Expand developer scene navigator"}
         style={{
+          width: "100%",
           display: "flex",
           alignItems: "center",
           justifyContent: "space-between",
@@ -48,17 +65,19 @@ export function DevTutorialNav({ beatIndex, dispatch }: Props) {
           userSelect: "none",
           borderBottom: open ? "1px solid rgba(255,200,80,0.18)" : "none",
           whiteSpace: "nowrap",
+          background: "transparent",
+          border: 0,
+          color: "inherit",
         }}
       >
         <span style={{ fontSize: 10, color: "#a0a0a0", letterSpacing: "0.04em" }}>
-          DEV · BEAT NAVIGATOR
+          DEV · SCENES {beatIndex + 1}/{total}
         </span>
-        <span style={{ color: "#706030", fontSize: 12, lineHeight: 1 }}>
-          {open ? "▾" : "▸"}
-        </span>
-      </div>
+        {open
+          ? <ChevronUp aria-hidden="true" size={14} color="#8d7a3d" />
+          : <ChevronDown aria-hidden="true" size={14} color="#8d7a3d" />}
+      </button>
 
-      {/* Collapsible body */}
       {open && (
         <div style={{ padding: "6px 8px", display: "flex", flexDirection: "column", gap: 4 }}>
           <div style={{ color: "#fff", lineHeight: 1.4 }}>
@@ -69,38 +88,33 @@ export function DevTutorialNav({ beatIndex, dispatch }: Props) {
           </div>
           <div style={{ display: "flex", gap: 4, alignItems: "center" }}>
             <button
+              type="button"
               onClick={() => jump(beatIndex - 1)}
               disabled={beatIndex <= 0}
-              style={{
-                background: beatIndex <= 0 ? "#333" : "#555",
-                color: beatIndex <= 0 ? "#666" : "#fff",
-                border: "1px solid #444",
-                borderRadius: 4,
-                padding: "2px 8px",
-                cursor: beatIndex <= 0 ? "not-allowed" : "pointer",
-                fontSize: 13,
-                lineHeight: 1,
-              }}
-              title="Previous beat"
+              style={navButtonStyle(beatIndex <= 0)}
+              title="Previous scene"
+              aria-label="Previous scene"
             >
-              ‹
+              <ChevronLeft aria-hidden="true" size={16} />
             </button>
             <button
+              type="button"
+              onClick={() => jump(beatIndex)}
+              style={navButtonStyle()}
+              title="Restart scene"
+              aria-label="Restart scene"
+            >
+              <RotateCcw aria-hidden="true" size={14} />
+            </button>
+            <button
+              type="button"
               onClick={() => jump(beatIndex + 1)}
               disabled={beatIndex >= total - 1}
-              style={{
-                background: beatIndex >= total - 1 ? "#333" : "#555",
-                color: beatIndex >= total - 1 ? "#666" : "#fff",
-                border: "1px solid #444",
-                borderRadius: 4,
-                padding: "2px 8px",
-                cursor: beatIndex >= total - 1 ? "not-allowed" : "pointer",
-                fontSize: 13,
-                lineHeight: 1,
-              }}
-              title="Next beat"
+              style={navButtonStyle(beatIndex >= total - 1)}
+              title="Next scene"
+              aria-label="Next scene"
             >
-              ›
+              <ChevronRight aria-hidden="true" size={16} />
             </button>
             <select
               value={beatIndex}
@@ -114,7 +128,9 @@ export function DevTutorialNav({ beatIndex, dispatch }: Props) {
                 padding: "2px 4px",
                 fontSize: 10,
                 cursor: "pointer",
+                minWidth: 0,
               }}
+              aria-label="Jump to tutorial scene"
             >
               {TUTORIAL_BEATS.map((b, i) => (
                 <option key={b.id} value={i}>

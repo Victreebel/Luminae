@@ -18,19 +18,37 @@ import type {
   ActionRequestAffinity,
   PendingLuminaryActivationEvent,
   BurnEvent,
+  TraceGuidanceMethod,
 } from '@workspace/api-client-react';
 import {
   compareVictoryStandings,
+  DEFAULT_VICTORY_REQUIREMENT,
   getArtifactTierCounts,
+  MIN_VICTORY_REQUIREMENT,
   OPENING_TURN_ORDER_PRESENTATION_MS,
+  type BlueprintClaimAction,
+  type RecurrenceCustodyMethod,
+  type RecurrenceScenarioState,
+  type TriangulationCoordinationArchitecture,
+  type TriangulationScenarioState,
+  type LuminaryArrivalSoundVariant,
 } from '@workspace/game-types';
 import {
   ActivationDirectorRouter,
-  activationDirectorPreparesCamera,
+  activationDirectorForcesCamera,
+  activationDirectorManagesActivation,
 } from '@/components/ActivationDirectorRouter';
+import {
+  LuminaryEffectResultReceipt,
+  type LuminaryEffectReceiptData,
+} from '@/components/LuminaryEffectChrome';
 import type { DirectorBurnSlot } from '@/components/CinderMandateBurnDirector';
 import type { IronHarbingerResetSlot } from '@/components/IronHarbingerResetDirector';
+import type { AssimilationVisualSlot } from '@/components/FinalHungerAssimilationDirector';
 import { resolveLuminaryProcedure } from '@/lib/luminaryAnimationProcedures';
+import { getLuminaryEffectResultReceiptCopy } from '@/lib/luminaryEffectAnnouncements';
+import { usesControlledEminenceBestowal } from '@/lib/delayedEminencePresentation';
+import { createPerfectCoherenceBestowals } from '@/lib/perfectCoherencePresentation';
 import {
   canAcknowledgeLuminaryActivations,
   delayedResultBelongsToActivation,
@@ -39,17 +57,29 @@ import {
   isActivationAftermathInFlight,
   isLuminaryActivationGateActive,
   isLuminaryArrivalSequenceActive,
+  partitionDeferredBrandStrikesByActivation,
+  reconcileDeferredLuminaryActivations,
   type LuminarySequenceGateSnapshot,
 } from '@/lib/luminarySequenceGate';
 import { useViewOrchestrator } from '@/hooks/use-view-orchestrator';
 import { SeedBeyondSeasonsEffect, SEED_EFFECT_TOTAL_MS } from '@/components/SeedBeyondSeasonsEffect';
 import { useQueryClient } from '@tanstack/react-query';
-import { getSession, clearSession } from '@/lib/session';
+import { getSession, clearSession, saveSession } from '@/lib/session';
 import { getSkipCinematics, setSkipCinematics, syncAccountPreferences, apiUpdatePreferences, markHintSeen } from '@/lib/cinematicPrefs';
 import { useAccount } from '@/contexts/AccountContext';
 import { AccountLoadingScreen } from '@/components/AccountLoadingScreen';
-import { getAccountSession } from '@/lib/accountSession';
+import {
+  apiAcknowledgeBlueprintVaultReveal,
+  apiGetBlueprintVault,
+  apiStartBlueprintChallenge,
+  apiWithdrawBlueprintChallenge,
+  apiReportPlayer,
+  apiSetPlayerBlocked,
+  getAccountSession,
+} from '@/lib/accountSession';
 import { useGameWebsocket } from '@/hooks/use-game-websocket';
+import { absoluteServiceUrl } from '@/lib/network';
+import { recordProgressionOnce, recordTelemetry } from '@/lib/telemetry';
 import {
   useLuminaryPresentationEngine,
   type LuminaryPresentationRuntimeSignals,
@@ -58,7 +88,9 @@ import { useCameraInputLease } from '@/hooks/use-camera-input-lease';
 import { useToast } from '@/hooks/use-toast';
 import { gameAudio } from '@/lib/audio';
 import { CipherApertureAnimation, CipherSigil } from '@/components/CipherApertureAnimation';
+import { ForgeReplacementDealAnimation } from '@/components/ForgeReplacementDealAnimation';
 import { ForgeButton, EncryptButton, AssimilateButton } from '@/components/ForgeEncryptButton';
+import { CompactForgeCardReadout } from './game-board-forge-card-slot';
 
 import { motion, AnimatePresence, useAnimation } from 'framer-motion';
 import { Button } from '@/components/ui/button';
@@ -66,7 +98,7 @@ import {
   Volume2, VolumeX, AlertCircle, Sparkles, Clock,
   Gavel, Package, LayoutGrid, Landmark, List,
   ChevronDown, ChevronUp, ChevronRight, Flag, X, HelpCircle, Check, DoorOpen,
-  MoreVertical, Zap, RefreshCw, Lightbulb, FlaskConical, Gauge
+  MoreVertical, Zap, RefreshCw, Lightbulb, FlaskConical, Gauge, Eye, Loader2, Lock
 } from 'lucide-react';
 import {
   DropdownMenu,
@@ -94,7 +126,7 @@ import { useSwipeToDismiss } from '@/hooks/use-swipe-to-dismiss';
 import { useGameKeyboardShortcuts } from '@/hooks/use-game-keyboard-shortcuts';
 import { useForgeKeyboardNav } from '@/hooks/use-forge-keyboard-nav';
 import { KardashevScene } from '@/components/KardashevScene';
-import { getKardashevTier, getDominantAffinityPalette, getCivilizationName, type AffinityPalette } from '@/lib/kardashev';
+import { getKardashevTier, getDominantAffinityPalette, getCivilizationName, type AffinityPalette, type KardashevTier } from '@/lib/kardashev';
 import { hexRgba, AFFINITIES, TIER_CIVILIZATION, AFFINITY_KEY_TO_HEX, DEAL_ANIM_MS, DEAL_FLIP_SOUND_MS, INITIAL_TURN_GUARD_MS, ABRIDGED_SHRINK_MS, ANIM_LOCK_BUFFER_MS, ABRIDGED_ACTION_MS, FORGE_FULL_MS, RESERVED_FORGE_FULL_MS, FALLBACK_FLIP_ANIM_MS, FALLBACK_FLIP_CLEANUP_MS, CIPHER_TAIL_BUFFER_MS, AFFINITY_BURST_STAGGER_MS, AFFINITY_BURST_BASE_MS, AFFINITY_BURST_SETTLE_MS, ABRIDGED_FORGE_LOCK_MS, CIPHER_GAME_TOTAL_MS, CIPHER_DEAL_FIRE_DELAY_MS, ARRIVAL_LABEL_LINGER_MS, RETURN_FLIGHT_MS } from './game-constants';
 import { PlayerAvatar, OpponentChip } from './game-player';
 import { AffinityToken, BaseDialog, type EminenceBreakdown, ArtifactCardView, ForgedCardWithTooltip, TurnCountdown, CardBack, EminenceBadge, EminenceDiamond, EminenceSigil, PendingActionOverlay } from './game-card';
@@ -109,27 +141,32 @@ import { useBoardLayoutPolicy } from './game-layout';
 import { useScrollLock } from './game-scroll-lock';
 import type { ActiveTab, CostMode, ForgeDestination, ForgeDestinationKind, SelectedCard } from './game-types';
 import { getPlannedActionSummary } from './game-action-summary';
-import { BoardAuxModules } from './game-civilization-preview';
+import { BoardAuxModules, BoardCivilizationTraceNotice } from './game-civilization-preview';
 import { BoardTabMain } from './game-board-tab';
 import { AffinityWellPanel } from './game-affinity-well-panel';
-import { ArchiveManifestationTrace, OpponentHarnessTrace } from './game-causal-motion';
+import { OpponentHarnessTrace } from './game-causal-motion';
 import { HandTab, LogTab, OpponentStatStrip, type HandTabScope, type LogTabScope } from './game-tabs';
 import { getVisibleElementRect } from './game-dom-utils';
 import {
   canCommitPlannedAction,
   canReserveMore,
   canUsePlanningEngine,
+  getFoundryStoredIds,
+  getOrdinaryEncryptedCount,
   getPlannedActionInfo,
   getTurnPresentationKey,
 } from './game-planning';
 import { getReplacementDealMotion } from './game-replacement-motion';
+import { artifactFrameUsesArtCrop } from '@/lib/artifactFramePresentation';
 import {
   artifactMarkerBlocksForgeEminence,
   artifactMarkerHasBrand,
   getArtifactBrandVisibilityKey,
+  getArtifactBrands,
   getAddedArtifactBrandTypes,
   getArtifactBrandTypes,
   getPendingArtifactBrandTypes,
+  isNullifiedFirstForgeExempt,
   isArtifactBrandType,
 } from '@/lib/artifactBrands';
 import { ForgeMarkerLayer } from './game-board-forge-markers';
@@ -139,15 +176,39 @@ import { VictoryCinematic } from '@/components/VictoryCinematic';
 import { deriveAccolades } from '@/lib/accolades';
 import { buildCivilizationProfile } from '@/lib/civilizationProfile';
 import {
+  buildCivilizationArtifactHistoryCards,
+  buildCivilizationDeploymentSites,
+  getCivilizationDeploymentSiteSignatureMap,
+  getRecentCivilizationDeploymentSiteIds,
+  prioritizeRecentCivilizationSiteIds,
+} from '@/lib/civilizationDeploymentSites';
+import {
   DevLuminarySequencePanel,
   type DevSequencePlaybackMode,
 } from '@/components/DevLuminarySequencePanel';
-import { DevLuminarySequenceTrace } from '@/components/DevLuminarySequenceTrace';
 import { DevBuildIdentity } from '@/components/DevBuildIdentity';
 import {
   normalizeLuminaryPlaybackMode,
   type LuminaryPlaybackMode,
 } from '@/lib/luminaryPresentationPacing';
+import {
+  LUMII_CLEARANCE_SCENARIO_ID,
+  LumiiEncounterHud,
+  LumiiVaultEncounter,
+} from '@/components/vault/LumiiVaultEncounter';
+import { TraceChronicleExperience } from '@/components/chronicles/TraceChronicleExperience';
+import { RecurrenceChronicleExperience } from '@/components/chronicles/RecurrenceChronicleExperience';
+import { TriangulationChronicleExperience } from '@/components/chronicles/TriangulationChronicleExperience';
+
+const BlueprintPresentationOverlay = React.lazy(async () => {
+  const module = await import('@/components/blueprints/BlueprintPresentationOverlay');
+  return { default: module.BlueprintPresentationOverlay };
+});
+
+const ScenarioProtocolPresentationOverlay = React.lazy(async () => {
+  const module = await import('@/components/blueprints/ScenarioProtocolPresentationOverlay');
+  return { default: module.ScenarioProtocolPresentationOverlay };
+});
 
 function playMarkerStrikeSound(markerType?: string | null) {
   if (!markerType) return;
@@ -213,6 +274,18 @@ function getPlayerVictoryStanding(player: GamePlayerState) {
   };
 }
 
+function getCivilizationSceneTier(
+  player: Pick<GamePlayerState, 'civilization'> | null | undefined,
+  forgedArtifacts: Parameters<typeof getKardashevTier>[0],
+  discountedForgeIds: readonly string[],
+): KardashevTier {
+  const maturity = player?.civilization?.scale.historicalMaturity;
+  if (maturity === 'galactic') return 3;
+  if (maturity === 'stellar') return 2;
+  if (maturity === 'planetary') return 1;
+  return getKardashevTier(forgedArtifacts, discountedForgeIds);
+}
+
 type TurnOrderIntroState = {
   key: number;
   firstPlayerName: string;
@@ -241,6 +314,12 @@ type DelayedLuminaryResultRequest = {
 
 type ActiveDelayedLuminaryResult = DelayedLuminaryResultRequest & {
   originRect: DOMRect;
+  targetRect?: DOMRect | null;
+  playerId?: string;
+  playerName?: string;
+  eminenceAfter?: number;
+  luminaryName?: string;
+  secondaryColor?: string;
 };
 
 const NORMAL_BURN_VISUAL_MS = 2520;
@@ -465,7 +544,7 @@ export default function GameBoard() {
   const [, setLocation] = useLocation();
   const { toast } = useToast();
   const queryClient = useQueryClient();
-  const { account, isLoading: accountLoading, prefs: accountPrefs } = useAccount();
+  const { account, token: accountToken, isLoading: accountLoading, prefs: accountPrefs } = useAccount();
   const session = getSession();
 
   const isTutorial = useMemo(() => {
@@ -581,6 +660,16 @@ export default function GameBoard() {
     localStorage.setItem(key, forgeCompact ? 'compact' : 'full');
   }, [forgeCompact]);
   const [activeTab, setActiveTab] = useState<ActiveTab>('board');
+  const [civilizationScanRequested, setCivilizationScanRequested] = useState(false);
+  const openCivilizationScan = useCallback(() => {
+    setCivilizationScanRequested(true);
+    setActiveTab('hand');
+  }, []);
+  useEffect(() => {
+    if (activeTab !== 'hand' || !civilizationScanRequested) return undefined;
+    const timeoutId = window.setTimeout(() => setCivilizationScanRequested(false), 0);
+    return () => window.clearTimeout(timeoutId);
+  }, [activeTab, civilizationScanRequested]);
   const [civLabel, setCivLabel] = useState<string>(() => {
     const stored = getAccountSession();
     if (!stored) return getDefaultCivName(getSavedAvatarId(), undefined);
@@ -639,7 +728,7 @@ export default function GameBoard() {
     () => localStorage.getItem('luminae_card_detail_discovered') === 'true'
   );
   const [cardFlipped, setCardFlipped] = useState(false);
-  const [pendingSheetAction, setPendingSheetAction] = useState<'forge' | 'reserve' | 'plan_forge' | 'plan_reserve' | 'assimilate' | null>(null);
+  const [pendingSheetAction, setPendingSheetAction] = useState<'forge' | 'foundry_forge' | 'reserve' | 'plan_forge' | 'plan_foundry' | 'plan_reserve' | 'assimilate' | null>(null);
   const [selectedDeckTier, setSelectedDeckTier] = useState<1 | 2 | 3 | null>(null);
   const [pendingDeckConfirm, setPendingDeckConfirm] = useState(false);
   const [btnAnimKey, setBtnAnimKey] = useState(0);
@@ -893,6 +982,11 @@ export default function GameBoard() {
   const [showAllLog, setShowAllLog] = useState(false);
   const [showBoardViewLog, setShowBoardViewLog] = useState(true);
   const [chatMessages, setChatMessages] = useState<ChatMessage[]>([]);
+  const [mutedChatPlayerIds, setMutedChatPlayerIds] = useState<Set<string>>(() => {
+    try { return new Set(JSON.parse(localStorage.getItem('luminae_chat_muted_players') ?? '[]') as string[]); }
+    catch { return new Set(); }
+  });
+  const mutedChatPlayerIdsRef = useRef(mutedChatPlayerIds);
   const [chatInput, setChatInput] = useState('');
   const [unreadChat, setUnreadChat] = useState(0);
   const chatEndRef = useRef<HTMLDivElement>(null);
@@ -901,6 +995,9 @@ export default function GameBoard() {
   const [forgedFilter, setForgedFilter] = useState<AffinityKey | null>(null);
   const [showBurnPileOverlay, setShowBurnPileOverlay] = useState(false);
   const [showReservedOverlay, setShowReservedOverlay] = useState(false);
+  const foundryStorageOwnerRef = useRef<string | null>(null);
+  const previousFoundryStorageIdsRef = useRef<string[]>([]);
+  const foundryStorageRevealTimerRef = useRef<ReturnType<typeof setTimeout> | null>(null);
   const [expandedOpponents, setExpandedOpponents] = useState<Set<string>>(new Set());
   const [expandedHeaderOpponents, setExpandedHeaderOpponents] = useState<Set<string>>(new Set());
   const [boardOpponentsExpanded, setBoardOpponentsExpanded] = useState(false);
@@ -921,6 +1018,7 @@ export default function GameBoard() {
     eventId: string;    // stable server event ID (or 'dev-test-<id>' for dev panel)
     isDevTest: boolean; // dev tests skip the server resolve_arrival call
     winSealingColor?: string; // arrivalColor of the Luminary when this event seals a win
+    arrivalSound: LuminaryArrivalSoundVariant;
   }>>([]);
   // Tracks which server arrival eventIds have already been pushed into the queue
   // so that duplicate WebSocket / reconnect deliveries are safely deduped.
@@ -944,6 +1042,7 @@ export default function GameBoard() {
     winSealingColor?: string,
     claimedBy?: string,
     claimedByPlayerId?: string,
+    arrivalSound?: LuminaryArrivalSoundVariant,
   ) => void>(() => {});
   // Luminary IDs that have been detected as newly arrived in processUpdate but
   // whose arrivalQueue entry hasn't been added yet (RAF chain pending). Used to
@@ -980,6 +1079,38 @@ export default function GameBoard() {
   // Every activation event owns the resolution lane until its board effect and
   // aftermath have resolved or been skipped.
   const [activationQueue, setActivationQueue] = useState<PendingLuminaryActivationEvent[]>([]);
+  const [luminaryEffectReceipts, setLuminaryEffectReceipts] = useState<LuminaryEffectReceiptData[]>([]);
+  const activationQueueWasPopulatedRef = useRef(false);
+  const publishLuminaryEffectReceipt = useCallback((
+    event: PendingLuminaryActivationEvent,
+    luminary: Luminary | undefined,
+    player: GamePlayerState | undefined,
+  ) => {
+    const effectName = luminary?.effectName ?? luminary?.name ?? 'Luminary effect';
+    const receipt: LuminaryEffectReceiptData = {
+      eventId: event.eventId,
+      effectName,
+      luminaryName: luminary?.name,
+      triggeringPlayerName: player?.playerName,
+      result: getLuminaryEffectResultReceiptCopy(event, {
+        effectName,
+        effectDescription: luminary?.effectDescription,
+      }),
+      primaryColor: luminary?.summonColor ?? '#d6a24f',
+      secondaryColor: luminary?.summonSecondaryColor,
+    };
+    setLuminaryEffectReceipts(current => {
+      if (current.some(item => item.eventId === event.eventId)) return current;
+      return [...current, receipt].slice(-4);
+    });
+  }, []);
+  useEffect(() => {
+    const queueIsPopulated = activationQueue.length > 0;
+    if (queueIsPopulated && !activationQueueWasPopulatedRef.current) {
+      setLuminaryEffectReceipts([]);
+    }
+    activationQueueWasPopulatedRef.current = queueIsPopulated;
+  }, [activationQueue.length]);
   const [preparedRectDirectorEventId, setPreparedRectDirectorEventId] = useState<string | null>(null);
   const activationSequenceProgressRef = useRef({
     headEventId: null as string | null,
@@ -1043,23 +1174,6 @@ export default function GameBoard() {
   // has settled. This covers the React gap where pendingSummonEvents may already
   // be known but arrivalQueue has not mounted yet.
   const summonActivationLocksRef = useRef(new Set<string>());
-  // Brand strikes that must fire AFTER the activation cinematic sequence completes.
-  // Set by resolveArrival when both activations and strikes are deferred; called
-  // from the activation onComplete. Cleared on first use so only one activation
-  // (the summon one) triggers the strikes regardless of how many are queued.
-  const postActivationStrikesFirerRef = useRef<(() => void) | null>(null);
-  // Pre-computed total duration (ms) of all brand strikes stored in the ref above.
-  // Read in onComplete to synchronously extend animationEndTimeRef before the
-  // 400ms settle setTimeout fires, preventing a drain-queue race window.
-  const postActivationStrikesTotalMsRef = useRef(0);
-  // When true, the brand-strike prepare() should inherit the compact-restore
-  // obligation from the activation cinematic (which skipped its own restore() to
-  // avoid a premature zoom-in between phases).  Cleared on first use.
-  const inheritActivationViewRef = useRef(false);
-  // Compact state captured just before the activation cinematic's prepare() fires.
-  // Used by inheritActivationViewRef logic to decide whether to carry the compact-
-  // restore obligation through to the brand strike.
-  const preActivationWasCompactRef = useRef(false);
   // Slot rects for lum_ember end_of_turn burns — captured during state-diff
   // BurnFlash detection before the director mounts. The CinderMandateBurnDirector
   // receives this as a prop snapshot and fires BurnFlash at its own timeline point.
@@ -1070,6 +1184,7 @@ export default function GameBoard() {
   const directorGhostSlotKeysRef = useRef<string[]>([]);
   const pendingIronHarbingerSlotsRef = useRef<IronHarbingerResetSlot[]>([]);
   const ironHarbingerGhostSlotKeysRef = useRef<string[]>([]);
+  const pendingAssimilationSlotRef = useRef<AssimilationVisualSlot | null>(null);
   // IDs of luminaries claimed in this session — their entity overlay persists.
   const [claimedThisSession, setClaimedThisSession] = useState<string[]>([]);
   // IDs whose server-side claim has landed, but whose board portal/vortex should
@@ -1184,8 +1299,75 @@ export default function GameBoard() {
   const canReplaySameBoard = Boolean(
     (state as (GameState & { canReplaySameBoard?: boolean }) | undefined)?.canReplaySameBoard
   );
+  const devLumiiEncounter = useMemo(
+    () => import.meta.env.DEV && new URLSearchParams(window.location.search).get('devLumiiEncounter') === '1',
+    [],
+  );
+  const isActualLumiiScenario = state?.scenarioId === LUMII_CLEARANCE_SCENARIO_ID;
+  const isLumiiScenario = isActualLumiiScenario || devLumiiEncounter;
+  const isTraceScenario = state?.scenarioId === 'chronicle_trace_v1' && !!state.traceScenario;
+  const recurrenceScenario = (state as (GameState & {
+    recurrenceScenario?: RecurrenceScenarioState | null;
+  }) | undefined)?.recurrenceScenario;
+  const isRecurrenceScenario = state?.scenarioId === 'chronicle_recurrence_v1' && !!recurrenceScenario;
+  const triangulationScenario = (state as (GameState & {
+    triangulationScenario?: TriangulationScenarioState | null;
+  }) | undefined)?.triangulationScenario;
+  const isTriangulationScenario = state?.scenarioId === 'chronicle_triangulation_v1' && !!triangulationScenario;
+  const isSpecialOutcomeScenario = isLumiiScenario || isTraceScenario || isRecurrenceScenario || isTriangulationScenario;
+  const recordedScenarioClosureRef = useRef<string | null>(null);
+  useEffect(() => {
+    if (state?.status !== 'finished' || !state.scenarioId || recordedScenarioClosureRef.current === state.scenarioId) return;
+    if (isActualLumiiScenario) {
+      recordTelemetry('lumii_outcome', {
+        outcome: state.finishReason === 'withdrawal'
+          ? 'withdrawal'
+          : state.winnerId === session?.playerId ? 'victory' : 'defeat',
+      });
+      recordProgressionOnce('lumii_forecast_closed', { outcome: state.finishReason ?? 'completed' });
+      recordedScenarioClosureRef.current = state.scenarioId;
+    } else if (isTraceScenario || isRecurrenceScenario || isTriangulationScenario) {
+      recordTelemetry('chronicle_closed', {
+        chronicle: state.scenarioId,
+        result: state.winnerId === session?.playerId ? 'victory' : 'defeat',
+      });
+      recordProgressionOnce(`${state.scenarioId}_primary_closed`);
+      recordedScenarioClosureRef.current = state.scenarioId;
+    }
+  }, [isActualLumiiScenario, isRecurrenceScenario, isTraceScenario, isTriangulationScenario, session?.playerId, state?.finishReason, state?.scenarioId, state?.status, state?.winnerId]);
+  const lumiiPresentationLocked = isLumiiScenario;
+  const effectiveBlueprintPresentationReducedMotion = lumiiPresentationLocked
+    ? abridgedAnims
+    : abridgedAnims || skipCinematics;
+  const effectiveLuminaryPlaybackMode: LuminaryPlaybackMode = lumiiPresentationLocked
+    ? 'standard'
+    : luminaryPlaybackMode;
+  const [showLumiiWithdrawConfirm, setShowLumiiWithdrawConfirm] = useState(false);
+  const [lumiiWithdrawPending, setLumiiWithdrawPending] = useState(false);
+  const [lumiiChallengeAgainAvailable, setLumiiChallengeAgainAvailable] = useState(false);
+  const [devLumiiCommentary, setDevLumiiCommentary] = useState<string | null>(null);
 
   const { data: loreCatalog } = useGetCardLoreCatalog();
+
+  useEffect(() => {
+    const defeated = isActualLumiiScenario && state?.status === 'finished' &&
+      state.finishReason !== 'withdrawal' && state.winnerId !== session?.playerId;
+    if (!defeated) {
+      setLumiiChallengeAgainAvailable(false);
+      return;
+    }
+    const accountSession = getAccountSession();
+    if (!accountSession?.token) return;
+    let cancelled = false;
+    void apiGetBlueprintVault(accountSession.token)
+      .then((vault) => {
+        if (!cancelled) setLumiiChallengeAgainAvailable(vault.clearance.status === 'challenge_ready');
+      })
+      .catch(() => {
+        if (!cancelled) setLumiiChallengeAgainAvailable(false);
+      });
+    return () => { cancelled = true; };
+  }, [isActualLumiiScenario, session?.playerId, state?.finishReason, state?.status, state?.winnerId]);
 
   const [cardActionBurst, setCardActionBurst] = useState<{
     key: number;
@@ -1460,12 +1642,17 @@ export default function GameBoard() {
   }, []);
 
   useEffect(() => {
-    const target = Math.max(1, Number(state?.victoryRequirement ?? 15));
+    const target = Math.max(1, Number(state?.victoryRequirement ?? DEFAULT_VICTORY_REQUIREMENT));
     const leaderEminence = Math.max(0, ...(state?.players ?? []).map((p) => p.eminence ?? 0));
     const progress = leaderEminence / target;
     const intensity = Math.max(0, Math.min(1, (progress - 0.68) / 0.28));
     gameAudio.setEndgameIntensity(intensity);
   }, [state?.players, state?.victoryRequirement]);
+
+  useEffect(() => {
+    gameAudio.setLumiiScenarioActive(isActualLumiiScenario && state?.status === 'playing');
+    return () => gameAudio.setLumiiScenarioActive(false);
+  }, [isActualLumiiScenario, state?.status]);
 
   // Scroll-passthrough fix.
   // Problem: the player panel and the main board area are siblings, not
@@ -1627,7 +1814,6 @@ export default function GameBoard() {
     beginCameraSequence: viewOrchestrator.beginSequence,
     endCameraSequence: viewOrchestrator.endSequence,
   });
-  const luminarySequenceSignals = luminaryPresentationEngine.signals;
   const luminarySequenceStatus = luminaryPresentationEngine.status;
   const luminaryPresentationActive = luminarySequenceStatus.presentationActive;
   const authoritativeLuminaryResolutionActive =
@@ -1651,6 +1837,7 @@ export default function GameBoard() {
         ? 4
         : 1
     : 1;
+  const effectiveLuminaryTimelineRate = lumiiPresentationLocked ? 1 : devSequenceTimelineRate;
 
   useEffect(() => {
     if (!devSequencePlaybackActive || devSequencePlaybackMode === 'canonical') return;
@@ -1716,17 +1903,65 @@ export default function GameBoard() {
           orchardPortalRectRef.current = originRect;
           setOrchardCopyPulseKey(key => key + 1);
         }
-        setActiveDelayedEffectFloat({ ...next, originRect });
+        const owner = state?.players.find(player => (
+          player.claimedLuminaryIds?.includes(next.luminaryId)
+        ));
+        const targetElement = owner?.playerId === session?.playerId
+          ? document.querySelector<HTMLElement>('[data-eminence-panel="player"]')
+          : owner
+            ? document.querySelector<HTMLElement>(`[data-opponent-chip="${CSS.escape(owner.playerId)}"]`)
+            : null;
+        const targetRect = targetElement?.getBoundingClientRect() ?? null;
+        const usesEminenceBestowal = usesControlledEminenceBestowal(next.luminaryId);
+        const luminary = state?.luminaries.find(candidate => candidate.id === next.luminaryId);
+
+        setActiveDelayedEffectFloat({
+          ...next,
+          originRect,
+          targetRect,
+          playerId: owner?.playerId,
+          playerName: owner?.playerName,
+          eminenceAfter: owner?.eminence,
+          luminaryName: luminary?.name,
+          secondaryColor: luminary?.summonSecondaryColor,
+        });
+
+        if (usesEminenceBestowal && owner) {
+          gameAudio.playEminenceSeal(
+            next.amount,
+            owner.eminence,
+            Math.max(
+              MIN_VICTORY_REQUIREMENT,
+              Number(state?.victoryRequirement ?? DEFAULT_VICTORY_REQUIREMENT),
+            ),
+          );
+          const impactDelay = abridgedAnims ? 430 : 1450;
+          const impactTimer = setTimeout(() => {
+            luminaryEminenceBurstTimersRef.current =
+              luminaryEminenceBurstTimersRef.current.filter(candidate => candidate !== impactTimer);
+            if (owner.playerId === session?.playerId) {
+              triggerEminencePanelImpact(next.amount);
+            } else {
+              triggerOpponentEminenceImpact(owner.playerId, next.amount);
+            }
+          }, impactDelay);
+          luminaryEminenceBurstTimersRef.current.push(impactTimer);
+        }
       }
     }, 180);
 
     return () => clearTimeout(timer);
   }, [
     activeDelayedEffectFloat,
+    abridgedAnims,
     activationGateActive,
     activationQueue[0]?.eventId,
     animationLockUntil,
     delayedEffectFloatQueue,
+    session?.playerId,
+    state,
+    triggerEminencePanelImpact,
+    triggerOpponentEminenceImpact,
   ]);
 
   // Keep overlayOpenRef in sync so the touch-forwarding handler above can
@@ -1741,8 +1976,9 @@ export default function GameBoard() {
   // Compact View whenever Full cannot contain all molds and Archives. The generic
   // cinematic waits for onSettled, so its opening frame never races the reflow.
   //
-  // Target-dependent named directors are excluded: their canonical frame phase
-  // calls prepare() with its own settled boundary.
+  // Every director waits on this one settled boundary. Named directors receive
+  // an already-settled prepare callback so they cannot move the camera again
+  // after their source activation has appeared.
   useEffect(() => {
     if (
       !activationQueue.length ||
@@ -1753,30 +1989,32 @@ export default function GameBoard() {
       isTutorial
     ) return;
     const evt = activationQueue[0];
-    // Named directors with target-dependent choreography frame the board inside
-    // their canonical "frame" phase.
-    if (activationDirectorPreparesCamera(evt.luminaryId, evt.effectType)) return;
     const procedure = resolveLuminaryProcedure(
       evt.luminaryId,
-      evt.effectType as 'summon' | 'end_of_turn' | 'start_of_turn',
+      evt.effectType as 'summon' | 'action' | 'end_of_turn' | 'start_of_turn',
       state,
       evt.triggeringPlayerId,
-      { targetCardIds: evt.targetCardIds },
+      {
+        targetCardIds: evt.targetCardIds,
+        targetSlotIds: evt.targetSlotIds,
+        affinityType: evt.affinityType,
+        affinityAmount: evt.affinityAmount,
+      },
     );
-    preActivationWasCompactRef.current = effectiveForgeCompact;
-    if (evt.luminaryId === 'lum_astral' && evt.effectType === 'start_of_turn') {
-      setPreparedRectDirectorEventId(null);
-      viewOrchestrator.prepare(
-        procedure,
-        () => setPreparedRectDirectorEventId(evt.eventId),
-        { forceOrchestrate: true },
-      );
+    setPreparedRectDirectorEventId(null);
+    // Source-first effects hide camera preparation inside their activation
+    // release. Directors that own their whole activation still need a settled
+    // board before they mount.
+    if (!activationDirectorManagesActivation(evt.luminaryId, evt.effectType)) {
+      setPreparedRectDirectorEventId(evt.eventId);
       return;
     }
-    setPreparedRectDirectorEventId(null);
     viewOrchestrator.prepare(
       procedure,
       () => setPreparedRectDirectorEventId(evt.eventId),
+      activationDirectorForcesCamera(evt.luminaryId, evt.effectType)
+        ? { forceOrchestrate: true }
+        : undefined,
     );
   }, [
     activationQueue[0]?.eventId,
@@ -2420,7 +2658,10 @@ export default function GameBoard() {
     if (!state) return new Set<string>();
     const claimedIds = new Set(state.players.flatMap(p => p.claimedLuminaryIds ?? []));
     const armed = new Set<string>();
-    if (claimedIds.has('lum_radiant') && !state.concordanceMandalaTriggered) armed.add('lum_radiant');
+    if (
+      claimedIds.has('lum_radiant') &&
+      (!state.concordanceMandalaTriggered || !state.concordanceMandalaFinalTriggered)
+    ) armed.add('lum_radiant');
     if (claimedIds.has('lum_bloom'))                                          armed.add('lum_bloom');
     if (claimedIds.has('lum_orchard') && !state.glassOrchardTriggered)       armed.add('lum_orchard');
     if (claimedIds.has('lum_seed') && !!state.avatarSeedOwnerId)             armed.add('lum_seed');
@@ -2558,6 +2799,7 @@ export default function GameBoard() {
           lum.eminence ?? 0, lum.flavor ?? '', evt.eventId, false, wsc,
           (claimer as { playerName?: string })?.playerName,
           evt.claimedByPlayerId,
+          evt.arrivalSound === 'first_resonance' ? 'first_resonance' : 'standard',
         );
       } else {
         logArrivalDebug('initial-check.missing-luminary', {
@@ -2627,6 +2869,7 @@ export default function GameBoard() {
     if (winFanfareOnLoadFiredRef.current) return;
     if (!state) return;
     if (state.status !== 'finished') return;
+    if (state.scenarioId === LUMII_CLEARANCE_SCENARIO_ID) return;
     winFanfareOnLoadFiredRef.current = true;
     const winnerPlayer = (state.players as GamePlayerState[]).find(
       p => p.playerId === state.winnerId
@@ -3036,25 +3279,25 @@ export default function GameBoard() {
       }
     }
 
+    const activationEventIdsFor = (luminaryId: string) => (
+      (state.pendingLuminaryActivationEvents ?? [])
+        .filter(event => event.luminaryId === luminaryId)
+        .map(event => event.eventId)
+    );
     const activationEventIdFor = (luminaryId: string) => (
-      [...(state.pendingLuminaryActivationEvents ?? [])]
-        .reverse()
-        .find(event => event.luminaryId === luminaryId)
-        ?.eventId
+      activationEventIdsFor(luminaryId).at(-1)
     );
 
-    // ── Concordance Mandala (+2 eminence) ──────────────────────────────────
-    if (!prev.concordanceMandalaTriggered && state.concordanceMandalaTriggered) {
+    // ── Concordance Mandala (+2 at 8 Radiance, +2 at 10 Radiance) ───────────
+    const concordanceBestowals = createPerfectCoherenceBestowals(
+      prev,
+      state,
+      activationEventIdsFor('lum_radiant'),
+    );
+    if (concordanceBestowals.length > 0) {
       setDelayedEffectFloatQueue(queue => [
         ...queue,
-        {
-          id: `mandala-${Date.now()}`,
-          luminaryId: 'lum_radiant',
-          activationEventId: activationEventIdFor('lum_radiant'),
-          amount: 2,
-          color: '#d4af37',
-          label: 'Eminence',
-        },
+        ...concordanceBestowals,
       ]);
     }
 
@@ -3088,32 +3331,6 @@ export default function GameBoard() {
           label: 'Affinity bonus',
         },
       ]);
-    }
-
-    // ── Seed Beyond Seasons (payout from actionLog) ───────────────────────
-    const prevLog = prev.actionLog ?? [];
-    const newLog  = state.actionLog ?? [];
-    if (newLog.length >= prevLog.length) {
-      const newEntries = newLog.slice(newLog.length - (newLog.length - prevLog.length));
-      for (const entry of newEntries) {
-        const m = /Seed Beyond Seasons.*?\+(\d+) pending Eminence/.exec(entry.summary ?? '');
-        if (m) {
-          const amount = parseInt(m[1], 10);
-          if (amount > 0) {
-            setDelayedEffectFloatQueue(queue => [
-              ...queue,
-              {
-                id: `seed-${Date.now()}`,
-                luminaryId: 'lum_seed',
-                activationEventId: activationEventIdFor('lum_seed'),
-                amount,
-                color: '#4cc88a',
-                label: 'Eminence',
-              },
-            ]);
-          }
-        }
-      }
     }
 
     // ── Catalyst Bloom seed particles (per burn while Bloom is claimed) ────
@@ -3234,6 +3451,10 @@ export default function GameBoard() {
   const luminaryChoiceIsOurs = !!pendingLuminaryChoice && pendingLuminaryChoice.playerId === session?.playerId;
   const luminaryChoiceActive = !!pendingLuminaryChoice;
   const turnOrderIntroActive = !!turnOrderIntro;
+  const blueprintPresentationActive =
+    (state?.pendingBlueprintManifestationEvents?.length ?? 0) > 0 ||
+    (state?.pendingBlueprintDetonationEvents?.length ?? 0) > 0 ||
+    (state?.pendingScenarioProtocolEvents?.length ?? 0) > 0;
   // isMyTurn is false while we're waiting through modal/intro phases — the active
   // overlay is the only interactive surface during that phase.
   // Camera movement and the broader presentation lease are separate signals.
@@ -3243,9 +3464,10 @@ export default function GameBoard() {
     isActivePlayer &&
     !authoritativeLuminaryResolutionActive &&
     !luminaryPresentationActive &&
+    !blueprintPresentationActive &&
     !luminaryChoiceIsOurs &&
     !turnOrderIntroActive;
-  const visualTimelineLocked = queuedStateCount > 0;
+  const visualTimelineLocked = queuedStateCount > 0 || blueprintPresentationActive;
   const isMyTurnForCoreAction =
     isMyTurn &&
     !coreActionSubmitted &&
@@ -3255,13 +3477,43 @@ export default function GameBoard() {
     !isCameraControlled &&
     !visualTimelineLocked;
   const me = state?.players.find(p => p.playerId === session?.playerId);
+
+  useEffect(() => {
+    if (!me) return;
+    const nextIds = getFoundryStoredIds(me);
+    if (foundryStorageOwnerRef.current !== me.playerId) {
+      foundryStorageOwnerRef.current = me.playerId;
+      previousFoundryStorageIdsRef.current = nextIds;
+      return;
+    }
+    const previous = new Set(previousFoundryStorageIdsRef.current);
+    const addedIds = nextIds.filter((artifactId) => !previous.has(artifactId));
+    previousFoundryStorageIdsRef.current = nextIds;
+    if (addedIds.length === 0) return;
+    if (foundryStorageRevealTimerRef.current) {
+      clearTimeout(foundryStorageRevealTimerRef.current);
+    }
+    foundryStorageRevealTimerRef.current = setTimeout(() => {
+      setShowReservedOverlay(true);
+      foundryStorageRevealTimerRef.current = null;
+    }, abridgedAnims ? 850 : 3150);
+  }, [abridgedAnims, me]);
+
+  useEffect(() => () => {
+    if (foundryStorageRevealTimerRef.current) {
+      clearTimeout(foundryStorageRevealTimerRef.current);
+    }
+  }, []);
+  useEffect(() => {
+    if ((me?.forgedArtifacts.length ?? 0) > 0) recordProgressionOnce('first_artifact_forged');
+  }, [me?.forgedArtifacts.length]);
   // Planning is future intent, not a present-turn mutation. It remains available
   // during opponent turns, queued state, turn presentation, and camera restoration.
   // Only an active exclusive Luminary presentation may temporarily own the surface.
   const canPlan = canUsePlanningEngine({
     gameStatus: state?.status,
     hasLocalPlayer: !!me,
-    exclusivePresentationActive: luminaryCameraSequenceRequested,
+    exclusivePresentationActive: luminaryCameraSequenceRequested || blueprintPresentationActive,
     arrivalGateActive,
     localArrivalSkipped,
   });
@@ -3270,48 +3522,115 @@ export default function GameBoard() {
   // Only active after the victory cinematic has been dismissed.
   useFocusTrap(
     winOverlayContainerRef,
-    state?.status === 'finished' && !pendingGameOver && !summonSequenceActive && !showCinematic && showWinOverlay,
+    !isSpecialOutcomeScenario && state?.status === 'finished' && !pendingGameOver && !summonSequenceActive && !showCinematic && showWinOverlay,
     () => { /* terminal state — no dismiss action */ },
   );
 
   const myCivilizationKey = useMemo(() => civilizationStateKey(me), [me]);
   const civilizationModel = useMemo(() => {
-    const forgedArtifacts = me?.forgedArtifacts ?? [];
+    const forgedArtifacts = buildCivilizationArtifactHistoryCards(
+      me?.forgedArtifacts ?? [],
+      me?.civilization?.artifacts ?? [],
+      loreCatalog,
+    );
     const discountedForgeIds = me?.discountedForgeIds ?? [];
-    const tier = getKardashevTier(forgedArtifacts, discountedForgeIds);
+    const tier = getCivilizationSceneTier(me, forgedArtifacts, discountedForgeIds);
     const palette = getDominantAffinityPalette(forgedArtifacts);
     const profile = buildCivilizationProfile(forgedArtifacts);
-    // Civilization structure is earned through forging, not temporary affinities.
-    // Each tier's artifacts add lasting visual capacity to the civilization scene.
-    const tierArtifacts = forgedArtifacts.filter((artifact) => artifact.tier === Math.max(1, tier));
-    const milestones = tier === 3 ? 3 : tier === 2 ? 4 : 5;
+    // Maturity is backend-derived from breadth and scale evidence. This fraction
+    // only controls visual density inside the already-earned scene plate.
+    const progressFraction = tier >= 3
+      ? 1
+      : tier === 2
+        ? Math.max(0.35, Math.min(1, (forgedArtifacts.length - 6) / 6))
+        : Math.min(1, forgedArtifacts.length / 6);
     return {
       forgedArtifacts,
       discountedForgeIds,
       tier,
       palette,
       profile,
-      progressFraction: Math.min(1, tierArtifacts.length / milestones),
+      progressFraction,
       name: me?.civName || getCivilizationName(palette, tier),
       forgedCount: forgedArtifacts.length,
     };
   // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [myCivilizationKey]);
+  }, [loreCatalog, myCivilizationKey]);
   const myForgedArtifacts = civilizationModel.forgedArtifacts;
   const revealBlueprintText = myForgedArtifacts.length > 0;
   const forgottenHourCycleState = state?.forgottenHourCycle;
   const forgottenHourEncryptBlocked = useMemo(() => {
-    const visibleMarkerActive = Object.values(state?.artifactMarkers ?? {})
-      .some((marker) => artifactMarkerHasBrand(marker, 'forgotten'));
-    if (visibleMarkerActive) return true;
-
-    return Object.values(forgottenHourCycleState ?? {})
-      .some((cycle) => cycle?.cooldownOwnerTurnsRemaining === null);
-  }, [forgottenHourCycleState, state?.artifactMarkers]);
+    const activeOwnerIds = new Set<string>();
+    for (const [ownerId, cycle] of Object.entries(forgottenHourCycleState ?? {})) {
+      if (cycle?.cooldownOwnerTurnsRemaining === null) activeOwnerIds.add(ownerId);
+    }
+    for (const marker of Object.values(state?.artifactMarkers ?? {})) {
+      for (const brand of getArtifactBrands(marker)) {
+        if (brand.type === 'forgotten') activeOwnerIds.add(brand.ownerId);
+      }
+    }
+    return activeOwnerIds.size > 0 && !activeOwnerIds.has(session?.playerId ?? '');
+  }, [forgottenHourCycleState, session?.playerId, state?.artifactMarkers]);
   const kardashevTier = civilizationModel.tier;
   const kardashevPalette = civilizationModel.palette;
   const civilizationProfile = civilizationModel.profile;
   const kardashevProgressFraction = civilizationModel.progressFraction;
+  const civilizationDeploymentSites = useMemo(() => (
+    buildCivilizationDeploymentSites({
+      forgedArtifacts: myForgedArtifacts,
+      loreCatalog,
+      tier: kardashevTier,
+      ownerPlayerId: session?.playerId,
+      turnCount: state?.turnCount ?? 0,
+      luminaryAffinities: state?.luminaryAffinities ?? [],
+      manifestedBlueprintDevices: me?.manifestedBlueprintDevices ?? [],
+      scenarioProtocols: state?.scenarioProtocols ?? [],
+      civilizationArtifacts: me?.civilization?.artifacts ?? [],
+      activeCapabilityIds: me?.civilization?.activeCapabilityIds,
+    })
+  ), [
+    myForgedArtifacts,
+    loreCatalog,
+    kardashevTier,
+    session?.playerId,
+    state?.turnCount,
+    state?.luminaryAffinities,
+    me?.manifestedBlueprintDevices,
+    me?.civilization?.artifacts,
+    me?.civilization?.activeCapabilityIds,
+    state?.scenarioProtocols,
+  ]);
+  const [recentCivilizationSiteIds, setRecentCivilizationSiteIds] = useState<string[]>([]);
+  const previousCivilizationSiteSignaturesRef = useRef<Map<string, string> | null>(null);
+
+  useEffect(() => {
+    if (!me) {
+      previousCivilizationSiteSignaturesRef.current = null;
+      setRecentCivilizationSiteIds([]);
+      return;
+    }
+
+    const nextSignatures = getCivilizationDeploymentSiteSignatureMap(civilizationDeploymentSites);
+    const previousSignatures = previousCivilizationSiteSignaturesRef.current;
+    previousCivilizationSiteSignaturesRef.current = nextSignatures;
+
+    if (!previousSignatures) return;
+
+    const changedSiteIds = getRecentCivilizationDeploymentSiteIds(
+      previousSignatures,
+      nextSignatures,
+      civilizationDeploymentSites,
+    );
+
+    if (changedSiteIds.length === 0) return;
+
+    setRecentCivilizationSiteIds((current) => prioritizeRecentCivilizationSiteIds(changedSiteIds, current));
+  }, [civilizationDeploymentSites, me]);
+
+  const acknowledgeRecentCivilizationSites = useCallback((siteIds: readonly string[]) => {
+    if (siteIds.length === 0) return;
+    setRecentCivilizationSiteIds((current) => current.filter((siteId) => !siteIds.includes(siteId)));
+  }, []);
 
   const opponentData = useMemo(() => {
     const players = state?.players;
@@ -3319,18 +3638,26 @@ export default function GameBoard() {
     return Object.fromEntries(
       players.map(p => {
         const civPalette = getDominantAffinityPalette(p.forgedArtifacts);
+        const civilizationTier = getCivilizationSceneTier(
+          p,
+          p.forgedArtifacts,
+          p.discountedForgeIds,
+        );
         return [p.playerId, {
           totalAffinity: Object.values(p.affinities).reduce<number>((a, b) => a + b, 0),
           cardCount: p.forgedArtifacts.length,
           reservedCount: p.reservedArtifacts.length,
           civPalette,
-          civName: p.civName || getCivilizationName(civPalette, getKardashevTier(p.forgedArtifacts, p.discountedForgeIds)),
+          civName: p.civName || getCivilizationName(civPalette, civilizationTier),
         }];
       })
     );
   }, [state?.players]);
 
-  const effectiveCost = useCallback((card: ArtifactCard, p: GamePlayerState) => {
+  const effectiveCost = useCallback((
+    card: ArtifactCard,
+    p: GamePlayerState,
+  ) => {
     const luminaryAffinities: LuminaryActiveState[] = state?.luminaryAffinities ?? [];
     const turnCount: number = state?.turnCount ?? 0;
     const out: Record<string, number> = {};
@@ -3346,7 +3673,10 @@ export default function GameBoard() {
     }
     return out;
   }, [state?.luminaryAffinities, state?.turnCount]);
-  const canAffordCard = useCallback((card: ArtifactCard, p: GamePlayerState): boolean => {
+  const canAffordCard = useCallback((
+    card: ArtifactCard,
+    p: GamePlayerState,
+  ): boolean => {
     const cost = effectiveCost(card, p);
     let singularityNeeded = 0;
     for (const [c, need] of Object.entries(cost)) {
@@ -3355,42 +3685,48 @@ export default function GameBoard() {
     }
     return singularityNeeded <= (p.affinities.singularity ?? 0);
   }, [effectiveCost]);
+  const getFoundryClaimAction = useCallback((
+    card: ArtifactCard,
+    fromReserve = false,
+    fromArchiveTop = false,
+  ): BlueprintClaimAction | null => {
+    if (card.tier !== 2 || fromReserve || fromArchiveTop) return null;
+    const foundry = me?.manifestedBlueprintDevices?.find(
+      (device) => device.blueprintId === 'bp_mantle_to_orbit_foundry',
+    );
+    if (!foundry || foundry.state !== 'ready') return null;
+    const legacyUses = Number(foundry.foundryTier2Ready === true) +
+      Number(foundry.foundryTier3Ready === true);
+    const usesRemaining = foundry.foundryUsesRemaining ?? (legacyUses > 0 ? legacyUses : 2);
+    return usesRemaining > 0 ? 'foundry_sustainable' : 'foundry_overdrive';
+  }, [me?.manifestedBlueprintDevices]);
+  const foundryCost = useCallback((card: ArtifactCard, player: GamePlayerState) => {
+    const base = effectiveCost(card, player);
+    const result = { ...base };
+    for (const affinity of AFFINITIES) {
+      if (affinity === 'singularity') continue;
+      if ((card.cost[affinity as keyof AffinityCounts] ?? 0) > 0 && (result[affinity] ?? 0) > 0) {
+        result[affinity]--;
+      }
+    }
+    return result;
+  }, [effectiveCost]);
+  const canAffordFoundryCard = useCallback((card: ArtifactCard, player: GamePlayerState): boolean => {
+    const cost = foundryCost(card, player);
+    let singularityNeeded = 0;
+    for (const [affinity, needed] of Object.entries(cost)) {
+      singularityNeeded += Math.max(
+        0,
+        needed - (player.affinities[affinity as keyof AffinityCounts] ?? 0),
+      );
+    }
+    return singularityNeeded <= (player.affinities.singularity ?? 0);
+  }, [foundryCost]);
 
   // Derived forge-deduction map — how many of each affinity the selected card
   // would spend from the player's current inventory. Placed here (after
   // ── Final Hunger: Assimilation state ──────────────────────────────────────
   const assimilateAvailable = !!(state?.firstHungerAvailable && session && state.firstHungerAvailable === session.playerId);
-
-  const assimCost = useMemo<AffinityCounts | null>(() => {
-    if (!selectedCard || !me || !assimilateAvailable) return null;
-    const c = selectedCard.card.cost;
-    return {
-      flare:     Math.max(0, (c.flare     ?? 0) - (me.bonuses.flare     ?? 0)),
-      continuum: c.continuum ?? 0,
-      verdance:  Math.max(0, (c.verdance  ?? 0) - (me.bonuses.verdance  ?? 0)),
-      abyss:     c.abyss     ?? 0,
-      radiance:    Math.max(0, (c.radiance    ?? 0) - (me.bonuses.radiance    ?? 0)),
-      singularity:     c.singularity     ?? 0,
-    };
-  }, [selectedCard, me, assimilateAvailable]);
-
-  const canAffordAssim = useMemo<boolean>(() => {
-    if (!assimCost || !me) return false;
-    let shortfall = 0;
-    for (const c of AFFINITIES) {
-      if (c === 'singularity') continue;
-      const need = assimCost[c as keyof AffinityCounts] ?? 0;
-      const have = me.affinities[c as keyof AffinityCounts] ?? 0;
-      shortfall += Math.max(0, need - have);
-    }
-    return shortfall <= (me.affinities.singularity ?? 0);
-  }, [assimCost, me]);
-
-  const assimEligible = useMemo<boolean>(() => {
-    if (!selectedCard) return false;
-    const c = selectedCard.card.cost;
-    return (c.flare ?? 0) > 0 || (c.verdance ?? 0) > 0 || (c.radiance ?? 0) > 0;
-  }, [selectedCard]);
 
   // ── Forge-vanish guard for the open Artifact-info panel ────────────────────
   // True when the panel is showing an Artifact in the Forge (not a reserve view
@@ -3402,12 +3738,21 @@ export default function GameBoard() {
     if (!selectedCard || !state) return false;
     if (selectedCard.fromReserve || selectedCard.readOnly) return false;
     const id = selectedCard.card.id;
+    if (selectedCard.fromArchiveTop) {
+      const topCards = me?.tideArchiveTopCards;
+      const currentTop = selectedCard.card.tier === 1
+        ? topCards?.tier1
+        : selectedCard.card.tier === 2
+          ? topCards?.tier2
+          : topCards?.tier3;
+      return currentTop?.id !== id;
+    }
     const inForge =
       (state.forgeTier1 ?? []).some((c) => c?.id === id) ||
       (state.forgeTier2 ?? []).some((c) => c?.id === id) ||
       (state.forgeTier3 ?? []).some((c) => c?.id === id);
     return !inForge;
-  }, [selectedCard, state]);
+  }, [me?.tideArchiveTopCards, selectedCard, state]);
 
   // When the open Artifact's Forge slot changes, auto-close the panel after a
   // short beat. The delay keeps the lock perceivable and gives the rejection
@@ -3439,7 +3784,31 @@ export default function GameBoard() {
     }
     if (singularityNeeded > 0) result.singularity = singularityNeeded;
     return Object.keys(result).length > 0 ? result : undefined;
-  }, [selectedCard, me]);
+  }, [effectiveCost, selectedCard, me]);
+  const selectedFoundryAction = selectedCard
+    ? getFoundryClaimAction(
+        selectedCard.card,
+        selectedCard.fromReserve,
+        selectedCard.fromArchiveTop,
+      )
+    : null;
+  const selectedFoundryName = me?.manifestedBlueprintDevices?.find(
+    (device) => device.blueprintId === 'bp_mantle_to_orbit_foundry',
+  )?.definition?.name ?? 'Manifested Foundry';
+  const selectedFoundryAffordable = !!(
+    selectedFoundryAction &&
+    selectedCard &&
+    me &&
+    canAffordFoundryCard(selectedCard.card, me)
+  );
+  const selectedIsRecoveringFoundryComponent = !!(
+    selectedCard?.fromReserve &&
+    me?.manifestedBlueprintDevices?.some(
+      (device) => device.blueprintId === 'bp_mantle_to_orbit_foundry' && device.state === 'recovering',
+    ) &&
+    me &&
+    getFoundryStoredIds(me).includes(selectedCard.card.id)
+  );
 
   // ── Reserve hint ──────────────────────────────────────────────────────────
   useEffect(() => {
@@ -3606,12 +3975,124 @@ export default function GameBoard() {
       );
 
       const forgeActionKey = isForgeAction ? JSON.stringify(action) : null;
+      const isTideArchiveForgeAction =
+        action?.type === 'forge_artifact' && action.luminaryId === 'lum_tide';
       const optimisticForge =
         action?.type === 'forge_artifact' &&
         action.playerId === session?.playerId &&
         optimisticLocalForgeRef.current?.cardId === action?.cardId
           ? optimisticLocalForgeRef.current
           : null;
+
+      if (
+        prev &&
+        forgeActionKey &&
+        isTideArchiveForgeAction &&
+        action.cardId &&
+        forgeActionKey !== lastForgeBurstActionRef.current
+      ) {
+        lastForgeBurstActionRef.current = forgeActionKey;
+        const actingPlayerId = action.playerId as string;
+        const previousPlayer = (prev.players as GamePlayerState[]).find(
+          (candidate) => candidate.playerId === actingPlayerId,
+        );
+        const player = (newState.players as GamePlayerState[]).find(
+          (candidate) => candidate.playerId === actingPlayerId,
+        );
+        const previousTops = previousPlayer?.tideArchiveTopCards;
+        const exitCard = [previousTops?.tier1, previousTops?.tier2, previousTops?.tier3]
+          .find((card) => card?.id === action.cardId) ??
+          player?.forgedArtifacts.find((card) => card.id === action.cardId);
+
+        if (exitCard) {
+          const tier = exitCard.tier as 1 | 2 | 3;
+          const source = document.querySelector<HTMLElement>(`[data-deck-tier="${tier}"]`);
+          const sourceRect = source?.getBoundingClientRect();
+          const startRect = sourceRect
+            ? { x: sourceRect.left, y: sourceRect.top, w: sourceRect.width, h: sourceRect.height }
+            : { x: window.innerWidth / 2 - BOARD_CARD_W / 2, y: window.innerHeight / 2 - BOARD_CARD_H / 2, w: BOARD_CARD_W, h: BOARD_CARD_H };
+          const isLocalForge = actingPlayerId === session?.playerId;
+
+          for (const timer of cardAnimTimersRef.current) clearTimeout(timer);
+          cardAnimTimersRef.current = [];
+
+          if (isLocalForge) {
+            cardActionBurstKeyRef.current += 1;
+            const sequence = cardActionBurstKeyRef.current;
+            const forgeDestination = resolveLocalForgeDestination();
+            const spentCost = player
+              ? effectiveCost(exitCard, player) as Record<string, number>
+              : {};
+            const spentColors = Object.entries(spentCost)
+              .filter(([, value]) => value > 0)
+              .map(([affinity]) => affinity as AffinityKey);
+
+            setAnimEndTime(abridgedAnims ? ABRIDGED_FORGE_LOCK_MS : FORGE_FULL_MS);
+            setCardActionBurst({
+              key: sequence,
+              card: exitCard,
+              tier,
+              playerName: player?.playerName ?? 'Unknown',
+              avatarId: player?.avatarId ?? null,
+              eminence: exitCard.eminence ?? 0,
+              gotSingularity: false,
+              startRect,
+              destPos: forgeDestination?.pos,
+              destKind: forgeDestination?.kind,
+              destTargetSelector: forgeDestination?.targetSelector,
+              spentColors,
+              isForgottenForge: false,
+            });
+            gameAudio.playArtifactForged();
+            const bonusAffinity = exitCard.bonusAffinity as AffinityKey;
+            if (bonusAffinity && bonusAffinity !== 'singularity') {
+              const bonusTimer = setTimeout(
+                () => gameAudio.playBonusSound(bonusAffinity),
+                abridgedAnims ? 380 : 1000,
+              );
+              cardAnimTimersRef.current.push(bonusTimer);
+            }
+            const clearTimer = setTimeout(() => {
+              if (cardActionBurstKeyRef.current !== sequence) return;
+              if (!abridgedAnims) flashForgeDestination(forgeDestination, exitCard);
+              setCardActionBurst(null);
+            }, abridgedAnims ? 720 : 1300);
+            cardAnimTimersRef.current.push(clearTimer);
+          } else {
+            traceOpponentActionOwner(
+              actingPlayerId,
+              AFFINITY_META[exitCard.bonusAffinity as AffinityKey]?.glowHex ?? '#d8ad57',
+            );
+            const chip = document.querySelector<HTMLElement>(`[data-opponent-chip="${actingPlayerId}"]`);
+            const chipRect = chip?.getBoundingClientRect();
+            opponentForgeAbsorbKeyRef.current += 1;
+            const sequence = opponentForgeAbsorbKeyRef.current;
+            setAnimEndTime(abridgedAnims ? ABRIDGED_FORGE_LOCK_MS : FORGE_FULL_MS);
+            setOpponentForgeAbsorb({
+              key: sequence,
+              playerId: actingPlayerId,
+              card: exitCard,
+              tier,
+              startRect,
+              chipCenter: chipRect
+                ? { x: chipRect.left + chipRect.width / 2, y: chipRect.top + chipRect.height / 2 }
+                : { x: window.innerWidth / 2, y: 28 },
+              ownerName: player?.playerName,
+              eminence: exitCard.eminence ?? 0,
+              eminenceTotal: player?.eminence,
+              spentColors: exitCard.bonusAffinity
+                ? [exitCard.bonusAffinity as AffinityKey]
+                : [],
+              isForgottenForge: false,
+            });
+            if (abridgedAnims) gameAudio.playArtifactForged();
+            const clearTimer = setTimeout(() => {
+              if (opponentForgeAbsorbKeyRef.current === sequence) setOpponentForgeAbsorb(null);
+            }, abridgedAnims ? 720 : 1250);
+            cardAnimTimersRef.current.push(clearTimer);
+          }
+        }
+      }
 
       if (prev && forgeActionKey && optimisticForge) {
         // The forged card already departed on tap. The authoritative snapshot owns
@@ -3645,7 +4126,7 @@ export default function GameBoard() {
         }
       }
 
-      if (prev && isForgeAction && action.cardId && forgeActionKey !== lastForgeBurstActionRef.current) {
+      if (prev && isForgeAction && !isTideArchiveForgeAction && action.cardId && forgeActionKey !== lastForgeBurstActionRef.current) {
         lastForgeBurstActionRef.current = forgeActionKey;
         const cardId = action.cardId as string;
         const forgeRowsBefore: Record<number, (ArtifactCard | null)[]> = {
@@ -3667,11 +4148,16 @@ export default function GameBoard() {
             const exitIsForgottenForge =
               artifactMarkerHasBrand(exitMarker, 'forgotten') ||
               ghostMarkerType === 'forgotten';
+            const exitNullifiedExempt = isNullifiedFirstForgeExempt(
+              exitMarker,
+              action.playerId as string | undefined,
+              prev.nullifiedFirstForge,
+            );
             const exitEminence = (
-              artifactMarkerBlocksForgeEminence(exitMarker) ||
+              artifactMarkerBlocksForgeEminence(exitMarker, exitNullifiedExempt) ||
               ghostMarkerType === 'forgotten' ||
               ghostMarkerType === 'condemned' ||
-              ghostMarkerType === 'nullified'
+              (ghostMarkerType === 'nullified' && !exitNullifiedExempt)
             )
               ? 0
               : (exitCard.eminence ?? 0);
@@ -3770,7 +4256,9 @@ export default function GameBoard() {
                 setAnimEndTime(abridgedAnims ? ABRIDGED_FORGE_LOCK_MS : FORGE_FULL_MS);
                 const forgeDestination = resolveLocalForgeDestination();
                 // Compute which affinity colors were spent for the energy-stream animation.
-                const _spentCost = player ? effectiveCost(exitCard, player) as Record<string, number> : {};
+                  const _spentCost = player
+                    ? effectiveCost(exitCard, player) as Record<string, number>
+                    : {};
                 const _spentColors = (Object.entries(_spentCost)
                   .filter(([, v]) => v > 0)
                   .map(([c]) => c as AffinityKey));
@@ -3964,7 +4452,15 @@ export default function GameBoard() {
         if (reservedArtifact) {
           const reservedMarker = cardId ? prev.artifactMarkers?.[cardId] : undefined;
           const reservedIsForgottenForge = artifactMarkerHasBrand(reservedMarker, 'forgotten');
-          const reservedEminence = artifactMarkerBlocksForgeEminence(reservedMarker)
+          const reservedNullifiedExempt = isNullifiedFirstForgeExempt(
+            reservedMarker,
+            actingPlayerId,
+            prev.nullifiedFirstForge,
+          );
+          const reservedEminence = artifactMarkerBlocksForgeEminence(
+            reservedMarker,
+            reservedNullifiedExempt,
+          )
             ? 0
             : (reservedArtifact.eminence ?? 0);
           const chipEl = document.querySelector(`[data-opponent-chip="${actingPlayerId}"]`);
@@ -4024,7 +4520,10 @@ export default function GameBoard() {
             .filter((evt) => !prevPending.some((oldEvt) => oldEvt.eventId === evt.eventId))
             .map((evt) => evt.claimedByPlayerId),
         );
-        const victoryTarget = Math.max(15, Number(newState.victoryRequirement ?? 15));
+        const victoryTarget = Math.max(
+          MIN_VICTORY_REQUIREMENT,
+          Number(newState.victoryRequirement ?? DEFAULT_VICTORY_REQUIREMENT),
+        );
 
         for (const nextPlayer of newState.players as GamePlayerState[]) {
           if (nextPlayer.playerId === session.playerId) continue;
@@ -4141,7 +4640,7 @@ export default function GameBoard() {
           );
           let dominantColor = '#fbbf24'; // singularity fallback
 
-          // Prefer the bonusAffinity of the card that pushed the winner over 15 Eminence.
+          // Prefer the bonusAffinity of the card that pushed the winner over the victory requirement.
           // The game transitions to 'finished' via advanceTurn at end-of-last-round, so
           // lastAction may belong to any player's final turn action — not necessarily the
           // winner's Forge action. Use the winner's last forged Artifact; Artifacts are
@@ -4178,8 +4677,10 @@ export default function GameBoard() {
           if (elseBarrierMs === 0) {
             // No in-flight animations — fire immediately (identical to previous behavior).
             cancelPendingAnimations();
-            gameAudio.playLuminaryFanfare(dominantColor);
-            setTimeout(() => gameAudio.playWin(), 1400);
+            if (newState.scenarioId !== LUMII_CLEARANCE_SCENARIO_ID) {
+              gameAudio.playLuminaryFanfare(dominantColor);
+              setTimeout(() => gameAudio.playWin(), 1400);
+            }
           } else {
             // In-flight animations are still running. Hold back the victory cinematic
             // (via pendingGameOver) and the state queue (immediately) until the barrier
@@ -4195,8 +4696,10 @@ export default function GameBoard() {
               cancelPendingAnimations();
               fanfareFiredForGameOverRef.current = false;
               setPendingGameOver(false);
-              gameAudio.playLuminaryFanfare(dominantColor);
-              setTimeout(() => gameAudio.playWin(), 1400);
+              if (newState.scenarioId !== LUMII_CLEARANCE_SCENARIO_ID) {
+                gameAudio.playLuminaryFanfare(dominantColor);
+                setTimeout(() => gameAudio.playWin(), 1400);
+              }
             }, elseBarrierMs);
           }
         }
@@ -4270,6 +4773,7 @@ export default function GameBoard() {
                 wsc,
                 claimedByPlayer?.playerName,
                 evt.claimedByPlayerId ?? claimedByPlayer?.playerId,
+                evt.arrivalSound === 'first_resonance' ? 'first_resonance' : 'standard',
               );
             } else {
               logArrivalDebug('state-diff.missing-luminary', {
@@ -4401,6 +4905,59 @@ export default function GameBoard() {
               });
               return next;
             });
+          }
+        }
+      }
+
+      // Preserve the selected Artifact across the authoritative Assimilation
+      // update. The server has already refilled its Forge slot, but the old
+      // Artifact must remain visible until FinalHungerAssimilationDirector
+      // dissolves it and hands the empty mold to the replacement deal.
+      {
+        const previousActivationIds = new Set(
+          (prev?.pendingLuminaryActivationEvents ?? []).map(event => event.eventId),
+        );
+        const assimilationEvent = (newState.pendingLuminaryActivationEvents ?? []).find(
+          event => (
+            event.luminaryId === 'lum_hunger' &&
+            event.effectType === 'action' &&
+            !previousActivationIds.has(event.eventId)
+          ),
+        );
+        const assimilatedId = assimilationEvent?.targetCardIds?.[0];
+        if (assimilationEvent && assimilatedId) {
+          const previousRows: Array<{ tier: 1 | 2 | 3; cards: (ArtifactCard | null)[] }> = [
+            { tier: 3, cards: (prev?.forgeTier3 ?? []) as (ArtifactCard | null)[] },
+            { tier: 2, cards: (prev?.forgeTier2 ?? []) as (ArtifactCard | null)[] },
+            { tier: 1, cards: (prev?.forgeTier1 ?? []) as (ArtifactCard | null)[] },
+          ];
+          for (const { tier, cards } of previousRows) {
+            const slotIndex = cards.findIndex(card => card?.id === assimilatedId);
+            if (slotIndex < 0) continue;
+            const card = cards[slotIndex] ?? null;
+            const slotKey = `${tier}-${slotIndex}`;
+            const cardElement = document.querySelector<HTMLElement>(`[data-card-id="${assimilatedId}"]`);
+            const rect = cardElement?.getBoundingClientRect();
+            const isLocalOwner = assimilationEvent.triggeringPlayerId === session?.playerId;
+            pendingAssimilationSlotRef.current = {
+              cardId: assimilatedId,
+              card,
+              tier,
+              slotKey,
+              fallbackRect: rect ? {
+                left: rect.left,
+                top: rect.top,
+                width: rect.width,
+                height: rect.height,
+              } : undefined,
+              destinationSelector: isLocalOwner
+                ? '[data-civilization-drop-target], [data-nav-hand]'
+                : `[data-opponent-chip="${assimilationEvent.triggeringPlayerId}"]`,
+            };
+            if (card) {
+              setBurstGhostCards(current => ({ ...current, [slotKey]: card }));
+            }
+            break;
           }
         }
       }
@@ -4631,7 +5188,7 @@ export default function GameBoard() {
     setVotePending(true);
     if (action === 'join') setRematchVoteMode(mode);
     try {
-      const resp = await fetch(`/api/rooms/${roomId}/rematch`, {
+      const resp = await fetch(absoluteServiceUrl(`/api/rooms/${roomId}/rematch`), {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({ sessionToken: session.sessionToken, action, sameBoard }),
@@ -4671,24 +5228,24 @@ export default function GameBoard() {
   }, [canReplaySameBoard, rematchVote?.sameBoard, roomId, session?.sessionToken, toast, votePending]);
 
   const loadRematchInfo = useCallback(async () => {
-    if (!roomId || !session?.sessionToken) return;
+    if (isSpecialOutcomeScenario || !roomId || !session?.sessionToken) return;
     try {
       const params = new URLSearchParams({ sessionToken: session.sessionToken });
-      const resp = await fetch(`/api/rooms/${roomId}/rematch?${params.toString()}`);
+      const resp = await fetch(absoluteServiceUrl(`/api/rooms/${roomId}/rematch?${params.toString()}`));
       if (!resp.ok) return;
       setRematchVote(await resp.json() as RematchVoteUpdate);
     } catch {
       // WebSocket updates remain the primary path; reconnect polling retries.
     }
-  }, [roomId, session?.sessionToken]);
+  }, [isSpecialOutcomeScenario, roomId, session?.sessionToken]);
 
   useEffect(() => {
-    if (state?.status !== 'finished') return;
+    if (isSpecialOutcomeScenario || state?.status !== 'finished') return;
     void loadRematchInfo();
-  }, [loadRematchInfo, state?.status]);
+  }, [isSpecialOutcomeScenario, loadRematchInfo, state?.status]);
 
   useEffect(() => {
-    if (state?.status !== 'finished' || !rematchVote?.active || !roomId || !session?.sessionToken) {
+    if (isSpecialOutcomeScenario || state?.status !== 'finished' || !rematchVote?.active || !roomId || !session?.sessionToken) {
       return;
     }
 
@@ -4702,6 +5259,7 @@ export default function GameBoard() {
     return () => window.clearInterval(interval);
   }, [
     loadRematchInfo,
+    isSpecialOutcomeScenario,
     queryClient,
     rematchVote?.active,
     roomId,
@@ -4717,8 +5275,8 @@ export default function GameBoard() {
   }, [state?.status]);
 
   const leaveFinishedRoom = useCallback(() => {
-    if (state?.status === 'finished' && roomId && session?.sessionToken) {
-      void fetch(`/api/rooms/${roomId}/rematch`, {
+    if (!isSpecialOutcomeScenario && state?.status === 'finished' && roomId && session?.sessionToken) {
+      void fetch(absoluteServiceUrl(`/api/rooms/${roomId}/rematch`), {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({
@@ -4730,8 +5288,8 @@ export default function GameBoard() {
         // Leaving the result screen should never be held hostage by the request.
       });
     }
-    setLocation('/');
-  }, [roomId, session?.sessionToken, setLocation, state?.status]);
+    setLocation('/?menu=1');
+  }, [isSpecialOutcomeScenario, roomId, session?.sessionToken, setLocation, state?.status]);
 
   const [reconnectBannerDismissed, setReconnectBannerDismissed] = useState(false);
   const { sendChatMessage, isConnected, isReconnecting } = useGameWebsocket({
@@ -4774,9 +5332,11 @@ export default function GameBoard() {
       setTimeout(() => setLocation('/'), 3000);
     },
     onChatMessage: (msg) => {
+      if (mutedChatPlayerIdsRef.current.has(msg.playerId)) return;
       setChatMessages(prev => [...prev, msg]);
       if (activeTab !== 'log') setUnreadChat(prev => prev + 1);
     },
+    onChatRejected: (reason) => toast({ variant: 'destructive', title: 'Chat unavailable', description: reason }),
   });
   // Inline sync — runs on every render, keeps the ref current so the
   // refetchInterval callback always sees the latest WS health without
@@ -4916,6 +5476,7 @@ export default function GameBoard() {
     winSealingColor?: string,
     claimedBy?: string,
     claimedByPlayerId?: string,
+    arrivalSound: LuminaryArrivalSoundVariant = 'standard',
   ) => {
     // 1. Dedup guard (skip for dev tests which intentionally replay)
     if (!isDevTest) {
@@ -4958,7 +5519,7 @@ export default function GameBoard() {
             logArrivalDebug('enqueue.no-dom-element', { eventId, luminaryId: lumId, isDevTest });
             pendingSuppressArrivalIdsRef.current.delete(lumId);
             const queueEntry = { id: lumId, name: lumName, domain: lumDomain,
-              eminence: lumEminence, flavor: lumFlavor, claimedBy, claimedByPlayerId, cardRect: undefined, eventId, isDevTest, winSealingColor };
+              eminence: lumEminence, flavor: lumFlavor, claimedBy, claimedByPlayerId, cardRect: undefined, eventId, isDevTest, winSealingColor, arrivalSound };
             setArrivalQueue(q => {
               const next = [...q, queueEntry];
               logArrivalDebug('arrivalQueue.push', {
@@ -5004,7 +5565,7 @@ export default function GameBoard() {
 
             pendingSuppressArrivalIdsRef.current.delete(lumId);
             const queueEntry = { id: lumId, name: lumName, domain: lumDomain,
-              eminence: lumEminence, flavor: lumFlavor, claimedBy, claimedByPlayerId, cardRect: cardRectVal, boardSnapshot, eventId, isDevTest, winSealingColor };
+              eminence: lumEminence, flavor: lumFlavor, claimedBy, claimedByPlayerId, cardRect: cardRectVal, boardSnapshot, eventId, isDevTest, winSealingColor, arrivalSound };
             setArrivalQueue(q => {                   // 7. start the cutscene
               const next = [...q, queueEntry];
               logArrivalDebug('arrivalQueue.push', {
@@ -5093,6 +5654,7 @@ export default function GameBoard() {
         undefined,
         claimer?.playerName,
         evt.claimedByPlayerId ?? claimer?.playerId,
+        evt.arrivalSound === 'first_resonance' ? 'first_resonance' : 'standard',
       );
     }
 
@@ -5174,17 +5736,19 @@ export default function GameBoard() {
       // while an Artifact/Affinity animation burst is still mid-sequence.
       const arrivalFlushBarrierMs = Math.max(0, animBarrierMsRef.current - Date.now());
       animBarrierMsRef.current = 0;
-      gameAudio.playLuminaryFanfare(pendingGameOverLumColorRef.current);
+      if (!isActualLumiiScenario) {
+        gameAudio.playLuminaryFanfare(pendingGameOverLumColorRef.current);
+      }
       winBarrierTimerRef.current = setTimeout(() => {
         winBarrierTimerRef.current = null;
         cancelPendingAnimations();
         pendingGameOverLumColorRef.current = '';
         fanfareFiredForGameOverRef.current = false;
         setPendingGameOver(false);
-        gameAudio.playWin();
+        if (!isActualLumiiScenario) gameAudio.playWin();
       }, WIN_FANFARE_DELAY_MS + arrivalFlushBarrierMs);
     }
-  }, [summonSequenceActive, pendingGameOver]);
+  }, [isActualLumiiScenario, summonSequenceActive, pendingGameOver]);
 
   // In tutorial mode, suppress the arrival cutscene entirely — immediately drain
   // any queued arrival entries by running the onComplete logic synchronously.
@@ -5306,7 +5870,10 @@ export default function GameBoard() {
   // react-hooks/rules-of-hooks. They are safe because effectiveCost
   // and me are already declared (may be undefined/null before the
   // state is loaded, but the hooks themselves handle that).
-  const computeCosts = useCallback((card: ArtifactCard, mode: CostMode): Partial<Record<AffinityKey, number>> | undefined => {
+  const computeCosts = useCallback((
+    card: ArtifactCard,
+    mode: CostMode,
+  ): Partial<Record<AffinityKey, number>> | undefined => {
     if (!me) return undefined;
     if (mode === 'printed') return undefined;
     const afterBonus = effectiveCost(card, me) as Record<string, number>;
@@ -5331,10 +5898,21 @@ export default function GameBoard() {
     return out;
   }, [me, effectiveCost, selectedAffinities]);
 
-  const handleBuy = (card: ArtifactCard, fromReserve = false) => {
+  const handleBuy = (
+    card: ArtifactCard,
+    fromReserve = false,
+    fromArchiveTop = false,
+    blueprintAction?: BlueprintClaimAction,
+  ) => {
     if (!isMyTurnForCoreAction) return;
     triggerForgeIgnition(card.id);
-    executeAction({ type: fromReserve ? 'forge_reserved_artifact' : 'forge_artifact', cardId: card.id, cardRef: card });
+    executeAction({
+      type: fromReserve ? 'forge_reserved_artifact' : 'forge_artifact',
+      cardId: card.id,
+      cardRef: card,
+      ...(blueprintAction ? { blueprintAction } : {}),
+      ...(fromArchiveTop ? { luminaryId: 'lum_tide', tier: card.tier } : {}),
+    });
   };
 
   const handleReserveCard = (card: ArtifactCard) => {
@@ -5379,7 +5957,7 @@ export default function GameBoard() {
     setPendingDeckConfirm(false);
   }, []);
 
-  const openCardSheet = useCallback((card: ArtifactCard, fromReserve: boolean) => {
+  const openCardSheet = useCallback((card: ArtifactCard, fromReserve: boolean, fromArchiveTop = false) => {
     if (!me) return;
     // Lock: suppress sheet open while the card is still undergoing a flip-to-replace
     // animation (replace from deck after a forge or cipher). The animation must remain
@@ -5392,9 +5970,9 @@ export default function GameBoard() {
     setCardFlipped(false);
     setPendingSheetAction(null);
     setSelectedCard({
-      card, fromReserve,
+      card, fromReserve, fromArchiveTop,
       canBuy: isMyTurnForCoreAction && canAffordCard(card, me),
-      canReserve: isMyTurnForCoreAction && !fromReserve && !forgottenHourEncryptBlocked && canReserveMore(me),
+      canReserve: isMyTurnForCoreAction && !fromReserve && !fromArchiveTop && !forgottenHourEncryptBlocked && canReserveMore(me),
       effectiveCosts: computeCosts(card, costMode),
     });
   }, [me, cardDetailDiscovered, forgottenHourEncryptBlocked, isMyTurnForCoreAction, costMode, computeCosts, canAffordCard, canReserveMore]);
@@ -5568,6 +6146,7 @@ export default function GameBoard() {
     playerId?: string;
     affinities?: Partial<AffinityCounts>;
     affinity?: ActionRequestAffinity;
+    recurrenceCustodyMethod?: RecurrenceCustodyMethod;
   };
 
   type ActionGateResult = { ok: true } | { ok: false; reason: string; staleSelection?: boolean };
@@ -5587,6 +6166,12 @@ export default function GameBoard() {
     if (!cardId || !state) return false;
     const rows = [state.forgeTier1, state.forgeTier2, state.forgeTier3] as Array<Array<ArtifactCard | string | null>>;
     return rows.some((row) => row.some((entry) => cardEntryId(entry) === cardId));
+  };
+  const findTideArchiveTopCard = (cardId?: string | null): ArtifactCard | null => {
+    if (!cardId || !me?.tideArchiveForgeAvailable) return null;
+    const topCards = me.tideArchiveTopCards;
+    return [topCards?.tier1, topCards?.tier2, topCards?.tier3]
+      .find((card) => card?.id === cardId) ?? null;
   };
   const isReservedByMe = (cardId?: string | null): boolean => {
     if (!cardId || !me) return false;
@@ -5619,11 +6204,32 @@ export default function GameBoard() {
     if (!isMyTurnForCoreAction) return { ok: false, reason: 'This action is not available right now.' };
 
     if (payload.type === 'forge_artifact') {
-      const card = payload.cardRef ?? findFaceUpForgeCard(payload.cardId as string | undefined);
-      if (!payload.cardId || !isFaceUpForgeCard(payload.cardId as string)) {
+      if (payload.blueprintAction === 'foundry_recovery') {
+        const foundryDevice = me.manifestedBlueprintDevices?.find(
+          (entry) => entry.blueprintId === 'bp_mantle_to_orbit_foundry',
+        );
+        const recoveryIds = foundryDevice?.state === 'recovering'
+          ? getFoundryStoredIds(me)
+          : [];
+        if (!payload.cardId || !recoveryIds.includes(payload.cardId as string)) {
+          return { ok: false, reason: 'Artifact is no longer in Foundry recovery.', staleSelection: true };
+        }
+        return { ok: true };
+      }
+      const isArchiveForge = payload.luminaryId === 'lum_tide';
+      const card = payload.cardRef ?? (isArchiveForge
+        ? findTideArchiveTopCard(payload.cardId as string | undefined)
+        : findFaceUpForgeCard(payload.cardId as string | undefined));
+      const isAvailable = isArchiveForge
+        ? !!findTideArchiveTopCard(payload.cardId as string | undefined)
+        : isFaceUpForgeCard(payload.cardId as string | undefined);
+      if (!payload.cardId || !isAvailable) {
         return { ok: false, reason: 'Artifact is no longer in The Forge.', staleSelection: true };
       }
-      if (!card || !canAffordCard(card, me)) return { ok: false, reason: 'Cannot afford this Artifact.' };
+      const affordable = card && payload.blueprintAction
+        ? canAffordFoundryCard(card, me)
+        : card && canAffordCard(card, me);
+      if (!card || !affordable) return { ok: false, reason: 'Cannot afford this Artifact.' };
     }
 
     if (payload.type === 'reserve_artifact') {
@@ -5634,6 +6240,9 @@ export default function GameBoard() {
       if (cardId && !isFaceUpForgeCard(cardId)) {
         return { ok: false, reason: 'Artifact is no longer in The Forge.', staleSelection: true };
       }
+      if (cardId && artifactMarkerHasBrand(state.artifactMarkers?.[cardId], 'nullified')) {
+        return { ok: false, reason: 'Nullified Artifacts cannot be Encrypted.' };
+      }
       if (!cardId && getDeckCountForTier(tier) <= 0) {
         return { ok: false, reason: 'Archive is empty.', staleSelection: true };
       }
@@ -5643,6 +6252,15 @@ export default function GameBoard() {
       if (!payload.cardId || !isReservedByMe(payload.cardId as string)) {
         return { ok: false, reason: 'Artifact is no longer encrypted.', staleSelection: true };
       }
+      const foundryDevice = me.manifestedBlueprintDevices?.find(
+        (entry) => entry.blueprintId === 'bp_mantle_to_orbit_foundry',
+      );
+      if (
+        foundryDevice?.state === 'recovering' &&
+        getFoundryStoredIds(me).includes(payload.cardId as string)
+      ) {
+        return { ok: false, reason: 'Use free Foundry recovery for this component.' };
+      }
       if (payload.cardRef && !canAffordCard(payload.cardRef, me)) return { ok: false, reason: 'Cannot afford this Artifact.' };
     }
 
@@ -5651,7 +6269,6 @@ export default function GameBoard() {
         return { ok: false, reason: 'Artifact is no longer in The Forge.', staleSelection: true };
       }
       if (!assimilateAvailable) return { ok: false, reason: 'Assimilation is not available.' };
-      if (!canAffordAssim) return { ok: false, reason: 'Cannot afford Assimilation.' };
     }
 
     if (payload.type === 'harness_two_affinities') {
@@ -5682,11 +6299,18 @@ export default function GameBoard() {
     const cardId = plannedActionData.cardId as string | undefined;
 
     if (type === 'forge_artifact') {
-      const card = findFaceUpForgeCard(cardId);
-      if (!cardId || !isFaceUpForgeCard(cardId)) {
+      const isArchiveForge = plannedActionData.luminaryId === 'lum_tide';
+      const card = isArchiveForge ? findTideArchiveTopCard(cardId) : findFaceUpForgeCard(cardId);
+      const isAvailable = isArchiveForge
+        ? !!findTideArchiveTopCard(cardId)
+        : isFaceUpForgeCard(cardId);
+      if (!cardId || !isAvailable) {
         return { ok: false, reason: 'Artifact is no longer in The Forge.', staleSelection: true };
       }
-      if (!card || !canAffordCard(card, me)) return { ok: false, reason: 'Cannot afford this plan yet.' };
+      const affordable = card && plannedActionData.blueprintAction
+        ? canAffordFoundryCard(card, me)
+        : card && canAffordCard(card, me);
+      if (!card || !affordable) return { ok: false, reason: 'Cannot afford this plan yet.' };
     }
 
     if (type === 'reserve_artifact') {
@@ -5700,6 +6324,9 @@ export default function GameBoard() {
       if (cardId && !isFaceUpForgeCard(cardId)) {
         return { ok: false, reason: 'Artifact is no longer in The Forge.', staleSelection: true };
       }
+      if (cardId && artifactMarkerHasBrand(state.artifactMarkers?.[cardId], 'nullified')) {
+        return { ok: false, reason: 'Nullified Artifacts cannot be Encrypted.' };
+      }
       if (!cardId && getDeckCountForTier(tier) <= 0) {
         return { ok: false, reason: 'Archive is empty.', staleSelection: true };
       }
@@ -5708,6 +6335,12 @@ export default function GameBoard() {
     if (type === 'forge_reserved_artifact') {
       if (!cardId || !isReservedByMe(cardId)) {
         return { ok: false, reason: 'Artifact is no longer encrypted.', staleSelection: true };
+      }
+      const foundryDevice = me.manifestedBlueprintDevices?.find(
+        (entry) => entry.blueprintId === 'bp_mantle_to_orbit_foundry',
+      );
+      if (foundryDevice?.state === 'recovering' && getFoundryStoredIds(me).includes(cardId)) {
+        return { ok: false, reason: 'Use free Foundry recovery for this component.' };
       }
       const card = (me.reservedArtifacts ?? []).find((entry) => cardEntryId(entry as ArtifactCard | string | null) === cardId) as ArtifactCard | undefined;
       if (card && !canAffordCard(card, me)) return { ok: false, reason: 'Cannot afford this plan yet.' };
@@ -5753,6 +6386,8 @@ export default function GameBoard() {
     if (
       payload.type !== 'resolve_summon' &&
       payload.type !== 'resolve_luminary_activation' &&
+      payload.type !== 'resolve_blueprint_manifestation' &&
+      payload.type !== 'resolve_blueprint_detonation' &&
       isTutorial &&
       tutorialStep >= 0 &&
       tutorialStep < LUMII_BEAT_COUNT
@@ -5779,16 +6414,20 @@ export default function GameBoard() {
         normalized.affinities = Object.assign({ flare: 0, continuum: 0, verdance: 0, abyss: 0, radiance: 0, singularity: 0 }, normalized.affinities) as AffinityCounts;
       }
 
-      // Pre-set a ghost Artifact for the Forge slot being forged/reserved.
+      // Pre-set a ghost Artifact for a Forge, Encrypt, or Assimilate source slot.
       // This blocks the replacement card from flashing in during the gap between
       // submission and processUpdate (REST 200ms delay, or a polling useEffect
       // render firing before the queue drains).  burstGhostCards renders with
       // highest priority over the actual TQ state card, so the old card stays
       // visible until the forge / cipher animation fires.
-      // processUpdate already calls setBurstGhostCards(delete slotKey) atomically
-      // when the animation starts — no separate cleanup is needed here.
+      // The owning presentation removes the ghost only when it takes over the
+      // source, preventing an authoritative replacement from flashing early.
       if (
-        (payload.type === 'forge_artifact' || payload.type === 'reserve_artifact') &&
+        (
+          payload.type === 'forge_artifact' ||
+          payload.type === 'reserve_artifact' ||
+          payload.type === 'assimilate'
+        ) &&
         payload.cardId &&
         state
       ) {
@@ -5811,6 +6450,23 @@ export default function GameBoard() {
             if (!startsOptimisticForge) {
               setBurstGhostCards(prev => ({ ...prev, [preGhostKey]: sourceCard }));
             }
+            if (payload.type === 'assimilate') {
+              const sourceElement = document.querySelector<HTMLElement>(`[data-card-id="${targetId}"]`);
+              const sourceRect = sourceElement?.getBoundingClientRect();
+              pendingAssimilationSlotRef.current = {
+                cardId: targetId,
+                card: sourceCard,
+                tier: tierNum,
+                slotKey: preGhostKey,
+                fallbackRect: sourceRect ? {
+                  left: sourceRect.left,
+                  top: sourceRect.top,
+                  width: sourceRect.width,
+                  height: sourceRect.height,
+                } : undefined,
+                destinationSelector: '[data-civilization-drop-target], [data-nav-hand]',
+              };
+            }
             const marker = state.artifactMarkers?.[targetId];
             const markerType = getArtifactBrandTypes(marker).at(-1);
             if (markerType) ghostArtifactMarkerTypesRef.current.set(targetId, markerType);
@@ -5826,7 +6482,12 @@ export default function GameBoard() {
               const spentColors = Object.entries(spentCost)
                 .filter(([, value]) => value > 0)
                 .map(([affinity]) => affinity as AffinityKey);
-              const markerEminence = artifactMarkerBlocksForgeEminence(marker)
+              const nullifiedExempt = isNullifiedFirstForgeExempt(
+                marker,
+                session?.playerId,
+                state.nullifiedFirstForge,
+              );
+              const markerEminence = artifactMarkerBlocksForgeEminence(marker, nullifiedExempt)
                 ? 0
                 : (sourceCard.eminence ?? 0);
               cardActionBurstKeyRef.current += 1;
@@ -5877,7 +6538,9 @@ export default function GameBoard() {
       // not close an unrelated card sheet as a side effect of housekeeping.
       if (
         payload.type !== 'resolve_summon' &&
-        payload.type !== 'resolve_luminary_activation'
+        payload.type !== 'resolve_luminary_activation' &&
+        payload.type !== 'resolve_blueprint_manifestation' &&
+        payload.type !== 'resolve_blueprint_detonation'
       ) {
         setSelectedCard(null);
       }
@@ -5892,7 +6555,12 @@ export default function GameBoard() {
           ? state?.artifactMarkers?.[payload.cardId as string]
           : undefined;
         const reservedIsForgottenForge = artifactMarkerHasBrand(reservedMarker, 'forgotten');
-        const eminence = artifactMarkerBlocksForgeEminence(reservedMarker)
+        const nullifiedExempt = isNullifiedFirstForgeExempt(
+          reservedMarker,
+          session?.playerId,
+          state?.nullifiedFirstForge,
+        );
+        const eminence = artifactMarkerBlocksForgeEminence(reservedMarker, nullifiedExempt)
           ? 0
           : (payload.cardRef?.eminence ?? 0);
         const name = payload.cardRef?.name ?? 'Artifact';
@@ -5957,6 +6625,22 @@ export default function GameBoard() {
         setCardActionBurst(null);
         setHiddenSlots(new Set());
         setBurstGhostCards(prev => { const next = { ...prev }; delete next[slotKey]; return next; });
+      }
+      if (payload.type === 'assimilate' && pendingAssimilationSlotRef.current) {
+        const { slotKey } = pendingAssimilationSlotRef.current;
+        pendingAssimilationSlotRef.current = null;
+        setBurstGhostCards(previous => {
+          if (!previous[slotKey]) return previous;
+          const next = { ...previous };
+          delete next[slotKey];
+          return next;
+        });
+        setHiddenSlots(previous => {
+          if (!previous.has(slotKey)) return previous;
+          const next = new Set(previous);
+          next.delete(slotKey);
+          return next;
+        });
       }
       if (CORE_ACTION_TYPES.includes(payload.type)) {
         setCoreActionSubmitted(false);
@@ -6100,6 +6784,65 @@ export default function GameBoard() {
 
   const handleSurrender = () => {
     if (confirm("Surrender? This cannot be undone.")) executeAction({ type: 'surrender' });
+  };
+
+  const returnToLumiiVault = () => {
+    clearSession();
+    setLocation('/dashboard/archive/vault');
+  };
+
+  const returnToChronicleArchive = () => {
+    clearSession();
+    setLocation('/dashboard/archive/chronicles');
+  };
+
+  const withdrawFromLumiiChallenge = async () => {
+    if (!isActualLumiiScenario || !roomId || lumiiWithdrawPending) return;
+    const accountSession = getAccountSession();
+    if (!accountSession?.token) {
+      toast({ title: 'Withdrawal unavailable', description: 'Your account session is missing.', variant: 'destructive' });
+      return;
+    }
+    setLumiiWithdrawPending(true);
+    try {
+      await apiWithdrawBlueprintChallenge(accountSession.token, roomId);
+      setShowLumiiWithdrawConfirm(false);
+      if (session?.sessionToken) {
+        await queryClient.invalidateQueries({
+          queryKey: getGetGameStateQueryKey(roomId, { sessionToken: session.sessionToken }),
+        });
+      }
+    } catch (caught) {
+      toast({
+        title: 'The threshold did not release',
+        description: caught instanceof Error ? caught.message : 'Withdrawal could not be completed.',
+        variant: 'destructive',
+      });
+    } finally {
+      setLumiiWithdrawPending(false);
+    }
+  };
+
+  const challengeLumiiAgain = async () => {
+    const accountSession = getAccountSession();
+    if (!accountSession?.token) throw new Error('Your account session is missing.');
+    const challenge = await apiStartBlueprintChallenge(accountSession.token);
+    saveSession({
+      roomId: challenge.roomId,
+      inviteCode: challenge.inviteCode,
+      playerId: challenge.playerId,
+      sessionToken: challenge.sessionToken,
+      playerName: accountSession.account.username,
+      isHost: true,
+    });
+    setLocation(`/game/${challenge.roomId}`);
+  };
+
+  const enterRevealedVault = async () => {
+    const accountSession = getAccountSession();
+    if (!accountSession?.token) throw new Error('Your account session is missing.');
+    await apiAcknowledgeBlueprintVaultReveal(accountSession.token);
+    returnToLumiiVault();
   };
 
   // Navigate back to the main menu without forfeiting.  The server keeps the
@@ -6253,7 +6996,13 @@ export default function GameBoard() {
     sentFlashRef.current = setTimeout(() => setSentFlashBtn(null), 900);
   };
 
-  const victoryRequirement = Math.max(15, Number((state as { victoryRequirement?: number }).victoryRequirement ?? 15));
+  const victoryRequirement = Math.max(
+    MIN_VICTORY_REQUIREMENT,
+    Number(
+      (state as { victoryRequirement?: number }).victoryRequirement ??
+      DEFAULT_VICTORY_REQUIREMENT,
+    ),
+  );
   const cinematicMode = new URLSearchParams(window.location.search).get('epicArrival') === '1' ? 'epic' : 'standard';
   const handleCardTap = (card: ArtifactCard, fromReserve: boolean) => {
     if (plannedCardId === card.id) {
@@ -6418,6 +7167,7 @@ export default function GameBoard() {
     directorGhostSlotKeysRef.current = [];
     pendingIronHarbingerSlotsRef.current = [];
     ironHarbingerGhostSlotKeysRef.current = [];
+    pendingAssimilationSlotRef.current = null;
     pendingSuppressArrivalIdsRef.current = new Set();
     arrivalVisualHoldIdsRef.current = new Set();
     returningLuminaryIdsRef.current = new Set();
@@ -6425,7 +7175,9 @@ export default function GameBoard() {
     resolvedArrivalEventIdsRef.current = new Set();
     pendingArrivalServerResolutionsRef.current = [];
     pendingActivationServerResolutionsRef.current = new Set();
+    activationQueueWasPopulatedRef.current = false;
     setActivationQueue([]);
+    setLuminaryEffectReceipts([]);
     setArrivalQueue([]);
     setArrivalVisualHoldIds([]);
     setReturningLuminaryIds([]);
@@ -6476,7 +7228,18 @@ export default function GameBoard() {
     setShowDeckReserveHint(false);
   };
 
-  const myReservedCount = me?.reservedArtifacts.length ?? 0;
+  const myReservedCount = me ? getOrdinaryEncryptedCount(me) : 0;
+  const foundryStoredIds = me ? getFoundryStoredIds(me) : [];
+  const foundryStoredIdSet = new Set(foundryStoredIds);
+  const ordinaryReservedArtifacts = me?.reservedArtifacts.filter(
+    (artifact) => !foundryStoredIdSet.has(artifact.id),
+  ) ?? [];
+  const foundryStoredArtifacts = me?.reservedArtifacts.filter(
+    (artifact) => foundryStoredIdSet.has(artifact.id),
+  ) ?? [];
+  const foundryDeviceState = me?.manifestedBlueprintDevices?.find(
+    (entry) => entry.blueprintId === 'bp_mantle_to_orbit_foundry',
+  )?.state;
 
   // ---- TABS ----
 
@@ -6736,6 +7499,146 @@ export default function GameBoard() {
     sendChatMessage(text);
   };
 
+  const handleMuteChatPlayer = (message: ChatMessage) => {
+    setMutedChatPlayerIds((current) => {
+      const next = new Set(current).add(message.playerId);
+      mutedChatPlayerIdsRef.current = next;
+      localStorage.setItem('luminae_chat_muted_players', JSON.stringify([...next]));
+      return next;
+    });
+    setChatMessages((current) => current.filter((entry) => entry.playerId !== message.playerId));
+    toast({ title: `${message.playerName} muted` });
+  };
+
+  const handleBlockChatPlayer = (message: ChatMessage) => {
+    if (!accountToken || !roomId) return;
+    handleMuteChatPlayer(message);
+    void apiSetPlayerBlocked({ token: accountToken, roomId, playerId: message.playerId, blocked: true })
+      .then(() => toast({ title: `${message.playerName} blocked` }))
+      .catch((error) => toast({ variant: 'destructive', title: 'Could not block player', description: error.message }));
+  };
+
+  const handleReportChatPlayer = (message: ChatMessage) => {
+    if (!accountToken || !roomId) return;
+    void apiReportPlayer({
+      token: accountToken,
+      roomId,
+      playerId: message.playerId,
+      evidenceText: message.text,
+      evidenceTimestamp: new Date(message.timestamp).toISOString(),
+    }).then(() => toast({ title: 'Report received', description: 'The message was recorded for review.' }))
+      .catch((error) => toast({ variant: 'destructive', title: 'Could not submit report', description: error.message }));
+  };
+
+  const handleFoundryRecovery = (artifactId: string) => {
+    if (!isMyTurnForCoreAction) return;
+    executeAction({
+      type: 'forge_artifact',
+      cardId: artifactId,
+      blueprintAction: 'foundry_recovery',
+    });
+  };
+
+  const renderEncryptedArtifactRow = (
+    card: ArtifactCard,
+    options: { foundryComponent?: boolean; sequenceIndex?: number } = {},
+  ) => {
+    const effective = computeCosts(card, costMode);
+    const bonusCosts = computeCosts(card, 'after_bonuses') ?? undefined;
+    const canBuy = canAffordCard(card, me!);
+    const isPendingPlan = plannedCardId === card.id;
+    const foundryComponent = options.foundryComponent === true;
+    const canRecover = foundryComponent && foundryDeviceState === 'recovering' && isMyTurnForCoreAction;
+    return (
+      <motion.div
+        key={card.id}
+        data-reserved-card-id={card.id}
+        data-foundry-component={foundryComponent || undefined}
+        initial={foundryComponent
+          ? effectiveBlueprintPresentationReducedMotion
+            ? { opacity: 0 }
+            : { opacity: 0, y: -18, scale: 0.96 }
+          : false}
+        animate={{ opacity: 1, y: 0, scale: 1 }}
+        transition={{
+          duration: effectiveBlueprintPresentationReducedMotion ? 0.22 : 0.38,
+          delay: foundryComponent ? (options.sequenceIndex ?? 0) * 0.12 : 0,
+        }}
+        className={`relative flex w-full items-center gap-3 border p-3 text-left ${foundryComponent
+          ? 'border-amber-200/20 bg-amber-950/10'
+          : 'border-transparent'}`}
+      >
+        <button
+          type="button"
+          title={isPendingPlan ? `Click to cancel ${plannedCardLabel.toLowerCase()}` : card.name}
+          aria-label={isPendingPlan ? `Cancel ${plannedCardLabel.toLowerCase()}` : `View ${card.name}`}
+          className="absolute inset-0 z-0 bg-secondary/30 transition-colors hover:bg-secondary/50 active:bg-secondary/60 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-primary/70"
+          onClick={() => {
+            setShowReservedOverlay(false);
+            handleCardTap(card, true);
+          }}
+        />
+        <div className="pointer-events-none relative z-10 shrink-0">
+          <ArtifactCardView
+            card={card}
+            tier={card.tier}
+            effectiveCosts={effective}
+            bonusCosts={bonusCosts}
+            tapped={false}
+            hideStrike={costMode === 'needed_now'}
+          />
+          <ForgeMarkerLayer
+            markerTypes={getArtifactBrandTypes(state?.artifactMarkers?.[card.id])}
+            brandDelay={brandDelayMap.get(card.id)}
+            strikeAura={strikeAuraMap.get(card.id)}
+            suppressed={suppressedMarkerIds.has(card.id)}
+          />
+          {isPendingPlan && (
+            <PendingActionOverlay label={plannedCardLabel} onCancel={handleCancelPlan} />
+          )}
+        </div>
+        <div className="pointer-events-none relative z-10 flex min-w-0 flex-1 flex-col gap-1.5">
+          <div className="font-bold text-sm leading-tight">{card.name}</div>
+          <div className="flex items-center gap-1.5">
+            <AffinityToken color={card.bonusAffinity as AffinityKey} size={13} />
+            <span className="text-xs text-muted-foreground">
+              {AFFINITY_META[card.bonusAffinity as AffinityKey]?.name ?? card.bonusAffinity} bonus
+            </span>
+            {(card.eminence ?? 0) > 0 && (
+              <>
+                <span className="text-muted-foreground/40">·</span>
+                <span className="flex items-center gap-0.5 text-xs font-bold text-white">
+                  {card.eminence}<EminenceDiamond size={9} />
+                </span>
+              </>
+            )}
+          </div>
+          <div className="mt-0.5 flex items-center gap-1.5">
+            <span className={`text-[10px] ${foundryComponent ? 'font-semibold text-amber-200/75' : canBuy ? 'font-semibold text-emerald-400' : 'text-muted-foreground/60'}`}>
+              {foundryComponent
+                ? foundryDeviceState === 'recovering' ? 'Free recovery available' : 'Paid re-Forge'
+                : canBuy ? 'Can forge' : 'Tap to view'}
+            </span>
+            <ChevronRight className="ml-auto h-3 w-3 shrink-0 text-muted-foreground/50" />
+          </div>
+        </div>
+        {foundryComponent && foundryDeviceState === 'recovering' && (
+          <button
+            type="button"
+            disabled={!canRecover}
+            onClick={(event) => {
+              event.stopPropagation();
+              handleFoundryRecovery(card.id);
+            }}
+            className="relative z-20 inline-flex min-h-9 shrink-0 items-center gap-1 border border-amber-200/30 bg-black/55 px-2 text-[9px] font-black uppercase text-amber-100 enabled:hover:bg-amber-300/15 disabled:opacity-45"
+          >
+            <Gavel className="h-3 w-3" aria-hidden="true" /> Recover
+          </button>
+        )}
+      </motion.div>
+    );
+  };
+
   const handTabScope = {
     activationGateActive,
     activationQueue,
@@ -6743,13 +7646,17 @@ export default function GameBoard() {
     cardDetailDiscovered,
     civEditValue,
     civLabel,
+    civilizationDeploymentSites,
     civilizationProfile,
+    civilizationScanRequested,
     computeCosts,
     costMode,
     expandedLumEffects,
     forgedView,
+    hintsEnabled,
     handleCancelPlan,
     handleCardTap,
+    handleFoundryRecovery,
     isEditingCivName,
     isMyTurn,
     kardashevPalette,
@@ -6760,6 +7667,8 @@ export default function GameBoard() {
     myReservedCount,
     newlyMarkedCardIds,
     openForgedCardSheet,
+    recentCivilizationSiteIds,
+    acknowledgeRecentCivilizationSites,
     pendingGameOver,
     plannedCardId,
     plannedCardLabel,
@@ -6790,6 +7699,9 @@ export default function GameBoard() {
     chatMessages,
     expandedOpponents,
     handleSendChat,
+    handleBlockChatPlayer,
+    handleMuteChatPlayer,
+    handleReportChatPlayer,
     openForgedCardSheet,
     opponentData,
     session,
@@ -6857,12 +7769,162 @@ export default function GameBoard() {
     new URLSearchParams(window.location.search).get('marketPreview') === '1'
       ? 'reliquary'
       : 'celestial';
+  const lumiiHudSuppressed =
+    state.status !== 'playing' ||
+    luminaryPresentationActive ||
+    blueprintPresentationActive ||
+    !!cardActionBurst ||
+    !!cipherBurst ||
+    !!affinityBurst ||
+    !!dealingCard ||
+    directorDealingCards.length > 0 ||
+    brandStrikes.length > 0 ||
+    showSeedBoardEffect ||
+    turnOrderIntroActive ||
+    !!turnAnnouncement ||
+    luminaryChoiceActive ||
+    isAnyOverlayOpen ||
+    showLumiiWithdrawConfirm ||
+    showEminenceBreakdown ||
+    showRules ||
+    !!returnPhase ||
+    pendingGameOver;
+  const renderGameOptionsMenu = () => (
+    <DropdownMenu open={headerMenuOpen} onOpenChange={setHeaderMenuOpen}>
+      <DropdownMenuTrigger asChild>
+        <Button
+          variant="ghost"
+          size="icon"
+          className="h-8 w-8 text-muted-foreground"
+          aria-label="More game options"
+        >
+          <MoreVertical className="h-4 w-4" />
+        </Button>
+      </DropdownMenuTrigger>
+      <DropdownMenuContent align="end">
+        <div className="flex w-full items-center justify-between gap-4 px-2 py-1.5 text-xs text-muted-foreground font-mono">
+          <button
+            className="flex min-w-0 items-center gap-2 hover:text-foreground transition-colors"
+            onClick={() => {
+              navigator.clipboard.writeText(session.inviteCode).then(() =>
+                toast({ title: 'Game code copied', description: `Share code: ${session.inviteCode}` })
+              );
+            }}
+            title="Tap to copy game code"
+          >
+            <Package className="h-3.5 w-3.5 shrink-0" />
+            <span className="truncate">{session.inviteCode}</span>
+          </button>
+          <span
+            className="flex shrink-0 items-center gap-1"
+            title={`Round ${state.roundNumber}`}
+            aria-label={`Round ${state.roundNumber}`}
+          >
+            <RefreshCw className="h-3.5 w-3.5" />
+            R{state.roundNumber}
+          </span>
+        </div>
+        <DropdownMenuSeparator />
+        <DropdownMenuItem onClick={() => { setHeaderMenuOpen(false); setTimeout(() => setShowRules(true), 0); }}>
+          <HelpCircle className="h-4 w-4" />
+          Rules
+        </DropdownMenuItem>
+        {/*
+          Toggle convention — icon-only state, no DropdownMenuCheckboxItem:
+          All boolean settings in this menu communicate their on/off state exclusively
+          through the icon (swap icons for binary toggles, or change icon color/opacity
+          for non-binary toggles). Do NOT use DropdownMenuCheckboxItem — it adds a
+          redundant checkbox indicator alongside the icon, creating a double-indicator.
+          Pattern A (swap): muted → VolumeX/Volume2, label changes too.
+          Pattern B (color): abridgedAnims → Zap always shown, yellow = on, muted = off.
+        */}
+        <DropdownMenuItem onClick={toggleMute}>
+          {muted ? <VolumeX className="h-4 w-4" /> : <Volume2 className="h-4 w-4" />}
+          {muted ? 'Unmute' : 'Mute'}
+        </DropdownMenuItem>
+        <DropdownMenuItem onClick={toggleAbridgedAnims}>
+          <Zap className={`h-4 w-4 ${abridgedAnims ? 'text-yellow-400' : 'text-muted-foreground opacity-50'}`} />
+          Reduced motion
+        </DropdownMenuItem>
+        {lumiiPresentationLocked ? (
+          <>
+            <DropdownMenuSeparator />
+            <DropdownMenuItem disabled>
+              <Lock className="h-4 w-4 text-rose-300" />
+              Defense Forecast presentation locked
+            </DropdownMenuItem>
+            <DropdownMenuItem disabled>
+              <Gauge className="h-4 w-4 text-muted-foreground opacity-60" />
+              Effects: Standard
+            </DropdownMenuItem>
+            <DropdownMenuItem disabled>
+              <Sparkles className="h-4 w-4 text-yellow-400" />
+              Cinematics required
+            </DropdownMenuItem>
+          </>
+        ) : (
+          <>
+            <DropdownMenuItem onClick={toggleLuminaryPlaybackMode}>
+              <Gauge className={`h-4 w-4 ${luminaryPlaybackMode === 'swift' ? 'text-cyan-300' : 'text-muted-foreground'}`} />
+              Effects: {luminaryPlaybackMode === 'swift' ? 'Swift' : 'Standard'}
+            </DropdownMenuItem>
+            <DropdownMenuItem onClick={toggleSkipCinematics}>
+              <Sparkles className={`h-4 w-4 ${skipCinematics ? 'text-muted-foreground opacity-50' : 'text-yellow-400'}`} />
+              {skipCinematics ? 'Cinematics off' : 'Cinematics on'}
+            </DropdownMenuItem>
+          </>
+        )}
+        <DropdownMenuItem onClick={toggleHints}>
+          <Lightbulb className={`h-4 w-4 ${hintsEnabled ? 'text-yellow-400' : 'text-muted-foreground opacity-50'}`} />
+          {hintsEnabled ? 'Hints on' : 'Hints off'}
+        </DropdownMenuItem>
+        {import.meta.env.DEV && (
+          <>
+            <DropdownMenuSeparator />
+            <DropdownMenuItem
+              onClick={() => {
+                setHeaderMenuOpen(false);
+                setTimeout(() => setShowDevSequenceLab(true), 0);
+              }}
+            >
+              <FlaskConical className="h-4 w-4 text-amber-300" />
+              Luminary Sequence Lab
+            </DropdownMenuItem>
+            <DevBuildIdentity />
+          </>
+        )}
+        <DropdownMenuItem onClick={() => { setHeaderMenuOpen(false); setTimeout(handleReturnToMenu, 0); }}>
+          <DoorOpen className="h-4 w-4" />
+          Return to Menu
+        </DropdownMenuItem>
+        <DropdownMenuSeparator />
+        <DropdownMenuItem onClick={() => window.location.reload()}>
+          <RefreshCw className="h-4 w-4" />
+          Refresh page
+        </DropdownMenuItem>
+        <DropdownMenuSeparator />
+        <DropdownMenuItem onClick={() => { setHeaderMenuOpen(false); setTimeout(handleSurrender, 0); }} className="text-red-500 focus:text-red-500">
+          <Flag className="h-4 w-4" />
+          Surrender
+        </DropdownMenuItem>
+      </DropdownMenuContent>
+    </DropdownMenu>
+  );
 
   return (
     <div
       className="game-shell h-[100dvh] bg-background text-foreground flex flex-col overflow-hidden relative"
       data-camera-controlled={isCameraControlled ? 'true' : undefined}
       data-luminary-idle-suspended={luminaryPresentationActive ? 'true' : undefined}
+      data-avatar-seed-placement-pending={
+        showSeedBoardEffect ||
+        activationQueue.some((event) => event.luminaryId === 'lum_seed' && event.effectType === 'summon') ||
+        state?.pendingLuminaryActivationEvents?.some(
+          (event) => event.luminaryId === 'lum_seed' && event.effectType === 'summon',
+        )
+          ? 'true'
+          : undefined
+      }
       data-board-presentation={activeTab === 'board' ? boardPresentation : undefined}
       data-board-layout={activeTab === 'board' ? boardLayoutMode : 'base'}
       data-board-density={activeTab === 'board' ? boardDensityMode : 'stacked'}
@@ -6880,6 +7942,37 @@ export default function GameBoard() {
           animation: 'cosmic-breathe 12s ease-in-out infinite',
         }}
       />
+
+      {devLumiiEncounter && state.status === 'playing' && (
+        <div className="fixed bottom-3 right-3 z-[87] flex gap-1 rounded-md border border-white/15 bg-black/80 p-1">
+          <button
+            type="button"
+            className="rounded-sm px-2 py-1 text-[10px] text-white/80 hover:bg-white/10"
+            onClick={() => setDevLumiiCommentary(current => current ? null : 'You are nearing the threshold. You may still withdraw.')}
+          >
+            Commentary
+          </button>
+        </div>
+      )}
+
+      <BaseDialog
+        open={showLumiiWithdrawConfirm}
+        onClose={() => !lumiiWithdrawPending && setShowLumiiWithdrawConfirm(false)}
+        title="Withdraw to Vault?"
+      >
+        <div className="space-y-4 text-sm text-white/75">
+          <p>The Vault will reseal. Your clearance remains 5 / 5 and the Broken Covenant will be remembered, but this room will not count as a game, win, or loss.</p>
+          <div className="grid grid-cols-2 gap-2">
+            <Button variant="outline" onClick={() => setShowLumiiWithdrawConfirm(false)} disabled={lumiiWithdrawPending}>
+              Continue challenge
+            </Button>
+            <Button variant="destructive" onClick={() => void withdrawFromLumiiChallenge()} disabled={lumiiWithdrawPending}>
+              {lumiiWithdrawPending ? <Loader2 className="mr-2 h-4 w-4 animate-spin" /> : <DoorOpen className="mr-2 h-4 w-4" />}
+              Withdraw
+            </Button>
+          </div>
+        </div>
+      </BaseDialog>
       {/* Darkening veil — lighter than before so stars show through           */}
       <div className="absolute inset-0 bg-background/68 pointer-events-none" />
       {/* Nebula corner glows — affinity-palette tints, barely perceptible     */}
@@ -6956,107 +8049,67 @@ export default function GameBoard() {
             })}
           <TurnCountdown deadline={state.turnDeadline ?? null} active={isMyTurn} />
         </div>
-
-        <DropdownMenu open={headerMenuOpen} onOpenChange={setHeaderMenuOpen}>
-          <DropdownMenuTrigger asChild>
-            <Button
-              variant="ghost"
-              size="icon"
-              className="h-8 w-8 text-muted-foreground"
-              aria-label="More game options"
-            >
-              <MoreVertical className="h-4 w-4" />
-            </Button>
-          </DropdownMenuTrigger>
-          <DropdownMenuContent align="end">
-            <div className="flex w-full items-center justify-between gap-4 px-2 py-1.5 text-xs text-muted-foreground font-mono">
-              <button
-                className="flex min-w-0 items-center gap-2 hover:text-foreground transition-colors"
-                onClick={() => {
-                  navigator.clipboard.writeText(session.inviteCode).then(() =>
-                    toast({ title: 'Game code copied', description: `Share code: ${session.inviteCode}` })
-                  );
-                }}
-                title="Tap to copy game code"
-              >
-                <Package className="h-3.5 w-3.5 shrink-0" />
-                <span className="truncate">{session.inviteCode}</span>
-              </button>
-              <span
-                className="flex shrink-0 items-center gap-1"
-                title={`Round ${state.roundNumber}`}
-                aria-label={`Round ${state.roundNumber}`}
-              >
-                <RefreshCw className="h-3.5 w-3.5" />
-                R{state.roundNumber}
-              </span>
-            </div>
-            <DropdownMenuSeparator />
-            <DropdownMenuItem onClick={() => { setHeaderMenuOpen(false); setTimeout(() => setShowRules(true), 0); }}>
-              <HelpCircle className="h-4 w-4" />
-              Rules
-            </DropdownMenuItem>
-            {/*
-              Toggle convention — icon-only state, no DropdownMenuCheckboxItem:
-              All boolean settings in this menu communicate their on/off state exclusively
-              through the icon (swap icons for binary toggles, or change icon color/opacity
-              for non-binary toggles). Do NOT use DropdownMenuCheckboxItem — it adds a
-              redundant checkbox indicator alongside the icon, creating a double-indicator.
-              Pattern A (swap): muted → VolumeX/Volume2, label changes too.
-              Pattern B (color): abridgedAnims → Zap always shown, yellow = on, muted = off.
-            */}
-            <DropdownMenuItem onClick={toggleMute}>
-              {muted ? <VolumeX className="h-4 w-4" /> : <Volume2 className="h-4 w-4" />}
-              {muted ? 'Unmute' : 'Mute'}
-            </DropdownMenuItem>
-            <DropdownMenuItem onClick={toggleAbridgedAnims}>
-              <Zap className={`h-4 w-4 ${abridgedAnims ? 'text-yellow-400' : 'text-muted-foreground opacity-50'}`} />
-              Reduced motion
-            </DropdownMenuItem>
-            <DropdownMenuItem onClick={toggleLuminaryPlaybackMode}>
-              <Gauge className={`h-4 w-4 ${luminaryPlaybackMode === 'swift' ? 'text-cyan-300' : 'text-muted-foreground'}`} />
-              Effects: {luminaryPlaybackMode === 'swift' ? 'Swift' : 'Standard'}
-            </DropdownMenuItem>
-            <DropdownMenuItem onClick={toggleSkipCinematics}>
-              <Sparkles className={`h-4 w-4 ${skipCinematics ? 'text-muted-foreground opacity-50' : 'text-yellow-400'}`} />
-              {skipCinematics ? 'Cinematics off' : 'Cinematics on'}
-            </DropdownMenuItem>
-            <DropdownMenuItem onClick={toggleHints}>
-              <Lightbulb className={`h-4 w-4 ${hintsEnabled ? 'text-yellow-400' : 'text-muted-foreground opacity-50'}`} />
-              {hintsEnabled ? 'Hints on' : 'Hints off'}
-            </DropdownMenuItem>
-            {import.meta.env.DEV && (
-              <>
-                <DropdownMenuSeparator />
-                <DropdownMenuItem
-                  onClick={() => {
-                    setHeaderMenuOpen(false);
-                    setTimeout(() => setShowDevSequenceLab(true), 0);
-                  }}
-                >
-                  <FlaskConical className="h-4 w-4 text-amber-300" />
-                  Luminary Sequence Lab
-                </DropdownMenuItem>
-                <DevBuildIdentity />
-              </>
-            )}
-            <DropdownMenuItem onClick={() => { setHeaderMenuOpen(false); setTimeout(handleReturnToMenu, 0); }}>
-              <DoorOpen className="h-4 w-4" />
-              Return to Menu
-            </DropdownMenuItem>
-            <DropdownMenuSeparator />
-            <DropdownMenuItem onClick={() => window.location.reload()}>
-              <RefreshCw className="h-4 w-4" />
-              Refresh page
-            </DropdownMenuItem>
-            <DropdownMenuSeparator />
-            <DropdownMenuItem onClick={() => { setHeaderMenuOpen(false); setTimeout(handleSurrender, 0); }} className="text-red-500 focus:text-red-500">
-              <Flag className="h-4 w-4" />
-              Surrender
-            </DropdownMenuItem>
-          </DropdownMenuContent>
-        </DropdownMenu>
+        {renderGameOptionsMenu()}
       </header>
+
+      {isLumiiScenario && state.status === 'playing' && (
+        <LumiiEncounterHud
+          state={state}
+          localPlayerId={session.playerId}
+          suppressed={lumiiHudSuppressed}
+          withdrawPending={lumiiWithdrawPending}
+          previewMessage={devLumiiCommentary}
+          onWithdraw={isActualLumiiScenario ? () => setShowLumiiWithdrawConfirm(true) : undefined}
+          placement="docked"
+        />
+      )}
+
+      {isTraceScenario && state.traceScenario && (
+        <TraceChronicleExperience
+          state={state.traceScenario}
+          gameStatus={state.status}
+          localPlayerId={session.playerId}
+          winnerId={state.winnerId}
+          submitting={submitAction.isPending}
+          firstContactStance={accountPrefs?.firstContactStance}
+          onChoose={(method: TraceGuidanceMethod) => executeAction({
+            type: 'resolve_chronicle_choice',
+            traceGuidanceMethod: method,
+          })}
+          onReturn={state.status === 'finished' ? returnToChronicleArchive : undefined}
+        />
+      )}
+
+      {isRecurrenceScenario && recurrenceScenario && (
+        <RecurrenceChronicleExperience
+          state={recurrenceScenario}
+          gameStatus={state.status}
+          localPlayerId={session.playerId}
+          winnerId={state.winnerId}
+          submitting={submitAction.isPending}
+          instanceId={state.startedAt}
+          onChoose={(method: RecurrenceCustodyMethod) => executeAction({
+            type: 'resolve_chronicle_choice',
+            recurrenceCustodyMethod: method,
+          })}
+          onReturn={state.status === 'finished' ? returnToChronicleArchive : undefined}
+        />
+      )}
+
+      {isTriangulationScenario && triangulationScenario && (
+        <TriangulationChronicleExperience
+          state={triangulationScenario}
+          gameStatus={state.status}
+          localPlayerId={session.playerId}
+          submitting={submitAction.isPending}
+          instanceId={state.startedAt}
+          onChoose={(architecture: TriangulationCoordinationArchitecture) => executeAction({
+            type: 'resolve_chronicle_choice',
+            triangulationCoordinationArchitecture: architecture,
+          } as ActionRequest)}
+          onReturn={state.status === 'finished' ? returnToChronicleArchive : undefined}
+        />
+      )}
 
       {/* ── Tab Content ── */}
       <main
@@ -7104,7 +8157,23 @@ export default function GameBoard() {
           placement={boardLayoutMode === 'left-civ' ? 'left' : 'rail'}
           playerEminence={me.eminence}
           civilizationModel={civilizationModel}
+          deploymentSites={civilizationDeploymentSites}
+          recentSiteIds={recentCivilizationSiteIds}
           progressFraction={kardashevProgressFraction}
+          onRecentSiteIdsSeen={acknowledgeRecentCivilizationSites}
+          onOpenCivilization={openCivilizationScan}
+        />
+      )}
+
+      {activeTab === 'board' && boardLayoutMode === 'base' && me && (
+        <BoardCivilizationTraceNotice
+          deploymentSites={civilizationDeploymentSites}
+          recentSiteIds={recentCivilizationSiteIds}
+          palette={kardashevPalette}
+          civilizationModel={civilizationModel}
+          progressFraction={kardashevProgressFraction}
+          onRecentSiteIdsSeen={acknowledgeRecentCivilizationSites}
+          onOpenCivilization={openCivilizationScan}
         />
       )}
 
@@ -7114,28 +8183,46 @@ export default function GameBoard() {
           { tab: 'board' as ActiveTab, label: 'Board', icon: LayoutGrid },
           { tab: 'hand' as ActiveTab, label: 'Civilization', icon: Landmark },
           { tab: 'log' as ActiveTab, label: 'Log', icon: List, badge: unreadChat > 0 ? unreadChat : undefined },
-        ] as const).map(({ tab, label, icon: Icon, badge }: { tab: ActiveTab; label: string; icon: React.ComponentType<{ className?: string }>; badge?: number }) => (
-          <button
-            key={tab}
-            type="button"
-            onClick={() => setActiveTab(tab)}
-            {...(tab === 'hand' ? { 'data-nav-hand': '' } : tab === 'log' ? { 'data-nav-log': '' } : {})}
-            className={`flex flex-col items-center justify-center gap-0.5 relative transition-colors ${activeTab === tab ? 'text-primary' : 'text-muted-foreground'}`}
-          >
-            <div className="relative">
-              <Icon className="h-5 w-5" />
-              {badge !== undefined && (
-                <span className="absolute -top-1 -right-1.5 h-4 w-4 bg-primary text-primary-foreground text-[9px] font-bold rounded-full flex items-center justify-center">
-                  {badge}
+        ] as const).map(({ tab, label, icon: Icon, badge }: { tab: ActiveTab; label: string; icon: React.ComponentType<{ className?: string }>; badge?: number }) => {
+          const hasCivilizationTrace = tab === 'hand' && activeTab !== 'hand' && recentCivilizationSiteIds.length > 0;
+          return (
+            <button
+              key={tab}
+              type="button"
+              onClick={() => setActiveTab(tab)}
+              {...(tab === 'hand' ? { 'data-nav-hand': '' } : tab === 'log' ? { 'data-nav-log': '' } : {})}
+              className={`flex flex-col items-center justify-center gap-0.5 relative transition-colors ${activeTab === tab ? 'text-primary' : hasCivilizationTrace ? 'text-[#82ddff]' : 'text-muted-foreground'}`}
+              aria-label={hasCivilizationTrace ? 'Civilization, new trace recorded' : label}
+            >
+              <div className="relative">
+                {hasCivilizationTrace && (
+                  <span
+                    className="pointer-events-none absolute -inset-2 rounded-full border border-[#82ddff]/55 opacity-80 animate-ping"
+                    aria-hidden="true"
+                  />
+                )}
+                <Icon className="relative h-5 w-5" />
+                {badge !== undefined && (
+                  <span className="absolute -top-1 -right-1.5 h-4 w-4 bg-primary text-primary-foreground text-[9px] font-bold rounded-full flex items-center justify-center">
+                    {badge}
+                  </span>
+                )}
+                {hasCivilizationTrace && (
+                  <span className="absolute -top-1.5 -right-2 h-2.5 w-2.5 rounded-full bg-[#82ddff] shadow-[0_0_12px_rgba(130,221,255,0.95)]" aria-hidden="true" />
+                )}
+              </div>
+              <span className="text-[10px] font-semibold">{label}</span>
+              {hasCivilizationTrace && (
+                <span className="absolute top-1 right-3 rounded-full border border-[#82ddff]/45 bg-[#071426]/92 px-1.5 py-0.5 text-[7px] font-black uppercase tracking-wider text-[#bceeff] shadow-[0_0_14px_rgba(130,221,255,0.25)]">
+                  Trace
                 </span>
               )}
-            </div>
-            <span className="text-[10px] font-semibold">{label}</span>
-            {activeTab === tab && (
-              <div className="absolute -top-2 inset-x-4 h-0.5 bg-primary rounded-full" />
-            )}
-          </button>
-        ))}
+              {activeTab === tab && (
+                <div className="absolute -top-2 inset-x-4 h-0.5 bg-primary rounded-full" />
+              )}
+            </button>
+          );
+        })}
       </nav>
 
       {/* ── Card Action Sheet ── */}
@@ -7180,6 +8267,11 @@ export default function GameBoard() {
                 {selectedCard.readOnly && (
                   <span className="shrink-0 rounded px-1.5 py-0.5 text-[10px] font-bold uppercase tracking-wide bg-emerald-900/60 text-emerald-300 border border-emerald-700/50">
                     Forged
+                  </span>
+                )}
+                {selectedCard.fromArchiveTop && (
+                  <span className="shrink-0 rounded px-1.5 py-0.5 text-[10px] font-bold uppercase tracking-wide bg-sky-950/70 text-sky-200 border border-sky-400/35">
+                    Archive Top
                   </span>
                 )}
                 {(selectedCard.card.eminence ?? 0) > 0 && (
@@ -7288,7 +8380,7 @@ export default function GameBoard() {
                     if (!lore) return null;
                     const fields: { label: string; value: string | undefined }[] = [
                       { label: 'Form',     value: lore.artifactForm },
-                      { label: 'Role',     value: lore.blueprintRole },
+                      { label: 'Role',     value: lore.practicalCapability },
                       { label: 'Culture',  value: lore.civLane },
                     ];
                     const visible = fields.filter(f => f.value);
@@ -7323,7 +8415,25 @@ export default function GameBoard() {
               {/* My cost breakdown: shortfall per Affinity. */}
               {costMode !== 'printed' && me && (() => {
                 // Live calculation — reacts to costMode and selectedAffinities changes in real time
-                const liveCosts = computeCosts(selectedCard.card, costMode) as Record<string, number> | undefined;
+                const showingFoundryCost = pendingSheetAction === 'foundry_forge' || pendingSheetAction === 'plan_foundry';
+                const foundryAfterBonuses = showingFoundryCost
+                  ? foundryCost(selectedCard.card, me)
+                  : null;
+                const liveCosts = foundryAfterBonuses
+                  ? costMode === 'after_bonuses'
+                    ? foundryAfterBonuses
+                    : Object.fromEntries(AFFINITIES
+                        .filter((affinity) => affinity !== 'singularity')
+                        .map((affinity) => [
+                          affinity,
+                          Math.max(
+                            0,
+                            (foundryAfterBonuses[affinity] ?? 0) -
+                              (me.affinities[affinity as keyof AffinityCounts] ?? 0) -
+                              (selectedAffinities[affinity as keyof AffinityCounts] ?? 0),
+                          ),
+                        ]))
+                  : computeCosts(selectedCard.card, costMode) as Record<string, number> | undefined;
                 if (!liveCosts) return null;
                 const rows: { affinity: AffinityKey; need: number; have: number; short: number }[] = [];
                 let totalShort = 0;
@@ -7343,9 +8453,17 @@ export default function GameBoard() {
                 const singularityHave = me.affinities.singularity ?? 0;
                 const singularityNeeded = Math.max(0, totalShort);
                 const singularityCovers = singularityNeeded <= singularityHave;
-                const canAfford = canAffordCard(selectedCard.card, me);
+                const canAfford = showingFoundryCost
+                  ? canAffordFoundryCard(selectedCard.card, me)
+                  : canAffordCard(selectedCard.card, me);
                 if (rows.length === 0) return null;
-                const modeLabel = costMode === 'after_bonuses' ? 'After bonuses — tokens needed' : 'What you still need right now';
+                const modeLabel = showingFoundryCost
+                  ? costMode === 'after_bonuses'
+                    ? 'Foundry Forge — tokens needed'
+                    : 'Foundry Forge — what you still need'
+                  : costMode === 'after_bonuses'
+                    ? 'After bonuses — tokens needed'
+                    : 'What you still need right now';
                 return (
                   <div className="mb-3 rounded-xl border border-border/50 bg-secondary/30 px-3 py-2.5 flex flex-col gap-2">
                     <p className="text-[10px] font-bold uppercase tracking-widest text-muted-foreground">{modeLabel}</p>
@@ -7402,9 +8520,10 @@ export default function GameBoard() {
                 )}
 
                 {/* ── Immediate actions (your active turn only) ── */}
-                {!selectedCard.readOnly && isMyTurnForCoreAction && (
+                {!selectedCard.readOnly && isMyTurnForCoreAction &&
+                  (!selectedCard.fromArchiveTop || me?.tideArchiveForgeAvailable) && (
                   <>
-                    <div
+                    {!selectedIsRecoveringFoundryComponent && <div
                       key={btnAnimTarget === 'forge' ? `forge-${btnAnimKey}` : 'forge'}
                       className={`relative w-full${btnAnimTarget === 'forge' ? ` btn-${btnAnimType}-flash` : ''}`}
                     >
@@ -7434,11 +8553,15 @@ export default function GameBoard() {
                         confirmGlow={forgeConfirmGlow}
                         darkText={forgeDarkText}
                         label={pendingSheetAction === 'forge' ? 'CONFIRM' : 'FORGE'}
-                        subtitle={pendingSheetAction === 'forge' ? 'Tap to forge' : (me && canAffordCard(selectedCard.card, me) ? 'Forge Artifact' : 'Cannot afford yet')}
+                        subtitle={pendingSheetAction === 'forge'
+                          ? 'Tap to forge'
+                          : me && canAffordCard(selectedCard.card, me)
+                            ? selectedCard.fromArchiveTop ? 'Use Observer Effect' : 'Forge Artifact'
+                            : 'Cannot afford yet'}
                         onClick={() => {
                           if (pendingSheetAction === 'forge') {
                             gameAudio.playButtonConfirm(); triggerBtnAnim('forge', 'confirm');
-                            handleBuy(selectedCard.card, selectedCard.fromReserve);
+                            handleBuy(selectedCard.card, selectedCard.fromReserve, selectedCard.fromArchiveTop);
                             setSelectedCard(null); setPendingSheetAction(null);
                           } else {
                             gameAudio.playButtonSelect(); triggerBtnAnim('forge', 'select');
@@ -7446,8 +8569,57 @@ export default function GameBoard() {
                           }
                         }}
                       />
-                    </div>
-                    {!selectedCard.fromReserve && (
+                    </div>}
+                    {selectedFoundryAction && (
+                      <div>
+                        <div className="mb-2 flex items-center gap-1.5 px-0.5">
+                          <div className="h-px flex-1 bg-amber-300/20" />
+                          <span className="text-[8.5px] font-black uppercase text-amber-300/70">
+                            {selectedFoundryName}
+                          </span>
+                          <div className="h-px flex-1 bg-amber-300/20" />
+                        </div>
+                        <ForgeButton
+                          disabled={!selectedFoundryAffordable || selectedCardVanished}
+                          isPending={pendingSheetAction === 'foundry_forge'}
+                          isSent={sentFlashBtn === 'foundry_forge'}
+                          confirmHex={forgeConfirmHex}
+                          confirmGlow={forgeConfirmGlow}
+                          darkText={forgeDarkText}
+                          label={pendingSheetAction === 'foundry_forge'
+                            ? 'CONFIRM'
+                            : selectedFoundryAction === 'foundry_overdrive'
+                              ? 'OVERDRIVE'
+                              : 'FOUNDRY FORGE'}
+                          subtitle={pendingSheetAction === 'foundry_forge'
+                            ? selectedFoundryAction === 'foundry_overdrive'
+                              ? 'Forge, then move all three components'
+                              : 'Use one sustainable claim'
+                            : selectedFoundryAction === 'foundry_overdrive'
+                              ? 'Third claim; component consequence applies'
+                              : 'Reduce each nonzero natural channel by 1'}
+                          onClick={() => {
+                            if (pendingSheetAction === 'foundry_forge') {
+                              gameAudio.playButtonConfirm();
+                              triggerBtnAnim('foundry_forge', 'confirm');
+                              handleBuy(
+                                selectedCard.card,
+                                false,
+                                false,
+                                selectedFoundryAction,
+                              );
+                              setSelectedCard(null);
+                              setPendingSheetAction(null);
+                            } else {
+                              gameAudio.playButtonSelect();
+                              triggerBtnAnim('foundry_forge', 'select');
+                              setPendingSheetAction('foundry_forge');
+                            }
+                          }}
+                        />
+                      </div>
+                    )}
+                    {!selectedCard.fromReserve && !selectedCard.fromArchiveTop && (
                       <div
                         key={btnAnimTarget === 'reserve' ? `reserve-${btnAnimKey}` : 'reserve'}
                         className={`relative w-full${btnAnimTarget === 'reserve' ? ` btn-${btnAnimType}-flash` : ''}`}
@@ -7496,7 +8668,7 @@ export default function GameBoard() {
                     )}
 
                     {/* ── Assimilate (Final Hunger lingering ability) ── */}
-                    {assimilateAvailable && assimEligible && !selectedCard.fromReserve && (
+                    {assimilateAvailable && !selectedCard.fromReserve && !selectedCard.fromArchiveTop && (
                       <div>
                         {/* Separator + label so the player knows this is a different kind of action */}
                         <div className="flex items-center gap-1.5 px-0.5 mb-2.5">
@@ -7511,17 +8683,15 @@ export default function GameBoard() {
                               className={`relative w-full${btnAnimTarget === 'assimilate' ? ` btn-${btnAnimType}-flash` : ''}`}
                             >
                               <AssimilateButton
-                                disabled={!canAffordAssim || selectedCardVanished}
+                                disabled={selectedCardVanished}
                                 isPending={pendingSheetAction === 'assimilate'}
                                 isSent={sentFlashBtn === 'assimilate'}
-                                eminenceReward={pendingSheetAction === 'assimilate' ? undefined : (selectedCard.card.eminence + 2)}
+                                bonusAffinity={selectedCard.card.bonusAffinity}
                                 label={pendingSheetAction === 'assimilate' ? 'CONFIRM' : 'Assimilate'}
                                 subtitle={
                                   pendingSheetAction === 'assimilate'
                                     ? `Assimilate ${selectedCard.card.name}?`
-                                    : canAffordAssim
-                                      ? `+${selectedCard.card.eminence + 2} Eminence — one use`
-                                      : 'Cannot afford'
+                                    : `Free · +1 ${selectedCard.card.bonusAffinity} · 0 Eminence`
                                 }
                                 onClick={() => {
                                   if (pendingSheetAction === 'assimilate') {
@@ -7540,7 +8710,7 @@ export default function GameBoard() {
                             </div>
                           </TooltipTrigger>
                           <TooltipContent side="bottom" className="max-w-[260px] text-xs">
-                            Replace your core action this turn. Choose a face-up Forge Artifact, pay its cost reduced by -1 Flare, -1 Verdance, and -1 Radiance, Burn it, and gain its printed Eminence +2. You do not gain the Artifact, bonus affinity, or forge effects.
+                            Once after Final Hunger arrives, replace your Forge action. Assimilate any face-up Artifact for free and gain its permanent bonus Affinity, but no Eminence. It counts as owned only for Blueprints.
                           </TooltipContent>
                         </Tooltip>
                       </div>
@@ -7549,7 +8719,8 @@ export default function GameBoard() {
                 )}
 
                 {/* ── Plan actions (any time game is active, no cutscene) ── */}
-                {!selectedCard.readOnly && canPlan && !isMyTurnForCoreAction && !coreActionSubmitted && (
+                {!selectedCard.readOnly && canPlan && !isMyTurnForCoreAction && !coreActionSubmitted &&
+                  (!selectedCard.fromArchiveTop || me?.tideArchiveForgeAvailable) && (
                   <>
                     {/* Pending-action header — makes it clear this is one action for the next turn */}
                     <div className="flex items-center gap-1.5 px-0.5 mt-0.5">
@@ -7560,7 +8731,7 @@ export default function GameBoard() {
                       <div className="flex-1 h-px bg-amber-400/20" />
                     </div>
                     <div className="pl-2.5 border-l-2 border-amber-400/25 flex flex-col gap-2.5">
-                    {me && canAffordCard(selectedCard.card, me) && (
+                    {me && canAffordCard(selectedCard.card, me) && !selectedIsRecoveringFoundryComponent && (
                     <div
                       key={btnAnimTarget === 'plan_forge' ? `plan_forge-${btnAnimKey}` : 'plan_forge'}
                       className={`relative w-full${btnAnimTarget === 'plan_forge' ? ` btn-${btnAnimType}-flash` : ''}`}
@@ -7578,7 +8749,13 @@ export default function GameBoard() {
                         onClick={() => {
                           if (pendingSheetAction === 'plan_forge') {
                             gameAudio.playButtonConfirm(); triggerBtnAnim('plan_forge', 'confirm');
-                            handlePlanAction({ type: selectedCard.fromReserve ? 'forge_reserved_artifact' : 'forge_artifact', cardId: selectedCard.card.id });
+                            handlePlanAction({
+                              type: selectedCard.fromReserve ? 'forge_reserved_artifact' : 'forge_artifact',
+                              cardId: selectedCard.card.id,
+                              ...(selectedCard.fromArchiveTop
+                                ? { luminaryId: 'lum_tide', tier: selectedCard.card.tier }
+                                : {}),
+                            });
                             flashSent('plan_forge');
                             setTimeout(() => { setSelectedCard(null); setPendingSheetAction(null); }, 750);
                           } else {
@@ -7589,7 +8766,51 @@ export default function GameBoard() {
                       />
                     </div>
                     )}
-                    {!selectedCard.fromReserve && (
+                    {selectedFoundryAction && selectedFoundryAffordable && (
+                      <div
+                        key={btnAnimTarget === 'plan_foundry' ? `plan_foundry-${btnAnimKey}` : 'plan_foundry'}
+                        className={`relative w-full${btnAnimTarget === 'plan_foundry' ? ` btn-${btnAnimType}-flash` : ''}`}
+                      >
+                        <ForgeButton
+                          disabled={selectedCardVanished}
+                          isPending={pendingSheetAction === 'plan_foundry'}
+                          isSent={sentFlashBtn === 'plan_foundry'}
+                          confirmHex={forgeConfirmHex}
+                          confirmGlow={forgeConfirmGlow}
+                          darkText={forgeDarkText}
+                          isPlan
+                          label={pendingSheetAction === 'plan_foundry'
+                            ? 'CONFIRM'
+                            : selectedFoundryAction === 'foundry_overdrive'
+                              ? 'PLAN OVERDRIVE'
+                              : 'PLAN FOUNDRY FORGE'}
+                          subtitle={pendingSheetAction === 'plan_foundry'
+                            ? 'Confirm pending Project claim'
+                            : `Use ${selectedFoundryName}`}
+                          onClick={() => {
+                            if (pendingSheetAction === 'plan_foundry') {
+                              gameAudio.playButtonConfirm();
+                              triggerBtnAnim('plan_foundry', 'confirm');
+                              handlePlanAction({
+                                type: 'forge_artifact',
+                                cardId: selectedCard.card.id,
+                                blueprintAction: selectedFoundryAction,
+                              });
+                              flashSent('plan_foundry');
+                              setTimeout(() => {
+                                setSelectedCard(null);
+                                setPendingSheetAction(null);
+                              }, 750);
+                            } else {
+                              gameAudio.playButtonSelect();
+                              triggerBtnAnim('plan_foundry', 'select');
+                              setPendingSheetAction('plan_foundry');
+                            }
+                          }}
+                        />
+                      </div>
+                    )}
+                    {!selectedCard.fromReserve && !selectedCard.fromArchiveTop && (
                       <div
                         key={btnAnimTarget === 'plan_reserve' ? `plan_reserve-${btnAnimKey}` : 'plan_reserve'}
                         className={`w-full${btnAnimTarget === 'plan_reserve' ? ` btn-${btnAnimType}-flash` : ''}`}
@@ -7840,6 +9061,11 @@ export default function GameBoard() {
           const deckCount = deckTier === 1 ? (state?.deckCounts.tier1 ?? 0)
             : deckTier === 2 ? (state?.deckCounts.tier2 ?? 0)
             : (state?.deckCounts.tier3 ?? 0);
+          const tideTopCard = deckTier === 1
+            ? me?.tideArchiveTopCards?.tier1
+            : deckTier === 2
+              ? me?.tideArchiveTopCards?.tier2
+              : me?.tideArchiveTopCards?.tier3;
           const tierLore = deckTier === 3
             ? 'Sovereigns & absolutes — apex relics that bend the cosmos to your will'
             : deckTier === 2
@@ -7867,7 +9093,7 @@ export default function GameBoard() {
                 ref={(el) => { deckSheetContainerRef.current = el; }}
                 role="dialog"
                 aria-modal="true"
-                aria-label="Encrypt from Archive"
+                aria-label="Archive actions"
                 {...deckSheetDragProps}
               >
                 {/* Drag handle */}
@@ -7901,18 +9127,45 @@ export default function GameBoard() {
                 >
                 {/* Tier card back and Archive information. */}
                 <div className="flex gap-4 mb-5">
-                  <div className="archive-sheet-card-back shrink-0" aria-hidden="true">
-                    <CardBack size="compact" tier={deckTier} count={deckCount} />
+                  <div className="archive-sheet-card-back shrink-0">
+                    {tideTopCard ? (
+                      <button
+                        type="button"
+                        className="h-full w-full overflow-hidden rounded-[inherit] focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-sky-300/80"
+                        aria-label={`Inspect ${tideTopCard.name}, revealed atop the Tier ${deckTier} Archive`}
+                        onClick={() => {
+                          closeDeckSheet();
+                          openCardSheet(tideTopCard, false, true);
+                        }}
+                      >
+                        <ArtifactCardView card={tideTopCard} tier={deckTier} artOnly />
+                      </button>
+                    ) : (
+                      <div aria-hidden="true">
+                        <CardBack size="compact" tier={deckTier} count={deckCount} />
+                      </div>
+                    )}
                   </div>
                   <div className="flex-1 flex flex-col gap-2 justify-center">
-                    <div className="font-bold text-base leading-tight">Tier {deckTier} Manifestations</div>
+                    <div className="font-bold text-base leading-tight">
+                      {tideTopCard ? tideTopCard.name : `Tier ${deckTier} Manifestations`}
+                    </div>
                     <p className="text-xs text-muted-foreground italic leading-relaxed">
                       "{tierLore}"
                     </p>
-                    <p className="text-xs text-muted-foreground leading-relaxed mt-1">
-                      {deckCount} concealed Artifact{deckCount !== 1 ? 's' : ''} remain in this Archive.
-                      One will manifest at random and be encrypted into your encrypted pile.
-                    </p>
+                    {tideTopCard ? (
+                      <p className="text-xs text-sky-100/75 leading-relaxed mt-1">
+                        Tide Architect reveals this Artifact at the top of the Archive.
+                        {me?.tideArchiveForgeAvailable
+                          ? ' Its one-use Archive Forge remains available.'
+                          : ' The Archive Forge has been used, but the top remains visible.'}
+                      </p>
+                    ) : (
+                      <p className="text-xs text-muted-foreground leading-relaxed mt-1">
+                        {deckCount} concealed Artifact{deckCount !== 1 ? 's' : ''} remain in this Archive.
+                        One will manifest at random and be encrypted into your encrypted pile.
+                      </p>
+                    )}
                     {me && !canReserveMore(me) && (
                       <p className="text-xs font-semibold text-destructive">
                         Encrypted pile full — forge or spend an encrypted Artifact first.
@@ -7938,6 +9191,21 @@ export default function GameBoard() {
                       : 'none',
                   }}
                 >
+
+                  {tideTopCard && (
+                    <Button
+                      type="button"
+                      variant="outline"
+                      className="h-11 w-full border-sky-400/35 bg-sky-950/35 text-sky-100 hover:bg-sky-900/45 hover:text-white"
+                      onClick={() => {
+                        closeDeckSheet();
+                        openCardSheet(tideTopCard, false, true);
+                      }}
+                    >
+                      <Eye className="mr-2 h-4 w-4" />
+                      Inspect revealed Artifact
+                    </Button>
+                  )}
 
                   {/* ── Reserve now (active turn) ── */}
                   {isMyTurnForCoreAction && (
@@ -8187,87 +9455,41 @@ export default function GameBoard() {
       ))}
 
       {/* ── Deal-from-Deck overlay — card flies from deck tile to empty slot ── */}
-      {dealingCard && (() => {
-        return (
-          <>
-          <ArchiveManifestationTrace
-            key={`archive-trace-${dealingCard.card.id}`}
-            manifestation={{
-              cardId: dealingCard.card.id,
-              tier: dealingCard.tier,
-              deckRect: dealingCard.deckRect,
-              slotRect: dealingCard.slotRect,
-            }}
-          />
-          <div style={{ position: 'fixed', inset: 0, zIndex: 9050, pointerEvents: 'none', perspective: '1200px' }}>
-            <motion.div
-              key={dealingCard.card.id}
-              style={{
-                position: 'absolute',
-                left: dealingCard.deckRect.x,
-                top: dealingCard.deckRect.y,
-                width: dealingCard.deckRect.w,
-                height: dealingCard.deckRect.h,
-                transformStyle: 'preserve-3d',
-              }}
-              initial={{ x: 0, y: 0, rotateY: 0, scale: 1 }}
-              animate={{
-                x: dealingCard.animX,
-                y: dealingCard.animY,
-                rotateY: dealingCard.animRotateY,
-                scale: dealingCard.animScale,
-              }}
-              transition={{
-                duration: 1.5,
-                x: { ease: 'easeInOut', times: [0, 0.4, 1] },
-                y: { ease: 'easeInOut', times: [0, 0.35, 1] },
-                rotateY: { ease: 'easeInOut', times: [0, 0.5, 1] },
-                scale: { ease: 'easeInOut', times: [0, 0.35, 1] },
-              }}
-              onAnimationComplete={() => {
-                setDealingCard(null);
-                setHiddenSlots(new Set());
-              }}
-            >
-              {/* Card back — fills container via w-full/h-full */}
-              <div style={{
-                position: 'absolute', inset: 0,
-                backfaceVisibility: 'hidden',
-                WebkitBackfaceVisibility: 'hidden',
-                overflow: 'hidden',
-                borderRadius: 12,
-              }}>
-                <div className="w-full h-full relative rounded-xl bg-[#030509] border border-[#c4a85a]/30">
-                  {dealingCard.tier === 1 && <CardBackTier1 />}
-                  {dealingCard.tier === 2 && <CardBackTier2 />}
-                  {dealingCard.tier === 3 && <CardBackTier3 />}
-                </div>
-              </div>
-              {/* Card face — revealed after half-flip, scaled to fit container */}
-              <div style={{
-                position: 'absolute', inset: 0,
-                backfaceVisibility: 'hidden',
-                WebkitBackfaceVisibility: 'hidden',
-                transform: 'rotateY(180deg)',
-                overflow: 'hidden',
-                borderRadius: 12,
-              }}>
-                <div style={{ transformOrigin: 'top left', transform: `scale(${dealingCard.faceScale})` }}>
-                  <ArtifactCardView
-                    card={dealingCard.card}
-                    tier={dealingCard.tier}
-                    onTap={() => {}}
-                    tapped={false}
-                    effectiveCosts={computeCosts(dealingCard.card, costMode)}
-                    hideStrike={costMode === 'needed_now'}
-                  />
-                </div>
-              </div>
-            </motion.div>
-          </div>
-          </>
-        );
-      })()}
+      {dealingCard && (
+        <ForgeReplacementDealAnimation
+          animKey={dealingCard.card.id}
+          cardId={dealingCard.card.id}
+          tier={dealingCard.tier}
+          deckRect={dealingCard.deckRect}
+          slotRect={dealingCard.slotRect}
+          animX={dealingCard.animX}
+          animY={dealingCard.animY}
+          animRotateY={dealingCard.animRotateY}
+          animScale={dealingCard.animScale}
+          faceScale={dealingCard.faceScale}
+          cardFace={(
+            <ArtifactCardView
+              card={dealingCard.card}
+              tier={dealingCard.tier}
+              onTap={() => {}}
+              tapped={false}
+              effectiveCosts={computeCosts(dealingCard.card, costMode)}
+              hideStrike={costMode === 'needed_now'}
+              artOnly={artifactFrameUsesArtCrop(dealingCard.slotRect.w, dealingCard.slotRect.h)}
+            />
+          )}
+          cardOverlay={artifactFrameUsesArtCrop(dealingCard.slotRect.w, dealingCard.slotRect.h) ? (
+            <CompactForgeCardReadout
+              card={dealingCard.card}
+              costs={computeCosts(dealingCard.card, costMode) ?? dealingCard.card.cost}
+            />
+          ) : undefined}
+          onComplete={() => {
+            setDealingCard(null);
+            setHiddenSlots(new Set());
+          }}
+        />
+      )}
 
       {/* ── Cinder Mandate post-burn refill deals — staggered fly+flip per slot ── */}
       {directorDealingCards.length > 0 && (
@@ -8330,7 +9552,18 @@ export default function GameBoard() {
                 overflow: 'hidden',
                 borderRadius: 12,
               }}>
-                <div style={{ transformOrigin: 'top left', transform: `scale(${dc.faceScale})` }}>
+                <div
+                  data-frame-presentation={artifactFrameUsesArtCrop(dc.slotRect.w, dc.slotRect.h) ? 'compact' : 'full-card'}
+                  className={artifactFrameUsesArtCrop(dc.slotRect.w, dc.slotRect.h)
+                    ? "forge-foundry-mold board-forge-compact-chip relative h-full w-full overflow-hidden rounded-xl"
+                    : "relative h-full w-full overflow-hidden rounded-xl"}
+                  style={{
+                    "--card-w": `${dc.slotRect.w}px`,
+                    "--card-h": `${dc.slotRect.h}px`,
+                    "--forge-chip-w": `${dc.slotRect.w}px`,
+                    "--forge-chip-h": `${dc.slotRect.h}px`,
+                  } as React.CSSProperties}
+                >
                   <ArtifactCardView
                     card={dc.card}
                     tier={dc.tier}
@@ -8338,7 +9571,14 @@ export default function GameBoard() {
                     tapped={false}
                     effectiveCosts={computeCosts(dc.card, costMode)}
                     hideStrike={costMode === 'needed_now'}
+                    artOnly={artifactFrameUsesArtCrop(dc.slotRect.w, dc.slotRect.h)}
                   />
+                  {artifactFrameUsesArtCrop(dc.slotRect.w, dc.slotRect.h) && (
+                    <CompactForgeCardReadout
+                      card={dc.card}
+                      costs={computeCosts(dc.card, costMode) ?? dc.card.cost}
+                    />
+                  )}
                 </div>
               </div>
             </motion.div>
@@ -8598,7 +9838,7 @@ export default function GameBoard() {
                   {
                     icon: '⚖️',
                     title: 'Ending & ties',
-                    body: 'If a turn ends with the Forge and every Archive empty, the game ends immediately. Ties are resolved by fewest encrypted Artifacts; then most Tier III forged Artifacts, followed by Tier II and Tier I; then the same tier comparison within the strongest single affinity.',
+                    body: 'If a turn ends with the Forge and every Archive empty, the game ends immediately. Ties are resolved by fewest ordinary Encrypted Artifacts; then most Tier III forged Artifacts, followed by Tier II and Tier I; then the same tier comparison within the strongest single affinity.',
                   },
                   {
                     icon: '🪙',
@@ -8608,7 +9848,7 @@ export default function GameBoard() {
                   {
                     icon: '🃏',
                     title: 'Artifacts & bonuses',
-                    body: 'Each forged Artifact gives a permanent affinity discount (bonus) of its type. Pay the cost in affinities, using bonuses first. Singularity can cover any shortfall.',
+                    body: 'Pay Affinity to Forge, using bonuses first; Singularity can cover any shortfall. Every Affinity actually paid returns to the Well after the Forge. The Artifact and its permanent bonus remain.',
                   },
                   {
                     icon: '✨',
@@ -8618,7 +9858,7 @@ export default function GameBoard() {
                   {
                     icon: '✋',
                     title: 'Affinity limit',
-                    body: 'You may hold at most 10 affinities at end of turn. You may hold at most 3 encrypted Artifacts at once.',
+                    body: 'You may hold at most 10 Affinities at end of turn and 3 ordinary Encrypted Artifacts. Foundry-bound components appear separately and do not consume those 3 slots.',
                   },
                 ].map(({ icon, title, body }) => (
                   <div key={title} className="flex gap-3">
@@ -8710,7 +9950,12 @@ export default function GameBoard() {
               <div className="px-5 pb-2 flex items-center justify-between border-b border-border/40 mb-1">
                 <h2 className="text-base font-semibold flex items-center gap-2">
                   <span className="h-4 w-4 inline-flex items-center justify-center shrink-0 opacity-70"><CipherSigil affinityHex="#e2e8f0" id={9007} /></span>
-                  Encrypted Artifacts ({me.reservedArtifacts.length}/3)
+                  Encrypted {myReservedCount}/3
+                  {foundryStoredArtifacts.length > 0 && (
+                    <span className="border border-amber-200/20 bg-amber-950/15 px-1.5 py-0.5 text-[9px] font-black uppercase text-amber-100/70">
+                      Foundry {foundryStoredArtifacts.length}
+                    </span>
+                  )}
                 </h2>
                 <div className="flex items-center gap-1.5">
                   <kbd className="hidden [@media(pointer:fine)]:inline-flex items-center px-1 py-0.5 rounded text-[10px] font-mono text-muted-foreground/40 border border-border/30 bg-muted/10 leading-none select-none">Esc</kbd>
@@ -8724,76 +9969,37 @@ export default function GameBoard() {
                 className="px-5 overflow-y-auto max-h-[60vh] pb-4"
                 style={isTutorial ? { paddingBottom: 'var(--tutorial-panel-height, 160px)' } : undefined}
               >
-                {me.reservedArtifacts.length === 0 ? (
+                {ordinaryReservedArtifacts.length === 0 && foundryStoredArtifacts.length === 0 ? (
                   <p className="text-xs text-muted-foreground italic">No Artifacts encrypted.</p>
                 ) : (
-                  <div className="flex flex-col gap-2">
-                    {me.reservedArtifacts.map((c) => {
-                      const ec = computeCosts(c, costMode);
-                      const ecBonus = computeCosts(c, 'after_bonuses') ?? undefined;
-                      const canBuy = canAffordCard(c, me);
-                      const isPendingPlan = plannedCardId === c.id;
-                      return (
-                        <div
-                          key={c.id}
-                          data-reserved-card-id={c.id}
-                          className="relative flex w-full items-center gap-3 rounded-2xl p-3 text-left"
-                        >
-                          <button
-                            type="button"
-                            title={isPendingPlan ? `Click to cancel ${plannedCardLabel.toLowerCase()}` : c.name}
-                            aria-label={isPendingPlan ? `Cancel ${plannedCardLabel.toLowerCase()}` : `View ${c.name}`}
-                            className="absolute inset-0 z-0 rounded-2xl bg-secondary/30 transition-colors hover:bg-secondary/50 active:bg-secondary/60 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-primary/70"
-                            onClick={() => {
-                              setShowReservedOverlay(false);
-                              handleCardTap(c, true);
-                            }}
-                          />
-                          <div className="pointer-events-none relative z-10 shrink-0">
-                            <ArtifactCardView
-                              card={c}
-                              tier={c.tier}
-                              effectiveCosts={ec}
-                              bonusCosts={ecBonus}
-                              tapped={false}
-                              hideStrike={costMode === 'needed_now'}
-                            />
-                            <ForgeMarkerLayer
-                              markerTypes={getArtifactBrandTypes(state?.artifactMarkers?.[c.id])}
-                              brandDelay={brandDelayMap.get(c.id)}
-                              strikeAura={strikeAuraMap.get(c.id)}
-                              suppressed={suppressedMarkerIds.has(c.id)}
-                            />
-                            {isPendingPlan && (
-                              <PendingActionOverlay
-                                label={plannedCardLabel}
-                                onCancel={handleCancelPlan}
-                              />
-                            )}
-                          </div>
-                          <div className="pointer-events-none relative z-10 flex min-w-0 flex-1 flex-col gap-1.5">
-                            <div className="font-bold text-sm leading-tight">{c.name}</div>
-                            <div className="flex items-center gap-1.5">
-                              <AffinityToken color={c.bonusAffinity as AffinityKey} size={13} />
-                              <span className="text-xs text-muted-foreground">{AFFINITY_META[c.bonusAffinity as AffinityKey]?.name ?? c.bonusAffinity} bonus</span>
-                              {(c.eminence ?? 0) > 0 && (
-                                <>
-                                  <span className="text-muted-foreground/40">·</span>
-                                  <span className="flex items-center gap-0.5 text-xs font-bold text-white">{c.eminence}<EminenceDiamond size={9} /></span>
-                                </>
-                              )}
-                            </div>
-                            <div className="flex items-center gap-1.5 mt-0.5">
-                              {canBuy
-                                ? <span className="text-[10px] font-semibold text-emerald-400">Can forge</span>
-                                : <span className="text-[10px] text-muted-foreground/60">Tap to view</span>
-                              }
-                              <ChevronRight className="h-3 w-3 text-muted-foreground/50 ml-auto shrink-0" />
-                            </div>
-                          </div>
+                  <div className="flex flex-col gap-4">
+                    <section aria-label="Ordinary Encrypted Artifacts">
+                      <div className="mb-2 flex items-center justify-between text-[9px] font-black uppercase tracking-wider text-white/45">
+                        <span>Encrypted</span>
+                        <span>{myReservedCount}/3</span>
+                      </div>
+                      {ordinaryReservedArtifacts.length > 0 ? (
+                        <div className="flex flex-col gap-2">
+                          {ordinaryReservedArtifacts.map((card) => renderEncryptedArtifactRow(card))}
                         </div>
-                      );
-                    })}
+                      ) : (
+                        <p className="text-xs italic text-muted-foreground">No ordinary Artifacts encrypted.</p>
+                      )}
+                    </section>
+                    {foundryStoredArtifacts.length > 0 && (
+                      <section aria-label="Foundry Components" className="border-t border-amber-200/15 pt-3">
+                        <div className="mb-2 flex items-center justify-between text-[9px] font-black uppercase tracking-wider text-amber-100/65">
+                          <span>Foundry Components</span>
+                          <span>{foundryStoredArtifacts.length}</span>
+                        </div>
+                        <div className="flex flex-col gap-2">
+                          {foundryStoredArtifacts.map((card, index) => renderEncryptedArtifactRow(card, {
+                            foundryComponent: true,
+                            sequenceIndex: index,
+                          }))}
+                        </div>
+                      </section>
+                    )}
                   </div>
                 )}
               </div>
@@ -9092,15 +10298,35 @@ export default function GameBoard() {
       </AnimatePresence>
 
       {/* ── Victory Cinematic ── */}
+      {isActualLumiiScenario && state.status === 'finished' && !pendingGameOver && !summonSequenceActive && (
+        <LumiiVaultEncounter
+          attempt="remembered"
+          cipherDeactivated
+          covenantBroken={state.brokenCovenantDeclared}
+          thresholdApproach={state.lumiiThresholdApproach}
+          outcome={state.finishReason === 'withdrawal'
+            ? 'withdrawn'
+            : state.winnerId === session.playerId
+              ? 'victory'
+              : 'defeat'}
+          onLeave={returnToLumiiVault}
+          onChallengeAgain={lumiiChallengeAgainAvailable ? challengeLumiiAgain : undefined}
+          onEnterVault={enterRevealedVault}
+        />
+      )}
       <AnimatePresence>
-        {state.status === 'finished' && !pendingGameOver && !summonSequenceActive && showCinematic && (() => {
+        {!isSpecialOutcomeScenario && state.status === 'finished' && !pendingGameOver && !summonSequenceActive && showCinematic && (() => {
           const winnerId = state.winnerId;
           if (!winnerId) return null;
           const winnerPlayer = (state.players as GamePlayerState[]).find(p => p.playerId === winnerId);
           if (!winnerPlayer) return null;
           const winnerCards = (winnerPlayer.forgedArtifacts ?? []) as ArtifactCard[];
           const winnerDiscountedIds = (winnerPlayer.discountedForgeIds ?? []) as string[];
-          const winnerTier = getKardashevTier(winnerCards, winnerDiscountedIds);
+          const winnerTier = getCivilizationSceneTier(
+            winnerPlayer,
+            winnerCards,
+            winnerDiscountedIds,
+          );
           const winnerPalette = getDominantAffinityPalette(winnerCards);
           const winnerProfile = buildCivilizationProfile(winnerCards);
           const winnerCivName = getCivilizationName(winnerPalette, winnerTier);
@@ -9127,7 +10353,7 @@ export default function GameBoard() {
       </AnimatePresence>
 
       {/* ── Return-to-Results banner (shown when board is visible after game over) ── */}
-      {state.status === 'finished' && !pendingGameOver && !summonSequenceActive && !showCinematic && !showWinOverlay && (() => {
+      {!isSpecialOutcomeScenario && state.status === 'finished' && !pendingGameOver && !summonSequenceActive && !showCinematic && !showWinOverlay && (() => {
         const onReturnToResults = () => setShowWinOverlay(true);
         return (
           <ReturnResultsBanner
@@ -9139,7 +10365,7 @@ export default function GameBoard() {
       })()}
 
       {/* ── Board-view action log panel (shown when viewing board after game over) ── */}
-      {state.status === 'finished' && !pendingGameOver && !summonSequenceActive && !showCinematic && !showWinOverlay && (() => {
+      {!isSpecialOutcomeScenario && state.status === 'finished' && !pendingGameOver && !summonSequenceActive && !showCinematic && !showWinOverlay && (() => {
         const AFFINITY_DOT_COLOR: Record<string, string> = {
           Flare: '#FF5A3C',
           Continuum: '#3D6BFF',
@@ -9185,7 +10411,7 @@ export default function GameBoard() {
                       entry.summary.startsWith('pending action cleared') ||
                       entry.summary.startsWith('planned move cleared') ||
                       entry.summary.startsWith('planned move voided');
-                    const isBurned = entry.summary.startsWith('The Final Hunger Assimilated') || /\bBurned\b/i.test(entry.summary);
+                    const isBurned = /\bBurned\b/i.test(entry.summary);
                     const affinityLabel = isAffinityChange ? (entry.summary.split(' to ').pop() ?? '') : '';
                     const dotColor = AFFINITY_DOT_COLOR[affinityLabel] ?? '#888';
                     return (
@@ -9260,18 +10486,22 @@ export default function GameBoard() {
 
       {/* ── Win Overlay ── */}
       <AnimatePresence>
-        {state.status === 'finished' && !pendingGameOver && !summonSequenceActive && !showCinematic && showWinOverlay && (() => {
+        {!isSpecialOutcomeScenario && state.status === 'finished' && !pendingGameOver && !summonSequenceActive && !showCinematic && showWinOverlay && (() => {
           const winnerPlayer = state.winnerId
             ? (state.players as GamePlayerState[]).find(p => p.playerId === state.winnerId)
             : null;
           const winnerCards = (winnerPlayer?.forgedArtifacts ?? []) as ArtifactCard[];
           const winnerDiscountedIds = (winnerPlayer?.discountedForgeIds ?? []) as string[];
-          const victoryTier = getKardashevTier(winnerCards, winnerDiscountedIds);
+          const victoryTier = getCivilizationSceneTier(
+            winnerPlayer,
+            winnerCards,
+            winnerDiscountedIds,
+          );
           const victoryPalette = getDominantAffinityPalette(winnerCards);
           const victoryProfile = buildCivilizationProfile(winnerCards);
           return (
           <div
-            className="fixed inset-0 z-[220] flex items-center justify-center overflow-y-auto bg-background/98 p-4 sm:p-6"
+            className="fixed inset-0 z-[220] flex items-center justify-center overflow-y-auto bg-[#050611] p-3 sm:p-6"
           >
             <KardashevScene
               tier={victoryTier}
@@ -9280,9 +10510,9 @@ export default function GameBoard() {
               progressFraction={1}
               paused
               maxDpr={1}
-              className="absolute inset-0 overflow-hidden bg-black opacity-42 pointer-events-none"
+              className="absolute inset-0 overflow-hidden bg-black opacity-35 pointer-events-none"
             />
-            <div className="absolute inset-0 pointer-events-none bg-background/62" />
+            <div className="absolute inset-0 pointer-events-none bg-[#050611]/75" />
             {/* Radial glow behind card */}
             <div className="absolute inset-0 pointer-events-none" style={{ background: 'radial-gradient(ellipse 54% 44% at 50% 48%, hsl(var(--primary) / 0.22) 0%, hsl(var(--primary) / 0.08) 42%, transparent 72%)' }} />
 
@@ -9294,7 +10524,7 @@ export default function GameBoard() {
               initial={{ y: 14, opacity: 0 }}
               animate={{ y: 0, opacity: 1 }}
               transition={{ duration: 0.22, ease: 'easeOut', delay: 0.04 }}
-              className="relative pointer-events-auto w-full max-w-md text-center space-y-4 p-7 rounded-3xl border-2 bg-[#080917] text-foreground shadow-2xl"
+              className="relative isolate pointer-events-auto max-h-[calc(100dvh-1.5rem)] w-full max-w-lg space-y-4 overflow-y-auto rounded-lg border-2 bg-[#080917] p-5 text-center text-foreground shadow-2xl sm:max-h-[calc(100dvh-3rem)] sm:p-7"
               style={(() => {
                 const lumId = state.winTriggerLuminaryId;
                 if (!lumId) return { borderColor: 'hsl(var(--primary) / 0.55)', boxShadow: '0 22px 90px rgba(0,0,0,0.72), 0 0 48px rgba(99,102,241,0.24), inset 0 1px 0 rgba(255,255,255,0.10)' };
@@ -9309,8 +10539,10 @@ export default function GameBoard() {
                     initial={{ scale: 0.5, opacity: 0 }}
                     animate={{ scale: 1, opacity: 1 }}
                     transition={{ type: 'spring', stiffness: 300, damping: 18, delay: 0.3 }}
-                    className="text-6xl"
-                  >✨</motion.div>
+                    className="mx-auto flex h-14 w-14 items-center justify-center rounded-md border border-primary/45 bg-primary/15 text-primary shadow-[0_0_30px_hsl(var(--primary)/0.3)]"
+                  >
+                    <Sparkles className="h-8 w-8" />
+                  </motion.div>
                   <motion.h2
                     initial={{ opacity: 0, y: 12 }}
                     animate={{ opacity: 1, y: 0 }}
@@ -9331,7 +10563,9 @@ export default function GameBoard() {
                 </>
               ) : (
                 <>
-                  <div className="text-5xl">🌌</div>
+                  <div className="mx-auto flex h-14 w-14 items-center justify-center rounded-md border border-primary/35 bg-primary/10 text-primary">
+                    <Sparkles className="h-8 w-8" />
+                  </div>
                   <h2 className="text-4xl font-serif font-bold text-primary">Game Over</h2>
                   <div className="text-base text-foreground">
                     Winner: <span className="font-bold text-primary">{safePlayers.find(p => p.playerId === state.winnerId)?.playerName}</span>
@@ -9415,7 +10649,11 @@ export default function GameBoard() {
                     const playerCards = (p.forgedArtifacts ?? []) as Array<{ id: string; tier: number; bonusAffinity: string }>;
                     const playerDiscountedIds = (p.discountedForgeIds ?? []) as string[];
                     const civPalette = getDominantAffinityPalette(playerCards);
-                    const civTier = getKardashevTier(playerCards, playerDiscountedIds);
+                    const civTier = getCivilizationSceneTier(
+                      p,
+                      playerCards,
+                      playerDiscountedIds,
+                    );
                     const civName = getCivilizationName(civPalette, civTier);
                     const forgedCount = playerCards.length;
                     const encryptedCount = p.reservedArtifacts?.length ?? 0;
@@ -9430,7 +10668,7 @@ export default function GameBoard() {
                         initial={{ opacity: 0, x: -16 }}
                         animate={{ opacity: 1, x: 0 }}
                         transition={{ delay: 0.55 + i * 0.1 }}
-                        className={`flex flex-col px-3 py-2.5 rounded-xl gap-1 transition-colors ${isWinner ? 'bg-primary/20 border border-primary/40' : 'bg-secondary/50 border border-white/5'}`}
+                      className={`flex flex-col gap-1 rounded-md border px-3 py-2.5 transition-colors ${isWinner ? 'border-primary/50 bg-primary/20' : 'border-white/10 bg-secondary/55'}`}
                       >
                         {/* Name row */}
                         <div className="flex justify-between items-center">
@@ -9501,7 +10739,7 @@ export default function GameBoard() {
                   animate={{ opacity: 1, height: 'auto' }}
                   className="overflow-hidden"
                 >
-                  <div className="rounded-xl bg-secondary/40 px-3 py-2 space-y-1">
+                  <div className="rounded-md border border-white/10 bg-secondary/50 px-3 py-2 space-y-1">
                     <div className="text-[10px] uppercase tracking-wider text-muted-foreground font-semibold mb-1.5">Session Record</div>
                     {state.players.map((p) => {
                       const rec = rematchVote.sessionStats[p.playerId];
@@ -9531,7 +10769,7 @@ export default function GameBoard() {
                 className="flex flex-col gap-3 border-t border-white/10 pt-4"
               >
                 {rematchVote?.active ? (
-                  <div className="rounded-xl border border-primary/25 bg-primary/[0.07] p-3 space-y-3">
+                  <div className="rounded-md border border-primary/30 bg-primary/[0.09] p-3 space-y-3">
                     <div className="flex items-start justify-between gap-3">
                       <div className="min-w-0">
                         <div className="text-[10px] font-bold uppercase tracking-[0.16em] text-primary">
@@ -9597,14 +10835,14 @@ export default function GameBoard() {
 
                     {hasVoted ? (
                       <div className="grid grid-cols-[1fr_auto] gap-2">
-                        <div className="flex h-11 items-center justify-center rounded-xl border border-emerald-300/35 bg-emerald-500/12 text-sm font-bold text-emerald-100">
+                        <div className="flex h-11 items-center justify-center rounded-md border border-emerald-300/35 bg-emerald-500/12 text-sm font-bold text-emerald-100">
                           <Check className="mr-2 h-4 w-4" />
                           Ready
                         </div>
                         <Button
                           size="lg"
                           variant="outline"
-                          className="h-11 rounded-xl border-white/15 bg-white/5 px-4 text-foreground/80 hover:bg-white/10 hover:text-foreground"
+                          className="h-11 rounded-md border-white/25 bg-white/10 px-4 text-foreground hover:bg-white/15"
                           disabled={votePending || rematchVote.starting}
                           onClick={() => void submitRematchResponse('decline')}
                         >
@@ -9615,7 +10853,7 @@ export default function GameBoard() {
                       <div className={`grid gap-2 ${hasDeclinedRematch ? 'grid-cols-1' : 'grid-cols-2'}`}>
                         <Button
                           size="lg"
-                          className="h-11 rounded-xl bg-primary font-bold text-primary-foreground shadow-[0_0_24px_hsl(var(--primary)/0.28)] hover:bg-primary/90"
+                          className="h-11 rounded-md bg-primary font-bold text-primary-foreground shadow-[0_0_24px_hsl(var(--primary)/0.28)] hover:bg-primary/90"
                           disabled={votePending || rematchVote.starting}
                           onClick={() => void submitRematchResponse('join', rematchVote.sameBoard)}
                         >
@@ -9626,7 +10864,7 @@ export default function GameBoard() {
                           <Button
                             size="lg"
                             variant="outline"
-                            className="h-11 rounded-xl border-white/15 bg-white/5 text-foreground/80 hover:bg-white/10 hover:text-foreground"
+                            className="h-11 rounded-md border-white/25 bg-white/10 text-foreground hover:bg-white/15"
                             disabled={votePending || rematchVote.starting}
                             onClick={() => void submitRematchResponse('decline')}
                           >
@@ -9646,7 +10884,7 @@ export default function GameBoard() {
                     <div className="grid grid-cols-1 gap-2 sm:grid-cols-2">
                       <Button
                         size="lg"
-                        className="h-12 rounded-xl bg-primary text-base font-bold text-primary-foreground shadow-[0_0_28px_hsl(var(--primary)/0.34)] transition-all hover:bg-primary/90 hover:shadow-[0_0_34px_hsl(var(--primary)/0.46)]"
+                        className="h-12 rounded-md bg-primary text-base font-bold text-primary-foreground shadow-[0_0_28px_hsl(var(--primary)/0.34)] transition-all hover:bg-primary/90 hover:shadow-[0_0_34px_hsl(var(--primary)/0.46)]"
                         disabled={votePending}
                         onClick={() => void submitRematchResponse('join', false)}
                       >
@@ -9656,7 +10894,7 @@ export default function GameBoard() {
                       <Button
                         size="lg"
                         variant="outline"
-                        className="h-12 rounded-xl border-white/20 bg-white/7 font-bold text-foreground shadow-[inset_0_1px_0_rgba(255,255,255,0.08)] hover:bg-white/12 hover:text-foreground disabled:opacity-50"
+                        className="h-12 rounded-md border-white/30 bg-white/10 font-bold text-foreground shadow-[inset_0_1px_0_rgba(255,255,255,0.08)] hover:bg-white/15 hover:text-foreground disabled:opacity-50"
                         disabled={votePending || !canReplaySameBoard}
                         onClick={() => void submitRematchResponse('join', true)}
                       >
@@ -9679,7 +10917,7 @@ export default function GameBoard() {
                   <Button
                     size="lg"
                     variant="outline"
-                    className="h-11 rounded-xl border-white/20 bg-white/7 text-foreground shadow-[inset_0_1px_0_rgba(255,255,255,0.08)] hover:bg-white/12 hover:text-foreground"
+                    className="h-11 rounded-md border-white/30 bg-white/10 text-foreground shadow-[inset_0_1px_0_rgba(255,255,255,0.08)] hover:bg-white/15 hover:text-foreground"
                     onClick={() => {
                       setShowWinOverlay(false);
                       setShowCinematic(false);
@@ -9689,7 +10927,7 @@ export default function GameBoard() {
                     <LayoutGrid className="mr-2 h-4 w-4" />
                     View Board
                   </Button>
-                  <Button size="lg" variant="outline" className="h-11 rounded-xl border-white/15 bg-white/5 text-foreground/85 hover:bg-white/10 hover:text-foreground" onClick={leaveFinishedRoom}>
+                  <Button size="lg" variant="outline" className="h-11 rounded-md border-white/25 bg-white/10 text-foreground hover:bg-white/15" onClick={leaveFinishedRoom}>
                     <DoorOpen className="mr-2 h-4 w-4" />
                     Home
                   </Button>
@@ -9700,6 +10938,64 @@ export default function GameBoard() {
           );
         })()}
       </AnimatePresence>
+
+      {(
+        (state.pendingBlueprintManifestationEvents?.length ?? 0) > 0 ||
+        (state.pendingBlueprintDetonationEvents?.length ?? 0) > 0 ||
+        (state.pendingScenarioProtocolEvents?.length ?? 0) > 0
+      ) &&
+        (state.pendingSummonEvents?.length ?? 0) === 0 &&
+        (state.pendingLuminaryActivationEvents?.length ?? 0) === 0 &&
+        arrivalQueue.length === 0 &&
+        activationQueue.length === 0 && (() => {
+          const manifestation = state.pendingBlueprintManifestationEvents?.[0] ?? null;
+          const detonation = manifestation ? null : state.pendingBlueprintDetonationEvents?.[0] ?? null;
+          const protocolEvent = manifestation || detonation ? null : state.pendingScenarioProtocolEvents?.[0] ?? null;
+          const controller = state.players.find((player) => !player.isAi && player.isConnected)
+            ?? state.players.find((player) => !player.isAi);
+          return (
+            <React.Suspense
+              fallback={<div className="fixed inset-0 z-[12000] grid place-items-center bg-black" aria-label="Loading Blueprint presentation"><Loader2 className="h-6 w-6 animate-spin text-amber-200" /></div>}
+            >
+              {protocolEvent ? (
+                <ScenarioProtocolPresentationOverlay
+                  event={protocolEvent}
+                  reducedMotion={effectiveBlueprintPresentationReducedMotion}
+                  onComplete={() => {
+                    if (!controller || controller.playerId !== session.playerId) return;
+                    void executeAction({
+                      type: protocolEvent.kind === 'manifestation'
+                        ? 'resolve_blueprint_manifestation'
+                        : 'resolve_blueprint_detonation',
+                      eventId: protocolEvent.eventId,
+                    });
+                  }}
+                />
+              ) : (
+                <BlueprintPresentationOverlay
+                  manifestation={manifestation}
+                  detonation={detonation}
+                  players={state.players}
+                  reducedMotion={effectiveBlueprintPresentationReducedMotion}
+                  onComplete={() => {
+                    if (!controller || controller.playerId !== session.playerId) return;
+                    if (manifestation) {
+                      void executeAction({
+                        type: 'resolve_blueprint_manifestation',
+                        eventId: manifestation.eventId,
+                      });
+                    } else if (detonation) {
+                      void executeAction({
+                        type: 'resolve_blueprint_detonation',
+                        eventId: detonation.eventId,
+                      });
+                    }
+                  }}
+                />
+              )}
+            </React.Suspense>
+          );
+        })()}
 
       {import.meta.env.DEV && showDevSequenceLab && state.status === 'playing' && roomId && (
         <DevLuminarySequencePanel
@@ -9720,15 +11016,6 @@ export default function GameBoard() {
           onClose={() => setShowDevSequenceLab(false)}
         />
       )}
-      {import.meta.env.DEV && (
-        <DevLuminarySequenceTrace
-          status={luminarySequenceStatus}
-          signals={luminarySequenceSignals}
-          ingressQueuedCount={queuedStateCount}
-          run={luminaryPresentationEngine.run}
-        />
-      )}
-
       {/* Luminary arrival cutscene queue — plays one cutscene at a time.
           When the user presses "Skip view", the cutscene overlay is hidden via
           CSS (visibility:hidden) but the component stays mounted so its internal
@@ -9810,20 +11097,21 @@ export default function GameBoard() {
             // ── Phase 2: effects phase — activation cinematic first, then brand strikes ──
             const deferredStrikes = [...deferredBrandStrikesRef.current];
             deferredBrandStrikesRef.current = [];
-            const deferredActivations = [...deferredActivationEventsRef.current];
+            // The arrival and its activation can be delivered by different
+            // transport frames. Reconcile with the authoritative queue so an
+            // effect cannot resolve mechanically while missing Phase 2.
+            const deferredActivations = reconcileDeferredLuminaryActivations(
+              deferredActivationEventsRef.current,
+              state.pendingLuminaryActivationEvents ?? [],
+              new Set(activationQueue.map(event => event.eventId)),
+            );
             deferredActivationEventsRef.current = [];
             // Fire brand-strike sets sequentially via staggered timeouts. Each set
             // starts only after the previous camera cycle (prepare → beam → aura →
             // restore) is estimated to be fully complete, so they never share the view.
             const CAMERA_SETTLE_MS = 800; // conservative estimate for viewOrchestrator.prepare()
             const fireStrikeSet = (strikes: typeof deferredStrikes) => {
-              if (strikes.length === 0) {
-                if (inheritActivationViewRef.current) {
-                  inheritActivationViewRef.current = false;
-                  viewOrchestrator.restore({ immediate: true });
-                }
-                return;
-              }
+              if (strikes.length === 0) return;
               // Pre-compute total duration and extend the state-update gate so
               // the drain queue does not release new turn state while beams and
               // auras are still animating.
@@ -9850,12 +11138,6 @@ export default function GameBoard() {
                       { type: 'targetClaim', targetIds: capturedS.ids, keyword },
                     ];
                     const lead = capturedS.instant ? 0 : SOURCE_PULSE_LEAD_MS;
-                    // Consume the inherit flag: if the activation cinematic skipped its
-                    // restore() to keep the camera compact across the phase boundary,
-                    // tell prepare() to record the compact-restore obligation so the
-                    // final restore() correctly un-compacts at the end of the burn.
-                    const shouldInheritCompact = inheritActivationViewRef.current;
-                    if (shouldInheritCompact) inheritActivationViewRef.current = false;
                     viewOrchestrator.prepare(procedure, () => {
                       const portalEl = document.querySelector(`[data-luminary-id="${capturedS.srcMeta!.lumId}"]`);
                       let source:
@@ -9897,7 +11179,7 @@ export default function GameBoard() {
                       // Matches onDone timing: maxDelay + 1420ms (aura-complete), plus 400ms buffer.
                       const totalMs = usedLead + (capturedS.ids.length - 1) * 90 + 1420 + 400;
                       setTimeout(() => viewOrchestrator.restore({ immediate: capturedS.instant }), totalMs);
-                    }, { forceOrchestrate: true, ...(shouldInheritCompact ? { inheritCompact: true } : {}) });
+                    }, { forceOrchestrate: true });
                   } else {
                     fireBrandStrikes(capturedS.ids, capturedS.markers);
                     // No camera orchestration — reveal overlays+badges immediately.
@@ -9906,13 +11188,6 @@ export default function GameBoard() {
                       capturedS.ids.forEach(id => next.delete(id));
                       return next;
                     });
-                    // If the activation cinematic held the camera compact across the phase
-                    // boundary (skipped its own restore), release it now via the still-live
-                    // activation snapshot — this path has no prepare() of its own.
-                    if (inheritActivationViewRef.current) {
-                      inheritActivationViewRef.current = false;
-                      viewOrchestrator.restore({ immediate: true });
-                    }
                   }
                 }, capturedOffset);
                 // Estimate full cycle: camera settle + lead + stagger + aura-complete (1420ms) + buffer (400ms)
@@ -9965,35 +11240,16 @@ export default function GameBoard() {
               }
               const continueAfterEminenceBurst = () => {
                 if (deferredActivations.length > 0) {
-                  // Activation cinematic plays first. Brand strikes are deferred until the
-                  // FIRST activation's onComplete fires (postActivationStrikesFirerRef is
-                  // cleared on first use, so later activations in the same queue don't re-fire).
-                  if (deferredStrikes.length > 0) {
-                    // Augment strike IDs with activation event payload so brand strikes fire
-                    // for ALL condemned targets, not just cards captured by the newlyMarked
-                    // state diff (which can be incomplete due to TQ polling races).
-                    // s.markers is the full artifactMarkers snapshot from diff-time — it has
-                    // entries for all condemned IDs set in the same atomic state update.
-                    const augmentedStrikes = deferredStrikes.map(s => {
-                      if (!s.srcMeta) return s;
-                      const matchingAct = deferredActivations.find(
-                        a => a.luminaryId === s.srcMeta!.lumId &&
-                             a.targetCardIds && a.targetCardIds.length > s.ids.length,
-                      );
-                      if (!matchingAct?.targetCardIds) return s;
-                      return { ...s, ids: matchingAct.targetCardIds };
-                    });
-                    // Pre-compute total strike duration so onComplete can call setAnimEndTime
-                    // synchronously — before the 400ms settle setTimeout — closing the race
-                    // window where the drain queue could open and flush condemned cards away.
-                    let precomputedTotalMs = 0;
-                    for (const s of augmentedStrikes) {
-                      const lead = (s.srcMeta && s.srcLum && !s.instant) ? SOURCE_PULSE_LEAD_MS : 0;
-                      // Per-set: camera settle + lead + stagger + aura-complete (1420ms) + buffer (400ms)
-                      precomputedTotalMs += CAMERA_SETTLE_MS + lead + (s.ids.length - 1) * 90 + 1420 + 400;
-                    }
-                    postActivationStrikesTotalMsRef.current = precomputedTotalMs;
-                    postActivationStrikesFirerRef.current = () => fireStrikeSet(augmentedStrikes);
+                  const { unowned: unownedStrikes } =
+                    partitionDeferredBrandStrikesByActivation(
+                      deferredStrikes,
+                      deferredActivations,
+                    );
+                  // Matching branding activations own their strikes, marker reveal,
+                  // and timing. Only legacy/unmatched marker updates use the fallback
+                  // lane; an unrelated first activation must never release them.
+                  if (unownedStrikes.length > 0) {
+                    fireStrikeSet(unownedStrikes);
                   }
                   setActivationQueue(q => [...q, ...deferredActivations]);
                 } else {
@@ -10029,6 +11285,7 @@ export default function GameBoard() {
                 cardRect={entry.cardRect}
                 boardSnapshot={entry.boardSnapshot}
                 cinematicMode={cinematicMode}
+                arrivalSound={entry.arrivalSound}
                 autoSkipAfterMs={
                   devSequencePlaybackActive
                     ? devSequencePlaybackMode === 'instant'
@@ -10077,18 +11334,43 @@ export default function GameBoard() {
         !activationGateActive &&
         !currentActivationBlocked &&
         !activationAftermathBlocked &&
-        !delayedLuminaryResultActive && (
-        activationDirectorPreparesCamera(
-          activationQueue[0].luminaryId,
-          activationQueue[0].effectType,
-        ) ||
-        preparedRectDirectorEventId === activationQueue[0].eventId
-      ) && (() => {
+        !delayedLuminaryResultActive &&
+        preparedRectDirectorEventId === activationQueue[0].eventId && (() => {
         const evt = activationQueue[0];
         const lum = (state?.luminaries ?? []).find((l: Luminary) => l.id === evt.luminaryId);
         const triggeringPlayer = (state?.players ?? []).find(
           (p: GamePlayerState) => p.playerId === evt.triggeringPlayerId
         );
+        const prepareResolution = () => new Promise<void>((resolve) => {
+          const procedure = resolveLuminaryProcedure(
+            evt.luminaryId,
+            evt.effectType as 'summon' | 'action' | 'end_of_turn' | 'start_of_turn',
+            state,
+            evt.triggeringPlayerId,
+            {
+              targetCardIds: evt.targetCardIds,
+              targetSlotIds: evt.targetSlotIds,
+              affinityType: evt.affinityType,
+              affinityAmount: evt.affinityAmount,
+            },
+          );
+          let settled = false;
+          let fallback: number | undefined;
+          const finish = () => {
+            if (settled) return;
+            settled = true;
+            if (fallback !== undefined) window.clearTimeout(fallback);
+            resolve();
+          };
+          fallback = window.setTimeout(finish, 1_400);
+          viewOrchestrator.prepare(
+            procedure,
+            finish,
+            activationDirectorForcesCamera(evt.luminaryId, evt.effectType)
+              ? { forceOrchestrate: true }
+              : undefined,
+          );
+        });
         return (
           <ActivationDirectorRouter
             key={evt.eventId}
@@ -10097,17 +11379,19 @@ export default function GameBoard() {
             triggeringPlayer={triggeringPlayer}
             state={state}
             abridgedAnims={abridgedAnims}
-            playbackMode={luminaryPlaybackMode}
-            activationTimelineRate={devSequenceTimelineRate}
+            playbackMode={effectiveLuminaryPlaybackMode}
+            activationTimelineRate={effectiveLuminaryTimelineRate}
             pendingBurnSlots={pendingDirectorBurnSlotsRef.current}
             ironHarbingerSlots={pendingIronHarbingerSlotsRef.current}
+            assimilationSlot={pendingAssimilationSlotRef.current}
             queuePosition={activationSequenceProgress.position}
             queueTotal={activationSequenceProgress.total}
+            prepareResolution={prepareResolution}
             onResolutionStart={() => {
               flushDeferredNormalBurnsForActivation(evt);
             }}
             brandingActions={{
-              prepare: viewOrchestrator.prepare,
+              prepare: (_procedure, onSettled) => onSettled?.(),
               // Compatibility callbacks remain for the director API, but global
               // scroll ownership belongs exclusively to the sequence lease.
               lockBoardScroll: () => undefined,
@@ -10128,10 +11412,7 @@ export default function GameBoard() {
             }}
             onBrandingComplete={(skipped) => {
               const isFinalQueuedActivation = activationQueue.length <= 1;
-              // Director handled brand strikes internally — clear deferred-strike refs
-              // so the generic onComplete path doesn't double-fire them.
-              postActivationStrikesFirerRef.current = null;
-              postActivationStrikesTotalMsRef.current = 0;
+              publishLuminaryEffectReceipt(evt, lum, triggeringPlayer);
               // Restore camera (un-compact if view was normal before the director ran)
               viewOrchestrator.restore({ immediate: skipped });
               setActivationQueue(q => q.slice(1));
@@ -10152,7 +11433,7 @@ export default function GameBoard() {
               }
             }}
             burnActions={{
-              prepare: viewOrchestrator.prepare,
+              prepare: (_procedure, onSettled) => onSettled?.(),
               restore: viewOrchestrator.restore,
               lockBoardScroll: () => undefined,
               unlockBoardScroll: () => undefined,
@@ -10279,7 +11560,7 @@ export default function GameBoard() {
               playCardBurn: (index, total) => gameAudio.playCardBurn(index, total),
             }}
             ironHarbingerActions={{
-              prepare: viewOrchestrator.prepare,
+              prepare: (_procedure, onSettled) => onSettled?.(),
               setAnimEndTime: (durationMs) => {
                 activationAftermathOwnerEventIdRef.current = evt.eventId;
                 setAnimEndTime(durationMs);
@@ -10331,8 +11612,65 @@ export default function GameBoard() {
               playArchiveImpact: () => gameAudio.playImpactExtinctionArchive(),
               playDeal: () => gameAudio.playCardDraw(),
             }}
+            assimilationActions={{
+              takeOverSlot: (slotKey) => {
+                setBurstGhostCards(current => {
+                  if (!current[slotKey]) return current;
+                  const next = { ...current };
+                  delete next[slotKey];
+                  return next;
+                });
+                setHiddenSlots(current => new Set([...current, slotKey]));
+              },
+              revealReplacement: (slotKey, tier, immediate) => {
+                setBurstGhostCards(current => {
+                  if (!current[slotKey]) return current;
+                  const next = { ...current };
+                  delete next[slotKey];
+                  return next;
+                });
+                pendingAssimilationSlotRef.current = null;
+                const slotIndex = Number(slotKey.split('-')[1]);
+                const row = tier === 1
+                  ? state?.forgeTier1
+                  : tier === 2
+                    ? state?.forgeTier2
+                    : state?.forgeTier3;
+                const replacement = row?.[slotIndex] ?? null;
+                if (immediate || !replacement) {
+                  setHiddenSlots(current => {
+                    if (!current.has(slotKey)) return current;
+                    const next = new Set(current);
+                    next.delete(slotKey);
+                    return next;
+                  });
+                  return;
+                }
+                setHiddenSlots(current => new Set([...current, slotKey]));
+                if (!dealReplacementIntoSlot(replacement, tier, slotKey)) {
+                  setHiddenSlots(current => {
+                    const next = new Set(current);
+                    next.delete(slotKey);
+                    return next;
+                  });
+                  setRefillingSlots(current => new Set([...current, slotKey]));
+                  gameAudio.playForgeRefill();
+                  setTimeout(() => {
+                    setRefillingSlots(current => {
+                      const next = new Set(current);
+                      next.delete(slotKey);
+                      return next;
+                    });
+                  }, 700);
+                }
+              },
+              playAffinityAbsorb: (affinity) => {
+                gameAudio.playAssimilationAbsorb(affinity);
+              },
+            }}
             onBurnComplete={() => {
               const isFinalQueuedActivation = activationQueue.length <= 1;
+              publishLuminaryEffectReceipt(evt, lum, triggeringPlayer);
               // Director already called restore() internally at the end of its timeline.
               // Safety: clear ghost cards and hidden slots in case onRefillPulse was
               // skipped (reduced motion / empty slot path).
@@ -10361,85 +11699,35 @@ export default function GameBoard() {
               }
             }}
             onCinematicComplete={(skipped) => {
-              // Only restore the view now when no brand strikes are about to follow.
-              // When strikes ARE pending, the camera stays held compact so the burn
-              // animation begins without a premature zoom-in/zoom-out between phases.
-              // The brand strike's own restore() will be the final camera release.
-              const hasPendingStrikes = postActivationStrikesFirerRef.current !== null;
+              publishLuminaryEffectReceipt(evt, lum, triggeringPlayer);
               const isFinalQueuedActivation = activationQueue.length <= 1;
-              if (!hasPendingStrikes) {
-                viewOrchestrator.restore({ immediate: skipped });
-              } else if (!preActivationWasCompactRef.current) {
-                // Activation cinematic switched us to compact from normal view.
-                // Signal the upcoming brand-strike prepare() to inherit the compact-
-                // restore obligation so the final restore() un-compacts correctly.
-                inheritActivationViewRef.current = true;
-              }
+              viewOrchestrator.restore({ immediate: skipped });
               setActivationQueue(q => q.slice(1));
               setPreparedRectDirectorEventId(null);
               queueActivationServerResolution(evt.eventId);
-              if (evt.luminaryId === 'lum_seed' && evt.effectType === 'summon') {
-                activationAftermathOwnerEventIdRef.current = evt.eventId;
-                setAnimEndTime(SEED_EFFECT_TOTAL_MS);
-                setShowSeedBoardEffect(true);
-              }
-              // Safety fallback IDs: captured now so the setTimeout below can reference them
-              // even after the activation queue has advanced to the next event.
               const safetyUnsuppressIds = evt.targetCardIds;
-              // Fire brand strikes deferred from the summon arrival. The ref is cleared
-              // on first use so only ONE activation (the summon one) triggers strikes —
-              // later activation events that land in the same queue do nothing.
-              // NOTE: do NOT check activationQueue.length here. If another Luminary
-              // event arrived during the cinematic, activationQueue may already have
-              // length ≥ 2, which previously caused the === 1 guard to silently skip fire.
-              if (postActivationStrikesFirerRef.current) {
-                const fire = postActivationStrikesFirerRef.current;
-                const totalMs = postActivationStrikesTotalMsRef.current;
-                postActivationStrikesFirerRef.current = null;
-                postActivationStrikesTotalMsRef.current = 0;
-                const settleMs = skipped ? 0 : 400;
-                // Extend the state-update gate SYNCHRONOUSLY (before the setTimeout) so
-                // the drain queue cannot open in the settle window and flush condemned cards
-                // away before beams land. fireStrikeSet will refine this with the exact
-                // duration once it actually starts executing.
-                activationAftermathOwnerEventIdRef.current = evt.eventId;
-                setAnimEndTime(settleMs + totalMs);
-                // Give the cinematic's pan-out exit a moment to clear before beams fly.
-                setTimeout(fire, settleMs);
-                // Safety fallback: unsuppress any payload IDs that didn't receive a beam
-                // (e.g. card off-screen, DOM width = 0, reduced-motion path). This prevents
-                // condemned markers from staying permanently invisible after animation ends.
-                if (safetyUnsuppressIds && safetyUnsuppressIds.length > 0) {
-                  setTimeout(() => {
-                    setSuppressedMarkerIds(prev => {
-                      if (prev.size === 0) return prev;
-                      const next = new Set(prev);
-                      safetyUnsuppressIds.forEach(id => next.delete(id));
-                      return next;
-                    });
-                  }, settleMs + totalMs + 1200);
-                }
-                if (isFinalQueuedActivation) {
-                  setTimeout(flushDeferredNormalBurns, settleMs + totalMs);
-                }
-              } else if (safetyUnsuppressIds && safetyUnsuppressIds.length > 0) {
-                // No deferred strikes scheduled — unsuppress payload IDs immediately so
-                // persistent markers are always visible after the cinematic completes.
+              if (safetyUnsuppressIds && safetyUnsuppressIds.length > 0) {
                 setSuppressedMarkerIds(prev => {
                   const next = new Set(prev);
                   safetyUnsuppressIds.forEach(id => next.delete(id));
                   return next;
                 });
-                if (isFinalQueuedActivation) {
-                  flushDeferredNormalBurns();
-                }
-              } else if (isFinalQueuedActivation) {
+              }
+              if (isFinalQueuedActivation) {
                 flushDeferredNormalBurns();
               }
             }}
           />
         );
       })()}
+
+      {luminaryEffectReceipts.length > 0 && (
+        <LuminaryEffectResultReceipt
+          receipts={luminaryEffectReceipts}
+          activeSequence={luminaryPresentationActive}
+          onDismiss={() => setLuminaryEffectReceipts([])}
+        />
+      )}
 
       {/* "Waiting" chip shown when the user has skipped their local view but
           the arrival is still globally resolving (cutscene timer still running). */}
@@ -10519,7 +11807,20 @@ export default function GameBoard() {
         />
       ))}
       {/* ── v0.8 Delayed-effect eminence floats ── */}
-      {activeDelayedEffectFloat && (
+      {activeDelayedEffectFloat && usesControlledEminenceBestowal(activeDelayedEffectFloat.luminaryId) ? (
+        <LuminaryEminenceBurst
+          key={activeDelayedEffectFloat.id}
+          amount={activeDelayedEffectFloat.amount}
+          color={activeDelayedEffectFloat.color}
+          secondaryColor={activeDelayedEffectFloat.secondaryColor}
+          luminaryName={activeDelayedEffectFloat.luminaryName ?? 'Luminary'}
+          playerName={activeDelayedEffectFloat.playerName ?? 'Allied player'}
+          originRect={activeDelayedEffectFloat.originRect}
+          targetRect={activeDelayedEffectFloat.targetRect}
+          reducedMotion={abridgedAnims}
+          onDone={() => setActiveDelayedEffectFloat(null)}
+        />
+      ) : activeDelayedEffectFloat ? (
         <DelayedEffectFloat
           key={activeDelayedEffectFloat.id}
           amount={activeDelayedEffectFloat.amount}
@@ -10528,7 +11829,7 @@ export default function GameBoard() {
           originRect={activeDelayedEffectFloat.originRect}
           onDone={() => setActiveDelayedEffectFloat(null)}
         />
-      )}
+      ) : null}
       {luminaryEminenceBurst && (
         <LuminaryEminenceBurst
           key={luminaryEminenceBurst.key}
@@ -10592,7 +11893,10 @@ export default function GameBoard() {
           Plays after the arrival cutscene resolves for lum_seed.
           Renders at normal board scale (no dimming, no entity overlay). */}
       {showSeedBoardEffect && (
-        <SeedBeyondSeasonsEffect onComplete={() => setShowSeedBoardEffect(false)} />
+        <SeedBeyondSeasonsEffect
+          moldSlots={state?.avatarSeedMoldSlots ?? []}
+          onComplete={() => setShowSeedBoardEffect(false)}
+        />
       )}
       {/* ── v0.8 Arrival brand beam strikes (lightning → large icon → persistent badge) ── */}
       {brandStrikes.map(b => (

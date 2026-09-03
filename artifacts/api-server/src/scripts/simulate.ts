@@ -49,6 +49,7 @@ import {
   type ActionPayload,
 } from "../lib/gameEngine.js";
 import { chooseAiAction, type AiDifficulty } from "../lib/aiPlayer.js";
+import { ordinaryEncryptedCount } from "@workspace/game-types";
 
 // ── CLI args ──────────────────────────────────────────────────────────────────
 
@@ -875,7 +876,7 @@ function chooseProbeAction(
     return { type: isReserved ? "forge_reserved_artifact" : "forge_artifact", cardId: card.id };
   }
 
-  if (player.reservedArtifactIds.length < 3) {
+  if (ordinaryEncryptedCount(player) < 3) {
     const bestUnaffordable = allArtifacts
       .filter((c) => !canAffordCard(c) && !player.reservedArtifactIds.includes(c.id))
       .sort((a, b) => probeScoreCard(b, player, targetLum) - probeScoreCard(a, player, targetLum));

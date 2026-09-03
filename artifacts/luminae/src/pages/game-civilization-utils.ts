@@ -25,5 +25,28 @@ export function civilizationStateKey(player?: GamePlayerState | null): string {
     .join('|');
   const discountedKey = [...(player.discountedForgeIds ?? [])].sort().join(',');
   const luminaryKey = [...(player.claimedLuminaryIds ?? [])].sort().join(',');
-  return `${artifactKey}::discounted=${discountedKey}::luminaries=${luminaryKey}::civ=${player.civName ?? ''}`;
+  const civilization = player.civilization;
+  const civilizationKey = civilization
+    ? [
+        civilization.version,
+        civilization.artifacts.map((artifact) => [
+          artifact.artifactId,
+          artifact.masteryCount,
+          artifact.implementationState ?? 'unknown',
+          artifact.implementationStateChangedTurnCount ?? 'unknown',
+          artifact.historyEvidence,
+        ].join(':')).join(','),
+        civilization.scale.historicalMaturity,
+        civilization.scale.currentReach,
+        civilization.scale.currentReachCondition,
+        civilization.stability.band,
+        civilization.activeCapabilityIds.join(','),
+        civilization.activeConditions.map((condition) => [
+          condition.type,
+          condition.targetKind,
+          condition.appliedTurnCount ?? 'unknown',
+        ].join(':')).join(','),
+      ].join('|')
+    : 'legacy';
+  return `${artifactKey}::discounted=${discountedKey}::luminaries=${luminaryKey}::civilization=${civilizationKey}::civ=${player.civName ?? ''}`;
 }

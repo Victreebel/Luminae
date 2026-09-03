@@ -48,6 +48,7 @@ import {
   type LuminaryActiveState,
   ArtifactCardBonusAffinity,
 } from "@workspace/api-client-react";
+import { DEFAULT_VICTORY_REQUIREMENT } from "@workspace/game-types";
 import { gameAudio } from "@/lib/audio";
 import { resolveLuminaryProcedure } from "@/lib/luminaryAnimationProcedures";
 import { LUMINARY_ANIMATION_CONFIG } from "@/lib/luminaryAnimationConfig";
@@ -91,14 +92,14 @@ const SANDBOX_LUMINARIES: SandboxLuminary[] = [
     id: "lum_void",
     name: "The Void Warden",
     domain: "Void",
-    eminence: 0,
+    eminence: 2,
     flavor: "In the space between stars, something watches without eyes.",
   },
   {
     id: "lum_radiant",
     name: "Concordance Mandala",
     domain: "Coherence",
-    eminence: 3,
+    eminence: 4,
     flavor: "Truth is not revealed. It is aligned.",
   },
   {
@@ -127,7 +128,7 @@ const SANDBOX_LUMINARIES: SandboxLuminary[] = [
     id: "lum_compass",
     name: "???",
     domain: "Erasure",
-    eminence: 0,
+    eminence: 1,
     flavor:
       "Everyone remembers something happened, but no one recalls what was lost.",
   },
@@ -2595,7 +2596,7 @@ function describeAftermath(steps: AnimationTimelineStep[]): AftermathLine[] {
           seeded: "#22c55e",
         };
         lines.push({
-          label: `${step.keyword.toUpperCase()} residue → ${target}${step.victoryRequirementChange !== undefined ? ` · victory +${step.victoryRequirementChange}` : ""}`,
+          label: `${step.keyword.toUpperCase()} residue → ${target}${step.victoryRequirementChange !== undefined ? ` · victory requirement +${step.victoryRequirementChange}` : ""}`,
           color: kwColors[step.keyword] ?? "#94a3b8",
         });
         break;
@@ -2635,6 +2636,15 @@ function describeAftermath(steps: AnimationTimelineStep[]): AftermathLine[] {
         lines.push({
           label: `Affinity returned from ${n} player${n !== 1 ? "s" : ""}`,
           color: "#60a5fa",
+        });
+        break;
+      }
+      case "affinityGain": {
+        const n = step.playerIds.length;
+        const affinity = step.affinityType ? ` ${step.affinityType}` : "";
+        lines.push({
+          label: `+${step.amount}${affinity} permanent Affinity → ${n > 1 ? `${n} players` : "owner"}`,
+          color: "#4ade80",
         });
         break;
       }
@@ -2773,7 +2783,7 @@ function describeStep(step: AnimationTimelineStep): string {
     case "residue": {
       const n = step.targetIds.length;
       const threshold = step.victoryRequirementChange !== undefined
-        ? ` · victory +${step.victoryRequirementChange}`
+        ? ` · victory requirement +${step.victoryRequirementChange}`
         : "";
       return `residue:${step.keyword} · ${n > 0 ? `${n} card${n !== 1 ? "s" : ""}` : "deck tops"}${threshold}`;
     }
@@ -2797,6 +2807,10 @@ function describeStep(step: AnimationTimelineStep): string {
       const t = step.affinityType ? ` (${step.affinityType})` : "";
       const amount = step.amount ? ` × ${step.amount}` : "";
       return `affinityReturn${t}${amount} · ${step.playerIds.length} player${step.playerIds.length !== 1 ? "s" : ""}`;
+    }
+    case "affinityGain": {
+      const affinity = step.affinityType ? ` ${step.affinityType}` : "";
+      return `affinityGain · +${step.amount}${affinity} → ${step.playerIds.length} player${step.playerIds.length !== 1 ? "s" : ""}`;
     }
     case "deckScry": {
       const tiers = step.tierIds.map((t) => t.replace("tier", "T")).join("+");
@@ -2830,6 +2844,8 @@ function stepPipColor(step: AnimationTimelineStep): string {
       return "#fbbf24";
     case "affinityReturn":
       return "#60a5fa";
+    case "affinityGain":
+      return "#4ade80";
     case "deckScry":
       return "#c084fc";
     case "pendingAction":
@@ -3747,6 +3763,25 @@ export default function DevAnimSandbox() {
       "Press Play to preview the BurnPileParticle — a charred fragment that arcs from the burned slot to the burn-pile chip.",
   };
 
+  const activationProcedure = active
+    ? LUMINARY_ANIMATION_CONFIG[active.id]?.procedureSteps
+    : undefined;
+  const victoryRequirementStep = activationProcedure?.find((step) => (
+    step.type === "victoryRequirementChange" ||
+    (step.type === "residue" && step.victoryRequirementChange !== undefined)
+  ));
+  const victoryRequirementChange = victoryRequirementStep?.type === "victoryRequirementChange"
+    ? victoryRequirementStep.amount
+    : victoryRequirementStep?.type === "residue"
+      ? victoryRequirementStep.victoryRequirementChange
+      : undefined;
+  const previewVictoryRequirementBefore = victoryRequirementChange !== undefined
+    ? DEFAULT_VICTORY_REQUIREMENT
+    : undefined;
+  const previewVictoryRequirementAfter = victoryRequirementChange !== undefined
+    ? DEFAULT_VICTORY_REQUIREMENT + victoryRequirementChange
+    : undefined;
+
   return (
     <div className="dark min-h-[100dvh] bg-background text-foreground flex flex-col">
       {/* ── Header ────────────────────────────────────────────────────────── */}
@@ -4016,7 +4051,11 @@ export default function DevAnimSandbox() {
                   </button>
                   <button
                     type="button"
-                    onClick={() => gameAudio.playEminenceSeal(2, 15, 15)}
+                    onClick={() => gameAudio.playEminenceSeal(
+                      2,
+                      DEFAULT_VICTORY_REQUIREMENT,
+                      DEFAULT_VICTORY_REQUIREMENT,
+                    )}
                     className="text-sm font-mono px-3 py-2 rounded border border-yellow-200/30 bg-yellow-200/5 text-yellow-100 transition-colors hover:bg-yellow-200/10"
                   >
                     Eminence Ascension
@@ -4619,6 +4658,9 @@ export default function DevAnimSandbox() {
           effectType={activationEffectType}
           luminaryName={active.name}
           triggeringPlayerName="Preview Player"
+          procedure={activationProcedure}
+          victoryRequirementBefore={previewVictoryRequirementBefore}
+          victoryRequirementAfter={previewVictoryRequirementAfter}
           onComplete={() => setActive(null)}
         />
       )}

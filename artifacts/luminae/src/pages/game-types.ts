@@ -20,6 +20,7 @@ export type ForgeDestination = {
 export interface SelectedCard {
   card: ArtifactCard;
   fromReserve: boolean;
+  fromArchiveTop?: boolean;
   canBuy: boolean;
   canReserve: boolean;
   effectiveCosts?: Partial<Record<AffinityKey, number>>;

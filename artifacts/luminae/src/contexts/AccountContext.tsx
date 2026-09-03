@@ -7,6 +7,7 @@ import {
   apiLogin,
   apiRegister,
   apiLogout,
+  apiGetMe,
   type AccountInfo,
   type AccountSession,
 } from "@/lib/accountSession";
@@ -23,6 +24,7 @@ interface AccountContextValue {
   login: (username: string, password: string) => Promise<void>;
   register: (username: string, password: string, email?: string) => Promise<void>;
   logout: () => Promise<void>;
+  refreshAccount: () => Promise<void>;
 }
 
 const AccountContext = createContext<AccountContextValue | null>(null);
@@ -38,6 +40,13 @@ export function AccountProvider({ children }: { children: ReactNode }) {
   const [isLoading, setIsLoading] = useState(true);
   const [prefs, setPrefs] = useState<AccountPreferences | null>(null);
 
+  const hydrateAccount = useCallback(async (current: AccountSession): Promise<AccountSession> => {
+    const me = await apiGetMe(current.token);
+    const hydrated = { ...current, account: { ...current.account, ...me } };
+    saveAccountSession(hydrated);
+    return hydrated;
+  }, []);
+
   useEffect(() => {
     const restore = async () => {
       const stored = getAccountSession();
@@ -45,13 +54,41 @@ export function AccountProvider({ children }: { children: ReactNode }) {
       setPreferencesSyncToken(_currentToken);
       setTutorialToken(_currentToken);
       if (stored) {
-        const p = await syncAccountPreferences(stored.token, stored.account.id).catch(() => null);
+        const [p, hydrated] = await Promise.all([
+          syncAccountPreferences(stored.token, stored.account.id).catch(() => null),
+          hydrateAccount(stored).catch(() => stored),
+        ]);
         if (p) setPrefs(p);
+        setSession(hydrated);
+      } else {
+        setSession(null);
       }
-      setSession(stored);
     };
     void restore().finally(() => setIsLoading(false));
-  }, []);
+  }, [hydrateAccount]);
+
+  useEffect(() => {
+    const handleSessionChange = () => {
+      const stored = getAccountSession();
+      _currentToken = stored?.token ?? null;
+      setPreferencesSyncToken(_currentToken);
+      setTutorialToken(_currentToken);
+      if (!stored) {
+        setSession(null);
+        setPrefs(null);
+        return;
+      }
+      void Promise.all([
+        syncAccountPreferences(stored.token, stored.account.id).catch(() => null),
+        hydrateAccount(stored).catch(() => stored),
+      ]).then(([nextPrefs, hydrated]) => {
+        if (nextPrefs) setPrefs(nextPrefs);
+        setSession(hydrated);
+      });
+    };
+    window.addEventListener("luminae:account-session-changed", handleSessionChange);
+    return () => window.removeEventListener("luminae:account-session-changed", handleSessionChange);
+  }, [hydrateAccount]);
 
   // Poll preferences every 30 s while logged in so other open sessions stay current.
   useEffect(() => {
@@ -76,8 +113,8 @@ export function AccountProvider({ children }: { children: ReactNode }) {
     setTutorialToken(s.token);
     const p = await syncAccountPreferences(s.token, s.account.id).catch(() => null);
     if (p) setPrefs(p);
-    setSession(s);
-  }, []);
+    setSession(await hydrateAccount(s).catch(() => s));
+  }, [hydrateAccount]);
 
   const register = useCallback(async (username: string, password: string, email?: string) => {
     const s = await apiRegister({ username, password, email });
@@ -87,8 +124,13 @@ export function AccountProvider({ children }: { children: ReactNode }) {
     setTutorialToken(s.token);
     const p = await syncAccountPreferences(s.token, s.account.id).catch(() => null);
     if (p) setPrefs(p);
-    setSession(s);
-  }, []);
+    setSession(await hydrateAccount(s).catch(() => s));
+  }, [hydrateAccount]);
+
+  const refreshAccount = useCallback(async () => {
+    if (!session) return;
+    setSession(await hydrateAccount(session));
+  }, [hydrateAccount, session]);
 
   const logout = useCallback(async () => {
     if (session?.token) {
@@ -112,6 +154,7 @@ export function AccountProvider({ children }: { children: ReactNode }) {
         login,
         register,
         logout,
+        refreshAccount,
       }}
     >
       {children}

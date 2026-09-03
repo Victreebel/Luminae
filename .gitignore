@@ -10,6 +10,17 @@ out-tsc
 
 # dependencies
 node_modules
+.pnpm-store/
+
+# local secrets
+.env
+.env.*
+!.env.example
+
+# generated browser QA output
+/screenshots/codex-*/
+/playwright-report/
+/test-results/
 
 # IDEs and editors
 /.idea

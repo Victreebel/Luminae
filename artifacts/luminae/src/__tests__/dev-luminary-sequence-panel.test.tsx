@@ -38,7 +38,6 @@ describe('DevLuminarySequencePanel', () => {
     fireEvent.click(screen.getByRole('button', { name: /The Null Sovereign/ }));
     fireEvent.click(screen.getByRole('button', { name: /Red Moth/ }));
     fireEvent.click(screen.getByRole('button', { name: 'Move Red Moth earlier' }));
-    fireEvent.click(screen.getByRole('switch', { name: 'Include staged start-of-turn effects' }));
     fireEvent.click(screen.getByRole('button', { name: 'Run 2 Luminaries' }));
 
     await waitFor(() => expect(fetchMock).toHaveBeenCalledTimes(1));
@@ -50,8 +49,7 @@ describe('DevLuminarySequencePanel', () => {
         body: JSON.stringify({
           sessionToken: 'session-1',
           luminaryIds: ['lum_moth', 'lum_null'],
-          includeEndOfTurnEffects: true,
-          includeStartOfTurnEffects: true,
+          includeNextTurnEffects: true,
           repeatFromBaseline: true,
         }),
       }),

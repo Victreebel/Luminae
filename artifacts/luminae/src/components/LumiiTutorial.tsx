@@ -4,6 +4,7 @@ import { motion, AnimatePresence, useReducedMotion } from "framer-motion";
 import { useLocation } from "wouter";
 import { X, ArrowRight, ChevronDown, ChevronLeft, ChevronUp } from "lucide-react";
 import type { GameState } from "@workspace/api-client-react";
+import { DEFAULT_VICTORY_REQUIREMENT } from "@workspace/game-types";
 import { clearSession } from "@/lib/session";
 import type { AffinityKey } from "@/lib/affinityMeta";
 import { renderKeywords } from "@/lib/tutorialKeywords";
@@ -24,11 +25,6 @@ function useViewportH(): number {
 
 // ─── Lumii Constellation Wisp ─────────────────────────────────────────────────
 
-// Affinity node colors: Flare, Continuum, Verdance, Abyss, Radiance, Singularity
-const WISP_COLORS = ["#f97316", "#3b82f6", "#22c55e", "#a855f7", "#e2e8f0", "#fbbf24"] as const;
-
-// Zone-tinted palettes — each row is the 6 node colors subtly shifted toward the zone's affinity theme.
-// "none" restores the default full-spectrum WISP_COLORS palette.
 // Pulse ring accent colors per tutorial zone (idle and excited variants)
 const ZONE_PULSE_COLOR: Record<"well" | "forge" | "filters" | "luminaries" | "none", { idle: string; excited: string }> = {
   none:       { idle: "rgba(168,85,247,0.7)", excited: "#fbbf24" },
@@ -38,15 +34,12 @@ const ZONE_PULSE_COLOR: Record<"well" | "forge" | "filters" | "luminaries" | "no
   filters:    { idle: "#fbbf24",              excited: "#fbbf24" },
 };
 
-const ZONE_PALETTE: Record<"well" | "forge" | "filters" | "luminaries" | "none", readonly string[]> = {
-  none:       ["#f97316", "#3b82f6", "#22c55e", "#a855f7", "#e2e8f0", "#fbbf24"],
-  // Affinity Well: Flare/Continuum warmth; orange stays and blue brightens.
-  well:    ["#f97316", "#60a5fa", "#86c874", "#cb7c40", "#fde8b0", "#f5a332"],
-  // luminaries → Abyss/Radiance: purple/silver stay, others shift toward deep rose/indigo/teal/lavender
-  luminaries: ["#d97b9a", "#818cf8", "#6fc4b0", "#a855f7", "#e2e8f0", "#d4b8f5"],
-  // Forge and filters: Singularity-dominant warm gold.
-  forge:     ["#f5a832", "#90b8e8", "#98c87a", "#c48cd4", "#f0e4c0", "#fbbf24"],
-  filters:    ["#f5a832", "#90b8e8", "#98c87a", "#c48cd4", "#f0e4c0", "#fbbf24"],
+export type LumiiAppearance = "spectrum" | "hostile" | "yielding";
+export type LumiiCoreGlow = "white" | "red";
+
+const APPEARANCE_PULSE: Record<Exclude<LumiiAppearance, "spectrum">, { idle: string; excited: string }> = {
+  hostile: { idle: "#e11d48", excited: "#f8fbff" },
+  yielding: { idle: "#9f5263", excited: "#d8ddea" },
 };
 
 // Named constellation shapes — 6 [x,y] node offsets from center (0,0)
@@ -65,11 +58,6 @@ const WISP_SHAPES: Record<string, WispShape> = {
   // Celebration burst — nodes sprung far outward, snaps back after 0.5s
   burst:   [[ 0,-38],[34,-13],[25, 31],[-10, 38],[-32, 10],[-26,-24]],
 };
-
-// Connections: outer ring (0-1-2-3-4-5-0) + one diagonal (0-3) = 7 edges
-const WISP_EDGES: [number, number][] = [
-  [0,1],[1,2],[2,3],[3,4],[4,5],[5,0],[0,3]
-];
 
 // Shape morph cycle when Lumii is active
 const MORPH_CYCLE = ["speakA", "idle", "speakB", "idle"] as const;
@@ -100,17 +88,6 @@ function getNearestNode(shape: WispShape, direction: "down" | "up" | "left"): { 
     direction === "up"   ? shape.reduce((b, n) => (n[1] < b[1] ? n : b)) :
     /* left */             shape.reduce((b, n) => (n[0] < b[0] ? n : b));
   return { x, y };
-}
-
-// Generate randomised scatter positions for the coalesce entrance animation.
-// Each node flies in from a position at ~50-68px radius from center.
-function makeScatterPositions(): [number, number][] {
-  return WISP_COLORS.map((_, i) => {
-    const baseAngle = (i / WISP_COLORS.length) * Math.PI * 2;
-    const angle = baseAngle + (Math.random() * 0.9 - 0.45);
-    const radius = 50 + Math.random() * 18;
-    return [Math.cos(angle) * radius, Math.sin(angle) * radius];
-  });
 }
 
 let _wispInstanceCount = 0;
@@ -181,7 +158,7 @@ function hexToRgba(hex: string, alpha: number): string {
   return `rgba(${r}, ${g}, ${b}, ${alpha})`;
 }
 
-function LumiiOrb({
+export function LumiiOrb({
   size = 72,
   excited = false,
   speaking = false,
@@ -190,7 +167,9 @@ function LumiiOrb({
   tetheredDirection,
   onNearestNode,
   highlightZone,
-  beatKey,
+  whiteGlow = false,
+  coreGlow,
+  appearance = "spectrum",
 }: {
   size?: number;
   excited?: boolean;
@@ -201,6 +180,9 @@ function LumiiOrb({
   onNearestNode?: (offset: { x: number; y: number }) => void;
   highlightZone?: "well" | "forge" | "filters" | "luminaries" | null;
   beatKey?: string | number;
+  whiteGlow?: boolean;
+  coreGlow?: LumiiCoreGlow;
+  appearance?: LumiiAppearance;
 }) {
   // Stable unique ID for SVG filter defs — safe across StrictMode double-invoke
   const instanceRef = useRef<number | null>(null);
@@ -212,43 +194,6 @@ function LumiiOrb({
 
   const isMobile = useIsMobile();
   const prefersReducedMotion = useReducedMotion();
-
-  // Entrance animation state —————————————————————————————————————————————
-  // `entering` = true during the ~700ms coalesce window after mount/beat change.
-  // `entranceKey` increments each time we want to remount the node/line group so
-  // framer-motion re-runs `initial → animate` with the new scatter positions.
-  const [entering, setEntering] = useState(!prefersReducedMotion);
-  const [entranceKey, setEntranceKey] = useState(0);
-  const scatterRef = useRef<[number, number][]>(makeScatterPositions());
-  const prevBeatKeyRef = useRef<string | number | undefined>(beatKey);
-  const enterTimerRef = useRef<ReturnType<typeof setTimeout> | null>(null);
-
-  // On first mount — play the entrance once then settle
-  useEffect(() => {
-    if (!prefersReducedMotion) {
-      enterTimerRef.current = setTimeout(() => setEntering(false), 750);
-    }
-    return () => {
-      if (enterTimerRef.current) clearTimeout(enterTimerRef.current);
-    };
-  // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, []);
-
-  // When the beat changes — regenerate scatter positions and replay entrance
-  useEffect(() => {
-    if (beatKey === prevBeatKeyRef.current) return;
-    prevBeatKeyRef.current = beatKey;
-    scatterRef.current = makeScatterPositions();
-    if (!prefersReducedMotion) {
-      setEntering(true);
-      setEntranceKey((k) => k + 1);
-    }
-    if (enterTimerRef.current) clearTimeout(enterTimerRef.current);
-    enterTimerRef.current = setTimeout(() => setEntering(false), 750);
-    return () => {
-      if (enterTimerRef.current) clearTimeout(enterTimerRef.current);
-    };
-  }, [beatKey, prefersReducedMotion]);
 
   const [morphIdx, setMorphIdx] = useState(0);
 
@@ -278,26 +223,39 @@ function LumiiOrb({
     const currentShape = WISP_SHAPES[shapeKey] ?? WISP_SHAPES.idle;
     onNearestNodeRef.current(getNearestNode(currentShape, tetheredDirection));
   }, [shapeKey, tetheredDirection]);
-  const shape = WISP_SHAPES[shapeKey];
-  // burst: snap out fast (0.16s), snap back naturally when burst turns false (~0.32s spring)
-  const morphDur = burst ? 0.16 : excited ? 0.42 : 1.05;
-  const nodeR = burst ? 5.0 : excited ? 4.2 : 3.4;
-  const lineWidth = burst ? 1.8 : excited ? 1.4 : 0.9;
   const blurSd = burst ? 5.0 : excited ? 3.8 : 2.6;
   const zoneKey = highlightZone ?? "none";
-  const pulseStroke = burst ? burstColor : excited ? ZONE_PULSE_COLOR[zoneKey].excited : ZONE_PULSE_COLOR[zoneKey].idle;
+  const appearancePulse = appearance === "spectrum" ? null : APPEARANCE_PULSE[appearance];
+  const pulseStroke = burst
+    ? burstColor
+    : whiteGlow
+      ? "#f7fbff"
+      : appearancePulse
+        ? excited ? appearancePulse.excited : appearancePulse.idle
+      : excited
+        ? ZONE_PULSE_COLOR[zoneKey].excited
+        : ZONE_PULSE_COLOR[zoneKey].idle;
   const pulseStrokeW = burst ? 2.2 : excited ? 1.6 : 1.0;
 
-  // Per-node idle drift: small asymmetric X/Y offsets + periods to avoid uniformity
-  const IDLE_DRIFT_X = [ 1.8, -2.2,  1.4, -1.6,  2.0, -1.2];
-  const IDLE_DRIFT_Y = [-2.0,  1.6, -1.8,  2.2, -1.4,  1.8];
-  const IDLE_PERIODS = [3.2, 3.8, 4.1, 3.5, 4.4, 3.0];
-
-  // Derive per-node colors from the active zone palette (smooth color transition handled by framer-motion)
-  const nodeColors = ZONE_PALETTE[highlightZone ?? "none"];
+  const secondaryPulse = appearance === "spectrum"
+    ? whiteGlow ? "#eef5ff" : "#f97316"
+    : appearancePulse?.excited ?? "#eef5ff";
+  const coreTone = coreGlow ?? "white";
 
   return (
-    <svg width={size} height={size} viewBox="-36 -36 72 72" style={{ overflow: "visible" }}>
+    <svg
+      width={size}
+      height={size}
+      viewBox="-36 -36 72 72"
+      data-lumii-white-glow={whiteGlow || undefined}
+      data-lumii-core={coreTone ?? undefined}
+      style={{
+        overflow: "visible",
+        filter: whiteGlow
+          ? "drop-shadow(0 0 4px rgba(255,255,255,1)) drop-shadow(0 0 14px rgba(240,246,255,0.92)) drop-shadow(0 0 30px rgba(195,216,255,0.66))"
+          : undefined,
+      }}
+    >
       <defs>
         {/* Glow filter — blurs then merges over original for a soft halo */}
         <filter id={filterId} x="-150%" y="-150%" width="400%" height="400%">
@@ -307,7 +265,52 @@ function LumiiOrb({
             <feMergeNode in="SourceGraphic" />
           </feMerge>
         </filter>
+        <radialGradient id={`${filterId}-white-core`} cx="50%" cy="45%" r="55%">
+          <stop offset="0%" stopColor="#ffffff" stopOpacity="1" />
+          <stop offset="32%" stopColor="#fbfdff" stopOpacity="0.96" />
+          <stop offset="68%" stopColor="#dce8ff" stopOpacity="0.58" />
+          <stop offset="100%" stopColor="#c7d8ff" stopOpacity="0" />
+        </radialGradient>
+        <radialGradient id={`${filterId}-red-core`} cx="50%" cy="45%" r="55%">
+          <stop offset="0%" stopColor="#fff7f7" stopOpacity="1" />
+          <stop offset="25%" stopColor="#ffbbc3" stopOpacity="0.98" />
+          <stop offset="58%" stopColor="#ff2648" stopOpacity="0.76" />
+          <stop offset="100%" stopColor="#8f001d" stopOpacity="0" />
+        </radialGradient>
       </defs>
+
+      <g
+        className={prefersReducedMotion ? undefined : "lumii-orb-hover"}
+        style={{
+          '--lum-hover-dur': excited || speaking ? '3.6s' : '5.4s',
+          '--lum-hover-amp': excited || speaking ? '-1.5px' : '-2.3px',
+        } as React.CSSProperties}
+      >
+      {coreTone && (
+        <g
+          aria-hidden="true"
+          style={{
+            filter: coreTone === "red"
+              ? "drop-shadow(0 0 3px rgba(255,238,240,.98)) drop-shadow(0 0 10px rgba(255,38,72,.95)) drop-shadow(0 0 22px rgba(190,0,37,.72))"
+              : undefined,
+          }}
+        >
+          <circle
+            cx={0}
+            cy={0}
+            r={excited ? 20 : 17}
+            fill={`url(#${filterId}-${coreTone}-core)`}
+            opacity={excited ? 0.9 : 0.78}
+          />
+          <circle
+            cx={0}
+            cy={0}
+            r={excited ? 7 : 6}
+            fill={coreTone === "red" ? "#ff2949" : "#ffffff"}
+            opacity={0.96}
+          />
+        </g>
+      )}
 
       {/* Outer presence pulse ring — CSS on mobile, JS on desktop */}
       {isMobile ? (
@@ -348,7 +351,7 @@ function LumiiOrb({
           cx={0} cy={0}
           r={burst ? 43 : 26}
           fill="none"
-          stroke={burst ? burstColor : "#f97316"}
+          stroke={burst ? burstColor : secondaryPulse}
           strokeWidth={burst ? 1.4 : 0.8}
           opacity={burst ? 0.55 : 0.38}
           className="lumii-pulse-ring"
@@ -367,7 +370,7 @@ function LumiiOrb({
           }}
           transition={{ duration: burst ? 0.5 : 1.3, repeat: Infinity, ease: "easeOut", delay: burst ? 0.08 : 0.44 }}
           fill="none"
-          stroke={burst ? burstColor : "#f97316"}
+          stroke={burst ? burstColor : secondaryPulse}
           strokeWidth={burst ? 1.4 : 0.8}
         />
       ))}
@@ -388,273 +391,8 @@ function LumiiOrb({
         )}
       </AnimatePresence>
 
-      {/* Connection lines — animate endpoints + soft opacity pulse + zone color tint.
-          During entrance, lines start transparent and fade in after nodes settle (~0.68s delay).
-          Each line remounts (via key) whenever entranceKey changes so `initial` re-fires. */}
-      {WISP_EDGES.map(([a, b], i) => {
-        const loOpacity = burst ? 0.6 : excited ? 0.45 : !shouldMorph ? 0.18 : 0.22;
-        const hiOpacity = burst ? 0.9 : excited ? 0.72 : !shouldMorph ? 0.42 : 0.52;
-        const pulsePeriod = burst ? 0.5 : excited ? 0.9 + i * 0.08 : 2.8 + i * 0.35;
-        // Lines fade in after nodes coalesce — first line starts after most nodes
-        // have settled (~0.68s), last line after all nodes are in formation (~1.04s)
-        const opacityDelay = entering
-          ? 0.68 + i * 0.06
-          : burst ? 0 : i * (excited ? 0.1 : 0.28);
-        const posTrans = burst
-          ? { duration: morphDur, ease: "easeOut" as const }
-          : { duration: morphDur, ease: "easeInOut" as const };
-        // Mobile idle fast-path: static line + CSS twinkle; no positional drift
-        if (isMobile && !entering && !burst) {
-          return (
-            <line
-              key={`l-${i}-${entranceKey}`}
-              x1={shape[a][0]} y1={shape[a][1]}
-              x2={shape[b][0]} y2={shape[b][1]}
-              stroke={nodeColors[a]}
-              strokeWidth={lineWidth}
-              filter={`url(#${filterId})`}
-              strokeLinecap="round"
-              className="lumii-edge-twinkle"
-              style={{
-                '--lum-dur': `${2.8 + i * 0.35}s`,
-                '--lum-delay': `${i * 0.28}s`,
-                '--lum-edge-lo': `${loOpacity}`,
-                '--lum-edge-hi': `${hiOpacity}`,
-              } as React.CSSProperties}
-            />
-          );
-        }
-        return (
-          <motion.line
-            key={`l-${i}-${entranceKey}`}
-            initial={entering ? { strokeOpacity: 0 } : false}
-            animate={{
-              x1: shape[a][0], y1: shape[a][1],
-              x2: shape[b][0], y2: shape[b][1],
-              strokeOpacity: [loOpacity, hiOpacity, loOpacity],
-              stroke: burst ? burstColor : nodeColors[a],
-            }}
-            transition={{
-              x1: posTrans,
-              y1: posTrans,
-              x2: posTrans,
-              y2: posTrans,
-              strokeOpacity: {
-                duration: pulsePeriod,
-                repeat: Infinity,
-                ease: "easeInOut",
-                delay: opacityDelay,
-              },
-              stroke: { duration: burst ? 0.12 : 1.2, ease: "easeInOut" },
-            }}
-            strokeWidth={lineWidth}
-            filter={`url(#${filterId})`}
-            strokeLinecap="round"
-          />
-        );
-      })}
-
-      {/* Nodes — morph position (+ idle drift) + independent twinkle opacity + zone color tint.
-          During entrance, each node flies in from its scatter position with a
-          staggered delay so they coalesce one by one into formation.
-          Each node remounts (via key) whenever entranceKey changes. */}
-      {WISP_COLORS.map((_color, i) => {
-        const baseX = shape[i][0];
-        const baseY = shape[i][1];
-        const animX = !shouldMorph && !burst
-          ? [baseX, baseX + IDLE_DRIFT_X[i], baseX, baseX - IDLE_DRIFT_X[i] * 0.5, baseX]
-          : baseX;
-        const animY = !shouldMorph && !burst
-          ? [baseY, baseY + IDLE_DRIFT_Y[i], baseY, baseY - IDLE_DRIFT_Y[i] * 0.6, baseY]
-          : baseY;
-        const xTrans = entering
-          ? { duration: 0.55, ease: "easeOut" as const, delay: i * 0.065 }
-          : burst
-          ? { duration: morphDur, ease: "easeOut" as const }
-          : !shouldMorph
-          ? { duration: IDLE_PERIODS[i], repeat: Infinity, ease: "easeInOut" as const }
-          : { duration: morphDur, ease: "easeInOut" as const };
-        const yTrans = entering
-          ? { duration: 0.55, ease: "easeOut" as const, delay: i * 0.065 }
-          : burst
-          ? { duration: morphDur, ease: "easeOut" as const }
-          : !shouldMorph
-          ? { duration: IDLE_PERIODS[i] * 1.1, repeat: Infinity, ease: "easeInOut" as const, delay: IDLE_PERIODS[i] * 0.15 }
-          : { duration: morphDur, ease: "easeInOut" as const };
-        const scatter = scatterRef.current[i];
-        // Mobile idle fast-path: CSS twinkle, no JS drift
-        if (isMobile && !entering && !burst && !shouldMorph) {
-          return (
-            <circle
-              key={`n-${i}-${entranceKey}`}
-              cx={baseX}
-              cy={baseY}
-              r={nodeR}
-              filter={`url(#${filterId})`}
-              fill={nodeColors[i]}
-              className="lumii-node-twinkle"
-              style={{
-                '--lum-dur': `${2.0 + i * 0.28}s`,
-                '--lum-delay': `${i * 0.2}s`,
-                '--lum-twinkle-lo': '0.6',
-              } as React.CSSProperties}
-            />
-          );
-        }
-        return (
-          <motion.circle
-            key={`n-${i}-${entranceKey}`}
-            cx={0} cy={0}
-            r={nodeR}
-            filter={`url(#${filterId})`}
-            initial={entering ? { x: scatter[0], y: scatter[1], opacity: 0 } : false}
-            animate={{
-              x: animX,
-              y: animY,
-              opacity: burst ? [0.95, 1, 0.95] : excited ? [0.82, 1, 0.82] : [0.6, 1, 0.6],
-              fill: burst ? burstColor : nodeColors[i],
-            }}
-            transition={{
-              x: xTrans,
-              y: yTrans,
-              opacity: entering
-                ? { duration: 0.3, delay: i * 0.065 }
-                : burst
-                ? { duration: 0.25, repeat: Infinity, ease: "easeInOut" }
-                : {
-                    duration: excited ? 0.65 + i * 0.1 : 2.0 + i * 0.28,
-                    repeat: Infinity,
-                    ease: "easeInOut",
-                    delay: i * (excited ? 0.07 : 0.2),
-                  },
-              fill: { duration: burst ? 0.12 : 1.2, ease: "easeInOut" },
-            }}
-          />
-        );
-      })}
-
-      {/* Star-point spikes on each node — small 4-point cross for that "star" look.
-          Spikes share the same entrance key so they remount with their nodes. */}
-      {WISP_COLORS.map((_color, i) => {
-        const baseX = shape[i][0];
-        const baseY = shape[i][1];
-        const animX = !shouldMorph && !burst
-          ? [baseX, baseX + IDLE_DRIFT_X[i], baseX, baseX - IDLE_DRIFT_X[i] * 0.5, baseX]
-          : baseX;
-        const animY = !shouldMorph && !burst
-          ? [baseY, baseY + IDLE_DRIFT_Y[i], baseY, baseY - IDLE_DRIFT_Y[i] * 0.6, baseY]
-          : baseY;
-        const xTrans = entering
-          ? { duration: 0.55, ease: "easeOut" as const, delay: i * 0.065 }
-          : burst
-          ? { duration: morphDur, ease: "easeOut" as const }
-          : !shouldMorph
-          ? { duration: IDLE_PERIODS[i], repeat: Infinity, ease: "easeInOut" as const }
-          : { duration: morphDur, ease: "easeInOut" as const };
-        const yTrans = entering
-          ? { duration: 0.55, ease: "easeOut" as const, delay: i * 0.065 }
-          : burst
-          ? { duration: morphDur, ease: "easeOut" as const }
-          : !shouldMorph
-          ? { duration: IDLE_PERIODS[i] * 1.1, repeat: Infinity, ease: "easeInOut" as const, delay: IDLE_PERIODS[i] * 0.15 }
-          : { duration: morphDur, ease: "easeInOut" as const };
-        const scatter = scatterRef.current[i];
-        // Mobile idle fast-path: static spike + CSS opacity twinkle
-        if (isMobile && !entering && !burst && !shouldMorph) {
-          const spikeOpacity = 0.5;
-          return (
-            <g
-              key={`spike-${i}-${entranceKey}`}
-              transform={`translate(${baseX}, ${baseY})`}
-              className="lumii-spike-twinkle"
-              style={{
-                '--lum-dur': `${1.8 + i * 0.25}s`,
-                '--lum-delay': `${i * 0.18 + 0.3}s`,
-                '--lum-spike-lo': '0.3',
-                '--lum-spike-hi': '0.7',
-              } as React.CSSProperties}
-              opacity={spikeOpacity}
-            >
-              <line
-                x1={0} y1={-(nodeR + 3)}
-                x2={0} y2={nodeR + 3}
-                stroke={nodeColors[i]}
-                strokeWidth={0.7}
-                strokeOpacity={0.9}
-                strokeLinecap="round"
-              />
-              <line
-                x1={-(nodeR + 3)} y1={0}
-                x2={nodeR + 3} y2={0}
-                stroke={nodeColors[i]}
-                strokeWidth={0.7}
-                strokeOpacity={0.9}
-                strokeLinecap="round"
-              />
-            </g>
-          );
-        }
-        return (
-          <motion.g
-            key={`spike-${i}-${entranceKey}`}
-            initial={entering ? { x: scatter[0], y: scatter[1], opacity: 0, scale: 0 } : false}
-            animate={{
-              x: animX,
-              y: animY,
-              opacity: burst ? [0.9, 1, 0.9] : excited ? [0.7, 1, 0.7] : [0.3, 0.7, 0.3],
-              scale: burst ? [1.2, 1.6, 1.2] : excited ? [0.8, 1.2, 0.8] : [0.6, 1, 0.6],
-              color: burst ? burstColor : nodeColors[i],
-            }}
-            transition={{
-              x: xTrans,
-              y: yTrans,
-              opacity: entering
-                ? { duration: 0.3, delay: i * 0.065 + 0.1 }
-                : burst
-                ? { duration: 0.22, repeat: Infinity, ease: "easeInOut" }
-                : {
-                    duration: excited ? 0.55 + i * 0.1 : 1.8 + i * 0.25,
-                    repeat: Infinity,
-                    ease: "easeInOut",
-                    delay: i * (excited ? 0.06 : 0.18) + 0.3,
-                  },
-              scale: entering
-                ? { duration: 0.4, ease: "easeOut", delay: i * 0.065 + 0.1 }
-                : burst
-                ? { duration: 0.22, repeat: Infinity, ease: "easeInOut" }
-                : {
-                    duration: excited ? 0.55 + i * 0.1 : 1.8 + i * 0.25,
-                    repeat: Infinity,
-                    ease: "easeInOut",
-                    delay: i * (excited ? 0.06 : 0.18) + 0.3,
-                  },
-              color: { duration: burst ? 0.12 : 1.2, ease: "easeInOut" },
-            }}
-          >
-            {/* Vertical spike */}
-            <line
-              x1={0} y1={-(nodeR + 3)}
-              x2={0} y2={nodeR + 3}
-              stroke="currentColor"
-              strokeWidth={0.7}
-              strokeOpacity={0.9}
-              strokeLinecap="round"
-            />
-            {/* Horizontal spike */}
-            <line
-              x1={-(nodeR + 3)} y1={0}
-              x2={nodeR + 3} y2={0}
-              stroke="currentColor"
-              strokeWidth={0.7}
-              strokeOpacity={0.9}
-              strokeLinecap="round"
-            />
-          </motion.g>
-        )
-      })}
-
       {/* Multicolored ember / spark particles — drift outward from constellation and fade */}
-      {!entering && EMBERS.map((e, i) => {
+      {EMBERS.map((e, i) => {
         const rad = (e.angle * Math.PI) / 180;
         const x0 = e.r0 * Math.cos(rad);
         const y0 = e.r0 * Math.sin(rad);
@@ -699,6 +437,7 @@ function LumiiOrb({
           </motion.g>
         );
       })}
+      </g>
 
     </svg>
   );
@@ -1032,7 +771,7 @@ const BEATS: Beat[] = [
     phase: 1,
     lines: [
       "Psst! Over here! ✨ I'm Lumii — a living mote of cosmic energy, and I'm here to guide your civilization through Luminae.",
-      "You are shaping a civilization across the fabric of the cosmos — driving it toward 15 Eminence before your opponent reaches theirs.",
+      `You are shaping a civilization across the fabric of the cosmos — driving it toward ${DEFAULT_VICTORY_REQUIREMENT} Eminence before your opponent reaches theirs.`,
       "Three forces carry you there: affinity currents flowing through the cosmos, relic technologies forged into your civilization, and Luminaries — ancient archetypes waiting to be called forth. Let me show you.",
     ],
     advance: { type: "click" },
@@ -1043,9 +782,9 @@ const BEATS: Beat[] = [
     phase: 1,
     highlightZone: "well",
     lines: [
-      "This flowing band is the Affinity Well — the raw cosmic substrate your civilization draws from each turn.",
+      "This flowing band is the Affinity Well — the raw cosmic substrate your civilization draws from across each century.",
       "Each current is a distinct mode of existence: Flare 🔴, Continuum 🔵, Verdance 🟢, Abyss 🟣, Radiance ⚪ — each a survival philosophy that shapes the cosmos.",
-      "That shimmering gold current? That's Singularity — the convergence point where all affinities meet. Each turn, you Harness currents from the Well.",
+      "That shimmering gold current? That's Singularity — the convergence point where all affinities meet. Each century, you Harness currents from the Well.",
     ],
     advance: { type: "click" },
   },
@@ -1056,7 +795,7 @@ const BEATS: Beat[] = [
     highlightZone: "well",
     objective: "Objective: gather affinity",
     lines: [
-      "Your turn! Tap 3 different affinity currents from the Well to draw them into your civilization, then tap Harness to claim them.",
+      "This century is yours. Tap 3 different affinity currents from the Well to draw them into your civilization, then tap Harness to claim them.",
     ],
     advance: { type: "action", actions: ["harness_three_affinities", "harness_two_affinities"] },
   },
@@ -1091,7 +830,7 @@ const BEATS: Beat[] = [
     lines: [
       "Above The Forge, three filters control how costs are displayed: Full, Discounted, and Needed.",
       "Discounted applies your built affinity depth as automatic discounts. Forge two Flare Artifacts and every Flare cost here drops by 2. This is your real cost after civilization depth.",
-      "Needed strips away any cost already covered by your depth — only what you still lack appears. Switch to Needed to instantly spot which Artifacts are within reach this turn.",
+      "Needed strips away any cost already covered by your depth — only what you still lack appears. Switch to Needed to instantly spot which Artifacts are within reach this century.",
     ],
     advance: { type: "click" },
   },
@@ -1103,7 +842,7 @@ const BEATS: Beat[] = [
     objective: "Objective: encrypt an Artifact",
     lines: [
       "Tap any Artifact to examine it. You can Forge it into your civilization now, or Encrypt it — securing it and receiving a Singularity current as the cosmos rewards your foresight.",
-      "Encrypt one now. Tap any Artifact in The Forge and hit Encrypt.",
+      "Encrypt one now. Tap any Artifact in The Forge, press Encrypt, then Confirm.",
     ],
     advance: { type: "action", actions: ["reserve_artifact"] },
   },
@@ -1114,7 +853,7 @@ const BEATS: Beat[] = [
     lines: [
       "Good. That Artifact is secured — no other civilization can claim it. It waits in your Singularity panel until your affinity currents are sufficient to Forge it.",
       "You also received one Singularity current — the gold affinity. Singularity acts as a wildcard: it substitutes for any affinity when Forging, stretching whatever you hold.",
-      "Every Artifact you Forge adds a permanent bonus to that affinity. These bonuses appear in your civilization and automatically reduce all future costs of that type, every turn.",
+      "Every Artifact you Forge adds a permanent bonus to that affinity. These bonuses appear in your civilization and automatically reduce all future costs of that type from then on.",
     ],
     advance: { type: "click" },
   },
@@ -1125,7 +864,7 @@ const BEATS: Beat[] = [
     highlightZone: "forge",
     objective: "Objective: forge an Artifact",
     lines: [
-      "Now Forge. Tap any Artifact with green costs — those are within reach right now. Hit Forge Artifact to claim it permanently.",
+      "Now Forge. Tap any Artifact with green costs — those are within reach right now. Press Forge, then Confirm to claim it permanently.",
       "Try switching to Discounted view to see your depth discounts at work, or Needed to see only what you're still short on. Both help you find a good target fast.",
     ],
     advance: { type: "action", actions: ["forge_artifact"] },
@@ -1136,8 +875,8 @@ const BEATS: Beat[] = [
     phase: 1,
     highlightZone: "luminaries",
     lines: [
-      "Look up — those are the Luminaries. Each one stirs when your civilization expresses enough affinity depth of its required types. When it answers, you receive Eminence and a living bonus.",
-      "Eminence measures your civilization's ascension. Check the Eminence display for your current total. Reach 15 Eminence first and you win.",
+      "Look to the Terminus — those are the Luminaries. Each one stirs when your civilization expresses enough affinity depth of its required types. When it answers, you receive Eminence and a living bonus.",
+      `Eminence measures your civilization's ascension. Check the Eminence display for your current total. Reach ${DEFAULT_VICTORY_REQUIREMENT} Eminence first and you win.`,
       "Different Luminaries bring different Eminence rewards and effects. Stack multiple Luminaries and compound your ascension — they are the turning points of legend.",
     ],
     advance: { type: "click" },
@@ -1147,7 +886,7 @@ const BEATS: Beat[] = [
     position: "center",
     phase: 1,
     lines: [
-      "I'm going to skip us ahead — several turns of development, so you can witness what a civilization on the edge of legend actually looks like. ⏩",
+      "I'm going to skip us ahead several centuries, so you can witness what a civilization on the edge of legend actually looks like. ⏩",
     ],
     advance: { type: "fast_forward" },
   },
@@ -1156,9 +895,9 @@ const BEATS: Beat[] = [
     position: "center",
     phase: 2,
     lines: [
-      "Here. Several turns forward. Your civilization has taken the Verdance path — life becoming infrastructure, growth woven into every component.",
-      "You carry 5 Verdance depth and 14 Eminence. One more Verdance Artifact will call forth the Verdant Oracle — the archetype of life that has made itself eternal.",
-      "The Verdant Oracle brings 1 Eminence. 14 + 1 = 15. That is the threshold where a civilization crosses from survival into legend. You are one move away.",
+      "Here. Several centuries have passed. Your civilization has taken the Verdance path — life becoming infrastructure, growth woven into every component.",
+      `You carry 5 Verdance depth and ${DEFAULT_VICTORY_REQUIREMENT - 1} Eminence. One more Verdance Artifact will call forth the Verdant Oracle — the archetype of life that has made itself eternal.`,
+      `The Verdant Oracle brings 1 Eminence. ${DEFAULT_VICTORY_REQUIREMENT - 1} + 1 = ${DEFAULT_VICTORY_REQUIREMENT}. That is the threshold where a civilization crosses from survival into legend. You are one move away.`,
     ],
     advance: { type: "click" },
   },
@@ -1170,7 +909,7 @@ const BEATS: Beat[] = [
     objective: "Objective: forge your encrypted Artifact",
     lines: [
       "You have a Verdance Artifact encrypted — it costs Abyss and Radiance currents, and your civilization holds both.",
-      "Tap the Singularity panel, find your encrypted Artifact, and Forge it. The Verdant Oracle is waiting — and 15 Eminence is one step away.",
+      `Tap the Singularity panel, find your encrypted Artifact, then press Forge and Confirm. The Verdant Oracle is waiting — and ${DEFAULT_VICTORY_REQUIREMENT} Eminence is one step away.`,
     ],
     advance: { type: "action", actions: ["forge_reserved_artifact"] },
   },
@@ -1180,7 +919,7 @@ const BEATS: Beat[] = [
     phase: 2,
     lines: [
       "🌿 The Verdant Oracle answers. Your civilization, rooted deeply enough in the living path, has called it forth — and crossed into legend.",
-      "Every civilization is different. Different affinities, different relic technologies, different Luminaries, different paths to 15 Eminence.",
+      `Every civilization is different. Different affinities, different relic technologies, different Luminaries, different paths to ${DEFAULT_VICTORY_REQUIREMENT} Eminence.`,
       "Now you know the shape of ascension. Go build yours. ✨",
     ],
     advance: { type: "click" },
@@ -1246,9 +985,9 @@ const NUDGE_MESSAGES: Partial<Record<number, string>> = {
   2:  "Tap affinity currents in the Well below to select them, then tap Harness.",
   3:  "Draw more currents from the Affinity Well, then tap Harness.",
   5:  "Tap Discounted or Needed above The Forge to try the filters, then tap Lumii to continue.",
-  6:  "Tap any Artifact in The Forge, then tap Encrypt to hold it.",
-  8:  "Tap an Artifact with green costs and hit Forge Artifact.",
-  12: "Open your Singularity panel, find your encrypted Artifact, and tap Forge Artifact.",
+  6:  "Tap any Artifact in The Forge, then press Encrypt and Confirm to hold it.",
+  8:  "Tap an Artifact with green costs, then press Forge and Confirm.",
+  12: "Open your Singularity panel, choose the encrypted Artifact, then press Forge and Confirm.",
 };
 
 // ─── Position helpers ─────────────────────────────────────────────────────────
@@ -1555,7 +1294,7 @@ export function LumiiTutorial({
   useEffect(() => {
     if (!isFastForwarding) return undefined;
     const myPlayer = state?.players?.find((p) => p.playerId === sessionPlayerId);
-    if ((myPlayer?.eminence ?? 0) >= 13) {
+    if ((myPlayer?.eminence ?? 0) >= DEFAULT_VICTORY_REQUIREMENT - 1) {
       const timer = setTimeout(() => {
         setIsFastForwarding(false);
         ffTriggeredRef.current = false;
@@ -1661,7 +1400,7 @@ export function LumiiTutorial({
               <div className="text-lg font-serif font-semibold text-white/90 mb-1">
                 Advancing through time...
               </div>
-              <div className="text-sm text-white/50">Several turns of civilization are passing</div>
+              <div className="text-sm text-white/50">Several centuries of civilization are passing</div>
             </motion.div>
           </motion.div>
         )}
@@ -1746,7 +1485,7 @@ export function LumiiTutorial({
                   "Forging relic technologies to build permanent affinity depth",
                   "Using Discounted and Needed filters to find affordable Artifacts",
                   "Calling forth Luminaries by expressing a deep affinity path",
-                  "Reaching 15 Eminence — crossing from survival into legend",
+                  `Reaching ${DEFAULT_VICTORY_REQUIREMENT} Eminence — crossing from survival into legend`,
                 ].map((item) => (
                   <li key={item} className="flex items-start gap-2">
                     <span className="text-emerald-400 shrink-0 mt-0.5">✓</span>
@@ -2116,7 +1855,7 @@ export function LumiiGuidedMatch({
       claimedCountRef.current = claimedCount;
       showHint(
         "first-luminary",
-        "A Luminary has answered your civilization. Its living bonus joins your civilization on your next turn.",
+        "A Luminary has answered your civilization. Its living bonus joins your civilization in the next century.",
       );
     }
   }, [state?.version, state, sessionPlayerId, showHint]);

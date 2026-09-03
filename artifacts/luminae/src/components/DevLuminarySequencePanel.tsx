@@ -70,8 +70,7 @@ export function DevLuminarySequencePanel({
   onClose,
 }: DevLuminarySequencePanelProps) {
   const [orderedIds, setOrderedIds] = useState<LuminaryId[]>([]);
-  const [includeEndOfTurnEffects, setIncludeEndOfTurnEffects] = useState(true);
-  const [includeStartOfTurnEffects, setIncludeStartOfTurnEffects] = useState(false);
+  const [includeNextTurnEffects, setIncludeNextTurnEffects] = useState(true);
   const [repeatFromBaseline, setRepeatFromBaseline] = useState(true);
   const [playbackMode, setPlaybackMode] =
     useState<DevSequencePlaybackMode>('canonical');
@@ -117,8 +116,7 @@ export function DevLuminarySequencePanel({
         body: JSON.stringify({
           sessionToken,
           luminaryIds: orderedIds,
-          includeEndOfTurnEffects,
-          includeStartOfTurnEffects,
+          includeNextTurnEffects,
           repeatFromBaseline,
         }),
       });
@@ -330,29 +328,15 @@ export function DevLuminarySequencePanel({
             </div>
             <label className="flex min-h-9 items-center gap-3">
               <Switch
-                checked={includeEndOfTurnEffects}
+                checked={includeNextTurnEffects}
                 disabled={controlsDisabled}
-                onCheckedChange={setIncludeEndOfTurnEffects}
-                aria-label="Include staged end-of-turn effects"
-              />
-              <span className="min-w-0">
-                <span className="block text-xs font-medium text-white/85">End-turn effects</span>
-                <span className="block text-[10px] text-white/45">
-                  Stage eligible delayed payoffs after arrival effects
-                </span>
-              </span>
-            </label>
-            <label className="flex min-h-9 items-center gap-3">
-              <Switch
-                checked={includeStartOfTurnEffects}
-                disabled={controlsDisabled}
-                onCheckedChange={setIncludeStartOfTurnEffects}
-                aria-label="Include staged start-of-turn effects"
+                onCheckedChange={setIncludeNextTurnEffects}
+                aria-label="Include next-turn effects"
               />
               <span className="min-w-0">
                 <span className="block text-xs font-medium text-white/85">Next-turn effects</span>
                 <span className="block text-[10px] text-white/45">
-                  Stage Phoenix Archive return in the same test queue
+                  Stage every effect that resolves after the summoning turn
                 </span>
               </span>
             </label>

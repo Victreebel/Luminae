@@ -1,4 +1,8 @@
 # Luminae Card Art Audit — Full 90-Card Review
+**Status:** Historical visual audit. Its component-only Tier III rule is
+superseded by `LUMINAe_TECHNOLOGY_SYSTEM_v1.0.md` and
+`LUMINAe_CARD_ART_REGEN_QUEUE_v1.0.md`.
+
 **Date:** May 21, 2026  
 **Auditor:** Agent  
 **Spec reference:** `docs/LUMINAe_ARTIFACT_REPLACEMENT_TABLE_v0.3_SCALE_AS_CAPABILITY.md`  

@@ -1,6 +1,8 @@
 # Luminae Card Art Variety Matrix
 **Date:** May 21, 2026
-**Status:** Canonical variety assignment — supersedes ad-hoc prompt writing.
+**Status:** Historical assignment matrix. The v1.0 regeneration queue and Tier
+III scale rules in `LUMINAe_TECHNOLOGY_SYSTEM_v1.0.md` supersede conflicting
+rows.
 
 ---
 
@@ -22,9 +24,15 @@ Every card is assigned one value per axis. The combination of all five values mu
 **Per-tier rules:**
 - **T1 (Planetary engineeringScale):** Primarily MC and TB. RM allowed (max 2 per affinity). IN allowed (max 1 per affinity). PL/ST/GL not used.
 - **T2 (Star-system engineeringScale):** TB and RM primary. IN allowed (max 2 per affinity). PL allowed (max 1 per affinity). ST/GL not used.
-- **T3 (Galactic engineeringScale):** All scales allowed. At least one card per T3 affinity group must be ST or GL. No more than 2 of 4 T3 cards in the same affinity may share PL, ST, or GL together.
+- **T3 (Galactic engineeringScale):** Each card represents a complete Type III
+  public work. GL is primary. ST is allowed only when the image clearly shows
+  that the stellar installation belongs to a larger galactic network. MC, TB,
+  RM, IN, and isolated PL presentations are not valid for Tier III.
 
-The total set must cover all seven scale brackets. Cosmic-scale imagery (PL/ST/GL) is not wrong — the old problem was that *every* card shared it. Variety means the full range co-exists across the 90-card set.
+The total set must cover all seven scale brackets through Tiers I and II plus
+galactic Tier III works. Tier III earns its repetition of cosmic scale through
+different composition, topology, function, environment, and civilization
+language rather than by shrinking its achievements into product shots.
 
 ### Axis B — Shot Type
 | Code | Label | Description |

@@ -10,7 +10,7 @@
  *   Add ONE entry to DIRECTOR_REGISTRY below — that is the only change needed.
  *   The entry declares:
  *     • `luminaryId` + `effectType`  — the routing key
- *     • `render`                     — returns the JSX for that director
+ *     • `renderEffect`               — returns the JSX for that director
  *
  * Current routing table
  *   branded summon effects   → LuminaryActivationCinematic, then shared branding director
@@ -21,26 +21,34 @@
  * Luminary sequence lease freezes the board before any director mounts and is
  * the only layer permitted to release it.
  */
-import { useMemo, useState, type ReactElement } from 'react';
+import { useState, type ReactElement } from 'react';
 import { useReducedMotion } from 'framer-motion';
 import { ArtifactBrandingDirector } from './CinderMandateBrandingDirector';
 import type { CinderMandateBrandingActions } from './CinderMandateBrandingDirector';
 import { CinderMandateBurnDirector } from './CinderMandateBurnDirector';
 import type { CinderMandateBurnActions, DirectorBurnSlot } from './CinderMandateBurnDirector';
 import { LuminaryActivationCinematic } from './LuminaryActivationCinematic';
+import { VictoryRequirementChangeOverlay } from './VictoryRequirementChangeOverlay';
 import { PhoenixArchiveReturnDirector } from './PhoenixArchiveReturnDirector';
 import {
   PaleMerchantReturnDirector,
   type PaleMerchantAffinityReturn,
 } from './PaleMerchantReturnDirector';
-import type { AffinityKey } from '@/lib/affinityMeta';
+import { AFFINITY_META, type AffinityKey } from '@/lib/affinityMeta';
 import {
   IronHarbingerResetDirector,
   type IronHarbingerResetActions,
   type IronHarbingerResetSlot,
 } from './IronHarbingerResetDirector';
+import {
+  FinalHungerAssimilationDirector,
+  type AssimilationDirectorActions,
+  type AssimilationVisualSlot,
+} from './FinalHungerAssimilationDirector';
+import { SeededAffinityImbueDirector } from './SeededAffinityImbueDirector';
+import { VerdantOracleGainDirector } from './VerdantOracleGainDirector';
+import { SeedBeyondSeasonsEffect } from './SeedBeyondSeasonsEffect';
 import { resolveLuminaryProcedure } from '@/lib/luminaryAnimationProcedures';
-import { getLuminaryAnnouncementCopy } from '@/lib/luminaryEffectAnnouncements';
 import type { LuminaryPlaybackMode } from '@/lib/luminaryPresentationPacing';
 import type {
   PendingLuminaryActivationEvent,
@@ -64,6 +72,7 @@ export interface ActivationDirectorRouterProps {
   queuePosition: number;
   queueTotal: number;
   onResolutionStart?: () => void;
+  prepareResolution?: () => Promise<void>;
 
   brandingActions: CinderMandateBrandingActions;
   onBrandingComplete: (skipped?: boolean) => void;
@@ -73,6 +82,9 @@ export interface ActivationDirectorRouterProps {
 
   ironHarbingerSlots: IronHarbingerResetSlot[];
   ironHarbingerActions: IronHarbingerResetActions;
+
+  assimilationSlot: AssimilationVisualSlot | null;
+  assimilationActions: AssimilationDirectorActions;
 
   onCinematicComplete: (skipped: boolean) => void;
 }
@@ -87,8 +99,9 @@ export interface ActivationDirectorRouterProps {
 interface DirectorEntry {
   luminaryId: string;
   effectType: string;
-  preparesCamera?: boolean;
-  render: (props: ActivationDirectorRouterProps) => ReactElement;
+  forceCamera?: boolean;
+  managesActivation?: boolean;
+  renderEffect: (props: ActivationDirectorRouterProps) => ReactElement;
 }
 
 /**
@@ -98,27 +111,198 @@ interface DirectorEntry {
  * unmatched events use it automatically.
  */
 const DIRECTOR_REGISTRY: readonly DirectorEntry[] = [
+  // ── Verdant Oracle — one clear Well-to-owner Affinity transfer ───────────
+  {
+    luminaryId: 'lum_verdant',
+    effectType: 'summon',
+    renderEffect: ({
+      evt,
+      triggeringPlayer,
+      abridgedAnims,
+      playbackMode,
+      activationTimelineRate,
+      queuePosition,
+      queueTotal,
+      onCinematicComplete,
+    }) => (
+      <VerdantOracleGainDirector
+        playerId={evt.triggeringPlayerId}
+        playerName={triggeringPlayer?.playerName}
+        amount={evt.affinityAmount ?? 0}
+        reducedMotion={abridgedAnims}
+        playbackMode={playbackMode}
+        timelinePlaybackRate={activationTimelineRate}
+        queuePosition={queuePosition}
+        queueTotal={queueTotal}
+        onComplete={onCinematicComplete}
+      />
+    ),
+  },
+
   // ── Pale Merchant — global half-supply Affinity return ───────────────────
   {
     luminaryId: 'lum_pale',
     effectType: 'summon',
-    preparesCamera: true,
-    render: (props) => <PaleMerchantActivationPrelude {...props} />,
+    forceCamera: true,
+    renderEffect: ({
+      evt,
+      state,
+      triggeringPlayer,
+      abridgedAnims,
+      playbackMode,
+      activationTimelineRate,
+      queuePosition,
+      queueTotal,
+      onCinematicComplete,
+    }) => {
+      const authoritative = Array.isArray(evt.affinityReturns)
+        ? evt.affinityReturns
+        : evt.affinityType
+          ? [{
+              playerId: evt.triggeringPlayerId,
+              affinityType: evt.affinityType,
+              affinityAmount: evt.affinityAmount ?? 2,
+            }]
+          : [];
+      const returns: PaleMerchantAffinityReturn[] = authoritative.map((result) => ({
+        playerId: result.playerId,
+        playerName: state?.players?.find((player) => player.playerId === result.playerId)?.playerName,
+        affinity: result.affinityType as AffinityKey,
+        amount: result.affinityAmount,
+      }));
+      return (
+        <PaleMerchantReturnDirector
+          returns={returns}
+          triggeringPlayerName={triggeringPlayer?.playerName}
+          reducedMotion={abridgedAnims}
+          playbackMode={playbackMode}
+          timelinePlaybackRate={activationTimelineRate}
+          queuePosition={queuePosition}
+          queueTotal={queueTotal}
+          onComplete={onCinematicComplete}
+        />
+      );
+    },
   },
 
   // ── Iron Harbinger — full Forge return, Archive shuffle, and redeal ──────
   {
     luminaryId: 'lum_forge',
     effectType: 'summon',
-    preparesCamera: true,
-    render: (props) => <IronHarbingerActivationPrelude {...props} />,
+    forceCamera: true,
+    renderEffect: ({
+      evt,
+      state,
+      triggeringPlayer,
+      abridgedAnims,
+      playbackMode,
+      activationTimelineRate,
+      queuePosition,
+      queueTotal,
+      ironHarbingerSlots,
+      ironHarbingerActions,
+      onCinematicComplete,
+    }) => (
+      <IronHarbingerResetDirector
+        targetCardIds={evt.targetCardIds ?? []}
+        capturedSlots={ironHarbingerSlots}
+        state={state}
+        reducedMotion={abridgedAnims}
+        playbackMode={playbackMode}
+        timelinePlaybackRate={activationTimelineRate}
+        triggeringPlayerName={triggeringPlayer?.playerName}
+        queuePosition={queuePosition}
+        queueTotal={queueTotal}
+        actions={ironHarbingerActions}
+        onComplete={onCinematicComplete}
+      />
+    ),
+  },
+
+  // ── Final Hunger — selected Artifact dissolves into Civilization ─────────
+  {
+    luminaryId: 'lum_hunger',
+    effectType: 'action',
+    renderEffect: ({
+      evt,
+      triggeringPlayer,
+      abridgedAnims,
+      playbackMode,
+      activationTimelineRate,
+      queuePosition,
+      queueTotal,
+      assimilationSlot,
+      assimilationActions,
+      onCinematicComplete,
+    }) => {
+      const rawAffinity = evt.affinityType ?? assimilationSlot?.card?.bonusAffinity ?? 'verdance';
+      const affinity = (rawAffinity in AFFINITY_META ? rawAffinity : 'verdance') as AffinityKey;
+      return (
+        <FinalHungerAssimilationDirector
+          slot={assimilationSlot}
+          affinity={affinity}
+          triggeringPlayerName={triggeringPlayer?.playerName}
+          reducedMotion={abridgedAnims}
+          playbackMode={playbackMode}
+          timelinePlaybackRate={activationTimelineRate}
+          queuePosition={queuePosition}
+          queueTotal={queueTotal}
+          actions={assimilationActions}
+          onComplete={onCinematicComplete}
+        />
+      );
+    },
+  },
+
+  // ── Seed Beyond Seasons — permanent mold placement ───────────────────────
+  {
+    luminaryId: 'lum_seed',
+    effectType: 'summon',
+    forceCamera: true,
+    renderEffect: ({ evt, state, onCinematicComplete }) => (
+      <SeedBeyondSeasonsEffect
+        moldSlots={evt.targetSlotIds ?? state?.avatarSeedMoldSlots ?? []}
+        onComplete={() => onCinematicComplete(false)}
+      />
+    ),
+  },
+
+  // ── Seed Beyond Seasons — opponent forge transfers permanent Affinity ───
+  {
+    luminaryId: 'lum_seed',
+    effectType: 'action',
+    renderEffect: ({
+      evt,
+      triggeringPlayer,
+      abridgedAnims,
+      playbackMode,
+      activationTimelineRate,
+      queuePosition,
+      queueTotal,
+      onCinematicComplete,
+    }) => (
+      <SeededAffinityImbueDirector
+        targetCardIds={evt.targetCardIds ?? []}
+        targetSlotIds={evt.targetSlotIds ?? []}
+        affinity={(evt.affinityType as AffinityKey | undefined) ?? 'verdance'}
+        alliedPlayerId={evt.triggeringPlayerId}
+        alliedPlayerName={triggeringPlayer?.playerName}
+        reducedMotion={abridgedAnims}
+        playbackMode={playbackMode}
+        timelinePlaybackRate={activationTimelineRate}
+        queuePosition={queuePosition}
+        queueTotal={queueTotal}
+        onComplete={onCinematicComplete}
+      />
+    ),
   },
 
   // ── Phoenix Paradox — delayed Burn Pile recovery ─────────────────────────
   {
     luminaryId: 'lum_astral',
     effectType: 'start_of_turn',
-    render: ({
+    forceCamera: true,
+    renderEffect: ({
       evt,
       triggeringPlayer,
       abridgedAnims,
@@ -146,10 +330,10 @@ const DIRECTOR_REGISTRY: readonly DirectorEntry[] = [
   {
     luminaryId: 'lum_ember',
     effectType: 'summon',
-    preparesCamera: true,
-    render: (props) => (
-      <BrandingActivationPrelude
-        {...props}
+    forceCamera: true,
+    renderEffect: (props) => (
+      <BrandingEffect
+        props={props}
         markerType="condemned"
         resultLabel="Condemned"
       />
@@ -160,10 +344,10 @@ const DIRECTOR_REGISTRY: readonly DirectorEntry[] = [
   {
     luminaryId: 'lum_compass',
     effectType: 'summon',
-    preparesCamera: true,
-    render: (props) => (
-      <BrandingActivationPrelude
-        {...props}
+    forceCamera: true,
+    renderEffect: (props) => (
+      <BrandingEffect
+        props={props}
         markerType="forgotten"
         resultLabel="Forgotten"
       />
@@ -172,10 +356,10 @@ const DIRECTOR_REGISTRY: readonly DirectorEntry[] = [
   {
     luminaryId: 'lum_compass',
     effectType: 'end_of_turn',
-    preparesCamera: true,
-    render: (props) => (
-      <BrandingActivationPrelude
-        {...props}
+    forceCamera: true,
+    renderEffect: (props) => (
+      <BrandingEffect
+        props={props}
         markerType="forgotten"
         resultLabel="Forgotten"
       />
@@ -184,12 +368,24 @@ const DIRECTOR_REGISTRY: readonly DirectorEntry[] = [
   {
     luminaryId: 'lum_null',
     effectType: 'summon',
-    preparesCamera: true,
-    render: (props) => (
-      <BrandingActivationPrelude
-        {...props}
+    forceCamera: true,
+    renderEffect: (props) => (
+      <BrandingEffect
+        props={props}
         markerType="nullified"
         resultLabel="Nullified"
+      />
+    ),
+  },
+  {
+    luminaryId: 'lum_seed',
+    effectType: 'end_of_turn',
+    forceCamera: true,
+    renderEffect: (props) => (
+      <BrandingEffect
+        props={props}
+        markerType="avatar_seed"
+        resultLabel="Seeded"
       />
     ),
   },
@@ -199,231 +395,47 @@ const DIRECTOR_REGISTRY: readonly DirectorEntry[] = [
   {
     luminaryId: 'lum_ember',
     effectType: 'end_of_turn',
-    preparesCamera: true,
-    render: (props) => <EmberEndTurnActivation {...props} />,
+    forceCamera: true,
+    managesActivation: true,
+    renderEffect: (props) => <EmberEndTurnActivation {...props} />,
   },
 ];
-
-function PaleMerchantActivationPrelude({
-  evt,
-  lum,
-  triggeringPlayer,
-  state,
-  abridgedAnims,
-  playbackMode,
-  activationTimelineRate,
-  queuePosition,
-  queueTotal,
-  onResolutionStart,
-  onCinematicComplete,
-}: ActivationDirectorRouterProps) {
-  const [preludeComplete, setPreludeComplete] = useState(false);
-  const affinityReturns = useMemo<PaleMerchantAffinityReturn[]>(() => {
-    const authoritative = Array.isArray(evt.affinityReturns)
-      ? evt.affinityReturns
-      : evt.affinityType
-        ? [{
-            playerId: evt.triggeringPlayerId,
-            affinityType: evt.affinityType,
-            affinityAmount: evt.affinityAmount ?? 2,
-          }]
-        : [];
-    return authoritative.map((result) => ({
-      playerId: result.playerId,
-      playerName: state?.players?.find((player) => player.playerId === result.playerId)?.playerName,
-      affinity: result.affinityType as AffinityKey,
-      amount: result.affinityAmount,
-    }));
-  }, [evt.affinityAmount, evt.affinityReturns, evt.affinityType, evt.triggeringPlayerId, state?.players]);
-
-  if (!preludeComplete) {
-    const procedure = resolveLuminaryProcedure(
-      evt.luminaryId,
-      'summon',
-      state,
-      evt.triggeringPlayerId,
-      { targetCardIds: evt.targetCardIds, affinityReturns: evt.affinityReturns },
-    );
-    return (
-      <LuminaryActivationCinematic
-        luminaryId={evt.luminaryId}
-        effectType="summon"
-        luminaryName={lum?.name ?? 'The Pale Merchant'}
-        effectDescription="Each player returns two of every Affinity held at half or more of its starting supply."
-        triggeringPlayerName={triggeringPlayer?.playerName}
-        queuePosition={queuePosition}
-        queueTotal={queueTotal}
-        procedure={procedure.length > 0 ? procedure : undefined}
-        onResolutionStart={onResolutionStart}
-        reducedMotion={abridgedAnims}
-        playbackMode={playbackMode}
-        timelinePlaybackRate={activationTimelineRate}
-        sourceOnly
-        onComplete={() => setPreludeComplete(true)}
-      />
-    );
-  }
-
-  return (
-    <PaleMerchantReturnDirector
-      returns={affinityReturns}
-      triggeringPlayerName={triggeringPlayer?.playerName}
-      reducedMotion={abridgedAnims}
-      playbackMode={playbackMode}
-      timelinePlaybackRate={activationTimelineRate}
-      queuePosition={queuePosition}
-      queueTotal={queueTotal}
-      onComplete={onCinematicComplete}
-    />
-  );
-}
-
-function IronHarbingerActivationPrelude({
-  evt,
-  lum,
-  triggeringPlayer,
-  state,
-  abridgedAnims,
-  playbackMode,
-  activationTimelineRate,
-  queuePosition,
-  queueTotal,
-  onResolutionStart,
-  ironHarbingerSlots,
-  ironHarbingerActions,
-  onCinematicComplete,
-}: ActivationDirectorRouterProps) {
-  const [preludeComplete, setPreludeComplete] = useState(false);
-  const effectName = lum?.effectName ?? lum?.name ?? evt.luminaryId;
-  const announcementFallback = {
-    effectName,
-    effectDescription: lum?.effectDescription,
-  };
-
-  if (!preludeComplete) {
-    const procedure = resolveLuminaryProcedure(
-      evt.luminaryId,
-      'summon',
-      state,
-      evt.triggeringPlayerId,
-      { targetCardIds: evt.targetCardIds },
-    );
-
-    return (
-      <LuminaryActivationCinematic
-        luminaryId={evt.luminaryId}
-        effectType="summon"
-        luminaryName={lum?.name ?? evt.luminaryId}
-        effectDescription={getLuminaryAnnouncementCopy(
-          evt.luminaryId,
-          'source',
-          announcementFallback,
-          'summon',
-        )}
-        resolutionDescription={getLuminaryAnnouncementCopy(
-          evt.luminaryId,
-          'resolution',
-          announcementFallback,
-          'summon',
-        )}
-        triggeringPlayerName={triggeringPlayer?.playerName}
-        queuePosition={queuePosition}
-        queueTotal={queueTotal}
-        procedure={procedure.length > 0 ? procedure : undefined}
-        onResolutionStart={onResolutionStart}
-        reducedMotion={abridgedAnims}
-        playbackMode={playbackMode}
-        timelinePlaybackRate={activationTimelineRate}
-        sourceOnly
-        onComplete={() => setPreludeComplete(true)}
-      />
-    );
-  }
-
-  return (
-    <IronHarbingerResetDirector
-      targetCardIds={evt.targetCardIds ?? []}
-      capturedSlots={ironHarbingerSlots}
-      state={state}
-      reducedMotion={abridgedAnims}
-      playbackMode={playbackMode}
-      timelinePlaybackRate={activationTimelineRate}
-      triggeringPlayerName={triggeringPlayer?.playerName}
-      queuePosition={queuePosition}
-      queueTotal={queueTotal}
-      actions={ironHarbingerActions}
-      onComplete={onCinematicComplete}
-    />
-  );
-}
-
-interface BrandingActivationPreludeProps
-  extends ActivationDirectorRouterProps {
-  markerType: 'condemned' | 'forgotten' | 'nullified';
+interface BrandingEffectProps {
+  props: ActivationDirectorRouterProps;
+  markerType: 'condemned' | 'forgotten' | 'nullified' | 'avatar_seed';
   resultLabel: string;
 }
 
-function BrandingActivationPrelude({
-  evt,
-  lum,
-  triggeringPlayer,
-  state,
-  abridgedAnims,
-  playbackMode,
-  activationTimelineRate,
-  queuePosition,
-  queueTotal,
-  onResolutionStart,
-  brandingActions,
-  onBrandingComplete,
+function BrandingEffect({
+  props: {
+    evt,
+    lum,
+    triggeringPlayer,
+    abridgedAnims,
+    playbackMode,
+    activationTimelineRate,
+    queuePosition,
+    queueTotal,
+    brandingActions,
+    onBrandingComplete,
+  },
   markerType,
   resultLabel,
-}: BrandingActivationPreludeProps) {
-  const [preludeComplete, setPreludeComplete] = useState(false);
+}: BrandingEffectProps) {
   const effectName = lum?.effectName ?? lum?.name ?? evt.luminaryId;
-  const announcementFallback = {
-    effectName,
-    effectDescription: lum?.effectDescription,
-  };
-  const sourceAnnouncementCopy = getLuminaryAnnouncementCopy(
-    evt.luminaryId,
-    'source',
-    announcementFallback,
-    evt.effectType as 'summon' | 'end_of_turn' | 'start_of_turn',
+  const thresholdChange = evt.victoryRequirementChange ?? (
+    evt.luminaryId === 'lum_compass' && evt.effectType === 'summon' ? 1 : 0
   );
-  const resolutionAnnouncementCopy = getLuminaryAnnouncementCopy(
-    evt.luminaryId,
-    'resolution',
-    announcementFallback,
-    evt.effectType as 'summon' | 'end_of_turn' | 'start_of_turn',
-  );
+  const [showThresholdChange, setShowThresholdChange] = useState(false);
 
-  if (!preludeComplete) {
-    const procedure = resolveLuminaryProcedure(
-      evt.luminaryId,
-      evt.effectType as 'summon' | 'end_of_turn' | 'start_of_turn',
-      state,
-      evt.triggeringPlayerId,
-      { targetCardIds: evt.targetCardIds },
-    );
-
+  if (showThresholdChange) {
     return (
-      <LuminaryActivationCinematic
-        luminaryId={evt.luminaryId}
-        effectType={evt.effectType as 'summon' | 'end_of_turn' | 'start_of_turn'}
-        luminaryName={lum?.name ?? evt.luminaryId}
-        effectDescription={sourceAnnouncementCopy}
-        resolutionDescription={resolutionAnnouncementCopy}
-        triggeringPlayerName={triggeringPlayer?.playerName}
-        queuePosition={queuePosition}
-        queueTotal={queueTotal}
-        procedure={procedure.length > 0 ? procedure : undefined}
-        onResolutionStart={onResolutionStart}
+      <VictoryRequirementChangeOverlay
+        amount={thresholdChange}
+        requirementBefore={evt.victoryRequirementBefore}
+        requirementAfter={evt.victoryRequirementAfter}
         reducedMotion={abridgedAnims}
-        playbackMode={playbackMode}
-        timelinePlaybackRate={activationTimelineRate}
-        sourceOnly
-        onComplete={() => setPreludeComplete(true)}
+        onComplete={() => onBrandingComplete(false)}
       />
     );
   }
@@ -440,16 +452,71 @@ function BrandingActivationPrelude({
       markerType={markerType}
       effectName={effectName}
       resultLabel={resultLabel}
-      effectDescription={resolutionAnnouncementCopy}
       luminaryName={lum?.name ?? evt.luminaryId}
       triggeringPlayerName={triggeringPlayer?.playerName}
       effectType={evt.effectType as 'summon' | 'end_of_turn' | 'start_of_turn'}
       queuePosition={queuePosition}
       queueTotal={queueTotal}
       actions={brandingActions}
-      onComplete={onBrandingComplete}
+      onComplete={(skipped) => {
+        if (!skipped && thresholdChange !== 0) {
+          setShowThresholdChange(true);
+          return;
+        }
+        onBrandingComplete(skipped);
+      }}
     />
   );
+}
+
+function NamedEffectActivationSequence({
+  props,
+  entry,
+}: {
+  props: ActivationDirectorRouterProps;
+  entry: DirectorEntry;
+}) {
+  const [activationComplete, setActivationComplete] = useState(false);
+  const { evt, lum, triggeringPlayer, state } = props;
+  const effectType = evt.effectType as 'summon' | 'action' | 'end_of_turn' | 'start_of_turn';
+
+  if (!activationComplete) {
+    const procedure = resolveLuminaryProcedure(
+      evt.luminaryId,
+      effectType,
+      state,
+      evt.triggeringPlayerId,
+      {
+        targetCardIds: evt.targetCardIds,
+        targetSlotIds: evt.targetSlotIds,
+        affinityType: evt.affinityType,
+        affinityAmount: evt.affinityAmount,
+        affinityReturns: evt.affinityReturns,
+      },
+    );
+    return (
+      <LuminaryActivationCinematic
+        luminaryId={evt.luminaryId}
+        effectType={effectType}
+        luminaryName={lum?.name ?? evt.luminaryId}
+        triggeringPlayerName={triggeringPlayer?.playerName}
+        queuePosition={props.queuePosition}
+        queueTotal={props.queueTotal}
+        procedure={procedure.length > 0 ? procedure : undefined}
+        victoryRequirementBefore={evt.victoryRequirementBefore}
+        victoryRequirementAfter={evt.victoryRequirementAfter}
+        onResolutionStart={props.onResolutionStart}
+        prepareResolution={props.prepareResolution}
+        reducedMotion={props.abridgedAnims}
+        playbackMode={props.playbackMode}
+        timelinePlaybackRate={props.activationTimelineRate}
+        sourceOnly
+        onComplete={() => setActivationComplete(true)}
+      />
+    );
+  }
+
+  return entry.renderEffect({ ...props, onResolutionStart: undefined });
 }
 
 function EmberEndTurnActivation({
@@ -463,11 +530,13 @@ function EmberEndTurnActivation({
   queuePosition,
   queueTotal,
   onResolutionStart,
+  prepareResolution,
   pendingBurnSlots,
   burnActions,
   onBurnComplete,
   onCinematicComplete,
 }: ActivationDirectorRouterProps) {
+  const [activationComplete, setActivationComplete] = useState(false);
   const targetIds = new Set(evt.targetCardIds ?? []);
   const redirectedToArchive = (state?.burnEvents ?? []).some(
     event => targetIds.has(event.cardId) && event.destination === 'archive',
@@ -487,37 +556,53 @@ function EmberEndTurnActivation({
       0,
       { type: 'archiveReturn', cardIds: evt.targetCardIds ?? [] },
     );
-    const effectName = lum?.effectName ?? lum?.name ?? evt.luminaryId;
-    const announcementFallback = {
-      effectName,
-      effectDescription: lum?.effectDescription,
-    };
     return (
       <LuminaryActivationCinematic
         luminaryId={evt.luminaryId}
         effectType="end_of_turn"
         luminaryName={lum?.name ?? evt.luminaryId}
-        effectDescription={getLuminaryAnnouncementCopy(
-          evt.luminaryId,
-          'source',
-          announcementFallback,
-          'end_of_turn',
-        )}
-        resolutionDescription={getLuminaryAnnouncementCopy(
-          evt.luminaryId,
-          'resolution',
-          announcementFallback,
-          'end_of_turn',
-        )}
         triggeringPlayerName={triggeringPlayer?.playerName}
         queuePosition={queuePosition}
         queueTotal={queueTotal}
         procedure={procedure}
+        victoryRequirementBefore={evt.victoryRequirementBefore}
+        victoryRequirementAfter={evt.victoryRequirementAfter}
         onResolutionStart={onResolutionStart}
+        prepareResolution={prepareResolution}
         reducedMotion={abridgedAnims}
         playbackMode={playbackMode}
         timelinePlaybackRate={activationTimelineRate}
         onComplete={onCinematicComplete}
+      />
+    );
+  }
+
+  if (!activationComplete) {
+    const procedure = resolveLuminaryProcedure(
+      evt.luminaryId,
+      'end_of_turn',
+      state,
+      evt.triggeringPlayerId,
+      { targetCardIds: evt.targetCardIds },
+    );
+    return (
+      <LuminaryActivationCinematic
+        luminaryId={evt.luminaryId}
+        effectType="end_of_turn"
+        luminaryName={lum?.name ?? evt.luminaryId}
+        triggeringPlayerName={triggeringPlayer?.playerName}
+        queuePosition={queuePosition}
+        queueTotal={queueTotal}
+        procedure={procedure.length > 0 ? procedure : undefined}
+        victoryRequirementBefore={evt.victoryRequirementBefore}
+        victoryRequirementAfter={evt.victoryRequirementAfter}
+        onResolutionStart={onResolutionStart}
+        prepareResolution={prepareResolution}
+        reducedMotion={abridgedAnims}
+        playbackMode={playbackMode}
+        timelinePlaybackRate={activationTimelineRate}
+        sourceOnly
+        onComplete={() => setActivationComplete(true)}
       />
     );
   }
@@ -556,7 +641,7 @@ export const DIRECTOR_ROUTES: readonly DirectorRouteSpec[] = DIRECTOR_REGISTRY.m
   ({ luminaryId, effectType }) => ({ luminaryId, effectType }),
 );
 
-export function activationDirectorPreparesCamera(
+export function activationDirectorForcesCamera(
   luminaryId: string,
   effectType: string,
 ): boolean {
@@ -564,9 +649,32 @@ export function activationDirectorPreparesCamera(
     entry => (
       entry.luminaryId === luminaryId &&
       entry.effectType === effectType &&
-      entry.preparesCamera
+      entry.forceCamera
     ),
   );
+}
+
+export function activationDirectorManagesActivation(
+  luminaryId: string,
+  effectType: string,
+): boolean {
+  return DIRECTOR_REGISTRY.some(
+    entry => (
+      entry.luminaryId === luminaryId &&
+      entry.effectType === effectType &&
+      entry.managesActivation === true
+    ),
+  );
+}
+
+function ManagedEffectActivation({
+  entry,
+  props,
+}: {
+  entry: DirectorEntry;
+  props: ActivationDirectorRouterProps;
+}) {
+  return entry.renderEffect(props);
 }
 
 // ─── Component ────────────────────────────────────────────────────────────────
@@ -592,45 +700,51 @@ export function ActivationDirectorRouter(props: ActivationDirectorRouterProps) {
   const entry = DIRECTOR_REGISTRY.find(
     e => e.luminaryId === evt.luminaryId && e.effectType === evt.effectType,
   );
-  if (entry) return entry.render(effectiveProps);
+  if (entry?.managesActivation) {
+    return (
+      <ManagedEffectActivation
+        key={evt.eventId}
+        entry={entry}
+        props={effectiveProps}
+      />
+    );
+  }
+  if (entry) {
+    return (
+      <NamedEffectActivationSequence
+        key={evt.eventId}
+        entry={entry}
+        props={effectiveProps}
+      />
+    );
+  }
 
   // ── Generic cinematic for all other Luminary activations ─────────────────
   const procedure = resolveLuminaryProcedure(
     evt.luminaryId,
-    evt.effectType as 'summon' | 'end_of_turn' | 'start_of_turn',
+    evt.effectType as 'summon' | 'action' | 'end_of_turn' | 'start_of_turn',
     state,
     evt.triggeringPlayerId,
-    { targetCardIds: evt.targetCardIds },
-  );
-  const effectName = lum?.effectName ?? lum?.name ?? evt.luminaryId;
-  const announcementFallback = {
-    effectName,
-    effectDescription: lum?.effectDescription,
-  };
-  const sourceAnnouncementCopy = getLuminaryAnnouncementCopy(
-    evt.luminaryId,
-    'source',
-    announcementFallback,
-    evt.effectType as 'summon' | 'end_of_turn' | 'start_of_turn',
-  );
-  const resolutionAnnouncementCopy = getLuminaryAnnouncementCopy(
-    evt.luminaryId,
-    'resolution',
-    announcementFallback,
-    evt.effectType as 'summon' | 'end_of_turn' | 'start_of_turn',
+    {
+      targetCardIds: evt.targetCardIds,
+      targetSlotIds: evt.targetSlotIds,
+      affinityType: evt.affinityType,
+      affinityAmount: evt.affinityAmount,
+    },
   );
   return (
     <LuminaryActivationCinematic
       luminaryId={evt.luminaryId}
-      effectType={evt.effectType as 'summon' | 'end_of_turn' | 'start_of_turn'}
+      effectType={evt.effectType as 'summon' | 'action' | 'end_of_turn' | 'start_of_turn'}
       luminaryName={lum?.name ?? evt.luminaryId}
-      effectDescription={sourceAnnouncementCopy}
-      resolutionDescription={resolutionAnnouncementCopy}
       triggeringPlayerName={triggeringPlayer?.playerName}
       queuePosition={props.queuePosition}
       queueTotal={props.queueTotal}
       procedure={procedure.length > 0 ? procedure : undefined}
+      victoryRequirementBefore={evt.victoryRequirementBefore}
+      victoryRequirementAfter={evt.victoryRequirementAfter}
       onResolutionStart={props.onResolutionStart}
+      prepareResolution={props.prepareResolution}
       reducedMotion={abridgedAnims}
       playbackMode={playbackMode}
       timelinePlaybackRate={activationTimelineRate}

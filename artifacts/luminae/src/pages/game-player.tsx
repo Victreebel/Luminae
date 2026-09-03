@@ -1,10 +1,11 @@
 import React from 'react';
 import { motion } from 'framer-motion';
 import { ChevronDown } from 'lucide-react';
-import { getAvatarForPlayer } from '@/lib/avatars';
+import { getAvatarForPlayer, LUMII_AVATAR_ID } from '@/lib/avatars';
 import { opponentTurnVariants } from './game-constants';
 import { AFFINITY_META, AFFINITY_KEYS, type AffinityKey } from '@/lib/affinityMeta';
 import { EminenceDiamond } from './game-card';
+import { LumiiOrb } from '@/components/LumiiTutorial';
 
 const NON_FLUX_KEYS = AFFINITY_KEYS.filter(k => k !== 'singularity');
 
@@ -20,6 +21,20 @@ export const PlayerAvatar = React.memo(function PlayerAvatar({
   opponentRecipientId?: string;
 }) {
   const avatar = getAvatarForPlayer(avatarId);
+  if (avatarId === LUMII_AVATAR_ID) {
+    return (
+      <div
+        data-opponent-avatar={opponentRecipientId}
+        className="grid shrink-0 place-items-center overflow-hidden rounded-full border-2 bg-[#050719]"
+        style={{ width: size, height: size, borderColor: `${avatar.accent}88` }}
+        title={name}
+        role="img"
+        aria-label={name}
+      >
+        <LumiiOrb size={size * 0.88} highlightZone={null} />
+      </div>
+    );
+  }
   return (
     <div
       data-opponent-avatar={opponentRecipientId}

@@ -17,10 +17,13 @@
 
 import { motion } from 'framer-motion';
 import { useEffect, useState } from 'react';
-import type { ReactNode } from 'react';
+import type { CSSProperties, ReactNode } from 'react';
 import type { ArtifactCard } from '@workspace/api-client-react';
+import { DEFAULT_VICTORY_REQUIREMENT } from '@workspace/game-types';
 import { ArtifactCardView, EminenceSigil } from './game-card';
+import { CompactForgeCardReadout } from './game-board-forge-card-slot';
 import { AFFINITY_META, type AffinityKey } from '@/lib/affinityMeta';
+import { artifactFrameUsesArtCrop } from '@/lib/artifactFramePresentation';
 import { gameAudio } from '@/lib/audio';
 import {
   BrandStampSVG,
@@ -214,6 +217,63 @@ function ForgottenForgeApparition({ compact = false }: { compact?: boolean }) {
   );
 }
 
+function AnimatedArtifactCardFrame({
+  card,
+  tier,
+  width,
+  height,
+  fullCardWidth,
+  fullCardHeight,
+  hideEminence,
+}: {
+  card: ArtifactCard;
+  tier: number;
+  width: number;
+  height: number;
+  fullCardWidth: number;
+  fullCardHeight: number;
+  hideEminence: boolean;
+}) {
+  if (artifactFrameUsesArtCrop(width, height)) {
+    return (
+      <div
+        className="forge-foundry-mold board-forge-compact-chip relative h-full w-full overflow-hidden rounded-xl"
+        style={{
+          "--card-w": `${width}px`,
+          "--card-h": `${height}px`,
+          "--forge-chip-w": `${width}px`,
+          "--forge-chip-h": `${height}px`,
+        } as CSSProperties}
+      >
+        <ArtifactCardView card={card} tier={tier} artOnly />
+        <CompactForgeCardReadout card={card} costs={card.cost} />
+      </div>
+    );
+  }
+
+  const scale = Math.min(
+    width / Math.max(1, fullCardWidth),
+    height / Math.max(1, fullCardHeight),
+  );
+
+  return (
+    <div className="relative grid overflow-hidden" style={{ width, height, placeItems: 'center' }}>
+      <div
+        style={{
+          width: fullCardWidth,
+          height: fullCardHeight,
+          "--card-w": `${fullCardWidth}px`,
+          "--card-h": `${fullCardHeight}px`,
+          transform: `scale(${scale})`,
+          transformOrigin: 'center',
+        } as CSSProperties}
+      >
+        <ArtifactCardView card={card} tier={tier} hideEminence={hideEminence} />
+      </div>
+    </div>
+  );
+}
+
 // ── StampSVG ──────────────────────────────────────────────────────────────────
 function StampSVG({
   width, height,
@@ -334,7 +394,7 @@ export function ForgeAnimation({
     y: cy,
     w,
     h,
-    contentScale: isCompact ? chipScale : 1,
+    contentScale: isCompact && !artifactFrameUsesArtCrop(w, h) ? chipScale : 1,
     visualScale: isCompact ? 1 : 1.28,
   });
 
@@ -406,6 +466,7 @@ export function ForgeAnimation({
   return (
     <motion.div
       key={animKey}
+      data-testid="forge-animation"
       className="pointer-events-none fixed inset-0 z-50"
       initial={{ opacity: 1 }}
       exit={{ opacity: 0 }}
@@ -419,6 +480,7 @@ export function ForgeAnimation({
       />
 
       <motion.div
+        data-testid="forge-animation-card"
         style={{ position: 'fixed', left: 0, top: 0, width: w, height: h }}
         animate={{
           x:       [sx,   cx,    cx+SK, cx-SK, cx+SK/2, cx-SK/3, cx,   dX  ],
@@ -431,23 +493,17 @@ export function ForgeAnimation({
         }}
         transition={{ duration: ARC_END, times: cardTimes, ease: 'easeInOut' }}
       >
-        {/* In compact mode: clip to chip size then scale ArtifactCardView down to match.
-            ArtifactCardView always self-sizes to var(--card-w) × var(--card-h);
-            without this wrapper it overflows the 56×80 chip container. */}
-        {isCompact ? (
-          <div style={{ width: w, height: h, overflow: 'hidden', position: 'relative' }}>
-            <div style={{
-              width: fullCardW,
-              height: fullCardH,
-              transform: `scale(${chipScale})`,
-              transformOrigin: 'top left',
-            }}>
-              <ArtifactCardView card={card} tier={tier} hideEminence={eminenceSeparated} />
-            </div>
-          </div>
-        ) : (
-          <ArtifactCardView card={card} tier={tier} hideEminence={eminenceSeparated} />
-        )}
+        {/* Portrait slots retain a complete card. Wide celestial molds use a
+            deliberate art crop so card chrome is never stretched or clipped. */}
+        <AnimatedArtifactCardFrame
+          card={card}
+          tier={tier}
+          width={w}
+          height={h}
+          fullCardWidth={fullCardW}
+          fullCardHeight={fullCardH}
+          hideEminence={eminenceSeparated}
+        />
 
         <motion.div
           className="absolute inset-0 rounded-[6px]"
@@ -709,7 +765,7 @@ function EminenceSealFlight({
   animKey,
   amount,
   eminenceAfter,
-  eminenceTarget = 15,
+  eminenceTarget = DEFAULT_VICTORY_REQUIREMENT,
   start,
   size,
   fallbackDest,
@@ -843,6 +899,8 @@ export function AbridgedForgeAnimation({
   animKey, card, cardFace, tier, startRect, destPos, destinationKind, ownerName, spentColors, eminence = 0, eminenceTotal, eminenceTarget, eminenceTargetSelector, onEminenceImpact, onComplete, isForgottenForge = false,
 }: AbridgedForgeAnimationProps) {
   const { x: sx, y: sy, w, h } = startRect;
+  const fullCardW = parseFloat(getComputedStyle(document.documentElement).getPropertyValue('--card-w')) || 112;
+  const fullCardH = parseFloat(getComputedStyle(document.documentElement).getPropertyValue('--card-h')) || 160;
   const dx = destPos ? destPos.x - sx - w / 2 : 0;
   const dy = destPos ? destPos.y - sy - h / 2 : 0;
 
@@ -878,7 +936,27 @@ export function AbridgedForgeAnimation({
         }}
         onAnimationComplete={() => onComplete?.()}
       >
-        {cardFace ?? <ArtifactCardView card={card} tier={tier} hideEminence={eminence > 0} />}
+        {cardFace ? (
+          <div
+            className="relative h-full w-full overflow-hidden"
+            style={{
+              "--card-w": `${w}px`,
+              "--card-h": `${h}px`,
+            } as CSSProperties}
+          >
+            {cardFace}
+          </div>
+        ) : (
+          <AnimatedArtifactCardFrame
+            card={card}
+            tier={tier}
+            width={w}
+            height={h}
+            fullCardWidth={fullCardW}
+            fullCardHeight={fullCardH}
+            hideEminence={eminence > 0}
+          />
+        )}
         {isForgottenForge && <ForgottenForgeApparition compact />}
       </motion.div>
 
@@ -1078,20 +1156,15 @@ export function OpponentForgeAnimation({
         }}
         transition={{ duration: ARC_END, times: cardTimes, ease: 'easeInOut' }}
       >
-        {isCompact ? (
-          <div style={{ width: w, height: h, overflow: 'hidden', position: 'relative' }}>
-            <div style={{
-              width: fullCardW,
-              height: fullCardH,
-              transform: `scale(${chipScale})`,
-              transformOrigin: 'top left',
-            }}>
-              <ArtifactCardView card={card} tier={tier} hideEminence={eminenceSeparated} />
-            </div>
-          </div>
-        ) : (
-          <ArtifactCardView card={card} tier={tier} hideEminence={eminenceSeparated} />
-        )}
+        <AnimatedArtifactCardFrame
+          card={card}
+          tier={tier}
+          width={w}
+          height={h}
+          fullCardWidth={fullCardW}
+          fullCardHeight={fullCardH}
+          hideEminence={eminenceSeparated}
+        />
 
         {/* Affinity aura glow */}
         <motion.div
@@ -1308,7 +1381,7 @@ export function OpponentForgeAnimation({
             y: cy,
             w,
             h,
-            contentScale: isCompact ? chipScale : 1,
+            contentScale: isCompact && !artifactFrameUsesArtCrop(w, h) ? chipScale : 1,
             visualScale: isCompact ? 1 : 1.28,
           })}
           size={Math.max(34, Math.min(56, w * 0.36))}

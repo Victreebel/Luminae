@@ -1,11 +1,16 @@
 // ─── Luminae Card Lore ──────────────────────────────────────────────────────
-// Names + flavor text sourced from LUMINAe_ARTIFACT_REPLACEMENT_TABLE_v0.4_UTILITY_FIRST_LORE.md
-// Metadata fields (artifactForm, blueprintRole, blueprintFamilies, civLane,
-// engineeringScale, artPrompt) also sourced from v0.4.
-// Do NOT edit names, flavor, or metadata manually — update via the replacement table.
+// Tier I/II canon originates in LUMINAe_ARTIFACT_REPLACEMENT_TABLE_v0.4_UTILITY_FIRST_LORE.md.
+// Technology v2 owns lineage, depiction-scale metadata, and bounded Tier III canon.
 //
 // artPrompt variety slots: see docs/card_art_variety_matrix.md
 // Format: [Scale/Shot] — [Background] — [Subject] — [Palette] — [Exclusions]
+
+import {
+  ARTIFACT_DEPICTION_SCALE_BY_ID,
+  TIER_THREE_ARTIFACT_CANON,
+  type ArtifactId,
+  type TierThreeArtifactCanon,
+} from '@workspace/game-types';
 
 export interface CardLore {
   name: string;
@@ -15,62 +20,125 @@ export interface CardLore {
   blueprintFamilies?: string;
   civLane?: string;
   engineeringScale?: "Planetary" | "Star-system" | "Galactic";
+  depictionScale?:
+    | "macro"
+    | "tabletop"
+    | "room"
+    | "installation"
+    | "planetary"
+    | "stellar"
+    | "galactic";
   artPrompt?: string;
+}
+
+export type ArtifactDepictionScale = NonNullable<CardLore["depictionScale"]>;
+
+export interface PublicCardLore {
+  name: string;
+  flavor: string;
+  artifactForm?: string;
+  practicalCapability?: string;
+  civLane?: string;
+  engineeringScale?: "Planetary" | "Star-system" | "Galactic";
+  depictionScale: ArtifactDepictionScale;
+  artPrompt?: string;
+}
+
+export function getArtifactDepictionScale(lore: CardLore): ArtifactDepictionScale {
+  if (lore.depictionScale) return lore.depictionScale;
+
+  const prompt = lore.artPrompt?.toLowerCase() ?? "";
+  const form = lore.artifactForm?.toLowerCase() ?? "";
+
+  if (/galactic-scale|galactic industrial scene|galactic network|galactic region|galactic civic|galactic-arm|wide galactic|deep galactic|interstellar necrobiome|many star systems|several star systems|across systems|spiral arm/.test(prompt)) {
+    return "galactic";
+  }
+  if (/stellar-scale|star-system|system-scale|heliosphere|several stars|around a star|around different stars/.test(prompt)) {
+    return "stellar";
+  }
+  if (/extreme macro|macro close-up|macro cross-section|grain-|marble-sized|thumbnail-sized/.test(prompt)) {
+    return "macro";
+  }
+  if (/room-scale|space large enough to walk through|wall-mounted|console-sized/.test(prompt)) {
+    return "room";
+  }
+  if (/tabletop|handheld|palm-sized|finger-length|fingertip-sized|coin-sized|matchbox-sized|forearm-sized|hand-sized/.test(prompt)) {
+    return "tabletop";
+  }
+  if (/installation-scale|facility-scale|building-scale|warehouse|tower|facade/.test(prompt)) {
+    return "installation";
+  }
+  if (/galaxy-wide|galaxy|interstellar/.test(prompt)) {
+    return "galactic";
+  }
+  if (/planetary-scale|planet-wide|planet surface|horizon|world-scale/.test(prompt)) {
+    return "planetary";
+  }
+  if (/galactic/.test(form) || lore.engineeringScale === "Galactic") return "galactic";
+  if (/stellar|star-system|heliosphere/.test(form) || lore.engineeringScale === "Star-system") return "stellar";
+  if (/planetary|world/.test(form) || lore.engineeringScale === "Planetary") return "planetary";
+  return "tabletop";
 }
 
 export const CARD_LORE: Record<string, CardLore> = {
   // ── Tier 1 ─ Flare ───────────────────────────────────────────────────────
   t1r01: { name: "Ignition Kernel",
-    flavor: "The first fire a city learns to trust. Pressed into deep-bore channels and launch cradles alike, it ignites on command and refuses to consume beyond its charter. Civilizations that master it stop fearing fire and start building with it.",
+    flavor: "A caged spark that lights furnaces and cities but refuses to spread. No one knows who first taught fire restraint.",
     artifactForm: "Power Component / Control Instrument", blueprintRole: "controlled ignition and thermal regulation",
     blueprintFamilies: "Mantle-to-Orbit Foundry; Planetary Cradle Engine", civLane: "planetary forge culture",
     engineeringScale: "Planetary",
     artPrompt: "Extreme macro cross-section view, abstract energy field background. Interior of a dense ignition core sliced open: layered rings of compressed red-orange plasma held in dark metal channels, glowing seams at the containment boundaries. Subject fills the frame — no exterior housing visible. Palette: deep red, molten orange, near-black metal. No planets, no text, no exterior structure." },
 
   t1r02: { name: "Ashroot Bloom",
-    flavor: "After the burn, nothing speaks first — then this does. Its blackened surface cracks to release pale shoots that test whether the ash can hold life again. What it finds in ruin becomes the foundation of whatever comes next.",
+    flavor: "Pale shoots rise from soil too burned for life. They always bend toward something still moving beneath the ash.",
     artifactForm: "Biotech Module / Catalyst", blueprintRole: "post-burn ecological recovery",
     blueprintFamilies: "Planetary Cradle Engine; Stellar Nursery Rite precursor", civLane: "phoenix biosphere",
     engineeringScale: "Planetary",
     artPrompt: "Extreme macro close-up, dark studio void background. A compact charred root organ — blackened surface with cracks revealing living ember veins beneath; two or three new pale-green shoots emerging from the ash-dusted base. Handheld scale, fills the frame. Palette: charcoal black, deep orange ember glow, pale green new growth. No planets, no text." },
 
   t1r03: { name: "Chrono-Ember Core",
-    flavor: "It does not remember how hot the fire burned — only when it should return. Buried in furnace schedules that span generations, it outlasts the engineers who set it. The next operator inherits not instructions, but memory.",
+    flavor: "It remembers when a fire must return, not how it burned. Some cores wake long after their makers are gone.",
     artifactForm: "Archive / Power Component", blueprintRole: "energy-memory synchronization",
     blueprintFamilies: "Mantle-to-Orbit Foundry; Spiral-Arm Archive precursor", civLane: "deep-time ignition culture",
     engineeringScale: "Planetary",
     artPrompt: "Tabletop product-shot, 3/4 overhead angle, soft atmospheric warm glow background. A palm-sized cylindrical memory-core with concentric time-ring etchings on its surface; amber ember light glows from the core's center, casting faint ring shadows. No giant clock, no star, no planet. Palette: warm amber, burnt orange, aged bronze metal. No baked-in text, labels, or title anywhere on the image." },
 
   t1r04: { name: "Causal Spark Coil",
-    flavor: "Before it fires, it asks what will happen three steps later. Industrial triggers and irreversible ignitions wait on its judgment — not the operator's desire, but a formal account of consequences. A civilization that uses one has decided some fires need permission from the future.",
+    flavor: "Before it fires, the coil tests what the spark will cause. Sometimes it refuses without explaining why.",
     artifactForm: "Control Instrument / Protocol Object", blueprintRole: "safe trigger sequencing",
     blueprintFamilies: "Mantle-to-Orbit Foundry; Causality Audit Court precursor", civLane: "experimental causal engineer civilization",
     engineeringScale: "Planetary",
     artPrompt: "Tabletop product-shot, 3/4 overhead angle, dark studio void background. A compact precision coil — tight wound copper-dark metal loops, three red-orange spark arcs suspended mid-air between the coil terminals, held in a precision housing with micro-engraved trigger markings. Handheld scale. Palette: deep red spark, dark metal, faint amber. No planets, no text." },
 
   t1r05: { name: "Voidflare Cask",
-    flavor: "Sealed under pressure no city could survive if the seam failed, it waits for the exact moment when nothing else can provide light. Eclipse-bound settlements carry them as the last argument against permanent dark. A civilization that no longer needs them has found a better star.",
+    flavor: "A sealed burst of light kept for the moment every other flame fails. The cask grows warmer during eclipses.",
     artifactForm: "Containment / Power Component", blueprintRole: "volatile void-pressure ignition",
     blueprintFamilies: "Worldshield Covenant; Mantle-to-Orbit Foundry", civLane: "eclipse host civilization",
     engineeringScale: "Planetary",
     artPrompt: "Tabletop eye-level view, dark studio void background. A sealed cylindrical cask — matte dark metal with a faint red-violet pressure glow seeping through stress fractures along the seam line; a small release valve on top is closed. Handheld scale, sitting on implied dark surface. Palette: near-black metal, red-violet pressure glow, subtle purple. No planets, no text." },
 
   t1r06: { name: "Photosynthetic Wick",
-    flavor: "A living stalk that drinks sunlight and releases heat so slowly a cold settlement can survive on the difference. Settlements beyond natural light carry them the way earlier civilizations carried fire — as proof that warmth is possible here. What grows from that proof usually surprises the engineers.",
+    flavor: "This living wick stores sunlight and releases it as gentle heat. Far from any star, it still leans toward dawn.",
     artifactForm: "Biotech Module / Power Component", blueprintRole: "biological energy conversion",
     blueprintFamilies: "Planetary Cradle Engine; Ecumenopolis Lattice", civLane: "solar-adapted biosphere civilization",
     engineeringScale: "Planetary",
     artPrompt: "Extreme macro close-up, soft atmospheric warm glow background. A single living wick — a slender organic stalk, surface covered in fine amber-gold capillary channels that carry stored solar heat from tip to base; the tip glows softly with golden light. Fills the frame, handheld scale. Palette: warm amber, pale green cellular tissue, soft gold glow. No giant sun array, no planets, no text." },
 
-  t1r07: { name: "Entropy Pyre Baffle",
-    flavor: "Waste heat has a destination before it has a catastrophe. Industrial installations ring themselves with baffles that teach decay where to go, routing entropy into useful work before it teaches the city how to die. The civilization that accounts for its waste is the one permitted to build larger.",
-    artifactForm: "Containment / Thermal Control", blueprintRole: "waste heat and decay routing",
-    blueprintFamilies: "Mantle-to-Orbit Foundry; Worldshield Covenant", civLane: "entropy-tolerant industrial culture",
+  t1r07: {
+    name: "Entropy Pyre Baffle",
+    flavor:
+      "It channels dangerous waste heat into useful work. The soot patterns sometimes resemble maps of places that have not burned yet.",
+    artifactForm: "Containment / Thermal Control",
+    blueprintRole: "waste heat and decay routing",
+    blueprintFamilies: "Mantle-to-Orbit Foundry; Worldshield Covenant",
+    civLane: "entropy-tolerant industrial culture",
     engineeringScale: "Planetary",
-    artPrompt: "Installation-scale eye-level view, abstract energy distortion background — industrial heat shimmer. A massive facade of heat-sink baffle panels covering the side of a facility: dark containment fins span the full height of the building, surfaces blackened with soot and oxidation; deep orange-red glows pour from the channel voids where waste heat streams through. The baffle wall fills the entire frame. Palette: dark steel, soot grey, deep orange heat glow. No planets, no text." },
+    artPrompt:
+      "Tabletop product-shot, 3/4 overhead angle, abstract energy distortion background — industrial heat shimmer. A modular heat-routing baffle in dark refractory metal: dense containment fins surround branching channels blackened with soot, with deep orange-red waste heat visible inside the channel voids. The inspectable module fills the frame. Palette: dark steel, soot grey, deep orange heat glow. No building facade, no planets, no text.",
+  },
 
   t1r08: { name: "Oathfire Igniter",
-    flavor: "Fire that requires witnesses to open is no longer a private weapon. The witness-lock ensures ignition becomes a civic act, logged and present, before the flame appears. Civilizations that adopt it discover that most of what they feared from fire they had feared from each other.",
+    flavor: "The igniter opens only before witnesses, turning flame into a public promise. Unrecorded fires will not answer it.",
     artifactForm: "Civic Signal Object / Power Component", blueprintRole: "public sanctioned ignition",
     blueprintFamilies: "Worldshield Covenant; Ecumenopolis Lattice", civLane: "solar civic forge culture",
     engineeringScale: "Planetary",
@@ -78,56 +146,69 @@ export const CARD_LORE: Record<string, CardLore> = {
 
   // ── Tier 1 ─ Continuum ───────────────────────────────────────────────────
   t1s01: { name: "Echo Splinter",
-    flavor: "A sliver of recorded cause, broken at the moment before the disaster. Infrastructure seeded with these hears the sound of failure before it arrives — a stress echo traveling faster than the damage it predicts. The civilizations that survive are not the ones without fractures, but the ones that learned to listen.",
+    flavor: "A crystal splinter that hears a structure fail moments before it breaks. Each warning sounds faintly like a voice.",
     artifactForm: "Archive / Sensor", blueprintRole: "event echo capture",
     blueprintFamilies: "Spiral-Arm Archive precursor; Worldshield Covenant", civLane: "planetary memory culture",
     engineeringScale: "Planetary",
     artPrompt: "Extreme macro close-up, dark studio void background. A slim sapphire-blue crystal splinter — fractured end shows a layered internal structure; faint concentric echo rings radiate outward from the break point, visible as subtle refractive bands within the crystal. Fills the frame, finger-length scale. Palette: sapphire blue, pale ice refraction, near-black void. No planets, no text." },
 
-  t1s02: { name: "Causal Ember Relay",
-    flavor: "It transmits heat and consequence in the same pulse, refusing to let effect arrive before cause has been acknowledged. Forge systems and archive timestamps alike depend on the relay's insistence that events happen in order. A civilization that routes through this learns to be honest about what it caused.",
-    artifactForm: "Interface / Protocol", blueprintRole: "local cause-effect relay",
-    blueprintFamilies: "Mantle-to-Orbit Foundry; Causality Audit Court precursor", civLane: "predictive engineering culture",
+  t1s02: {
+    name: "Mantlelift Driver Coil",
+    flavor:
+      "This timed coil hurls sealed cargo from deep underground into orbit. A capsule that misses the rhythm is never found.",
+    artifactForm: "Transit Component / Power Component",
+    blueprintRole: "planetary-to-orbit mass acceleration",
+    blueprintFamilies:
+      "Mantle-to-Orbit Foundry; Arkseed Migration Fleet precursor",
+    civLane: "orbital logistics civilization",
     engineeringScale: "Planetary",
-    artPrompt: "Extreme macro close-up, soft atmospheric warm glow background. A small relay node — dark metal housing with amber-blue causal trace lines etched on its surface, glowing where heat and signal pulses converge at the relay junction. Coin-sized scale, fills the frame. Palette: amber warm, sapphire blue causal traces, dark metal body. No planets, no text." },
+    artPrompt:
+      "Room-scale cross-section view, abstract acceleration-field background. One inspectable induction coil segment from a planetary mass-driver line: a thick sapphire-dark superconducting ring in a reinforced housing, with a sealed ore capsule centered in its open bore and blue-white timing fields stepping forward through the channel. Palette: deep sapphire, dark structural metal, controlled blue-white field light. No complete launch tower, no planet-wide rail, no text.",
+  },
 
   t1s03: { name: "Null-Loop Anchor",
-    flavor: "It ends the loop before the system mistakes repetition for immortality. Installed wherever automated processes cannot self-terminate, it holds the boundary between useful repetition and the kind that slowly consumes everything feeding it. The lesson it teaches is not how to stop, but when.",
+    flavor: "It stops machines trapped in endless repetition. Afterward, the anchor keeps counting cycles that never happened.",
     artifactForm: "Control Instrument / Stabilization", blueprintRole: "recursion boundary control",
     blueprintFamilies: "Worldshield Covenant; Causality Audit Court precursor", civLane: "recursion-safety civilization",
     engineeringScale: "Planetary",
     artPrompt: "Tabletop eye-level view, abstract energy field background with faint recursive interference pattern. A compact anchor ring — dark blue-black metal forged in a closed ring; the inner surface is etched with recursive boundary markings that glow faintly blue where the loop-end sequence is engaged. Handheld scale. Palette: deep blue, near-black metal, faint recursion-glow lines. No planets, no readable text on the anchor." },
 
-  t1s04: { name: "Time-Crystal Scaffold",
-    flavor: "Grown rather than built, the scaffold fills spaces where machines must agree on the same second. Foundries, simulations, and treaties require a substrate that synchronization can live in — not a signal, but a physical agreement. Whatever is built on it inherits the scaffold's insistence on precision.",
-    artifactForm: "Material / Fabrication Tool", blueprintRole: "precision timing substrate",
-    blueprintFamilies: "Ecumenopolis Lattice; Matrioshka Mind precursor", civLane: "timekeeping material culture",
+  t1s04: {
+    name: "Time-Crystal Scaffold",
+    flavor:
+      "A crystal frame that makes distant machines share the same second. Watches placed near it begin agreeing too well.",
+    artifactForm: "Material / Fabrication Tool",
+    blueprintRole: "precision timing substrate",
+    blueprintFamilies: "Ecumenopolis Lattice; Matrioshka Mind precursor",
+    civLane: "timekeeping material culture",
     engineeringScale: "Planetary",
-    artPrompt: "Installation-scale eye-level view, soft atmospheric cool glow background. A timing-crystal scaffold filling a warehouse interior: grown rather than built, the branching blue-white crystal lattice rises from floor to ceiling and spans wall to wall; fine blue synchronization pulses move between crystal nodes across the entire structure. The scaffold fills the frame completely. Palette: ice blue, pale crystal white, cool atmospheric glow. No planets, no text." },
+    artPrompt:
+      "Tabletop product-shot, 3/4 overhead angle, soft atmospheric cool glow background. A forearm-sized branching scaffold grown from blue-white timing crystal, held in a dark precision frame; fine synchronization pulses move between its crystal nodes. The complete inspectable substrate fills the frame. Palette: ice blue, pale crystal white, dark frame, cool atmospheric glow. No warehouse, no building, no planets, no text.",
+  },
 
   t1s05: { name: "Silent Recursion Rule",
-    flavor: "Encoded in silence because speaking it changes the system it protects. Critical safety protocols written this way are never contaminated by interpretation or discovered before they are needed. The most trusted class of preserved law is the one that has never been read aloud.",
+    flavor: "A safety rule designed to work only while unspoken. Reading it aloud changes the final line.",
     artifactForm: "Protocol / Archive", blueprintRole: "quiet error correction",
     blueprintFamilies: "Matrioshka Mind precursor; Worldshield Covenant", civLane: "quiet planner civilization",
     engineeringScale: "Planetary",
     artPrompt: "Extreme macro close-up, mineral/rock surface background — dark polished stone. A small etched protocol token or wafer — deep blue-black material with concentric recursion geometry incised on its face; the etchings glow faintly blue, catching light at their edges. Coin-sized scale. Palette: deep blue, near-black, faint cool recursion glow. No readable text, no letters or numerals anywhere on the token surface." },
 
   t1s06: { name: "Living Chronicle",
-    flavor: "A chronicle that grows new margins when the people it records learn to become someone else. Unlike stone inscription, it does not resist revision — it accommodates it, adding tissue for each new chapter of a civilization that chose to persist across change. The margin is where the future adds its corrections.",
+    flavor: "This living record grows new pages as its people change. The oldest margins contain handwriting no one remembers adding.",
     artifactForm: "Archive / Biotech Module", blueprintRole: "adaptive civic memory",
     blueprintFamilies: "Planetary Cradle Engine; Ecumenopolis Lattice", civLane: "biological archive civilization",
     engineeringScale: "Planetary",
     artPrompt: "Tabletop eye-level view, dark studio void background. A compact organic memory organ — resembles a thick living book whose cover is grown tissue rather than leather; blue-green veins run through the surface, pulsing faintly with stored memory light; new pale margin-tissue is budding at the edges. Handheld scale. Palette: blue-green veins, pale organic tissue, warm glow interior. No letters, no text on the surface." },
 
   t1s07: { name: "String-Scar Loom",
-    flavor: "The flaws in exotic threads are not failures — they are instructions. The loom reads each imperfection and converts it into a repeatable manufacturing step. Civilizations that master it learn that the most accurate map of an impossible component is the ruin of the last one.",
+    flavor: "The loom turns flaws in impossible threads into exact building instructions. Its finest pattern came from a thread that broke itself.",
     artifactForm: "Fabrication Tool / Material", blueprintRole: "defect-pattern weaving",
     blueprintFamilies: "Mantle-to-Orbit Foundry; Galactic Relic Forge precursor", civLane: "defect-engineer culture",
     engineeringScale: "Planetary",
     artPrompt: "Tabletop product-shot, 3/4 overhead angle, dark studio void background. A small precision loom — dark metal frame with luminous sapphire-blue tension threads strung across it; the threads glow where deliberate defect-nodes are locked in place as encoded manufacturing instructions. Handheld scale, sits on a dark surface. Palette: deep blue luminous threads, dark metal frame, cool sapphire light. No planets, no text." },
 
   t1s08: { name: "Root Memory Valve",
-    flavor: "Grown into old roots, it releases only the ancestral memory that the present can productively absorb. Too much past arrives as weight, not guidance — the valve ensures the living tissue receives signal, not flood. What it withholds may be more valuable than what it grants.",
+    flavor: "A valve releases ancestral memories in survivable doses. What it keeps buried presses back against the roots.",
     artifactForm: "Archive / Biotech Module / Control Instrument", blueprintRole: "selective memory release",
     blueprintFamilies: "Planetary Cradle Engine; Spiral Ecology Mesh precursor", civLane: "ancestral biosphere civilization",
     engineeringScale: "Planetary",
@@ -135,56 +216,62 @@ export const CARD_LORE: Record<string, CardLore> = {
 
   // ── Tier 1 ─ Verdance ────────────────────────────────────────────────────
   t1e01: { name: "Replication Spore",
-    flavor: "Licensed for repair, not conquest — it copies only what the ecology can afford to copy. Seeded into burned zones and industrial scars, it fills the gap without overwriting the edge. The first organism sent to ask whether something can live here.",
+    flavor: "A spore bred to repair damaged land without taking it over. It stops growing at borders no instrument can detect.",
     artifactForm: "Biotech Module / Fabrication Tool", blueprintRole: "controlled replication",
     blueprintFamilies: "Planetary Cradle Engine; Spiral Ecology Mesh precursor", civLane: "adaptive biosphere civilization",
     engineeringScale: "Planetary",
     artPrompt: "Extreme macro close-up, mineral/rock surface background — mossy dark stone. A single engineered spore pod resting on the stone — ovoid, translucent green-white casing with detailed cellular structure visible inside; hairlike anchor filaments extend from the base. Grain-of-rice scale. Palette: pale green, translucent cellular white, dark stone surface. No planets, no cosmic scene, no text." },
 
   t1e02: { name: "Voidroot Tap",
-    flavor: "A root-tap that drinks from darkness without teaching the dark how to climb back up. It finds nutrients in void-seam environments no visible system can access and returns them without disturbing the boundary. Settlements fed by it leave no surface mark — they eat in secret.",
+    flavor: "This root draws food from places light cannot reach. Nothing planted above it casts quite the right shadow.",
     artifactForm: "Biotech Module / Interface", blueprintRole: "nutrient extraction from hidden reservoirs",
     blueprintFamilies: "Planetary Cradle Engine; Dark-Sector Observatory precursor", civLane: "subterranean adaptive life",
     engineeringScale: "Planetary",
     artPrompt: "Tabletop eye-level view, mineral/rock surface background — black soil and void-seam crack. A root-tap artifact pressing into the seam: the upper portion is a dark engineered fitting; below it, biological root-material descends into the void-black crack, dark green with bioluminescent veins. Handheld device scale. Palette: dark green, near-black void, faint bioluminescent blue-green. No planets, no text." },
 
   t1e03: { name: "Char Tendril",
-    flavor: "The first thing sent into ash to ask whether life is still possible there. Blackened and heat-adapted, it probes zones where ordinary roots find only graves and reports back which soils hold a future. Whatever recovers after it does so because the tendril came first.",
+    flavor: "A black tendril searches burned ground for surviving life. It sometimes returns carrying seeds no one planted.",
     artifactForm: "Biotech Module / Sensor", blueprintRole: "post-fire ecological probing",
     blueprintFamilies: "Planetary Cradle Engine; Stellar Nursery Rite precursor", civLane: "fire-adapted ecology",
     engineeringScale: "Planetary",
     artPrompt: "Extreme macro worm's-eye view (looking up along the tendril), soft atmospheric warm-green glow background. A charred tendril arching upward — blackened and cracked surface, two small ember-tipped probe nodes at the top glowing green-amber, testing the air above ash. Fills the frame from base to tip. Palette: charcoal black, green ember tips, warm ash-glow. No planets, no giant organic structure, no text." },
 
   t1e04: { name: "Climate Seed Die",
-    flavor: "It prints the opening organisms of a climate repair sequence — not the whole world, only the first sentence. Each face encodes a different ecological grammar for a different kind of ruin. The civilization that cuts the die is declaring which damages it has decided to forgive.",
+    flavor: "The die prints the first organisms needed to heal a damaged climate. One face has never been used.",
     artifactForm: "Fabrication Tool / Biotech Module", blueprintRole: "climate repair patterning",
     blueprintFamilies: "Planetary Cradle Engine; Ecumenopolis Lattice", civLane: "restorative biosphere civilization",
     engineeringScale: "Planetary",
     artPrompt: "Tabletop product-shot, 3/4 overhead angle, dark studio void background. A small fabrication die — cube-shaped, dark metal, each face bearing a different micro-ecology pattern in fine relief; tiny root and cell motifs etched across the surfaces catch cool green light. Fingertip-sized. Palette: dark metal, cool green, pale cellular detail. No full planet, no space, no text." },
 
   t1e05: { name: "Facetcell Shard",
-    flavor: "Living crystal whose cells decide what to become based on how light breaks through them. Photonic logic grown into biological tissue blurs the boundary between organism and machine before either category can claim ownership. What assembles from such shards does not fit cleanly into either.",
+    flavor: "Living crystal cells change their purpose as light passes through them. Under moonlight, they arrange themselves into unfamiliar machines.",
     artifactForm: "Material / Biotech Module", blueprintRole: "cellular optical computation",
     blueprintFamilies: "Planetary Cradle Engine; Matrioshka Mind precursor", civLane: "crystalline cell ecology",
     engineeringScale: "Planetary",
     artPrompt: "Extreme macro close-up, dark studio void background. A faceted organic crystal shard — translucent green-white, with clearly visible cellular inclusions visible through the facet planes; prismatic light breaks across the faces in pale green and teal. Fills the frame. Palette: living green, translucent crystal, pale cellular inclusions, cool teal refraction. No planets, no text." },
 
   t1e06: { name: "Decay Lattice",
-    flavor: "A living rule for decay, ensuring nothing dead becomes useless and nothing useful dies too soon. It governs decomposition rates the way law governs contracts — binding, but biological. Civilizations that adopt it stop treating death as waste and start treating it as scheduled resource.",
+    flavor: "The lattice decides how quickly dead matter becomes food again. Certain bones take much longer than they should.",
     artifactForm: "Biotech Module / Protocol", blueprintRole: "managed decomposition",
     blueprintFamilies: "Planetary Cradle Engine; Spiral Ecology Mesh precursor", civLane: "recycler biosphere civilization",
     engineeringScale: "Planetary",
     artPrompt: "Extreme macro cross-section view, mineral/rock surface background — dark loam and decomposing matter. A small biological lattice sliced open: a grid of living filaments in an ordered decomposition matrix, dark green with pale nutrient channels visible at the junctions. Thumbnail-sized scale, fills the frame. Palette: dark green, pale nutrient-channel light, rich dark loam. No planets, no giant organism, no text." },
 
-  t1e07: { name: "Lichen Vein",
-    flavor: "Engineered lichen that teaches stone infrastructure how to heal at the edges. Where it colonizes, the boundary between built and grown becomes difficult to locate. Civilizations that grow it into their cities eventually stop distinguishing between maintenance and growth.",
-    artifactForm: "Biotech Module / Interface", blueprintRole: "stone-life integration",
-    blueprintFamilies: "Ecumenopolis Lattice; Mantle-to-Orbit Foundry", civLane: "urban symbiosis civilization",
+  t1e07: {
+    name: "Lichen Vein",
+    flavor:
+      "Engineered lichen grows through stone and closes its cracks. Old walls repaired this way sometimes develop new doorways.",
+    artifactForm: "Biotech Module / Interface",
+    blueprintRole: "stone-life integration",
+    blueprintFamilies: "Ecumenopolis Lattice; Mantle-to-Orbit Foundry",
+    civLane: "urban symbiosis civilization",
     engineeringScale: "Planetary",
-    artPrompt: "Installation-scale eye-level view, mineral/rock surface background — massive stone and metal facade. A lichen vein colony covering an entire building-wall face: vivid living green tissue spreading in a branching pattern across many meters of engineered stone and metal; the active healing interface glows faint bioluminescent green along its advancing edge, visible at eye level. The wall fills the entire frame. Palette: deep green lichen, grey stone, dark metal, faint bioluminescent healing edge. No planets, no text." },
+    artPrompt:
+      "Extreme macro close-up, mineral/rock surface background — a joined stone-and-metal test coupon. A hand-sized engineered lichen vein bridges a fracture between the two materials; vivid green tissue branches through the crack while its advancing repair edge glows faint bioluminescent green. Palette: deep green lichen, grey stone, dark metal, faint healing-edge glow. No building facade, no planets, no text.",
+  },
 
   t1e08: { name: "Necrobloom Bed",
-    flavor: "A cultivation bed where the dead are not raised, but recruited. Fossil matter and inert soil go in, and pale living blooms emerge — not resurrection, but reclassification. What the bed declares eligible for the next cycle, the ecology accepts.",
+    flavor: "Dead soil enters the bed; pale life emerges. The blooms occasionally carry memories of the vanished ecosystem.",
     artifactForm: "Biotech Module / Archive", blueprintRole: "dead-biome reactivation",
     blueprintFamilies: "Planetary Cradle Engine; Spiral Ecology Mesh precursor", civLane: "thanatological ecology",
     engineeringScale: "Planetary",
@@ -192,56 +279,63 @@ export const CARD_LORE: Record<string, CardLore> = {
 
   // ── Tier 1 ─ Abyss ───────────────────────────────────────────────────────
   t1o01: { name: "Entropy Veil",
-    flavor: "A veil that hides the heat and wear of failing infrastructure until repair can arrive undetected. The thermal decay signature of a dying shelter vanishes beneath it, buying the time that raw engineering cannot. Civilizations that master concealment learn to distinguish the things worth hiding from the things worth showing.",
+    flavor: "The veil hides the heat of failing machines until repairs arrive. Used too long, it also hides the failure from its owners.",
     artifactForm: "Defense / Shielding", blueprintRole: "decay masking",
     blueprintFamilies: "Worldshield Covenant; Heliopause Bastion precursor", civLane: "hidden-survival civilization",
     engineeringScale: "Planetary",
     artPrompt: "Tabletop eye-level view, soft atmospheric cool glow background — faint purple ambient light. A translucent dark veil draped over a small machine component; the veil is near-invisible but causes the machine beneath it to appear slightly out-of-focus, entropy particles drifting near its edges like slow motes. Handheld scale. Palette: dark translucent purple-black, faint particle motes, dim purple ambient. No planets, no full black hole, no text." },
 
   t1o02: { name: "Horizon Lantern",
-    flavor: "A lantern that brightens near the edges that should not yet be crossed. It does not illuminate the other side — it marks the threshold clearly enough that a civilization can choose to stop here. Whatever the lantern reveals about a boundary, the decision to respect it remains with the traveler.",
+    flavor: "It glows beside boundaries that should not be crossed. The lantern never shows what waits beyond them.",
     artifactForm: "Sensor / Observatory", blueprintRole: "dangerous boundary detection",
     blueprintFamilies: "Dark-Sector Observatory precursor; Worldshield Covenant", civLane: "horizon observer culture",
     engineeringScale: "Planetary",
     artPrompt: "Tabletop eye-level view, dark studio void background. A compact black-metal lantern with a sealed housing; along every edge and seam of the lantern's body a thin blue-white glow indicates proximity to a dangerous boundary. The lens is dark at rest. Handheld scale, sits upright. Palette: matte black metal, thin blue-white edge glow at seams, near-void background. No planets, no black hole vista, no text." },
 
   t1o03: { name: "Ashen Hollow",
-    flavor: "It preserves the shape of what was destroyed — not the object, but the hollow it left. Archive cultures treat the contour of absence as evidence equal to the presence of a recovered artifact. A civilization that learns to read the hollow can reconstruct the history that burned.",
+    flavor: "It preserves the empty shape left by something destroyed. Careful observers can sometimes see the missing object move.",
     artifactForm: "Containment / Archive", blueprintRole: "absence preserving imprint",
     blueprintFamilies: "Worldshield Covenant; Spiral-Arm Archive precursor", civLane: "ash-memory civilization",
     engineeringScale: "Planetary",
     artPrompt: "Room-scale cross-section view, dark studio void background. Interior of a hollow archive vessel shown in cutaway — the inner walls carry precise ash-contour relief maps of objects that were destroyed; a faint negative-space glow traces the absent forms. The vessel's interior fills the frame. Palette: ash grey, deep black walls, faint pale contour glow. No planets, no crater imagery, no text." },
 
   t1o04: { name: "Undergrowth Silencer",
-    flavor: "Buried networks speak beneath it without being heard. Dense organic material dampens acoustic and signal signatures so completely that the communication below registers as silence above. Predators pass over settlements held together by conversations they will never detect.",
+    flavor: "Living fibers smother sound and signals above hidden settlements. Beneath them, whispers travel farther than radio.",
     artifactForm: "Defense / Concealment", blueprintRole: "biological noise suppression",
     blueprintFamilies: "Worldshield Covenant; Spiral Ecology Mesh precursor", civLane: "hidden root civilization",
     engineeringScale: "Planetary",
     artPrompt: "Tabletop macro close-up, mineral/rock surface background — dark loam and root debris. A compact rootlike muffler artifact — dense organic material wound around a dark core; the surface absorbs light, giving it a near-matte appearance; thin root filaments extend outward to anchor it in soil. Walnut-sized. Palette: near-black root mass, dark earth tones, faint dark-green filaments. No full forest, no planets, no text." },
 
-  t1o05: { name: "Scorch-Erasure Seal",
-    flavor: "Applied after sanctioned fire, it removes only the traces that would endanger the innocent — not the record, only the risk. Each deployment is logged as a condition of access, because a civilization that erases selectively must be watched selectively. The seal is proof that the fire happened, and proof that someone decided who to protect from it.",
-    artifactForm: "Protocol / Containment", blueprintRole: "trace removal after ignition",
-    blueprintFamilies: "Worldshield Covenant; Causality Audit Court precursor", civLane: "forensic shadow culture",
+  t1o05: {
+    name: "Blackglass Forge Die",
+    flavor:
+      "A blackglass mold that shapes metal perfectly in airless space. Finished parts emerge cold, even while the forge is burning.",
+    artifactForm: "Fabrication Tool / Material",
+    blueprintRole: "vacuum-stable precision forming",
+    blueprintFamilies:
+      "Mantle-to-Orbit Foundry; Galactic Relic Forge precursor",
+    civLane: "vacuum manufacturing civilization",
     engineeringScale: "Planetary",
-    artPrompt: "Extreme macro close-up, abstract energy field background — dark with faint red distortion waves. A flat dark seal token with a faint halo of red ash particles drifting around its perimeter; the seal's face is smooth with a single circular redaction mark pressed into its center. Coin-sized scale, fills the frame. Palette: near-black seal, deep red ash halo, dark energy distortion. No planets, no text or letters on the seal face." },
+    artPrompt:
+      "Tabletop product-shot, 3/4 overhead angle, dark vacuum-chamber background. A palm-sized precision forge die made from glossy near-black glass-ceramic, its forming cavity cut into clean orbital truss geometry; faint violet edge light is absorbed rather than reflected across most of its surface. Palette: blackglass, restrained violet edge light, dark metal chamber. No full foundry, no planets, no text.",
+  },
 
   t1o06: { name: "Decay Network",
-    flavor: "A hidden network that routes decay toward need, not merely downward into rot. What dies in the network becomes what the living parts require next. Civilizations that build it stop mourning their infrastructure and start managing it.",
+    flavor: "This buried web feeds decay back to whatever still lives. Nothing connected to it is ever entirely discarded.",
     artifactForm: "Protocol / Biotech Module", blueprintRole: "distributed decomposition routing",
     blueprintFamilies: "Planetary Cradle Engine; Spiral Ecology Mesh precursor", civLane: "subsurface recycler civilization",
     engineeringScale: "Planetary",
     artPrompt: "Extreme macro cross-section view, mineral/rock surface background — dark soil and substrate. A single dark bio-network node sliced open: inside, branching routing channels direct decay matter toward collecting chambers; the junction glows faint green-purple where active decomposition routing is occurring. Marble-sized scale, fills the frame. Palette: near-black node body, dark soil, faint green-purple junction glow. No full network visible, no planets, no text." },
 
   t1o07: { name: "Absence Shard",
-    flavor: "Measured by what it refuses to reflect, it maps the invisible load-bearing voids that hold structures together without appearing in them. A shard that shows only its own absence tells a surveyor where nothing is — which is, unexpectedly, the most useful information. Some structures exist entirely as a pattern of carefully maintained absence.",
+    flavor: "The shard maps invisible gaps that support impossible structures. It casts no shadow of its own.",
     artifactForm: "Material / Sensor", blueprintRole: "negative-space reference material",
     blueprintFamilies: "Dark-Sector Observatory precursor; Worldshield Covenant", civLane: "absence mathematician culture",
     engineeringScale: "Planetary",
     artPrompt: "Extreme macro close-up, dark studio void background. A dark shard — deep black-grey material with a polished face that shows an anomalous negative-space reflection: where other objects would reflect, the shard reflects only its own absence. One edge catches faint pale light while the rest absorbs completely. Finger-length scale, fills the frame. Palette: near-black, charcoal grey facets, pale edge light. No planets, no text." },
 
   t1o08: { name: "Temporal Erasure Seal",
-    flavor: "A redaction seal that hides a dangerous hour without deleting the lesson it should have taught. The record exists; the access to it does not — until a civilization becomes capable of surviving what it reveals. Some hours were sealed not to be forgotten, but to be opened later by someone wiser.",
+    flavor: "The seal hides a dangerous hour without erasing it. Every copy bears a date that has not arrived.",
     artifactForm: "Protocol / Archive", blueprintRole: "limited record redaction",
     blueprintFamilies: "Causality Audit Court precursor; Worldshield Covenant", civLane: "protective secrecy civilization",
     engineeringScale: "Planetary",
@@ -249,425 +343,637 @@ export const CARD_LORE: Record<string, CardLore> = {
 
   // ── Tier 1 ─ Radiance ────────────────────────────────────────────────────
   t1p01: { name: "Correction Seed",
-    flavor: "Planted in damaged systems, it initiates correction from within rather than imposing repair from outside. Biological material, legal code, and structural alloy accept it the same way — as a geometric seed whose instructions are already inside. What grows from it is not restored to what it was, but corrected toward what it was trying to be.",
+    flavor: "Planted inside a damaged system, it guides the whole toward repair. What returns is healthier, but never quite the same.",
     artifactForm: "Protocol / Biotech Module", blueprintRole: "error correction in growth or law",
     blueprintFamilies: "Planetary Cradle Engine; Ecumenopolis Lattice", civLane: "restorative civic biology",
     engineeringScale: "Planetary",
     artPrompt: "Extreme macro close-up, dark studio void background. A single white-gold seed with precise geometric correction facets on its casing — not organic, but architecturally exact; each facet plane catches warm gold light differently, giving the seed a jewel-like precision. Grain-of-wheat scale, fills the frame. Palette: white-gold, warm gold facet light, pure black void. No planets, no text." },
 
   t1p02: { name: "Still-Point Shard",
-    flavor: "Used to hold one room, one reactor, or one treaty still while the world argues around it. The stillness is not permanent — only long enough for the right intervention. A civilization that knows how to hold one point stable has the first requirement for holding everything else.",
+    flavor: "The shard holds one place perfectly still while everything around it changes. Dust crossing its edge falls in straight lines.",
     artifactForm: "Control Instrument / Stabilization", blueprintRole: "local equilibrium anchor",
     blueprintFamilies: "Worldshield Covenant; Causality Audit Court precursor", civLane: "equilibrium civic culture",
     engineeringScale: "Planetary",
     artPrompt: "Extreme macro close-up, abstract energy field background — faint white distortion waves suspended motionless. A white-gold crystal shard that appears to be suspending local motion: the energy field around it is frozen in place, forming a small zone of perfect stillness around the shard's surface. Finger-length scale, fills the frame. Palette: white-gold crystal, pale distortion freeze, luminous white field. No planets, no baked-in text or labels anywhere in the image." },
 
   t1p03: { name: "Prismatic Hollow",
-    flavor: "A hollow prism that separates signal from glamour before either can become policy. Light entering one face exits from another having been sorted: actionable truth distinct from persuasive narrative. Governance bodies that use one stop fighting over what the data means and start fighting over what to do about it.",
+    flavor: "A hollow prism that separates honest signals from persuasive noise. Lies leave through a face that appears solid.",
     artifactForm: "Interface / Sensor", blueprintRole: "truth-sorting aperture",
     blueprintFamilies: "Worldshield Covenant; Dark-Sector Observatory precursor", civLane: "revelatory optics civilization",
     engineeringScale: "Planetary",
     artPrompt: "Tabletop eye-level view, soft atmospheric warm-gold glow background. A hollow prism — white-gold glass, visible cavity at its center; light entering one face is refracted and split, with pure signal-wavelengths emerging from one face and glamour-wavelengths blocked. Solar white-gold refraction fills the glass body. Handheld scale. Palette: white-gold, warm solar refraction, soft atmospheric glow. No planets, no giant megastructure, no text." },
 
   t1p04: { name: "Magnetic Bottle",
-    flavor: "A bottle made of discipline more than matter — it holds fire by persuading every field in the vicinity to agree. What it contains does not press against walls but against geometry, which holds better. The civilization that learns to contain plasma learns that most dangerous things can be held if the container is precise enough.",
+    flavor: "Magnetic fields hold star-hot plasma without walls. The bottle hums louder when its contents notice the opening.",
     artifactForm: "Containment / Power Component", blueprintRole: "plasma or field containment",
     blueprintFamilies: "Starlift Foundry precursor; Mantle-to-Orbit Foundry", civLane: "field-containment culture",
     engineeringScale: "Planetary",
     artPrompt: "Tabletop product-shot, 3/4 overhead angle, dark studio void background. A compact magnetic containment bottle — spherical-ovoid form in white-gold metal; visible gold magnetic field lines curve around the exterior like latitude lines, converging at the poles; a faint warm plasma glow is just visible through the translucent equatorial band. Handheld scale. Palette: white-gold metal, luminous gold field lines, warm plasma interior glow. No planets, no text." },
 
   t1p05: { name: "Recursive Lens",
-    flavor: "A lens that examines its own assumptions before it is trusted to examine the world. Observation systems fitted with it submit their own biases as the first data point in any reading. A civilization that requires its instruments to audit themselves is preparing for the discovery that some of its certainties were mirrors.",
+    flavor: "Before examining the world, this lens examines its own bias. Occasionally it refuses to show the observer.",
     artifactForm: "Sensor / Protocol", blueprintRole: "self-auditing perception",
     blueprintFamilies: "Causality Audit Court precursor; Matrioshka Mind precursor", civLane: "self-correcting optics culture",
     engineeringScale: "Planetary",
     artPrompt: "Tabletop eye-level view, dark studio void background. A circular white-gold lens in a precision housing; the lens surface shows recursive reflections of itself — smaller and smaller versions of the same lens visible in its center, catching the same white-gold light. Handheld scale, sits upright. Palette: white-gold, luminous recursive reflection geometry, dark void. No text, no labels." },
 
   t1p06: { name: "Living Lattice Node",
-    flavor: "A relay point where living infrastructure coordinates its own repair without centralized command. At each junction, biological and structural systems negotiate stress distribution without conflict. The civilization that builds these discovers that its city, given the right protocol, would rather heal itself than wait to be healed.",
+    flavor: "A living junction that lets buildings coordinate their own repair. Unused nodes sometimes begin healing nearby ruins.",
     artifactForm: "Biotech Module / Civic Signal", blueprintRole: "living civic coordination node",
     blueprintFamilies: "Ecumenopolis Lattice; Galactic Concordance Engine precursor", civLane: "dense civic ecology",
     engineeringScale: "Planetary",
     artPrompt: "Extreme macro close-up, soft atmospheric warm-gold glow background. A small bio-civic coordination node — organic material at its core with geometric gold lattice extensions radiating outward like a living circuit; the lattice glows warm white-gold at each junction point. Fills the frame, marble-sized scale. Palette: warm white-gold lattice, living cream-tissue core, soft gold atmospheric glow. No planets, no text." },
 
   t1p07: { name: "Void Prism",
-    flavor: "A prism that makes darkness legible without pretending darkness has become safe. It renders the physics of forbidden zones readable — not traversable, not domesticated, only visible. What it shows remains dangerous; what it gives is the dignity of knowing what kind of danger you are choosing not to cross.",
+    flavor: "The prism makes forbidden darkness visible, not safe. Something on the other side appears to be looking back.",
     artifactForm: "Sensor / Interface", blueprintRole: "illumination of hidden void states",
     blueprintFamilies: "Dark-Sector Observatory precursor; Worldshield Covenant", civLane: "hidden sun civilization",
     engineeringScale: "Planetary",
     artPrompt: "Tabletop product-shot, 3/4 overhead angle, abstract energy field background — dark with white-gold energy distortion. A prism with a black-violet interior: light entering from one face is converted to a readable void-state spectrum exiting from another; white-gold edge lines define the prism geometry against the dark interior. Handheld scale. Palette: black-violet interior, white-gold edges, dark energy field. No planets, no text." },
 
-  t1p08: { name: "Petrified Bloom",
-    flavor: "A stone flower used as proof that a living pattern can survive long after its garden cannot. The fossil holds not just the shape but the confirmation — this grew here; this was real. Civilizations that build with such proof stop asking whether recovery is possible and start asking what form it should take.",
-    artifactForm: "Archive / Material", blueprintRole: "preserved life-pattern reference",
-    blueprintFamilies: "Planetary Cradle Engine; Spiral-Arm Archive precursor", civLane: "fossil civic ecology",
+  t1p08: {
+    name: "Petrified Bloom",
+    flavor:
+      "A stone flower proving that life once survived here. Its petals open slightly whenever rain approaches.",
+    artifactForm: "Archive / Material",
+    blueprintRole: "preserved life-pattern reference",
+    blueprintFamilies: "Planetary Cradle Engine; Spiral-Arm Archive precursor",
+    civLane: "fossil civic ecology",
     engineeringScale: "Planetary",
-    artPrompt: "Installation-scale eye-level view, mineral/rock surface background — cliff face of luminous pale stone. A fossil bloom preserved in a cliff-wall several meters across: the flower's petals are rendered in white-gold mineral at architectural scale, their light-catching facets visible from a distance; faint bioluminescent veins still active in the surrounding stone trace the outline of a garden long gone. The cliff face fills the frame. Palette: white-gold fossil bloom, warm pale stone cliff, faint living-vein glow. No text, no labels." },
+    artPrompt:
+      "Tabletop product-shot, 3/4 overhead angle, mineral/rock surface background — warm pale stone. A hand-sized fossil bloom carefully cut from its matrix: white-gold mineral petals preserve the complete flower pattern while faint bioluminescent veins remain active in the surrounding stone sample. Palette: white-gold fossil bloom, warm pale stone, faint living-vein glow. No cliff, no building-scale flower, no text, no labels.",
+  },
 
   // ── Tier 2 ─ Flare ───────────────────────────────────────────────────────
   t2r01: { name: "Stellar Crucible",
-    flavor: "A crucible small enough to stand beside, fed by equations only a star-system economy can afford. Star-sourced material flows through it and emerges as exotic alloys no planetary furnace could form. A civilization that operates one has moved from consuming its planet to borrowing from its star.",
+    flavor: "This chamber turns matter drawn from a star into materials no planet can make. Its walls remember every sun they have touched.",
     artifactForm: "Fabrication Tool / Containment", blueprintRole: "star-powered materials processing",
     blueprintFamilies: "Starlift Foundry; Galactic Relic Forge precursor", civLane: "stellar industrial civilization",
     engineeringScale: "Star-system",
     artPrompt: "Room-scale eye-level view, abstract energy distortion background — rippling red-gold plasma interference. A stellar crucible standing at human height — squat cylindrical refractory vessel with star-material flow entering through an upper port: a contained stream of compressed solar plasma flows down into the melt chamber, visible through a reinforced observation slit. Palette: deep red, molten gold, dark refractory metal. No full star, no planets, no text." },
 
   t2r02: { name: "Biomass Ignition Index",
-    flavor: "A calibration record for burning surplus biomass without burning the habitats that produced it. Orbital settlements and ark fleets consult it before igniting any bioenergy reserve, treating the index as a legal instrument as much as a technical one. Civilizations that maintain it across generations stop burning their futures along with their fuel.",
+    flavor: "The index says how much living fuel can be burned without starving the future. Several pages remain permanently sealed.",
     artifactForm: "Protocol / Biotech Module", blueprintRole: "controlled bioenergy sequencing",
     blueprintFamilies: "Heliosphere Weather Loom; Arkseed Migration Fleet", civLane: "star-fed biosphere culture",
     engineeringScale: "Star-system",
     artPrompt: "Tabletop product-shot, 3/4 overhead angle, dark studio void background. A protocol index object — a compact layered disc or tablet of biopolymer and dark metal, its surface bearing a radial arrangement of ignition-threshold markings etched in relief (geometric, not text). Biomass sample chambers are visible as small sealed cells around the perimeter. Handheld scale. Palette: warm red-orange accents, dark biopolymer, deep green biomass cells. No text or labels." },
 
   t2r03: { name: "Starlift Nozzle",
-    flavor: "A precision throat that turns star-plasma from apocalypse into supply chain. Through this geometry, the forces that would incinerate a world become a controlled stream moving raw material into the construction pipeline. What passes through the nozzle without destroying it is proof a civilization has learned to handle a star.",
+    flavor: "This immense nozzle turns stellar fire into a controlled stream of raw material. Its narrowest point is colder than space.",
     artifactForm: "Control Instrument / Containment", blueprintRole: "stellar matter extraction",
     blueprintFamilies: "Starlift Foundry", civLane: "pressure-harvesting industrial civilization",
     engineeringScale: "Star-system",
     artPrompt: "Installation-scale cross-section view, abstract energy field background — red-orange plasma shimmer. A massive starlift nozzle throat in cross-section: the convergent-divergent channel geometry spans a space large enough to walk through; inner walls are dark refractory alloy with cooling fins, compressed star-plasma flowing through the throat as a bright controlled stream filling the center. The cross-section fills the frame. Palette: dark alloy walls, contained red-gold plasma stream, heat-glow orange. No text." },
 
   t2r04: { name: "Photosynthetic Furnace Wick",
-    flavor: "A living furnace wick that lets cold ark-habitats carry a remembered sun between worlds. Stellar heat absorbed in transit is slowly released across the crossing, sustaining biological systems through the dark. Civilizations that grow them into their vessels stop needing stars to be nearby and start needing only to have known one.",
+    flavor: "A living wick carries stored sunlight through the dark between worlds. It continues glowing after the host habitat dies.",
     artifactForm: "Biotech Module / Power Component", blueprintRole: "habitat-scale light-to-heat conversion",
     blueprintFamilies: "Heliosphere Weather Loom; Arkseed Migration Fleet", civLane: "stellar greenhouse civilization",
     engineeringScale: "Star-system",
     artPrompt: "Tabletop eye-level view, soft atmospheric warm glow background. A living furnace wick fitted into habitat machinery: an organic stalk held in a dark metal mount, its tissue dense with amber-gold photosynthetic capillaries; the wick glows with stored solar heat, warming the metal bracket that holds it inside a habitat wall cavity. Handheld component scale. Palette: warm amber, living green-gold capillaries, dark metal mount. No solar farm, no planets, no text." },
 
   t2r05: { name: "Causality Furnace Valve",
-    flavor: "A furnace valve that opens only when the cost of power has been named in advance. Stellar-scale energy systems wait on its judgment before the operator's desire is granted. The civilizations that require it are the ones permitted to operate furnaces that could end worlds.",
+    flavor: "The valve opens only after calculating the harm its power may cause. It has refused orders from every known government.",
     artifactForm: "Control Instrument / Protocol", blueprintRole: "controlled consequence release",
     blueprintFamilies: "Causality Audit Court precursor; Starlift Foundry", civLane: "causal-risk engineer civilization",
     engineeringScale: "Star-system",
     artPrompt: "Extreme macro close-up, abstract energy field background — red and blue causal interference ripple. A compact furnace valve with a split-flow design: one side channels red heat flow, the other channels blue causal-lock signal; the valve seat is visible at center, closed until both flows agree. Coin-sized mechanism scale, fills the frame. Palette: deep red heat channel, sapphire blue causal lock, dark metal body. No full furnace, no planets, no text." },
 
-  t2r06: { name: "Entropy Sink Crucible",
-    flavor: "A sink-crucible that turns the insult of stellar waste heat into one more useful argument for survival. Every unit of energy that would otherwise radiate as thermal pollution is converted into secondary output instead. A civilization that accounts for its waste at star-system scale has earned the right to expand further.",
-    artifactForm: "Power Component / Thermal Control", blueprintRole: "waste heat capture",
-    blueprintFamilies: "Dyson Swarm; Matrioshka Mind", civLane: "thermal accountant civilization",
+  t2r06: {
+    name: "Entropy Sink Crucible",
+    flavor:
+      "This crucible turns stellar waste heat into more useful energy. Its final outlet has no recorded destination.",
+    artifactForm: "Power Component / Thermal Control",
+    blueprintRole: "waste heat capture",
+    blueprintFamilies: "Dyson Swarm; Matrioshka Mind",
+    civLane: "thermal accountant civilization",
     engineeringScale: "Star-system",
-    artPrompt: "Planetary-scale eye-level view, planetary backdrop background — planet surface and terminator line visible. The entropy sink crucible as a planetary installation: a massive dark thermal-ceramic tower complex visible against a planet's terminator line; orange-red heat glow from the upper collection manifolds illuminates the surrounding dark surface; the scale dwarfs any city. Palette: dark thermal-ceramic, deep orange heat glow, planet surface and atmospheric limb. No text." },
+    artPrompt:
+      "Room-scale cross-section view, dark thermal laboratory background. A bounded entropy-sink crucible module in dark thermal ceramic: nested collection manifolds feed orange-red waste heat into a compact secondary-output chamber, with cooling geometry visible around the vessel. Palette: dark thermal ceramic, deep orange heat glow, near-black laboratory. No tower complex, no planet, no text.",
+  },
 
   // ── Tier 2 ─ Continuum ───────────────────────────────────────────────────
   t2s01: { name: "Interstice Gate Seed",
-    flavor: "No larger than a hand, planted where routes may someday learn to open. Route planners seed candidate transit points decades before infrastructure is ready, marking the possibility before committing to the cost. What grows from a gate seed is not a gate — only the permission for one to exist here.",
+    flavor: "A small seed placed where a gateway might one day open. Some begin growing before any route is planned.",
     artifactForm: "Interface / Transit Component", blueprintRole: "gate-site initialization",
     blueprintFamilies: "Wormgate Spine precursor; Arkseed Migration Fleet", civLane: "route-planner civilization",
     engineeringScale: "Star-system",
     artPrompt: "Extreme macro close-up, dark studio void background. A small aperture seed — ovoid, translucent blue-sapphire casing with a spatial seam visible as a thin luminous line running along its equator; the seam glows blue where the gate potential is stored. Handheld scale, fills the frame. Palette: deep sapphire blue, luminous spatial seam, near-black void. No planets, no full gate structure, no text." },
 
   t2s02: { name: "Storm-Memory Filament",
-    flavor: "A thread that remembers every solar storm it has survived, then warns the worlds before the next one learns their names. The memory encoded in its color variations cannot be politically edited — it records what happened, not what a civilization wished had happened. Archives built from such filaments are more trustworthy than the governments that commissioned them.",
+    flavor: "This filament remembers every solar storm it survives and warns the next world. Its oldest memory predates the star.",
     artifactForm: "Archive / Sensor", blueprintRole: "stellar weather memory",
     blueprintFamilies: "Heliosphere Weather Loom; Matrioshka Mind", civLane: "heliosphere archivist culture",
     engineeringScale: "Star-system",
     artPrompt: "Extreme macro close-up, soft atmospheric cool glow background — faint blue storm-light. A fine memory filament coiled loosely: the thread is deep sapphire with storm-pattern data encoded as subtle periodic color variations along its length, each band a stored storm event; the filament glows faintly blue. Fills the frame. Palette: deep sapphire blue, cool storm-light variations, blue atmospheric glow. No full solar array, no planets, no text." },
 
-  t2s03: { name: "Simulation Loom",
-    flavor: "A loom that weaves possible years, then cuts the strands that demand too many graves. Governance bodies that require a loom audit before major decisions treat the cut threads as a public record of what was considered and rejected. A civilization that shows its rejected futures has decided that transparency is a precondition for trust.",
-    artifactForm: "Fabrication Tool / Computation Substrate", blueprintRole: "predictive model weaving",
-    blueprintFamilies: "Matrioshka Mind; Causality Audit Court precursor", civLane: "simulation guild civilization",
+  t2s03: {
+    name: "Simulation Loom",
+    flavor:
+      "The loom weaves possible futures, then cuts away the deadliest. A few severed threads keep moving.",
+    artifactForm: "Fabrication Tool / Computation Substrate",
+    blueprintRole: "predictive model weaving",
+    blueprintFamilies: "Matrioshka Mind; Causality Audit Court precursor",
+    civLane: "simulation guild civilization",
     engineeringScale: "Star-system",
-    artPrompt: "Installation-scale eye-level view, dark studio void background. A simulation loom filling a warehouse: dark metal frame spans from floor to ceiling and wall to wall, with luminous sapphire-blue threads stretched across it in complex branching patterns; cut threads hang free (rejected timelines) while intact threads glow steadily across the full span. The loom fills the frame completely. Palette: deep blue simulation threads, dark metal frame, near-black void. No text." },
+    artPrompt:
+      "Tabletop product-shot, 3/4 overhead angle, dark studio void background. A console-sized simulation loom in a dark precision frame, with luminous sapphire-blue computation threads stretched through branching gates; a few cut threads mark rejected futures while intact paths glow steadily. Palette: deep blue simulation threads, dark metal frame, near-black void. No warehouse, no building, no text.",
+  },
 
   t2s04: { name: "Continuity Vessel",
-    flavor: "A vessel that keeps a people continuous when distance tries to make them merely related. Loaded before dispersal and recovered when populations reconvene, it holds the shared identity that migration cannot carry in memory alone. What survives inside it is not a culture but the agreement that a culture still exists.",
+    flavor: "The vessel preserves a people's shared identity across centuries of separation. On reunion, it sometimes remembers an extra branch.",
     artifactForm: "Archive / Containment", blueprintRole: "identity continuity preservation",
     blueprintFamilies: "Arkseed Migration Fleet; Spiral-Arm Archive precursor", civLane: "migration memory civilization",
     engineeringScale: "Star-system",
     artPrompt: "Tabletop eye-level view, dark studio void background. A sealed cylindrical archive vessel in dark blue-grey metal; a band of memory light glows along the mid-section, pale sapphire-white, indicating active identity continuity storage. No portraits, no people visible. Handheld scale, sits upright. Palette: dark blue-grey metal, pale sapphire memory band, near-black void. No people, no solar system imagery, no text." },
 
   t2s05: { name: "Mnemosyne Star-Index",
-    flavor: "An index that lets every world remember the same disaster without agreeing on the same myth. Each culture's version is preserved without overwriting the others, and the index holds all of them in indexed tension. A civilization that builds one has accepted that truth has a distribution, not a single address.",
+    flavor: "It stores many worlds' memories of the same event without choosing one as truth. Contradictions gather near its center.",
     artifactForm: "Archive / Civic Signal Object", blueprintRole: "multi-world memory indexing",
     blueprintFamilies: "Matrioshka Mind; Spiral-Arm Archive precursor", civLane: "distributed archive civilization",
     engineeringScale: "Star-system",
     artPrompt: "Tabletop product-shot, 3/4 overhead angle, soft atmospheric cool glow background. An index shard or prism — faceted deep blue, with faint star-map geometry hints visible as internal refraction patterns inside the crystal; the facets catch sapphire and pale gold light. Handheld scale, sits on a dark surface. Palette: deep sapphire blue, pale gold refraction hints, cool atmospheric glow. No words, no text anywhere in the image." },
 
-  t2s06: { name: "Convergence Lens",
-    flavor: "A lens that shows when different categories are being forced to pretend they were always one. Wherever physics regimes interact or policy categories compress under administrative pressure, it brightens at the boundary. A civilization that installs this in its decision chambers has decided that false simplicity is its own kind of catastrophe.",
-    artifactForm: "Sensor / Interface", blueprintRole: "wildcard pressure inspection",
-    blueprintFamilies: "Singularity Containment Mandala precursor; Causality Audit Court precursor", civLane: "convergence-risk civilization",
+  t2s06: {
+    name: "Convergence Lens",
+    flavor:
+      "The lens reveals when different things are being forced into one answer. It cracks under perfect agreement.",
+    artifactForm: "Sensor / Interface",
+    blueprintRole: "wildcard pressure inspection",
+    blueprintFamilies:
+      "Singularity Containment Mandala precursor; Causality Audit Court precursor",
+    civLane: "convergence-risk civilization",
     engineeringScale: "Star-system",
-    artPrompt: "Planetary-scale eye-level view, planetary backdrop background — atmosphere and surface horizon visible. The convergence lens as a planet-spanning detection array: a massive white-gold lens structure visible at planetary scale, its surface catching multiple wavelengths of convergence pressure simultaneously; chromatic boundary edges bloom along the lens face where categories are being forced together. Palette: white-gold lens array, chromatic convergence edge light, planet horizon. No text." },
+    artPrompt:
+      "Room-scale eye-level view, abstract convergence-field background. A large but bounded white-gold inspection lens in a precision gimbal, its face catching several wavelengths of convergence pressure simultaneously; separated chromatic boundaries bloom where incompatible categories are being forced together. Palette: white-gold lens, chromatic boundary light, dark instrument frame. No planet-spanning array, no horizon, no text.",
+  },
 
   // ── Tier 2 ─ Verdance ────────────────────────────────────────────────────
   t2e01: { name: "Solar Immune Organ",
-    flavor: "Grown into every habitat deployed beyond a sheltered atmosphere, it teaches living tissue which starlight to welcome and which to refuse. The organ's rejection patterns are as informative as its tolerances — together they describe what a biosphere has decided it is. Civilizations that graft it before departure stop asking whether their passengers will survive and start asking what they will become.",
+    flavor: "Grafted into a habitat, this organ teaches life which starlight to accept. It sometimes rejects the home star.",
     artifactForm: "Biotech Module / Defense", blueprintRole: "radiation adaptation",
     blueprintFamilies: "Heliosphere Weather Loom; Arkseed Migration Fleet", civLane: "multi-world biosphere civilization",
     engineeringScale: "Star-system",
     artPrompt: "Extreme macro close-up, dark studio void background. A compact solar immune organ — a dense organic graft, deep green with internal immune-pattern architecture visible through its semi-translucent surface; radiation-filter layers are stacked inside like interference gratings. Fills the frame, palm-sized. Palette: deep green, semi-translucent immune layers, warm solar-edge glow at the surface. No whole worldroot, no planets, no text." },
 
   t2e02: { name: "Dormancy Clock Graft",
-    flavor: "A graft that lets a habitat sleep for centuries without forgetting when to wake hungry. Ark hulls fitted with it can enter managed silence for transits too long for active life support. The growth ring record it leaves cannot be falsified — when the habitat wakes, its history is already written into its walls.",
+    flavor: "The graft lets whole habitats sleep for centuries and wake on time. Some awaken with one season missing.",
     artifactForm: "Biotech Module / Archive", blueprintRole: "long-cycle dormancy timing",
     blueprintFamilies: "Arkseed Migration Fleet; Stellar Nursery Rite", civLane: "deep-time biological culture",
     engineeringScale: "Star-system",
     artPrompt: "Extreme macro close-up, mineral/rock surface background — dark aged bark or hull material. A biological clock-graft adhering to an organic surface: ring-pattern growth cycles are visible on the graft's upper surface like tree rings; the dormancy mechanism is a sealed bud at center, dark and compressed. Fills the frame, palm-sized. Palette: dark green-brown graft, ring pattern growth bands, dark bark substrate. No planets, no cosmic scene, no text." },
 
   t2e03: { name: "Abyssal Culture Flask",
-    flavor: "A sealed flask of life trained to grow where sunlight is a rumor and pressure constitutes the local weather. Whatever survives inside it has already answered the question of whether darkness can support life. Civilizations that develop it stop treating void environments as empty and start treating them as destinations.",
+    flavor: "A sealed flask where life learns to thrive without light. Shapes gather against the glass when no one is watching.",
     artifactForm: "Biotech Module / Containment", blueprintRole: "dark-adapted culture growth",
     blueprintFamilies: "Heliopause Bastion; Spiral Ecology Mesh precursor", civLane: "dark-adapted biosphere culture",
     engineeringScale: "Star-system",
     artPrompt: "Tabletop eye-level view, dark studio void background. A sealed dark culture flask — pressure-rated, dark metal and tinted glass casing; inside, bioluminescent dark-adapted organisms glow faint blue-green in their growth medium; the flask is compact, pressure-sealed for deep dark environments. Handheld scale. Palette: near-black flask body, faint blue-green bioluminescence inside, dark void. No full garden, no planets, no text." },
 
   t2e04: { name: "Mycelial Relay Spindle",
-    flavor: "A spindle of engineered mycelium that translates between habitat, ship, soil, and silence. Biological systems that share no common protocol speak through it anyway, the signal traveling across substrates that would otherwise be deaf to each other. What becomes possible when all of a civilization's living systems can listen to each other is still being discovered.",
+    flavor: "This living spindle translates signals among ships, soil, machines, and flesh. Recently, it began answering messages no one sent.",
     artifactForm: "Interface / Biotech Module", blueprintRole: "interplanetary biological signaling",
     blueprintFamilies: "Arkseed Migration Fleet; Heliosphere Weather Loom", civLane: "symbiotic signal civilization",
     engineeringScale: "Star-system",
     artPrompt: "Tabletop product-shot, 3/4 overhead angle, dark studio void background. A mycelial relay spindle — a finger-length biological spool with engineered mycelium threads wound around it; the threads are deep green with bioluminescent signal nodes at regular intervals along their length. The spindle sits upright on a dark surface. Palette: deep green mycelium, pale bioluminescent nodes, dark void. No huge network, no planets, no text." },
 
-  t2e05: { name: "Epoch Graft Ledger",
-    flavor: "A living ledger that changes tissue when an age ends, so the body learns history before the mind does. Grafted into civic walls, it encodes each era as a new growth band that cannot be altered without destroying the tissue that carries it. The most honest historical record a civilization can keep is one that bleeds when edited.",
-    artifactForm: "Archive / Biotech Module", blueprintRole: "biological era-tracking",
-    blueprintFamilies: "Arkseed Migration Fleet; Spiral-Arm Archive precursor", civLane: "living chronology civilization",
+  t2e05: {
+    name: "Epoch Graft Ledger",
+    flavor:
+      "A living ledger grows a new band whenever an age ends. One ring records an era absent from every history.",
+    artifactForm: "Archive / Biotech Module",
+    blueprintRole: "biological era-tracking",
+    blueprintFamilies: "Arkseed Migration Fleet; Spiral-Arm Archive precursor",
+    civLane: "living chronology civilization",
     engineeringScale: "Star-system",
-    artPrompt: "Installation-scale eye-level view, soft atmospheric green glow background. A living epoch-ledger covering an entire wall face: growth-ring strata in living tissue stripe the surface from floor to ceiling in horizontal bands, each layer a distinct era of biological history; the newest layer glows faint green at the top. The ledger wall fills the frame. Palette: deep green strata bands, pale living surface glow, atmospheric green light. No readable text, no planets." },
+    artPrompt:
+      "Tabletop eye-level view, soft atmospheric green glow background. A rolled living epoch-ledger grown as a forearm-sized strip of tissue; layered growth-ring strata record distinct biological eras, and the newest band glows faint green along one edge. Palette: deep green strata, pale living surface, atmospheric green light. No civic wall, no readable text, no planets.",
+  },
 
-  t2e06: { name: "Crystal Biome Seedplate",
-    flavor: "A seedplate that grows transparent habitats where crystal structure and living metabolism negotiate their shared architecture. The boundary between mineral and biological is not dissolved but managed, layer by layer, at the interface where both are necessary. Civilizations that seed these habitats stop distinguishing between building and growing.",
-    artifactForm: "Material / Biotech Module", blueprintRole: "crystal-organic habitat seeding",
-    blueprintFamilies: "Heliosphere Weather Loom; Stellar Nursery Rite", civLane: "crystalline ecology civilization",
+  t2e06: {
+    name: "Crystal Biome Seedplate",
+    flavor:
+      "The seedplate grows habitats that are both crystal and alive. Their first rooms always face the same unknown star.",
+    artifactForm: "Material / Biotech Module",
+    blueprintRole: "crystal-organic habitat seeding",
+    blueprintFamilies: "Heliosphere Weather Loom; Stellar Nursery Rite",
+    civLane: "crystalline ecology civilization",
     engineeringScale: "Star-system",
-    artPrompt: "Installation-scale cross-section view, mineral/rock surface background — crystal formation substrate. A seedplate in cross-section at architectural scale: the cut reveals alternating crystal and living-cell layers spanning meters of depth; the crystal planes are translucent green-white, the organic layers between them pale and metabolically active. The cross-section face fills the frame entirely. Palette: translucent green-white crystal, pale organic cell layers, mineral substrate. No full biome, no text." },
+    artPrompt:
+      "Extreme macro cross-section view, mineral/rock surface background. A hand-sized seedplate cutaway reveals alternating translucent crystal planes and metabolically active living-cell layers, with germination channels radiating from its center. Palette: translucent green-white crystal, pale organic cells, mineral substrate. No architectural slab, no full biome, no text.",
+  },
 
   // ── Tier 2 ─ Abyss ───────────────────────────────────────────────────────
   t2o01: { name: "Horizon Extractor",
-    flavor: "An extractor that samples the edge of forbidden physics without inviting the edge inside. At boundaries where ordinary instruments would be destroyed, it harvests what is available without crossing the threshold that makes it unsafe. A civilization that operates one has learned the discipline of knowing exactly how much of the edge to touch.",
+    flavor: "The extractor samples the edge of dangerous physics without crossing it. Something at the boundary occasionally samples back.",
     artifactForm: "Sensor / Containment", blueprintRole: "boundary-energy sampling",
     blueprintFamilies: "Dark-Sector Observatory; Starlift Foundry", civLane: "horizon engineer civilization",
     engineeringScale: "Star-system",
     artPrompt: "Tabletop eye-level view, abstract energy field background — dark with a sharp boundary edge where physics changes. A compact extractor tool positioned at an abstract horizon boundary — dark metal housing with a sample probe extended toward the edge; the probe tip glows pale blue-white where it touches forbidden-physics space. Handheld device scale. Palette: dark metal, pale blue-white probe tip, dark energy boundary. No full black hole scene, no planets, no text." },
 
   t2o02: { name: "Radiant Erasure Casket",
-    flavor: "A casket for dangerous light — sealing revelations until public knowledge can survive them. The contained disclosure presses against the lid but cannot escape; it waits for a civilization ready to receive it. What survives inside may be the most important thing a civilization has ever chosen not to say.",
+    flavor: "The casket seals knowledge too dangerous to release. Light still escapes around the lid, spelling no known language.",
     artifactForm: "Containment / Protocol", blueprintRole: "authorized signal deletion",
     blueprintFamilies: "Heliopause Bastion; Worldshield Covenant", civLane: "lawful redaction civilization",
     engineeringScale: "Star-system",
     artPrompt: "Extreme macro close-up, dark studio void background. A small dark casket — near-black metal with a sealed lid; white-gold light bleeds from the seam around the lid, the contained revelation pressing against its bounds but unable to escape. Matchbox-sized scale, fills the frame. Palette: near-black casket, white-gold light seam, deep void. No text, no labels." },
 
   t2o03: { name: "Entropic Furnace Baffle",
-    flavor: "A baffle that routes stellar waste into shadowed work instead of letting heat become a confession. Every unit of entropy that would radiate as a detectable signature is redirected into productive shadow output. A civilization invisible to thermal detection has bought the rarest thing a civilization can own: time to decide who to trust.",
+    flavor: "This baffle hides and reuses the heat that would reveal a starbound people. Even nearby suns seem dimmer around it.",
     artifactForm: "Thermal Control / Defense", blueprintRole: "entropy redirection",
     blueprintFamilies: "Starlift Foundry; Matrioshka Mind", civLane: "waste-heat shadow culture",
     engineeringScale: "Star-system",
     artPrompt: "Room-scale eye-level view, soft atmospheric dark glow background — deep shadow environment. A large dark thermal baffle — wall-mounted, dark absorptive panels with recessed routing channels that direct waste heat into hidden work chambers; faint deep-orange glow visible in the channel voids. The baffle fills the frame. Palette: near-black absorptive panels, deep orange heat in channels, dark shadow atmosphere. No giant furnace, no planets, no text." },
 
   t2o04: { name: "Extinction Forge Die",
-    flavor: "A die cast from the composite debris of failed worlds — used to manufacture replacement parts for futures that nearly ended. The material record of a civilization's collapse guides the shape of whatever is built next. What the die produces cannot be documented; the documentation burned with the civilization whose ruins made it possible.",
+    flavor: "Forged from the ruins of failed worlds, this die makes parts for whatever comes next. Every copy bears the same fracture.",
     artifactForm: "Fabrication Tool / Archive", blueprintRole: "post-collapse reconstruction tooling",
     blueprintFamilies: "Galactic Relic Forge precursor; Spiral-Arm Archive precursor", civLane: "extinction-survivor culture",
     engineeringScale: "Star-system",
     artPrompt: "Tabletop product-shot, 3/4 overhead angle, mineral/rock surface background — dark ash and fossilized debris. A small forge die — cube-shaped, cast from dark composite material containing visible fossil and ash inclusions from failed worlds; the die faces bear geometric replacement-part cavity profiles. Fingertip-sized. Palette: dark composite with ash-grey and fossil inclusions, near-black surfaces. No text, no labels on the die faces." },
 
   t2o05: { name: "Eventide Ecology Seal",
-    flavor: "A seal that lets an ecosystem go dark gracefully instead of collapsing into hunger. Applied as energy diminishes, it slows the biological systems that would otherwise tear themselves apart. What enters dormancy through the seal is not dead — only waiting for conditions that have not yet arrived.",
+    flavor: "The seal lets an ecosystem sleep instead of starving as its light fades. Dormant roots continue counting the years.",
     artifactForm: "Protocol / Biotech Module", blueprintRole: "managed ecological shutdown",
     blueprintFamilies: "Heliosphere Weather Loom; Spiral Ecology Mesh precursor", civLane: "twilight ecology civilization",
     engineeringScale: "Star-system",
     artPrompt: "Extreme macro close-up, soft atmospheric twilight glow background — dim green fading to dark. A dim ecology seal token — organic material, deep green on its outer rim grading to near-black at center; a living ecological pattern is visible as a faint relief on its surface, in the process of gracefully dimming. Coin-sized scale. Palette: deep green outer rim, twilight fade to near-black center, dim atmospheric glow. No text on token surface." },
 
-  t2o06: { name: "Dimensional Shear Gauge",
-    flavor: "A gauge that measures when space is about to stop being infrastructure and start being injury. Wormgate sites and dark-sector boundaries are monitored by these instruments before any structure is committed to the local geometry. The civilizations that build at the edge are the ones that installed the gauge before breaking ground.",
-    artifactForm: "Sensor / Interface", blueprintRole: "boundary stress measurement",
-    blueprintFamilies: "Heliopause Bastion; Wormgate Spine precursor", civLane: "spatial stress engineer civilization",
+  t2o06: {
+    name: "Dimensional Shear Gauge",
+    flavor:
+      "The gauge warns when stressed space is about to tear. Its needle trembles near certain people.",
+    artifactForm: "Sensor / Interface",
+    blueprintRole: "boundary stress measurement",
+    blueprintFamilies: "Heliopause Bastion; Wormgate Spine precursor",
+    civLane: "spatial stress engineer civilization",
     engineeringScale: "Star-system",
-    artPrompt: "Planetary-scale cross-section view, planetary backdrop background — surface and atmosphere visible. A dimensional shear gauge array spanning a hemisphere in cross-section: the shear boundary slices through the planet's upper atmosphere as a visible tear; the gauge chambers are planetary-scale structures embedded in the crust, their stress-indicator filaments bent by the shear force and visible against the atmospheric limb. Palette: dark metal gauge structures, pale shear-distortion lines across atmosphere, planet surface texture. No warship, no text." },
+    artPrompt:
+      "Room-scale cross-section view, abstract spatial-stress background. A bounded dimensional shear gauge in dark metal: several transparent measurement chambers surround a narrow test aperture, and fine indicator filaments bend visibly as pale shear-distortion lines cross the opening. Palette: dark metal, pale spatial-distortion lines, cool instrument light. No hemisphere-wide array, no planet, no text.",
+  },
 
   // ── Tier 2 ─ Radiance ────────────────────────────────────────────────────
-  t2p01: { name: "Containment Lattice",
-    flavor: "A containment lattice built to be inspected by citizens, not merely trusted by engineers. The geometry is readable without instrumentation — every hazardous cell visible, no hidden chambers. A civilization that requires public legibility in its most dangerous infrastructure has accepted that transparency is not a courtesy but a structural requirement.",
-    artifactForm: "Containment / Civic Signal", blueprintRole: "public-safe hazardous containment",
-    blueprintFamilies: "Starlift Foundry; Singularity Containment Mandala precursor", civLane: "transparent containment civilization",
+  t2p01: {
+    name: "Containment Lattice",
+    flavor:
+      "Every dangerous chamber in this lattice can be inspected from outside. One sealed cell appears empty from every angle.",
+    artifactForm: "Containment / Civic Signal",
+    blueprintRole: "public-safe hazardous containment",
+    blueprintFamilies:
+      "Starlift Foundry; Singularity Containment Mandala precursor",
+    civLane: "transparent containment civilization",
     engineeringScale: "Star-system",
-    artPrompt: "Installation-scale eye-level view, dark studio void background. A multi-story containment lattice facade — white-gold geometric frame with transparent hazard-containment cells arranged in a regular grid across the entire building face; each cell glows softly from within, designed so citizens at ground level can inspect each chamber. The lattice fills the frame from edge to edge. Palette: white-gold frame, luminous containment cell glow, near-black void. No text." },
+    artPrompt:
+      "Tabletop product-shot, 3/4 overhead angle, dark studio void background. A modular white-gold containment lattice with a small grid of transparent hazard cells, each chamber fully visible and softly lit so its state can be inspected without instruments. Palette: white-gold frame, transparent luminous cells, near-black void. No building facade, no hidden chambers, no text.",
+  },
 
   t2p02: { name: "Null-Convergence Prism",
-    flavor: "A prism that brightens when too many meanings are being crushed into one convenient answer. At decision points where categorical pressure accumulates, it flares — not an alarm, but a record that compression is occurring. Governance bodies that monitor it learn to distinguish real problems from problems that have been made to look like other problems.",
+    flavor: "The prism glows when many meanings are crushed into one convenient answer. Its brightest flare has never been explained.",
     artifactForm: "Sensor / Interface", blueprintRole: "category collapse warning",
     blueprintFamilies: "Singularity Containment Mandala precursor; Matrioshka Mind", civLane: "convergence-auditing civilization",
     engineeringScale: "Star-system",
     artPrompt: "Tabletop eye-level view, abstract energy field background — white convergence pressure waves. A prism with chromatic warning edges: normally neutral, when category convergence is detected the prism face blazes with separated white chromatic boundaries; the edges catch light sharply as distinct spectra. Handheld scale. Palette: white chromatic edges, pale lens body, abstract energy field. No planets, no text." },
 
   t2p03: { name: "Living Treaty Organ",
-    flavor: "An organ grown to hold agreements between worlds whose bodies disagree about what comfort means. The treaty exists as living tissue rather than as a document that can be contested — changing the agreement requires changing the organism. Civilizations that grow these have decided that the most trustworthy contract is one that cannot be forged.",
+    flavor: "This living organ holds an agreement between worlds as flesh, not paper. Breaking the treaty makes it bleed.",
     artifactForm: "Biotech Module / Civic Protocol", blueprintRole: "multi-world biological governance",
     blueprintFamilies: "Heliosphere Weather Loom; Galactic Concordance Engine precursor", civLane: "plural civic ecology",
     engineeringScale: "Star-system",
     artPrompt: "Extreme macro close-up, dark studio void background. A living treaty organ — an organic structure with geometric gold signal lines running through its tissue in a regular treaty-geometry pattern; the gold lines glow where inter-world agreements are actively maintained. Palm-sized, fills the frame. Palette: living cream-green tissue, geometric gold signal lines, dark void. No text, no portraits." },
 
   t2p04: { name: "Heliostat Filament",
-    flavor: "A single filament from a light-steering civilization; in the right orbit, it teaches mirror arrays to cooperate. The micro-etched orbital guidance marks along its length carry instructions for stellar redirection at a precision no broadcast signal can achieve. Civilizations that weave enough of them into a system eventually stop pointing at their star and start directing it.",
+    flavor: "A single filament teaches vast mirrors how to steer a star's light. At night, it points beyond the system.",
     artifactForm: "Power Component / Signal Object", blueprintRole: "stellar light alignment",
     blueprintFamilies: "Dyson Swarm; Heliosphere Weather Loom", civLane: "solar coordination civilization",
     engineeringScale: "Star-system",
     artPrompt: "Extreme macro close-up, soft atmospheric gold glow background. A single fine gold-white heliostat filament — an almost impossibly thin thread that catches and refracts light along its entire length; micro-etched orbital guidance marks are visible as subtle texture. Fills the frame. Palette: warm gold-white filament, luminous gold atmospheric glow. No full solar array, no planets, no text." },
 
-  t2p05: { name: "Error-Correcting Core",
-    flavor: "A core that spends more energy admitting mistakes than lesser machines spend pretending not to make them. Computation that must remain coherent across stellar distances and relativistic time cannot afford to accumulate error in silence. The architecture that makes admitting mistakes cheaper than hiding them is the only one a civilization can trust across centuries.",
-    artifactForm: "Computation Substrate / Protocol", blueprintRole: "high-energy error correction",
-    blueprintFamilies: "Matrioshka Mind; Causality Audit Court precursor", civLane: "precision computation civilization",
+  t2p05: {
+    name: "Error-Correcting Core",
+    flavor:
+      "The core finds and repairs mistakes across vast distances. It keeps a private record of errors that should have been impossible.",
+    artifactForm: "Computation Substrate / Protocol",
+    blueprintRole: "high-energy error correction",
+    blueprintFamilies: "Matrioshka Mind; Causality Audit Court precursor",
+    civLane: "precision computation civilization",
     engineeringScale: "Star-system",
-    artPrompt: "Installation-scale product-shot, 3/4 overhead angle, dark studio void background. A large-scale error-correcting computation facility: a building-height cylindrical structure in white-gold housing, its exterior surface covered in ordered correction-geometry panels that glow warm white; concentric correction-field architecture is visible as raised relief banding around the full circumference. The structure fills the frame. Palette: white-gold housing, ordered geometric correction glow, dark void. No text, no labels." },
+    artPrompt:
+      "Tabletop product-shot, 3/4 overhead angle, dark studio void background. A console-sized cylindrical error-correcting core in white-gold housing, with ordered correction-geometry panels glowing warm white and concentric field bands visible around its circumference. Palette: white-gold housing, ordered geometric glow, dark void. No computation facility, no building, no text, no labels.",
+  },
 
   t2p06: { name: "Radiation Treaty Prism",
-    flavor: "A prism used to negotiate how much stellar danger each habitat agrees to bear for the others. The faces are tuned to specific tolerance wavelengths, each one corresponding to a habitat's capacity and its commitment. A civilization that distributes radiation exposure by negotiation instead of proximity has decided that fairness is a physics problem.",
+    flavor: "The prism divides stellar radiation fairly among many habitats. One face accepts a burden assigned to no world.",
     artifactForm: "Civic Signal / Sensor", blueprintRole: "shared radiation governance",
     blueprintFamilies: "Heliosphere Weather Loom; Arkseed Migration Fleet", civLane: "multi-world biosphere treaty culture",
     engineeringScale: "Star-system",
     artPrompt: "Tabletop eye-level view, nebula field background — distant stellar cloud, no planets or moons. A radiation treaty prism in white-gold housing: its faces are tuned to specific habitat-tolerance wavelengths, each face catching a different treaty-band of stellar light. The nebula behind provides soft stellar context without dominating. Handheld scale. Palette: white-gold prism, multi-band stellar light refraction, soft nebula field. No text, no labels." },
 };
 
-// Tier 3 ── added separately so the file stays scannable
+// Tier 3 represents complete Type III public works rather than component-sized
+// objects. Blueprints remain distinct as secret syntheses of forged Artifacts.
 Object.assign(CARD_LORE, {
   // ── Tier 3 ─ Flare ─────────────────────────────────────────────────────
-  t3r01: { name: "Relic Ignition Key",
-    flavor: "A key that starts machines no single star system could afford to misunderstand. The ignition sequence it initiates cannot be retried — the energy budget of such a start is spent entire. Civilizations that hold this in reserve have separated the question of whether they could start the machine from the question of whether they should.",
-    artifactForm: "Power Component / Interface", blueprintRole: "relic-scale activation",
-    blueprintFamilies: "Galactic Relic Forge; Star-River Migration Lattice", civLane: "relic-making expansion civilization",
+  t3r01: {
+    name: "Ignition Reliquary",
+    flavor:
+      "Across the galaxy, this network preserves how every tended star first ignited. Dead suns sometimes answer before the relighting begins.",
+    artifactForm: "Galactic Energy Network / Archive",
+    blueprintRole: "stellar ignition continuity",
+    blueprintFamilies: "Stellar Nursery Rite; Galactic Relic Forge",
+    civLane: "stellar lineage civilization",
     engineeringScale: "Galactic",
-    artPrompt: "Tabletop eye-level view, nebula field background — faint stellar cloud, no planets or moons. A hand-sized ignition key in relic metal — aged dark alloy with red-gold plasma channeled along its key-bit geometry; the activation contacts glow with contained ignition potential. Sits on an implied surface. Palette: aged dark alloy, red-gold plasma channels, soft nebula behind. No galaxy disc, no text." } as CardLore,
+    artPrompt:
+      "Galactic-scale panoramic view along a spiral arm. Thousands of dark reliquary foundries encircle stars of different ages, linked by restrained red-gold ignition channels; one dim star is being carefully restarted from a preserved stellar pattern. Palette: near-black infrastructure, red-gold controlled plasma, varied natural starlight. Show a distributed galactic work, not a key or handheld object. No text.",
+  } as CardLore,
 
-  t3r02: { name: "Extinction Furnace Veto",
-    flavor: "A veto token used when a civilization proves it can build an extinction furnace and chooses not to open it. The refusal is the credential — not the capability. A civilization that presents this token is saying that it understands the difference between what is possible and what should be done, and intends to stay on the right side of that line.",
-    artifactForm: "Protocol / Control Instrument", blueprintRole: "civilization-ending energy veto",
-    blueprintFamilies: "Causality Audit Court; Black-Map Pilgrimage Engine", civLane: "catastrophe-governance culture",
+  t3r02: {
+    name: "Extinction Furnace",
+    flavor:
+      "The Furnace dismantles dying stars and ruined megastructures, returning their matter to the galaxy. Every use is witnessed; not every witness returns.",
+    artifactForm: "Galactic Disassembly Megastructure / Power Infrastructure",
+    blueprintRole: "terminal-system disassembly",
+    blueprintFamilies: "Causality Audit Court; Black-Map Pilgrimage Engine",
+    civLane: "catastrophe-governance civilization",
     engineeringScale: "Galactic",
-    artPrompt: "Extreme macro close-up, dark studio void background. A small flat veto seal in dark metal: its face is smooth except for a single authorized extinction-refusal mark pressed into the center; the only visual reference to the furnace is a faint reflection of red-orange heat visible on the polished underside. Coin-sized scale, fills the frame. Palette: near-black metal seal, faint red-orange reflection, dark void. No giant furnace, no planets, no text on the face." } as CardLore,
+    artPrompt:
+      "Galactic industrial scene around a dying red star. Vast black furnace arcs and red-gold extraction channels dismantle a derelict megastructure into ordered matter streams while distant white witness stations remain visibly connected. Palette: black refractory machinery, deep red stellar fire, white-gold oversight lights. Physically immense and governed, not a token or seal. No text.",
+  } as CardLore,
 
-  t3r03: { name: "Temporal Burn Audit Lens",
-    flavor: "A lens that traces which histories were burned as fuel before the surviving timeline called itself natural. It shows the audit record of what was consumed to make the present possible — the alternate years incinerated as feedstock. Civilizations that can read this lens are required to decide whether they earned their timeline or merely outlasted the others.",
-    artifactForm: "Sensor / Protocol", blueprintRole: "timeline-energy risk audit",
-    blueprintFamilies: "Causality Audit Court; Spiral-Arm Archive", civLane: "temporal hazard civilization",
+  t3r03: {
+    name: "Chronoflare Array",
+    flavor:
+      "The Array times stellar flares across the galaxy so distant systems receive power together. Its countdown begins at different numbers everywhere.",
+    artifactForm: "Galactic Energy Array / Chronology Infrastructure",
+    blueprintRole: "synchronized galactic power",
+    blueprintFamilies: "Causality Audit Court; Matrioshka Chorus precursor",
+    civLane: "relativistic energy civilization",
     engineeringScale: "Galactic",
-    artPrompt: "Tabletop product-shot, 3/4 overhead angle, soft atmospheric warm-cool glow background — amber-to-blue gradient. A compact audit lens in a dark housing: when held to the light, controlled fire-time traces are visible within the glass as faint orange-red filaments crossing sapphire temporal thread lines, revealing burned histories. Handheld scale. Palette: warm orange history traces, cool sapphire temporal lines, dark housing. No giant event, no planets, no text." } as CardLore,
+    artPrompt:
+      "Wide galactic-arm view of many stars held in a synchronized energy array. Red-orange flares ignite in a deliberate sequence across deep space while sapphire timing fronts connect them along curved relativistic routes. Palette: stellar red-orange, sapphire chronology light, dark cosmic structure. Show coordinated infrastructure across many systems, not a lens. No text.",
+  } as CardLore,
 
-  t3r04: { name: "Star-River Propulsion Core",
-    flavor: "A propulsion core calibrated for living habitats — powerful enough to move homes without turning them into cargo. Entire inhabited biospheres travel through star-system distances on it without their living systems being suspended or compressed. A civilization that operates one has rejected the premise that moving and living are mutually exclusive.",
-    artifactForm: "Power Component / Biotech Interface", blueprintRole: "biosphere migration propulsion",
-    blueprintFamilies: "Star-River Migration Lattice; Galactic Relic Forge", civLane: "living expansion civilization",
+  t3r04: {
+    name: "Star-River Crucible",
+    flavor:
+      "A river of stellar matter flows through galactic foundries and emerges as habitats, engines, and young worlds. Some arrive already inhabited.",
+    artifactForm: "Galactic Fabrication Infrastructure / Biotech Interface",
+    blueprintRole: "living megastructure fabrication",
+    blueprintFamilies: "Star-River Migration Lattice; Galactic Relic Forge",
+    civLane: "living industrial expansion civilization",
     engineeringScale: "Galactic",
-    artPrompt: "Stellar-scale eye-level view, stellar backdrop background — star visible as luminous context, no planets. The star-river propulsion core as a stellar installation: a massive cylindrical structure in stellar orbit, dark metal with biological interface ports scaled to accept entire living habitats; red-gold propulsion energy streams from the drive end and green bio-coupling glow illuminates the habitat interface zone. Palette: dark metal, red-gold propulsion energy, green biological interface glow, stellar light. No text, no labels." } as CardLore,
+    artPrompt:
+      "Galactic-scale industrial river crossing several star systems. Streams of red-gold stellar feedstock pass through enormous dark crucible stations and emerge as luminous habitat rings and green living world-shells. Palette: red-gold matter streams, dark industrial frames, restrained green biological light, natural stars. Show the whole interstellar production chain, not one propulsion core. No text.",
+  } as CardLore,
 
   // ── Tier 3 ─ Continuum ─────────────────────────────────────────────────
-  t3s01: { name: "Voidline Compass",
-    flavor: "It fits in one hand, but only a civilization with a galaxy of mistakes can read where it points. The routes it detects do not appear on official navigation records — they are the transit infrastructure of civilizations that had reasons to remain unmapped. A compass that finds what no published chart admits exists belongs to someone who has stopped asking for permission to navigate.",
-    artifactForm: "Transit Component / Sensor", blueprintRole: "hidden route detection",
-    blueprintFamilies: "Wormgate Spine; Dark-Sector Observatory", civLane: "lawful hidden-transit civilization",
+  t3s01: {
+    name: "Wormgate Spine",
+    flavor:
+      "A chain of wormgates forms the galaxy's great road. When one gate fails, the Spine quietly remembers another route.",
+    artifactForm: "Galactic Transit Megastructure / Control Network",
+    blueprintRole: "galactic transit continuity",
+    blueprintFamilies: "Black-Map Pilgrimage Engine; Extragalactic Gatework",
+    civLane: "interstellar transit civilization",
     engineeringScale: "Galactic",
-    artPrompt: "Tabletop eye-level view, dark studio void background. A palm-sized compass instrument — dark metal housing, its needle is a sliver of voidline material that points along hidden transit routes; subtle star-route hints are etched on the compass rose as geometric paths. Sits upright. Palette: dark metal, voidline needle with cool blue-black glow, dark void. No giant structure, no planets, no text." } as CardLore,
+    artPrompt:
+      "Deep galactic perspective along a chain of monumental sapphire-dark wormgates curving through a spiral arm, each gate linked by luminous route filaments and surrounded by distinct inhabited systems. Palette: deep sapphire, pale transit light, varied stellar colors, dark structure. Show the complete backbone, not a compass. No text.",
+  } as CardLore,
 
-  t3s02: { name: "Recursion Witness Key",
-    flavor: "A key held by the witness, not the engineer, because recursion without testimony becomes tyranny. Any recursive process operating at civilization scale requires an independent party to hold this key before the next loop begins. The authorization is not trust in the system — it is the acknowledgment that the system must remain accountable to something outside itself.",
-    artifactForm: "Protocol / Civic Signal", blueprintRole: "dangerous recursion authorization",
-    blueprintFamilies: "Causality Audit Court; Spiral-Arm Archive", civLane: "legal-temporal civilization",
+  t3s02: {
+    name: "Recursive Commonwealth",
+    flavor:
+      "Separated societies let their laws diverge, then use the Commonwealth to reconcile. Sometimes it preserves a decision no society recalls making.",
+    artifactForm:
+      "Distributed Civic Continuity Network / Protocol Infrastructure",
+    blueprintRole: "distributed civic reconciliation",
+    blueprintFamilies: "Causality Audit Court; Galactic Concordance",
+    civLane: "plural continuity civilization",
     engineeringScale: "Galactic",
-    artPrompt: "Extreme macro close-up, dark studio void background. A slim authorization key with recursive geometry — the key bit is a self-similar fractal pattern cut from deep sapphire metal; the shaft is smooth dark material. Finger-length scale, fills the frame. Palette: deep sapphire-blue recursive bit geometry, dark metal shaft, near-black void. No giant fire, no planets, no text." } as CardLore,
+    artPrompt:
+      "Galactic network of several visibly different inhabited systems connected by branching sapphire civic routes that separate, evolve distinct geometric patterns, and rejoin at transparent reconciliation stations. Palette: sapphire continuity light, white witness structures, varied habitat colors. Show a distributed institution, not a key or throne. No text.",
+  } as CardLore,
 
-  t3s03: { name: "Ancestor Signal Key",
-    flavor: "It unlocks messages sent by species that died before your star was named. What the extinct civilization chose to transmit across the silence is not known until the key is turned — and turning it is understood as an act of reception, not intrusion. The key is proof that some civilizations planned for futures they would never inhabit.",
-    artifactForm: "Archive / Civic Signal", blueprintRole: "extinct-civilization handshake",
-    blueprintFamilies: "Spiral-Arm Archive; Galactic Concordance Engine", civLane: "archivist civilization",
+  t3s03: {
+    name: "Extinction Archive",
+    flavor:
+      "The Archive keeps the voices, jokes, failures, and unfinished warnings of extinct peoples. A few records are still receiving replies.",
+    artifactForm: "Galactic Archive Network / Civic Signal",
+    blueprintRole: "extinct-civilization memory",
+    blueprintFamilies: "Spiral-Arm Archive; Galactic Concordance",
+    civLane: "galactic archivist civilization",
     engineeringScale: "Galactic",
-    artPrompt: "Extreme macro close-up, soft atmospheric cool-gold glow background — ancient starlight quality. A signal key or shard with fossil star-language motifs: the key surface is covered in eroded geometric message-geometry from an extinct civilization, glowing faintly sapphire-gold where the signal is still active. Finger-length scale, fills the frame. Palette: aged metal with fossil sapphire-gold motifs, faint cool-gold atmospheric glow. No readable text, no letters." } as CardLore,
+    artPrompt:
+      "Galactic archive network spanning several silent star systems. Monumental sapphire-black archive stations orbit dead worlds and exchange pale-gold ancestral signals across the darkness, with no central capital. Palette: deep sapphire, aged dark metal, pale-gold memory light, cold dead stars. Show the complete distributed archive, not a key or shard. No readable text.",
+  } as CardLore,
 
-  t3s04: { name: "Chronology Governor",
-    flavor: "A governor for calendars that span species, relativistic routes, and wars over who gets to define before. Without a shared reference, every civilization's history begins at a different moment and refuses to be compared. What it governs is not just time but the agreement that time can be shared — and the understanding that without that agreement, there is no such thing as a common history.",
-    artifactForm: "Control Instrument / Protocol", blueprintRole: "galactic timeline governance",
-    blueprintFamilies: "Causality Audit Court; Spiral-Arm Archive", civLane: "chronology-governing civilization",
+  t3s04: {
+    name: "Chronology Accord",
+    flavor:
+      "The Accord lets worlds with different clocks share one history. It contains dates that every participant insists came first.",
+    artifactForm: "Galactic Chronology Infrastructure / Civic Protocol",
+    blueprintRole: "galactic chronology governance",
+    blueprintFamilies: "Causality Audit Court; Spiral-Arm Archive",
+    civLane: "chronology-governing civilization",
     engineeringScale: "Galactic",
-    artPrompt: "Stellar-scale eye-level view, stellar backdrop background — star and stellar cloud visible as context. The chronology governor as a stellar authority station: a large precision governance structure in stellar orbit, dark sapphire-blue metal with time-map facets catching stellar light; calibration mechanisms visible along its equatorial band; the station maintains galactic calendar agreement from its stellar vantage. Palette: deep sapphire-blue metal, dark time-map facets, stellar light. No crown, no text." } as CardLore,
+    artPrompt:
+      "Wide view of many star systems connected by a galactic chronology accord. Monumental sapphire-white calibration stations anchor distinct local clock fields while transparent time-route bands reconcile them without forcing one uniform ring. Palette: sapphire, white-gold calibration light, varied stellar context. Show galaxy-wide infrastructure, not a governor device. No text.",
+  } as CardLore,
 
   // ── Tier 3 ─ Verdance ──────────────────────────────────────────────────
-  t3e01: { name: "Cryptobiotic Root Key",
-    flavor: "A root key that wakes only on worlds where the old biosphere left permission buried in the soil. It does not force dormant ecologies to open — it listens for the authorization that extinct organisms encoded into the ground before they vanished. Civilizations that carry one have decided that the right to wake a world belongs to whoever the world trusted enough to tell.",
-    artifactForm: "Biotech Module / Transit Component", blueprintRole: "dormant biosphere routing",
-    blueprintFamilies: "Spiral Ecology Mesh; Wormgate Spine", civLane: "hidden ancestral biosphere civilization",
+  t3e01: {
+    name: "Worldroot Lattice",
+    flavor:
+      "Living roots carry nutrients, defenses, and dormant life between worlds without making them alike. Some routes grow toward uncharted planets.",
+    artifactForm: "Galactic Biosphere Network / Transit Ecology",
+    blueprintRole: "biosphere propagation",
+    blueprintFamilies: "Spiral Ecology Mesh; Star-River Migration Lattice",
+    civLane: "interstellar symbiotic civilization",
     engineeringScale: "Galactic",
-    artPrompt: "Extreme macro close-up, mineral/rock surface background — dark ancient soil, fossil root debris. A small root key in dormant state — organic-composite material, its key-tip is a biological probe with dormant organic patterns pressed into its surface; no light, no growth yet. Finger-length scale, fills the frame. Palette: dark green-brown organic composite, fossil root texture, dark soil background. No giant roots, no planets, no text." } as CardLore,
+    artPrompt:
+      "Galactic-scale view of many distinct living worlds connected by enormous but delicate green-gold worldroot corridors, each route changing structure at a planet's ecological boundary. Palette: varied biosphere greens and blues, gold nutrient light, dark space. Show a routed network of worlds, not a handheld root key. No text.",
+  } as CardLore,
 
-  t3e02: { name: "Ecology Substrate Code",
-    flavor: "A substrate code that lets unrelated biospheres share corridors without becoming one invasive species. The protocol does not merge ecologies — it negotiates coexistence at the boundary, letting each retain its grammar while sharing passage. The civilizations that develop it have concluded that contact does not require contamination.",
-    artifactForm: "Protocol / Biotech Module", blueprintRole: "galactic ecology compatibility",
-    blueprintFamilies: "Spiral Ecology Mesh; Galactic Concordance Engine", civLane: "distributed ecology civilization",
+  t3e02: {
+    name: "Stellar Overgrowth",
+    flavor:
+      "Vast living structures surround stars, turning light into habitats and new ecologies. No two grow the same, even from identical seeds.",
+    artifactForm: "Living Stellar Infrastructure / Power Ecology",
+    blueprintRole: "star-integrated ecology",
+    blueprintFamilies: "Spiral Ecology Mesh; Stellar Nursery Rite",
+    civLane: "stellar ecology civilization",
     engineeringScale: "Galactic",
-    artPrompt: "Tabletop eye-level view, dark studio void background. A protocol substrate object — flat organic seed-plate with ecology compatibility code pressed into its surface as geometric biological patterns: cellular geometries, root-network junctions, symbiosis-boundary markers — all in relief, no letters. Handheld tile scale. Palette: deep green-brown organic, pale substrate geometry, dark void. No text, no letter characters anywhere in the image." } as CardLore,
+    artPrompt:
+      "Several stars across a galactic region wrapped in different forms of immense living infrastructure: leaflike collectors, branching habitat reefs, and translucent green-gold orbital tissues, never a uniform shell. Palette: natural stellar fire, deep green living structures, gold energy veins, black space. Show a galactic ecology of stars, not a code plate. No text.",
+  } as CardLore,
 
-  t3e03: { name: "Ancestral Immune Code",
-    flavor: "An immune code written by extinct ecologies to protect living worlds from repeating their last appetite. Distributed along migration routes, it carries the biological warning of predecessors that no longer exist to deliver it themselves. What a dead lineage chose to preserve as its final message says everything about what destroyed it.",
-    artifactForm: "Biotech Module / Archive", blueprintRole: "dead-lineage immune memory",
-    blueprintFamilies: "Spiral Ecology Mesh; Spiral-Arm Archive", civLane: "ancestral necrobiome civilization",
+  t3e03: {
+    name: "Interstellar Necrobiome",
+    flavor:
+      "The Necrobiome turns dead worlds and ruined habitats into safe soil for new life. It remembers what consumed them.",
+    artifactForm: "Galactic Recovery Ecology / Archive",
+    blueprintRole: "dead-system reclamation",
+    blueprintFamilies: "Spiral Ecology Mesh; Spiral-Arm Archive",
+    civLane: "ancestral recycler civilization",
     engineeringScale: "Galactic",
-    artPrompt: "Galactic-scale eye-level view, galactic backdrop background — deep space, galactic-arm star field and nebula cloud visible. The ancestral immune code as a biological formation spanning a galactic arm: vast organic immune-pattern structures formed by extinct ecologies, dark green with pale geometric lattice visible at cosmic scale; the formation extends to the edges of the frame. Palette: deep green biological mass, pale immune-geometry edges, distant star-field and nebula. No text, no labels." } as CardLore,
+    artPrompt:
+      "Interstellar necrobiome spanning a field of dead habitats and dim stars. Vast dark-green mycelial and rootlike structures break derelict megastructures into luminous nutrient streams that feed new pale biosphere seeds in the distance. Palette: deep green, bone-white ruins, pale new-life light, dark space. Show ecological recovery across systems. No text.",
+  } as CardLore,
 
-  t3e04: { name: "Plurality Charter Seed",
-    flavor: "A charter seed that grows different laws for different bodies without letting one species become the soil. It does not force coexistence — it seeds the legal architecture that makes coexistence possible before contact demands it. Civilizations that plant one before negotiation begins have already decided that the other party deserves a document acknowledging their right to remain distinct.",
-    artifactForm: "Protocol / Biotech Module / Civic Signal", blueprintRole: "multi-species coexistence seed",
-    blueprintFamilies: "Galactic Concordance Engine; Spiral Ecology Mesh", civLane: "plural civic ecology civilization",
+  t3e04: {
+    name: "Biosphere Concordance",
+    flavor:
+      "The Concordance lets alien ecologies exchange food, air, and microbes without one consuming the others. Contact leaves both sides changed.",
+    artifactForm: "Galactic Ecology Coordination Network / Biotech Protocol",
+    blueprintRole: "ecological coexistence",
+    blueprintFamilies: "Galactic Concordance; Spiral Ecology Mesh",
+    civLane: "plural biosphere civilization",
     engineeringScale: "Galactic",
-    artPrompt: "Tabletop product-shot, 3/4 overhead angle, soft atmospheric gold-green glow background. A compact seed/seal hybrid — ovoid organic casing covered in many different biological geometries pressed into its surface, each representing a different species' charter in relief; the casing glows faintly gold-green where active charter growth is occurring. Handheld scale. Palette: organic green-gold, multi-geometry relief, warm glow. No crown, no planets, no text." } as CardLore,
+    artPrompt:
+      "Wide galactic scene of radically different biosphere habitats linked by large living exchange stations. At each boundary, green-gold biological corridors visibly transform their cell and atmosphere patterns before reaching the next ecology. Palette: diverse natural habitat colors, green-gold interfaces, white verification light. Show a full compatibility network, not a seed or seal. No text.",
+  } as CardLore,
 
   // ── Tier 3 ─ Abyss ─────────────────────────────────────────────────────
-  t3o01: { name: "Buried Biosphere Seal",
-    flavor: "A seal that keeps a biosphere dormant through centuries of discovery by civilizations too loud to trust. Its deliberate inconspicuousness is its primary defense — designed to be passed over, not to resist. What it protects has been waiting longer than the civilizations currently searching for it have existed.",
-    artifactForm: "Defense / Biotech Module", blueprintRole: "hidden biosphere preservation",
-    blueprintFamilies: "Spiral Ecology Mesh; Dark-Sector Observatory", civLane: "buried survival civilization",
+  t3o01: {
+    name: "Cryptobiotic Constellation",
+    flavor:
+      "Hidden refuge worlds sleep across the galaxy, each able to wake the others after catastrophe. Maps show only lifeless stone.",
+    artifactForm: "Galactic Concealment Network / Biosphere Reserve",
+    blueprintRole: "hidden biosphere preservation",
+    blueprintFamilies: "Spiral Ecology Mesh; Dark-Sector Observatory",
+    civLane: "buried survival civilization",
     engineeringScale: "Galactic",
-    artPrompt: "Extreme macro close-up, mineral/rock surface background — compressed dark soil, ancient root debris. A small buried seal — near-black disc, its face covered in dark organic root hints visible only under oblique light; the seal is deliberately inconspicuous. Coin-sized scale, fills the frame. Palette: near-black seal, dark green root micro-texture, compressed soil substrate. No full planet, no text." } as CardLore,
+    artPrompt:
+      "Dark galactic region containing several apparently lifeless worlds, with subtle cutaway glimpses of dormant green biospheres and near-black preservation infrastructure beneath their crusts; faint hidden links form a constellation only at oblique light. Palette: near-black, cold stone, restrained deep green life, faint blue link light. Show many concealed refuge worlds, not a seal. No text.",
+  } as CardLore,
 
-  t3o02: { name: "Collapse Audit Mirror",
-    flavor: "A mirror that does not show ruin — it shows which safeguards were missing before anyone called ruin inevitable. Collapse-auditing civilizations use it not to mourn but to reconstruct the exact moment a civilization stopped being able to save itself. Governance bodies that look into it prospectively are the ones that do not need to look into it afterward.",
-    artifactForm: "Sensor / Protocol", blueprintRole: "collapse-risk reflection",
-    blueprintFamilies: "Causality Audit Court; Singularity Containment Mandala", civLane: "collapse-auditing civilization",
+  t3o02: {
+    name: "Collapse Mandala",
+    flavor:
+      "The Mandala surrounds black holes, dying worlds, and spreading collapses with observation and containment. Its innermost ring is always empty.",
+    artifactForm: "Galactic Containment Network / Observatory",
+    blueprintRole: "collapse containment",
+    blueprintFamilies: "Singularity Containment Mandala; Causality Audit Court",
+    civLane: "collapse-auditing civilization",
     engineeringScale: "Galactic",
-    artPrompt: "Tabletop eye-level view, dark studio void background. A dark audit mirror in a precision frame — the reflective face shows not the viewer's face but a fractured ecological reflection: incomplete safeguard geometries visible as refracted ghost images within the mirror surface, showing what was missing. Handheld scale. Palette: near-black mirror, dark fractured ecological reflection, deep void. No ruin imagery, no planets, no text." } as CardLore,
+    artPrompt:
+      "Monumental dark containment mandala surrounding a gravitational collapse zone, with multiple concentric infrastructure rings extending into neighboring systems through evacuation and observation corridors. Restrained white and violet status lights reveal ordered control against near-black space. Show a distributed galactic containment work, not a mirror. No text.",
+  } as CardLore,
 
-  t3o03: { name: "Silence Archive Shard",
-    flavor: "A shard that stores signals by hiding them so well that only the intended future can find them. Hidden-survival civilizations that have gone dark use these to preserve their most important records in a form that resists both detection and decay. Some signals have been waiting longer than the civilizations currently capable of reading them.",
-    artifactForm: "Archive / Concealment", blueprintRole: "hidden signal preservation",
-    blueprintFamilies: "Dark-Sector Observatory; Spiral-Arm Archive", civLane: "silent observer civilization",
+  t3o03: {
+    name: "Ordered Silence",
+    flavor:
+      "Buried relays and false constellations let threatened worlds speak without being found. Some decoys have begun sending real messages.",
+    artifactForm: "Galactic Concealment Infrastructure / Signal Protocol",
+    blueprintRole: "galactic signal discipline",
+    blueprintFamilies: "Dark-Sector Observatory; Black-Map Pilgrimage Engine",
+    civLane: "silent survival civilization",
     engineeringScale: "Galactic",
-    artPrompt: "Extreme macro close-up, dark studio void background. A black archive shard — deep void-black material, smooth surfaces; faint sealed signal lines are just visible as hairline luminous traces on two faces, the only indication that information is stored inside. Fills the frame, finger-length scale. Palette: near-black shard, hairline signal traces in pale blue-white, deep void. No text, no labels." } as CardLore,
+    artPrompt:
+      "Wide dark-space view of a protected galactic corridor where luminous signals bend into buried black relay stations while bright decoy constellations broadcast elsewhere. The inhabited route is visible only through subtle pale-blue internal traces. Palette: near-black, pale blue hidden signals, distant false white lights. Show infrastructure across systems, not an archive shard. No text.",
+  } as CardLore,
 
-  t3o04: { name: "Dark-Sector Aperture",
-    flavor: "An aperture into regions that maps cannot admit exist until a civilization is ready to be watched back. What it opens is not a window but a mutual disclosure — observation flows both ways, and anything on the other side already knows it is being seen. Civilizations that deploy one have decided the knowledge is worth the attention it attracts.",
-    artifactForm: "Interface / Sensor", blueprintRole: "forbidden-sector observation",
-    blueprintFamilies: "Dark-Sector Observatory; Black-Map Pilgrimage Engine", civLane: "hidden observer civilization",
+  t3o04: {
+    name: "Dark-Sector Aperture",
+    flavor:
+      "This vast boundary lets the galaxy observe a forbidden dark sector without opening passage. Every instrument faces both ways.",
+    artifactForm: "Galactic Observatory Megastructure / Boundary Interface",
+    blueprintRole: "forbidden-sector observation",
+    blueprintFamilies: "Dark-Sector Observatory; Black-Map Pilgrimage Engine",
+    civLane: "hidden observer civilization",
     engineeringScale: "Galactic",
-    artPrompt: "Galactic-scale eye-level view, galactic backdrop background — deep cosmic void, no galaxy disc at center. The dark-sector aperture as a galactic sensor array: an enormous black aperture structure spanning a galactic sector, the opening reveals void-distortion and forbidden-physics shimmer at cosmic scale; the aperture edges are dark refractory material with pale observation-boundary glow. Palette: near-black aperture structure, void-distortion interior, pale forbidden-physics edge glow. No text, no labels." } as CardLore,
+    artPrompt:
+      "Galactic-scale view of an enormous black observatory aperture spanning the boundary of a dark sector, its opening filled with subtle forbidden-physics distortion and its outer edge lined by pale reciprocal sensor arrays. Palette: near-black structure, void distortion, pale observation light, distant galaxy context. Show the complete boundary work. No text.",
+  } as CardLore,
 
   // ── Tier 3 ─ Radiance ──────────────────────────────────────────────────
-  t3p01: { name: "Concordance Seal",
-    flavor: "No empire can counterfeit it — the seal only opens when rival species agree on what must not be owned. The agreement it requires is not compromise but genuine convergence, and the seal's mechanism distinguishes one from the other. A civilization that has produced one has moved past the question of who is in charge and arrived at the question of what is sacred.",
-    artifactForm: "Protocol / Civic Signal Object", blueprintRole: "multi-species legitimacy",
-    blueprintFamilies: "Galactic Concordance Engine; Causality Audit Court", civLane: "plural civic civilization",
+  t3p01: {
+    name: "Galactic Concordance",
+    flavor:
+      "Courts and enforcement stations bind many species without a galactic capital. The Concordance has no throne, though someone keeps building one.",
+    artifactForm: "Galactic Civic Institution / Enforcement Network",
+    blueprintRole: "multi-species legitimacy",
+    blueprintFamilies: "Causality Audit Court; Biosphere Concordance",
+    civLane: "plural civic civilization",
     engineeringScale: "Galactic",
-    artPrompt: "Tabletop eye-level view, dark studio void background. A flat white-gold civic seal — its face carries void accents as dark inlaid geometry between the gold concordance pattern; the seal radiates quiet authority. Handheld scale, sits on dark surface. Palette: white-gold, void-dark inlay geometry, near-black void background. No giant lattice, no planets, no text." } as CardLore,
+    artPrompt:
+      "Galactic civic network linking many visibly different inhabited systems to distributed white-gold concordance stations, with no central throne or capital. Transparent verification routes and restrained defense structures are shared among species. Palette: white-gold civic light, diverse habitat colors, dark space. Show an institution made physical across systems. No text.",
+  } as CardLore,
 
-  t3p02: { name: "Public Maker-Seal",
-    flavor: "A maker-seal proving that an impossible artifact was built under law, not merely under power. The seal is as significant as the object it certifies — authorized scarcity is a civic commitment, not a market condition. Civilizations that issue these have decided that the most dangerous things must be the most transparent.",
-    artifactForm: "Civic Signal / Fabrication Protocol", blueprintRole: "authorized relic manufacture",
-    blueprintFamilies: "Galactic Relic Forge; Matrioshka Mind", civLane: "relic-making civic civilization",
+  t3p02: {
+    name: "Relic Forge Commons",
+    flavor:
+      "Shared foundries build civilization-changing works in full public view. One production line appears on no approved plan.",
+    artifactForm: "Galactic Fabrication Network / Civic Infrastructure",
+    blueprintRole: "accountable relic manufacture",
+    blueprintFamilies: "Galactic Relic Forge; Matrioshka Chorus precursor",
+    civLane: "public maker civilization",
     engineeringScale: "Galactic",
-    artPrompt: "Tabletop product-shot, 3/4 overhead angle, mineral/rock surface background — dark polished stone. A compact official maker-seal in white-gold: its face bears a computronium microtexture — fine interlocking computation-substrate patterns pressed into the metal at near-atomic scale, visible as a shimmering geometric relief. Coin-sized. Palette: white-gold, computronium microtexture shimmer, dark polished stone. No text, no labels." } as CardLore,
+    artPrompt:
+      "A chain of immense white-gold and dark-metal foundries distributed across several star systems, all manufacturing different megastructure components under transparent observation fields. Public witness stations and visible material routes connect every stage. Palette: white-gold, dark industrial metal, varied controlled energy colors. Show the full commons, not a maker-seal. No text.",
+  } as CardLore,
 
-  t3p03: { name: "Thermal Logic Wafer",
-    flavor: "A wafer of logic designed around waste heat, because even thought must answer for what it burns. The architecture that makes inefficiency structurally impossible is the only one a civilization can sustain at stellar scale. Civilizations that build Matrioshka Minds from these have accepted that accountability is not a governance preference — it is a physics requirement.",
-    artifactForm: "Computation Substrate / Thermal Control", blueprintRole: "star-powered computation unit",
-    blueprintFamilies: "Matrioshka Mind; Galactic Relic Forge", civLane: "nested computational archive civilization",
+  t3p03: {
+    name: "Matrioshka Chorus",
+    flavor:
+      "Thousands of star-sized minds solve problems together without becoming one mind. Between calculations, the Chorus dreams in disagreement.",
+    artifactForm: "Galactic Computation Network / Civic Protocol",
+    blueprintRole: "plural galactic computation",
+    blueprintFamilies: "Matrioshka Mind; Causality Audit Court",
+    civLane: "accountable computation civilization",
     engineeringScale: "Galactic",
-    artPrompt: "Stellar-scale eye-level view, stellar backdrop background — star visible as luminous context in the distance, no planets. The thermal logic wafer manifested at computation-moon scale: a vast flat luminous structure in stellar orbit, white-gold with nested thermal computation channels visible as warm orange traces across its face; the scale is comparable to a moon, visible against the star behind it. Palette: white-gold surface, warm orange thermal computation traces, stellar light. No text, no labels." } as CardLore,
+    artPrompt:
+      "Galactic region filled with several distinct Matrioshka computation systems around different stars, each using different shell geometry and exchanging white-gold logic beams while radiating visible amber waste heat. Palette: white-gold computation light, amber thermal traces, natural stars, dark structure. Show a federation of stellar minds, not a wafer. No text.",
+  } as CardLore,
 
-  t3p04: { name: "Species-Rights Witness Prism",
-    flavor: "A witness prism that records not who rules, but which kinds of beings were allowed to remain themselves. Each species' rights-light exits as a distinct wavelength from a different face — the prism holds them all simultaneously, without collapsing one into another. Future civilizations will use its record to judge whether their predecessors understood what they were protecting.",
-    artifactForm: "Civic Signal / Sensor", blueprintRole: "multi-species rights verification",
-    blueprintFamilies: "Galactic Concordance Engine; Spiral-Arm Archive", civLane: "multi-species civic civilization",
+  t3p04: {
+    name: "Witness Constellation",
+    flavor:
+      "Independent stations preserve evidence of erased histories and broken rights. No ruler knows where every witness is.",
+    artifactForm: "Galactic Verification Network / Civic Observatory",
+    blueprintRole: "public rights verification",
+    blueprintFamilies: "Spiral-Arm Archive; Causality Audit Court",
+    civLane: "multi-species witness civilization",
     engineeringScale: "Galactic",
-    artPrompt: "Tabletop product-shot, 3/4 overhead angle, soft atmospheric multi-tone glow background — warm white-gold with faint varied species-light hues. A witness prism that refracts multi-species life signatures: when held up, each species' rights-light exits as a distinct wavelength from a different face; the prism body is white-gold with multiple life-hue refractions active simultaneously. Handheld scale. Palette: white-gold prism, multiple subtle life-hue refractions, warm atmospheric glow. No crown, no ruler figure, no text." } as CardLore,
+    artPrompt:
+      "Wide view of independent white-gold witness observatories distributed among many inhabited systems, each preserving a distinct species-light spectrum and cross-verifying records through a constellation of thin luminous paths. No central station dominates. Palette: white-gold, subtle varied life-signature colors, deep space. Show the full verification network, not a prism. No text.",
+  } as CardLore,
 });
+
+const tierThreeCanonById: Partial<Record<ArtifactId, TierThreeArtifactCanon>> =
+  TIER_THREE_ARTIFACT_CANON;
+
+for (const [id, lore] of Object.entries(CARD_LORE)) {
+  const artifactId = id as ArtifactId;
+  lore.depictionScale = ARTIFACT_DEPICTION_SCALE_BY_ID[artifactId];
+
+  const canon = tierThreeCanonById[artifactId];
+  if (!canon) continue;
+  lore.name = canon.name;
+  lore.flavor = `${canon.practicalCapability} ${canon.mystery}`;
+  lore.artifactForm = canon.forms.join(' / ');
+  lore.blueprintRole = canon.blueprintRole;
+  lore.blueprintFamilies = canon.blueprintFamilies;
+}
 
 export function getCardLore(id: string): CardLore {
   return CARD_LORE[id] ?? { name: "Unnamed Artifact", flavor: "" };
+}
+
+export function getPublicCardLoreCatalog(): Record<string, PublicCardLore> {
+  return Object.fromEntries(
+    Object.entries(CARD_LORE).map(([id, lore]) => [
+      id,
+      {
+        name: lore.name,
+        flavor: lore.flavor,
+        ...(lore.artifactForm !== undefined && { artifactForm: lore.artifactForm }),
+        ...(lore.blueprintRole !== undefined && { practicalCapability: lore.blueprintRole }),
+        ...(lore.civLane !== undefined && { civLane: lore.civLane }),
+        ...(lore.engineeringScale !== undefined && { engineeringScale: lore.engineeringScale }),
+        depictionScale: getArtifactDepictionScale(lore),
+        ...(lore.artPrompt !== undefined && { artPrompt: lore.artPrompt }),
+      },
+    ]),
+  );
 }

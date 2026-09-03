@@ -69,6 +69,7 @@ function buildOrchestrationModel(procedure: AnimationProcedureStep[]): Orchestra
         break;
       case 'eminenceChange':
       case 'affinityReturn':
+      case 'affinityGain':
         step.playerIds.forEach(id => entityIds.add(id));
         break;
       case 'forgeRefill':
@@ -90,8 +91,9 @@ function buildOrchestrationModel(procedure: AnimationProcedureStep[]): Orchestra
  *
  * Selector priority:
  *   1. [data-card-id]       — Artifact in the Forge (UUID-like card IDs)
- *   2. [data-luminary-id]   — Luminary portal on the board
- *   3. [data-opponent-chip] — opponent Eminence/Affinity panels
+ *   2. [data-slot-key]       — Forge mold position
+ *   3. [data-luminary-id]   — Luminary portal on the board
+ *   4. [data-opponent-chip] — opponent Eminence/Affinity panels
  *
  * The local player's affinity well is pinned outside the scroll container
  * (always visible), so it intentionally returns null here.
@@ -99,6 +101,7 @@ function buildOrchestrationModel(procedure: AnimationProcedureStep[]): Orchestra
 function resolveEntityElement(id: string): HTMLElement | null {
   return (
     document.querySelector<HTMLElement>(`[data-card-id="${CSS.escape(id)}"]`) ??
+    document.querySelector<HTMLElement>(`[data-slot-key="${CSS.escape(id)}"]`) ??
     document.querySelector<HTMLElement>(`[data-luminary-id="${CSS.escape(id)}"]`) ??
     document.querySelector<HTMLElement>(`[data-opponent-chip="${CSS.escape(id)}"]`)
   );

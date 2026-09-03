@@ -14,6 +14,7 @@ import { logger } from "./logger";
 import { withRoomLock, tryClaimAiRunner, releaseAiRunner } from "./roomLock";
 import { armTurnTimer, updateTurnDeadline } from "./turnTimer";
 import { getOpeningTurnPresentationWaitMs } from "./turnPresentationGate";
+import { completeFinishedGame } from "./finishedGame";
 
 const AI_TURN_DELAY_MS = 2200;
 
@@ -99,9 +100,14 @@ export async function runAiTurnsIfNeeded(roomId: string): Promise<void> {
         // re-invoked after each acknowledgement and may act only once the
         // transition has fully released the incoming turn.
         if (
+          state.traceScenario?.phase === "awaiting_guidance" ||
+          state.recurrenceScenario?.phase === "awaiting_custody" ||
+          state.triangulationScenario?.phase === "awaiting_alignment" ||
           !!state.pendingTurnTransition ||
           (state.pendingSummonEvents?.length ?? 0) > 0 ||
-          (state.pendingLuminaryActivationEvents?.length ?? 0) > 0
+          (state.pendingLuminaryActivationEvents?.length ?? 0) > 0 ||
+          (state.pendingBlueprintManifestationEvents?.length ?? 0) > 0 ||
+          (state.pendingBlueprintDetonationEvents?.length ?? 0) > 0
         ) {
           return { kind: "stop" as const };
         }
@@ -150,16 +156,15 @@ export async function runAiTurnsIfNeeded(roomId: string): Promise<void> {
           }
           updateTurnDeadline(state);
           const isFinished = (state.phase as string) === "finished";
-          if (isFinished) {
-            await db.update(roomsTable).set({ status: "finished", updatedAt: new Date() }).where(eq(roomsTable.id, roomId));
-          }
           const updated = await db
             .update(gameStatesTable)
             .set({ state: state as unknown as Record<string, unknown>, version: state.version, updatedAt: new Date() })
             .where(
               and(eq(gameStatesTable.roomId, roomId), eq(gameStatesTable.version, expectedVersion))
-            );
-          if (updated.rowCount === 0) return { kind: "stop" as const };
+            )
+            .returning({ roomId: gameStatesTable.roomId });
+          if (updated.length === 0) return { kind: "stop" as const };
+          if (isFinished) await completeFinishedGame(roomId, state);
           const connectedIds = getConnectedPlayerIds(roomId);
           const allPlayers = await db
             .select()
@@ -188,6 +193,7 @@ export async function runAiTurnsIfNeeded(roomId: string): Promise<void> {
             connectedIds,
             avatarMap,
             aiMap,
+            room.scenarioId,
           );
           for (const player of allPlayers) {
             if (player.isAi) continue;
@@ -234,12 +240,6 @@ export async function runAiTurnsIfNeeded(roomId: string): Promise<void> {
         updateTurnDeadline(state);
 
         const isFinished = (state.phase as string) === "finished";
-        if (isFinished) {
-          await db
-            .update(roomsTable)
-            .set({ status: "finished", updatedAt: new Date() })
-            .where(eq(roomsTable.id, roomId));
-        }
 
         // Optimistic concurrency: only persist if the version we read is still
         // the current one. With the room lock this should always succeed, but
@@ -266,6 +266,7 @@ export async function runAiTurnsIfNeeded(roomId: string): Promise<void> {
           );
           return { kind: "continue" as const };
         }
+        if (isFinished) await completeFinishedGame(roomId, state);
 
         const connectedIds = getConnectedPlayerIds(roomId);
         const allPlayers = await db
@@ -289,6 +290,7 @@ export async function runAiTurnsIfNeeded(roomId: string): Promise<void> {
           connectedIds,
           avatarMap,
           aiMap,
+          room.scenarioId,
         );
         for (const p of allPlayers) {
           if (p.isAi) continue;

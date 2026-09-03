@@ -19,15 +19,16 @@ import type { AnimationProcedureStep } from '@/lib/animationProcedure';
 //
 // Index layout:
 //   [0] = 0.000  — start
-//   [1] = 0.072  — fade-in mid
-//   [2] = 0.135  — fade-in late
-//   [3] = 0.180  — overshoot peak  (entity below center, spring about to pull back)
-//   [4] = 0.224  — settle at rest  (entity at 0vh, must be ≥100ms before beat)
-//   [5] = 1.000  — pan-out complete
+//   [1] = 0.088  — fade-in mid
+//   [2] = 0.175  — fade-in late
+//   [3] = 0.200  — overshoot peak  (entity below center, spring about to pull back)
+//   [4] = 0.248  — settle at rest  (entity at 0vh, must be ≥100ms before beat)
+//   [5] = 0.525  — stable hold ends and pan-out begins
+//   [6] = 1.000  — pan-out complete
 //
 // Invariants (per timing budget comments in source):
 //   1. overshoot < settle             — spring-back direction is downward then up
-//   2. settle ≤ 0.249                 — entity must arrive ≥100ms before BEAT_TARGET_MS
+//   2. settle leaves a 100ms guard    — entity must arrive before BEAT_TARGET_MS
 //   3. spring-back window ≥ 70ms      — snappy but readable on slow devices
 //   4. settle_ms ≤ beat_ms − 100      — the 100ms guard before the first effect beat
 //   5. ENTITY_FILTER_TIMES[3,4] mirror ENTITY_TIMES[3,4] — filter and motion must stay in sync
@@ -35,6 +36,7 @@ import type { AnimationProcedureStep } from '@/lib/animationProcedure';
 const ENTITY_DUR_MS = REVEAL_MS + HOLD_MS + PAN_OUT_MS;
 const OVERSHOOT_IDX = 3;
 const SETTLE_IDX    = 4;
+const PAN_OUT_START_IDX = 5;
 
 describe('LuminaryActivationCinematic — ENTITY_TIMES timing invariants', () => {
   const tOvershoot = ENTITY_TIMES[OVERSHOOT_IDX];
@@ -44,8 +46,11 @@ describe('LuminaryActivationCinematic — ENTITY_TIMES timing invariants', () =>
     expect(tOvershoot).toBeLessThan(tSettle);
   });
 
-  it('settle keyframe is at or before t=0.249 (≥100ms guard before beat)', () => {
-    expect(tSettle).toBeLessThanOrEqual(0.249);
+  it('settle keyframe leaves at least 100ms before the first beat', () => {
+    const latestSettleTime = (
+      REVEAL_MS + BEAT_TARGET_MS - 100
+    ) / ENTITY_DUR_MS;
+    expect(tSettle).toBeLessThanOrEqual(latestSettleTime);
   });
 
   it('spring-back window is at least 70ms', () => {
@@ -66,6 +71,12 @@ describe('LuminaryActivationCinematic — ENTITY_TIMES timing invariants', () =>
 
   it('ENTITY_FILTER_TIMES settle index matches ENTITY_TIMES (must stay in sync)', () => {
     expect(ENTITY_FILTER_TIMES[SETTLE_IDX]).toBe(tSettle);
+  });
+
+  it('holds at full visibility until the pan-out window begins', () => {
+    const expectedPanOutStart = (REVEAL_MS + HOLD_MS) / ENTITY_DUR_MS;
+    expect(ENTITY_TIMES[PAN_OUT_START_IDX]).toBeCloseTo(expectedPanOutStart, 2);
+    expect(ENTITY_FILTER_TIMES[PAN_OUT_START_IDX]).toBe(ENTITY_TIMES[PAN_OUT_START_IDX]);
   });
 });
 

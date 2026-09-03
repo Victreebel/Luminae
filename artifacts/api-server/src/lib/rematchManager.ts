@@ -27,6 +27,11 @@ import { armTurnTimer, updateTurnDeadline } from "./turnTimer";
 import { runAiTurnsIfNeeded } from "./aiTurnRunner";
 import { logger } from "./logger";
 import { getRematchReadiness } from "./rematchFlow";
+import {
+  BlueprintRoomAccessError,
+  resolveBlueprintSetupsForMatch,
+} from "./blueprintLoadouts";
+import { resolveLuminaryArrivalSoundsForPlayers } from "./accountCosmetics";
 
 // ── Constants ─────────────────────────────────────────────────────────────────
 const START_DELAY_MS = 250;
@@ -292,13 +297,31 @@ async function _executeRematch(roomId: string): Promise<void> {
         .where(eq(roomsTable.id, roomId));
     }
 
-    // Initialize a fresh game with the confirmed player set
+    let blueprintSetups;
+    try {
+      blueprintSetups = await resolveBlueprintSetupsForMatch(room, confirmed);
+    } catch (error) {
+      if (!(error instanceof BlueprintRoomAccessError)) throw error;
+      logger.warn({ roomId, error: error.message }, "Blueprint rematch access rejected");
+      broadcastToRoom(roomId, {
+        type: "rematch_cancelled",
+        reason: error.message,
+      });
+      return;
+    }
+    const luminaryArrivalSounds = await resolveLuminaryArrivalSoundsForPlayers(confirmed);
+
+    // Initialize a fresh game with a new immutable loadout snapshot.
     const gameData = initializeGame(
-      confirmed.map((p) => ({ id: p.id, name: p.name })),
+      confirmed.map((p) => ({
+        id: p.id,
+        name: p.name,
+        luminaryArrivalSound: luminaryArrivalSounds[p.id],
+      })),
       confirmed.length,
       room.victoryRequirement,
       room.cinematicMode === "epic" ? "epic" : "standard",
-      { replayBoard },
+      { replayBoard, blueprintSetups },
     );
     gameData.turnTimerSeconds = room.turnTimerSeconds ?? null;
     updateTurnDeadline(gameData);
@@ -348,6 +371,7 @@ async function _executeRematch(roomId: string): Promise<void> {
       connectedIds,
       avatarMap,
       aiMap,
+      room.scenarioId,
     );
 
     // Send each confirmed human player their personalised game state

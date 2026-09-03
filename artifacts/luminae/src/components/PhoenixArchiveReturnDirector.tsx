@@ -1,10 +1,7 @@
 import { useEffect, useMemo, useRef, useState } from "react";
 import { motion } from "framer-motion";
 import { CARD_ART } from "@/pages/game-constants";
-import {
-  LuminaryEffectAnnouncement,
-  LuminaryEffectSkipControl,
-} from "./LuminaryEffectChrome";
+import { LuminaryEffectSkipControl } from "./LuminaryEffectChrome";
 import {
   createLuminaryEffectSequence,
   type LuminaryEffectPhaseId,
@@ -17,9 +14,10 @@ import {
 import {
   boundedLuminaryStagger,
   luminaryPacedDuration,
-  luminaryReadDuration,
   type LuminaryPlaybackMode,
 } from "@/lib/luminaryPresentationPacing";
+import { gameAudio } from "@/lib/audio";
+import { playLuminaryEffectPhaseSound } from "@/lib/luminaryEffectSound";
 
 type Tier = 1 | 2 | 3;
 
@@ -73,13 +71,9 @@ export function PhoenixArchiveReturnDirector({
   reducedMotion = false,
   playbackMode = "standard",
   timelinePlaybackRate = 1,
-  triggeringPlayerName,
-  queuePosition = 1,
-  queueTotal = 1,
   onComplete,
 }: PhoenixArchiveReturnDirectorProps) {
   const [flights, setFlights] = useState<ReturnFlight[]>([]);
-  const [ready, setReady] = useState(false);
   const [directorPhase, setDirectorPhase] =
     useState<LuminaryEffectPhaseId>("announce");
   const sequenceRef = useRef<LuminaryEffectSequenceController | null>(null);
@@ -99,6 +93,7 @@ export function PhoenixArchiveReturnDirector({
 
   useEffect(() => {
     let preparedFlights: ReturnFlight[] = [];
+    const soundTimers: ReturnType<typeof setTimeout>[] = [];
     const staggerMs = boundedLuminaryStagger(
       cardIds.length,
       PHOENIX_ARCHIVE_STAGGER_MS,
@@ -110,27 +105,19 @@ export function PhoenixArchiveReturnDirector({
       playbackMode,
       timelinePlaybackRate,
     );
-    const flightDurationMs = Math.max(
-      luminaryReadDuration(
-        `${cardIds.length} burned Artifacts return to the Archives.`,
-        playbackMode,
-        timelinePlaybackRate,
-      ),
+    const flightDurationMs =
       itemFlightMs + Math.max(0, cardIds.length - 1) * staggerMs +
-        luminaryPacedDuration(180, playbackMode, timelinePlaybackRate),
-    );
+      luminaryPacedDuration(180, playbackMode, timelinePlaybackRate);
 
     const sequence = createLuminaryEffectSequence({
       reducedMotion,
       phases: [
         {
           id: "announce",
-          durationMs: luminaryPacedDuration(
-            220,
-            playbackMode,
-            timelinePlaybackRate,
-          ),
-          run: () => setReady(true),
+          durationMs: reducedMotion
+            ? 0
+            : luminaryPacedDuration(80, playbackMode, timelinePlaybackRate),
+          reducedDurationMs: 0,
         },
         {
           id: "frame",
@@ -185,7 +172,23 @@ export function PhoenixArchiveReturnDirector({
         {
           id: "resolve",
           durationMs: flightDurationMs,
-          run: () => setFlights(preparedFlights),
+          run: () => {
+            setFlights(preparedFlights);
+            const audibleFlightMs = reducedMotion ? 220 : itemFlightMs;
+            preparedFlights.forEach((flight) => {
+              const launchAt = reducedMotion ? 0 : flight.index * staggerMs;
+              soundTimers.push(
+                setTimeout(
+                  () => gameAudio.playRecurrenceDeparture(flight.index),
+                  launchAt,
+                ),
+                setTimeout(
+                  () => gameAudio.playRecurrenceArchiveImpact(flight.tier),
+                  launchAt + Math.max(120, audibleFlightMs - 100),
+                ),
+              );
+            });
+          },
         },
         {
           id: "reveal",
@@ -199,8 +202,13 @@ export function PhoenixArchiveReturnDirector({
           ),
         },
       ],
-      onPhaseChange: setDirectorPhase,
+      onPhaseChange: nextPhase => {
+        setDirectorPhase(nextPhase);
+        playLuminaryEffectPhaseSound("lum_astral", nextPhase, "#f43f5e");
+      },
       onSkip: () => {
+        gameAudio.stopActivationSting();
+        soundTimers.forEach(clearTimeout);
         setFlights([]);
       },
       onComplete: skipped => onCompleteRef.current(skipped),
@@ -209,14 +217,12 @@ export function PhoenixArchiveReturnDirector({
     sequence.start();
 
     return () => {
+      soundTimers.forEach(clearTimeout);
       sequence.cancel();
       if (sequenceRef.current === sequence) sequenceRef.current = null;
+      gameAudio.stopActivationSting();
     };
   }, [cardIds, playbackMode, reducedMotion, timelinePlaybackRate]);
-  const queueLabel = queueTotal > 1
-    ? `START OF TURN EFFECT · ${queuePosition} OF ${queueTotal}`
-    : "START OF TURN EFFECT";
-
   return (
     <div
       className="fixed inset-0 z-[1120] overflow-hidden"
@@ -225,36 +231,6 @@ export function PhoenixArchiveReturnDirector({
       role="status"
       aria-label={`Phoenix Paradox is returning ${cardIds.length} Burned Artifact${cardIds.length === 1 ? "" : "s"} to the Archives`}
     >
-      <motion.div
-        className="absolute inset-0"
-        initial={{ opacity: 0 }}
-        animate={{ opacity: ready ? 1 : 0 }}
-        transition={{ duration: reducedMotion ? 0.08 : 0.18 }}
-        style={{
-          background:
-            "radial-gradient(circle at 50% 28%, rgba(42,68,128,0.22), rgba(10,4,16,0.48) 52%, rgba(2,3,8,0.68))",
-          backdropFilter: "blur(1.5px)",
-        }}
-      />
-
-      <motion.div
-        className="absolute left-1/2 top-[8%] -translate-x-1/2 text-center pointer-events-none"
-        initial={{ opacity: 0, y: -8 }}
-        animate={{ opacity: ready ? 1 : 0, y: 0 }}
-        transition={{ duration: reducedMotion ? 0.1 : 0.28 }}
-      >
-        <LuminaryEffectAnnouncement
-          effectName="Eternal Recurrence"
-          luminaryName="Phoenix Paradox"
-          description={`${cardIds.length} burned Artifact${cardIds.length === 1 ? "" : "s"} return to the Archives.`}
-          triggeringPlayerName={triggeringPlayerName}
-          queueLabel={queueLabel}
-          primaryColor="#fda4af"
-          secondaryColor="#93c5fd"
-          compact
-        />
-      </motion.div>
-
       {flights.map((flight) => {
         const fan = ((flight.index % 7) - 3) * 6;
         const delay = reducedMotion

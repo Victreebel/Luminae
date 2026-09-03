@@ -6,6 +6,7 @@ import avatarCultivator from '@/assets/avatars/avatar_cultivator.png';
 import avatarSentinel from '@/assets/avatars/avatar_sentinel.png';
 import avatarOracle from '@/assets/avatars/avatar_oracle.png';
 import avatarSovereign from '@/assets/avatars/avatar_sovereign.png';
+import avatarLumii from '@/assets/avatars/avatar_lumii.svg';
 
 export interface AvatarDef {
   id: string;
@@ -25,18 +26,35 @@ export const AVATARS: AvatarDef[] = [
   { id: 'sovereign',   name: 'Sovereign',   image: avatarSovereign,   accent: '#c0392b' },
 ];
 
-const AVATAR_MAP = new Map<string, AvatarDef>(AVATARS.map(a => [a.id, a]));
+export const LUMII_AVATAR_ID = 'lumii';
+
+export const LUMII_AVATAR: AvatarDef = {
+  id: LUMII_AVATAR_ID,
+  name: 'Lumii',
+  image: avatarLumii,
+  accent: '#818cf8',
+};
+
+// System identities are renderable in matches but intentionally absent from
+// AVATARS, which is the player-facing selection catalog.
+const AVATAR_MAP = new Map<string, AvatarDef>([
+  ...AVATARS.map(a => [a.id, a] as const),
+  [LUMII_AVATAR.id, LUMII_AVATAR] as const,
+]);
 
 const DEFAULT_AVATAR_ID = 'stargazer';
 
 const AVATAR_KEY = 'luminae_avatar';
 
 export function getSavedAvatarId(): string {
-  return localStorage.getItem(AVATAR_KEY) ?? DEFAULT_AVATAR_ID;
+  const saved = localStorage.getItem(AVATAR_KEY);
+  return AVATARS.some(avatar => avatar.id === saved) ? saved! : DEFAULT_AVATAR_ID;
 }
 
 export function saveAvatarId(id: string): void {
-  localStorage.setItem(AVATAR_KEY, id);
+  if (AVATARS.some(avatar => avatar.id === id)) {
+    localStorage.setItem(AVATAR_KEY, id);
+  }
 }
 
 export function getAvatarForPlayer(avatarId?: string | null): AvatarDef {

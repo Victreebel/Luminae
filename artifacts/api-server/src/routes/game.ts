@@ -3,7 +3,7 @@ import { eq, and } from "drizzle-orm";
 import { z } from "zod";
 import { db, roomsTable, playersTable, gameStatesTable } from "@workspace/db";
 import { SubmitActionBody } from "@workspace/api-zod";
-import { CARD_LORE } from "../lib/cardLore";
+import { getPublicCardLoreCatalog } from "../lib/cardLore";
 import {
   applyAction,
   formatGameState,
@@ -18,7 +18,7 @@ import { getConnectedPlayerIds, sendToPlayer, filterStateForPlayer } from "../li
 import { runAiTurnsIfNeeded } from "../lib/aiTurnRunner";
 import { withRoomLock } from "../lib/roomLock";
 import { armTurnTimer, updateTurnDeadline } from "../lib/turnTimer";
-import { recordGameResult } from "../lib/rematchManager";
+import { completeFinishedGame } from "../lib/finishedGame";
 import {
   captureDevSnapshot,
   getDevSnapshot,
@@ -29,8 +29,10 @@ const router: IRouter = Router();
 const DevLuminarySequenceBody = z.object({
   sessionToken: z.string().min(1),
   luminaryIds: z.array(z.string().min(1)).min(1).max(17),
-  includeEndOfTurnEffects: z.boolean().optional().default(true),
-  includeStartOfTurnEffects: z.boolean().optional().default(false),
+  includeNextTurnEffects: z.boolean().optional(),
+  // Accepted temporarily so a stale development client can still run the Lab.
+  includeEndOfTurnEffects: z.boolean().optional(),
+  includeStartOfTurnEffects: z.boolean().optional(),
   repeatFromBaseline: z.boolean().optional().default(true),
 });
 
@@ -85,6 +87,8 @@ router.get("/rooms/:roomId/state", async (req, res): Promise<void> => {
     res.json({
       roomId: rawId,
       status: "lobby",
+      scenarioId: room.scenarioId,
+      finishReason: null,
       currentPlayerIndex: 0,
       roundNumber: 0,
       turnCount: 0,
@@ -150,13 +154,23 @@ router.get("/rooms/:roomId/state", async (req, res): Promise<void> => {
   const storedLuminaries = JSON.stringify(
     (gs.state as { activeLuminaries?: unknown }).activeLuminaries ?? [],
   );
+  const storedBrokenCovenant = (gs.state as { brokenCovenantDeclared?: unknown }).brokenCovenantDeclared === true;
+  const storedThresholdApproach = (gs.state as { lumiiThresholdApproach?: unknown }).lumiiThresholdApproach;
   const normalized = normalizeState(gs.state);
+  if (room.scenarioId === "blueprint_clearance_lumii") {
+    normalized.brokenCovenantDeclared = true;
+    normalized.lumiiThresholdApproach ??= "inquiry";
+  }
 
   // Persist normalized state if it diverged from what's stored. This bakes
   // in any backward-compat migrations (e.g. re-rolled Luminaries from the
   // pre-redesign pantheon) so subsequent reads are deterministic.
   const normalizedLuminaries = JSON.stringify(normalized.activeLuminaries);
-  if (storedLuminaries !== normalizedLuminaries) {
+  if (
+    storedLuminaries !== normalizedLuminaries ||
+    storedBrokenCovenant !== normalized.brokenCovenantDeclared ||
+    storedThresholdApproach !== normalized.lumiiThresholdApproach
+  ) {
     await db
       .update(gameStatesTable)
       .set({
@@ -173,6 +187,7 @@ router.get("/rooms/:roomId/state", async (req, res): Promise<void> => {
     connectedIds,
     avatarMap,
     aiMap,
+    room.scenarioId,
   );
 
   // Return only this player's own plannedAction; strip others' for privacy.
@@ -232,6 +247,7 @@ router.post("/rooms/:roomId/actions", async (req, res): Promise<void> => {
     type: actionData.type as ActionPayload["type"],
     cardId: actionData.cardId ?? undefined,
     tier: actionData.tier as 1 | 2 | 3 | undefined,
+    blueprintAction: actionData.blueprintAction as ActionPayload["blueprintAction"],
     affinity: actionData.affinity as StandardAffinityKey | undefined,
     affinities: actionData.affinities as Partial<Record<string, number>> | undefined,
     returnAffinities: actionData.returnAffinities as Partial<AffinityCounts> | undefined,
@@ -239,18 +255,19 @@ router.post("/rooms/:roomId/actions", async (req, res): Promise<void> => {
     eventId: actionData.eventId ?? undefined,
     plannedActionData: actionData.plannedActionData as ActionPayload | undefined,
     orderedIds: Array.isArray(actionData.orderedIds) ? actionData.orderedIds : undefined,
+    traceGuidanceMethod: actionData.traceGuidanceMethod as ActionPayload["traceGuidanceMethod"],
+    voidSealAffinity: actionData.voidSealAffinity as StandardAffinityKey | undefined,
   };
 
   // Serialize all read-modify-write on this room's state behind a per-room
   // mutex so we can't race with the AI turn runner.
   const outcome = await withRoomLock(rawId, async () => {
-    const [gs] = await db
-      .select()
-      .from(gameStatesTable)
-      .where(eq(gameStatesTable.roomId, rawId))
-      .limit(1);
+    const [[gs], [room]] = await Promise.all([
+      db.select().from(gameStatesTable).where(eq(gameStatesTable.roomId, rawId)).limit(1),
+      db.select().from(roomsTable).where(eq(roomsTable.id, rawId)).limit(1),
+    ]);
 
-    if (!gs) {
+    if (!gs || !room) {
       return { ok: false as const, status: 404, error: "Game state not found" };
     }
 
@@ -289,19 +306,6 @@ router.post("/rooms/:roomId/actions", async (req, res): Promise<void> => {
       updateTurnDeadline(stateData);
     }
 
-    if (stateData.phase === "finished") {
-      await db
-        .update(roomsTable)
-        .set({ status: "finished", updatedAt: new Date() })
-        .where(eq(roomsTable.id, rawId));
-      // Record cumulative session stats for the rematch overlay
-      recordGameResult(
-        rawId,
-        stateData.players.map((p: { playerId: string; playerName: string }) => ({ id: p.playerId, name: p.playerName })),
-        (stateData as { winnerId?: string | null }).winnerId ?? null,
-      );
-    }
-
     const updated = await db
       .update(gameStatesTable)
       .set({
@@ -325,6 +329,10 @@ router.post("/rooms/:roomId/actions", async (req, res): Promise<void> => {
       };
     }
 
+    if (stateData.phase === "finished") {
+      await completeFinishedGame(rawId, stateData);
+    }
+
     const connectedIds = getConnectedPlayerIds(rawId);
     const allPlayers = await db
       .select()
@@ -339,7 +347,7 @@ router.post("/rooms/:roomId/actions", async (req, res): Promise<void> => {
     const aiMap = new Map(
       allPlayers.map((p) => [p.id, { isAi: p.isAi, aiDifficulty: p.aiDifficulty != null ? parseAiDifficulty(p.aiDifficulty) : null }]),
     );
-    const formatted = formatGameState(rawId, room.status, stateData, connectedIds, avatarMap, aiMap);
+    const formatted = formatGameState(rawId, room.status, stateData, connectedIds, avatarMap, aiMap, room.scenarioId);
 
     // Send each human player a view of the state with other players' planned
     // actions stripped out.  AI players don't hold WebSocket connections.
@@ -438,7 +446,16 @@ router.post("/dev/rooms/:roomId/luminary-sequence", async (req, res): Promise<vo
       currentState,
       parsed.data.repeatFromBaseline,
     );
-    const result = runDevLuminarySequence(stateData, player.id, parsed.data);
+    const legacyDeferredSelection =
+      parsed.data.includeEndOfTurnEffects !== undefined ||
+      parsed.data.includeStartOfTurnEffects !== undefined
+        ? !!(parsed.data.includeEndOfTurnEffects || parsed.data.includeStartOfTurnEffects)
+        : undefined;
+    const result = runDevLuminarySequence(stateData, player.id, {
+      ...parsed.data,
+      includeNextTurnEffects:
+        parsed.data.includeNextTurnEffects ?? legacyDeferredSelection ?? true,
+    });
     if (!result.success) {
       return { ok: false as const, status: 400, error: result.error ?? "Sequence failed" };
     }
@@ -495,6 +512,7 @@ router.post("/dev/rooms/:roomId/luminary-sequence", async (req, res): Promise<vo
       connectedIds,
       avatarMap,
       aiMap,
+      room.scenarioId,
     );
     for (const candidate of allPlayers) {
       if (candidate.isAi) continue;
@@ -576,13 +594,12 @@ router.post("/dev/rooms/:roomId/rewind", async (req, res): Promise<void> => {
   }
 
   const outcome = await withRoomLock(rawId, async () => {
-    const [gs] = await db
-      .select()
-      .from(gameStatesTable)
-      .where(eq(gameStatesTable.roomId, rawId))
-      .limit(1);
+    const [[gs], [room]] = await Promise.all([
+      db.select().from(gameStatesTable).where(eq(gameStatesTable.roomId, rawId)).limit(1),
+      db.select().from(roomsTable).where(eq(roomsTable.id, rawId)).limit(1),
+    ]);
 
-    if (!gs) {
+    if (!gs || !room) {
       return { ok: false as const, status: 404, error: "Game state not found" };
     }
 
@@ -620,7 +637,7 @@ router.post("/dev/rooms/:roomId/rewind", async (req, res): Promise<void> => {
       if (p.isAi) connectedIds.add(p.id);
     }
 
-    const formatted = formatGameState(rawId, "playing", restored, connectedIds, avatarMap, aiMap);
+    const formatted = formatGameState(rawId, "playing", restored, connectedIds, avatarMap, aiMap, room.scenarioId);
     for (const p of allPlayers) {
       if (p.isAi) continue;
       sendToPlayer(rawId, p.id, {
@@ -643,29 +660,7 @@ router.post("/dev/rooms/:roomId/rewind", async (req, res): Promise<void> => {
 
 // GET /api/cards/lore
 router.get("/cards/lore", (_req, res) => {
-  const out: Record<string, {
-    name: string;
-    flavor: string;
-    artifactForm?: string;
-    blueprintRole?: string;
-    blueprintFamilies?: string;
-    civLane?: string;
-    engineeringScale?: string;
-    artPrompt?: string;
-  }> = {};
-  for (const [id, lore] of Object.entries(CARD_LORE)) {
-    out[id] = {
-      name: lore.name,
-      flavor: lore.flavor,
-      ...(lore.artifactForm !== undefined && { artifactForm: lore.artifactForm }),
-      ...(lore.blueprintRole !== undefined && { blueprintRole: lore.blueprintRole }),
-      ...(lore.blueprintFamilies !== undefined && { blueprintFamilies: lore.blueprintFamilies }),
-      ...(lore.civLane !== undefined && { civLane: lore.civLane }),
-      ...(lore.engineeringScale !== undefined && { engineeringScale: lore.engineeringScale }),
-      ...(lore.artPrompt !== undefined && { artPrompt: lore.artPrompt }),
-    };
-  }
-  res.json(out);
+  res.json(getPublicCardLoreCatalog());
 });
 
 export default router;

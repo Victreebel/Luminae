@@ -23,7 +23,7 @@ The active Luminary pool is `AVAILABLE_LUMINARIES` (12 illustrated Luminaries). 
 
 | Tier | Cost | Eminence | Count | Luminaries |
 |------|------|----------|-------|------------|
-| **Mono** (Tier 1) | 5–6 of one affinity | 0–3 | 5 | Red Moth, Tide Architect, Verdant Oracle, Void Warden, Concordance Mandala |
+| **Mono** (Tier 1) | 5–6 of one affinity | 0–4 | 5 | Red Moth, Tide Architect, Verdant Oracle, Void Warden, Concordance Mandala |
 | **Dual** (Tier 2) | 4+4 of two affinities | 3–4 | 5 | Phoenix Paradox, Catalyst Bloom, Iron Harbinger, Hourless Compass, Seed Beyond Seasons, Glass Orchard, Pale Merchant |
 | **Triple** (Tier 3) | 3+3+3 of three affinities | 2–4 | 3 | Ember Sovereign, Final Hunger, Null Sovereign |
 
@@ -44,7 +44,7 @@ The active Luminary pool is `AVAILABLE_LUMINARIES` (12 illustrated Luminaries). 
 | **Domain** | Rupture |
 | **Affinity** | Flare (ruby) |
 | **Cost** | 6 Flare |
-| **Eminence** | 3 |
+| **Eminence** | 2 |
 | **Effect** | On arrival, burns all Tier III Artifacts whose **Flare cost is 4 or less**. Those slots immediately redraw. |
 | **Flavor** | *"Where it passes, the universe is divided into before and after."* |
 | **Animation Archetype** | `burn` |
@@ -63,11 +63,11 @@ The active Luminary pool is `AVAILABLE_LUMINARIES` (12 illustrated Luminaries). 
 | **Affinity** | Continuum (continuum) |
 | **Cost** | 6 Continuum |
 | **Eminence** | 2 |
-| **Effect** | On arrival, scries the top cards of the Tier II and Tier III decks and reorders them so Continuum Artifacts surface first. |
+| **Effect** | The allied player may view the top Artifact of each Archive. Once, the allied player may Forge an Artifact on the top of an Archive. |
 | **Flavor** | *"Possibility collapses to its bias."* |
 | **Animation Archetype** | `scry` |
-| **Procedure Steps** | `luminaryPulse` → `deckScry` (tier2, tier3, bias: continuum) → `forgeRefill` |
-| **Residue** | None |
+| **Procedure Steps** | `luminaryPulse` → `deckScry` (tier1, tier2, tier3; reveal only) |
+| **Residue** | Private Archive-top visibility; one-use Archive Forge |
 | **Colors** | Primary `#60a5fa`, Secondary `#e2e8f0`, Aura `tide` |
 | **Art Status** | Illustrated panel + entity locked |
 
@@ -80,11 +80,11 @@ The active Luminary pool is `AVAILABLE_LUMINARIES` (12 illustrated Luminaries). 
 | **Domain** | Verdance |
 | **Affinity** | Verdance (emerald) |
 | **Cost** | 5 Verdance |
-| **Eminence** | 2 |
-| **Effect** | **Living Luminary bonus.** Starting the turn after this Luminary arrives, you gain +1 Verdance toward every Artifact you forge while you own it. |
+| **Eminence** | 1 |
+| **Effect** | On arrival, gain 1 Verdance token from the Affinity Well. Like every manifested Luminary, its active-Affinity Forge bonus begins on the following turn. |
 | **Flavor** | *"It answers only after the question has taken root."* |
-| **Animation Archetype** | `passiveBoon` |
-| **Procedure Steps** | `luminaryPulse` only |
+| **Animation Archetype** | `resourceTransfer` |
+| **Procedure Steps** | `luminaryPulse` → `affinityGain` (1 Verdance, Well to owner) |
 | **Residue** | None |
 | **Colors** | Primary `#4ade80`, Secondary `#166534`, Aura `verdant` |
 | **Art Status** | Illustrated panel + entity locked |
@@ -98,12 +98,12 @@ The active Luminary pool is `AVAILABLE_LUMINARIES` (12 illustrated Luminaries). 
 | **Domain** | Void |
 | **Affinity** | Abyss (onyx) |
 | **Cost** | 6 Abyss |
-| **Eminence** | 0 (awards none) |
-| **Oblivion** | 4 |
-| **Effect** | On arrival, **ALL players** (including you) immediately lose 4 Eminence. |
+| **Eminence** | 3 |
+| **Oblivion** | +8 shared victory requirement |
+| **Effect** | On arrival, raise the shared victory requirement by 8. |
 | **Flavor** | *"In the space between stars, something watches without eyes."* |
 | **Animation Archetype** | `globalDisruption` |
-| **Procedure Steps** | `luminaryPulse` → `targetClaim` → `eminenceChange` (all players, -4) |
+| **Procedure Steps** | `luminaryPulse` → `targetClaim` → shared victory requirement +8 |
 | **Residue** | None |
 | **Colors** | Primary `#4c1d95`, Secondary `#0a0a14`, Aura `void` |
 | **Art Status** | Illustrated panel + entity locked; aura: purple radial |
@@ -117,8 +117,8 @@ The active Luminary pool is `AVAILABLE_LUMINARIES` (12 illustrated Luminaries). 
 | **Domain** | Coherence |
 | **Affinity** | Radiance (pearl) |
 | **Cost** | 6 Radiance |
-| **Eminence** | 2 |
-| **Effect** | Once per game, when you end a turn with 8 or more Radiance Artifacts forged, you immediately gain +2 Eminence. |
+| **Eminence** | 4 |
+| **Effect** | Once, when you end your turn with at least 8 Radiance Artifacts, gain +2 Eminence. Once, when you end your turn with at least 10 Radiance Artifacts, gain +2 Eminence. |
 | **Flavor** | *"Truth is not revealed. It is aligned."* |
 | **Animation Archetype** | `thresholdPayoff` |
 | **Procedure Steps** | `luminaryPulse` → `targetClaim` → `eminenceChange` (+2) |
@@ -186,15 +186,15 @@ The active Luminary pool is `AVAILABLE_LUMINARIES` (12 illustrated Luminaries). 
 
 ---
 
-#### 9. The Hourless Compass — *The Forgotten Hour*
+#### 9. ??? — *The Forgotten Hour*
 | Field | Value |
 |-------|-------|
 | **ID** | `lum_compass` |
 | **Domain** | Erasure |
 | **Affinities** | Continuum, Abyss |
 | **Cost** | 4 Continuum + 4 Abyss |
-| **Eminence** | 3 |
-| **Effect** | On arrival, raises the shared victory requirement by 1 and marks **all** Artifacts currently face-up in the Forge as **Forgotten**. Forgotten marks last only until the source player's next end of turn, and players cannot Encrypt during that window. After the marks expire, 12 owner-turn cycles pass; then Forgotten Hour returns at the source player's end of turn. Artifacts forged while Forgotten award 0 Eminence and cannot be used for blueprints. |
+| **Eminence** | 1 |
+| **Effect** | On arrival, raise the shared victory requirement by 1 and mark every face-up Forge Artifact as **Forgotten**. Until the ally's next end of turn, only the ally may Encrypt. Artifacts forged while Forgotten award 0 Eminence and cannot be used for Blueprints. After the marks expire, wait 12 of the ally's turns, then mark the face-up Forge Artifacts as Forgotten again without raising the victory requirement. |
 | **Flavor** | *"Everyone remembered something happened, but no one can recall what was lost."* |
 | **Animation Archetype** | `suppression` |
 | **Procedure Steps** | `luminaryPulse` → `deckScry` (all tiers) → `targetClaim` → `residue` (forgotten) |
@@ -212,10 +212,10 @@ The active Luminary pool is `AVAILABLE_LUMINARIES` (12 illustrated Luminaries). 
 | **Affinities** | Continuum, Verdance |
 | **Cost** | 4 Continuum + 4 Verdance |
 | **Eminence** | 3 |
-| **Effect** | On arrival, places **Avatar Seed** tokens on the top card of each deck tier. When an opponent forges a seeded card, you earn pending Eminence paid out at the end of your next turn. |
+| **Effect** | On arrival, permanently mark one random mold in each tier with an **Avatar Seed**. At the end of every turn, each unseeded Artifact occupying one of those molds becomes **Seeded**. When an opponent forges a Seeded Artifact, the allied player gains 1 permanent Affinity matching that Artifact's bonus Affinity. |
 | **Flavor** | *"It leaves its avatars where tomorrow has already begun to remember."* |
 | **Animation Archetype** | `seeded` |
-| **Procedure Steps** | `luminaryPulse` → `deckScry` (all tiers, bias: seeded) → `residue` (seeded) |
+| **Procedure Steps** | Arrival: `luminaryPulse` → three mold inscriptions. End of turn: `targetClaim` → `seeded` branding strike. Opponent forge: Avatar Seed transforms into the matching Affinity and imbues the allied player. |
 | **Residue** | `seeded` |
 | **Colors** | Primary `#38bdf8`, Secondary `#4ade80`, Aura `compass` |
 | **Art Status** | Uses `BloomEntity` as fallback (screen blend mode) |
@@ -230,7 +230,7 @@ The active Luminary pool is `AVAILABLE_LUMINARIES` (12 illustrated Luminaries). 
 | **Affinities** | Verdance, Radiance |
 | **Cost** | 4 Verdance + 4 Radiance |
 | **Eminence** | 3 |
-| **Effect** | Once per game, the first time you forge an Artifact, a free copy of your cheapest-cost Tier I Artifact is added to your collection. |
+| **Effect** | Once per game, when you first forge an Artifact whose cost includes Verdance or Radiance, gain a second permanent bonus Affinity matching that Artifact. |
 | **Flavor** | *"It learned to copy itself perfectly, and called the absence of error peace."* |
 | **Animation Archetype** | `replication` |
 | **Procedure Steps** | `luminaryPulse` → `targetClaim` |
@@ -248,7 +248,7 @@ The active Luminary pool is `AVAILABLE_LUMINARIES` (12 illustrated Luminaries). 
 | **Affinities** | Abyss, Radiance |
 | **Cost** | 4 Abyss + 4 Radiance |
 | **Eminence** | 3 |
-| **Effect** | On arrival, each player returns 2 tokens of every Affinity they hold at half or more of its starting supply. |
+| **Effect** | On arrival, each player returns 2 tokens of every Affinity, including Singularity, that they hold at half or more of its starting supply (rounded up). |
 | **Flavor** | *"Every bargain reveals one truth and buries another."* |
 | **Animation Archetype** | `affinityReturn` |
 | **Procedure Steps** | `luminaryPulse` → `targetClaim` → `affinityReturn` (all affected players) |
@@ -270,7 +270,7 @@ The active Luminary pool is `AVAILABLE_LUMINARIES` (12 illustrated Luminaries). 
 | **Affinities** | Flare, Abyss, Radiance |
 | **Cost** | 3 Flare + 3 Abyss + 3 Radiance |
 | **Eminence** | 4 |
-| **Effect** | **Cinder Mandate:** On arrival, mark each face-up Artifact as Condemned unless its forge cost includes 3 or more Flare, Abyss, or Radiance. At the start of your next turn, burn each remaining Condemned Artifact and refill its Forge slot. |
+| **Effect** | **Cinder Mandate:** On arrival, mark each face-up Forge Artifact as Condemned unless its cost includes at least 3 of Flare, Abyss, or Radiance. At the end of your next turn, burn each remaining Condemned Artifact and refill its Forge position. |
 | **Flavor** | *"What cannot survive the fire is granted the mercy of disappearance."* |
 | **Animation Archetype** | `condemned` |
 | **Procedure Steps** | `luminaryPulse` → `targetClaim` (keyword: condemned) → `residue` (condemned) |
@@ -288,10 +288,10 @@ The active Luminary pool is `AVAILABLE_LUMINARIES` (12 illustrated Luminaries). 
 | **Affinities** | Flare, Verdance, Radiance |
 | **Cost** | 3 Flare + 3 Verdance + 3 Radiance |
 | **Eminence** | 2 |
-| **Effect** | On arrival, you may replace your forge action this turn with **Assimilation** — copy the bonus affinity of any Artifact in your collection as a permanent bonus. |
+| **Effect** | Once after arrival, you may replace your Forge action with **Assimilation**. Assimilate any face-up Artifact for free: gain its permanent bonus Affinity and no Eminence. The Artifact counts as owned only for Blueprints. |
 | **Flavor** | *"Its first act is consumption. Its second is perfect repetition."* |
 | **Animation Archetype** | `assimilate` |
-| **Procedure Steps** | `luminaryPulse` → `targetClaim` → `pendingAction` (assimilate) |
+| **Procedure Steps** | Arrival grants the action silently. On use: `luminaryPulse` → `targetClaim` → top-down dissolve → `affinityGain` → Archive refill. |
 | **Residue** | None |
 | **Colors** | Primary `#fbbf24`, Secondary `#4ade80`, Aura `oracle` |
 | **Art Status** | Uses `HungerEntity` (custom) |
@@ -306,7 +306,7 @@ The active Luminary pool is `AVAILABLE_LUMINARIES` (12 illustrated Luminaries). 
 | **Affinities** | Continuum, Abyss, Radiance |
 | **Cost** | 4 Continuum + 4 Abyss + 4 Radiance |
 | **Eminence** | 0 (awards none) |
-| **Effect** | On arrival, marks all face-up Tier III Artifacts that do not require all three of Continuum, Abyss, and Radiance as **Nullified** — they award 0 Eminence when forged. |
+| **Effect** | On arrival, marks all face-up Tier III Artifacts that do not require all three of Continuum, Abyss, and Radiance as **Nullified**. Nullified Artifacts award 0 Eminence, cannot be used for Blueprints, and cannot be Encrypted. If the first Nullified Artifact forged this game is forged by the allied player, it is unaffected by Nullified. |
 | **Flavor** | *"Past the last observable star, entire futures fall silent without being destroyed."* |
 | **Animation Archetype** | `suppression` |
 | **Procedure Steps** | `luminaryPulse` → `targetClaim` → `residue` (nullified) |
@@ -354,11 +354,12 @@ When a Luminary's effect fires (summon, end-of-turn, start-of-turn hook), the en
 | `deckScry` | Deck-top shimmer + reorder preview | Tide Architect, Compass, Seed |
 | `eminenceChange` | `+N EMN` or `-N EMN` flash | Void Warden, Radiant, Bloom, Pale |
 | `affinityReturn` | `◇ RETURN` flash + Affinity return animation | Pale Merchant |
+| `affinityGain` | Permanent Affinity absorption at the Civilization destination | Final Hunger |
 | `residue` | Persistent marker badge placed on card | Compass (forgotten), Ember (condemned), Null (nullified), Seed (seeded) |
 | `forgeRefill` | Slot refresh animation | Burn-family Luminaries |
 | `archiveReturn` | Identifiable Burned Artifacts travel to their matching Archive spires | Phoenix Paradox |
 | `reveal` | Card flip reveal from deck | Reveal-family effects |
-| `pendingAction` | `✦ ASSIMILATE` action replacement | Final Hunger |
+| `pendingAction` | Compatibility step for older queued action presentations | Legacy sequences |
 
 ### ArrivalBrandStrike System
 
@@ -412,11 +413,11 @@ When a single action qualifies a player for multiple Luminaries, the canonical o
 2. If tied, order in `LUMINARIES` array (stable deterministic order)
 
 ### Oblivion vs. Eminence
-- **Oblivion**: Set via `oblivion: N` on the LuminaryDef. On claim, ALL players lose N Eminence. The claimer gains **zero** Eminence.
+- **Oblivion**: Set via `oblivion: N` on the LuminaryDef. On claim, the shared victory requirement rises by N. The claimer gains **zero** Eminence.
 - **Eminence**: Stored as `eminence: N`. Claimer gains N Eminence immediately.
 
 ### Win Attribution
-- `winTriggerLuminaryId` is set to the Luminary that pushed the player to ≥15 Eminence
+- `winTriggerLuminaryId` is set to the Luminary that pushed the player to the configured victory requirement
 - If a player wins via Luminary claim, the win cinematic names the triggering Luminary
 
 ---
@@ -429,8 +430,8 @@ When a single action qualifies a player for multiple Luminaries, the canonical o
 |--------|-------|-------|---------|----------|
 | **Forgotten** | ◎ | Blue-purple `#9988ee` | Awards 0 Eminence when forged; cannot support blueprints; Encrypt unavailable while active | Source player's next end of turn |
 | **Condemned** | ⚑ | Red `#e05050` | Will Burn at start of source player's next turn | Resolves at start of next turn |
-| **Nullified** | ⊘ | Blue-gray `#7090b8` | Awards 0 Eminence while marked | Persists until the card leaves play |
-| **Avatar Seed** | ⁕ | Green `#4cc88a` | Opponent forge → source player gains pending Eminence | Active until opponent forges it |
+| **Nullified** | ⊘ | Blue-gray `#7090b8` | Awards 0 Eminence, cannot be used for Blueprints, and cannot be Encrypted; the allied player ignores Nullified on the first Nullified Artifact forged this game | Persists until the card leaves play |
+| **Avatar Seed** | Faceted seed sigil | Green-gold `#67e8a2` / `#d5b96c` | Opponent forge → allied player gains matching permanent Affinity | Mold persists for the game; Artifact brand persists until forged or removed |
 | **Burned** | ✕ | Orange `#ff7040` | Transient label during burn animation | ~300ms, fades as BurnFlash ramps |
 
 ### Marker Expiration Rules

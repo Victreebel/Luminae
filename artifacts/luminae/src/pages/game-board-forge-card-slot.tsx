@@ -9,6 +9,7 @@ import { ForgeMarkerLayer } from './game-board-forge-markers';
 import { getArtifactBrandTypes } from '@/lib/artifactBrands';
 import type { BoardForgeProps } from './game-board-forge';
 import { CARD_ART } from './game-constants';
+import { AvatarSeedMoldMark } from '@/components/AvatarSeedSymbol';
 
 interface ForgeCardSlotProps extends Pick<BoardForgeProps,
   'brandDelayMap' | 'burstGhostCards' | 'cardDetailDiscovered' | 'computeCosts' | 'costMode' |
@@ -24,7 +25,7 @@ interface ForgeCardSlotProps extends Pick<BoardForgeProps,
   colIdx: number;
 }
 
-function CompactForgeCardReadout({
+export function CompactForgeCardReadout({
   card,
   costs,
 }: {
@@ -129,6 +130,10 @@ export function ForgeCardSlot({
   tutorialStep,
 }: ForgeCardSlotProps) {
   const isHidden = hiddenSlots.has(slotKey);
+  const isAvatarSeedMold = state.avatarSeedMoldSlots?.includes(slotKey) ?? false;
+  const avatarSeedMoldProps = {
+    'data-avatar-seed-mold': isAvatarSeedMold ? 'true' : undefined,
+  } as const;
   const compactSlotStyle: React.CSSProperties = {
     width: 'var(--forge-chip-w, 56px)',
     height: 'var(--forge-chip-h, 78px)',
@@ -151,9 +156,11 @@ export function ForgeCardSlot({
         data-card-id={ghostCard.id}
         data-bonus-affinity={ghostCard.bonusAffinity ?? undefined}
         data-slot-key={slotKey}
+        {...avatarSeedMoldProps}
         className="forge-foundry-mold board-forge-compact-chip relative shrink-0 overflow-hidden rounded-lg"
         style={{ ...compactSlotStyle, ...getForgeAffinityStyle(ghostCard) }}
       >
+        {isAvatarSeedMold && <AvatarSeedMoldMark compact />}
         <div
           className="compact-forge-card-stage absolute inset-0 origin-top-left pointer-events-none"
           style={{ transform: 'scale(var(--forge-compact-card-scale, 0.5))', width: 'var(--card-w)', height: 'var(--card-h)' }}
@@ -175,9 +182,11 @@ export function ForgeCardSlot({
         key={ghostCard.id}
         data-testid="forge-card-slot"
         data-slot-key={slotKey}
+        {...avatarSeedMoldProps}
         className="forge-foundry-mold forge-foundry-slot relative shrink-0"
         style={getForgeAffinityStyle(ghostCard)}
       >
+        {isAvatarSeedMold && <AvatarSeedMoldMark />}
         <div data-card-id={ghostCard.id} className="forge-foundry-card relative">
           <ArtifactCardView card={ghostCard} tier={row.tier} />
           <ForgeMarkerLayer
@@ -200,12 +209,14 @@ export function ForgeCardSlot({
         data-testid="forge-card-slot"
         data-card-id={ironHeldCardId}
         data-slot-key={slotKey}
+        {...avatarSeedMoldProps}
         className={`forge-foundry-mold relative shrink-0 overflow-hidden rounded-xl ${
           forgeCompact ? 'board-forge-compact-chip' : 'forge-foundry-slot'
         }`}
         style={forgeCompact ? compactSlotStyle : undefined}
         aria-hidden="true"
       >
+        {isAvatarSeedMold && <AvatarSeedMoldMark compact={forgeCompact} />}
         {CARD_ART[ironHeldCardId] ? (
           <img
             src={CARD_ART[ironHeldCardId]}
@@ -235,10 +246,13 @@ export function ForgeCardSlot({
         key={c?.id ?? slotKey}
         data-testid="forge-card-slot-empty"
         data-slot-key={slotKey}
+        {...avatarSeedMoldProps}
         data-slot-hidden={isHidden ? 'true' : undefined}
         className={`forge-foundry-mold forge-foundry-mold--empty ${isHidden ? 'forge-foundry-mold--vacated' : ''} ${forgeCompact ? 'board-forge-compact-chip' : 'forge-foundry-slot'} rounded-xl shrink-0`}
         style={forgeCompact ? compactSlotStyle : undefined}
-      />
+      >
+        {isAvatarSeedMold && <AvatarSeedMoldMark compact={forgeCompact} />}
+      </div>
     );
   }
 
@@ -269,11 +283,14 @@ export function ForgeCardSlot({
           data-bonus-affinity={c.bonusAffinity ?? undefined}
           data-affordable={isAffordable ? 'true' : undefined}
           data-planned={isPendingPlan ? 'true' : undefined}
+          data-slot-key={slotKey}
+          {...avatarSeedMoldProps}
           className="forge-foundry-mold board-forge-compact-chip relative shrink-0"
           style={{ ...compactSlotStyle, ...getForgeAffinityStyle(c) }}
           title={cardTapTitle}
           {...(cardFocusProps ?? {})}
         >
+          {isAvatarSeedMold && <AvatarSeedMoldMark compact />}
           <div className="absolute inset-0 overflow-hidden rounded-lg">
             <div
               className="compact-forge-card-stage absolute inset-0 origin-top-left"
@@ -307,9 +324,12 @@ export function ForgeCardSlot({
         data-testid="forge-card-slot"
         data-affordable={isAffordable ? 'true' : undefined}
         data-planned={isPendingPlan ? 'true' : undefined}
+        data-slot-key={slotKey}
+        {...avatarSeedMoldProps}
         className="forge-foundry-mold forge-foundry-slot relative shrink-0 rounded-xl"
         style={getForgeAffinityStyle(c)}
       >
+        {isAvatarSeedMold && <AvatarSeedMoldMark />}
         <div
           data-card-id={c.id}
           className="forge-foundry-card relative rounded-xl focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-amber-400/70"
@@ -366,6 +386,7 @@ export function ForgeCardSlot({
         data-planned={isPendingPlan ? 'true' : undefined}
         data-selected={isTapped ? 'true' : undefined}
         data-slot-key={slotKey}
+        {...avatarSeedMoldProps}
         className="forge-foundry-mold board-forge-compact-chip relative shrink-0 cursor-pointer focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-amber-400/70 rounded-xl overflow-hidden"
         style={{
           ...compactSlotStyle,
@@ -375,6 +396,7 @@ export function ForgeCardSlot({
         {...(cardFocusProps ?? {})}
         title={cardTapTitle}
       >
+        {isAvatarSeedMold && <AvatarSeedMoldMark compact />}
         <div
           className="compact-forge-card-stage pointer-events-none origin-top-left"
           style={{ transform: 'scale(var(--forge-compact-card-scale, 0.5))', width: 'var(--card-w)', height: 'var(--card-h)' }}
@@ -427,9 +449,11 @@ export function ForgeCardSlot({
       data-affordable={isAffordable ? 'true' : undefined}
       data-planned={isPendingPlan ? 'true' : undefined}
       data-slot-key={slotKey}
+      {...avatarSeedMoldProps}
       className="forge-foundry-mold forge-foundry-slot relative shrink-0 rounded-xl"
       style={getForgeAffinityStyle(c)}
     >
+      {isAvatarSeedMold && <AvatarSeedMoldMark />}
       <div
         data-card-id={c.id}
         data-artifact-inspectable="true"

@@ -1,4 +1,5 @@
 import { useEffect, useState } from 'react';
+import { apiUrl } from '@/lib/network';
 
 interface ApiBuildIdentity {
   buildLabel: string;
@@ -25,7 +26,7 @@ export function DevBuildIdentity() {
     let cancelled = false;
     const read = async () => {
       try {
-        const response = await fetch('/api/meta/build', { cache: 'no-store' });
+        const response = await fetch(apiUrl('/meta/build'), { cache: 'no-store' });
         if (!response.ok) return;
         const next = await response.json() as ApiBuildIdentity;
         if (!cancelled) setApiBuild(next);

@@ -5,6 +5,7 @@ import { useGetCardLoreCatalog } from '@workspace/api-client-react';
 import type { CardLoreEntry } from '@workspace/api-client-react';
 import cardTier1Bg from '@assets/generated_images/card_tier1.png';
 import cardTier3Bg from '@assets/generated_images/card_tier3.png';
+import { CARD_NAME_FALLBACK } from '@/lib/cardNameFallback';
 
 const CARD_ART_MODULES = import.meta.glob(
   '../assets/cards/*.png',
@@ -208,8 +209,7 @@ function DevDetails({ lore }: { lore: CardLoreEntry }) {
 
   const rows: { label: string; value: string | undefined }[] = [
     { label: 'Artifact Form', value: lore.artifactForm },
-    { label: 'Blueprint Role', value: lore.blueprintRole },
-    { label: 'Blueprint Families', value: lore.blueprintFamilies },
+    { label: 'Practical Capability', value: lore.practicalCapability },
     { label: 'Culture', value: lore.civLane },
   ];
   const hasDetails = rows.some(r => r.value) || lore.artPrompt;
@@ -321,7 +321,7 @@ export default function DevCardBrowser() {
   }
 
   const lore = loreData?.[card.id];
-  const cardName = lore?.name ?? card.id;
+  const cardName = lore?.name ?? CARD_NAME_FALLBACK[card.id] ?? card.id;
   const bonusMeta = AFFINITY_META[card.bonusAffinity];
   const specificArt = CARD_ART[card.id];
   const artLayerStyle: React.CSSProperties = {

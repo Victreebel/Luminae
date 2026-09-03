@@ -28,6 +28,8 @@ export interface CipherApertureProps {
   onComplete?: () => void;
   /** Keeps the release local to the source instead of staging at viewport center. */
   skipForefront?: boolean;
+  /** Lets tutorial and cinematic shells place the effect above their own chrome. */
+  overlayZIndex?: number;
 }
 
 type Phase = "release" | "conceal" | "lock" | "transfer" | "arrive";
@@ -80,6 +82,7 @@ export function CipherApertureAnimation({
   ownerName,
   onComplete,
   skipForefront,
+  overlayZIndex = 70,
 }: CipherApertureProps) {
   const [phase, setPhase] = useState<Phase>("release");
   const [arrivalLabelFading, setArrivalLabelFading] = useState(false);
@@ -192,7 +195,11 @@ export function CipherApertureAnimation({
         };
 
   return (
-    <div className="pointer-events-none fixed inset-0 z-[70]">
+    <div
+      data-testid="cipher-aperture-animation"
+      className="pointer-events-none fixed inset-0"
+      style={{ zIndex: overlayZIndex }}
+    >
       <motion.div
         className="absolute inset-0 bg-black"
         initial={{ opacity: 0 }}
@@ -212,6 +219,7 @@ export function CipherApertureAnimation({
       )}
 
       <motion.div
+        data-testid="cipher-aperture-plate"
         style={{
           position: "fixed",
           left: plateLeft,
@@ -266,7 +274,15 @@ export function CipherApertureAnimation({
               boxShadow: { duration: 0.18 },
           }}
         >
-            {cardFace}
+            <div
+              className="absolute inset-0"
+              style={{
+                "--card-w": `${plateW}px`,
+                "--card-h": `${plateH}px`,
+              } as React.CSSProperties}
+            >
+              {cardFace}
+            </div>
 
             <motion.div
               className="absolute inset-0"
@@ -530,9 +546,11 @@ function CipherCircuitConvergence({
 
   return (
     <svg
+      data-testid="cipher-circuit-convergence"
       viewBox="0 0 96 140"
       preserveAspectRatio="none"
       className="absolute inset-0 h-full w-full overflow-visible"
+      shapeRendering="geometricPrecision"
       aria-hidden="true"
     >
       <defs>
@@ -567,13 +585,14 @@ function CipherCircuitConvergence({
               d={path.d}
               pathLength={1}
         fill="none"
-              stroke="rgba(226,240,255,0.5)"
-              strokeWidth="0.65"
+              stroke="rgba(232,244,255,0.9)"
+              strokeWidth="1.15"
               strokeLinecap="round"
               strokeLinejoin="round"
+              vectorEffect="non-scaling-stroke"
               filter={`url(#${whiteGlowId})`}
               initial={{ pathLength: 0, opacity: 0 }}
-              animate={{ pathLength: 1, opacity: locked ? 0 : [0, 0.7, 0.34] }}
+              animate={{ pathLength: 1, opacity: locked ? 0 : [0, 1, 0.72] }}
               transition={{
                 pathLength: { delay, duration, ease: "easeInOut" },
                 opacity: locked
@@ -586,10 +605,11 @@ function CipherCircuitConvergence({
               pathLength={1}
           fill="none"
               stroke={CIPHER_WHITE}
-              strokeWidth="1.55"
+              strokeWidth="2.1"
           strokeLinecap="round"
               strokeLinejoin="round"
-              strokeDasharray="0.075 0.925"
+              strokeDasharray="0.12 0.88"
+              vectorEffect="non-scaling-stroke"
               filter={`url(#${whiteGlowId})`}
               initial={{ strokeDashoffset: 1, opacity: 0 }}
           animate={{
@@ -774,138 +794,4 @@ function DestinationReceipt({
   );
 }
 
-export function CipherSigil({
-  affinityHex,
-  id,
-}: {
-  affinityHex: string;
-  id: number;
-}) {
-  const glowId  = `ca-glow-${id}`;
-  const bloomId = `ca-bloom-${id}`;
-  const whiteId = `ca-white-${id}`;
-
-  return (
-    <svg
-      viewBox="0 0 96 96"
-      className="h-full w-full"
-      style={{ overflow: "visible" }}
-    >
-      <defs>
-        <filter id={glowId} x="-60%" y="-60%" width="220%" height="220%">
-          <feGaussianBlur stdDeviation="2.2" result="b" />
-          <feMerge>
-            <feMergeNode in="b" />
-            <feMergeNode in="SourceGraphic" />
-          </feMerge>
-        </filter>
-        <filter id={bloomId} x="-80%" y="-80%" width="260%" height="260%">
-          <feGaussianBlur stdDeviation="7" />
-        </filter>
-        <filter id={whiteId} x="-60%" y="-60%" width="220%" height="220%">
-          <feGaussianBlur stdDeviation="1.6" result="b" />
-          <feMerge>
-            <feMergeNode in="b" />
-            <feMergeNode in="SourceGraphic" />
-          </feMerge>
-        </filter>
-      </defs>
-      <polygon
-        points="87,48 67.5,81.5 28.5,81.5 9,48 28.5,14.5 67.5,14.5"
-        fill={affinityHex}
-        opacity="0.13"
-        filter={`url(#${bloomId})`}
-      />
-      <polygon
-        points="87,48 67.5,81.5 28.5,81.5 9,48 28.5,14.5 67.5,14.5"
-        fill="none"
-        stroke={affinityHex}
-        strokeWidth="1.4"
-        opacity="0.88"
-        filter={`url(#${glowId})`}
-      />
-      <polygon
-        points="82,48 64.5,78 31.5,78 14,48 31.5,18 64.5,18"
-        fill="none"
-        stroke="rgba(210,240,255,0.28)"
-        strokeWidth="0.6"
-        filter={`url(#${whiteId})`}
-      />
-      <polygon
-        points="71,61.5 48,73 25,61.5 25,34.5 48,23 71,34.5"
-        fill="none"
-        stroke={affinityHex}
-        strokeWidth="0.85"
-        opacity="0.52"
-      />
-      <rect
-        x="37"
-        y="37"
-        width="22"
-        height="22"
-        rx="1"
-        transform="rotate(45 48 48)"
-        fill={affinityHex}
-        opacity="0.58"
-        filter={`url(#${glowId})`}
-      />
-      <rect
-        x="41.5"
-        y="41.5"
-        width="13"
-        height="13"
-        transform="rotate(45 48 48)"
-        fill="rgba(220,245,255,0.28)"
-      />
-      <rect
-        x="45"
-        y="45"
-        width="6"
-        height="6"
-        transform="rotate(45 48 48)"
-        fill="white"
-        opacity="0.22"
-        filter={`url(#${whiteId})`}
-      />
-      {(
-        [
-          [87, 48],
-          [67.5, 81.5],
-          [28.5, 81.5],
-          [9, 48],
-          [28.5, 14.5],
-          [67.5, 14.5],
-        ] as [number, number][]
-      ).map(([x, y], index) => (
-        <circle
-          key={index}
-          cx={x}
-          cy={y}
-          r="2.6"
-          fill={affinityHex}
-          opacity="0.9"
-        />
-      ))}
-      <line
-        x1="20"
-        y1="28"
-        x2="76"
-        y2="68"
-        stroke={affinityHex}
-        strokeWidth="0.6"
-        opacity="0.36"
-        strokeDasharray="2.8 4.2"
-      />
-      <line
-        x1="20"
-        y1="68"
-        x2="76"
-        y2="28"
-        stroke={affinityHex}
-        strokeWidth="0.6"
-        opacity="0.36"
-        strokeDasharray="2.8 4.2"
-      />
-    </svg>
-  );
-}
+export { CipherSigil } from "@/components/CipherSigil";

@@ -18,10 +18,16 @@ import {
   STANDARD_AFFINITY_KEYS,
   LUMINARIES,
   getArtifactBrands,
+  markerHasBrand,
   runDevLuminarySequence,
 } from "./gameEngine.js";
 import type { GameStateData } from "./gameEngine.js";
 import { chooseAiAction } from "./aiPlayer.js";
+import { GUIDED_LUMII_AVATAR_ID } from "./avatarAssignment.js";
+import {
+  DEFAULT_VICTORY_REQUIREMENT,
+  MIN_VICTORY_REQUIREMENT,
+} from "@workspace/game-types";
 
 // ─── Test helpers ──────────────────────────────────────────────────────────────
 
@@ -83,6 +89,76 @@ function finishByExhaustion(state: GameStateData) {
   expect(state.phase).toBe("finished");
 }
 
+describe("victory requirement configuration", () => {
+  const players = [{ id: "p1", name: "P1" }, { id: "p2", name: "P2" }];
+
+  it("uses 20 Eminence for newly initialized games", () => {
+    expect(initializeGame(players, 2).victoryRequirement).toBe(DEFAULT_VICTORY_REQUIREMENT);
+  });
+
+  it("retains 15 Eminence when explicitly configured for a shorter custom game", () => {
+    expect(initializeGame(players, 2, MIN_VICTORY_REQUIREMENT).victoryRequirement)
+      .toBe(MIN_VICTORY_REQUIREMENT);
+  });
+
+  it("preserves the historical 15-Eminence fallback for legacy saves with no target", () => {
+    const legacy = initializeGame(players, 2) as GameStateData & {
+      victoryRequirement?: number;
+    };
+    delete legacy.victoryRequirement;
+    expect(normalizeState(legacy).victoryRequirement).toBe(MIN_VICTORY_REQUIREMENT);
+  });
+
+  it("stages the legacy live tutorial one point below the 20-Eminence target", () => {
+    const state = makeGame();
+    expect(applyAction(state, "p1", { type: "tutorial_fast_forward" })).toMatchObject({
+      success: true,
+    });
+    expect(state.victoryRequirement).toBe(DEFAULT_VICTORY_REQUIREMENT);
+    expect(state.players[0]!.eminence).toBe(DEFAULT_VICTORY_REQUIREMENT - 1);
+  });
+});
+
+describe("Luminary card effect copy", () => {
+  it("provides a current full rules description for every active Luminary", () => {
+    const activeIds = [
+      "lum_moth", "lum_tide", "lum_verdant", "lum_void", "lum_radiant",
+      "lum_astral", "lum_bloom", "lum_forge", "lum_compass", "lum_seed",
+      "lum_orchard", "lum_pale", "lum_ember", "lum_hunger", "lum_null",
+    ];
+
+    for (const id of activeIds) {
+      const luminary = LUMINARY_MAP.get(id);
+      expect(luminary?.effectName, id).toBeTruthy();
+      expect(luminary?.effectDescription, id).toBeTruthy();
+      expect(luminary?.effectDescription, id).not.toMatch(/\bcards?\b/i);
+    }
+  });
+
+  it("keeps recently revised mechanics out of obsolete card copy", () => {
+    expect(LUMINARY_MAP.get("lum_tide")?.effectDescription).toContain("top Artifact of each Archive");
+    expect(LUMINARY_MAP.get("lum_radiant")?.effectDescription).toContain("at least 10");
+    expect(LUMINARY_MAP.get("lum_compass")?.effectDescription).toContain(
+      "without raising the victory requirement",
+    );
+    expect(LUMINARY_MAP.get("lum_seed")?.effectDescription).toContain(
+      "each unseeded Artifact",
+    );
+    expect(LUMINARY_MAP.get("lum_orchard")?.effectDescription).toContain(
+      "second permanent bonus Affinity",
+    );
+    expect(LUMINARY_MAP.get("lum_orchard")?.effectDescription).not.toMatch(
+      /cheapest|free copy/i,
+    );
+    expect(LUMINARY_MAP.get("lum_pale")?.effectDescription).toContain(
+      "including Singularity",
+    );
+    expect(LUMINARY_MAP.get("lum_ember")?.effectDescription).toContain(
+      "end of your next turn",
+    );
+  });
+});
+
 /**
  * Force the CURRENT player to claim a specific Luminary immediately:
  * sets their bonuses to the requirements and forges a Tier 1 card,
@@ -142,6 +218,65 @@ function resolveLuminaryPresentation(state: GameStateData) {
   if (safety >= 30) throw new Error("Luminary presentation did not settle");
 }
 
+describe("civilization usage history", () => {
+  it("records successful Forge actions independently of the current tableau", () => {
+    const state = makeGame();
+    enrichPlayer(state, 0);
+    const cardId = state.forgeTier1[0]!;
+
+    const result = applyAction(state, "p1", { type: "forge_artifact", cardId });
+
+    expect(result.success).toBe(true);
+    expect(state.players[0].artifactForgeCounts).toEqual({ [cardId]: 1 });
+    expect(state.players[0].civilization.artifacts[cardId]).toEqual({
+      artifactId: cardId,
+      firstMasteredTurnCount: 0,
+      masteryCount: 1,
+      implementationState: "operational",
+      implementationStateChangedTurnCount: 0,
+      implementationChangeSource: null,
+      historyEvidence: "recorded",
+    });
+    state.players[0].forgedArtifactIds = [];
+    expect(state.players[0].artifactForgeCounts).toEqual({ [cardId]: 1 });
+    expect(state.players[0].civilization.artifacts[cardId]?.masteryCount).toBe(1);
+  });
+
+  it("normalizes legacy mastery without inventing implementation loss", () => {
+    const state = makeGame();
+    const player = state.players[0];
+    player.forgedArtifactIds = ["t1r01"];
+    player.artifactForgeCounts = { t1r01: 1, t1s01: 1 };
+    delete (player as { civilization?: unknown }).civilization;
+
+    normalizeState(state);
+    const normalizedPlayer = state.players[0];
+
+    expect(normalizedPlayer.civilization.artifacts.t1r01).toMatchObject({
+      firstMasteredTurnCount: null,
+      masteryCount: 1,
+      implementationState: "operational",
+      implementationStateChangedTurnCount: null,
+      historyEvidence: "legacy_inferred",
+    });
+    expect(normalizedPlayer.civilization.artifacts.t1s01).toMatchObject({
+      firstMasteredTurnCount: null,
+      masteryCount: 1,
+      implementationState: null,
+      implementationStateChangedTurnCount: null,
+      historyEvidence: "legacy_inferred",
+    });
+  });
+
+  it("records every Luminary alliance when it is committed", () => {
+    const state = makeGame();
+
+    claimLuminary(state, "lum_void");
+
+    expect(state.players[0].luminaryAllianceCounts).toEqual({ lum_void: 1 });
+  });
+});
+
 describe("game ending and victory ranking", () => {
   it("ends immediately when the final Forge Artifact exhausts every Archive", () => {
     const state = makeGame();
@@ -195,6 +330,25 @@ describe("game ending and victory ranking", () => {
     expect(state.winnerId).toBe("p1");
   });
 
+  it("excludes Foundry-bound components from the encrypted Artifact tie-break", () => {
+    const state = makeGame();
+    state.players[0].eminence = 10;
+    state.players[1].eminence = 10;
+    state.players[0].reservedArtifactIds = ["t1e01", "t1r07", "t1s02", "t1o05"];
+    state.players[0].blueprintPrivateStates = [{
+      blueprintId: "bp_mantle_to_orbit_foundry",
+      slotIndex: 0,
+      matchedComponentIds: ["t1r07", "t1s02", "t1o05"],
+      manifested: true,
+      foundryStoredArtifactIds: ["t1r07", "t1s02", "t1o05"],
+    }];
+    state.players[1].reservedArtifactIds = ["t1r01", "t1s01"];
+
+    finishByExhaustion(state);
+
+    expect(state.winnerId).toBe("p1");
+  });
+
   it.each([
     {
       decidingTier: "Tier III",
@@ -237,8 +391,8 @@ describe("game ending and victory ranking", () => {
 
   it("uses the same ranking after the normal final round", () => {
     const state = makeGame();
-    state.players[0].eminence = 15;
-    state.players[1].eminence = 15;
+    state.players[0].eminence = DEFAULT_VICTORY_REQUIREMENT;
+    state.players[1].eminence = DEFAULT_VICTORY_REQUIREMENT;
     state.players[0].reservedArtifactIds = ["t1r01"];
 
     pass(state);
@@ -267,11 +421,65 @@ describe("guided Lumii", () => {
     expect(lumii.forgedArtifactIds).toEqual([]);
     expect(state.affinityWell).toEqual(bankBefore);
   });
+
+  it("projects the reserved Lumii avatar for passive AI only", () => {
+    const state = makeGame();
+    const formatted = formatGameState(
+      "room-test",
+      "playing",
+      state,
+      new Set(["p1", "p2"]),
+      new Map([
+        ["p1", "stargazer"],
+        ["p2", "oracle"],
+      ]),
+      new Map([
+        ["p1", { isAi: false, aiDifficulty: null }],
+        ["p2", { isAi: true, aiDifficulty: "passive" }],
+      ]),
+    );
+
+    expect(formatted.players.find(player => player.playerId === "p1")?.avatarId).toBe("stargazer");
+    expect(formatted.players.find(player => player.playerId === "p2")?.avatarId).toBe(GUIDED_LUMII_AVATAR_ID);
+  });
 });
 
 // ─── Normalisation ────────────────────────────────────────────────────────────
 
 describe("normalizeState — v0.8 field defaults", () => {
+  it("normalizes legacy finished games and projects scenario finish metadata", () => {
+    const state = makeGame();
+    state.phase = "finished";
+    state.finishReason = "withdrawal";
+    const formatted = formatGameState(
+      "room-test",
+      "finished",
+      state,
+      new Set(),
+      undefined,
+      undefined,
+      "blueprint_clearance_lumii",
+    );
+
+    expect(formatted.scenarioId).toBe("blueprint_clearance_lumii");
+    expect(formatted.finishReason).toBe("withdrawal");
+    expect(formatted.lumiiThresholdApproach).toBe("inquiry");
+
+    state.lumiiThresholdApproach = "dominion";
+    expect(formatGameState(
+      "room-test",
+      "finished",
+      state,
+      new Set(),
+      undefined,
+      undefined,
+      "blueprint_clearance_lumii",
+    ).lumiiThresholdApproach).toBe("dominion");
+
+    const legacy = { ...state } as GameStateData;
+    delete legacy.finishReason;
+    expect(normalizeState(legacy as unknown as Record<string, unknown>).finishReason).toBe("win");
+  });
   it("initialises artifactMarkers to {} when absent", () => {
     const state = normalizeState({
       players: [],
@@ -300,6 +508,7 @@ describe("normalizeState — v0.8 field defaults", () => {
       pendingSummonEvents: [],
     });
     expect(state.concordanceMandalaTriggered).toBe(false);
+    expect(state.concordanceMandalaFinalTriggered).toBe(false);
   });
 
   it("initialises glassOrchardTriggered to false when absent", () => {
@@ -322,6 +531,15 @@ describe("normalizeState — v0.8 field defaults", () => {
     expect(state.firstHungerAvailable).toBeNull();
   });
 
+  it("clears legacy Void Seal ownership during normalization", () => {
+    const state = makeGame();
+    state.players[0]!.luminaries.push("lum_void");
+    state.voidSealOwnerId = "p1";
+
+    normalizeState(state);
+    expect(state.voidSealOwnerId).toBeNull();
+  });
+
   it("initialises openingTurnOrder to null when absent", () => {
     const state = normalizeState({
       players: [],
@@ -342,22 +560,20 @@ describe("normalizeState — v0.8 field defaults", () => {
     expect(state.coreActionUsed).toBe(false);
   });
 
-  it("initialises Avatar Seed pending Eminence when absent", () => {
-    const state = normalizeState({
-      players: [],
-      activeLuminaries: [],
-      luminaryAffinities: [],
-      pendingSummonEvents: [],
-      avatarSeedState: {
-        ownerId: "p1",
-        summonedAtTurnCount: 3,
-        deckSeeds: [],
-        payoutDone: false,
-      },
-    });
+  it("recovers usage counts from legacy player arrays when absent", () => {
+    const state = makeGame();
+    const player = state.players[0];
+    player.forgedArtifactIds = ["t1r01", "t1r01", "t2p02"];
+    player.luminaries = ["lum_tide", "lum_void"];
+    delete player.artifactForgeCounts;
+    delete player.luminaryAllianceCounts;
 
-    expect(state.avatarSeedState?.pendingEminence).toBe(0);
+    normalizeState(state);
+
+    expect(state.players[0].artifactForgeCounts).toEqual({ t1r01: 2, t2p02: 1 });
+    expect(state.players[0].luminaryAllianceCounts).toEqual({ lum_tide: 1, lum_void: 1 });
   });
+
 });
 
 // ─── Double-action exploit prevention ────────────────────────────────────────
@@ -512,6 +728,41 @@ describe("Luminary active affinity", () => {
 });
 
 describe("Luminary resolution barrier", () => {
+  it("snapshots the summoner's equipped arrival sound onto the public event", () => {
+    const state = normalizeState(initializeGame([
+      { id: "p1", name: "Player 1", luminaryArrivalSound: "first_resonance" },
+      { id: "p2", name: "Player 2" },
+    ], 2));
+    state.currentPlayerIndex = 0;
+
+    claimLuminary(state, "lum_verdant");
+
+    expect(state.pendingSummonEvents[0]).toMatchObject({
+      claimedByPlayerId: "p1",
+      arrivalSound: "first_resonance",
+    });
+    expect(formatGameState(
+      "room-1",
+      "playing",
+      state,
+      new Set(["p1", "p2"]),
+    ).pendingSummonEvents[0]).toMatchObject({
+      claimedByPlayerId: "p1",
+      arrivalSound: "first_resonance",
+    });
+  });
+
+  it("normalizes legacy arrival events to the standard sound", () => {
+    const legacy = makeGame();
+    legacy.pendingSummonEvents = [{
+      eventId: "legacy-arrival",
+      luminaryId: "lum_verdant",
+      claimedByPlayerId: "p1",
+    }];
+
+    expect(normalizeState(legacy).pendingSummonEvents[0]?.arrivalSound).toBe("standard");
+  });
+
   it("keeps the acting player current and blocks all real actions during arrival", () => {
     const state = makeGame();
     claimLuminary(state, "lum_verdant");
@@ -581,14 +832,27 @@ describe("Luminary resolution barrier", () => {
     claimLuminary(state, "lum_verdant");
     const eminenceAfterCoreAction = state.players[0].eminence;
     const summonEvent = state.pendingSummonEvents[0]!;
+    const earlyBloomEvent = state.pendingLuminaryActivationEvents[0]!;
 
     expect(state.pendingTurnTransition?.stage).toBe("after_action");
     expect(state.catalystBloomBurnCount).toBe(2);
-    expect(state.pendingLuminaryActivationEvents).toHaveLength(0);
+    expect(earlyBloomEvent).toMatchObject({
+      luminaryId: "lum_verdant",
+      effectType: "summon",
+      affinityType: "verdance",
+    });
 
     expect(applyAction(state, "p1", {
       type: "resolve_summon",
       eventId: summonEvent.eventId,
+    }).success).toBe(true);
+
+    expect(state.pendingTurnTransition?.stage).toBe("after_action");
+    expect(state.catalystBloomBurnCount).toBe(2);
+
+    expect(applyAction(state, "p1", {
+      type: "resolve_luminary_activation",
+      eventId: earlyBloomEvent.eventId,
     }).success).toBe(true);
 
     expect(state.players[0].eminence).toBe(eminenceAfterCoreAction + 2);
@@ -619,6 +883,58 @@ describe("Luminary resolution barrier", () => {
       stage: "after_action",
       endingPlayerId: "p1",
     });
+  });
+});
+
+describe("Verdant Oracle — Early Bloom", () => {
+  it("takes one Verdance token from the Well on arrival", () => {
+    const state = makeGame();
+    const player = state.players[0];
+
+    claimLuminary(state, "lum_verdant", (preparedState) => {
+      for (const affinity of STANDARD_AFFINITY_KEYS) {
+        player.affinities[affinity] = 1;
+      }
+      player.affinities.singularity = 4;
+      preparedState.affinityWell.verdance = 4;
+    });
+
+    expect(player.affinities.verdance).toBe(2);
+    expect(state.affinityWell.verdance).toBe(3);
+    expect(state.pendingLuminaryActivationEvents).toContainEqual(
+      expect.objectContaining({
+        luminaryId: "lum_verdant",
+        effectType: "summon",
+        triggeringPlayerId: player.playerId,
+        affinityType: "verdance",
+        affinityAmount: 1,
+      }),
+    );
+    expect(state.actionLog.some((entry) => entry.summary.includes("gained 1 Verdance"))).toBe(true);
+  });
+
+  it("resolves without creating a token when the Verdance supply is empty", () => {
+    const state = makeGame();
+    const player = state.players[0];
+
+    claimLuminary(state, "lum_verdant", (preparedState) => {
+      for (const affinity of STANDARD_AFFINITY_KEYS) {
+        player.affinities[affinity] = 1;
+      }
+      player.affinities.singularity = 4;
+      preparedState.affinityWell.verdance = 0;
+    });
+
+    expect(state.affinityWell.verdance).toBe(0);
+    expect(state.pendingLuminaryActivationEvents).toContainEqual(
+      expect.objectContaining({
+        luminaryId: "lum_verdant",
+        effectType: "summon",
+        affinityType: "verdance",
+        affinityAmount: 0,
+      }),
+    );
+    expect(state.actionLog.some((entry) => entry.summary.includes("no token gained"))).toBe(true);
   });
 });
 
@@ -665,12 +981,63 @@ describe("Artifact markers — zero Eminence on forge_artifact", () => {
     const cardId = state.forgeTier3.find((id) => (CARD_MAP.get(id)?.eminence ?? 0) > 0);
     if (!cardId) return;
     state.artifactMarkers = {
-      [cardId]: { type: "nullified", ownerId: "p1", summonedAtTurnCount: 0 },
+      [cardId]: { type: "nullified", ownerId: "p2", summonedAtTurnCount: 0 },
     };
     const eminenceBefore = state.players[0].eminence;
     const r = applyAction(state, "p1", { type: "forge_artifact", cardId });
     expect(r.success).toBe(true);
     expect(state.players[0].eminence).toBe(eminenceBefore);
+    expect(state.players[0].blueprintBlockedCardIds).toContain(cardId);
+    expect(state.nullifiedFirstForge).toEqual({ cardId, playerId: "p1", exempt: false });
+  });
+
+  it("the allied player ignores Nullified on the first Nullified Artifact forged in the game", () => {
+    const cardId = state.forgeTier3.find((id) => (CARD_MAP.get(id)?.eminence ?? 0) > 0);
+    if (!cardId) return;
+    const printedEminence = CARD_MAP.get(cardId)!.eminence;
+    state.artifactMarkers = {
+      [cardId]: { type: "nullified", ownerId: "p1", summonedAtTurnCount: 0 },
+    };
+
+    const eminenceBefore = state.players[0].eminence;
+    const result = applyAction(state, "p1", { type: "forge_artifact", cardId });
+
+    expect(result.success).toBe(true);
+    expect(state.players[0].eminence).toBe(eminenceBefore + printedEminence);
+    expect(state.players[0].blueprintBlockedCardIds).not.toContain(cardId);
+    expect(state.nullifiedFirstForge).toEqual({ cardId, playerId: "p1", exempt: true });
+  });
+
+  it("does not exempt a later allied forge after the first Nullified forge was consumed", () => {
+    const cardId = state.forgeTier3.find((id) => (CARD_MAP.get(id)?.eminence ?? 0) > 0);
+    if (!cardId) return;
+    state.nullifiedFirstForge = { cardId: "earlier-card", playerId: "p2", exempt: false };
+    state.artifactMarkers = {
+      [cardId]: { type: "nullified", ownerId: "p1", summonedAtTurnCount: 0 },
+    };
+
+    const eminenceBefore = state.players[0].eminence;
+    const result = applyAction(state, "p1", { type: "forge_artifact", cardId });
+
+    expect(result.success).toBe(true);
+    expect(state.players[0].eminence).toBe(eminenceBefore);
+    expect(state.players[0].blueprintBlockedCardIds).toContain(cardId);
+    expect(state.nullifiedFirstForge).toEqual({ cardId: "earlier-card", playerId: "p2", exempt: false });
+  });
+
+  it("prevents a face-up Nullified Artifact from being Encrypted", () => {
+    const cardId = state.forgeTier3[0]!;
+    state.artifactMarkers = {
+      [cardId]: { type: "nullified", ownerId: "p2", summonedAtTurnCount: 0 },
+    };
+    state.affinityWell.singularity = 0;
+
+    const result = applyAction(state, "p1", { type: "reserve_artifact", cardId });
+
+    expect(result.success).toBe(false);
+    expect(result.error).toBe("Nullified Artifacts cannot be Encrypted");
+    expect(state.forgeTier3).toContain(cardId);
+    expect(state.players[0].reservedArtifactIds).not.toContain(cardId);
   });
 
   it("no marker → forging grants normal printed Eminence", () => {
@@ -718,12 +1085,12 @@ describe("Artifact markers — zero Eminence on forge_artifact", () => {
     );
   });
 
-  it("Forgotten Hour blocks encrypting face-up and hidden Artifacts", () => {
+  it("Forgotten Hour blocks opponents from encrypting face-up and hidden Artifacts", () => {
     const cardId = state.forgeTier1.find((id) => (CARD_MAP.get(id)?.eminence ?? 0) > 0);
     if (!cardId) return;
 
     state.artifactMarkers = {
-      [cardId]: { type: "forgotten", ownerId: "p1", summonedAtTurnCount: 0 },
+      [cardId]: { type: "forgotten", ownerId: "p2", summonedAtTurnCount: 0 },
     };
     state.affinityWell.singularity = 0;
 
@@ -732,7 +1099,7 @@ describe("Artifact markers — zero Eminence on forge_artifact", () => {
     expect(reserveResult.error).toBe("Cannot encrypt during The Forgotten Hour");
 
     state.artifactMarkers = {
-      [cardId]: { type: "forgotten", ownerId: "p1", summonedAtTurnCount: 0 },
+      [cardId]: { type: "forgotten", ownerId: "p2", summonedAtTurnCount: 0 },
     };
     const blindReserveResult = applyAction(state, "p1", { type: "reserve_artifact", tier: 1 });
     expect(blindReserveResult.success).toBe(false);
@@ -740,26 +1107,48 @@ describe("Artifact markers — zero Eminence on forge_artifact", () => {
 
     state.artifactMarkers = {};
     state.forgottenHourCycle = {
-      p1: { lastAppliedTurnCount: state.turnCount, cooldownOwnerTurnsRemaining: null },
+      p2: { lastAppliedTurnCount: state.turnCount, cooldownOwnerTurnsRemaining: null },
     };
     const cycleOnlyReserveResult = applyAction(state, "p1", { type: "reserve_artifact", cardId });
     expect(cycleOnlyReserveResult.success).toBe(false);
     expect(cycleOnlyReserveResult.error).toBe("Cannot encrypt during The Forgotten Hour");
   });
 
-  it("??? awards no Eminence and raises the victory requirement with its Forgotten branding", () => {
+  it("allows the ally of ??? to Encrypt during their own Forgotten Hour", () => {
+    const cardId = state.forgeTier1[0]!;
+    state.artifactMarkers = {
+      [cardId]: { type: "forgotten", ownerId: "p1", summonedAtTurnCount: 0 },
+    };
+    state.forgottenHourCycle = {
+      p1: { lastAppliedTurnCount: state.turnCount, cooldownOwnerTurnsRemaining: null },
+    };
+    state.affinityWell.singularity = 0;
+
+    const result = applyAction(state, "p1", { type: "reserve_artifact", cardId });
+
+    expect(result.success).toBe(true);
+    expect(state.players[0]!.reservedArtifactIds).toContain(cardId);
+  });
+
+  it("??? awards 1 native Eminence and raises the victory requirement with its Forgotten branding", () => {
     const player = state.players[0];
     const eminenceBefore = player.eminence;
-    const victoryBefore = state.victoryRequirement ?? 15;
+    const victoryBefore = state.victoryRequirement ?? DEFAULT_VICTORY_REQUIREMENT;
+    const forgedEminence = CARD_MAP.get(state.forgeTier1[0]!)?.eminence ?? 0;
 
     claimLuminary(state, "lum_compass");
 
-    expect(player.eminence).toBe(eminenceBefore);
+    expect(player.eminence).toBe(eminenceBefore + forgedEminence + 1);
     expect(state.victoryRequirement).toBe(victoryBefore + 1);
     const activation = state.pendingLuminaryActivationEvents.find(
       (event) => event.luminaryId === "lum_compass" && event.effectType === "summon",
     );
     expect(activation?.targetCardIds?.length).toBeGreaterThan(0);
+    expect(activation).toMatchObject({
+      victoryRequirementBefore: victoryBefore,
+      victoryRequirementAfter: victoryBefore + 1,
+      victoryRequirementChange: 1,
+    });
   });
 
   it("Forgotten marker on an already-reserved card still grants 0 Eminence when forged", () => {
@@ -841,129 +1230,219 @@ describe("Private Archive encryption tracking", () => {
   });
 });
 
-// ─── Avatar Seed ──────────────────────────────────────────────────────────────
+// ─── Avatar Seeds ─────────────────────────────────────────────────────────────
 
-describe("Avatar Seed — pending Eminence accumulates on opponent forge", () => {
-  it("queues Seed's summon activation before the deck-seeding flourish", () => {
+describe("Seed Beyond Seasons — permanent Avatar Seed molds", () => {
+  const marker = (ownerId = "p2") => ({
+    type: "avatar_seed" as const,
+    ownerId,
+    summonedAtTurnCount: 0,
+  });
+
+  it("marks one random mold in every tier on arrival", () => {
     const state = makeGame();
 
     claimLuminary(state, "lum_seed");
 
-    const seededIds = state.avatarSeedState?.deckSeeds ?? [];
-    expect(seededIds.length).toBeGreaterThan(0);
+    const moldSlots = state.avatarSeedState?.moldSlots ?? [];
+    expect(moldSlots).toHaveLength(3);
+    expect(new Set(moldSlots.map((slot) => Number(slot.split("-")[0])))).toEqual(
+      new Set([1, 2, 3]),
+    );
+    for (const slot of moldSlots) {
+      const [tierText, indexText] = slot.split("-");
+      const tier = Number(tierText) as 1 | 2 | 3;
+      const index = Number(indexText);
+      const row = tier === 1 ? state.forgeTier1 : tier === 2 ? state.forgeTier2 : state.forgeTier3;
+      expect(index).toBeGreaterThanOrEqual(0);
+      expect(index).toBeLessThan(row.length);
+    }
     expect(state.pendingLuminaryActivationEvents).toEqual([
       expect.objectContaining({
         luminaryId: "lum_seed",
         effectType: "summon",
         triggeringPlayerId: "p1",
-        targetCardIds: expect.arrayContaining(seededIds),
+        targetSlotIds: expect.arrayContaining(moldSlots),
       }),
     ]);
   });
 
-  it("increments pending Eminence when the opponent forges an avatar-seeded Forge card", () => {
+  it("brands only unseeded Artifacts occupying Avatar Seed molds at end of turn", () => {
     const state = makeGame();
-    enrichPlayer(state, 0);
-    enrichPlayer(state, 1);
-
-    // Set up Avatar Seed state owned by player 1.
     state.avatarSeedState = {
       ownerId: "p2",
       summonedAtTurnCount: 0,
-      pendingEminence: 0,
-      deckSeeds: [],
-      payoutDone: false,
+      moldSlots: ["1-0", "2-1", "3-2"],
     };
+    const targetIds = [state.forgeTier1[0]!, state.forgeTier2[1]!, state.forgeTier3[2]!];
 
-    // Place an avatar_seed marker on the first Tier 1 Forge card.
-    const seededCard = state.forgeTier1[0]!;
-    state.artifactMarkers = {
-      [seededCard]: { type: "avatar_seed", ownerId: "p2", summonedAtTurnCount: 0 },
-    };
+    pass(state);
 
-    // Player 1 (p1, index 0) forges the seeded Artifact -> opponent of p2.
-    const r = applyAction(state, "p1", { type: "forge_artifact", cardId: seededCard });
-    expect(r.success).toBe(true);
-    expect(state.avatarSeedState!.pendingEminence).toBe(1);
+    for (const cardId of targetIds) {
+      expect(markerHasBrand(state.artifactMarkers?.[cardId], "avatar_seed", "p2")).toBe(true);
+    }
+    expect(state.pendingLuminaryActivationEvents).toContainEqual(
+      expect.objectContaining({
+        luminaryId: "lum_seed",
+        effectType: "end_of_turn",
+        triggeringPlayerId: "p2",
+        targetCardIds: expect.arrayContaining(targetIds),
+      }),
+    );
   });
 
-  it("does NOT increment pending Eminence when the Avatar Seed OWNER forges their own seeded Artifact", () => {
+  it("does not queue a branding strike for empty molds or already Seeded Artifacts", () => {
+    const state = makeGame();
+    const tier2Card = state.forgeTier2[0]!;
+    const tier3Card = state.forgeTier3[0]!;
+    state.forgeTier1 = [];
+    state.avatarSeedState = {
+      ownerId: "p2",
+      summonedAtTurnCount: 0,
+      moldSlots: ["1-0", "2-0", "3-0"],
+    };
+    state.artifactMarkers = {
+      [tier2Card]: marker(),
+      [tier3Card]: marker(),
+    };
+
+    pass(state);
+
+    expect(state.pendingLuminaryActivationEvents).not.toContainEqual(
+      expect.objectContaining({ luminaryId: "lum_seed", effectType: "end_of_turn" }),
+    );
+  });
+
+  it("grants the allied player the Seeded Artifact's matching permanent Affinity", () => {
     const state = makeGame();
     enrichPlayer(state, 0);
-    // Move to player 2's turn.
+    enrichPlayer(state, 1);
+    state.activeLuminaries = [];
+    state.affinityWell.singularity = 0;
+    const seededCardId = state.forgeTier1[0]!;
+    const seededCard = CARD_MAP.get(seededCardId)!;
+    state.avatarSeedState = {
+      ownerId: "p2",
+      summonedAtTurnCount: 0,
+      moldSlots: ["1-0", "2-0", "3-0"],
+    };
+    state.artifactMarkers = { [seededCardId]: marker() };
+    const bonusBefore = state.players[1].bonuses[seededCard.bonusAffinity];
+
+    const result = applyAction(state, "p1", { type: "forge_artifact", cardId: seededCardId });
+
+    expect(result.success).toBe(true);
+    expect(state.players[1].bonuses[seededCard.bonusAffinity]).toBe(bonusBefore + 1);
+    expect(state.pendingLuminaryActivationEvents).toContainEqual(
+      expect.objectContaining({
+        luminaryId: "lum_seed",
+        effectType: "action",
+        triggeringPlayerId: "p2",
+        targetCardIds: [seededCardId],
+        targetSlotIds: ["1-0"],
+        affinityType: seededCard.bonusAffinity,
+        affinityAmount: 1,
+      }),
+    );
+    const seedEventsBeforeResolution = state.pendingLuminaryActivationEvents.filter(
+      (event) => event.luminaryId === "lum_seed",
+    );
+    expect(seedEventsBeforeResolution.map((event) => event.effectType)).toEqual(["action"]);
+
+    const resolveResult = applyAction(state, "p1", {
+      type: "resolve_luminary_activation",
+      eventId: seedEventsBeforeResolution[0]!.eventId,
+    });
+    expect(resolveResult.success).toBe(true);
+    expect(state.pendingLuminaryActivationEvents.filter(
+      (event) => event.luminaryId === "lum_seed",
+    ).map((event) => event.effectType)).toEqual(["end_of_turn"]);
+    expect(state.avatarSeedState?.moldSlots).toEqual(["1-0", "2-0", "3-0"]);
+  });
+
+  it("does not grant an extra bonus when the allied player forges their own Seeded Artifact", () => {
+    const state = makeGame();
     state.currentPlayerIndex = 1;
     enrichPlayer(state, 1);
-
+    state.activeLuminaries = [];
+    const seededCardId = state.forgeTier1[0]!;
+    const seededCard = CARD_MAP.get(seededCardId)!;
     state.avatarSeedState = {
       ownerId: "p2",
       summonedAtTurnCount: 0,
-      pendingEminence: 0,
-      deckSeeds: [],
-      payoutDone: false,
+      moldSlots: ["1-0", "2-0", "3-0"],
     };
-    const seededCard = state.forgeTier1[0]!;
-    state.artifactMarkers = {
-      [seededCard]: { type: "avatar_seed", ownerId: "p2", summonedAtTurnCount: 0 },
-    };
+    state.artifactMarkers = { [seededCardId]: marker() };
+    const bonusBefore = state.players[1].bonuses[seededCard.bonusAffinity];
 
-    const r = applyAction(state, "p2", { type: "forge_artifact", cardId: seededCard });
-    expect(r.success).toBe(true);
-    expect(state.avatarSeedState!.pendingEminence).toBe(0);
+    const result = applyAction(state, "p2", { type: "forge_artifact", cardId: seededCardId });
+
+    expect(result.success).toBe(true);
+    expect(state.players[1].bonuses[seededCard.bonusAffinity]).toBe(bonusBefore + 1);
+    expect(state.pendingLuminaryActivationEvents).not.toContainEqual(
+      expect.objectContaining({ luminaryId: "lum_seed", effectType: "action" }),
+    );
   });
 
-  it("pays out pending Eminence at end of owner's next turn", () => {
+  it("keeps the Seeded brand through reservation and imbues on an opponent's later forge", () => {
     const state = makeGame();
-    state.turnCount = 1; // Will become 2 after first pass.
-
+    enrichPlayer(state, 0);
+    enrichPlayer(state, 1);
+    state.activeLuminaries = [];
+    state.affinityWell.singularity = 0;
+    const seededCardId = state.forgeTier1[0]!;
+    const seededCard = CARD_MAP.get(seededCardId)!;
     state.avatarSeedState = {
-      ownerId: "p1",
+      ownerId: "p2",
       summonedAtTurnCount: 0,
+      moldSlots: ["1-1", "2-1", "3-1"],
+    };
+    state.artifactMarkers = { [seededCardId]: marker() };
+
+    expect(applyAction(state, "p1", { type: "reserve_artifact", cardId: seededCardId }).success).toBe(true);
+    expect(markerHasBrand(state.artifactMarkers?.[seededCardId], "avatar_seed", "p2")).toBe(true);
+
+    resolveLuminaryPresentation(state);
+    state.currentPlayerIndex = 0;
+    state.coreActionUsed = false;
+    const bonusBefore = state.players[1].bonuses[seededCard.bonusAffinity];
+    expect(applyAction(state, "p1", { type: "forge_reserved_artifact", cardId: seededCardId }).success).toBe(true);
+    expect(state.players[1].bonuses[seededCard.bonusAffinity]).toBe(bonusBefore + 1);
+    expect(state.artifactMarkers?.[seededCardId]).toBeUndefined();
+  });
+
+  it("migrates legacy Seed state to one deterministic valid mold per tier", () => {
+    const legacy = makeGame() as unknown as Record<string, unknown>;
+    legacy.avatarSeedState = {
+      ownerId: "p1",
+      summonedAtTurnCount: 4,
       pendingEminence: 3,
-      deckSeeds: [],
+      deckSeeds: ["legacy-card"],
       payoutDone: false,
     };
-    state.luminaryAffinities = [
-      {
-        luminaryId: "lum_seed",
-        ownerId: "p1",
-        activeAffinity: "continuum",
-        eligibleAffinities: ["continuum"],
-        summonedAtTurnCount: 0,
-      },
-    ];
 
-    // player0 passes → applyEndOfTurnEffects: turnCount=1 > summonedAt=0 → payout
-    const eminenceBefore = state.players[0].eminence;
-    pass(state); // ends p1's turn
-    expect(state.players[0].eminence).toBe(eminenceBefore + 3);
-    expect(state.avatarSeedState!.payoutDone).toBe(true);
+    const normalized = normalizeState(legacy);
+
+    expect(normalized.avatarSeedState?.moldSlots).toHaveLength(3);
+    expect(normalized.avatarSeedState).not.toHaveProperty("pendingEminence");
+    expect(normalized.avatarSeedState).not.toHaveProperty("deckSeeds");
+    expect(normalized.avatarSeedState).not.toHaveProperty("payoutDone");
   });
 
-  it("does NOT pay out on the SAME turn as arrival", () => {
-    const state = makeGame();
-    state.turnCount = 0; // Arrival and end-of-turn both at 0 → condition is false.
-
-    state.avatarSeedState = {
-      ownerId: "p1",
-      summonedAtTurnCount: 0,
-      pendingEminence: 5,
-      deckSeeds: [],
-      payoutDone: false,
-    };
-    state.luminaryAffinities = [
-      {
-        luminaryId: "lum_seed",
+  it("does not strand a legacy Seed save when Forge rows are missing", () => {
+    const normalized = normalizeState({
+      players: [],
+      activeLuminaries: [],
+      luminaryAffinities: [],
+      pendingSummonEvents: [],
+      avatarSeedState: {
         ownerId: "p1",
-        activeAffinity: "continuum",
-        eligibleAffinities: ["continuum"],
-        summonedAtTurnCount: 0,
+        summonedAtTurnCount: 4,
+        moldSlots: ["1-0", "2-0", "3-0"],
       },
-    ];
+    });
 
-    const eminenceBefore = state.players[0].eminence;
-    pass(state); // turnCount=0 at end-of-turn → 0 > 0 = false, no payout
-    expect(state.players[0].eminence).toBe(eminenceBefore);
-    expect(state.avatarSeedState!.payoutDone).toBe(false);
+    expect(normalized.avatarSeedState?.moldSlots).toEqual([]);
   });
 });
 
@@ -1005,46 +1484,74 @@ describe("Catalyst Bloom — Aftergrowth: +1 Eminence per burn effect at end of 
 
 // ─── Concordance Mandala ──────────────────────────────────────────────────────
 
-describe("Concordance Mandala — Perfect Coherence: +2 Eminence at end of turn with 8+ Radiance Artifacts", () => {
-  it("grants +2 Eminence when owner has ≥8 Radiance Artifacts at end of turn", () => {
+describe("Concordance Mandala — Perfect Coherence milestones", () => {
+  const radianceArtifactIds = (count: number) => [...CARD_MAP.values()]
+    .filter((card) => card.bonusAffinity === "radiance")
+    .slice(0, count)
+    .map((card) => card.id);
+
+  it("awards 4 native Eminence", () => {
+    expect(LUMINARY_MAP.get("lum_radiant")?.eminence).toBe(4);
+  });
+
+  it("grants +2 Eminence once at 8 Radiance Artifacts", () => {
     const state = makeGame();
     state.players[0].luminaries = ["lum_radiant"];
-    // Give the player 8 Radiance Artifacts (t1p01 through t3p04 are examples).
-    const radianceCards = [...CARD_MAP.values()]
-      .filter((c) => c.bonusAffinity === "radiance")
-      .slice(0, 8)
-      .map((c) => c.id);
-    state.players[0].forgedArtifactIds = radianceCards;
+    state.players[0].forgedArtifactIds = radianceArtifactIds(8);
 
     const eminenceBefore = state.players[0].eminence;
     pass(state);
     expect(state.players[0].eminence).toBe(eminenceBefore + 2);
     expect(state.concordanceMandalaTriggered).toBe(true);
+    expect(state.concordanceMandalaFinalTriggered).toBe(false);
   });
 
-  it("does NOT fire again once already triggered", () => {
+  it("grants the second +2 Eminence once at 10 Radiance Artifacts", () => {
     const state = makeGame();
     state.players[0].luminaries = ["lum_radiant"];
-    state.concordanceMandalaTriggered = true; // Already triggered.
-    const radianceCards = [...CARD_MAP.values()]
-      .filter((c) => c.bonusAffinity === "radiance")
-      .slice(0, 8)
-      .map((c) => c.id);
-    state.players[0].forgedArtifactIds = radianceCards;
+    state.concordanceMandalaTriggered = true;
+    state.players[0].forgedArtifactIds = radianceArtifactIds(10);
 
     const eminenceBefore = state.players[0].eminence;
     pass(state);
-    expect(state.players[0].eminence).toBe(eminenceBefore); // No bonus.
+    expect(state.players[0].eminence).toBe(eminenceBefore + 2);
+    expect(state.concordanceMandalaFinalTriggered).toBe(true);
   });
 
-  it("does NOT fire when fewer than 8 Radiance Artifacts", () => {
+  it("grants both milestones with distinct activation events when first checked at 10", () => {
     const state = makeGame();
     state.players[0].luminaries = ["lum_radiant"];
-    const radianceCards = [...CARD_MAP.values()]
-      .filter((c) => c.bonusAffinity === "radiance")
-      .slice(0, 7)
-      .map((c) => c.id);
-    state.players[0].forgedArtifactIds = radianceCards;
+    state.players[0].forgedArtifactIds = radianceArtifactIds(10);
+
+    const eminenceBefore = state.players[0].eminence;
+    pass(state);
+
+    expect(state.players[0].eminence).toBe(eminenceBefore + 4);
+    expect(state.concordanceMandalaTriggered).toBe(true);
+    expect(state.concordanceMandalaFinalTriggered).toBe(true);
+    const activationIds = state.pendingLuminaryActivationEvents
+      .filter((event) => event.luminaryId === "lum_radiant")
+      .map((event) => event.eventId);
+    expect(activationIds).toHaveLength(2);
+    expect(new Set(activationIds).size).toBe(2);
+  });
+
+  it("does not fire either milestone again once both have triggered", () => {
+    const state = makeGame();
+    state.players[0].luminaries = ["lum_radiant"];
+    state.concordanceMandalaTriggered = true;
+    state.concordanceMandalaFinalTriggered = true;
+    state.players[0].forgedArtifactIds = radianceArtifactIds(10);
+
+    const eminenceBefore = state.players[0].eminence;
+    pass(state);
+    expect(state.players[0].eminence).toBe(eminenceBefore);
+  });
+
+  it("does not fire when fewer than 8 Radiance Artifacts", () => {
+    const state = makeGame();
+    state.players[0].luminaries = ["lum_radiant"];
+    state.players[0].forgedArtifactIds = radianceArtifactIds(7);
 
     const eminenceBefore = state.players[0].eminence;
     pass(state);
@@ -1092,6 +1599,16 @@ describe("The Glass Orchard — Perfect Replication: +1 extra bonus on first Ver
     // Normal forge gives +1; The Glass Orchard gives an additional +1 = +2 total.
     expect(state.players[0].bonuses[card.bonusAffinity]).toBe(bonusBefore + 2);
     expect(state.glassOrchardTriggered).toBe(true);
+    expect(state.pendingLuminaryActivationEvents).toContainEqual(
+      expect.objectContaining({
+        luminaryId: "lum_orchard",
+        effectType: "action",
+        triggeringPlayerId: "p1",
+        targetCardIds: [card.id],
+        affinityType: card.bonusAffinity,
+        affinityAmount: 1,
+      }),
+    );
   });
 
   it("does NOT grant extra bonus on a second eligible forge (one-time only)", () => {
@@ -1113,7 +1630,7 @@ describe("The Glass Orchard — Perfect Replication: +1 extra bonus on first Ver
 
 // ─── Assimilation (Final Hunger) ──────────────────────────────────────────────
 
-describe("Assimilation — Final Hunger one-time burn action", () => {
+describe("Assimilation — Final Hunger one-time Forge replacement", () => {
   let state: GameStateData;
 
   beforeEach(() => {
@@ -1122,24 +1639,12 @@ describe("Assimilation — Final Hunger one-time burn action", () => {
     state.firstHungerAvailable = "p1";
   });
 
-  it("burns the target card (removes from Forge) and grants printed+2 Eminence", () => {
-    // Find a Forge card with Flare (flare) in its cost.
-    const cardId = state.forgeTier1.find((id) => (CARD_MAP.get(id)?.cost.flare ?? 0) > 0)
-      ?? state.forgeTier2.find((id) => (CARD_MAP.get(id)?.cost.flare ?? 0) > 0)
-      ?? state.forgeTier3.find((id) => (CARD_MAP.get(id)?.cost.flare ?? 0) > 0);
-    if (!cardId) {
-      // Inject a known flare card into the Tier 1 Forge.
-      const flareCard = [...CARD_MAP.values()].find(
-        (c) => c.tier === 1 && c.cost.flare > 0,
-      )!;
-      if (!flareCard) return;
-      state.forgeTier1[0] = flareCard.id;
-    }
-
-    const targetId = state.forgeTier1.find((id) => (CARD_MAP.get(id)?.cost.flare ?? 0) > 0)!;
+  it("removes the target from the Forge, grants its bonus Affinity, and grants no Eminence", () => {
+    const targetId = [...state.forgeTier1, ...state.forgeTier2, ...state.forgeTier3][0];
     if (!targetId) return;
     const card = CARD_MAP.get(targetId)!;
     const eminenceBefore = state.players[0].eminence;
+    const bonusBefore = state.players[0].bonuses[card.bonusAffinity];
 
     const r = applyAction(state, "p1", { type: "assimilate", cardId: targetId });
     expect(r.success).toBe(true);
@@ -1149,14 +1654,16 @@ describe("Assimilation — Final Hunger one-time burn action", () => {
     expect(state.forgeTier2).not.toContain(targetId);
     expect(state.forgeTier3).not.toContain(targetId);
 
-    // Eminence = printed + 2.
-    expect(state.players[0].eminence).toBe(eminenceBefore + card.eminence + 2);
+    expect(state.players[0].eminence).toBe(eminenceBefore);
+    expect(state.players[0].bonuses[card.bonusAffinity]).toBe(bonusBefore + 1);
 
     // Assimilation consumed.
     expect(state.firstHungerAvailable).toBeNull();
 
     // Assimilated Artifacts are not added to forgedArtifactIds.
     expect(state.players[0].forgedArtifactIds).not.toContain(targetId);
+    expect(state.players[0].assimilatedArtifactIds).toContain(targetId);
+    expect(state.burnPile).not.toContain(targetId);
   });
 
   it("rejects assimilate when firstHungerAvailable is null", () => {
@@ -1167,8 +1674,7 @@ describe("Assimilation — Final Hunger one-time burn action", () => {
     expect(r.success).toBe(false);
   });
 
-  it("rejects assimilate when target lacks Flare/Verdance/Radiance cost", () => {
-    // Find a card with ONLY Continuum/Abyss costs (no flare/verdance/radiance).
+  it("allows any face-up Artifact regardless of its cost colors", () => {
     const pureAbyss = [...CARD_MAP.values()].find(
       (c) =>
         c.tier === 1 &&
@@ -1180,13 +1686,13 @@ describe("Assimilation — Final Hunger one-time burn action", () => {
     if (!pureAbyss) return;
     state.forgeTier1[0] = pureAbyss.id;
     const r = applyAction(state, "p1", { type: "assimilate", cardId: pureAbyss.id });
-    expect(r.success).toBe(false);
+    expect(r.success).toBe(true);
+    expect(state.players[0].assimilatedArtifactIds).toContain(pureAbyss.id);
   });
 
   it("arrival sets flag but does not auto-execute the ability", () => {
     // The lum_hunger arrival handler sets firstHungerAvailable to the claimer's ID;
-    // it must NOT immediately grant the Assimilation +2 bonus — the player must
-    // explicitly use the assimilate action later.
+    // it must NOT queue an activation until the player explicitly uses it.
     const freshState = makeGame();
     enrichPlayer(freshState, 0);
     freshState.activeLuminaries = ["lum_hunger"];
@@ -1200,6 +1706,9 @@ describe("Assimilation — Final Hunger one-time burn action", () => {
 
     // Flag should now be set for the claimer — NOT consumed.
     expect(freshState.firstHungerAvailable).toBe("p1");
+    expect(
+      freshState.pendingLuminaryActivationEvents.some(event => event.luminaryId === "lum_hunger"),
+    ).toBe(false);
 
     // Eminence gained equals the Artifact's printed value plus the Luminary award.
     // It must NOT include an extra +2 Assimilation bonus.
@@ -1220,45 +1729,32 @@ describe("Assimilation — Final Hunger one-time burn action", () => {
     expect(state.firstHungerAvailable).toBe("p1"); // still persists
   });
 
-  it("cost reduces Flare/Verdance/Radiance by card-derived bonuses only — other colors paid in full", () => {
-    // Set up a known card with Flare (flare) AND Continuum/Abyss (continuum or abyss) cost.
+  it("does not require the player to hold any Affinity", () => {
     const target = [...CARD_MAP.values()].find(
       (c) => c.tier === 1 && c.cost.flare > 0 && (c.cost.continuum > 0 || c.cost.abyss > 0),
     );
     if (!target) return; // skip if card catalog changes
     state.forgeTier1[0] = target.id;
-
-    // Give the player exactly 2 flare card bonuses; no verdance or radiance bonuses.
-    state.players[0].bonuses.flare    = 2;
-    state.players[0].bonuses.verdance = 0;
-    state.players[0].bonuses.radiance   = 0;
-
-    // Expected costs after reduction:
-    //   flare:     max(0, printed - 2)      ← discounted
-    //   verdance:  max(0, printed - 0)      ← full (bonus=0)
-    //   radiance:    max(0, printed - 0)      ← full (bonus=0)
-    //   continuum: printed                  ← no reduction
-    //   abyss:     printed                  ← no reduction
-    const flareCost    = Math.max(0, target.cost.flare     - 2);
-    const continuumCost = target.cost.continuum;
-    const verdanceCost  = target.cost.verdance;
-    const abyssCost     = target.cost.abyss;
-    const radianceCost    = target.cost.radiance;
-
-    // Drain held Affinities, then provide exactly what the formula requires.
-    for (const c of STANDARD_AFFINITY_KEYS) {
-      state.players[0].affinities[c] = 0;
-      state.affinityWell[c] = 20;
+    for (const affinity of STANDARD_AFFINITY_KEYS) {
+      state.players[0].affinities[affinity] = 0;
     }
-    state.players[0].affinities.flare     = flareCost;
-    state.players[0].affinities.continuum = continuumCost;
-    state.players[0].affinities.verdance  = verdanceCost;
-    state.players[0].affinities.abyss     = abyssCost;
-    state.players[0].affinities.radiance    = radianceCost;
-    state.players[0].affinities.singularity     = 0;
+    state.players[0].affinities.singularity = 0;
 
     const r = applyAction(state, "p1", { type: "assimilate", cardId: target.id });
     expect(r.success).toBe(true);
+  });
+
+  it("does not move held Affinity or Affinity Well tokens", () => {
+    const targetId = [...state.forgeTier1, ...state.forgeTier2, ...state.forgeTier3][0];
+    if (!targetId) return;
+    const affinitiesBefore = { ...state.players[0].affinities };
+    const wellBefore = { ...state.affinityWell };
+
+    const assimilated = applyAction(state, "p1", { type: "assimilate", cardId: targetId });
+
+    expect(assimilated.success).toBe(true);
+    expect(state.players[0].affinities).toEqual(affinitiesBefore);
+    expect(state.affinityWell).toEqual(wellBefore);
   });
 
   it("rejected by a different player even when flag is set", () => {
@@ -1280,8 +1776,6 @@ describe("Assimilation — Final Hunger one-time burn action", () => {
     expect(r1.success).toBe(true);
     expect(state.firstHungerAvailable).toBeNull();
 
-    // Advance turns so p1 acts again, then try a second assimilation.
-    pass(state); // p2 passes
     const secondCard =
       state.forgeTier1.find((id) => (CARD_MAP.get(id)?.cost.flare ?? 0) > 0) ??
       state.forgeTier1[0]!;
@@ -1289,7 +1783,7 @@ describe("Assimilation — Final Hunger one-time burn action", () => {
     expect(r2.success).toBe(false);
   });
 
-  it("card bonuses and forgedArtifactIds are unchanged after assimilation — no forge effects", () => {
+  it("records Blueprint-only ownership and changes only the Artifact's bonus Affinity", () => {
     const targetId =
       state.forgeTier1.find((id) => (CARD_MAP.get(id)?.cost.flare ?? 0) > 0) ??
       state.forgeTier1[0]!;
@@ -1298,11 +1792,13 @@ describe("Assimilation — Final Hunger one-time burn action", () => {
 
     applyAction(state, "p1", { type: "assimilate", cardId: targetId });
 
-    // No extra card in hand.
     expect(state.players[0].forgedArtifactIds.length).toBe(cardCountBefore);
-    // No permanent Affinity bonus awarded.
+    expect(state.players[0].assimilatedArtifactIds).toContain(targetId);
+    const targetAffinity = CARD_MAP.get(targetId)!.bonusAffinity;
     for (const c of STANDARD_AFFINITY_KEYS) {
-      expect(state.players[0].bonuses[c]).toBe(bonusesBefore[c]);
+      expect(state.players[0].bonuses[c]).toBe(
+        bonusesBefore[c] + (c === targetAffinity ? 1 : 0),
+      );
     }
   });
 
@@ -1545,6 +2041,124 @@ describe("Impact Extinction (lum_forge) — resets the complete Forge through th
   });
 });
 
+describe("Worldshield Covenant hostile-effect protection", () => {
+  function equipVigilantWorldshield(state: GameStateData, cardId: string) {
+    const protectedPlayer = state.players[1]!;
+    enrichPlayer(state, 1);
+    protectedPlayer.manifestedBlueprintDevices = [{
+      blueprintId: "bp_worldshield_covenant",
+      ownerPlayerId: protectedPlayer.playerId,
+      slotIndex: 0,
+      state: "vigilant",
+      presentationVariant: "armored",
+    }];
+    protectedPlayer.plannedAction = { type: "forge_artifact", cardId };
+    return protectedPlayer;
+  }
+
+  it("prevents Red Moth from Burning a legal planned claim", () => {
+    const state = makeGame();
+    const [targetCardId] = placeRuptureTargets(state, 1);
+    const protectedPlayer = equipVigilantWorldshield(state, targetCardId!);
+
+    claimLuminary(state, "lum_moth");
+
+    expect(state.forgeTier3).toContain(targetCardId);
+    expect(state.burnEvents.some((event) => event.cardId === targetCardId)).toBe(false);
+    expect(protectedPlayer.manifestedBlueprintDevices?.[0]?.state).toBe("spent");
+    expect(state.pendingBlueprintDetonationEvents).toContainEqual(
+      expect.objectContaining({
+        blueprintId: "bp_worldshield_covenant",
+        targetCardId,
+        hostileEffect: "burn",
+      }),
+    );
+    const activation = state.pendingLuminaryActivationEvents.find(
+      (event) => event.luminaryId === "lum_moth",
+    );
+    expect(activation?.targetCardIds ?? []).not.toContain(targetCardId);
+  });
+
+  it("prevents Null Sovereign from Nullifying a legal planned Tier III claim", () => {
+    const state = makeGame();
+    const targetCard = [...CARD_MAP.values()].find((card) =>
+      card.tier === 3 && (
+        card.cost.continuum === 0 ||
+        card.cost.abyss === 0 ||
+        card.cost.radiance === 0
+      ),
+    );
+    expect(targetCard).toBeDefined();
+    const targetCardId = targetCard!.id;
+    if (!state.forgeTier3.includes(targetCardId)) {
+      const displaced = state.forgeTier3[0];
+      state.deckTier3 = state.deckTier3.filter((cardId) => cardId !== targetCardId);
+      if (displaced) state.deckTier3.push(displaced);
+      state.forgeTier3[0] = targetCardId;
+    }
+    const protectedPlayer = equipVigilantWorldshield(state, targetCardId);
+
+    claimLuminary(state, "lum_null");
+
+    expect(markerHasBrand(state.artifactMarkers?.[targetCardId], "nullified")).toBe(false);
+    expect(protectedPlayer.manifestedBlueprintDevices?.[0]?.state).toBe("spent");
+    expect(state.pendingBlueprintDetonationEvents).toContainEqual(
+      expect.objectContaining({ targetCardId, hostileEffect: "nullification" }),
+    );
+  });
+
+  it("keeps a legal planned claim in its slot during Iron Harbinger's reset", () => {
+    const state = makeGame();
+    const protectedSlot = 1;
+    const targetCardId = state.forgeTier2[protectedSlot]!;
+    const protectedPlayer = equipVigilantWorldshield(state, targetCardId);
+
+    claimLuminary(state, "lum_forge");
+
+    expect(state.forgeTier2[protectedSlot]).toBe(targetCardId);
+    expect(protectedPlayer.manifestedBlueprintDevices?.[0]?.state).toBe("spent");
+    expect(state.pendingBlueprintDetonationEvents).toContainEqual(
+      expect.objectContaining({ targetCardId, hostileEffect: "claim_cancellation" }),
+    );
+    const activation = state.pendingLuminaryActivationEvents.find(
+      (event) => event.luminaryId === "lum_forge",
+    );
+    expect(activation?.targetCardIds).not.toContain(targetCardId);
+  });
+
+  it("does not spend Worldshield when the affected Artifact has no legal planned claim", () => {
+    const state = makeGame();
+    const [targetCardId] = placeRuptureTargets(state, 1);
+    const protectedPlayer = equipVigilantWorldshield(state, targetCardId!);
+    protectedPlayer.plannedAction = null;
+
+    claimLuminary(state, "lum_moth");
+
+    expect(state.forgeTier3).not.toContain(targetCardId);
+    expect(protectedPlayer.manifestedBlueprintDevices?.[0]?.state).toBe("vigilant");
+    expect(state.pendingBlueprintDetonationEvents).toHaveLength(0);
+  });
+
+  it("remains vigilant after an interception under Broken Covenant", () => {
+    const state = makeGame();
+    const [targetCardId] = placeRuptureTargets(state, 1);
+    const protectedPlayer = equipVigilantWorldshield(state, targetCardId!);
+    state.brokenCovenantDeclared = true;
+
+    claimLuminary(state, "lum_moth");
+
+    expect(state.forgeTier3).toContain(targetCardId);
+    expect(protectedPlayer.manifestedBlueprintDevices?.[0]?.state).toBe("vigilant");
+    expect(state.pendingBlueprintDetonationEvents).toContainEqual(
+      expect.objectContaining({
+        blueprintId: "bp_worldshield_covenant",
+        targetCardId,
+        hostileEffect: "burn",
+      }),
+    );
+  });
+});
+
 describe("Rupture of the Still (lum_moth) — burns Tier III below 5 Flare on arrival", () => {
   it("burns the qualifying arrival snapshot, redraws those slots, and leaves Tier II untouched", () => {
     const state = makeGame();
@@ -1632,6 +2246,12 @@ describe("Phoenix Paradox (lum_astral) — Eternal Recurrence", () => {
       summonedAtTurnCount: 0,
       recoveryPending: true,
     });
+    expect(state.pendingLuminaryActivationEvents).not.toContainEqual(
+      expect.objectContaining({
+        luminaryId: "lum_astral",
+        effectType: "summon",
+      }),
+    );
   });
 
   it("redirects future Burns to Archive bottoms while preserving Burn events", () => {
@@ -1770,27 +2390,103 @@ describe("Phoenix Paradox (lum_astral) — Eternal Recurrence", () => {
 
 // ─── Observer Effect (lum_tide) ───────────────────────────────────────────────
 
-describe("Observer Effect (lum_tide) — scry and reorder decks by Continuum", () => {
-  it("promotes Continuum cards to the top of Tier 2 and Tier 3 decks on arrival", () => {
+describe("Observer Effect (lum_tide) — Archive sight and one-use Forge", () => {
+  it("grants one Archive-top Forge without reordering an Archive or prompting on arrival", () => {
     const state = makeGame();
-
-    // Plant a known Continuum card at position 2 in the T2 deck, and non-Continuum cards at 0/1.
-    const continuumCard = [...CARD_MAP.values()].find(
-      (c) => c.tier === 2 && c.cost.continuum > 0 && c.cost.flare === 0,
-    );
-    const nonContinuumCard = [...CARD_MAP.values()].find(
-      (c) => c.tier === 2 && c.cost.continuum === 0,
-    );
-    if (!continuumCard || !nonContinuumCard) return;
-
-    // Build a deck where: [nonSap, nonSap, sap, ...]
-    state.deckTier2 = [nonContinuumCard.id, nonContinuumCard.id, continuumCard.id, ...state.deckTier2.slice(3)];
+    const tier2Before = [...state.deckTier2];
 
     claimLuminary(state, "lum_tide");
 
-    // After Observer Effect, the continuum card should be within the top 3.
-    const top3 = state.deckTier2.slice(0, 3);
-    expect(top3).toContain(continuumCard.id);
+    expect(state.players[0].tideArchiveForgeAvailable).toBe(true);
+    expect(state.deckTier2).toEqual(tier2Before);
+    expect(state.pendingLuminaryChoice).toBeNull();
+  });
+
+  it("forges the current Archive top at normal cost and consumes the privilege", () => {
+    const state = makeGame();
+    const player = state.players[0];
+    enrichPlayer(state, 0);
+    player.luminaries.push("lum_tide");
+    player.tideArchiveForgeAvailable = true;
+    const topCardId = state.deckTier2[0]!;
+    const nextCardId = state.deckTier2[1]!;
+    const topCard = CARD_MAP.get(topCardId)!;
+    const forgedBefore = player.forgedArtifactIds.length;
+    const affinitiesBefore = STANDARD_AFFINITY_KEYS.reduce(
+      (total, affinity) => total + player.affinities[affinity],
+      0,
+    );
+
+    const result = applyAction(state, player.playerId, {
+      type: "forge_artifact",
+      cardId: topCardId,
+      luminaryId: "lum_tide",
+    });
+
+    expect(result.success).toBe(true);
+    expect(player.forgedArtifactIds).toContain(topCardId);
+    expect(player.forgedArtifactIds).toHaveLength(forgedBefore + 1);
+    expect(state.deckTier2[0]).toBe(nextCardId);
+    expect(player.tideArchiveForgeAvailable).toBe(false);
+    const affinitiesAfter = STANDARD_AFFINITY_KEYS.reduce(
+      (total, affinity) => total + player.affinities[affinity],
+      0,
+    );
+    const expectedCost = STANDARD_AFFINITY_KEYS.reduce(
+      (total, affinity) => total + topCard.cost[affinity],
+      0,
+    );
+    expect(affinitiesBefore - affinitiesAfter).toBe(expectedCost);
+  });
+
+  it("formats all three Archive tops for Tide's ally even after the Forge is used", () => {
+    const state = makeGame();
+    const player = state.players[0];
+    player.luminaries.push("lum_tide");
+    player.tideArchiveForgeAvailable = false;
+
+    const formatted = formatGameState("room-test", "playing", state, new Set());
+    const formattedPlayer = formatted.players.find((candidate) => candidate.playerId === player.playerId);
+
+    expect(formattedPlayer?.tideArchiveTopCards).toMatchObject({
+      tier1: { id: state.deckTier1[0] },
+      tier2: { id: state.deckTier2[0] },
+      tier3: { id: state.deckTier3[0] },
+    });
+    expect(formattedPlayer?.tideArchiveForgeAvailable).toBe(false);
+  });
+
+  it("rejects a non-top Archive card and a second Archive Forge", () => {
+    const state = makeGame();
+    const player = state.players[0];
+    enrichPlayer(state, 0);
+    player.luminaries.push("lum_tide");
+    player.tideArchiveForgeAvailable = true;
+
+    const nonTopResult = applyAction(state, player.playerId, {
+      type: "forge_artifact",
+      cardId: state.deckTier2[1]!,
+      luminaryId: "lum_tide",
+    });
+    expect(nonTopResult.success).toBe(false);
+
+    expect(applyAction(state, player.playerId, {
+      type: "forge_artifact",
+      cardId: state.deckTier2[0]!,
+      luminaryId: "lum_tide",
+    }).success).toBe(true);
+
+    state.pendingTurnTransition = null;
+    state.pendingSummonEvents = [];
+    state.pendingLuminaryActivationEvents = [];
+    state.coreActionUsed = false;
+    state.currentPlayerIndex = 0;
+    const secondResult = applyAction(state, player.playerId, {
+      type: "forge_artifact",
+      cardId: state.deckTier3[0]!,
+      luminaryId: "lum_tide",
+    });
+    expect(secondResult.success).toBe(false);
   });
 });
 
@@ -2024,6 +2720,55 @@ describe("checkLuminaries — simultaneous-claim sequencing", () => {
     expect(state.pendingLuminaryChoice).toBeNull();
   });
 
+  it("allows the incoming player to order start-of-turn claims before the seat advances", () => {
+    const state = makeGame();
+    state.currentPlayerIndex = 0;
+    state.pendingTurnTransition = {
+      stage: "after_start_effects",
+      endingPlayerId: "p1",
+      nextPlayerIndex: 1,
+    };
+    state.activeLuminaries = ["lum_verdant", "lum_tide"];
+    state.pendingLuminaryChoice = {
+      playerId: "p2",
+      candidates: ["lum_verdant", "lum_tide"],
+      createdAt: Date.now(),
+    };
+
+    const result = applyAction(state, "p2", {
+      type: "choose_luminary_order",
+      orderedIds: ["lum_tide", "lum_verdant"],
+    });
+
+    expect(result.success).toBe(true);
+    expect(state.players[1].luminaries).toEqual(expect.arrayContaining(["lum_tide", "lum_verdant"]));
+    expect(state.pendingLuminaryChoice).toBeNull();
+  });
+
+  it("allows only the named player to resolve an off-turn effect choice", () => {
+    const state = makeGame();
+    state.currentPlayerIndex = 0;
+    state.activeLuminaries = ["lum_verdant", "lum_tide"];
+    state.pendingLuminaryChoice = {
+      playerId: "p2",
+      candidates: ["lum_verdant", "lum_tide"],
+      createdAt: Date.now(),
+    };
+
+    const wrongPlayer = applyAction(state, "p1", {
+      type: "choose_luminary_order",
+      orderedIds: ["lum_tide", "lum_verdant"],
+    });
+    expect(wrongPlayer.success).toBe(false);
+
+    const owner = applyAction(state, "p2", {
+      type: "choose_luminary_order",
+      orderedIds: ["lum_tide", "lum_verdant"],
+    });
+    expect(owner.success).toBe(true);
+    expect(state.pendingLuminaryChoice).toBeNull();
+  });
+
   it("both Luminaries have arrival events queued in player-chosen order", () => {
     const state = makeGame();
     enrichPlayer(state, 0);
@@ -2061,15 +2806,15 @@ describe("checkLuminaries — simultaneous-claim sequencing", () => {
     expect(p.eminence).toBe(startingEminence + 1 + 2 + cardEminence);
   });
 
-  it("winTriggerLuminaryId is set to the Luminary that crosses WIN_THRESHOLD", () => {
+  it("winTriggerLuminaryId is set to the Luminary that crosses the victory requirement", () => {
     // Player needs exactly 1 more Eminence to win.  Chosen order: verdant first.
-    // lum_verdant (1L, verdance×5) fires first, crosses 15.
+    // lum_verdant (1L, verdance×5) fires first, crosses 20.
     // lum_tide (2L, continuum×6) fires second.
-    // winTriggerLuminaryId should be lum_verdant (the first to cross 15 in chosen order).
+    // winTriggerLuminaryId should be lum_verdant (the first to cross 20 in chosen order).
     const state = makeGame();
     enrichPlayer(state, 0);
     const p = state.players[0];
-    p.eminence = 14; // One Eminence away from 15
+    p.eminence = DEFAULT_VICTORY_REQUIREMENT - 1;
     p.bonuses.verdance = 5;
     p.bonuses.continuum = 6;
     // Use a 0-Eminence Artifact to keep the Eminence math deterministic.
@@ -2084,15 +2829,15 @@ describe("checkLuminaries — simultaneous-claim sequencing", () => {
     expect(state.winTriggerLuminaryId).toBe("lum_verdant");
   });
 
-  it("winTriggerLuminaryId is set to the second Luminary when the first does not cross 15", () => {
-    // Player is at 12, needs 3+ to win.
-    // Chosen order: verdant first (+1) → 13, does not cross 15.
-    // lum_tide (+2) → 15, crosses 15.
+  it("winTriggerLuminaryId is set to the second Luminary when the first does not cross 20", () => {
+    // Player is at 17, needs 3+ to win.
+    // Chosen order: verdant first (+1) → 18, does not cross 20.
+    // lum_tide (+2) → 20, crosses 20.
     // winTriggerLuminaryId should be lum_tide.
     const state = makeGame();
     enrichPlayer(state, 0);
     const p = state.players[0];
-    p.eminence = 12;
+    p.eminence = DEFAULT_VICTORY_REQUIREMENT - 3;
     p.bonuses.verdance = 5;
     p.bonuses.continuum = 6;
     const zeroEminenceCard = [...CARD_MAP.entries()].find(([, c]) => c.eminence === 0)?.[0]
@@ -2109,7 +2854,7 @@ describe("checkLuminaries — simultaneous-claim sequencing", () => {
   // ─── Oblivion post-pass ─────────────────────────────────────────────────────
 
   it("lum_void Oblivion applies AFTER all other effects — victory target moves after awards", () => {
-    // Forge triggers both lum_void (Oblivion +5 victory requirement) and
+    // Forge triggers both lum_void (Oblivion +8 victory requirement) and
     // lum_verdant (+1 Eminence).
     // Player chooses: verdant first, void second.
     // Effects fire in that order, but Oblivion is always deferred to post-pass.
@@ -2127,7 +2872,7 @@ describe("checkLuminaries — simultaneous-claim sequencing", () => {
 
     p1.eminence = 5;
     p2.eminence = 5;
-    state.victoryRequirement = 15;
+    state.victoryRequirement = DEFAULT_VICTORY_REQUIREMENT;
 
     const zeroEminenceCard = [...CARD_MAP.entries()].find(([, c]) => c.eminence === 0)?.[0]
       ?? state.forgeTier1[0]!;
@@ -2135,11 +2880,11 @@ describe("checkLuminaries — simultaneous-claim sequencing", () => {
     applyAction(state, "p1", { type: "forge_artifact", cardId: zeroEminenceCard });
     resolveChoice(state, "p1", ["lum_verdant", "lum_void"]);
 
-    // lum_verdant: +1 Eminence to p1 → p1 was 5, now 6.
-    // lum_void: +5 to the shared victory requirement, no Eminence subtraction.
-    expect(p1.eminence).toBe(6);
+    // lum_verdant: +1 Eminence and lum_void: +2 Eminence.
+    // Oblivion then adds +8 to the shared victory requirement.
+    expect(p1.eminence).toBe(8);
     expect(p2.eminence).toBe(5);
-    expect(state.victoryRequirement).toBe(20);
+    expect(state.victoryRequirement).toBe(DEFAULT_VICTORY_REQUIREMENT + 8);
   });
 
   it("Oblivion does not reduce Eminence and raises the victory requirement", () => {
@@ -2153,16 +2898,44 @@ describe("checkLuminaries — simultaneous-claim sequencing", () => {
 
     p1.eminence = 0;
     p2.eminence = 0;
-    state.victoryRequirement = 15;
+    state.victoryRequirement = MIN_VICTORY_REQUIREMENT;
 
     const cardId = [...CARD_MAP.entries()].find(([, c]) => c.eminence === 0)?.[0]
       ?? state.forgeTier1[0]!;
     state.forgeTier1[0] = cardId;
     applyAction(state, "p1", { type: "forge_artifact", cardId });
 
-    expect(p1.eminence).toBe(CARD_MAP.get(cardId)?.eminence ?? 0);
+    expect(p1.eminence).toBe((CARD_MAP.get(cardId)?.eminence ?? 0) + 2);
     expect(p2.eminence).toBe(0);
-    expect(state.victoryRequirement).toBe(20);
+    expect(state.victoryRequirement).toBe(MIN_VICTORY_REQUIREMENT + 8);
+    expect(state.voidSealOwnerId).toBeNull();
+    expect(state.pendingLuminaryActivationEvents.find(
+      (event) => event.luminaryId === "lum_void" && event.effectType === "summon",
+    )).toMatchObject({
+      victoryRequirementBefore: MIN_VICTORY_REQUIREMENT,
+      victoryRequirementAfter: MIN_VICTORY_REQUIREMENT + 8,
+      victoryRequirementChange: 8,
+    });
+  });
+
+  it("ignores legacy Void Seal state and payloads", () => {
+    const state = makeGame();
+    const player = state.players[0]!;
+    const cardId = state.forgeTier1.find((id) => {
+      const card = CARD_MAP.get(id);
+      return card && STANDARD_AFFINITY_KEYS.some((affinity) => card.cost[affinity] > 0);
+    })!;
+
+    player.affinities = { flare: 0, continuum: 0, verdance: 0, abyss: 0, radiance: 0, singularity: 0 };
+    player.bonuses = { flare: 0, continuum: 0, verdance: 0, abyss: 0, radiance: 0, singularity: 0 };
+    state.voidSealOwnerId = player.playerId;
+
+    expect(applyAction(state, player.playerId, {
+      type: "forge_artifact",
+      cardId,
+      voidSealAffinity: "flare",
+    })).toMatchObject({ success: false, error: "Cannot afford this Artifact" });
+    expect(player.forgedArtifactIds).not.toContain(cardId);
   });
 
   // ─── Cascade re-entry ───────────────────────────────────────────────────────
@@ -2241,6 +3014,12 @@ describe("checkLuminaries — simultaneous-claim sequencing", () => {
     // After depth-1 cascade: lum_verdant now qualifies → should be claimed
     expect(p.luminaries).toContain("lum_scholar");
     expect(p.luminaries).toContain("lum_verdant");
+    expect(p.artifactForgeCounts?.[verdanceCard.id]).toBeUndefined();
+    expect(p.civilization.artifacts[verdanceCard.id]).toMatchObject({
+      masteryCount: 1,
+      implementationState: "operational",
+      historyEvidence: "recorded",
+    });
   });
 
   // ─── planned action presentation boundary ───────────────────────────────────
@@ -2783,19 +3562,13 @@ describe("Final Hunger — Assimilation (lum_hunger)", () => {
     enrichPlayer(state, 0); // Ensure p1 has ample Affinities.
   }
 
-  /** Find the first Forge card with at least one flare/verdance/radiance cost unit. */
+  /** Find the first face-up Forge Artifact. */
   function findAssimTarget(state: GameStateData): string | undefined {
     return [
       ...state.forgeTier1,
       ...state.forgeTier2,
       ...state.forgeTier3,
-    ].find((id) => {
-      const c = CARD_MAP.get(id);
-      return (
-        c &&
-        ((c.cost.flare ?? 0) + (c.cost.verdance ?? 0) + (c.cost.radiance ?? 0)) > 0
-      );
-    });
+    ].find((id) => CARD_MAP.has(id));
   }
 
   it("firstHungerAvailable is set to the claimer's playerId on arrival", () => {
@@ -2804,34 +3577,39 @@ describe("Final Hunger — Assimilation (lum_hunger)", () => {
     expect(state.firstHungerAvailable).toBe("p1");
   });
 
-  it("assimilate burns the target card (card enters burnPile)", () => {
+  it("assimilate records the target separately without Burning it", () => {
     const state = makeGame();
     setupHunger(state);
     const target = findAssimTarget(state);
     if (!target) return;
     const r = applyAction(state, "p1", { type: "assimilate", cardId: target });
     expect(r.success).toBe(true);
-    expect(state.burnPile).toContain(target);
+    expect(state.burnPile).not.toContain(target);
+    expect(state.players[0]!.assimilatedArtifactIds).toContain(target);
+    expect(state.players[0]!.forgedArtifactIds).not.toContain(target);
   });
 
-  it("assimilate grants printed Eminence + 2 to the owner", () => {
+  it("assimilate grants zero Eminence and +1 of the Artifact's bonus Affinity", () => {
     const state = makeGame();
     setupHunger(state);
     const target = findAssimTarget(state);
     if (!target) return;
     const card = CARD_MAP.get(target)!;
     const before = state.players[0]!.eminence;
+    const bonusBefore = state.players[0]!.bonuses[card.bonusAffinity];
     applyAction(state, "p1", { type: "assimilate", cardId: target });
-    expect(state.players[0]!.eminence).toBe(before + card.eminence + 2);
+    expect(state.players[0]!.eminence).toBe(before);
+    expect(state.players[0]!.bonuses[card.bonusAffinity]).toBe(bonusBefore + 1);
   });
 
-  it("assimilated card does NOT appear in the owner's collection", () => {
+  it("assimilated Artifact is excluded from the forged collection", () => {
     const state = makeGame();
     setupHunger(state);
     const target = findAssimTarget(state);
     if (!target) return;
     applyAction(state, "p1", { type: "assimilate", cardId: target });
     expect(state.players[0]!.forgedArtifactIds ?? []).not.toContain(target);
+    expect(state.players[0]!.assimilatedArtifactIds ?? []).toContain(target);
   });
 
   it("firstHungerAvailable is cleared to null after a successful assimilate", () => {
@@ -2862,21 +3640,48 @@ describe("Final Hunger — Assimilation (lum_hunger)", () => {
     expect(state.firstHungerAvailable).toBeNull();
   });
 
-  it("assimilate emits a BurnEvent for the consumed card with triggeredByPlayerId='p1'", () => {
+  it("assimilate emits an action activation with the target and gained Affinity", () => {
     const state = makeGame();
     setupHunger(state);
     const target = findAssimTarget(state);
     if (!target) return;
-    const before = state.burnEvents.length;
+    const card = CARD_MAP.get(target)!;
     applyAction(state, "p1", { type: "assimilate", cardId: target });
-    expect(state.burnEvents.length).toBe(before + 1);
-    const ev = state.burnEvents[state.burnEvents.length - 1]!;
-    expect(ev.cardId).toBe(target);
-    expect(ev.sourceLuminaryId).toBe("lum_hunger");
-    expect(ev.triggeredByPlayerId).toBe("p1");
+    const event = state.pendingLuminaryActivationEvents.find(
+      candidate => candidate.luminaryId === "lum_hunger" && candidate.effectType === "action",
+    );
+    expect(event?.targetCardIds).toEqual([target]);
+    expect(event?.affinityType).toBe(card.bonusAffinity);
+    expect(event?.affinityAmount).toBe(1);
+    expect(event?.triggeringPlayerId).toBe("p1");
   });
 
-  it("assimilate increments Catalyst Bloom burn count by 1 (when lum_bloom is in play)", () => {
+  it("holds the turn until the Assimilation presentation is acknowledged", () => {
+    const state = makeGame();
+    setupHunger(state);
+    const target = findAssimTarget(state);
+    if (!target) return;
+
+    const result = applyAction(state, "p1", { type: "assimilate", cardId: target });
+    expect(result.success).toBe(true);
+    expect(state.players[state.currentPlayerIndex]!.playerId).toBe("p1");
+    expect(state.pendingTurnTransition?.stage).toBe("after_action");
+
+    const event = state.pendingLuminaryActivationEvents.find(
+      candidate => candidate.luminaryId === "lum_hunger" && candidate.effectType === "action",
+    );
+    expect(event).toBeDefined();
+    const resolved = applyAction(state, "p1", {
+      type: "resolve_luminary_activation",
+      eventId: event!.eventId,
+    });
+
+    expect(resolved.success).toBe(true);
+    expect(state.pendingLuminaryActivationEvents).not.toContainEqual(event);
+    expect(state.players[state.currentPlayerIndex]!.playerId).toBe("p2");
+  });
+
+  it("assimilate does not increment Catalyst Bloom because it is not a Burn", () => {
     const state = makeGame();
     setupHunger(state);
     // Catalyst Bloom count only increments while lum_bloom is held by a player.
@@ -2886,7 +3691,7 @@ describe("Final Hunger — Assimilation (lum_hunger)", () => {
     if (!target) return;
     const before = state.catalystBloomBurnCount ?? 0;
     applyAction(state, "p1", { type: "assimilate", cardId: target });
-    expect(state.catalystBloomBurnCount ?? 0).toBe(before + 1);
+    expect(state.catalystBloomBurnCount ?? 0).toBe(before);
   });
 
   it("assimilate fails if the target card is not in the face-up Forge", () => {
@@ -2899,29 +3704,27 @@ describe("Final Hunger — Assimilation (lum_hunger)", () => {
     expect(r.success).toBe(false);
   });
 
-  it("assimilate fails if the target has no Flare/Verdance/Radiance cost", () => {
+  it("assimilate accepts a target even when the owner cannot pay its printed cost", () => {
     const state = makeGame();
     setupHunger(state);
-    const pureNonFVR = [
+    for (const affinity of STANDARD_AFFINITY_KEYS) {
+      state.players[0]!.affinities[affinity] = 0;
+    }
+    state.players[0]!.affinities.singularity = 0;
+    const target = [
       ...state.forgeTier1,
       ...state.forgeTier2,
       ...state.forgeTier3,
     ].find((id) => {
       const c = CARD_MAP.get(id);
-      return (
-        c &&
-        (c.cost.flare ?? 0) === 0 &&
-        (c.cost.verdance ?? 0) === 0 &&
-        (c.cost.radiance ?? 0) === 0 &&
-        (c.cost.continuum ?? 0) + (c.cost.abyss ?? 0) + (c.cost.singularity ?? 0) > 0
-      );
+      return c && Object.values(c.cost).some((amount) => amount > 0);
     });
-    if (!pureNonFVR) return; // Skip if no such card in this random Forge
+    if (!target) return;
     const r = applyAction(state, "p1", {
       type: "assimilate",
-      cardId: pureNonFVR,
+      cardId: target,
     });
-    expect(r.success).toBe(false);
+    expect(r.success).toBe(true);
   });
 
   it("assimilate fails when firstHungerAvailable is null (regression)", () => {
@@ -2945,15 +3748,14 @@ describe("Final Hunger — Assimilation (lum_hunger)", () => {
     expect(r.success).toBe(false);
   });
 
-  it("assimilation BurnEvent.sourceName is the Luminary's display name", () => {
+  it("assimilation creates no BurnEvent", () => {
     const state = makeGame();
     setupHunger(state);
     const target = findAssimTarget(state);
     if (!target) return;
+    const before = state.burnEvents.length;
     applyAction(state, "p1", { type: "assimilate", cardId: target });
-    const ev = state.burnEvents[state.burnEvents.length - 1]!;
-    expect(typeof ev.sourceName).toBe("string");
-    expect(ev.sourceName!.length).toBeGreaterThan(0);
+    expect(state.burnEvents).toHaveLength(before);
   });
 });
 
@@ -3018,13 +3820,12 @@ describe("developer Luminary sequence laboratory", () => {
     });
   });
 
-  it("queues staged delayed hooks in production order after every arrival effect", () => {
+  it("queues every next-turn effect in production order after every arrival effect", () => {
     const state = makeGame();
 
     const result = runDevLuminarySequence(state, "p1", {
-      luminaryIds: ["lum_astral", "lum_radiant", "lum_bloom", "lum_seed"],
-      includeEndOfTurnEffects: true,
-      includeStartOfTurnEffects: true,
+      luminaryIds: ["lum_astral", "lum_radiant", "lum_bloom", "lum_seed", "lum_ember"],
+      includeNextTurnEffects: true,
     });
 
     expect(result.success).toBe(true);
@@ -3034,8 +3835,8 @@ describe("developer Luminary sequence laboratory", () => {
         event.effectType,
       ]),
     ).toEqual([
-      ["lum_astral", "summon"],
       ["lum_seed", "summon"],
+      ["lum_ember", "summon"],
     ]);
 
     for (const event of [...state.pendingSummonEvents]) {
@@ -3061,6 +3862,7 @@ describe("developer Luminary sequence laboratory", () => {
     ).toEqual([
       ["lum_radiant", "end_of_turn"],
       ["lum_bloom", "end_of_turn"],
+      ["lum_ember", "end_of_turn"],
       ["lum_seed", "end_of_turn"],
     ]);
 

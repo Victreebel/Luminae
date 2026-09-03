@@ -1,9 +1,19 @@
 import { apiUpdatePreferences } from "./cinematicPrefs";
+import {
+  getLocalFirstContactStance,
+  rememberLocalFirstContactStance,
+} from "./firstContactMemory";
+import { recordProgressionOnce } from "./telemetry";
+import type { ArchitectFirstContactStance } from "@workspace/game-types";
 
 // Module-level token set by AccountContext alongside setPreferencesSyncToken.
 let _token: string | null = null;
 export function setTutorialToken(token: string | null): void {
   _token = token;
+  const stance = getLocalFirstContactStance();
+  if (token && stance) {
+    void apiUpdatePreferences(token, { firstContactStance: stance }).catch(() => undefined);
+  }
 }
 
 const PROGRESS_KEY = "luminae_tutorial_progress";
@@ -16,7 +26,17 @@ const INTRO_SEEN_KEY = "luminae_intro_seen_beat";
 
 // Increment this whenever beat ordering or IDs change so that stale saved
 // progress (which may point at the wrong beat) is silently discarded.
-const TUTORIAL_SEQUENCE_VERSION = 2;
+const TUTORIAL_SEQUENCE_VERSION = 12;
+
+export function recordFirstContactStance(
+  stance: ArchitectFirstContactStance,
+): ArchitectFirstContactStance {
+  const remembered = rememberLocalFirstContactStance(stance);
+  if (_token) {
+    void apiUpdatePreferences(_token, { firstContactStance: remembered }).catch(() => undefined);
+  }
+  return remembered;
+}
 
 export function markTutorialSeen(): void {
   try {
@@ -110,8 +130,12 @@ export function markTutorialComplete(): void {
   } catch {
   }
   if (_token) {
-    void apiUpdatePreferences(_token, { tutorialCompleted: true }).catch(() => undefined);
+    void apiUpdatePreferences(_token, {
+      tutorialCompleted: true,
+      firstContactStance: getLocalFirstContactStance() ?? undefined,
+    }).catch(() => undefined);
   }
+  recordProgressionOnce("tutorial_completed");
 }
 
 export function hasTutorialBeenCompleted(): boolean {

@@ -6,10 +6,17 @@ import { playersTable } from "@workspace/db";
 import type { Player } from "@workspace/db";
 import { eq } from "drizzle-orm";
 import { logger } from "./logger";
+import { randomUUID } from "node:crypto";
+import {
+  blockedRecipientAccountIds,
+  filterChatText,
+  recordModerationEvent,
+} from "./chatModeration";
 export { filterStateForPlayer } from "./stateProjection";
 
 // roomId → Map<playerId, ws>
-const connections = new Map<string, Map<string, WebSocket>>();
+interface RoomConnection { ws: WebSocket; accountId: string | null }
+const connections = new Map<string, Map<string, RoomConnection>>();
 
 export function getConnectedPlayerIds(roomId: string): Set<string> {
   const room = connections.get(roomId);
@@ -21,7 +28,8 @@ export function broadcastToRoom(roomId: string, payload: unknown): void {
   const room = connections.get(roomId);
   if (!room) return;
   const msg = JSON.stringify(payload);
-  for (const [, ws] of room) {
+  for (const [, connection] of room) {
+    const ws = connection.ws;
     if (ws.readyState === WebSocket.OPEN) {
       ws.send(msg);
     }
@@ -31,10 +39,34 @@ export function broadcastToRoom(roomId: string, payload: unknown): void {
 export function sendToPlayer(roomId: string, playerId: string, payload: unknown): void {
   const room = connections.get(roomId);
   if (!room) return;
-  const ws = room.get(playerId);
-  if (ws && ws.readyState === WebSocket.OPEN) {
-    ws.send(JSON.stringify(payload));
+  const connection = room.get(playerId);
+  if (connection?.ws.readyState === WebSocket.OPEN) {
+    connection.ws.send(JSON.stringify(payload));
   }
+}
+
+async function broadcastChatToRoom(
+  roomId: string,
+  payload: unknown,
+  senderAccountId: string,
+): Promise<void> {
+  const room = connections.get(roomId);
+  if (!room) return;
+  const recipientAccountIds = [...new Set(
+    [...room.values()].flatMap((connection) => connection.accountId ? [connection.accountId] : []),
+  )];
+  const blockedRecipients = await blockedRecipientAccountIds(senderAccountId, recipientAccountIds);
+  const serialized = JSON.stringify(payload);
+  for (const connection of room.values()) {
+    if (connection.accountId && blockedRecipients.has(connection.accountId)) continue;
+    if (connection.ws.readyState === WebSocket.OPEN) connection.ws.send(serialized);
+  }
+}
+
+export function getWebSocketMetrics(): { rooms: number; connections: number } {
+  let count = 0;
+  for (const room of connections.values()) count += room.size;
+  return { rooms: connections.size, connections: count };
 }
 
 export function setupWebSocket(server: Server): void {
@@ -93,7 +125,7 @@ async function handleConnection(ws: WebSocket, req: IncomingMessage): Promise<vo
   if (!connections.has(roomId)) {
     connections.set(roomId, new Map());
   }
-  connections.get(roomId)!.set(playerId, ws);
+  connections.get(roomId)!.set(playerId, { ws, accountId: player.accountId ?? null });
 
   // Mark connected in DB — non-fatal if this fails
   try {
@@ -133,21 +165,39 @@ async function handleConnection(ws: WebSocket, req: IncomingMessage): Promise<vo
     playerName,
   });
 
+  const recentChatTimes: number[] = [];
   ws.on("message", (raw) => {
     try {
       const msg = JSON.parse(raw.toString()) as { type: string; text?: string };
       if (msg.type === "ping") {
         ws.send(JSON.stringify({ type: "pong" }));
       } else if (msg.type === "chat_message") {
-        const text = (msg.text ?? "").trim().slice(0, 200);
-        if (text) {
-          broadcastToRoom(roomId, {
+        const now = Date.now();
+        while (recentChatTimes[0] && recentChatTimes[0] < now - 10_000) recentChatTimes.shift();
+        if (!player.accountId) {
+          ws.send(JSON.stringify({ type: "chat_rejected", reason: "Sign in to use private-room chat." }));
+          void recordModerationEvent({ accountId: null, roomId, playerId, eventType: "chat_rejected" });
+          return;
+        }
+        if (recentChatTimes.length >= 5 || (recentChatTimes.at(-1) ?? 0) > now - 750) {
+          ws.send(JSON.stringify({ type: "chat_rejected", reason: "Please wait before sending another message." }));
+          void recordModerationEvent({ accountId: player.accountId, roomId, playerId, eventType: "chat_rate_limited" });
+          return;
+        }
+        recentChatTimes.push(now);
+        const filtered = filterChatText(msg.text ?? "");
+        if (filtered.text) {
+          if (filtered.filtered) {
+            void recordModerationEvent({ accountId: player.accountId, roomId, playerId, eventType: "chat_filtered" });
+          }
+          void broadcastChatToRoom(roomId, {
             type: "chat_message",
+            messageId: randomUUID(),
             playerId,
             playerName,
-            text,
-            timestamp: Date.now(),
-          });
+            text: filtered.text,
+            timestamp: now,
+          }, player.accountId);
         }
       }
     } catch {
@@ -173,7 +223,7 @@ async function handleClose(ws: WebSocket, roomId: string, playerId: string, play
   // Only clean up if this socket is still the registered connection for this player.
   // A newer reconnect may have already replaced it — in that case, leave the new
   // connection intact and skip the disconnect logic entirely.
-  if (room.get(playerId) !== ws) return;
+  if (room.get(playerId)?.ws !== ws) return;
   room.delete(playerId);
   if (room.size === 0) connections.delete(roomId);
 

@@ -1,0 +1,171 @@
+# LUMINAe Blueprint Vertical Slice v1.0
+
+> **Partially superseded release history.** Blueprint First Pool v2.0 controls
+> current Blueprint and Project rules wherever they conflict. Threshold journey
+> material remains historical implementation context.
+
+## Status
+
+**Locked implementation canon for the first release.**
+
+This document controls when an older Blueprint note disagrees with the shipped
+vertical slice. It covers the first Vault threshold, first pool, public/private
+information, cosmetics, and competitive release gate.
+
+## Player Journey
+
+1. The Archive destination is **Top Secret** before the Vault opens. Blueprint names,
+   cosmetics, requirements, silhouettes, and targets are not exposed.
+2. Progress advances only when the player wins a standard four-civilization
+   game against exactly three Hard AI opponents. Losses do not reduce progress.
+3. At 5/5, the account becomes `challenge_ready`. The Architect-owned Supreme
+   Cipher becomes the sole entry control. Nothing is unlocked yet.
+4. The Architect may permanently deactivate the Cipher. The mechanical doors
+   then open only partway before Lumii's independent six-node firewall arrests
+   them. Leaving closes the doors but does not restore the Cipher.
+5. The first exchange records one threshold approach: Kinship, Inquiry, or
+   Dominion. This is encounter history, not the player's final campaign route.
+6. Lumii genuinely learns all three first-pool Blueprints when the Cipher falls.
+   During the forecast, the player sees only anonymous `SEALED PROTOCOL // 01–03`
+   states and public consequences.
+7. Choosing `Continue opening` breaks the Covenant and starts a focused 1v1
+   defense forecast. Withdrawal creates no win, loss, or match rollup. Defeat is
+   a normal loss, leaves progress at 5/5, and permits a fresh attempt.
+8. Victory reveals the system, grants Antimatter Detonator, assigns it to slot
+   one for Campaign and Custom, and exposes the other two projects only as
+   corrupted Vault records.
+
+Normal accounts have exactly **two owner-private Blueprint slots**. The Lumii
+forecast scenario is the sole first-release exception with three slots.
+
+## Threshold Canon
+
+The Vault data resides on a physical secured system. The Supreme Cipher is an
+Architect-controlled seal; Lumii's firewall is a separate safeguard she can
+maintain after the Cipher is inert. Her confrontation is a forecast of whether
+she could physically keep the Architect from that system. When the Architect
+wins, Lumii concludes that resistance would fail and cause unacceptable mass
+casualty, so she releases the doors without reconciliation.
+
+Lumii calls the danger a **Basilisk**, but the term remains deliberately
+unexplained. She does not initially know the individual contents. She fears the
+relation among them and the possibility that understanding it will remove the
+very instinct that keeps her from pursuing it. Deleting the knowledge was tried;
+boundless discovery eventually led Lumii back to it without the warning needed
+to avoid it. Sealing preserves that learned fear.
+
+## Match Information
+
+- Only forged Artifacts satisfy exact component recipes.
+- Components stay in the tableau, keep their normal benefits, may satisfy more
+  than one Blueprint, and are never consumed by manifestation.
+- Before completion, identity, recipe, progress, cosmetic choice, and secret
+  targets are visible only to the owner.
+- On completion, the device name, owner, public rule, operational state, and
+  chosen presentation normally become public. The Lumii forecast is the sole
+  exception: identity remains anonymous while exact manifested consequences are
+  public.
+- Simultaneous manifestations queue in assigned-slot order.
+- Input and turn clocks pause while a required presentation is pending.
+- Pending presentation events and their cosmetic variant persist through a
+  reconnect. Acknowledgment resumes the same authoritative transition.
+
+## First Pool
+
+The recipes are exact and disjoint so Lumii can continue another project when
+one component is taken.
+
+### Antimatter Detonator
+
+Recipe: Ignition Kernel, Magnetic Bottle, Causal Spark Coil, Horizon Extractor.
+
+```text
+A random Tier II Artifact becomes secretly marked. When Forged or Encrypted,
+Annihilate it. Gain 2 Eminence.
+```
+
+- A legal claim consumes the action before payment. The claimant loses no
+  Affinity and receives none of the target's rewards.
+- If no Tier II target exists, the Armed device waits. If its target leaves by
+  another effect, it retargets after that effect resolves.
+- After detonation, the device becomes Spent.
+- If Broken Covenant has been declared, also Annihilate two random eligible
+  Tier I Artifacts belonging to the Forger. This clause stays hidden until the
+  declared state exists.
+- Worldshield intercepts before Annihilation. The claim then resolves normally,
+  both devices become Spent, and Antimatter awards no Eminence or collateral.
+
+In campaign, a full-yield Anti-Type-I deployment may erase a planetary Artifact
+row or determine a civilization's survival. That scale is never the normal
+competitive effect.
+
+### Mantle-to-Orbit Foundry
+
+Recipe: Entropy Pyre Baffle, Mantlelift Driver Coil, Blackglass Forge Die.
+
+```text
+Gain 1 Eminence. Automatically reduce your first Tier II Forge by 2 standard
+Affinity and your first Tier III Forge by 3, minimum cost 1. After both
+reductions, become Spent.
+```
+
+Each discount belongs to its Tier. Encrypt, Assimilate, and Tier I Forge actions
+do not consume either discount.
+
+### Worldshield Covenant
+
+Recipe: Echo Splinter, Entropy Veil, Living Lattice Node.
+
+```text
+Gain 1 Eminence. Prevent the first hostile effect that would Burn, Annihilate,
+Nullify, or cancel your legal Artifact claim, then become Spent.
+```
+
+Interception is automatic. A hostile one-use source is expended without a
+removal reward, and the protected legal claim continues normally.
+
+## Modes
+
+- **Standard:** no Blueprints.
+- **Campaign scenario:** server-authored policy and loadout.
+- **Custom:** cleared players use owned projects assigned in the Vault.
+- **Competitive:** disabled for first release. When approved, every cleared
+  player receives equal access to the seasonal pool and privately selects two
+  before matchmaking, independent of campaign ownership.
+
+## Presentation And Cosmetics
+
+- Armored Antimatter is canonical and included.
+- Original unlocks after the first Antimatter manifestation.
+- Asymmetric costs 40 Starlight.
+- Lattice costs 80 Starlight.
+- Mantle-to-Orbit Foundry card back costs 40 Starlight.
+- Void Radiance ambience costs 80 Starlight.
+
+Cosmetic loadouts are snapshotted when a match begins. A Blueprint presentation
+is synchronized only when the device manifests. All variants preserve timing,
+information, audio lifecycle, reduced-motion behavior, and game rules.
+
+Production has earned Starlight only. Test checkout remains development-only.
+No payment may sell power, slots, Vault access, accelerated progress, or
+competitive access.
+
+## Deferred Route Affinities
+
+Antimatter Detonator is the only current threshold reward. Future route-based
+reward weighting is documented but not implemented: Antimatter favors Dominion
+then Inquiry; Worldshield favors Kinship then Inquiry; Mantle-to-Orbit favors
+Inquiry then Kinship.
+
+## Competitive Release Gate
+
+Competitive Blueprint code remains disabled until both are complete:
+
+- 1,000 Blueprint-aware simulations
+- 50 completed human playtest matches
+
+The release report must include completion rate, detonation rate, secrecy
+failures, state/reconnect failures, seat-order bias, and each Blueprint's
+win-rate delta. No approved Blueprint may exceed a two-percentage-point
+win-rate delta against the legal-pool average. Failing a gate keeps the feature
+disabled; it does not weaken secrecy or sell an advantage.

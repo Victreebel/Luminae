@@ -7,6 +7,7 @@ import path from "node:path";
 import router from "./routes";
 import { logger } from "./lib/logger";
 import { API_BUILD_LABEL } from "./lib/buildIdentity";
+import { corsOptions, securityHeaders } from "./lib/httpSecurity";
 
 const app: Express = express();
 
@@ -29,14 +30,15 @@ app.use(
     },
   }),
 );
-app.use(cors());
+app.use(securityHeaders);
+app.use(cors(corsOptions));
 app.use((_req, res, next) => {
   res.setHeader("X-Luminae-Api-Build", API_BUILD_LABEL);
   next();
 });
 app.use(cookieParser());
-app.use(express.json());
-app.use(express.urlencoded({ extended: true }));
+app.use(express.json({ limit: "64kb" }));
+app.use(express.urlencoded({ extended: true, limit: "64kb" }));
 
 app.use("/api", router);
 

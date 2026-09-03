@@ -114,12 +114,26 @@ export function artifactMarkerHasBrand(
   return getArtifactBrands(marker).some(brand => brand.type === type);
 }
 
-export function artifactMarkerBlocksForgeEminence(marker: MarkerLike): boolean {
+export function artifactMarkerBlocksForgeEminence(
+  marker: MarkerLike,
+  ignoreNullified = false,
+): boolean {
   return getArtifactBrands(marker).some(brand => (
     brand.type === 'forgotten' ||
     brand.type === 'condemned' ||
-    brand.type === 'nullified'
+    (brand.type === 'nullified' && !ignoreNullified)
   ));
+}
+
+export function isNullifiedFirstForgeExempt(
+  marker: MarkerLike,
+  playerId: string | null | undefined,
+  firstForge: unknown,
+): boolean {
+  if (!playerId || firstForge) return false;
+  return getArtifactBrands(marker).some(
+    brand => brand.type === 'nullified' && brand.ownerId === playerId,
+  );
 }
 
 export function getAddedArtifactBrandTypes(

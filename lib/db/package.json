@@ -9,7 +9,10 @@
   },
   "scripts": {
     "push": "drizzle-kit push --config ./drizzle.config.ts",
-    "push-force": "drizzle-kit push --force --config ./drizzle.config.ts"
+    "push-force": "drizzle-kit push --force --config ./drizzle.config.ts",
+    "validate:civilization-records-migration": "node ./scripts/validate-civilization-records-migration.mjs",
+    "validate:chronicle-campaign-migration": "node ./scripts/validate-chronicle-campaign-migration.mjs",
+    "validate:release-migrations": "node ./scripts/validate-release-migrations.mjs"
   },
   "dependencies": {
     "drizzle-orm": "catalog:",

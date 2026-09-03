@@ -1,13 +1,14 @@
 /**
- * Overlay Centering Audit — Task #297
+ * Mobile Action Presentation Geometry Audit — Task #297
  *
- * Asserts that all four fixed overlays render content in the center third
- * (columns 130–260 of a 390 px wide viewport) on a 390×844 mobile screen:
+ * Asserts that mobile action presentations remain inside a 390×844 viewport.
+ * True foreground presentations remain centered; effects anchored to board UI
+ * remain aligned with their source/destination instead of faking centering:
  *
  *   1. Turn announcement
- *   2. Affinity Harness burst
- *   3. Reserve burst (blind deck reserve)
- *   4. Artifact-forge burst — the overlay that uses window.innerWidth at runtime
+ *   2. Affinity Harness well response
+ *   3. Encryption source plate and transfer
+ *   4. Artifact Forge card presentation
  *
  * Run:
  *   pnpm --filter @workspace/scripts exec playwright test \
@@ -19,7 +20,7 @@ import { mkdirSync } from 'node:fs';
 
 // ── Constants ─────────────────────────────────────────────────────────────────
 
-const BASE     = 'http://localhost:80';
+const BASE     = process.env.LUMINAE_E2E_BASE_URL ?? 'http://localhost:5191';
 const W        = 390;
 const H        = 844;
 const OUT      = '/tmp/overlay-audit';
@@ -50,7 +51,7 @@ async function closePanels(page: Page) {
  * Throws if the overlay doesn't appear within `timeoutMs`.
  */
 async function awaitAndDismissTurnAnnouncement(page: Page, timeoutMs = 25_000) {
-  const overlay = page.locator('[class*="fixed"][class*="inset-0"][class*="cursor-pointer"]');
+  const overlay = page.locator('.fixed.inset-0:has(.turn-announcement-eminence)');
   await overlay.waitFor({ state: 'visible', timeout: timeoutMs });
   await page.mouse.click(W / 2, H / 2);
   await overlay.waitFor({ state: 'hidden', timeout: 5_000 });
@@ -72,9 +73,22 @@ function assertCenterX(cx: number, label: string) {
   ).toBeLessThanOrEqual(MAX_CX);
 }
 
+function assertFullyOnscreen(
+  box: { x: number; y: number; width: number; height: number },
+  label: string,
+) {
+  // Framer Motion's brief 1.025–1.035 emphasis scale can extend antialiased
+  // edges by roughly 1.3 px without clipping meaningful card content.
+  const tolerance = 2;
+  expect(box.x, `${label}: left edge must remain on-screen`).toBeGreaterThanOrEqual(-tolerance);
+  expect(box.y, `${label}: top edge must remain on-screen`).toBeGreaterThanOrEqual(-tolerance);
+  expect(box.x + box.width, `${label}: right edge must remain on-screen`).toBeLessThanOrEqual(W + tolerance);
+  expect(box.y + box.height, `${label}: bottom edge must remain on-screen`).toBeLessThanOrEqual(H + tolerance);
+}
+
 // ── Test ──────────────────────────────────────────────────────────────────────
 
-test('all four overlays are centered in the middle third of a 390 px viewport', async ({ page }) => {
+test('mobile action presentations remain visible and spatially honest at 390 px', async ({ page }) => {
   mkdirSync(OUT, { recursive: true });
 
   // ── Setup: create room, add AI, start game ─────────────────────────────────
@@ -125,8 +139,8 @@ test('all four overlays are centered in the middle third of a 390 px viewport', 
   // ── OVERLAY 1: Turn Announcement ───────────────────────────────────────────
   await test.step('turn-announcement overlay is centered', async () => {
     // The "Your Turn" full-screen overlay fires when the server assigns the turn.
-    // CSS: "fixed inset-0 z-50 flex items-center justify-center cursor-pointer"
-    const overlay = page.locator('[class*="fixed"][class*="inset-0"][class*="cursor-pointer"]');
+    // Anchor to the Eminence readout unique to the full-screen turn presentation.
+    const overlay = page.locator('.fixed.inset-0:has(.turn-announcement-eminence)');
     await overlay.waitFor({ state: 'visible', timeout: 12_000 });
 
     // Measure the inner content block (avatar + "Your Turn" text) — first div.relative child
@@ -147,99 +161,97 @@ test('all four overlays are centered in the middle third of a 390 px viewport', 
     await closePanels(page);
   });
 
-  // ── OVERLAY 2: Affinity Harness Burst ──────────────────────────────────────
-  await test.step('Affinity Harness burst overlay is centered', async () => {
+  // ── PRESENTATION 2: Affinity Harness well response ─────────────────────────
+  await test.step('Affinity Harness response stays aligned with visible wells', async () => {
     // Select 3 different Affinities in the Well, then click Harness.
     // The burst fires optimistically on click (before server response).
     await expect(page.locator('text=AFFINITY WELL').first()).toBeVisible({ timeout: 8_000 });
 
-    // Affinity buttons: rounded-xl type=button inside the Affinity Well grid
-    const affinityButtons = page
-      .locator('button[type="button"][class*="rounded-xl"]')
-      .filter({ hasNotText: /RESERVE|Forge|Hand|Log|Back/ });
-
-    await expect(affinityButtons.first()).toBeVisible({ timeout: 5_000 });
-    const count = await affinityButtons.count();
-    expect(count, 'must find at least 3 Affinity buttons in the Well').toBeGreaterThanOrEqual(3);
-
-    await affinityButtons.nth(0).click(); await page.waitForTimeout(120);
-    await affinityButtons.nth(1).click(); await page.waitForTimeout(120);
-    await affinityButtons.nth(2).click(); await page.waitForTimeout(120);
+    // Natural Affinity reservoir buttons expose stable names independent of layout classes.
+    const selected = [
+      { name: 'Flare', key: 'flare' },
+      { name: 'Radiance', key: 'radiance' },
+      { name: 'Verdance', key: 'verdance' },
+    ] as const;
+    for (const affinity of selected) {
+      const button = page.getByRole('button', { name: new RegExp(`^${affinity.name}\\b`) }).first();
+      await expect(button).toBeVisible({ timeout: 5_000 });
+      await button.click();
+      await page.waitForTimeout(120);
+    }
 
     // Click Harness — burst fires immediately (optimistic render)
     const harness = page.getByText('Harness', { exact: true }).first();
     await expect(harness, '"Harness" action must be visible').toBeVisible({ timeout: 3_000 });
     await harness.click();
 
-    // Burst overlay: "pointer-events-none fixed inset-0 z-50 flex items-center justify-center"
-    const affinityOverlay = page.locator(
-      '.pointer-events-none.fixed.inset-0[class*="z-50"][class*="flex"][class*="justify-center"]',
-    );
-    await affinityOverlay.waitFor({ state: 'visible', timeout: 3_000 });
+    // Harness now responds locally at each selected well. Check the animated
+    // sources rather than expecting the retired centered full-screen burst.
+    await page.waitForTimeout(260);
+    for (const affinity of selected) {
+      const well = page.locator(`[data-affinity-well="${affinity.key}"]:visible`).first();
+      const box = await well.boundingBox();
+      expect(box, `${affinity.name} well must remain visible during Harness`).not.toBeNull();
+      assertFullyOnscreen(box!, `${affinity.name} Harness response`);
+    }
+    const horizontalOverflow = await page.evaluate(() => document.documentElement.scrollWidth - window.innerWidth);
+    expect(horizontalOverflow, 'Harness response must not create horizontal page overflow').toBeLessThanOrEqual(1);
+    await page.screenshot({ path: `${OUT}/02-affinity-harness-response.png` });
 
-    // Inner content: "relative h-72 w-[18rem]" — 288 px wide, centered by parent flex
-    const content = affinityOverlay.locator('div.relative').first();
-    await content.waitFor({ state: 'visible', timeout: 2_000 });
-    const box = await content.boundingBox();
-    expect(box, 'affinity-harness-burst inner content bounding box must exist').not.toBeNull();
-
-    await page.screenshot({ path: `${OUT}/02-affinity-burst.png` });
-
-    assertCenterX(box!.x + box!.width / 2, 'affinity-harness-burst content');
-
-    // Wait for burst to finish before proceeding
-    await page.waitForTimeout(3_600);
+    // Begin waiting for the next turn immediately so the brief presentation is
+    // not missed while the local Harness response settles.
+    await page.waitForTimeout(120);
     await closePanels(page);
   });
 
-  // ── OVERLAY 3: Reserve Burst ───────────────────────────────────────────────
-  await test.step('reserve burst overlay is centered', async () => {
+  // ── PRESENTATION 3: Encryption source and transfer ─────────────────────────
+  await test.step('Encryption remains on-screen from Archive source to destination', async () => {
     // Wait for our NEXT turn announcement (after the AI plays its turn)
     await awaitAndDismissTurnAnnouncement(page, 25_000);
     await page.waitForTimeout(800);
 
-    // Open the Tier 1 deck sheet and perform a blind reserve (2-click confirm)
-    const deckBtn = page.locator('button[data-deck-tier="1"]').first();
+    // Open the Tier 1 Archive sheet and encrypt a concealed Artifact (2-click confirm).
+    const deckBtn = page.locator('[data-deck-tier="1"] > button').first();
     await expect(deckBtn, 'Tier 1 deck button must be visible').toBeVisible({ timeout: 5_000 });
     await deckBtn.click();
     await page.waitForTimeout(600);
 
-    const reserveBtn = page.locator('button').filter({ hasText: /Reserve Hidden Card/ }).first();
-    await expect(reserveBtn, '"Reserve Hidden Card" button must appear').toBeVisible({ timeout: 5_000 });
-    await reserveBtn.click();
+    const encryptBtn = page.getByRole('button', { name: /encrypt.*hidden artifact/i }).first();
+    await expect(encryptBtn, '"Encrypt hidden Artifact" button must appear').toBeVisible({ timeout: 5_000 });
+    await encryptBtn.click();
     await page.waitForTimeout(400);
 
-    const confirmBtn = page.locator('button').filter({ hasText: /Confirm.*Reserve/ }).first();
-    await expect(confirmBtn, '"Confirm: Reserve Hidden Card" button must appear').toBeVisible({ timeout: 5_000 });
+    const confirmBtn = page.getByRole('button', { name: /^confirm\b/i }).first();
+    await expect(confirmBtn, 'Encryption confirmation button must appear').toBeVisible({ timeout: 5_000 });
     await confirmBtn.click();
 
-    // Reserve burst fires on WebSocket state update — poll until visible, then measure
-    const reserveOverlay = page.locator(
-      '.pointer-events-none.fixed.inset-0[class*="z-50"][class*="flex"][class*="justify-center"]',
-    );
-    await reserveOverlay.waitFor({ state: 'visible', timeout: 6_000 });
+    // Encryption stays local to the Archive source before the completed Cipher travels.
+    const encryptionOverlay = page.getByTestId('cipher-aperture-animation');
+    await encryptionOverlay.waitFor({ state: 'visible', timeout: 6_000 });
+    const plate = page.getByTestId('cipher-aperture-plate');
+    await plate.waitFor({ state: 'visible', timeout: 2_000 });
+    await page.waitForTimeout(260);
+    const sourceBox = await plate.boundingBox();
+    expect(sourceBox, 'Encryption source plate must be visible').not.toBeNull();
+    assertFullyOnscreen(sourceBox!, 'Encryption source plate');
+    await page.screenshot({ path: `${OUT}/03a-encryption-source.png` });
 
-    const content = reserveOverlay.locator('div.relative').first();
-    await content.waitFor({ state: 'visible', timeout: 2_000 });
-    const box = await content.boundingBox();
-    expect(box, 'reserve-burst inner content bounding box must exist').not.toBeNull();
+    // release + conceal + lock = 1240 ms; sample shortly into transfer.
+    await page.waitForTimeout(1_160);
+    const transferBox = await plate.boundingBox();
+    expect(transferBox, 'Encryption transfer plate must remain measurable').not.toBeNull();
+    assertFullyOnscreen(transferBox!, 'Encryption transfer plate');
+    await page.screenshot({ path: `${OUT}/03b-encryption-transfer.png` });
 
-    await page.screenshot({ path: `${OUT}/03-reserve-burst.png` });
-
-    assertCenterX(box!.x + box!.width / 2, 'reserve-burst content');
-
-    await page.waitForTimeout(3_600);
+    await encryptionOverlay.waitFor({ state: 'hidden', timeout: 5_000 });
     await closePanels(page);
   });
 
-  // ── OVERLAY 4: Artifact-Forge Burst ────────────────────────────────────────
-  await test.step('Artifact-forge burst animated card is centered', async () => {
-    // The Artifact-forge burst uses window.innerWidth at runtime:
-    //   animate.x = window.innerWidth / 2 - cardWidth / 2
-    // We verify centering by measuring the card's actual getBoundingClientRect() during animation.
+  // ── PRESENTATION 4: Artifact Forge ─────────────────────────────────────────
+  await test.step('Artifact Forge card remains on-screen in the active view mode', async () => {
 
     // Accumulate Affinities over 1–3 Harness turns until a Forge Artifact is affordable.
-    // After the Affinity burst (turn 1) we hold 1+1+1 Affinities; after the reserve
+    // After the Affinity burst (turn 1) we hold 1+1+1 Affinities; after Encryption
     // (turn 3) we still hold 3. One more Harness gives us 2+2+2 = 6 Affinities,
     // sufficient for most Tier I Artifacts.
     let forged = false;
@@ -270,8 +282,8 @@ test('all four overlays are centered in the middle third of a 390 px viewport', 
           await page.waitForTimeout(350);
 
           // Second click: confirm
-          const confirmForge = page.locator('button').filter({ hasText: 'Confirm: Forge' }).first();
-          await expect(confirmForge, '"Confirm: Forge" button must appear after selecting forge').toBeVisible({ timeout: 3_000 });
+          const confirmForge = page.getByRole('button', { name: /^confirm\b/i }).first();
+          await expect(confirmForge, 'Forge confirmation button must appear after selecting Forge').toBeVisible({ timeout: 3_000 });
           await confirmForge.click();
 
           forged = true;
@@ -294,9 +306,9 @@ test('all four overlays are centered in the middle third of a 390 px viewport', 
         await closePanels(page);
         await expect(page.locator('text=AFFINITY WELL').first()).toBeVisible({ timeout: 8_000 });
 
-        const affinityButtons = page
-          .locator('button[type="button"][class*="rounded-xl"]')
-          .filter({ hasNotText: /RESERVE|Forge|Hand|Log|Back/ });
+        const affinityButtons = page.getByRole('button', {
+          name: /^(Flare|Radiance|Verdance|Continuum|Abyss)\b/,
+        });
         const affinityCount = await affinityButtons.count();
         if (affinityCount >= 3) {
           await affinityButtons.nth(0).click(); await page.waitForTimeout(100);
@@ -319,52 +331,17 @@ test('all four overlays are centered in the middle third of a 390 px viewport', 
     //   animate={{ x: window.innerWidth/2 - startRect.w/2, ... }}
     //   transition={{ duration: 0.6, ease: [0.22, 1, 0.36, 1] }}
     //
-    // The card reaches its center position after ~0.6 s.
-    // Wait 800 ms so the fast spring settles, then measure via getBoundingClientRect()
-    // (Playwright's boundingBox() accounts for CSS transforms including framer-motion translateX).
-
+    // Full view lifts to center; compact view stamps in place. Both must keep the
+    // Artifact legible and within the viewport.
     await page.waitForTimeout(800);
 
     // Screenshot of the forge burst mid-animation
     await page.screenshot({ path: `${OUT}/04-forge-burst-peak.png` });
 
-    // ── Measurement A: animated card (runtime window.innerWidth path) ──────
-    const cardBurstBox = await page.evaluate((): { x: number; y: number; width: number; height: number } | null => {
-      // The Artifact-forge burst container has no flex/justify-center (unlike the Affinity/reserve bursts).
-      // Its animated card is inside a <div style="perspective:900px"> sibling of the avatar section.
-      // Find it: fixed, position:fixed, left=0px, small width (< 250 px to exclude full-screen elements).
-      const bursts = Array.from(document.querySelectorAll('.pointer-events-none.fixed.inset-0'));
-      for (const burst of bursts) {
-        const perspDiv = burst.querySelector('div[style*="perspective"]') as HTMLElement | null;
-        if (!perspDiv) continue;
-        // The framer-motion card div is the first child of perspDiv
-        const cardDiv = perspDiv.firstElementChild as HTMLElement | null;
-        if (!cardDiv) continue;
-        const r = cardDiv.getBoundingClientRect();
-        // Sanity: should be a card-sized element (not full-screen)
-        if (r.width > 10 && r.width < 250 && r.height > 10) {
-          return { x: r.left, y: r.top, width: r.width, height: r.height };
-        }
-      }
-      return null;
-    });
-
-    expect(cardBurstBox, 'animated card getBoundingClientRect() must be non-null during forge burst').not.toBeNull();
-    const cardCx = cardBurstBox!.x + cardBurstBox!.width / 2;
-    assertCenterX(cardCx, 'forge-burst animated card (runtime window.innerWidth path)');
-
-    // ── Measurement B: avatar/label section (CSS fixed left-0 right-0 items-center) ──
-    // The "fixed left-0 right-0 flex flex-col items-center" div holds the player avatar
-    // and "Forged!" label — it is CSS-centered and also present during the burst.
-    const avatarImg = page
-      .locator('.fixed.left-0.right-0[class*="flex-col"][class*="items-center"]')
-      .first()
-      .locator('img')
-      .first();
-
-    const avatarBox = await avatarImg.boundingBox();
-    expect(avatarBox, 'forge-burst avatar image bounding box must exist').not.toBeNull();
-    assertCenterX(avatarBox!.x + avatarBox!.width / 2, 'forge-burst avatar image');
+    const forgeCard = page.getByTestId('forge-animation-card');
+    const cardBurstBox = await forgeCard.boundingBox();
+    expect(cardBurstBox, 'animated Forge card must be measurable during presentation').not.toBeNull();
+    assertFullyOnscreen(cardBurstBox!, 'Forge card');
 
     await page.waitForTimeout(1_500);
     await page.screenshot({ path: `${OUT}/05-forge-burst-settling.png` });

@@ -12,6 +12,22 @@ import { ForgeDeckPile } from './game-board-forge-deck';
 
 type MotionAnimate = React.ComponentProps<typeof motion.div>['animate'];
 
+export function withPersistentAvatarSeedMolds<T>(
+  cards: readonly (T | null)[],
+  tier: 1 | 2 | 3,
+  moldSlots: readonly string[],
+): (T | null)[] {
+  let lastSeededMold = -1;
+  for (const slotKey of moldSlots) {
+    const [slotTier, slotIndex] = slotKey.split('-').map(Number);
+    if (slotTier !== tier || !Number.isInteger(slotIndex) || slotIndex < 0 || slotIndex > 3) continue;
+    lastSeededMold = Math.max(lastSeededMold, slotIndex);
+  }
+
+  const visibleMoldCount = Math.max(cards.length, lastSeededMold + 1);
+  return Array.from({ length: visibleMoldCount }, (_, index) => cards[index] ?? null);
+}
+
 export interface BoardForgeProps {
   brandDelayMap: Map<string, number>;
   burnChipAnim: MotionAnimate;
@@ -382,9 +398,9 @@ function ForgeTierShelves({
   tutorialStep,
 }: BoardForgeProps) {
   const rows = [
-    { tier: 3, cards: state.forgeTier3, deck: state.deckCounts.tier3, tierIdx: 0 },
-    { tier: 2, cards: state.forgeTier2, deck: state.deckCounts.tier2, tierIdx: 1 },
-    { tier: 1, cards: state.forgeTier1, deck: state.deckCounts.tier1, tierIdx: 2 },
+    { tier: 3, cards: withPersistentAvatarSeedMolds(state.forgeTier3, 3, state.avatarSeedMoldSlots ?? []), deck: state.deckCounts.tier3, tierIdx: 0 },
+    { tier: 2, cards: withPersistentAvatarSeedMolds(state.forgeTier2, 2, state.avatarSeedMoldSlots ?? []), deck: state.deckCounts.tier2, tierIdx: 1 },
+    { tier: 1, cards: withPersistentAvatarSeedMolds(state.forgeTier1, 1, state.avatarSeedMoldSlots ?? []), deck: state.deckCounts.tier1, tierIdx: 2 },
   ] as Array<{ tier: 1 | 2 | 3; cards: (ArtifactCard | null)[]; deck: number; tierIdx: number }>;
 
   return (
@@ -406,21 +422,32 @@ function ForgeTierShelves({
             ? 'rgba(205, 159, 84, 0.62)'
             : 'rgba(166, 132, 82, 0.44)';
         const tierRoman = row.tier === 3 ? 'III' : row.tier === 2 ? 'II' : 'I';
+        const observedTopCard = row.tier === 1
+          ? me?.tideArchiveTopCards?.tier1
+          : row.tier === 2
+            ? me?.tideArchiveTopCards?.tier2
+            : me?.tideArchiveTopCards?.tier3;
         const isDeckPending = plannedDeckTier === row.tier;
         const deckDisabled = !isDeckPending && (row.deck === 0 || !me || (!isMyTurn && !canPlan));
         const deckTitle = isDeckPending
-          ? 'Cancel pending encrypt'
-          : row.deck === 0 ? 'Archive empty' : 'Encrypt a concealed Artifact';
+          ? `Cancel ${plannedCardLabel.toLowerCase()}`
+          : row.deck === 0
+            ? 'Archive empty'
+            : observedTopCard
+              ? `Inspect ${observedTopCard.name} atop this Archive`
+              : 'Encrypt a concealed Artifact';
         const deckPile = (
           <ForgeDeckPile
             deckCount={row.deck}
             deckDisabled={deckDisabled}
             deckTitle={deckTitle}
+            inline
             isDeckPending={isDeckPending}
+            isObserved={!!observedTopCard}
+            pendingLabel={plannedCardLabel}
             forgeCompact={forgeCompact}
             onCancelPlan={handleCancelPlan}
             onDeckTap={() => handleDeckTap(row.tier)}
-            showAvatarSeed={!!state?.avatarSeedDeckSeeds && state.avatarSeedDeckSeeds.length > 0}
             tier={row.tier}
           />
         );
@@ -444,9 +471,10 @@ function ForgeTierShelves({
                 <span className="board-forge-tier-full-label text-[10px] font-black uppercase tracking-wider" style={{ color: '#D4B46F', letterSpacing: '0.12em', textShadow: '0 1px 6px rgba(192,164,114,0.35)' }}>{TIER_CIVILIZATION[row.tier]}</span>
               </div>
               <div className="shrink-0 flex-1 h-[1.5px] divider-brass" />
+              {deckPile}
               <ChevronsRight className="board-forge-scroll-cue" aria-hidden="true" />
             </div>
-            <div className="board-forge-shelf-content">
+            <div className="board-forge-shelf-content board-forge-shelf-content--archive-in-header">
               <div className={'board-forge-card-row flex pb-1 no-scrollbar ' + (forgeCompact ? 'flex-wrap gap-2' : 'gap-2.5 overflow-x-auto')}>
                 {row.cards.map((c, i) => {
                   const slotKey = row.tier + '-' + i;
@@ -487,9 +515,6 @@ function ForgeTierShelves({
                   );
                 })}
               </div>
-              <aside className="board-forge-archive-rail" data-forge-archive-rail={`tier-${row.tier}`}>
-                {deckPile}
-              </aside>
             </div>
           </div>
         );

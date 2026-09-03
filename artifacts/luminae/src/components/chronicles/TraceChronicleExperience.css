@@ -1,0 +1,126 @@
+.trace-hud {
+  position: relative;
+  z-index: 19;
+  display: grid;
+  grid-template-columns: minmax(12rem, 1fr) minmax(10rem, 1.1fr) minmax(9rem, .7fr) minmax(12rem, 1fr);
+  align-items: center;
+  min-height: 54px;
+  border-bottom: 1px solid rgba(155, 203, 255, .24);
+  background: linear-gradient(90deg, rgba(3, 10, 22, .98), rgba(8, 18, 35, .96) 52%, rgba(6, 10, 24, .98));
+  box-shadow: 0 10px 28px rgba(0, 0, 0, .28), inset 0 1px rgba(207, 232, 255, .06);
+  color: #dcecff;
+}
+
+.trace-hud > div { min-width: 0; padding: 7px 14px; }
+.trace-hud > div + div { border-left: 1px solid rgba(151, 198, 245, .14); }
+.trace-hud__identity { display: flex; align-items: center; gap: 9px; }
+.trace-hud__identity .trace-constellation { width: 36px; height: 36px; flex: 0 0 auto; }
+.trace-hud__identity span, .trace-hud__status { display: flex; flex-direction: column; }
+.trace-hud strong { overflow: hidden; text-overflow: ellipsis; font-family: Georgia, serif; font-size: 12px; letter-spacing: 0; white-space: nowrap; }
+.trace-hud small, .trace-hud span { font-size: 9px; letter-spacing: 0; color: rgba(183, 211, 239, .66); }
+.trace-hud__meter > span, .trace-hud__objective > span, .trace-hud__status > span { display: block; margin-bottom: 5px; }
+.trace-hud__segments { display: grid; grid-template-columns: repeat(5, minmax(8px, 1fr)); gap: 4px; }
+.trace-hud__segments i { height: 4px; background: rgba(139, 179, 221, .15); transform: skewX(-16deg); }
+.trace-hud__segments i.is-filled { background: #a8d8ff; box-shadow: 0 0 9px rgba(117, 195, 255, .7); }
+.trace-hud__objective { text-align: center; }
+.trace-hud__objective strong { font-size: 14px; color: #fff; }
+.trace-hud__status { text-align: right; }
+.trace-hud__status strong { color: #c8e7ff; }
+
+.trace-constellation { overflow: visible; filter: drop-shadow(0 0 8px rgba(181, 222, 255, .66)); }
+.trace-constellation path { fill: none; stroke: rgba(190, 225, 255, .62); stroke-width: 1; }
+.trace-constellation circle { fill: #eaf7ff; stroke: rgba(255, 255, 255, .9); stroke-width: .6; }
+.trace-constellation circle:last-child { fill: #fff; filter: drop-shadow(0 0 7px white); }
+.trace-constellation circle.is-active { animation: trace-orb-breathe 3.8s ease-in-out infinite; }
+
+.trace-interruption, .trace-outcome {
+  position: fixed;
+  inset: 0;
+  z-index: 310;
+  display: grid;
+  place-items: center;
+  overflow: hidden;
+  color: #eff8ff;
+  background: #020610;
+}
+.trace-interruption__plate { position: absolute; inset: 0; width: 100%; height: 100%; object-fit: cover; opacity: .7; }
+.trace-interruption__veil { position: absolute; inset: 0; background: linear-gradient(180deg, rgba(1, 5, 13, .6), rgba(1, 7, 17, .28) 34%, rgba(1, 5, 13, .86)); }
+.trace-route-map { position: absolute; inset: 0; width: 100%; height: 100%; opacity: .7; filter: drop-shadow(0 0 8px rgba(140, 208, 255, .48)); }
+.trace-route-map path { fill: none; stroke-width: 2.4; stroke-dasharray: 10 9; animation: trace-route-flow 3.8s linear infinite; }
+.trace-route-map circle { fill: #e4f7ff; stroke: #7ac7ff; stroke-width: 2; }
+.trace-route--a { stroke: #9fd9ff; }
+.trace-route--b { stroke: #d7edff; }
+.trace-route--c { stroke: #8caaff; }
+.trace-route-map--withhold_alternatives .trace-route--a, .trace-route-map--withhold_alternatives .trace-route--c { opacity: .12; }
+.trace-route-map--withhold_alternatives .trace-route--b { stroke-width: 4; }
+.trace-route-map--force_helm_lock .trace-route { stroke: #f1f7ff; opacity: .18; }
+.trace-route-map--force_helm_lock .trace-route--b { opacity: 1; stroke: #f5dba1; stroke-width: 5; stroke-dasharray: 1 0; }
+.trace-route-map--expose_all_routes .trace-route { stroke-width: 3; opacity: 1; }
+.trace-interruption__lumii { position: absolute; top: 9%; left: 50%; width: clamp(88px, 10vw, 150px); transform: translateX(-50%); }
+.trace-interruption__header { position: absolute; top: max(18px, env(safe-area-inset-top)); left: 22px; display: flex; flex-direction: column; z-index: 2; }
+.trace-interruption__header span { font-size: 10px; color: #8ebde6; }
+.trace-interruption__header strong { font-family: Georgia, serif; font-size: clamp(22px, 3vw, 38px); font-weight: 500; }
+.trace-interruption__header small { color: rgba(215, 235, 252, .62); font-size: 9px; }
+
+.trace-dialogue { position: relative; z-index: 3; width: min(760px, calc(100vw - 32px)); margin-top: 19vh; padding: 22px; border-top: 1px solid rgba(188, 224, 255, .52); border-bottom: 1px solid rgba(188, 224, 255, .2); background: linear-gradient(90deg, rgba(2, 8, 18, .94), rgba(7, 18, 32, .86), rgba(2, 8, 18, .94)); box-shadow: 0 22px 70px rgba(0, 0, 0, .5); }
+.trace-dialogue__speaker { display: block; margin-bottom: 9px; color: #99caf4; font-size: 10px; font-weight: 700; }
+.trace-dialogue > p { margin: 0; font-family: Georgia, serif; font-size: clamp(20px, 3vw, 31px); line-height: 1.3; }
+.trace-dialogue__continue { display: block; margin: 18px 0 0 auto; border: 1px solid rgba(173, 215, 249, .32); padding: 9px 18px; background: rgba(109, 177, 228, .11); color: #e6f6ff; font-size: 12px; }
+.trace-dialogue__continue:hover, .trace-confirmation__back:hover { background: rgba(139, 202, 249, .19); }
+.trace-dialogue__waiting { margin-top: 18px !important; color: rgba(216, 235, 249, .7); font-family: inherit !important; font-size: 13px !important; }
+
+.trace-choices { display: grid; grid-template-columns: repeat(3, minmax(0, 1fr)); gap: 8px; margin-top: 20px; }
+.trace-choices button { display: flex; min-height: 122px; gap: 10px; padding: 14px; border: 1px solid rgba(156, 207, 246, .22); border-radius: 4px; background: rgba(3, 12, 24, .88); color: #e7f5ff; text-align: left; transition: border-color .18s, background .18s, transform .18s; }
+.trace-choices button:hover { transform: translateY(-2px); border-color: rgba(181, 224, 255, .58); background: rgba(12, 29, 48, .94); }
+.trace-choices svg { width: 20px; height: 20px; flex: 0 0 auto; color: #9bd3ff; }
+.trace-choices span { display: flex; min-width: 0; flex-direction: column; gap: 7px; }
+.trace-choices strong { font-family: Georgia, serif; font-size: 15px; }
+.trace-choices small { color: rgba(202, 224, 241, .68); font-size: 11px; line-height: 1.45; }
+
+.trace-confirmation { position: relative; text-align: center; }
+.trace-confirmation__back { position: absolute; top: -3px; left: 0; display: grid; width: 32px; height: 32px; place-items: center; border: 1px solid rgba(170, 215, 249, .24); background: rgba(74, 132, 178, .08); color: #badfff; }
+.trace-confirmation__back svg { width: 16px; }
+.trace-confirmation h2 { margin: 0; font-family: Georgia, serif; font-size: clamp(25px, 4vw, 38px); font-weight: 500; }
+.trace-confirmation > p { max-width: 590px; margin: 11px auto; color: rgba(221, 237, 249, .72); font-size: 13px; line-height: 1.55; }
+.trace-confirmation__response { display: flex; flex-direction: column; gap: 3px; margin: 16px 0; color: #eaf7ff; font-family: Georgia, serif; font-size: 16px; }
+.trace-confirmation__commit { display: inline-flex; align-items: center; gap: 8px; min-height: 42px; padding: 0 20px; border: 1px solid rgba(206, 233, 255, .55); border-radius: 3px; background: #d7ecfa; color: #07111e; font-size: 11px; font-weight: 800; }
+.trace-confirmation__commit:disabled { opacity: .52; }
+.trace-confirmation__commit svg { width: 15px; }
+
+.trace-outcome__veil { position: absolute; inset: 0; background: radial-gradient(circle at 50% 40%, rgba(32, 70, 105, .2), rgba(1, 5, 12, .88) 65%); }
+.trace-outcome__record { position: relative; z-index: 2; width: min(620px, calc(100vw - 30px)); padding: 26px; border-top: 1px solid rgba(195, 229, 255, .55); border-bottom: 1px solid rgba(195, 229, 255, .24); background: rgba(2, 8, 18, .83); text-align: center; }
+.trace-outcome__record > .trace-constellation { width: 82px; height: 82px; }
+.trace-outcome__eyebrow { display: block; margin-top: 8px; color: #91c8ef; font-size: 10px; }
+.trace-outcome h1 { margin: 10px 0 12px; font-family: Georgia, serif; font-size: clamp(31px, 6vw, 54px); font-weight: 500; }
+.trace-outcome__judgment { max-width: 540px; margin: 0 auto; color: #e9f6ff; font-family: Georgia, serif; font-size: clamp(17px, 3vw, 23px); line-height: 1.45; }
+.trace-outcome__lumii { display: flex; flex-direction: column; gap: 3px; margin: 24px 0; color: rgba(210, 231, 247, .72); font-size: 12px; }
+.trace-outcome__seal { display: inline-flex; align-items: center; gap: 10px; border: 1px solid rgba(154, 210, 249, .32); padding: 8px 12px; background: rgba(86, 155, 207, .08); }
+.trace-outcome__seal strong { font-size: 11px; color: #e8f7ff; }
+.trace-outcome__seal span { border-left: 1px solid rgba(166, 211, 244, .28); padding-left: 10px; color: #86b8db; font-size: 9px; }
+.trace-outcome__return { display: block; min-height: 42px; margin: 20px auto 0; padding: 0 20px; border: 1px solid rgba(171, 217, 249, .4); border-radius: 3px; background: rgba(132, 195, 237, .12); color: #e5f5ff; font-size: 12px; }
+
+@keyframes trace-route-flow { to { stroke-dashoffset: -38; } }
+@keyframes trace-orb-breathe { 50% { r: 8.5; opacity: .72; } }
+
+@media (max-width: 720px) {
+  .trace-hud { grid-template-columns: minmax(9rem, 1.1fr) minmax(8rem, .9fr) minmax(5.8rem, .55fr); min-height: 48px; overflow-x: auto; }
+  .trace-hud > div { padding: 6px 9px; }
+  .trace-hud__status { display: none; }
+  .trace-hud__identity .trace-constellation { width: 30px; height: 30px; }
+  .trace-hud__identity small { display: none; }
+  .trace-hud__objective span { white-space: nowrap; }
+  .trace-interruption__header { left: 14px; }
+  .trace-interruption__lumii { top: 11%; width: 82px; }
+  .trace-dialogue { width: calc(100vw - 20px); margin-top: 14vh; padding: 16px 12px; }
+  .trace-dialogue > p { font-size: 21px; }
+  .trace-choices { grid-template-columns: 1fr; max-height: 48vh; overflow-y: auto; }
+  .trace-choices button { min-height: 82px; }
+  .trace-confirmation { padding-top: 28px; }
+  .trace-outcome__record { max-height: calc(100dvh - 24px); overflow-y: auto; padding: 19px 14px; }
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .trace-route-map path, .trace-constellation circle.is-active { animation: none; }
+  .trace-choices button { transition: none; }
+  .trace-choices button:hover { transform: none; }
+}

@@ -1,0 +1,463 @@
+.ux-review-root {
+  min-height: 100dvh;
+  color: #e9edf3;
+  background:
+    linear-gradient(rgba(115, 147, 178, 0.035) 1px, transparent 1px),
+    linear-gradient(90deg, rgba(115, 147, 178, 0.035) 1px, transparent 1px),
+    #07090d;
+  background-size: 28px 28px;
+}
+
+.ux-review-header {
+  position: sticky;
+  top: 0;
+  z-index: 20;
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 16px;
+  min-height: 64px;
+  padding: 10px clamp(16px, 3vw, 36px);
+  border-bottom: 1px solid rgba(156, 183, 207, 0.18);
+  background: rgba(7, 9, 13, 0.94);
+  backdrop-filter: blur(12px);
+}
+
+.ux-review-brand {
+  display: flex;
+  align-items: center;
+  gap: 12px;
+  min-width: 0;
+}
+
+.ux-review-brand-mark {
+  display: grid;
+  width: 36px;
+  height: 36px;
+  place-items: center;
+  border: 1px solid rgba(91, 186, 220, 0.42);
+  border-radius: 6px;
+  color: #8ee2f3;
+  background: #0b171d;
+}
+
+.ux-review-brand h1 {
+  margin: 0;
+  font-size: 15px;
+  font-weight: 700;
+  letter-spacing: 0;
+}
+
+.ux-review-brand p {
+  margin: 2px 0 0;
+  color: #84909d;
+  font-size: 11px;
+}
+
+.ux-review-build {
+  color: #7f8995;
+  font: 10px/1.35 ui-monospace, SFMono-Regular, Menlo, monospace;
+  text-align: right;
+}
+
+.ux-review-main {
+  width: min(1240px, 100%);
+  margin: 0 auto;
+  padding: 28px clamp(16px, 3vw, 36px) 56px;
+}
+
+.ux-review-intro {
+  display: grid;
+  grid-template-columns: minmax(0, 1fr) auto;
+  align-items: end;
+  gap: 24px;
+  padding: 0 0 24px;
+  border-bottom: 1px solid rgba(156, 183, 207, 0.18);
+}
+
+.ux-review-eyebrow {
+  margin: 0 0 8px;
+  color: #77c9de;
+  font: 600 10px/1.2 ui-monospace, SFMono-Regular, Menlo, monospace;
+  text-transform: uppercase;
+}
+
+.ux-review-intro h2 {
+  max-width: 760px;
+  margin: 0;
+  color: #f4f6f8;
+  font-family: Georgia, "Times New Roman", serif;
+  font-size: clamp(26px, 4vw, 42px);
+  font-weight: 400;
+  line-height: 1.08;
+  letter-spacing: 0;
+}
+
+.ux-review-intro-copy {
+  max-width: 720px;
+  margin: 12px 0 0;
+  color: #aab3bd;
+  font-size: 14px;
+  line-height: 1.6;
+}
+
+.ux-review-actions,
+.ux-stage-actions,
+.ux-context-actions {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 8px;
+}
+
+.ux-review-button {
+  display: inline-flex;
+  min-height: 38px;
+  align-items: center;
+  justify-content: center;
+  gap: 8px;
+  padding: 8px 12px;
+  border: 1px solid rgba(151, 174, 195, 0.28);
+  border-radius: 6px;
+  color: #dce5ec;
+  background: #111820;
+  font-size: 12px;
+  font-weight: 650;
+  cursor: pointer;
+}
+
+.ux-review-button:hover:not(:disabled) {
+  border-color: rgba(109, 206, 228, 0.62);
+  color: #fff;
+  background: #14242d;
+}
+
+.ux-review-button:focus-visible {
+  outline: 2px solid #79d5e8;
+  outline-offset: 2px;
+}
+
+.ux-review-button:disabled {
+  cursor: wait;
+  opacity: 0.48;
+}
+
+.ux-review-button-primary {
+  border-color: rgba(112, 213, 231, 0.52);
+  color: #061014;
+  background: #83d8e7;
+}
+
+.ux-review-button-primary:hover:not(:disabled) {
+  color: #020506;
+  background: #a1e5f0;
+}
+
+.ux-review-button-subtle {
+  border-color: transparent;
+  color: #96a2ae;
+  background: transparent;
+}
+
+.ux-review-tutorial {
+  padding: 26px 0;
+  border-bottom: 1px solid rgba(156, 183, 207, 0.18);
+}
+
+.ux-review-section-heading {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 12px;
+  margin-bottom: 16px;
+}
+
+.ux-review-section-heading h3 {
+  margin: 0;
+  font-size: 15px;
+  font-weight: 700;
+}
+
+.ux-review-section-heading span {
+  color: #7d8995;
+  font-size: 11px;
+}
+
+.ux-review-tutorial-grid {
+  display: grid;
+  grid-template-columns: repeat(3, minmax(0, 1fr));
+  gap: 0;
+}
+
+.ux-tutorial-step {
+  min-width: 0;
+  padding: 4px 24px 4px 0;
+}
+
+.ux-tutorial-step + .ux-tutorial-step {
+  padding-left: 24px;
+  border-left: 1px solid rgba(156, 183, 207, 0.16);
+}
+
+.ux-tutorial-number {
+  display: inline-grid;
+  width: 24px;
+  height: 24px;
+  margin-bottom: 10px;
+  place-items: center;
+  border-radius: 50%;
+  color: #081116;
+  background: #77c9de;
+  font: 700 11px/1 ui-monospace, SFMono-Regular, Menlo, monospace;
+}
+
+.ux-tutorial-step strong {
+  display: block;
+  margin-bottom: 5px;
+  font-size: 13px;
+}
+
+.ux-tutorial-step p {
+  margin: 0;
+  color: #98a4af;
+  font-size: 12px;
+  line-height: 1.55;
+}
+
+.ux-review-layout {
+  display: grid;
+  grid-template-columns: minmax(0, 1fr) minmax(280px, 340px);
+  gap: 32px;
+  padding-top: 28px;
+}
+
+.ux-journey-list {
+  border-top: 1px solid rgba(156, 183, 207, 0.18);
+}
+
+.ux-stage {
+  display: grid;
+  grid-template-columns: 42px minmax(0, 1fr) auto;
+  gap: 14px;
+  align-items: center;
+  min-height: 112px;
+  padding: 16px 0;
+  border-bottom: 1px solid rgba(156, 183, 207, 0.14);
+}
+
+.ux-stage-index {
+  display: grid;
+  width: 34px;
+  height: 34px;
+  place-items: center;
+  border: 1px solid rgba(156, 183, 207, 0.24);
+  border-radius: 50%;
+  color: #7f8b96;
+  font: 600 11px/1 ui-monospace, SFMono-Regular, Menlo, monospace;
+}
+
+.ux-stage-complete .ux-stage-index {
+  border-color: rgba(121, 210, 158, 0.54);
+  color: #99e6bb;
+  background: rgba(65, 151, 102, 0.1);
+}
+
+.ux-stage-copy {
+  min-width: 0;
+}
+
+.ux-stage-title-line {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: baseline;
+  gap: 8px;
+}
+
+.ux-stage-title-line h4 {
+  margin: 0;
+  font-size: 14px;
+  font-weight: 700;
+}
+
+.ux-stage-tag {
+  color: #75818d;
+  font: 9px/1.2 ui-monospace, SFMono-Regular, Menlo, monospace;
+  text-transform: uppercase;
+}
+
+.ux-stage-copy p {
+  margin: 6px 0 0;
+  color: #919da8;
+  font-size: 12px;
+  line-height: 1.45;
+}
+
+.ux-stage-focus {
+  color: #c9d2d9 !important;
+}
+
+.ux-stage-actions {
+  justify-content: flex-end;
+}
+
+.ux-stage-actions .ux-review-button {
+  min-height: 34px;
+  padding: 7px 10px;
+  white-space: nowrap;
+}
+
+.ux-review-side {
+  min-width: 0;
+}
+
+.ux-side-section {
+  padding: 0 0 22px;
+  border-bottom: 1px solid rgba(156, 183, 207, 0.16);
+}
+
+.ux-side-section + .ux-side-section {
+  padding-top: 22px;
+}
+
+.ux-side-label {
+  margin: 0 0 10px;
+  color: #8bd7e7;
+  font: 600 10px/1.2 ui-monospace, SFMono-Regular, Menlo, monospace;
+  text-transform: uppercase;
+}
+
+.ux-run-state,
+.ux-context-state {
+  color: #a5afb9;
+  font-size: 12px;
+  line-height: 1.55;
+}
+
+.ux-run-state strong,
+.ux-context-state strong {
+  color: #edf1f4;
+}
+
+.ux-synthetic-warning {
+  display: flex;
+  gap: 8px;
+  margin-top: 10px;
+  padding: 9px 10px;
+  border-left: 2px solid #d5a459;
+  color: #cdbb9f;
+  background: rgba(151, 101, 40, 0.08);
+  font-size: 11px;
+  line-height: 1.45;
+}
+
+.ux-credentials {
+  display: grid;
+  gap: 5px;
+  margin-top: 12px;
+  padding: 10px;
+  border: 1px solid rgba(156, 183, 207, 0.16);
+  border-radius: 6px;
+  background: #0b0f14;
+  font: 10px/1.5 ui-monospace, SFMono-Regular, Menlo, monospace;
+  overflow-wrap: anywhere;
+}
+
+.ux-event-list {
+  display: grid;
+  gap: 8px;
+  margin: 0;
+  padding: 0;
+  list-style: none;
+}
+
+.ux-event {
+  padding-left: 10px;
+  border-left: 2px solid rgba(126, 155, 180, 0.32);
+  color: #8e9aa5;
+  font: 10px/1.4 ui-monospace, SFMono-Regular, Menlo, monospace;
+  overflow-wrap: anywhere;
+}
+
+.ux-event-mark {
+  border-left-color: #d7a85f;
+  color: #d3c1a4;
+}
+
+.ux-review-error {
+  margin: 18px 0 0;
+  padding: 10px 12px;
+  border: 1px solid rgba(230, 98, 98, 0.38);
+  border-radius: 6px;
+  color: #f0b2b2;
+  background: rgba(126, 34, 34, 0.14);
+  font-size: 12px;
+}
+
+.ux-review-status {
+  color: #9be2bb;
+  font-size: 11px;
+}
+
+@media (max-width: 900px) {
+  .ux-review-intro,
+  .ux-review-layout {
+    grid-template-columns: 1fr;
+  }
+
+  .ux-review-actions {
+    justify-content: flex-start;
+  }
+
+  .ux-review-side {
+    display: grid;
+    grid-template-columns: repeat(2, minmax(0, 1fr));
+    gap: 24px;
+  }
+
+  .ux-side-section + .ux-side-section {
+    padding-top: 0;
+  }
+}
+
+@media (max-width: 640px) {
+  .ux-review-header {
+    align-items: flex-start;
+  }
+
+  .ux-review-build {
+    display: none;
+  }
+
+  .ux-review-main {
+    padding-top: 20px;
+  }
+
+  .ux-review-tutorial-grid,
+  .ux-review-side {
+    grid-template-columns: 1fr;
+  }
+
+  .ux-tutorial-step,
+  .ux-tutorial-step + .ux-tutorial-step {
+    padding: 12px 0;
+    border-left: 0;
+    border-top: 1px solid rgba(156, 183, 207, 0.12);
+  }
+
+  .ux-tutorial-step:first-child {
+    border-top: 0;
+  }
+
+  .ux-stage {
+    grid-template-columns: 34px minmax(0, 1fr);
+  }
+
+  .ux-stage-actions {
+    grid-column: 1 / -1;
+    justify-content: stretch;
+    padding-left: 48px;
+  }
+
+  .ux-stage-actions .ux-review-button {
+    flex: 1 1 120px;
+  }
+}

@@ -7,6 +7,10 @@ export const logger = pino({
   redact: [
     "req.headers.authorization",
     "req.headers.cookie",
+    "req.body.password",
+    "req.body.token",
+    "req.body.purchaseToken",
+    "req.query.sessionToken",
     "res.headers['set-cookie']",
   ],
   ...(isProduction

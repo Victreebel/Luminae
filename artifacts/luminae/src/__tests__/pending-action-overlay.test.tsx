@@ -28,7 +28,31 @@ describe('PendingActionOverlay', () => {
     expect(onCardTap).not.toHaveBeenCalled();
   });
 
-  it('gives a pending Encrypt plan a separate cancel button from the Archive', () => {
+  it('keeps Archive access and its remaining count in the tier header control', () => {
+    const onDeckTap = vi.fn();
+
+    render(
+      <ForgeDeckPile
+        deckCount={36}
+        deckDisabled={false}
+        deckTitle="Encrypt a concealed Artifact"
+        forgeCompact
+        inline
+        isDeckPending={false}
+        onCancelPlan={vi.fn()}
+        onDeckTap={onDeckTap}
+        tier={1}
+      />,
+    );
+
+    fireEvent.click(screen.getByRole('button', {
+      name: 'Tier 1 Archive, 36 concealed Artifacts remaining. Encrypt a concealed Artifact',
+    }));
+
+    expect(onDeckTap).toHaveBeenCalledTimes(1);
+  });
+
+  it('lets the inline Archive control cancel a pending Encrypt without reopening it', () => {
     const onCancelPlan = vi.fn();
     const onDeckTap = vi.fn();
 
@@ -38,10 +62,10 @@ describe('PendingActionOverlay', () => {
         deckDisabled={false}
         deckTitle="Cancel pending encrypt"
         forgeCompact
+        inline
         isDeckPending
         onCancelPlan={onCancelPlan}
         onDeckTap={onDeckTap}
-        showAvatarSeed={false}
         tier={1}
       />,
     );
@@ -51,6 +75,25 @@ describe('PendingActionOverlay', () => {
     expect(onCancelPlan).toHaveBeenCalledTimes(1);
     expect(onDeckTap).not.toHaveBeenCalled();
     expect(container.querySelector('button button')).toBeNull();
-    expect(screen.getByRole('button', { name: /Tier 1 Archive/ })).toBeInTheDocument();
+    expect(container.querySelector('.archive-vessel--inline')).not.toBeNull();
+  });
+
+  it('labels a Tide plan as an Archive Forge rather than Encrypt', () => {
+    render(
+      <ForgeDeckPile
+        deckCount={8}
+        deckDisabled={false}
+        deckTitle="Cancel archive Forge"
+        forgeCompact
+        inline
+        isDeckPending
+        pendingLabel="Archive Forge pending"
+        onCancelPlan={vi.fn()}
+        onDeckTap={vi.fn()}
+        tier={2}
+      />,
+    );
+
+    expect(screen.getByRole('button', { name: 'Cancel pending Archive Forge' })).toBeInTheDocument();
   });
 });

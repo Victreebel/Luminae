@@ -1,4 +1,9 @@
 import type { ArtifactCard } from '@workspace/api-client-react';
+import {
+  ARTIFACT_LINEAGE_BY_ID,
+  type ArtifactId,
+  type TechnologyLineage,
+} from '@workspace/game-types';
 
 export const CIVILIZATION_TRAITS = [
   'ignition',
@@ -32,72 +37,20 @@ export const CIVILIZATION_TRAIT_LABELS: Record<CivilizationTrait, string> = {
   aperture: 'Aperture station',
 };
 
-const ARTIFACT_IDS_BY_TRAIT: Record<CivilizationTrait, readonly string[]> = {
-  ignition: [
-    't1r01', 't1r03', 't1e03',
-    't2r01', 't2r02',
-    't3r01',
-  ],
-  biosphere: [
-    't1r02', 't1r06', 't1e04', 't1e07', 't1e08', 't1p08',
-    't2r04', 't2e01', 't2e04', 't2o05',
-    't3e01', 't3e02', 't3e03',
-  ],
-  chronology: [
-    't1r04', 't1s05', 't1p05', 't1o08',
-    't2r05', 't2s03', 't2e02', 't2p05',
-    't3s04',
-  ],
-  transit: [
-    't1s02',
-    't2r03', 't2s04',
-    't3r04', 't3s01',
-  ],
-  archive: [
-    't1s01', 't1s06', 't1s08',
-    't2s02', 't2s05', 't2e05',
-    't3r03', 't3s03', 't3o02',
-  ],
-  lattice: [
-    't1s04', 't1s07', 't1p06',
-    't2e06', 't2p04',
-    't3p02',
-  ],
-  veil: [
-    't1o01', 't1o04', 't1o05', 't1o07',
-    't2o02',
-    't3o01', 't3o03',
-  ],
-  containment: [
-    't1r05', 't1s03', 't1p02', 't1p04',
-    't2e03', 't2p01',
-  ],
-  replication: [
-    't1e01', 't1e05', 't1p01',
-    't2o04',
-  ],
-  accord: [
-    't1r08',
-    't2s06', 't2p02', 't2p03', 't2p06',
-    't3r02', 't3s02', 't3e04', 't3p01', 't3p04',
-  ],
-  entropy: [
-    't1r07', 't1e06', 't1o03', 't1o06',
-    't2r06', 't2o03',
-    't3p03',
-  ],
-  aperture: [
-    't1e02', 't1o02', 't1p03', 't1p07',
-    't2s01', 't2o01', 't2o06',
-    't3o04',
-  ],
+const LINEAGE_TRAIT: Record<TechnologyLineage, CivilizationTrait> = {
+  energy: 'ignition',
+  ecology: 'biosphere',
+  causality: 'chronology',
+  transit: 'transit',
+  memory: 'archive',
+  infrastructure: 'lattice',
+  concealment: 'veil',
+  containment: 'containment',
+  fabrication: 'replication',
+  accord: 'accord',
+  reclamation: 'entropy',
+  boundary_science: 'aperture',
 };
-
-const ARTIFACT_TRAITS = new Map<string, CivilizationTrait>(
-  CIVILIZATION_TRAITS.flatMap((trait) => (
-    ARTIFACT_IDS_BY_TRAIT[trait].map((artifactId) => [artifactId, trait] as const)
-  )),
-);
 
 type ArtifactAffinity = ArtifactCard['bonusAffinity'];
 
@@ -160,7 +113,8 @@ function fallbackTrait(card: ArtifactCard): CivilizationTrait {
 }
 
 export function getArtifactCivilizationTrait(card: ArtifactCard): CivilizationTrait {
-  return ARTIFACT_TRAITS.get(card.id) ?? fallbackTrait(card);
+  const lineage = ARTIFACT_LINEAGE_BY_ID[card.id as ArtifactId];
+  return lineage ? LINEAGE_TRAIT[lineage] : fallbackTrait(card);
 }
 
 function landmarkPriority(landmark: CivilizationLandmark): number {

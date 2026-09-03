@@ -13,6 +13,8 @@ import { accountAuth } from "../lib/accountAuth";
 import { broadcastToRoom, sendToPlayer } from "../lib/websocket";
 import { randomBytes } from "crypto";
 import { z } from "zod";
+import { DEFAULT_VICTORY_REQUIREMENT } from "@workspace/game-types";
+import { pickUniqueAvatar } from "../lib/avatarAssignment";
 
 const router: IRouter = Router();
 
@@ -65,7 +67,9 @@ router.post("/challenges", accountAuth, async (req: Request, res): Promise<void>
   const parsed = z.object({
     challengedUsername: z.string(),
     maxPlayers: z.number().int().min(2).max(4).optional().default(2),
-    victoryRequirement: z.union([z.literal(15), z.literal(20), z.literal(25)]).optional().default(15),
+    victoryRequirement: z.union([z.literal(15), z.literal(20), z.literal(25)])
+      .optional()
+      .default(DEFAULT_VICTORY_REQUIREMENT),
     cinematicMode: z.union([z.literal("standard"), z.literal("epic")]).optional().default("standard"),
     turnTimerSeconds: z.number().int().nullable().optional(),
   }).safeParse(req.body);
@@ -142,6 +146,7 @@ router.post("/challenges", accountAuth, async (req: Request, res): Promise<void>
       maxPlayers,
       victoryRequirement,
       cinematicMode,
+      gameMode: victoryRequirement === DEFAULT_VICTORY_REQUIREMENT ? "standard" : "custom",
       status: "lobby",
       turnTimerSeconds: turnTimerSeconds ?? null,
     })
@@ -158,6 +163,7 @@ router.post("/challenges", accountAuth, async (req: Request, res): Promise<void>
       orderIndex: 0,
       isConnected: false,
       isAi: false,
+      avatarId: pickUniqueAvatar(null, []),
     })
     .returning();
 
@@ -458,6 +464,7 @@ router.patch("/challenges/:id", accountAuth, async (req: Request, res): Promise<
     res.status(400).json({ error: "Room is full" });
     return;
   }
+  const avatarId = pickUniqueAvatar(null, existingPlayers.map((player) => player.avatarId));
 
   const [joinedPlayer] = await db
     .insert(playersTable)
@@ -470,6 +477,7 @@ router.patch("/challenges/:id", accountAuth, async (req: Request, res): Promise<
       orderIndex: existingPlayers.length,
       isConnected: false,
       isAi: false,
+      avatarId,
     })
     .returning();
 
@@ -517,6 +525,7 @@ router.patch("/challenges/:id", accountAuth, async (req: Request, res): Promise<
       id: joinedPlayer.id,
       name: joinedPlayer.name,
       isHost: joinedPlayer.isHost,
+      avatarId: joinedPlayer.avatarId,
     },
     sessionToken,
   });

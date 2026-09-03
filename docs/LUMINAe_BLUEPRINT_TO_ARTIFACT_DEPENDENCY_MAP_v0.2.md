@@ -2,7 +2,8 @@
 
 ## Status
 
-**Companion design canon / planning source.**
+**Historical planning source. Superseded for hierarchy decisions by
+`LUMINAe_TECHNOLOGY_SYSTEM_v1.0.md`.**
 
 This document supersedes `LUMINAe_BLUEPRINT_TO_ARTIFACT_DEPENDENCY_MAP_v0.1.md` and should be used before rebuilding the artifact replacement table.
 
@@ -47,13 +48,13 @@ A lightbulb is small, but it depends on glasswork, vacuum technology, metallurgy
 
 ---
 
-# 2. Locked Hierarchy
+# 2. Historical Hierarchy
 
-```text
-Artifacts = enabling technologies / components / instruments / materials / protocols
-Blueprints = assembled civilization-scale projects
-Luminaries = destiny endpoints / mythic arrivals
-```
+The component-only Artifact hierarchy below informed the utility-first roster,
+but it overcorrected Tier III. Current canon keeps Tier I as planetary enabling
+technologies, Tier II as stellar subsystems, and permits Tier III to represent
+complete Type III public works. Blueprints are secret syntheses rather than a
+size category. See `LUMINAe_TECHNOLOGY_SYSTEM_v1.0.md`.
 
 ## Artifacts should often be
 
@@ -771,6 +772,31 @@ void-burn shield bead
 forbidden-route key
 ```
 
+### 22. Antimatter Detonator
+
+| Field | Value |
+|---|---|
+| Project Scale | Stellar catastrophe-control apparatus |
+| Affinity Identity | Flare + Abyss + Radiance |
+| Civilization Type | black-furnace / catastrophe-governance civilization |
+| Represents | A controlled matter-antimatter annihilation system together with the containment, trigger governance, and refusal protocols required to survive possessing it. |
+| Required Artifact Roles | Flare reaction core; containment object; control instrument/protocol; Abyss annihilation sink |
+| Required Constraints | four distinct Artifacts; at least one Radiance component; at least one Tier II+ component |
+| Optional Roles | sensor; archive; thermal control; civic signal object |
+| What It Assembles | a civilization-scale annihilation charge whose most important mechanism is governed use |
+| What It Prevents | destructive Artifacts from reading as isolated weapons without containment, public authority, or consequence |
+
+Example artifact slots:
+
+```text
+Flare reaction core
+magnetic containment bottle
+causal trigger governor
+Abyss boundary sink
+```
+
+Exact mechanics and eligible-component rules are specified in `docs/LUMINAe_BLUEPRINT_ANTIMATTER_DETONATOR_SPEC_v0.1.md`.
+
 ---
 
 # 7. Blueprint Coverage Matrix
@@ -800,6 +826,7 @@ This matrix is for artifact v0.3 planning. Each future artifact should map to at
 | Singularity Containment Mandala | Galactic / Convergence | containment, protocol, interface, sensor | Any 3+ + Singularity pressure |
 | Galactic Relic Forge | Galactic | fabrication, power, control, protocol | Flare / Continuum / Radiance |
 | Black-Map Pilgrimage Engine | Galactic | transit, sensor, defense, archive | Abyss / Flare / Continuum |
+| Antimatter Detonator | Stellar | power, containment, control/protocol, annihilation boundary | Flare / Abyss / Radiance |
 
 ---
 

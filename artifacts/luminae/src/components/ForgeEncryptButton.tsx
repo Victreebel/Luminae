@@ -1,7 +1,9 @@
 import React from 'react';
 import { motion, AnimatePresence } from 'framer-motion';
-import { Gavel, Check, Flame } from 'lucide-react';
+import { Gavel, Check } from 'lucide-react';
 import { CipherSigil } from '@/components/CipherApertureAnimation';
+import { AffinityEmblem } from '@/components/AffinityEmblem';
+import type { AffinityKey } from '@/lib/affinityMeta';
 import { useIsMobile } from '@/hooks/use-mobile';
 
 // ── Shared geometry ───────────────────────────────────────────────────────────
@@ -12,6 +14,36 @@ const CLIP = `polygon(
   calc(100% - ${CHAMFER}px) 100%, ${CHAMFER}px 100%,
   0% calc(100% - ${CHAMFER}px), 0% ${CHAMFER}px
 )`;
+
+function NaniteSigil({ size = 28, style }: { size?: number; style?: React.CSSProperties }) {
+  return (
+    <svg
+      data-testid="assimilate-symbol"
+      aria-hidden="true"
+      width={size}
+      height={size}
+      viewBox="0 0 32 32"
+      fill="none"
+      style={style}
+    >
+      <g stroke="currentColor" strokeLinecap="round" strokeLinejoin="round">
+        {[0, 60, 120, 180, 240, 300].map((rotation) => (
+          <g key={rotation} transform={`rotate(${rotation} 16 16)`}>
+            <path d="M16 10.7V7.5l-2.1-2.1" strokeWidth="1.65" />
+            <path d="M13.9 5.4 15 3.2M13.9 5.4l-2.2-.8" strokeWidth="1.35" />
+          </g>
+        ))}
+        <path
+          d="m16 9.6 5.55 3.2v6.4L16 22.4l-5.55-3.2v-6.4L16 9.6Z"
+          strokeWidth="1.55"
+        />
+        <circle cx="16" cy="16" r="3.35" strokeWidth="1.4" />
+      </g>
+      <circle cx="16" cy="16" r="1.65" fill="currentColor" />
+      <circle cx="16" cy="16" r="5.15" stroke="currentColor" strokeWidth="0.65" opacity="0.42" />
+    </svg>
+  );
+}
 
 // ── Corner nub ────────────────────────────────────────────────────────────────
 function CornerNub({ style, color, glow }: { style: React.CSSProperties; color: string; glow?: string }) {
@@ -221,7 +253,7 @@ export function ForgeButton({
       <EdgeDiamond style={{ bottom: 2.5 }} color={diaColor} glow={diaGlow} />
 
       {/* Medallion section */}
-      <div aria-hidden className="flex-shrink-0 flex items-center justify-center" style={{
+      <div aria-hidden className="artifact-action-medallion flex-shrink-0 flex items-center justify-center" style={{
         width: 66, height: '100%', position: 'relative', zIndex: 1,
         background: [
           'radial-gradient(circle at 54% 44%, rgba(185,112,14,0.58) 0%, rgba(85,50,4,0.38) 52%, transparent 78%)',
@@ -238,7 +270,7 @@ export function ForgeButton({
           background: 'linear-gradient(180deg, transparent, rgba(0,0,0,0.58) 30%, rgba(0,0,0,0.46) 70%, transparent)',
         }} />
         <div
-          className={`flex items-center justify-center rounded-full ${isPending ? 'forge-medallion-pending' : 'forge-medallion-glow'}`}
+          className={`artifact-action-medallion-core flex items-center justify-center rounded-full ${isPending ? 'forge-medallion-pending' : 'forge-medallion-glow'}`}
           style={{
             width: 44, height: 44, flexShrink: 0,
             background: isPending
@@ -256,7 +288,7 @@ export function ForgeButton({
       </div>
 
       {/* Text */}
-      <div className="flex flex-col items-start justify-center flex-1 px-4" style={{ position: 'relative', zIndex: 1, gap: 0 }}>
+      <div className="artifact-action-copy flex flex-col items-start justify-center flex-1 px-4" style={{ position: 'relative', zIndex: 1, gap: 0 }}>
         <AnimatePresence mode="wait" initial={false}>
           {isSent ? (
             <motion.span key="sent" className="flex items-center gap-1.5 text-emerald-300 font-bold"
@@ -266,13 +298,13 @@ export function ForgeButton({
               <Check className="h-4 w-4" />Sent!
             </motion.span>
           ) : (
-            <motion.span key="label" className="flex flex-col items-start"
+            <motion.span key="label" className="artifact-action-copy-stack flex flex-col items-start"
               initial={{ opacity: 0 }} animate={{ opacity: 1, transition: { duration: 0.10 } }}
               exit={{ opacity: 0, transition: { duration: 0.12 } }}>
               {isPlan && !isPending && (
                 <span style={{ marginBottom: 4 }} className="text-[7.5px] font-black uppercase tracking-wider text-amber-400 bg-amber-950/70 border border-amber-500/50 rounded px-[5px] py-[1px] leading-none self-start">PLAN</span>
               )}
-              <span className="font-bold uppercase leading-none" style={{
+              <span className="artifact-action-label font-bold uppercase leading-none" style={{
                 fontSize: 17, letterSpacing: '0.15em',
                 textShadow: isPending
                   ? `0 0 24px ${confirmGlow}bb, 0 0 10px ${confirmGlow}77, 0 1px 3px rgba(0,0,0,0.80)`
@@ -280,7 +312,7 @@ export function ForgeButton({
               }}>
                 {label}
               </span>
-              <span className="leading-none" style={{
+              <span className="artifact-action-subtitle leading-none" style={{
                 fontSize: 10.5, marginTop: 5,
                 opacity: isPending ? 0.78 : 0.52,
                 letterSpacing: '0.09em',
@@ -461,7 +493,7 @@ export function EncryptButton({
       }} />
 
       {/* Medallion section */}
-      <div aria-hidden className="flex-shrink-0 flex items-center justify-center" style={{
+      <div aria-hidden className="artifact-action-medallion flex-shrink-0 flex items-center justify-center" style={{
         width: 66, height: '100%', position: 'relative', zIndex: 1,
         background: [
           'radial-gradient(circle at 54% 42%, rgba(185,205,245,0.42) 0%, rgba(22,24,38,0.30) 52%, transparent 78%)',
@@ -478,7 +510,7 @@ export function EncryptButton({
           background: 'linear-gradient(180deg, transparent, rgba(0,0,0,0.62) 30%, rgba(0,0,0,0.50) 70%, transparent)',
         }} />
         <div
-          className={`flex items-center justify-center rounded-full ${isPending ? 'encrypt-medallion-pending' : 'encrypt-medallion-glow'}`}
+          className={`artifact-action-medallion-core flex items-center justify-center rounded-full ${isPending ? 'encrypt-medallion-pending' : 'encrypt-medallion-glow'}`}
           style={{
             width: 44, height: 44, flexShrink: 0,
             background: isPending
@@ -498,7 +530,7 @@ export function EncryptButton({
       </div>
 
       {/* Text */}
-      <div className="flex flex-col items-start justify-center flex-1 px-4" style={{ position: 'relative', zIndex: 1, gap: 0 }}>
+      <div className="artifact-action-copy flex flex-col items-start justify-center flex-1 px-4" style={{ position: 'relative', zIndex: 1, gap: 0 }}>
         <AnimatePresence mode="wait" initial={false}>
           {isSent ? (
             <motion.span key="sent" className="flex items-center gap-1.5 text-emerald-300 font-bold"
@@ -508,13 +540,13 @@ export function EncryptButton({
               <Check className="h-4 w-4" />Sent!
             </motion.span>
           ) : (
-            <motion.span key="label" className="flex flex-col items-start"
+            <motion.span key="label" className="artifact-action-copy-stack flex flex-col items-start"
               initial={{ opacity: 0 }} animate={{ opacity: 1, transition: { duration: 0.10 } }}
               exit={{ opacity: 0, transition: { duration: 0.12 } }}>
               {isPlan && !isPending && (
                 <span style={{ marginBottom: 4 }} className="text-[7.5px] font-black uppercase tracking-wider text-amber-400 bg-amber-950/70 border border-amber-500/50 rounded px-[5px] py-[1px] leading-none self-start">PLAN</span>
               )}
-              <span className="font-bold uppercase leading-none" style={{
+              <span className="artifact-action-label font-bold uppercase leading-none" style={{
                 fontSize: 17, letterSpacing: '0.15em',
                 textShadow: isPending
                   ? '0 0 24px rgba(255,255,255,0.72), 0 0 10px rgba(210,228,255,0.50), 0 1px 3px rgba(0,0,0,0.85)'
@@ -522,7 +554,7 @@ export function EncryptButton({
               }}>
                 {label}
               </span>
-              <span className="leading-none" style={{
+              <span className="artifact-action-subtitle leading-none" style={{
                 fontSize: 10.5, marginTop: 5,
                 opacity: isPending ? 0.78 : 0.48,
                 letterSpacing: '0.09em',
@@ -613,14 +645,14 @@ export interface AssimilateButtonProps {
   isSent?: boolean;
   label: string;
   subtitle?: string;
-  /** Eminence reward shown in the medallion (printed Eminence + 2). */
-  eminenceReward?: number;
+  /** Permanent bonus gained from the Assimilated Artifact. */
+  bonusAffinity: AffinityKey;
 }
 
 export function AssimilateButton({
   onClick, disabled, isPending, isSent,
-  label, subtitle = 'Burn Artifact',
-  eminenceReward,
+  label, subtitle = 'Gain permanent Affinity',
+  bonusAffinity,
 }: AssimilateButtonProps) {
   const isMobile = useIsMobile();
   const nubColor = isPending ? 'rgba(240,90,50,0.95)' : 'rgba(195,40,18,0.88)';
@@ -706,7 +738,7 @@ export function AssimilateButton({
         <div
           className="flex items-center justify-center rounded-full"
           style={{
-            width: 44, height: 44, flexShrink: 0,
+            width: 44, height: 44, flexShrink: 0, position: 'relative',
             background: isPending
               ? 'radial-gradient(circle at 38% 34%, #e03818 0%, #8a1a08 50%, #4e0c04 100%)'
               : 'radial-gradient(circle at 38% 34%, #c42e14 0%, #7a1406 50%, #3e0a03 100%)',
@@ -715,20 +747,25 @@ export function AssimilateButton({
               : '0 0 8px rgba(195,40,16,0.50)',
           }}
         >
-          {eminenceReward != null ? (
-            <span style={{
-              fontWeight: 900, fontSize: 15, letterSpacing: '-0.02em', lineHeight: 1,
-              color: isPending ? '#FFD8CC' : '#FFBFAA',
-              textShadow: '0 0 8px rgba(255,120,80,0.80), 0 1px 3px rgba(0,0,0,0.75)',
-            }}>+{eminenceReward}</span>
-          ) : (
-            <Flame className="h-[21px] w-[21px]" style={{
-              color: isPending ? '#FFD0C0' : '#FFBFAA',
-              filter: isPending
-                ? 'drop-shadow(0 0 8px rgba(255,100,50,0.95)) drop-shadow(0 1px 3px rgba(0,0,0,0.75))'
-                : 'drop-shadow(0 0 6px rgba(235,80,30,0.82)) drop-shadow(0 1px 3px rgba(0,0,0,0.75))',
-            }} />
-          )}
+          <NaniteSigil
+            size={28}
+            style={{
+              color: '#ffe0d5',
+              filter: 'drop-shadow(0 0 5px rgba(255,125,85,0.72))',
+            }}
+          />
+          <span style={{
+            position: 'absolute', right: -7, bottom: -4,
+            minWidth: 30, height: 20, padding: '0 3px', borderRadius: 10,
+            display: 'inline-flex', alignItems: 'center', justifyContent: 'center',
+            gap: 1, fontWeight: 900, fontSize: 9, lineHeight: 1,
+            color: '#fff4ec', background: '#6f1308',
+            border: '1px solid rgba(255,174,140,0.68)',
+            boxShadow: '0 0 7px rgba(255,92,45,0.58)',
+          }}>
+            <AffinityEmblem color={bonusAffinity} size={14} />
+            <span>+1</span>
+          </span>
         </div>
       </div>
 
@@ -740,7 +777,7 @@ export function AssimilateButton({
               style={{ fontSize: 14, letterSpacing: '0.06em' }}
               initial={{ opacity: 0, y: 4 }} animate={{ opacity: 1, y: 0, transition: { duration: 0.10 } }}
               exit={{ opacity: 0, y: -4, transition: { duration: 0.15 } }}>
-              <Check className="h-4 w-4" />Burned!
+              <Check className="h-4 w-4" />Assimilated
             </motion.span>
           ) : (
             <motion.span key="label" className="flex flex-col items-start"

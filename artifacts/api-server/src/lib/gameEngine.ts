@@ -5,7 +5,54 @@
 import { z } from "zod";
 import {
   AFFINITY_KEYS,
+  ARTIFACT_CIVILIZATION_CAPABILITIES_BY_ID,
+  ARTIFACT_CATALOG,
+  BLUEPRINT_DEFINITIONS,
+  CIVILIZATION_ARTIFACT_IMPLEMENTATION_STATES,
+  CIVILIZATION_HISTORICAL_QUALITY_DIMENSIONS,
+  CIVILIZATION_MATURITY_LEVELS,
+  CIVILIZATION_PRESSURE_TAGS,
+  CIVILIZATION_REACH_CONDITIONS,
+  CIVILIZATION_RESOLUTION_FORMS,
+  CIVILIZATION_STABILITY_BANDS,
+  CIVILIZATION_STABILITY_IMPACT_MAGNITUDES,
+  CIVILIZATION_STATE_VERSION,
+  DEFAULT_VICTORY_REQUIREMENT,
+  MIN_VICTORY_REQUIREMENT,
   compareVictoryStandings,
+  foundryStoredArtifactIds,
+  ordinaryEncryptedCount,
+  applyCivilizationResolution,
+  buildCivilizationResolutionSnapshot,
+  createInitialCivilizationState,
+  deriveCivilizationAffinityIdentity,
+  reconcileCivilizationDerivedState,
+  resolveCivilizationEvent,
+  RECURRENCE_CHRONICLE_ID,
+  RECURRENCE_CUSTODY_DUE_AFTER_CORE_ACTIONS,
+  RECURRENCE_DEFINITION_VERSION,
+  RECURRENCE_OUTCOME_IDS,
+  RECURRENCE_PREPAREDNESS_CAPABILITY_IDS,
+  RECURRENCE_SCENARIO_ID,
+  isRecurrenceCustodyMethod,
+  recurrenceOutcomeId,
+  TRACE_CHRONICLE_ID,
+  TRACE_DEFINITION_VERSION,
+  TRACE_GUIDANCE_DUE_AFTER_CORE_ACTIONS,
+  TRACE_PREPAREDNESS_CAPABILITY_IDS,
+  TRACE_SCENARIO_ID,
+  isTraceGuidanceMethod,
+  traceOutcomeId,
+  TRIANGULATION_ALIGNMENT_DUE_AFTER_CORE_ACTIONS,
+  TRIANGULATION_CHRONICLE_ID,
+  TRIANGULATION_DEFINITION_VERSION,
+  TRIANGULATION_OUTCOME_IDS,
+  TRIANGULATION_PREPAREDNESS_CAPABILITY_IDS,
+  TRIANGULATION_SCENARIO_ID,
+  isTriangulationCoordinationArchitecture,
+  isTriangulationReferenceCivilization,
+  triangulationOutcomeId,
+  upsertCivilizationEntity,
   KNOWN_AURA_STYLES,
   LUMINARY_IDS,
   STANDARD_AFFINITY_KEYS,
@@ -14,10 +61,48 @@ import type {
   AffinityCounts,
   AffinityKey,
   AuraStyle,
+  BlueprintDetonationEvent,
+  BlueprintArtifactSnapshot,
+  BlueprintClaimAction,
+  BlueprintId,
+  BlueprintManifestationEvent,
+  BlueprintPresentationVariant,
+  BlueprintPrivateState,
+  CivilizationArtifactChangeSource,
+  CivilizationArtifactImplementationState,
+  CivilizationArtifactLifecycleState,
+  CivilizationAdversityEvidence,
+  CivilizationCondition,
+  CivilizationEntity,
+  CivilizationEventHistoryEntry,
+  CivilizationHistoryEvidence,
+  CivilizationOutcomeSignal,
+  CivilizationScaleEvidence,
+  CivilizationStabilityContributor,
+  CivilizationState,
+  CivilizationWorld,
   LuminaryId,
+  LuminaryArrivalSoundVariant,
+  LumiiThresholdApproach,
+  ManifestedDevicePublicState,
   StandardAffinityKey,
+  ArtifactDefinition,
+  ChronicleRunKind,
+  RecurrenceCustodyMethod,
+  RecurrenceScenarioState,
+  TraceGuidanceMethod,
+  TraceScenarioState,
+  TriangulationCoordinationArchitecture,
+  TriangulationReferenceCivilization,
+  TriangulationScenarioState,
 } from '@workspace/game-types';
 import { getCardLore } from "./cardLore";
+import { GUIDED_LUMII_AVATAR_ID } from "./avatarAssignment";
+import {
+  resolveAntimatterCivilizationPolicy,
+  resolveBlueprintCivilizationEventPolicy,
+  type BlueprintCivilizationEventKind,
+} from "./civilizationBlueprintIntegration";
 
 export interface LuminaryAffinity {
   luminaryId: string;
@@ -31,6 +116,8 @@ interface PendingSummonEvent {
   eventId: string;
   luminaryId: string;
   claimedByPlayerId: string;
+  /** Public, match-snapshotted arrival cue selected by the claiming player. */
+  arrivalSound?: LuminaryArrivalSoundVariant;
   /** Unix ms timestamp when this event was created.  Used by the TTL guard in
    *  applyAction to auto-expire events whose originating client disconnected
    *  before sending resolve_summon.  Optional for backward compat with saves
@@ -58,15 +145,15 @@ export interface LuminaryAffinityReturn {
   affinityAmount: number;
 }
 
-/** Emitted each time a Luminary's mechanical effect fires (arrival cutscene,
- *  end-of-turn hook, start-of-turn hook).  Clients consume it to trigger
+/** Emitted each time a Luminary's mechanical effect fires (arrival, action,
+ *  end-of-turn hook, start-of-turn hook). Clients consume it to trigger
  *  the 4-second activation cinematic overlay, then send
  *  resolve_luminary_activation to pop it from the queue. */
 export interface PendingLuminaryActivationEvent {
   eventId: string;
   luminaryId: string;
   /** Which hook fired this event. */
-  effectType: "summon" | "end_of_turn" | "start_of_turn";
+  effectType: "summon" | "action" | "end_of_turn" | "start_of_turn";
   /** Player ID who owns the Luminary (for display / color choice). */
   triggeringPlayerId: string;
   createdAt?: number;
@@ -77,16 +164,25 @@ export interface PendingLuminaryActivationEvent {
    * artifactMarkers before the client animation runs).
    */
   targetCardIds?: string[];
+  /** Forge mold coordinates targeted by this activation, encoded as `tier-slotIndex`. */
+  targetSlotIds?: string[];
   /** Legacy single-return payload retained for queued games created before Balance Due became global. */
   affinityType?: StandardAffinityKey;
   /** Legacy single-return amount retained for queued games created before Balance Due became global. */
   affinityAmount?: number;
   /** Authoritative player/Affinity pairs returned by a global activation such as Balance Due. */
   affinityReturns?: LuminaryAffinityReturn[];
+  /** Victory threshold immediately before this activation changed it. */
+  victoryRequirementBefore?: number;
+  /** Victory threshold immediately after this activation changed it. */
+  victoryRequirementAfter?: number;
+  /** Signed threshold delta presented by this activation. */
+  victoryRequirementChange?: number;
 }
 
 const ERR_ARTIFACT_NOT_IN_FORGE = "Artifact is no longer in The Forge";
 const ERR_CANNOT_ENCRYPT_DURING_FORGOTTEN_HOUR = "Cannot encrypt during The Forgotten Hour";
+const ERR_CANNOT_ENCRYPT_NULLIFIED = "Nullified Artifacts cannot be Encrypted";
 
 export type ArtifactMarkerType = 'forgotten' | 'condemned' | 'nullified' | 'avatar_seed';
 
@@ -181,21 +277,11 @@ function removeArtifactBrands(
 export interface AvatarSeedState {
   ownerId: string;
   summonedAtTurnCount: number;
-  /** Pending Eminence accumulated from opponents forging seeded Artifacts. */
-  pendingEminence: number;
-  /** Artifact IDs with Avatar Seed tokens still sitting at the top of their source deck. */
-  deckSeeds: string[];
-  /** True once the end-of-next-turn payout has fired (prevents double-pay). */
-  payoutDone: boolean;
+  /** Permanent seeded Forge molds, encoded as `tier-slotIndex`. */
+  moldSlots: string[];
 }
 
-export interface ArtifactCard {
-  id: string;
-  tier: 1 | 2 | 3;
-  bonusAffinity: StandardAffinityKey;
-  eminence: number;
-  cost: AffinityCounts;
-}
+export type ArtifactCard = ArtifactDefinition;
 
 export {
   KNOWN_AURA_STYLES,
@@ -239,11 +325,17 @@ export interface InitialBoardSnapshot {
 
 interface InitializeGameOptions {
   replayBoard?: InitialBoardSnapshot | null;
+  blueprintSetups?: Record<string, {
+    blueprintIds: BlueprintId[];
+    presentationVariants?: Partial<Record<BlueprintId, BlueprintPresentationVariant>>;
+  }>;
 }
 
 export interface PlayerGameState {
   playerId: string;
   playerName: string;
+  /** Account cosmetic snapshotted when this match was created. */
+  luminaryArrivalSound: LuminaryArrivalSoundVariant;
   /** Custom civilization name set by the player. Falls back to "{playerName}'s Civilization" on the client when absent. */
   civName?: string;
   affinities: AffinityCounts;
@@ -253,13 +345,32 @@ export interface PlayerGameState {
   /** Reserved Artifact IDs drawn blind from an Archive. Never exposed to non-owners. */
   privateReservedArtifactIds?: string[];
   forgedArtifactIds: string[];
+  /** Lifetime-in-this-match Forge actions by Artifact ID, including Artifacts later removed. */
+  artifactForgeCounts?: Record<string, number>;
+  /** Backend-owned Artifact mastery and implementation history for this match. */
+  civilization: CivilizationState;
+  /**
+   * Historical record of Artifacts consumed by Final Hunger. Assimilated
+   * Artifacts are no longer operational and cannot satisfy Blueprint recipes,
+   * forged-Artifact effects, or victory tie-breaks.
+   */
+  assimilatedArtifactIds?: string[];
   /** Artifact IDs forged at zero Affinity cost (fully covered by bonuses). */
   discountedForgeIds: string[];
   /** Per-card bonus snapshot captured at forge time. Key = card ID. Added in bonus-snapshot feature. */
   forgedArtifactBonusSnapshots?: Record<string, AffinityCounts>;
-  /** Card IDs forged while Forgotten; future Blueprint checks must ignore these cards. */
+  /** Card IDs whose active brands prevent future Blueprint use after forging. */
   blueprintBlockedCardIds?: string[];
+  /** Owner-only Blueprint assembly and secret-device information. */
+  blueprintPrivateStates?: BlueprintPrivateState[];
+  blueprintPresentationVariants?: Partial<Record<BlueprintId, BlueprintPresentationVariant>>;
+  /** Public devices manifested by this civilization. */
+  manifestedBlueprintDevices?: ManifestedDevicePublicState[];
+  /** True until Tide Architect's ally uses their one Archive-top Forge. */
+  tideArchiveForgeAvailable?: boolean;
   luminaries: string[];
+  /** Luminary alliances formed in this match, keyed by Luminary ID. */
+  luminaryAllianceCounts?: Record<string, number>;
   isConnected: boolean;
   plannedAction: ActionPayload | null;
   plannedActionCancelReason: string | null;
@@ -286,7 +397,7 @@ export interface BurnEvent {
   sourceName?: string;
   /** Player who owns the Luminary that triggered the burn. */
   ownerPlayerId?: string;
-  /** Player whose action caused the burn (e.g. the Assimilation actor). */
+  /** Player whose action caused the burn. */
   triggeredByPlayerId?: string;
   /** Final destination after the Burn resolves. */
   destination: "burn_pile" | "archive";
@@ -311,8 +422,10 @@ export interface PendingTurnTransition {
 interface DevLuminarySequenceStage {
   playerId: string;
   luminaryIds: string[];
-  includeEndOfTurnEffects: boolean;
-  includeStartOfTurnEffects: boolean;
+  includeNextTurnEffects?: boolean;
+  /** Compatibility with development snapshots captured before the unified control. */
+  includeEndOfTurnEffects?: boolean;
+  includeStartOfTurnEffects?: boolean;
   /** Last production-like phase released into the presentation queue. */
   phase?: "arrivals" | "end_of_turn" | "start_of_turn";
 }
@@ -333,7 +446,7 @@ export interface GameStateData {
   roundNumber: number;
   turnCount: number;
   phase: "playing" | "last_round" | "finished";
-  finishReason?: "win" | "surrender";
+  finishReason?: "win" | "surrender" | "withdrawal";
   victoryRequirement?: number;
   cinematicMode?: "standard" | "epic";
   affinityWell: AffinityCounts;
@@ -366,6 +479,8 @@ export interface GameStateData {
   pendingSummonEvents: PendingSummonEvent[];
   /** Activation events queued for the short (~4s) per-effect cinematic overlay. */
   pendingLuminaryActivationEvents: PendingLuminaryActivationEvent[];
+  pendingBlueprintManifestationEvents: BlueprintManifestationEvent[];
+  pendingBlueprintDetonationEvents: BlueprintDetonationEvent[];
   /** Staged turn handoff held until all Luminary resolutions are presented. */
   pendingTurnTransition?: PendingTurnTransition | null;
   /** DEV-only delayed-effect cursor advanced after all arrival effects finish. */
@@ -374,6 +489,12 @@ export interface GameStateData {
   devLuminarySequenceActive?: boolean;
   /** Card markers: Forgotten / Condemned / Nullified / Avatar Seed (v0.8+). */
   artifactMarkers?: Record<string, ArtifactMarker>;
+  /** The first Nullified Artifact forged this game and whether its allied-player exemption applied. */
+  nullifiedFirstForge?: {
+    cardId: string;
+    playerId: string;
+    exempt: boolean;
+  } | null;
   /** Owner-relative repeat timing for ??? / The Forgotten Hour. */
   forgottenHourCycle?: Record<string, ForgottenHourCycleState>;
   /** Delayed one-time recovery state for Phoenix Paradox / Eternal Recurrence. */
@@ -382,12 +503,26 @@ export interface GameStateData {
   avatarSeedState?: AvatarSeedState;
   /** Count of distinct burn effects since end of Catalyst Bloom owner's last turn (v0.8+). */
   catalystBloomBurnCount?: number;
-  /** True once Concordance Mandala's Perfect Coherence has fired (one per game, v0.8+). */
+  /** True once Concordance Mandala's 8-Radiance Perfect Coherence milestone has fired. */
   concordanceMandalaTriggered?: boolean;
+  /** True once Concordance Mandala's 10-Radiance Perfect Coherence milestone has fired. */
+  concordanceMandalaFinalTriggered?: boolean;
   /** True once Glass Orchard's Perfect Replication has fired (one per game, v0.8+). */
   glassOrchardTriggered?: boolean;
-  /** PlayerId if Final Hunger Assimilation is available this turn (cleared on use or turn end, v0.8+). */
+  /** Campaign-only state that reveals Antimatter's Covenant rider once declared. */
+  brokenCovenantDeclared?: boolean;
+  /** Approach chosen at the Lumii Vault threshold. Immutable for this encounter. */
+  lumiiThresholdApproach?: LumiiThresholdApproach;
+  /** Server-owned state for The Trace Chronicle. */
+  traceScenario?: TraceScenarioState;
+  /** Server-owned state for The Recurrence Chronicle. */
+  recurrenceScenario?: RecurrenceScenarioState;
+  /** Server-owned state for The Triangulation Chronicle. */
+  triangulationScenario?: TriangulationScenarioState;
+  /** PlayerId holding Final Hunger's one-use Assimilation action until it is consumed. */
   firstHungerAvailable?: string | null;
+  /** @deprecated Legacy save/client field. Always normalized and projected as null. */
+  voidSealOwnerId?: string | null;
   /**
    * Set when a player simultaneously qualifies for multiple Luminaries at depth-0 of
    * checkLuminaries.  The player must choose claim order before any other turn action
@@ -402,6 +537,12 @@ export interface GameStateData {
   burnPile: string[];
   /** Per-card burn event log — one entry per card burned, carries tier and source Luminary. */
   burnEvents: BurnEvent[];
+  /**
+   * Gameplay tombstone index for every card removed by Annihilation. This is
+   * not Civilization lifecycle authority: prospective Forge targets and lost
+   * owned implementations are distinguished in each player's Civilization state.
+   */
+  annihilatedArtifactIds: string[];
   /**
    * Set to true when the current player has consumed their one core action this
    * turn (Forge, reserve, Harness, assimilate). Prevents a second core
@@ -431,135 +572,7 @@ function pushLog(state: GameStateData, entry: ActionLogEntry): void {
 
 // ─── Card Catalog ────────────────────────────────────────────────────────────
 
-function affinityCost(
-  flare: number,
-  continuum: number,
-  verdance: number,
-  abyss: number,
-  radiance: number,
-): AffinityCounts {
-  return {
-    flare: flare,
-    continuum: continuum,
-    verdance: verdance,
-    abyss: abyss,
-    radiance: radiance,
-    singularity: 0,
-  };
-}
-
-const CARD_CATALOG: ArtifactCard[] = [
-  // ─── Tier 1 (40 cards — 8 per Affinity) ──────────────────────────────────
-  // Flare bonus
-  { id: "t1r01", tier: 1, bonusAffinity: "flare", eminence: 0, cost: affinityCost(0, 0, 1, 1, 1) },
-  { id: "t1r02", tier: 1, bonusAffinity: "flare", eminence: 0, cost: affinityCost(0, 0, 1, 2, 0) },
-  { id: "t1r03", tier: 1, bonusAffinity: "flare", eminence: 0, cost: affinityCost(0, 1, 1, 0, 1) },
-  { id: "t1r04", tier: 1, bonusAffinity: "flare", eminence: 0, cost: affinityCost(0, 2, 0, 0, 0) },
-  { id: "t1r05", tier: 1, bonusAffinity: "flare", eminence: 0, cost: affinityCost(0, 0, 0, 2, 2) },
-  { id: "t1r06", tier: 1, bonusAffinity: "flare", eminence: 0, cost: affinityCost(0, 2, 1, 0, 0) },
-  { id: "t1r07", tier: 1, bonusAffinity: "flare", eminence: 0, cost: affinityCost(0, 0, 2, 2, 0) },
-  { id: "t1r08", tier: 1, bonusAffinity: "flare", eminence: 1, cost: affinityCost(0, 0, 0, 0, 4) },
-  // Continuum bonus
-  { id: "t1s01", tier: 1, bonusAffinity: "continuum", eminence: 0, cost: affinityCost(1, 0, 1, 0, 1) },
-  { id: "t1s02", tier: 1, bonusAffinity: "continuum", eminence: 0, cost: affinityCost(2, 0, 1, 0, 0) },
-  { id: "t1s03", tier: 1, bonusAffinity: "continuum", eminence: 0, cost: affinityCost(1, 0, 0, 1, 1) },
-  { id: "t1s04", tier: 1, bonusAffinity: "continuum", eminence: 0, cost: affinityCost(1, 0, 0, 0, 2) },
-  { id: "t1s05", tier: 1, bonusAffinity: "continuum", eminence: 0, cost: affinityCost(0, 0, 0, 2, 2) },
-  { id: "t1s06", tier: 1, bonusAffinity: "continuum", eminence: 0, cost: affinityCost(1, 0, 2, 0, 0) },
-  { id: "t1s07", tier: 1, bonusAffinity: "continuum", eminence: 0, cost: affinityCost(2, 0, 0, 2, 0) },
-  { id: "t1s08", tier: 1, bonusAffinity: "continuum", eminence: 1, cost: affinityCost(0, 0, 4, 0, 0) },
-  // Verdance bonus
-  { id: "t1e01", tier: 1, bonusAffinity: "verdance", eminence: 0, cost: affinityCost(1, 1, 0, 0, 1) },
-  { id: "t1e02", tier: 1, bonusAffinity: "verdance", eminence: 0, cost: affinityCost(0, 2, 0, 1, 0) },
-  { id: "t1e03", tier: 1, bonusAffinity: "verdance", eminence: 0, cost: affinityCost(1, 1, 0, 1, 0) },
-  { id: "t1e04", tier: 1, bonusAffinity: "verdance", eminence: 0, cost: affinityCost(0, 3, 0, 0, 0) },
-  { id: "t1e05", tier: 1, bonusAffinity: "verdance", eminence: 0, cost: affinityCost(2, 0, 0, 0, 2) },
-  { id: "t1e06", tier: 1, bonusAffinity: "verdance", eminence: 0, cost: affinityCost(0, 1, 0, 1, 2) },
-  { id: "t1e07", tier: 1, bonusAffinity: "verdance", eminence: 0, cost: affinityCost(0, 0, 0, 2, 1) },
-  { id: "t1e08", tier: 1, bonusAffinity: "verdance", eminence: 1, cost: affinityCost(0, 0, 0, 4, 0) },
-  // Abyss bonus
-  { id: "t1o01", tier: 1, bonusAffinity: "abyss", eminence: 0, cost: affinityCost(0, 1, 1, 0, 1) },
-  { id: "t1o02", tier: 1, bonusAffinity: "abyss", eminence: 0, cost: affinityCost(0, 1, 0, 0, 2) },
-  { id: "t1o03", tier: 1, bonusAffinity: "abyss", eminence: 0, cost: affinityCost(1, 0, 1, 0, 1) },
-  { id: "t1o04", tier: 1, bonusAffinity: "abyss", eminence: 0, cost: affinityCost(0, 0, 2, 1, 0) },
-  { id: "t1o05", tier: 1, bonusAffinity: "abyss", eminence: 0, cost: affinityCost(2, 1, 0, 0, 0) },
-  { id: "t1o06", tier: 1, bonusAffinity: "abyss", eminence: 0, cost: affinityCost(0, 2, 2, 0, 0) },
-  { id: "t1o07", tier: 1, bonusAffinity: "abyss", eminence: 0, cost: affinityCost(1, 0, 0, 1, 2) },
-  { id: "t1o08", tier: 1, bonusAffinity: "abyss", eminence: 1, cost: affinityCost(0, 4, 0, 0, 0) },
-  // Radiance bonus
-  { id: "t1p01", tier: 1, bonusAffinity: "radiance", eminence: 0, cost: affinityCost(1, 1, 0, 1, 0) },
-  { id: "t1p02", tier: 1, bonusAffinity: "radiance", eminence: 0, cost: affinityCost(0, 1, 0, 2, 0) },
-  { id: "t1p03", tier: 1, bonusAffinity: "radiance", eminence: 0, cost: affinityCost(1, 0, 1, 1, 0) },
-  { id: "t1p04", tier: 1, bonusAffinity: "radiance", eminence: 0, cost: affinityCost(2, 0, 0, 0, 1) },
-  { id: "t1p05", tier: 1, bonusAffinity: "radiance", eminence: 0, cost: affinityCost(0, 2, 0, 0, 2) },
-  { id: "t1p06", tier: 1, bonusAffinity: "radiance", eminence: 0, cost: affinityCost(1, 0, 1, 0, 2) },
-  { id: "t1p07", tier: 1, bonusAffinity: "radiance", eminence: 0, cost: affinityCost(0, 0, 1, 2, 1) },
-  { id: "t1p08", tier: 1, bonusAffinity: "radiance", eminence: 1, cost: affinityCost(0, 0, 4, 0, 0) },
-
-  // ─── Tier 2 (30 cards — 6 per Affinity) ──────────────────────────────────
-  // Flare bonus
-  { id: "t2r01", tier: 2, bonusAffinity: "flare", eminence: 1, cost: affinityCost(0, 2, 0, 3, 2) },
-  { id: "t2r02", tier: 2, bonusAffinity: "flare", eminence: 2, cost: affinityCost(0, 1, 4, 2, 0) },
-  { id: "t2r03", tier: 2, bonusAffinity: "flare", eminence: 2, cost: affinityCost(3, 0, 0, 0, 3) },
-  { id: "t2r04", tier: 2, bonusAffinity: "flare", eminence: 1, cost: affinityCost(2, 0, 2, 0, 2) },
-  { id: "t2r05", tier: 2, bonusAffinity: "flare", eminence: 2, cost: affinityCost(0, 3, 0, 2, 2) },
-  { id: "t2r06", tier: 2, bonusAffinity: "flare", eminence: 2, cost: affinityCost(0, 0, 0, 5, 0) },
-  // Continuum bonus
-  { id: "t2s01", tier: 2, bonusAffinity: "continuum", eminence: 1, cost: affinityCost(2, 0, 3, 0, 2) },
-  { id: "t2s02", tier: 2, bonusAffinity: "continuum", eminence: 2, cost: affinityCost(4, 0, 0, 2, 1) },
-  { id: "t2s03", tier: 2, bonusAffinity: "continuum", eminence: 2, cost: affinityCost(0, 3, 0, 0, 3) },
-  { id: "t2s04", tier: 2, bonusAffinity: "continuum", eminence: 1, cost: affinityCost(0, 0, 2, 0, 3) },
-  { id: "t2s05", tier: 2, bonusAffinity: "continuum", eminence: 2, cost: affinityCost(5, 0, 0, 0, 0) },
-  { id: "t2s06", tier: 2, bonusAffinity: "continuum", eminence: 2, cost: affinityCost(2, 0, 0, 3, 2) },
-  // Verdance bonus
-  { id: "t2e01", tier: 2, bonusAffinity: "verdance", eminence: 1, cost: affinityCost(3, 2, 0, 0, 2) },
-  { id: "t2e02", tier: 2, bonusAffinity: "verdance", eminence: 2, cost: affinityCost(2, 4, 0, 1, 0) },
-  { id: "t2e03", tier: 2, bonusAffinity: "verdance", eminence: 2, cost: affinityCost(0, 0, 3, 3, 0) },
-  { id: "t2e04", tier: 2, bonusAffinity: "verdance", eminence: 1, cost: affinityCost(0, 2, 0, 2, 2) },
-  { id: "t2e05", tier: 2, bonusAffinity: "verdance", eminence: 2, cost: affinityCost(0, 5, 0, 0, 0) },
-  { id: "t2e06", tier: 2, bonusAffinity: "verdance", eminence: 2, cost: affinityCost(2, 0, 0, 2, 3) },
-  // Abyss bonus
-  { id: "t2o01", tier: 2, bonusAffinity: "abyss", eminence: 1, cost: affinityCost(0, 2, 2, 0, 3) },
-  { id: "t2o02", tier: 2, bonusAffinity: "abyss", eminence: 2, cost: affinityCost(1, 0, 2, 0, 4) },
-  { id: "t2o03", tier: 2, bonusAffinity: "abyss", eminence: 2, cost: affinityCost(3, 0, 0, 3, 0) },
-  { id: "t2o04", tier: 2, bonusAffinity: "abyss", eminence: 1, cost: affinityCost(2, 0, 3, 0, 2) },
-  { id: "t2o05", tier: 2, bonusAffinity: "abyss", eminence: 2, cost: affinityCost(0, 0, 5, 0, 0) },
-  { id: "t2o06", tier: 2, bonusAffinity: "abyss", eminence: 2, cost: affinityCost(2, 3, 0, 0, 2) },
-  // Radiance bonus
-  { id: "t2p01", tier: 2, bonusAffinity: "radiance", eminence: 1, cost: affinityCost(2, 3, 0, 2, 0) },
-  { id: "t2p02", tier: 2, bonusAffinity: "radiance", eminence: 2, cost: affinityCost(0, 2, 1, 4, 0) },
-  { id: "t2p03", tier: 2, bonusAffinity: "radiance", eminence: 2, cost: affinityCost(0, 0, 3, 0, 3) },
-  { id: "t2p04", tier: 2, bonusAffinity: "radiance", eminence: 1, cost: affinityCost(3, 2, 0, 0, 2) },
-  { id: "t2p05", tier: 2, bonusAffinity: "radiance", eminence: 2, cost: affinityCost(0, 0, 0, 0, 5) },
-  { id: "t2p06", tier: 2, bonusAffinity: "radiance", eminence: 2, cost: affinityCost(0, 2, 3, 2, 0) },
-
-  // ─── Tier 3 (20 cards — 4 per Affinity) ──────────────────────────────────
-  // Flare bonus
-  { id: "t3r01", tier: 3, bonusAffinity: "flare", eminence: 3, cost: affinityCost(3, 0, 0, 5, 3) },
-  { id: "t3r02", tier: 3, bonusAffinity: "flare", eminence: 4, cost: affinityCost(0, 0, 3, 6, 3) },
-  { id: "t3r03", tier: 3, bonusAffinity: "flare", eminence: 3, cost: affinityCost(0, 5, 0, 3, 3) },
-  { id: "t3r04", tier: 3, bonusAffinity: "flare", eminence: 5, cost: affinityCost(0, 0, 7, 3, 3) },
-  // Continuum bonus
-  { id: "t3s01", tier: 3, bonusAffinity: "continuum", eminence: 3, cost: affinityCost(5, 3, 0, 0, 3) },
-  { id: "t3s02", tier: 3, bonusAffinity: "continuum", eminence: 4, cost: affinityCost(6, 3, 0, 3, 0) },
-  { id: "t3s03", tier: 3, bonusAffinity: "continuum", eminence: 3, cost: affinityCost(3, 0, 5, 3, 0) },
-  { id: "t3s04", tier: 3, bonusAffinity: "continuum", eminence: 5, cost: affinityCost(3, 7, 0, 0, 3) },
-  // Verdance bonus
-  { id: "t3e01", tier: 3, bonusAffinity: "verdance", eminence: 3, cost: affinityCost(0, 5, 3, 0, 3) },
-  { id: "t3e02", tier: 3, bonusAffinity: "verdance", eminence: 4, cost: affinityCost(3, 6, 0, 3, 0) },
-  { id: "t3e03", tier: 3, bonusAffinity: "verdance", eminence: 3, cost: affinityCost(0, 3, 0, 5, 3) },
-  { id: "t3e04", tier: 3, bonusAffinity: "verdance", eminence: 5, cost: affinityCost(3, 3, 7, 0, 0) },
-  // Abyss bonus
-  { id: "t3o01", tier: 3, bonusAffinity: "abyss", eminence: 3, cost: affinityCost(0, 3, 5, 3, 0) },
-  { id: "t3o02", tier: 3, bonusAffinity: "abyss", eminence: 4, cost: affinityCost(0, 3, 6, 0, 3) },
-  { id: "t3o03", tier: 3, bonusAffinity: "abyss", eminence: 3, cost: affinityCost(3, 0, 3, 0, 5) },
-  { id: "t3o04", tier: 3, bonusAffinity: "abyss", eminence: 5, cost: affinityCost(0, 3, 3, 7, 0) },
-  // Radiance bonus
-  { id: "t3p01", tier: 3, bonusAffinity: "radiance", eminence: 3, cost: affinityCost(3, 0, 3, 5, 0) },
-  { id: "t3p02", tier: 3, bonusAffinity: "radiance", eminence: 4, cost: affinityCost(3, 0, 3, 0, 6) },
-  { id: "t3p03", tier: 3, bonusAffinity: "radiance", eminence: 3, cost: affinityCost(5, 0, 3, 0, 3) },
-  { id: "t3p04", tier: 3, bonusAffinity: "radiance", eminence: 5, cost: affinityCost(0, 3, 0, 3, 7) },
-];
+const CARD_CATALOG: readonly ArtifactCard[] = ARTIFACT_CATALOG;
 
 export const LUMINARIES: LuminaryDef[] = [
   // ── Mono-color Luminaries ───────────────────────────────────────────────────
@@ -574,7 +587,7 @@ export const LUMINARIES: LuminaryDef[] = [
     summonSecondaryColor: "#7f1d1d",
     auraStyle: "fire",
     effectName: "Rupture of the Still",
-    effectDescription: "On arrival, burns all Tier III Artifacts whose Flare cost is 4 or less, forcing those slots to immediately redraw.",
+    effectDescription: "On arrival, burn every face-up Tier III Artifact with a Flare cost below 5, then immediately refill each vacated Forge position.",
   },
   {
     id: "lum_tide",
@@ -587,7 +600,7 @@ export const LUMINARIES: LuminaryDef[] = [
     summonSecondaryColor: "#e2e8f0",
     auraStyle: "tide",
     effectName: "The Observer Effect",
-    effectDescription: "On arrival, scries the Tier II and Tier III Archives and reorders them so Continuum Artifacts surface first.",
+    effectDescription: "The allied player may view the top Artifact of each Archive. Once, the allied player may Forge an Artifact on the top of an Archive.",
   },
   {
     id: "lum_verdant",
@@ -600,34 +613,34 @@ export const LUMINARIES: LuminaryDef[] = [
     summonSecondaryColor: "#166534",
     auraStyle: "verdant",
     effectName: "Early Bloom",
-    effectDescription: "Living Luminary bonus — starting the turn after this Luminary arrives, you gain +1 Verdance toward every Artifact you forge while you own it.",
+    effectDescription: "On arrival, gain 1 Verdance token from the Affinity Well.",
   },
   {
     id: "lum_void",
     name: "The Void Warden",
     domain: "Void",
-    eminence: 0,
-    oblivion: 5,
+    eminence: 2,
+    oblivion: 8,
     requirements: { flare: 0, continuum: 0, verdance: 0, abyss: 6, radiance: 0, singularity: 0 },
     flavor: "In the space between stars, something watches without eyes.",
     summonColor: "#4c1d95",
     summonSecondaryColor: "#0a0a14",
     auraStyle: "void",
     effectName: "Oblivion",
-    effectDescription: "On arrival, raises the shared victory requirement by 5. This Luminary awards no Eminence to its claimer.",
+    effectDescription: "On arrival, raise the shared victory requirement by 8.",
   },
   {
     id: "lum_radiant",
     name: "Concordance Mandala",
     domain: "Coherence",
-    eminence: 3,
+    eminence: 4,
     requirements: { flare: 0, continuum: 0, verdance: 0, abyss: 0, radiance: 6, singularity: 0 },
     flavor: "Truth is not revealed. It is aligned.",
     summonColor: "#fef9c3",
     summonSecondaryColor: "#2ecc71",
     auraStyle: "radiant",
     effectName: "Perfect Coherence",
-    effectDescription: "Once per game, when you end a turn with 8 or more Radiance Artifacts forged, you immediately gain +2 Eminence.",
+    effectDescription: "Once, when you end your turn with at least 8 Radiance Artifacts, gain +2 Eminence. Once, when you end your turn with at least 10 Radiance Artifacts, gain +2 Eminence.",
   },
   // ── Dual-color Luminaries ────────────────────────────────────────────────────
   {
@@ -673,14 +686,14 @@ export const LUMINARIES: LuminaryDef[] = [
     id: "lum_compass",
     name: "???",
     domain: "Erasure",
-    eminence: 0,
+    eminence: 1,
     requirements: { flare: 0, continuum: 4, verdance: 0, abyss: 4, radiance: 0, singularity: 0 },
     flavor: "Everyone remembers something happened, but no one recalls what was lost.",
     summonColor: "#2563eb",
     summonSecondaryColor: "#0a0a14",
     auraStyle: "distorted",
     effectName: "The Forgotten Hour",
-    effectDescription: "On arrival, raises the shared victory requirement by 1 and marks all currently face-up Forge Artifacts as Forgotten. Forgotten marks last only until the source player's next end of turn, and players cannot Encrypt during that window. After the marks expire, 12 owner-turn cycles pass; then Forgotten Hour returns at the source player's end of turn. Artifacts forged while Forgotten award 0 Eminence and cannot be used for blueprints.",
+    effectDescription: "On arrival, raise the shared victory requirement by 1 and mark every face-up Forge Artifact as Forgotten. Until the ally's next end of turn, only the ally may Encrypt. Artifacts forged while Forgotten award 0 Eminence and cannot be used for Blueprints. After the marks expire, wait 12 of the ally's turns, then mark the face-up Forge Artifacts as Forgotten again without raising the victory requirement.",
   },
   {
     id: "lum_seed",
@@ -693,7 +706,7 @@ export const LUMINARIES: LuminaryDef[] = [
     summonSecondaryColor: "#4ade80",
     auraStyle: "compass",
     effectName: "Avatar Seeds",
-    effectDescription: "On arrival, places Avatar Seed tokens on the next Artifact in each Archive. When an opponent forges a seeded Artifact, you earn pending Eminence paid out at the end of your next turn.",
+    effectDescription: "On arrival, permanently mark one random mold in each tier with an Avatar Seed. At the end of every turn, each unseeded Artifact occupying one of those molds becomes Seeded. When an opponent forges a Seeded Artifact, you gain 1 permanent Affinity matching that Artifact's bonus Affinity.",
   },
   {
     id: "lum_orchard",
@@ -706,7 +719,7 @@ export const LUMINARIES: LuminaryDef[] = [
     summonSecondaryColor: "#fef9c3",
     auraStyle: "verdant",
     effectName: "Perfect Replication",
-    effectDescription: "Once per game, the first time you forge an Artifact, a free copy of your cheapest-cost Tier I Artifact is added to your collection.",
+    effectDescription: "Once per game, when you first forge an Artifact whose cost includes Verdance or Radiance, gain a second permanent bonus Affinity matching that Artifact.",
   },
   {
     id: "lum_pale",
@@ -719,7 +732,7 @@ export const LUMINARIES: LuminaryDef[] = [
     summonSecondaryColor: "#0a0a14",
     auraStyle: "pale",
     effectName: "Balance Due",
-    effectDescription: "On arrival, each player returns 2 tokens of every Affinity they hold at half or more of its starting supply.",
+    effectDescription: "On arrival, each player returns 2 tokens of every Affinity, including Singularity, that they hold at half or more of its starting supply (rounded up).",
   },
   // ── Triple-color Luminaries (2–4 Eminence) ──────────────────────────────────
   {
@@ -733,7 +746,7 @@ export const LUMINARIES: LuminaryDef[] = [
     summonSecondaryColor: "#7b1fa2",
     auraStyle: "fire",
     effectName: "Cinder Mandate",
-    effectDescription: "On arrival, mark each face-up Artifact as Condemned unless its forge cost includes 3 or more Flare, Abyss, or Radiance. At the end of your next turn, burn each remaining Condemned Artifact and refill its Forge slot.",
+    effectDescription: "On arrival, mark each face-up Forge Artifact as Condemned unless its cost includes at least 3 of Flare, Abyss, or Radiance. At the end of your next turn, burn each remaining Condemned Artifact and refill its Forge position.",
   },
   {
     id: "lum_hunger",
@@ -746,7 +759,7 @@ export const LUMINARIES: LuminaryDef[] = [
     summonSecondaryColor: "#4ade80",
     auraStyle: "oracle",
     effectName: "Assimilation",
-    effectDescription: "On arrival, you may replace your forge action this turn with Assimilation — copy the bonus affinity of any Artifact in your collection as a permanent bonus.",
+    effectDescription: "Once after arrival, you may replace your Forge action with Assimilation. Assimilate any face-up Artifact for free: gain its permanent bonus Affinity and no Eminence. It counts as owned only for Blueprints.",
   },
   {
     id: "lum_null",
@@ -759,7 +772,7 @@ export const LUMINARIES: LuminaryDef[] = [
     summonSecondaryColor: "#0a0a14",
     auraStyle: "null",
     effectName: "Black Domain",
-    effectDescription: "On arrival, marks all face-up Tier III Artifacts that do not require all three of Continuum, Abyss, and Radiance as Nullified — they award 0 Eminence when forged.",
+    effectDescription: "On arrival, mark all face-up Tier III Artifacts that do not require all three of Continuum, Abyss, and Radiance as Nullified. Nullified Artifacts award 0 Eminence, cannot be used for Blueprints, and cannot be Encrypted. If the first Nullified Artifact forged this game is forged by the allied player, it is unaffected by Nullified.",
   },
   // ── Deferred / Inactive Luminaries (not in active arrival pool) ────────────
   {
@@ -851,6 +864,13 @@ function checkKardashevAdvance(
     player.forgedArtifactIds,
     player.discountedForgeIds,
   );
+  const civilization = normalizeCivilizationState(player);
+  civilization.scale = {
+    ...civilization.scale,
+    literalKardashevType: newTier,
+    literalKardashevEvidence: "recorded",
+  };
+  player.civilization = civilization;
   if (newTier <= oldTier) return;
 
   const reason = isDiscount
@@ -895,6 +915,762 @@ function shuffle<T>(arr: T[]): T[] {
 
 export function zeroAffinities(): AffinityCounts {
   return { flare: 0, continuum: 0, verdance: 0, abyss: 0, radiance: 0, singularity: 0 };
+}
+
+function incrementUsageCount(
+  counts: Record<string, number> | undefined,
+  id: string,
+): Record<string, number> {
+  const next = counts ?? {};
+  next[id] = (next[id] ?? 0) + 1;
+  return next;
+}
+
+function usageCountsFromIds(ids: unknown): Record<string, number> {
+  const counts: Record<string, number> = {};
+  if (!Array.isArray(ids)) return counts;
+  for (const id of ids) {
+    if (typeof id === "string") counts[id] = (counts[id] ?? 0) + 1;
+  }
+  return counts;
+}
+
+function emptyCivilizationState(): CivilizationState {
+  return createInitialCivilizationState();
+}
+
+function isRecord(value: unknown): value is Record<string, unknown> {
+  return typeof value === "object" && value !== null && !Array.isArray(value);
+}
+
+function isCivilizationImplementationState(
+  value: unknown,
+): value is CivilizationArtifactImplementationState {
+  return CIVILIZATION_ARTIFACT_IMPLEMENTATION_STATES.includes(
+    value as CivilizationArtifactImplementationState,
+  );
+}
+
+function normalizeCivilizationChangeSource(
+  value: unknown,
+): CivilizationArtifactChangeSource | null {
+  if (!isRecord(value)) return null;
+  const sourceType = value.sourceType;
+  if (
+    sourceType !== "artifact" &&
+    sourceType !== "blueprint" &&
+    sourceType !== "chronicle" &&
+    sourceType !== "scenario" &&
+    sourceType !== "system"
+  ) return null;
+  return {
+    sourceType,
+    sourceId: typeof value.sourceId === "string" ? value.sourceId : null,
+  };
+}
+
+function normalizeHistoryEvidence(value: unknown): CivilizationHistoryEvidence {
+  return value === "recorded" ? "recorded" : "legacy_inferred";
+}
+
+function normalizeScaleEvidence(value: unknown): CivilizationScaleEvidence | null {
+  if (!isRecord(value)) return null;
+  const source = normalizeCivilizationChangeSource(value);
+  if (!source) return null;
+  return {
+    ...source,
+    turnCount:
+      typeof value.turnCount === "number" && value.turnCount >= 0
+        ? Math.floor(value.turnCount)
+        : null,
+    historyEvidence: normalizeHistoryEvidence(value.historyEvidence),
+  };
+}
+
+function normalizeEntityReference(
+  value: unknown,
+): CivilizationCondition["target"] | null {
+  if (!isRecord(value) || typeof value.id !== "string") return null;
+  if (
+    value.kind !== "world" &&
+    value.kind !== "artifact_implementation" &&
+    value.kind !== "network" &&
+    value.kind !== "installation" &&
+    value.kind !== "project"
+  ) return null;
+  return { kind: value.kind, id: value.id };
+}
+
+function normalizeCivilizationWorlds(
+  rawWorlds: unknown,
+  rawHomeworldId: unknown,
+  currentShape: boolean,
+): { homeworldId: string; worlds: Record<string, CivilizationWorld> } {
+  const worlds: Record<string, CivilizationWorld> = {};
+  if (isRecord(rawWorlds)) {
+    for (const [id, candidate] of Object.entries(rawWorlds)) {
+      if (!isRecord(candidate) || id.length === 0) continue;
+      worlds[id] = {
+        id,
+        role: candidate.role === "settled_world" ? "settled_world" : "homeworld",
+        name: typeof candidate.name === "string" ? candidate.name : null,
+        state: candidate.state === "annihilated" ? "annihilated" : "active",
+        establishedTurnCount:
+          typeof candidate.establishedTurnCount === "number" && candidate.establishedTurnCount >= 0
+            ? Math.floor(candidate.establishedTurnCount)
+            : null,
+        stateChangedTurnCount:
+          typeof candidate.stateChangedTurnCount === "number" && candidate.stateChangedTurnCount >= 0
+            ? Math.floor(candidate.stateChangedTurnCount)
+            : null,
+        conditionIds: Array.isArray(candidate.conditionIds)
+          ? candidate.conditionIds.filter((id): id is string => typeof id === "string")
+          : [],
+        historyEvidence: normalizeHistoryEvidence(candidate.historyEvidence),
+      };
+    }
+  }
+
+  let homeworldId = typeof rawHomeworldId === "string" && rawHomeworldId.length > 0
+    ? rawHomeworldId
+    : Object.values(worlds).find((world) => world.role === "homeworld")?.id ?? "world:home";
+  if (!worlds[homeworldId]) {
+    worlds[homeworldId] = {
+      id: homeworldId,
+      role: "homeworld",
+      name: null,
+      state: "active",
+      establishedTurnCount: currentShape ? 0 : null,
+      stateChangedTurnCount: currentShape ? 0 : null,
+      conditionIds: [],
+      historyEvidence: currentShape ? "recorded" : "legacy_inferred",
+    };
+  } else {
+    worlds[homeworldId] = { ...worlds[homeworldId], role: "homeworld" };
+  }
+  for (const [id, world] of Object.entries(worlds)) {
+    if (id !== homeworldId && world.role === "homeworld") {
+      worlds[id] = { ...world, role: "settled_world" };
+    }
+  }
+  return { homeworldId, worlds };
+}
+
+function normalizeCivilizationEntities(value: unknown): Record<string, CivilizationEntity> {
+  const entities: Record<string, CivilizationEntity> = {};
+  if (!isRecord(value)) return entities;
+  for (const [id, candidate] of Object.entries(value)) {
+    if (!isRecord(candidate) || id.length === 0) continue;
+    if (
+      candidate.kind !== "network" &&
+      candidate.kind !== "installation" &&
+      candidate.kind !== "project"
+    ) continue;
+    entities[id] = {
+      id,
+      kind: candidate.kind,
+      state:
+        candidate.state === "annihilated"
+          ? "annihilated"
+          : candidate.state === "disabled"
+            ? "disabled"
+            : "operational",
+      worldId: typeof candidate.worldId === "string" ? candidate.worldId : null,
+      sourceId: typeof candidate.sourceId === "string" ? candidate.sourceId : null,
+      establishedTurnCount:
+        typeof candidate.establishedTurnCount === "number" && candidate.establishedTurnCount >= 0
+          ? Math.floor(candidate.establishedTurnCount)
+          : null,
+      stateChangedTurnCount:
+        typeof candidate.stateChangedTurnCount === "number" && candidate.stateChangedTurnCount >= 0
+          ? Math.floor(candidate.stateChangedTurnCount)
+          : null,
+      conditionIds: Array.isArray(candidate.conditionIds)
+        ? candidate.conditionIds.filter((conditionId): conditionId is string => typeof conditionId === "string")
+        : [],
+      historyEvidence: normalizeHistoryEvidence(candidate.historyEvidence),
+    };
+  }
+  return entities;
+}
+
+function normalizeCivilizationConditions(value: unknown): Record<string, CivilizationCondition> {
+  const conditions: Record<string, CivilizationCondition> = {};
+  if (!isRecord(value)) return conditions;
+  for (const [id, candidate] of Object.entries(value)) {
+    if (!isRecord(candidate) || id.length === 0 || typeof candidate.type !== "string") continue;
+    const target = normalizeEntityReference(candidate.target);
+    const source = normalizeCivilizationChangeSource(candidate.source);
+    if (!target || !source) continue;
+    const coreType =
+      candidate.coreType === "damaged" ||
+      candidate.coreType === "isolated" ||
+      candidate.coreType === "quarantined" ||
+      candidate.coreType === "disrupted"
+        ? candidate.coreType
+        : null;
+    conditions[id] = {
+      id,
+      type: candidate.type as CivilizationCondition["type"],
+      coreType,
+      target,
+      source,
+      appliedTurnCount:
+        typeof candidate.appliedTurnCount === "number" && candidate.appliedTurnCount >= 0
+          ? Math.floor(candidate.appliedTurnCount)
+          : null,
+      resolvedTurnCount:
+        typeof candidate.resolvedTurnCount === "number" && candidate.resolvedTurnCount >= 0
+          ? Math.floor(candidate.resolvedTurnCount)
+          : null,
+      historyEvidence: normalizeHistoryEvidence(candidate.historyEvidence),
+    };
+  }
+  return conditions;
+}
+
+function normalizeStabilityContributors(value: unknown): CivilizationStabilityContributor[] {
+  if (!Array.isArray(value)) return [];
+  return value.flatMap((candidate): CivilizationStabilityContributor[] => {
+    if (
+      !isRecord(candidate) ||
+      typeof candidate.id !== "string" ||
+      (candidate.direction !== "support" && candidate.direction !== "pressure") ||
+      typeof candidate.magnitude !== "number" ||
+      candidate.magnitude < 0 ||
+      typeof candidate.label !== "string"
+    ) return [];
+    const source = normalizeCivilizationChangeSource(candidate.source);
+    if (!source) return [];
+    const target = candidate.target === null ? null : normalizeEntityReference(candidate.target);
+    if (candidate.target !== null && !target) return [];
+    return [{
+      id: candidate.id,
+      direction: candidate.direction,
+      magnitude: candidate.magnitude,
+      label: candidate.label,
+      source,
+      target,
+      appliedTurnCount:
+        typeof candidate.appliedTurnCount === "number" && candidate.appliedTurnCount >= 0
+          ? Math.floor(candidate.appliedTurnCount)
+          : null,
+      resolvedTurnCount:
+        typeof candidate.resolvedTurnCount === "number" && candidate.resolvedTurnCount >= 0
+          ? Math.floor(candidate.resolvedTurnCount)
+          : null,
+      historyEvidence: normalizeHistoryEvidence(candidate.historyEvidence),
+    }];
+  });
+}
+
+function normalizeCivilizationEvents(value: unknown): CivilizationEventHistoryEntry[] {
+  if (!Array.isArray(value)) return [];
+  return value.flatMap((candidate): CivilizationEventHistoryEntry[] => {
+    if (
+      !isRecord(candidate) ||
+      typeof candidate.eventId !== "string" ||
+      !CIVILIZATION_RESOLUTION_FORMS.includes(
+        candidate.form as (typeof CIVILIZATION_RESOLUTION_FORMS)[number],
+      ) ||
+      typeof candidate.selectedTrajectoryId !== "string" ||
+      (candidate.outcome !== "success" && candidate.outcome !== "failure") ||
+      typeof candidate.summary !== "string"
+    ) return [];
+    const source = normalizeCivilizationChangeSource(candidate.source);
+    if (!source) return [];
+    const pressureTags = Array.isArray(candidate.pressureTags)
+      ? candidate.pressureTags.filter((tag): tag is CivilizationEventHistoryEntry["pressureTags"][number] =>
+          CIVILIZATION_PRESSURE_TAGS.includes(
+            tag as (typeof CIVILIZATION_PRESSURE_TAGS)[number],
+          ),
+        )
+      : [];
+    const history = isRecord(candidate.history)
+      ? Object.fromEntries(
+          Object.entries(candidate.history)
+            .filter((entry): entry is [string, string] => typeof entry[1] === "string"),
+        )
+      : {};
+    const outcomeSignals = Array.isArray(candidate.outcomeSignals)
+      ? candidate.outcomeSignals.flatMap((signal): CivilizationOutcomeSignal[] => {
+          if (
+            !isRecord(signal) ||
+            typeof signal.signalId !== "string" ||
+            !CIVILIZATION_HISTORICAL_QUALITY_DIMENSIONS.includes(
+              signal.dimension as (typeof CIVILIZATION_HISTORICAL_QUALITY_DIMENSIONS)[number],
+            ) ||
+            (signal.direction !== "support" && signal.direction !== "pressure") ||
+            typeof signal.magnitude !== "string" ||
+            !(signal.magnitude in CIVILIZATION_STABILITY_IMPACT_MAGNITUDES) ||
+            typeof signal.label !== "string"
+          ) return [];
+          return [{
+            signalId: signal.signalId,
+            dimension: signal.dimension as CivilizationOutcomeSignal["dimension"],
+            direction: signal.direction,
+            magnitude: signal.magnitude as CivilizationOutcomeSignal["magnitude"],
+            label: signal.label,
+          }];
+        })
+      : [];
+    const adversity: CivilizationAdversityEvidence | null = isRecord(candidate.adversity) &&
+      typeof candidate.adversity.evidenceId === "string" &&
+      typeof candidate.adversity.magnitude === "string" &&
+      candidate.adversity.magnitude in CIVILIZATION_STABILITY_IMPACT_MAGNITUDES &&
+      typeof candidate.adversity.label === "string" &&
+      typeof candidate.adversity.recoveryEligible === "boolean"
+      ? {
+          evidenceId: candidate.adversity.evidenceId,
+          magnitude: candidate.adversity.magnitude as CivilizationAdversityEvidence["magnitude"],
+          label: candidate.adversity.label,
+          recoveryEligible: candidate.adversity.recoveryEligible,
+        }
+      : null;
+    return [{
+      eventId: candidate.eventId,
+      source,
+      turnCount:
+        typeof candidate.turnCount === "number" && candidate.turnCount >= 0
+          ? Math.floor(candidate.turnCount)
+          : null,
+      form: candidate.form as CivilizationEventHistoryEntry["form"],
+      pressureTags,
+      selectedTrajectoryId: candidate.selectedTrajectoryId,
+      outcome: candidate.outcome,
+      summary: candidate.summary,
+      history,
+      outcomeSignals,
+      adversity,
+      historyEvidence: normalizeHistoryEvidence(candidate.historyEvidence),
+    }];
+  }).slice(-64);
+}
+
+function normalizeCivilizationState(player: {
+  civilization?: unknown;
+  forgedArtifactIds?: unknown;
+  artifactForgeCounts?: unknown;
+  discountedForgeIds?: unknown;
+  manifestedBlueprintDevices?: unknown;
+  civilizationTurnCount?: unknown;
+}): CivilizationState {
+  const activeCounts = usageCountsFromIds(player.forgedArtifactIds);
+  const forgeCounts = isRecord(player.artifactForgeCounts)
+    ? Object.fromEntries(
+        Object.entries(player.artifactForgeCounts)
+          .filter(([id, count]) => id.length > 0 && typeof count === "number" && count > 0)
+          .map(([id, count]) => [id, Math.floor(count as number)]),
+      )
+    : {};
+  const rawCivilization = isRecord(player.civilization) ? player.civilization : {};
+  const rawArtifacts = isRecord(rawCivilization.artifacts) ? rawCivilization.artifacts : {};
+  const artifactIds = new Set([
+    ...Object.keys(rawArtifacts),
+    ...Object.keys(forgeCounts),
+    ...Object.keys(activeCounts),
+  ]);
+  const artifacts: Record<string, CivilizationArtifactLifecycleState> = {};
+
+  for (const artifactId of artifactIds) {
+    const raw = isRecord(rawArtifacts[artifactId]) ? rawArtifacts[artifactId] : {};
+    const recordedCount =
+      typeof raw.masteryCount === "number" && raw.masteryCount > 0
+        ? Math.floor(raw.masteryCount)
+        : 0;
+    const masteryCount = Math.max(
+      1,
+      recordedCount,
+      forgeCounts[artifactId] ?? 0,
+      activeCounts[artifactId] ?? 0,
+    );
+    const hasActiveImplementation = (activeCounts[artifactId] ?? 0) > 0;
+    let implementationState = isCivilizationImplementationState(raw.implementationState)
+      ? raw.implementationState
+      : null;
+    let stateChangedTurnCount =
+      typeof raw.implementationStateChangedTurnCount === "number" &&
+      raw.implementationStateChangedTurnCount >= 0
+        ? Math.floor(raw.implementationStateChangedTurnCount)
+        : null;
+    let changeSource = normalizeCivilizationChangeSource(raw.implementationChangeSource);
+    let historyEvidence = raw.historyEvidence === "recorded"
+      ? "recorded" as const
+      : "legacy_inferred" as const;
+
+    if (hasActiveImplementation) {
+      implementationState = "operational";
+      if (!isRecord(rawArtifacts[artifactId])) {
+        stateChangedTurnCount = null;
+        historyEvidence = "legacy_inferred";
+      }
+    } else if (implementationState === "operational") {
+      // The active tableau is authoritative for current operation. A legacy
+      // mismatch cannot be truthfully upgraded to Damage or Annihilation.
+      implementationState = null;
+      stateChangedTurnCount = null;
+      changeSource = null;
+      historyEvidence = "legacy_inferred";
+    }
+
+    artifacts[artifactId] = {
+      artifactId,
+      firstMasteredTurnCount:
+        typeof raw.firstMasteredTurnCount === "number" && raw.firstMasteredTurnCount >= 0
+          ? Math.floor(raw.firstMasteredTurnCount)
+          : null,
+      masteryCount,
+      implementationState,
+      implementationStateChangedTurnCount: stateChangedTurnCount,
+      implementationChangeSource: changeSource,
+      historyEvidence,
+    };
+  }
+
+  const currentShape = rawCivilization.version === CIVILIZATION_STATE_VERSION;
+  const { homeworldId, worlds } = normalizeCivilizationWorlds(
+    rawCivilization.worlds,
+    rawCivilization.homeworldId,
+    currentShape,
+  );
+  const rawScale = isRecord(rawCivilization.scale) ? rawCivilization.scale : {};
+  const historicalMaturity = CIVILIZATION_MATURITY_LEVELS.includes(
+    rawScale.historicalMaturity as (typeof CIVILIZATION_MATURITY_LEVELS)[number],
+  )
+    ? rawScale.historicalMaturity as (typeof CIVILIZATION_MATURITY_LEVELS)[number]
+    : "planetary";
+  const currentReach = rawScale.currentReach === "unknown" || CIVILIZATION_MATURITY_LEVELS.includes(
+    rawScale.currentReach as (typeof CIVILIZATION_MATURITY_LEVELS)[number],
+  )
+    ? rawScale.currentReach as CivilizationState["scale"]["currentReach"]
+    : currentShape
+      ? "planetary"
+      : "unknown";
+  const currentReachCondition = CIVILIZATION_REACH_CONDITIONS.includes(
+    rawScale.currentReachCondition as (typeof CIVILIZATION_REACH_CONDITIONS)[number],
+  )
+    ? rawScale.currentReachCondition as (typeof CIVILIZATION_REACH_CONDITIONS)[number]
+    : currentShape
+      ? "intact"
+      : "unknown";
+  const computedLiteralKardashevType = computeKardashevTier(
+    Array.isArray(player.forgedArtifactIds)
+      ? player.forgedArtifactIds.filter((id): id is string => typeof id === "string")
+      : [],
+    Array.isArray(player.discountedForgeIds)
+      ? player.discountedForgeIds.filter((id): id is string => typeof id === "string")
+      : [],
+  );
+  const literalKardashevType =
+    rawScale.literalKardashevType === 0 ||
+    rawScale.literalKardashevType === 1 ||
+    rawScale.literalKardashevType === 2 ||
+    rawScale.literalKardashevType === 3
+      ? rawScale.literalKardashevType
+      : computedLiteralKardashevType;
+  const rawStability = isRecord(rawCivilization.stability) ? rawCivilization.stability : {};
+  const stabilityBand = CIVILIZATION_STABILITY_BANDS.includes(
+    rawStability.band as (typeof CIVILIZATION_STABILITY_BANDS)[number],
+  )
+    ? rawStability.band as (typeof CIVILIZATION_STABILITY_BANDS)[number]
+    : "stable";
+
+  const normalized: CivilizationState = {
+    version: CIVILIZATION_STATE_VERSION,
+    artifacts,
+    affinityIdentity: deriveCivilizationAffinityIdentity(artifacts),
+    scale: {
+      historicalMaturity,
+      historicalMaturityEvidence: Array.isArray(rawScale.historicalMaturityEvidence)
+        ? rawScale.historicalMaturityEvidence
+            .map(normalizeScaleEvidence)
+            .filter((entry): entry is CivilizationScaleEvidence => entry !== null)
+        : [],
+      currentReach,
+      currentReachCondition,
+      currentReachEvidence: Array.isArray(rawScale.currentReachEvidence)
+        ? rawScale.currentReachEvidence
+            .map(normalizeScaleEvidence)
+            .filter((entry): entry is CivilizationScaleEvidence => entry !== null)
+        : [],
+      literalKardashevType,
+      literalKardashevEvidence: currentShape
+        ? normalizeHistoryEvidence(rawScale.literalKardashevEvidence)
+        : "legacy_inferred",
+    },
+    homeworldId,
+    worlds,
+    entities: normalizeCivilizationEntities(rawCivilization.entities),
+    conditions: normalizeCivilizationConditions(rawCivilization.conditions),
+    stability: {
+      band: stabilityBand,
+      score: typeof rawStability.score === "number" ? rawStability.score : null,
+      calibrationId:
+        typeof rawStability.calibrationId === "string" ? rawStability.calibrationId : null,
+      contributors: normalizeStabilityContributors(rawStability.contributors),
+      calculatedTurnCount:
+        typeof rawStability.calculatedTurnCount === "number" && rawStability.calculatedTurnCount >= 0
+          ? Math.floor(rawStability.calculatedTurnCount)
+          : currentShape
+            ? 0
+            : null,
+      historyEvidence: currentShape
+        ? normalizeHistoryEvidence(rawStability.historyEvidence)
+        : "legacy_inferred",
+    },
+    events: normalizeCivilizationEvents(rawCivilization.events),
+  };
+  const manifestedDevices = Array.isArray(player.manifestedBlueprintDevices)
+    ? player.manifestedBlueprintDevices.filter((device) =>
+        isRecord(device) &&
+        typeof device.blueprintId === "string" &&
+        device.blueprintId in BLUEPRINT_DEFINITIONS &&
+        typeof device.state === "string",
+      ) as ManifestedDevicePublicState[]
+    : [];
+  return reconcileCivilizationDerivedState(
+    normalized,
+    manifestedDevices,
+    typeof player.civilizationTurnCount === "number" && player.civilizationTurnCount >= 0
+      ? Math.floor(player.civilizationTurnCount)
+      : normalized.stability.calculatedTurnCount,
+  );
+}
+
+function refreshPlayerCivilization(player: PlayerGameState, turnCount: number): void {
+  player.civilization = normalizeCivilizationState({
+    ...player,
+    civilizationTurnCount: turnCount,
+  });
+}
+
+function recordBlueprintCivilizationEvent(
+  state: GameStateData,
+  player: PlayerGameState,
+  blueprintId: BlueprintId,
+  kind: BlueprintCivilizationEventKind,
+  eventId: string,
+  summary: string,
+  historyValue?: string,
+): void {
+  player.civilization = normalizeCivilizationState({
+    ...player,
+    civilizationTurnCount: state.turnCount,
+  });
+  player.civilization = resolveBlueprintCivilizationEventPolicy({
+    eventId,
+    civilization: player.civilization,
+    blueprintId,
+    kind,
+    turnCount: state.turnCount,
+    summary,
+    historyValue,
+  }).civilization;
+}
+
+function recordArtifactImplementation(
+  player: PlayerGameState,
+  artifactId: string,
+  turnCount: number,
+  options: { countForgeAction?: boolean } = {},
+): void {
+  const priorRaw = isRecord(player.civilization?.artifacts?.[artifactId])
+    ? player.civilization.artifacts[artifactId]
+    : null;
+  const countForgeAction = options.countForgeAction !== false;
+  if (countForgeAction) {
+    player.artifactForgeCounts = incrementUsageCount(player.artifactForgeCounts, artifactId);
+  }
+  const civilization = normalizeCivilizationState(player);
+  const prior = civilization.artifacts[artifactId];
+  const masteryCount = countForgeAction
+    ? Math.max(prior?.masteryCount ?? 0, player.artifactForgeCounts?.[artifactId] ?? 1)
+    : Math.max(1, (priorRaw?.masteryCount as number | undefined ?? 0) + 1);
+  const hasUnrecordedPriorHistory =
+    priorRaw === null && countForgeAction && masteryCount > 1;
+
+  civilization.artifacts[artifactId] = {
+    artifactId,
+    firstMasteredTurnCount: priorRaw
+      ? prior?.firstMasteredTurnCount ?? null
+      : hasUnrecordedPriorHistory
+        ? null
+        : turnCount,
+    masteryCount,
+    implementationState: "operational",
+    implementationStateChangedTurnCount: turnCount,
+    implementationChangeSource: null,
+    historyEvidence: priorRaw
+      ? prior?.historyEvidence ?? "legacy_inferred"
+      : hasUnrecordedPriorHistory
+        ? "legacy_inferred"
+        : "recorded",
+  };
+  player.civilization = reconcileCivilizationDerivedState(
+    civilization,
+    player.manifestedBlueprintDevices ?? [],
+    turnCount,
+  );
+}
+
+function setArtifactImplementationArchived(
+  player: PlayerGameState,
+  artifactId: string,
+  turnCount: number,
+): void {
+  const civilization = normalizeCivilizationState(player);
+  const prior = civilization.artifacts[artifactId];
+  if (!prior) return;
+  civilization.artifacts[artifactId] = {
+    ...prior,
+    implementationState: "archived",
+    implementationStateChangedTurnCount: turnCount,
+    implementationChangeSource: {
+      sourceType: "blueprint",
+      sourceId: "bp_mantle_to_orbit_foundry",
+    },
+  };
+  player.civilization = reconcileCivilizationDerivedState(
+    civilization,
+    player.manifestedBlueprintDevices ?? [],
+    turnCount,
+  );
+}
+
+function removeFoundryComponentsFromOperation(
+  state: GameStateData,
+  player: PlayerGameState,
+  privateState: BlueprintPrivateState,
+): string[] {
+  const componentIds = BLUEPRINT_DEFINITIONS.bp_mantle_to_orbit_foundry.components
+    .map((component) => component.artifactId);
+  const movedIds: string[] = [];
+
+  for (const artifactId of componentIds) {
+    const forgedIndex = player.forgedArtifactIds.indexOf(artifactId);
+    const assimilatedIndex = (player.assimilatedArtifactIds ?? []).indexOf(artifactId);
+    if (forgedIndex === -1 && assimilatedIndex === -1) continue;
+    const card = CARD_MAP.get(artifactId);
+    if (forgedIndex !== -1) player.forgedArtifactIds.splice(forgedIndex, 1);
+    if (assimilatedIndex !== -1) player.assimilatedArtifactIds!.splice(assimilatedIndex, 1);
+    if (card) {
+      player.bonuses[card.bonusAffinity] = Math.max(
+        0,
+        player.bonuses[card.bonusAffinity] - 1,
+      );
+    }
+    player.discountedForgeIds = player.discountedForgeIds.filter((id) => id !== artifactId);
+    player.blueprintBlockedCardIds = (player.blueprintBlockedCardIds ?? [])
+      .filter((id) => id !== artifactId);
+    if (player.forgedArtifactBonusSnapshots) {
+      delete player.forgedArtifactBonusSnapshots[artifactId];
+    }
+    if (state.artifactMarkers) delete state.artifactMarkers[artifactId];
+    setArtifactImplementationArchived(player, artifactId, state.turnCount);
+    movedIds.push(artifactId);
+  }
+
+  privateState.foundryStoredArtifactIds = [...movedIds];
+  delete privateState.foundryRecoveryArtifactIds;
+  for (const artifactId of movedIds) {
+    if (!player.reservedArtifactIds.includes(artifactId)) {
+      player.reservedArtifactIds.push(artifactId);
+    }
+    if (player.privateReservedArtifactIds) {
+      player.privateReservedArtifactIds = player.privateReservedArtifactIds
+        .filter((id) => id !== artifactId);
+    }
+  }
+  return movedIds;
+}
+
+function removeArtifactFromFoundryStorage(
+  privateState: BlueprintPrivateState,
+  artifactId: string,
+): void {
+  privateState.foundryStoredArtifactIds = (privateState.foundryStoredArtifactIds ?? [])
+    .filter((id) => id !== artifactId);
+  if (privateState.foundryRecoveryArtifactIds) {
+    privateState.foundryRecoveryArtifactIds = privateState.foundryRecoveryArtifactIds
+      .filter((id) => id !== artifactId);
+  }
+}
+
+function completeFoundryClaim(
+  state: GameStateData,
+  player: PlayerGameState,
+  action: ActionPayload,
+): void {
+  if (!action.blueprintAction) return;
+  const foundry = getManifestedDevice(player, "bp_mantle_to_orbit_foundry");
+  const privateState = findPrivateBlueprintState(player, "bp_mantle_to_orbit_foundry");
+  if (!foundry || !privateState) return;
+
+  if (action.blueprintAction === "foundry_recovery") {
+    removeArtifactFromFoundryStorage(privateState, action.cardId!);
+    if ((privateState.foundryStoredArtifactIds?.length ?? 0) === 0) {
+      foundry.state = "ready";
+      foundry.foundryUsesRemaining = 0;
+    }
+    recordBlueprintCivilizationEvent(
+      state,
+      player,
+      "bp_mantle_to_orbit_foundry",
+      "foundry_recovery",
+      `bp-foundry-recovery-v${state.version}-${Date.now()}-${action.cardId}`,
+      "Mantle-to-Orbit Foundry recovered an archived component into operation",
+      action.cardId,
+    );
+    refreshPlayerCivilization(player, state.turnCount);
+    return;
+  }
+
+  if (action.blueprintAction === "foundry_sustainable") {
+    foundry.foundryUsesRemaining = Math.max(0, foundryUsesRemaining(foundry) - 1);
+    delete foundry.foundryTier2Ready;
+    delete foundry.foundryTier3Ready;
+    recordBlueprintCivilizationEvent(
+      state,
+      player,
+      "bp_mantle_to_orbit_foundry",
+      "foundry_sustainable",
+      `bp-foundry-sustainable-v${state.version}-${Date.now()}-${action.cardId}`,
+      "Mantle-to-Orbit Foundry completed a sustainable orbital fabrication",
+      action.cardId,
+    );
+    return;
+  }
+
+  foundry.foundryUsesRemaining = 0;
+  delete foundry.foundryTier2Ready;
+  delete foundry.foundryTier3Ready;
+  const recoverable = state.brokenCovenantDeclared === true;
+  const movedIds = removeFoundryComponentsFromOperation(
+    state,
+    player,
+    privateState,
+  );
+  foundry.state = recoverable && movedIds.length > 0 ? "recovering" : "spent";
+  recordBlueprintCivilizationEvent(
+    state,
+    player,
+    "bp_mantle_to_orbit_foundry",
+    "foundry_overdrive",
+    `bp-foundry-overdrive-v${state.version}-${Date.now()}-${action.cardId}`,
+    recoverable
+      ? `Foundry Overdrive sealed ${movedIds.length} component(s) in Cipher storage for recovery`
+      : `Foundry Overdrive sealed ${movedIds.length} component implementation(s) in Cipher storage`,
+    movedIds.join(","),
+  );
+  refreshPlayerCivilization(player, state.turnCount);
+  pushLog(state, {
+    playerId: player.playerId,
+    playerName: player.playerName,
+    summary: recoverable
+      ? `Mantle-to-Orbit Foundry Overdrive sealed ${movedIds.length} component(s) for free recovery`
+      : `Mantle-to-Orbit Foundry Overdrive sealed ${movedIds.length} component(s) in Cipher storage`,
+    turn: state.roundNumber,
+  });
 }
 
 function affinityWellForPlayerCount(count: number): AffinityCounts {
@@ -958,9 +1734,13 @@ export function getReplayBoardSnapshot(state: GameStateData): InitialBoardSnapsh
 // ─── Game Initialization ─────────────────────────────────────────────────────
 
 export function initializeGame(
-  players: { id: string; name: string }[],
+  players: {
+    id: string;
+    name: string;
+    luminaryArrivalSound?: LuminaryArrivalSoundVariant;
+  }[],
   playerCount: number,
-  victoryRequirement: number = WIN_THRESHOLD,
+  victoryRequirement: number = DEFAULT_VICTORY_REQUIREMENT,
   cinematicMode: "standard" | "epic" = "standard",
   options: InitializeGameOptions = {},
 ): GameStateData {
@@ -1010,22 +1790,46 @@ export function initializeGame(
     deckTier3 = tier3Ids.slice(4);
   }
 
-  const playerStates: PlayerGameState[] = players.map((p) => ({
-    playerId: p.id,
-    playerName: p.name,
-    affinities: zeroAffinities(),
-    bonuses: zeroAffinities(),
-    eminence: 0,
-    reservedArtifactIds: [],
-    privateReservedArtifactIds: [],
-    forgedArtifactIds: [],
-    discountedForgeIds: [],
-    blueprintBlockedCardIds: [],
-    luminaries: [],
-    isConnected: true,
-    plannedAction: null,
-    plannedActionCancelReason: null,
-  }));
+  const playerStates: PlayerGameState[] = players.map((p) => {
+    const blueprintSetup = options.blueprintSetups?.[p.id];
+    return {
+      playerId: p.id,
+      playerName: p.name,
+      luminaryArrivalSound: p.luminaryArrivalSound ?? "standard",
+      affinities: zeroAffinities(),
+      bonuses: zeroAffinities(),
+      eminence: 0,
+      reservedArtifactIds: [],
+      privateReservedArtifactIds: [],
+      forgedArtifactIds: [],
+      artifactForgeCounts: {},
+      civilization: emptyCivilizationState(),
+      assimilatedArtifactIds: [],
+      discountedForgeIds: [],
+      blueprintBlockedCardIds: [],
+      blueprintPrivateStates: (blueprintSetup?.blueprintIds ?? []).map(
+        (blueprintId, slotIndex): BlueprintPrivateState => ({
+          blueprintId,
+          slotIndex,
+          matchedComponentIds: [],
+          manifested: false,
+          secretTargetCardId: null,
+          safePreManifestActionPlayerIds: [],
+          ...(blueprintId === "bp_mantle_to_orbit_foundry"
+            ? { foundryStoredArtifactIds: [] }
+            : {}),
+        }),
+      ),
+      blueprintPresentationVariants: blueprintSetup?.presentationVariants ?? {},
+      manifestedBlueprintDevices: [],
+      tideArchiveForgeAvailable: false,
+      luminaries: [],
+      luminaryAllianceCounts: {},
+      isConnected: true,
+      plannedAction: null,
+      plannedActionCancelReason: null,
+    };
+  });
 
   const startedAt = Date.now();
   const replayFirstPlayerIndex = replayBoard?.firstPlayerId
@@ -1060,7 +1864,7 @@ export function initializeGame(
     roundNumber: 1,
     turnCount: 0,
     phase: "playing",
-    victoryRequirement: Math.max(WIN_THRESHOLD, Math.floor(victoryRequirement)),
+    victoryRequirement: Math.max(MIN_VICTORY_REQUIREMENT, Math.floor(victoryRequirement)),
     cinematicMode: cinematicMode === "epic" ? "epic" : "standard",
     affinityWell: affinityWellForPlayerCount(playerCount),
     forgeTier1: forgeTier1,
@@ -1073,9 +1877,14 @@ export function initializeGame(
     luminaryAffinities: [],
     pendingSummonEvents: [],
     pendingLuminaryActivationEvents: [],
+    pendingBlueprintManifestationEvents: [],
+    pendingBlueprintDetonationEvents: [],
     pendingTurnTransition: null,
+    nullifiedFirstForge: null,
     forgottenHourCycle: {},
     phoenixRecurrence: undefined,
+    brokenCovenantDeclared: false,
+    voidSealOwnerId: null,
     players: playerStates,
     winnerId: null,
     winTriggerLuminaryId: null,
@@ -1093,8 +1902,897 @@ export function initializeGame(
     version: 1,
     burnPile: [],
     burnEvents: [],
+    annihilatedArtifactIds: [],
     coreActionUsed: false,
   };
+}
+
+const TRACE_VEY_ROUTING_NETWORK_ID = 'chronicle_trace:vey_routing_network';
+const TRACE_KEELBORN_ROUTING_NETWORK_ID = 'chronicle_trace:keelborn_routing_network';
+const TRACE_OPENING_PREPAREDNESS_ARTIFACT_IDS = ['t1p03', 't1s04', 't1s06'] as const;
+
+function traceRoutingNetwork(id: string): CivilizationEntity {
+  return {
+    id,
+    kind: 'network',
+    state: 'operational',
+    worldId: null,
+    sourceId: TRACE_CHRONICLE_ID,
+    establishedTurnCount: 0,
+    stateChangedTurnCount: 0,
+    conditionIds: [],
+    historyEvidence: 'recorded',
+  };
+}
+
+function promoteTraceOpeningArtifacts(state: GameStateData): void {
+  TRACE_OPENING_PREPAREDNESS_ARTIFACT_IDS.forEach((artifactId, targetIndex) => {
+    const currentIndex = state.forgeTier1.indexOf(artifactId);
+    if (currentIndex >= 0) {
+      const displaced = state.forgeTier1[targetIndex];
+      state.forgeTier1[targetIndex] = artifactId;
+      if (currentIndex !== targetIndex && displaced) state.forgeTier1[currentIndex] = displaced;
+      return;
+    }
+    const archiveIndex = state.deckTier1.indexOf(artifactId);
+    if (archiveIndex < 0) return;
+    const displaced = state.forgeTier1[targetIndex];
+    state.deckTier1.splice(archiveIndex, 1);
+    state.forgeTier1[targetIndex] = artifactId;
+    if (displaced) state.deckTier1.splice(archiveIndex, 0, displaced);
+  });
+}
+
+/** Apply the authored, server-owned setup for The Trace. */
+export function configureTraceScenario(
+  state: GameStateData,
+  architectPlayerId: string,
+  autonomousPlayerId: string,
+  runKind: ChronicleRunKind,
+): void {
+  const architectIndex = state.players.findIndex((player) => player.playerId === architectPlayerId);
+  const architect = state.players[architectIndex];
+  const autonomous = state.players.find((player) => player.playerId === autonomousPlayerId);
+  if (!architect || !autonomous) throw new Error('The Trace requires both authored participants');
+
+  architect.civName = 'Cantons of Vey';
+  autonomous.civName = 'Keelborn Convoy';
+  architect.blueprintPrivateStates = [];
+  architect.manifestedBlueprintDevices = [];
+  autonomous.blueprintPrivateStates = [];
+  autonomous.manifestedBlueprintDevices = [];
+  architect.civilization = upsertCivilizationEntity(
+    architect.civilization,
+    traceRoutingNetwork(TRACE_VEY_ROUTING_NETWORK_ID),
+  );
+  autonomous.civilization = upsertCivilizationEntity(
+    autonomous.civilization,
+    traceRoutingNetwork(TRACE_KEELBORN_ROUTING_NETWORK_ID),
+  );
+
+  state.traceScenario = {
+    chronicleId: TRACE_CHRONICLE_ID,
+    scenarioId: TRACE_SCENARIO_ID,
+    definitionVersion: TRACE_DEFINITION_VERSION,
+    runKind,
+    architectPlayerId,
+    autonomousPlayerId,
+    phase: 'playing',
+    architectCoreActionCount: 0,
+    guidanceDueAfterCoreActions: TRACE_GUIDANCE_DUE_AFTER_CORE_ACTIONS,
+    guidanceMethod: null,
+    guidanceResolvedAtTurnCount: null,
+    preparednessObjectiveMet: false,
+    preparednessArtifactId: null,
+    outcomeId: null,
+  };
+
+  promoteTraceOpeningArtifacts(state);
+  state.currentPlayerIndex = architectIndex;
+  const startedAt = state.startedAt ?? Date.now();
+  state.openingTurnOrder = {
+    id: `${startedAt}:${architectPlayerId}`,
+    startedAt,
+    firstPlayerId: architectPlayerId,
+    playerIds: state.players.map((player) => player.playerId),
+  };
+  if (state.initialBoard) {
+    state.initialBoard = {
+      ...state.initialBoard,
+      forgeTier1: [...state.forgeTier1],
+      deckTier1: [...state.deckTier1],
+      firstPlayerId: architectPlayerId,
+    };
+  }
+  state.actionLog = [{
+    playerId: architectPlayerId,
+    playerName: architect.playerName,
+    summary: 'enters the Crownfall forecast first',
+    turn: 0,
+  }];
+}
+
+function traceConditionType(
+  method: TraceGuidanceMethod,
+  perspective: 'vey' | 'keelborn',
+): CivilizationCondition['type'] {
+  if (perspective === 'vey') {
+    if (method === 'expose_all_routes') return 'chronicle:trace_open_deliberation';
+    if (method === 'withhold_alternatives') return 'chronicle:trace_curated_brief';
+    return 'chronicle:trace_helm_lock';
+  }
+  if (method === 'expose_all_routes') return 'chronicle:trace_shared_forecast';
+  if (method === 'withhold_alternatives') return 'chronicle:trace_withheld_routes';
+  return 'chronicle:trace_external_helm_lock';
+}
+
+function applyTraceGuidanceCondition(
+  player: PlayerGameState,
+  method: TraceGuidanceMethod,
+  perspective: 'vey' | 'keelborn',
+  turnCount: number,
+): void {
+  const networkId = perspective === 'vey'
+    ? TRACE_VEY_ROUTING_NETWORK_ID
+    : TRACE_KEELBORN_ROUTING_NETWORK_ID;
+  const conditionType = traceConditionType(method, perspective);
+  const eventId = `trace-guidance:${perspective}:${method}`;
+  const condition: CivilizationCondition = {
+    id: `${eventId}:condition`,
+    type: conditionType,
+    coreType: null,
+    target: { kind: 'network', id: networkId },
+    source: { sourceType: 'chronicle', sourceId: TRACE_CHRONICLE_ID },
+    appliedTurnCount: turnCount,
+    resolvedTurnCount: null,
+    historyEvidence: 'recorded',
+  };
+  const resolution = resolveCivilizationEvent({
+    eventId,
+    source: { sourceType: 'chronicle', sourceId: TRACE_CHRONICLE_ID },
+    form: 'contextual',
+    timing: 'trigger_window',
+    pressureTags: ['coordination', 'exposure'],
+    snapshot: buildCivilizationResolutionSnapshot(player.civilization),
+    trajectories: [{
+      id: method,
+      label: conditionType,
+      requirements: [],
+      uncertainty: null,
+      successConsequences: [
+        { type: 'apply_condition', condition },
+        { type: 'record_history', key: 'chronicle.trace.v1:guidance_method', value: method },
+      ],
+      failureConsequences: [],
+    }],
+    selectedTrajectoryId: method,
+  });
+  player.civilization = applyCivilizationResolution(
+    player.civilization,
+    resolution,
+    turnCount,
+    perspective === 'vey'
+      ? 'The Architect altered which Crownfall route became legible.'
+      : 'The Keelborn received the Architect-mediated Crownfall forecast.',
+  ).state;
+}
+
+function resolveTraceGuidance(
+  state: GameStateData,
+  playerId: string,
+  method: TraceGuidanceMethod,
+): { success: boolean; error?: string; changed?: boolean } {
+  const trace = state.traceScenario;
+  if (!trace) return { success: false, error: 'No Chronicle guidance is pending' };
+  if (trace.architectPlayerId !== playerId) {
+    return { success: false, error: 'Only the Architect may guide Crownfall' };
+  }
+  if (trace.guidanceMethod !== null) {
+    return trace.guidanceMethod === method
+      ? { success: true, changed: false }
+      : { success: false, error: 'Crownfall guidance has already been recorded' };
+  }
+  if (trace.phase !== 'awaiting_guidance') {
+    return { success: false, error: 'The Crownfall decision window is not open' };
+  }
+
+  const architect = state.players.find((player) => player.playerId === trace.architectPlayerId);
+  const autonomous = state.players.find((player) => player.playerId === trace.autonomousPlayerId);
+  if (!architect || !autonomous) return { success: false, error: 'Chronicle participants are unavailable' };
+
+  applyTraceGuidanceCondition(architect, method, 'vey', state.turnCount);
+  applyTraceGuidanceCondition(autonomous, method, 'keelborn', state.turnCount);
+  trace.guidanceMethod = method;
+  trace.guidanceResolvedAtTurnCount = state.turnCount;
+  trace.phase = 'guidance_resolved';
+  return { success: true, changed: true };
+}
+
+function traceGuidanceIsDue(state: GameStateData): boolean {
+  const trace = state.traceScenario;
+  return !!trace &&
+    trace.guidanceMethod === null &&
+    trace.phase !== 'finished' &&
+    trace.architectCoreActionCount >= trace.guidanceDueAfterCoreActions;
+}
+
+function updateTraceProgressAfterAction(
+  state: GameStateData,
+  player: PlayerGameState,
+  action: ActionPayload,
+): void {
+  const trace = state.traceScenario;
+  if (!trace || trace.phase === 'finished' || player.playerId !== trace.architectPlayerId) return;
+  if (CORE_ACTIONS.has(action.type)) trace.architectCoreActionCount += 1;
+  if (
+    !trace.preparednessObjectiveMet &&
+    (action.type === 'forge_artifact' || action.type === 'forge_reserved_artifact') &&
+    action.cardId &&
+    player.forgedArtifactIds.includes(action.cardId)
+  ) {
+    const capabilityIds = ARTIFACT_CIVILIZATION_CAPABILITIES_BY_ID[
+      action.cardId as keyof typeof ARTIFACT_CIVILIZATION_CAPABILITIES_BY_ID
+    ] ?? [];
+    if (capabilityIds.some((id) => (TRACE_PREPAREDNESS_CAPABILITY_IDS as readonly string[]).includes(id))) {
+      trace.preparednessObjectiveMet = true;
+      trace.preparednessArtifactId = action.cardId;
+    }
+  }
+}
+
+function applyTraceClosureHistory(
+  state: GameStateData,
+  outcomeId: NonNullable<TraceScenarioState['outcomeId']>,
+): void {
+  const trace = state.traceScenario;
+  if (!trace) return;
+  for (const player of state.players) {
+    const perspective = player.playerId === trace.architectPlayerId ? 'vey' : 'keelborn';
+    const eventId = `trace-closure:${perspective}:${outcomeId}`;
+    const resolution = resolveCivilizationEvent({
+      eventId,
+      source: { sourceType: 'chronicle', sourceId: TRACE_CHRONICLE_ID },
+      form: 'automatic',
+      timing: 'trigger_window',
+      pressureTags: ['disruption', 'coordination'],
+      snapshot: buildCivilizationResolutionSnapshot(player.civilization),
+      trajectories: [{
+        id: outcomeId,
+        label: 'Crownfall historical closure',
+        requirements: [],
+        uncertainty: null,
+        successConsequences: [{
+          type: 'record_history',
+          key: 'chronicle.trace.v1:crownfall_outcome',
+          value: outcomeId,
+        }],
+        failureConsequences: [],
+      }],
+    });
+    player.civilization = applyCivilizationResolution(
+      player.civilization,
+      resolution,
+      state.turnCount,
+      'Crownfall closed with both civilizations still present in the record.',
+    ).state;
+  }
+}
+
+function finalizeTraceScenarioOutcome(state: GameStateData): void {
+  const trace = state.traceScenario;
+  if (!trace || trace.phase === 'finished' || trace.guidanceMethod === null) return;
+  const result = state.winnerId === trace.architectPlayerId ? 'victory' : 'defeat';
+  const outcomeId = traceOutcomeId(trace.guidanceMethod, result);
+  applyTraceClosureHistory(state, outcomeId);
+  trace.outcomeId = outcomeId;
+  trace.phase = 'finished';
+}
+
+const RECURRENCE_MERIDIAN_INDEX_ID = 'chronicle_recurrence:meridian_deep_index';
+const RECURRENCE_ORU_INDEX_ID = 'chronicle_recurrence:oru_deep_index';
+const RECURRENCE_OPENING_PREPAREDNESS_ARTIFACT_IDS = ['t1p03', 't1o03', 't1s06'] as const;
+
+function recurrenceArchiveEntity(id: string): CivilizationEntity {
+  return {
+    id,
+    kind: 'network',
+    state: 'operational',
+    worldId: null,
+    sourceId: RECURRENCE_CHRONICLE_ID,
+    establishedTurnCount: 0,
+    stateChangedTurnCount: 0,
+    conditionIds: [],
+    historyEvidence: 'recorded',
+  };
+}
+
+function promoteRecurrenceOpeningArtifacts(state: GameStateData): void {
+  RECURRENCE_OPENING_PREPAREDNESS_ARTIFACT_IDS.forEach((artifactId, targetIndex) => {
+    const currentIndex = state.forgeTier1.indexOf(artifactId);
+    if (currentIndex >= 0) {
+      const displaced = state.forgeTier1[targetIndex];
+      state.forgeTier1[targetIndex] = artifactId;
+      if (currentIndex !== targetIndex && displaced) state.forgeTier1[currentIndex] = displaced;
+      return;
+    }
+    const archiveIndex = state.deckTier1.indexOf(artifactId);
+    if (archiveIndex < 0) return;
+    const displaced = state.forgeTier1[targetIndex];
+    state.deckTier1.splice(archiveIndex, 1);
+    state.forgeTier1[targetIndex] = artifactId;
+    if (displaced) state.deckTier1.splice(archiveIndex, 0, displaced);
+  });
+}
+
+/** Apply the authored, server-owned setup for The Recurrence. */
+export function configureRecurrenceScenario(
+  state: GameStateData,
+  architectPlayerId: string,
+  autonomousPlayerId: string,
+  runKind: ChronicleRunKind,
+): void {
+  const architectIndex = state.players.findIndex((player) => player.playerId === architectPlayerId);
+  const architect = state.players[architectIndex];
+  const autonomous = state.players.find((player) => player.playerId === autonomousPlayerId);
+  if (!architect || !autonomous) throw new Error('The Recurrence requires both authored participants');
+
+  architect.civName = 'Meridian Houses of Eido';
+  autonomous.civName = 'Oru Current';
+  architect.blueprintPrivateStates = [];
+  architect.manifestedBlueprintDevices = [];
+  autonomous.blueprintPrivateStates = [];
+  autonomous.manifestedBlueprintDevices = [];
+  architect.civilization = upsertCivilizationEntity(
+    architect.civilization,
+    recurrenceArchiveEntity(RECURRENCE_MERIDIAN_INDEX_ID),
+  );
+  autonomous.civilization = upsertCivilizationEntity(
+    autonomous.civilization,
+    recurrenceArchiveEntity(RECURRENCE_ORU_INDEX_ID),
+  );
+
+  state.recurrenceScenario = {
+    chronicleId: RECURRENCE_CHRONICLE_ID,
+    scenarioId: RECURRENCE_SCENARIO_ID,
+    definitionVersion: RECURRENCE_DEFINITION_VERSION,
+    runKind,
+    architectPlayerId,
+    autonomousPlayerId,
+    phase: 'playing',
+    architectCoreActionCount: 0,
+    custodyDueAfterCoreActions: RECURRENCE_CUSTODY_DUE_AFTER_CORE_ACTIONS,
+    custodyMethod: null,
+    custodyResolvedAtTurnCount: null,
+    preparednessObjectiveMet: false,
+    preparednessArtifactId: null,
+    outcomeId: null,
+  };
+
+  promoteRecurrenceOpeningArtifacts(state);
+  state.currentPlayerIndex = architectIndex;
+  const startedAt = state.startedAt ?? Date.now();
+  state.openingTurnOrder = {
+    id: `${startedAt}:${architectPlayerId}`,
+    startedAt,
+    firstPlayerId: architectPlayerId,
+    playerIds: state.players.map((player) => player.playerId),
+  };
+  if (state.initialBoard) {
+    state.initialBoard = {
+      ...state.initialBoard,
+      forgeTier1: [...state.forgeTier1],
+      deckTier1: [...state.deckTier1],
+      firstPlayerId: architectPlayerId,
+    };
+  }
+  state.actionLog = [{
+    playerId: architectPlayerId,
+    playerName: architect.playerName,
+    summary: 'enters the White Return record first',
+    turn: 0,
+  }];
+}
+
+function recurrenceConditionType(
+  method: RecurrenceCustodyMethod,
+  perspective: 'meridian' | 'oru',
+): CivilizationCondition['type'] {
+  if (perspective === 'meridian') {
+    if (method === 'publish_complete_index') return 'chronicle:recurrence_open_index';
+    if (method === 'seal_operational_grammar') return 'chronicle:recurrence_warning_custody';
+    return 'chronicle:recurrence_meridian_reader';
+  }
+  if (method === 'publish_complete_index') return 'chronicle:recurrence_public_grammar';
+  if (method === 'seal_operational_grammar') return 'chronicle:recurrence_command_boundary';
+  return 'chronicle:recurrence_oru_reader';
+}
+
+function applyRecurrenceCustodyCondition(
+  player: PlayerGameState,
+  method: RecurrenceCustodyMethod,
+  perspective: 'meridian' | 'oru',
+  turnCount: number,
+): void {
+  const entityId = perspective === 'meridian' ? RECURRENCE_MERIDIAN_INDEX_ID : RECURRENCE_ORU_INDEX_ID;
+  const conditionType = recurrenceConditionType(method, perspective);
+  const eventId = `recurrence-custody:${perspective}:${method}`;
+  const condition: CivilizationCondition = {
+    id: `${eventId}:condition`,
+    type: conditionType,
+    coreType: null,
+    target: { kind: 'network', id: entityId },
+    source: { sourceType: 'chronicle', sourceId: RECURRENCE_CHRONICLE_ID },
+    appliedTurnCount: turnCount,
+    resolvedTurnCount: null,
+    historyEvidence: 'recorded',
+  };
+  const resolution = resolveCivilizationEvent({
+    eventId,
+    source: { sourceType: 'chronicle', sourceId: RECURRENCE_CHRONICLE_ID },
+    form: 'contextual',
+    timing: 'trigger_window',
+    pressureTags: ['exposure', 'transformation'],
+    snapshot: buildCivilizationResolutionSnapshot(player.civilization),
+    trajectories: [{
+      id: method,
+      label: conditionType,
+      requirements: [],
+      uncertainty: null,
+      successConsequences: [
+        { type: 'apply_condition', condition },
+        { type: 'record_history', key: 'chronicle.recurrence.v1:custody_method', value: method },
+      ],
+      failureConsequences: [],
+    }],
+    selectedTrajectoryId: method,
+  });
+  player.civilization = applyCivilizationResolution(
+    player.civilization,
+    resolution,
+    turnCount,
+    perspective === 'meridian'
+      ? 'The Architect altered who could hold and act on the Deep Index.'
+      : 'The Oru received a custody relation shaped by the Architect.',
+  ).state;
+}
+
+function resolveRecurrenceCustody(
+  state: GameStateData,
+  playerId: string,
+  method: RecurrenceCustodyMethod,
+): { success: boolean; error?: string; changed?: boolean } {
+  const recurrence = state.recurrenceScenario;
+  if (!recurrence) return { success: false, error: 'No Chronicle custody decision is pending' };
+  if (recurrence.architectPlayerId !== playerId) {
+    return { success: false, error: 'Only the Architect may decide custody of the Deep Index' };
+  }
+  if (recurrence.custodyMethod !== null) {
+    return recurrence.custodyMethod === method
+      ? { success: true, changed: false }
+      : { success: false, error: 'Deep Index custody has already been recorded' };
+  }
+  if (recurrence.phase !== 'awaiting_custody') {
+    return { success: false, error: 'The Deep Index custody window is not open' };
+  }
+
+  const architect = state.players.find((player) => player.playerId === recurrence.architectPlayerId);
+  const autonomous = state.players.find((player) => player.playerId === recurrence.autonomousPlayerId);
+  if (!architect || !autonomous) return { success: false, error: 'Chronicle participants are unavailable' };
+
+  applyRecurrenceCustodyCondition(architect, method, 'meridian', state.turnCount);
+  applyRecurrenceCustodyCondition(autonomous, method, 'oru', state.turnCount);
+  recurrence.custodyMethod = method;
+  recurrence.custodyResolvedAtTurnCount = state.turnCount;
+  recurrence.phase = 'custody_resolved';
+  return { success: true, changed: true };
+}
+
+function recurrenceCustodyIsDue(state: GameStateData): boolean {
+  const recurrence = state.recurrenceScenario;
+  return !!recurrence && recurrence.custodyMethod === null && recurrence.phase !== 'finished' &&
+    recurrence.architectCoreActionCount >= recurrence.custodyDueAfterCoreActions;
+}
+
+function updateRecurrenceProgressAfterAction(
+  state: GameStateData,
+  player: PlayerGameState,
+  action: ActionPayload,
+): void {
+  const recurrence = state.recurrenceScenario;
+  if (!recurrence || recurrence.phase === 'finished' || player.playerId !== recurrence.architectPlayerId) return;
+  if (CORE_ACTIONS.has(action.type)) recurrence.architectCoreActionCount += 1;
+  if (
+    !recurrence.preparednessObjectiveMet &&
+    (action.type === 'forge_artifact' || action.type === 'forge_reserved_artifact') &&
+    action.cardId && player.forgedArtifactIds.includes(action.cardId)
+  ) {
+    const capabilityIds = ARTIFACT_CIVILIZATION_CAPABILITIES_BY_ID[
+      action.cardId as keyof typeof ARTIFACT_CIVILIZATION_CAPABILITIES_BY_ID
+    ] ?? [];
+    if (capabilityIds.some((id) => (RECURRENCE_PREPAREDNESS_CAPABILITY_IDS as readonly string[]).includes(id))) {
+      recurrence.preparednessObjectiveMet = true;
+      recurrence.preparednessArtifactId = action.cardId;
+    }
+  }
+}
+
+function applyRecurrenceClosureHistory(
+  state: GameStateData,
+  outcomeId: NonNullable<RecurrenceScenarioState['outcomeId']>,
+): void {
+  const recurrence = state.recurrenceScenario;
+  if (!recurrence) return;
+  for (const player of state.players) {
+    const perspective = player.playerId === recurrence.architectPlayerId ? 'meridian' : 'oru';
+    const eventId = `recurrence-closure:${perspective}:${outcomeId}`;
+    const resolution = resolveCivilizationEvent({
+      eventId,
+      source: { sourceType: 'chronicle', sourceId: RECURRENCE_CHRONICLE_ID },
+      form: 'automatic',
+      timing: 'trigger_window',
+      pressureTags: ['exposure', 'transformation'],
+      snapshot: buildCivilizationResolutionSnapshot(player.civilization),
+      trajectories: [{
+        id: outcomeId,
+        label: 'White Return historical closure',
+        requirements: [], uncertainty: null,
+        successConsequences: [{
+          type: 'record_history', key: 'chronicle.recurrence.v1:white_return_outcome', value: outcomeId,
+        }],
+        failureConsequences: [],
+      }],
+    });
+    player.civilization = applyCivilizationResolution(
+      player.civilization,
+      resolution,
+      state.turnCount,
+      'The White Return closed with both civilizations separately preserved in the record.',
+    ).state;
+  }
+}
+
+function finalizeRecurrenceScenarioOutcome(state: GameStateData): void {
+  const recurrence = state.recurrenceScenario;
+  if (!recurrence || recurrence.phase === 'finished' || recurrence.custodyMethod === null) return;
+  const result = state.winnerId === recurrence.architectPlayerId ? 'victory' : 'defeat';
+  const outcomeId = recurrenceOutcomeId(recurrence.custodyMethod, result);
+  applyRecurrenceClosureHistory(state, outcomeId);
+  recurrence.outcomeId = outcomeId;
+  recurrence.phase = 'finished';
+}
+
+const TRIANGULATION_DEME_BEARING_ID = 'ent_deme_inertial_spine';
+const TRIANGULATION_MYRIA_BEARING_ID = 'ent_myria_living_forecast';
+const TRIANGULATION_VESPER_BEARING_ID = 'ent_vesper_phase_array';
+const TRIANGULATION_LATTICE_ID = 'ent_three_bearing_lattice';
+const TRIANGULATION_OPENING_PREPAREDNESS_ARTIFACT_IDS = ['t1p03', 't1o06', 't1r08'] as const;
+
+function triangulationNetworkEntity(id: string): CivilizationEntity {
+  return {
+    id,
+    kind: 'network',
+    state: 'operational',
+    worldId: null,
+    sourceId: TRIANGULATION_CHRONICLE_ID,
+    establishedTurnCount: 0,
+    stateChangedTurnCount: 0,
+    conditionIds: [],
+    historyEvidence: 'recorded',
+  };
+}
+
+function promoteTriangulationOpeningArtifacts(state: GameStateData): void {
+  TRIANGULATION_OPENING_PREPAREDNESS_ARTIFACT_IDS.forEach((artifactId, targetIndex) => {
+    const currentIndex = state.forgeTier1.indexOf(artifactId);
+    if (currentIndex >= 0) {
+      const displaced = state.forgeTier1[targetIndex];
+      state.forgeTier1[targetIndex] = artifactId;
+      if (currentIndex !== targetIndex && displaced) state.forgeTier1[currentIndex] = displaced;
+      return;
+    }
+    const archiveIndex = state.deckTier1.indexOf(artifactId);
+    if (archiveIndex < 0) return;
+    const displaced = state.forgeTier1[targetIndex];
+    state.deckTier1.splice(archiveIndex, 1);
+    state.forgeTier1[targetIndex] = artifactId;
+    if (displaced) state.deckTier1.splice(archiveIndex, 0, displaced);
+  });
+}
+
+/** Apply the authored, three-seat setup for The Triangulation. */
+export function configureTriangulationScenario(
+  state: GameStateData,
+  architectPlayerId: string,
+  myriaPlayerId: string,
+  vesperPlayerId: string,
+  runKind: ChronicleRunKind,
+  priorMemoryLines: readonly string[] = [],
+): void {
+  const architectIndex = state.players.findIndex((player) => player.playerId === architectPlayerId);
+  const architect = state.players[architectIndex];
+  const myria = state.players.find((player) => player.playerId === myriaPlayerId);
+  const vesper = state.players.find((player) => player.playerId === vesperPlayerId);
+  if (!architect || !myria || !vesper) {
+    throw new Error('The Triangulation requires Deme, Myria, and Vesper');
+  }
+
+  const participants = [
+    { player: architect, civName: 'Deme Assemblies', bearingId: TRIANGULATION_DEME_BEARING_ID },
+    { player: myria, civName: 'Myriad Groves', bearingId: TRIANGULATION_MYRIA_BEARING_ID },
+    { player: vesper, civName: 'Vesper Choir', bearingId: TRIANGULATION_VESPER_BEARING_ID },
+  ];
+  for (const participant of participants) {
+    participant.player.civName = participant.civName;
+    participant.player.blueprintPrivateStates = [];
+    participant.player.manifestedBlueprintDevices = [];
+    participant.player.civilization = upsertCivilizationEntity(
+      participant.player.civilization,
+      triangulationNetworkEntity(participant.bearingId),
+    );
+    participant.player.civilization = upsertCivilizationEntity(
+      participant.player.civilization,
+      triangulationNetworkEntity(TRIANGULATION_LATTICE_ID),
+    );
+  }
+
+  state.triangulationScenario = {
+    chronicleId: TRIANGULATION_CHRONICLE_ID,
+    scenarioId: TRIANGULATION_SCENARIO_ID,
+    definitionVersion: TRIANGULATION_DEFINITION_VERSION,
+    runKind,
+    architectPlayerId,
+    myriaPlayerId,
+    vesperPlayerId,
+    phase: 'playing',
+    architectCoreActions: 0,
+    alignmentDueAfterActions: TRIANGULATION_ALIGNMENT_DUE_AFTER_CORE_ACTIONS,
+    coordinationArchitecture: null,
+    choiceResolvedAtTurn: null,
+    preparednessMet: false,
+    preparednessCapabilityId: null,
+    preparednessArtifactId: null,
+    priorMemoryLines: [...priorMemoryLines].slice(0, 2),
+    referenceCivilization: null,
+    outcomeId: null,
+  };
+
+  promoteTriangulationOpeningArtifacts(state);
+  state.currentPlayerIndex = architectIndex;
+  const startedAt = state.startedAt ?? Date.now();
+  state.openingTurnOrder = {
+    id: `${startedAt}:${architectPlayerId}`,
+    startedAt,
+    firstPlayerId: architectPlayerId,
+    playerIds: state.players.map((player) => player.playerId),
+  };
+  if (state.initialBoard) {
+    state.initialBoard = {
+      ...state.initialBoard,
+      forgeTier1: [...state.forgeTier1],
+      deckTier1: [...state.deckTier1],
+      firstPlayerId: architectPlayerId,
+    };
+  }
+  state.actionLog = [{
+    playerId: architectPlayerId,
+    playerName: architect.playerName,
+    summary: 'enters the Blind Transit record first',
+    turn: 0,
+  }];
+}
+
+function triangulationPerspective(
+  scenario: TriangulationScenarioState,
+  playerId: string,
+): TriangulationReferenceCivilization {
+  if (playerId === scenario.myriaPlayerId) return 'myria';
+  if (playerId === scenario.vesperPlayerId) return 'vesper';
+  return 'deme';
+}
+
+function triangulationBearingId(perspective: TriangulationReferenceCivilization): string {
+  if (perspective === 'myria') return TRIANGULATION_MYRIA_BEARING_ID;
+  if (perspective === 'vesper') return TRIANGULATION_VESPER_BEARING_ID;
+  return TRIANGULATION_DEME_BEARING_ID;
+}
+
+function triangulationConditionTypes(
+  architecture: TriangulationCoordinationArchitecture,
+  perspective: TriangulationReferenceCivilization,
+): { participant: CivilizationCondition['type']; lattice: CivilizationCondition['type'] } {
+  if (architecture === 'preserve_independent_frames') {
+    return {
+      participant: `chronicle:triangulation_${perspective}_bearing`,
+      lattice: 'chronicle:triangulation_parallax_compact',
+    };
+  }
+  if (architecture === 'establish_unowned_measure') {
+    return {
+      participant: `chronicle:triangulation_${perspective}_translated`,
+      lattice: 'chronicle:triangulation_common_measure',
+    };
+  }
+  return {
+    participant: `chronicle:triangulation_${perspective}_constituent`,
+    lattice: 'chronicle:triangulation_fourth_vector',
+  };
+}
+
+function applyTriangulationAlignmentCondition(
+  player: PlayerGameState,
+  architecture: TriangulationCoordinationArchitecture,
+  perspective: TriangulationReferenceCivilization,
+  turnCount: number,
+): void {
+  const types = triangulationConditionTypes(architecture, perspective);
+  const eventId = `triangulation-alignment:${perspective}:${architecture}`;
+  const conditions: CivilizationCondition[] = [
+    {
+      id: `${eventId}:participant`,
+      type: types.participant,
+      coreType: null,
+      target: { kind: 'network', id: triangulationBearingId(perspective) },
+      source: { sourceType: 'chronicle', sourceId: TRIANGULATION_CHRONICLE_ID },
+      appliedTurnCount: turnCount,
+      resolvedTurnCount: null,
+      historyEvidence: 'recorded',
+    },
+    {
+      id: `${eventId}:lattice`,
+      type: types.lattice,
+      coreType: null,
+      target: { kind: 'network', id: TRIANGULATION_LATTICE_ID },
+      source: { sourceType: 'chronicle', sourceId: TRIANGULATION_CHRONICLE_ID },
+      appliedTurnCount: turnCount,
+      resolvedTurnCount: null,
+      historyEvidence: 'recorded',
+    },
+  ];
+  const resolution = resolveCivilizationEvent({
+    eventId,
+    source: { sourceType: 'chronicle', sourceId: TRIANGULATION_CHRONICLE_ID },
+    form: 'contextual',
+    timing: 'trigger_window',
+    pressureTags: ['coordination', 'transformation', 'exposure'],
+    snapshot: buildCivilizationResolutionSnapshot(player.civilization),
+    trajectories: [{
+      id: architecture,
+      label: types.lattice,
+      requirements: [],
+      uncertainty: null,
+      successConsequences: [
+        ...conditions.map((condition) => ({ type: 'apply_condition' as const, condition })),
+        { type: 'record_history', key: 'chronicle.triangulation.v1:coordination_architecture', value: architecture },
+      ],
+      failureConsequences: [],
+    }],
+    selectedTrajectoryId: architecture,
+  });
+  player.civilization = applyCivilizationResolution(
+    player.civilization,
+    resolution,
+    turnCount,
+    'The Three-Bearing Lattice received a coordination architecture without erasing its witnesses.',
+  ).state;
+}
+
+function resolveTriangulationAlignment(
+  state: GameStateData,
+  playerId: string,
+  architecture: TriangulationCoordinationArchitecture,
+): { success: boolean; error?: string; changed?: boolean } {
+  const scenario = state.triangulationScenario;
+  if (!scenario) return { success: false, error: 'No Alignment is pending' };
+  if (scenario.architectPlayerId !== playerId) {
+    return { success: false, error: 'Only the Architect may establish the Alignment' };
+  }
+  if (scenario.coordinationArchitecture !== null) {
+    return scenario.coordinationArchitecture === architecture
+      ? { success: true, changed: false }
+      : { success: false, error: 'The Alignment architecture has already been recorded' };
+  }
+  if (scenario.phase !== 'awaiting_alignment') {
+    return { success: false, error: 'The Alignment window is not open' };
+  }
+
+  for (const participant of state.players) {
+    applyTriangulationAlignmentCondition(
+      participant,
+      architecture,
+      triangulationPerspective(scenario, participant.playerId),
+      state.turnCount,
+    );
+  }
+  scenario.coordinationArchitecture = architecture;
+  scenario.choiceResolvedAtTurn = state.turnCount;
+  scenario.phase = 'alignment_resolved';
+  return { success: true, changed: true };
+}
+
+function triangulationAlignmentIsDue(state: GameStateData): boolean {
+  const scenario = state.triangulationScenario;
+  return !!scenario && scenario.coordinationArchitecture === null && scenario.phase !== 'finished' &&
+    scenario.architectCoreActions >= scenario.alignmentDueAfterActions;
+}
+
+function updateTriangulationProgressAfterAction(
+  state: GameStateData,
+  player: PlayerGameState,
+  action: ActionPayload,
+): void {
+  const scenario = state.triangulationScenario;
+  if (!scenario || scenario.phase === 'finished' || player.playerId !== scenario.architectPlayerId) return;
+  if (CORE_ACTIONS.has(action.type)) scenario.architectCoreActions += 1;
+  if (
+    !scenario.preparednessMet &&
+    (action.type === 'forge_artifact' || action.type === 'forge_reserved_artifact') &&
+    action.cardId && player.forgedArtifactIds.includes(action.cardId)
+  ) {
+    const capabilities = ARTIFACT_CIVILIZATION_CAPABILITIES_BY_ID[
+      action.cardId as keyof typeof ARTIFACT_CIVILIZATION_CAPABILITIES_BY_ID
+    ] ?? [];
+    const capability = capabilities.find((id) =>
+      (TRIANGULATION_PREPAREDNESS_CAPABILITY_IDS as readonly string[]).includes(id),
+    );
+    if (capability) {
+      scenario.preparednessMet = true;
+      scenario.preparednessCapabilityId = capability;
+      scenario.preparednessArtifactId = action.cardId;
+    }
+  }
+}
+
+function applyTriangulationClosureHistory(
+  state: GameStateData,
+  outcomeId: NonNullable<TriangulationScenarioState['outcomeId']>,
+): void {
+  const scenario = state.triangulationScenario;
+  if (!scenario) return;
+  for (const player of state.players) {
+    const perspective = triangulationPerspective(scenario, player.playerId);
+    const eventId = `triangulation-closure:${perspective}:${outcomeId}`;
+    const resolution = resolveCivilizationEvent({
+      eventId,
+      source: { sourceType: 'chronicle', sourceId: TRIANGULATION_CHRONICLE_ID },
+      form: 'automatic',
+      timing: 'trigger_window',
+      pressureTags: ['coordination', 'transformation', 'exposure'],
+      snapshot: buildCivilizationResolutionSnapshot(player.civilization),
+      trajectories: [{
+        id: outcomeId,
+        label: 'Blind Transit historical closure',
+        requirements: [],
+        uncertainty: null,
+        successConsequences: [{
+          type: 'record_history',
+          key: 'chronicle.triangulation.v1:blind_transit_outcome',
+          value: outcomeId,
+        }],
+        failureConsequences: [],
+      }],
+      selectedTrajectoryId: outcomeId,
+    });
+    player.civilization = applyCivilizationResolution(
+      player.civilization,
+      resolution,
+      state.turnCount,
+      'Blind Transit closed with Deme, Myria, and Vesper preserved as historical participants.',
+    ).state;
+  }
+}
+
+function finalizeTriangulationScenarioOutcome(state: GameStateData): void {
+  const scenario = state.triangulationScenario;
+  if (!scenario || scenario.phase === 'finished' || scenario.coordinationArchitecture === null) return;
+  let reference: TriangulationReferenceCivilization;
+  if (state.winnerId === scenario.myriaPlayerId) reference = 'myria';
+  else if (state.winnerId === scenario.vesperPlayerId) reference = 'vesper';
+  else reference = 'deme';
+  const outcomeId = triangulationOutcomeId(scenario.coordinationArchitecture, reference);
+  applyTriangulationClosureHistory(state, outcomeId);
+  scenario.referenceCivilization = reference;
+  scenario.outcomeId = outcomeId;
+  scenario.phase = 'finished';
 }
 
 /** Actions that consume the player's one core action per turn. */
@@ -1122,12 +2820,15 @@ type ActionType =
   | "toggle_luminary_affinity"
   | "resolve_summon"
   | "resolve_luminary_activation"
+  | "resolve_blueprint_manifestation"
+  | "resolve_blueprint_detonation"
   | "plan_action"
   | "execute_plan"
   | "cancel_plan"
   | "tutorial_fast_forward"
   | "set_civ_name"
-  | "choose_luminary_order";
+  | "choose_luminary_order"
+  | "resolve_chronicle_choice";
 
 export interface ActionPayload {
   type: ActionType;
@@ -1137,12 +2838,22 @@ export interface ActionPayload {
   returnAffinities?: Partial<AffinityCounts>;
   cardId?: string;
   tier?: 1 | 2 | 3;
+  /** Explicit Project claim path; absent means an ordinary Forge. */
+  blueprintAction?: BlueprintClaimAction;
   luminaryId?: string;
   eventId?: string;
   plannedActionData?: ActionPayload;
   civName?: string;
   /** Ordered list of luminaryIds for choose_luminary_order action. */
   orderedIds?: string[];
+  /** The Trace guidance method selected by the Architect. */
+  traceGuidanceMethod?: TraceGuidanceMethod;
+  /** The Recurrence custody method selected by the Architect. */
+  recurrenceCustodyMethod?: RecurrenceCustodyMethod;
+  /** The Triangulation coordination architecture selected by the Architect. */
+  triangulationCoordinationArchitecture?: TriangulationCoordinationArchitecture;
+  /** @deprecated Retained for wire compatibility; Void Seal no longer has an effect. */
+  voidSealAffinity?: StandardAffinityKey;
 }
 
 // ─── Luminary Affinity Helpers ────────────────────────────────────────────────
@@ -1207,6 +2918,510 @@ function effectiveCost(
   return result;
 }
 
+function getManifestedDevice(
+  player: PlayerGameState,
+  blueprintId: BlueprintId,
+): ManifestedDevicePublicState | undefined {
+  return player.manifestedBlueprintDevices?.find(
+    (device) => device.blueprintId === blueprintId,
+  );
+}
+
+function foundryUsesRemaining(device: ManifestedDevicePublicState): number {
+  if (typeof device.foundryUsesRemaining === "number") {
+    return Math.max(0, Math.min(2, Math.floor(device.foundryUsesRemaining)));
+  }
+  if (device.state === "spent" || device.state === "recovering") return 0;
+  const legacyUses = Number(device.foundryTier2Ready === true) +
+    Number(device.foundryTier3Ready === true);
+  return legacyUses > 0 ? legacyUses : 2;
+}
+
+function applyFoundryForgeCost(
+  card: ArtifactCard,
+  baseCost: AffinityCounts,
+): AffinityCounts {
+  const result = { ...baseCost };
+  for (const affinity of STANDARD_AFFINITY_KEYS) {
+    if (card.cost[affinity] > 0 && result[affinity] > 0) {
+      result[affinity]--;
+    }
+  }
+  return result;
+}
+
+function validateFoundryClaim(
+  player: PlayerGameState,
+  action: ActionPayload,
+  card: ArtifactCard,
+): string | null {
+  if (!action.blueprintAction) return null;
+  const foundry = getManifestedDevice(player, "bp_mantle_to_orbit_foundry");
+  const privateState = findPrivateBlueprintState(player, "bp_mantle_to_orbit_foundry");
+  if (!foundry || !privateState?.manifested) return "Mantle-to-Orbit Foundry is not active";
+
+  if (action.blueprintAction === "foundry_recovery") {
+    if (foundry.state !== "recovering") return "Foundry recovery is not active";
+    if (!foundryStoredArtifactIds(player).includes(card.id)) {
+      return "Artifact is not in the Foundry recovery group";
+    }
+    if (!player.reservedArtifactIds.includes(card.id)) {
+      return "Foundry component is not in Cipher storage";
+    }
+    return card.tier === 1 ? null : "Only Tier I Foundry components can be recovered";
+  }
+
+  if (foundry.state !== "ready") return "Mantle-to-Orbit Foundry is not active";
+  if (card.tier !== 2) return "Foundry Forge can claim only face-up Tier II Artifacts";
+  const usesRemaining = foundryUsesRemaining(foundry);
+  if (action.blueprintAction === "foundry_sustainable" && usesRemaining <= 0) {
+    return "Foundry sustainable uses are exhausted; Overdrive is required";
+  }
+  if (action.blueprintAction === "foundry_overdrive" && usesRemaining > 0) {
+    return "Foundry Overdrive is available only after both sustainable uses";
+  }
+  return null;
+}
+
+function blueprintVariant(
+  player: PlayerGameState,
+  blueprintId: BlueprintId,
+): BlueprintPresentationVariant {
+  return player.blueprintPresentationVariants?.[blueprintId] ?? "armored";
+}
+
+function eligibleBlueprintArtifactIds(player: PlayerGameState): Set<string> {
+  const blocked = new Set(player.blueprintBlockedCardIds ?? []);
+  return new Set(
+    [...(player.forgedArtifactIds ?? [])]
+      .filter((artifactId) => !blocked.has(artifactId)),
+  );
+}
+
+function findPrivateBlueprintState(
+  player: PlayerGameState,
+  blueprintId: BlueprintId,
+): BlueprintPrivateState | undefined {
+  return player.blueprintPrivateStates?.find(
+    (blueprint) => blueprint.blueprintId === blueprintId,
+  );
+}
+
+function randomFaceUpTierTwo(state: GameStateData): string | null {
+  if (state.forgeTier2.length === 0) return null;
+  return state.forgeTier2[Math.floor(Math.random() * state.forgeTier2.length)] ?? null;
+}
+
+function retargetUnavailableAntimatterCharges(state: GameStateData): void {
+  for (const owner of state.players) {
+    const privateState = findPrivateBlueprintState(owner, "bp_antimatter_detonator");
+    const device = getManifestedDevice(owner, "bp_antimatter_detonator");
+    if (!privateState?.manifested || device?.state !== "armed") continue;
+    if ((privateState.safePreManifestActionPlayerIds?.length ?? 0) > 0) {
+      privateState.secretTargetCardId = null;
+      continue;
+    }
+    if (
+      privateState.secretTargetCardId &&
+      state.forgeTier2.includes(privateState.secretTargetCardId)
+    ) {
+      continue;
+    }
+    privateState.secretTargetCardId = randomFaceUpTierTwo(state);
+  }
+}
+
+function settlePreManifestAction(state: GameStateData, playerId: string): void {
+  for (const owner of state.players) {
+    for (const privateState of owner.blueprintPrivateStates ?? []) {
+      if (!privateState.safePreManifestActionPlayerIds?.includes(playerId)) continue;
+      privateState.safePreManifestActionPlayerIds =
+        privateState.safePreManifestActionPlayerIds.filter((id) => id !== playerId);
+    }
+  }
+  retargetUnavailableAntimatterCharges(state);
+}
+
+function checkBlueprintManifestations(state: GameStateData, player: PlayerGameState): void {
+  const eligibleArtifacts = eligibleBlueprintArtifactIds(player);
+  const privateStates = [...(player.blueprintPrivateStates ?? [])]
+    .sort((left, right) => left.slotIndex - right.slotIndex);
+
+  for (const privateState of privateStates) {
+    const definition = BLUEPRINT_DEFINITIONS[privateState.blueprintId];
+    if (!definition) continue;
+    privateState.matchedComponentIds = definition.components
+      .map((component) => component.artifactId)
+      .filter((artifactId) => eligibleArtifacts.has(artifactId));
+    if (privateState.manifested) continue;
+    if (privateState.matchedComponentIds.length !== definition.components.length) continue;
+
+    privateState.manifested = true;
+    const presentationVariant = blueprintVariant(player, privateState.blueprintId);
+    const device: ManifestedDevicePublicState = {
+      blueprintId: privateState.blueprintId,
+      ownerPlayerId: player.playerId,
+      slotIndex: privateState.slotIndex,
+      state: definition.initialDeviceState,
+      presentationVariant,
+      ...(privateState.blueprintId === "bp_mantle_to_orbit_foundry"
+        ? { foundryUsesRemaining: 2 }
+        : {}),
+      ...(privateState.blueprintId === "bp_ascension_registry"
+        ? { ascensionDeferrals: 0 }
+        : {}),
+    };
+    if (!player.manifestedBlueprintDevices) player.manifestedBlueprintDevices = [];
+    player.manifestedBlueprintDevices.push(device);
+
+    if (privateState.blueprintId === "bp_antimatter_detonator") {
+      privateState.safePreManifestActionPlayerIds = state.players
+        .filter((candidate) => candidate.plannedAction !== null)
+        .map((candidate) => candidate.playerId);
+      privateState.secretTargetCardId = privateState.safePreManifestActionPlayerIds.length > 0
+        ? null
+        : randomFaceUpTierTwo(state);
+    } else if (
+      privateState.blueprintId === "bp_mantle_to_orbit_foundry" ||
+      privateState.blueprintId === "bp_worldshield_covenant"
+    ) {
+      player.eminence += 1;
+    }
+
+    const event: BlueprintManifestationEvent = {
+      eventId: `${privateState.blueprintId}-manifest-v${state.version}-${Date.now()}-${privateState.slotIndex}`,
+      blueprintId: privateState.blueprintId,
+      ownerPlayerId: player.playerId,
+      slotIndex: privateState.slotIndex,
+      presentationVariant,
+      createdAt: Date.now(),
+    };
+    state.pendingBlueprintManifestationEvents.push(event);
+    pushLog(state, {
+      playerId: player.playerId,
+      playerName: player.playerName,
+      summary: `${definition.name} manifested`,
+      turn: state.roundNumber,
+    });
+    recordBlueprintCivilizationEvent(
+      state,
+      player,
+      privateState.blueprintId,
+      "manifestation",
+      event.eventId,
+      `${definition.name} manifested as ${definition.civilization.projectForm}`,
+    );
+  }
+  refreshPlayerCivilization(player, state.turnCount);
+}
+
+function hasLegalTierTwoClaimAtTurnStart(
+  state: GameStateData,
+  player: PlayerGameState,
+): boolean {
+  const bonuses = effectiveAffinityBonuses(state, player);
+  const foundry = getManifestedDevice(player, "bp_mantle_to_orbit_foundry");
+  const canUseFoundry = foundry?.state === "ready";
+
+  for (const artifactId of state.forgeTier2) {
+    const card = CARD_MAP.get(artifactId);
+    if (!card) continue;
+    const ordinaryCost = effectiveCost(card, player, bonuses);
+    if (canAfford(ordinaryCost, player.affinities)) return true;
+    if (
+      canUseFoundry &&
+      canAfford(applyFoundryForgeCost(card, ordinaryCost), player.affinities)
+    ) {
+      return true;
+    }
+  }
+
+  if (
+    player.tideArchiveForgeAvailable &&
+    state.deckTier2[0]
+  ) {
+    const topCard = CARD_MAP.get(state.deckTier2[0]);
+    if (topCard && canAfford(effectiveCost(topCard, player, bonuses), player.affinities)) {
+      return true;
+    }
+  }
+
+  if (
+    ordinaryEncryptedCount(player) < 3 &&
+    !isForgottenHourBlockingPlayer(state, player.playerId)
+  ) {
+    if (state.deckTier2.length > 0) return true;
+    if (state.forgeTier2.some(
+      (artifactId) => !markerHasBrand(state.artifactMarkers?.[artifactId], "nullified"),
+    )) {
+      return true;
+    }
+  }
+
+  return false;
+}
+
+function beginAscensionRegistryObservation(
+  state: GameStateData,
+  observedPlayer: PlayerGameState,
+): void {
+  const hasLegalClaim = hasLegalTierTwoClaimAtTurnStart(state, observedPlayer);
+  for (const owner of state.players) {
+    const device = getManifestedDevice(owner, "bp_ascension_registry");
+    const privateState = findPrivateBlueprintState(owner, "bp_ascension_registry");
+    if (!device || !privateState || owner.playerId === observedPlayer.playerId) continue;
+    privateState.ascensionObservedPlayerId = null;
+    privateState.ascensionObservedTurnCount = null;
+    if (device.state !== "ready" || !hasLegalClaim) continue;
+    privateState.ascensionObservedPlayerId = observedPlayer.playerId;
+    privateState.ascensionObservedTurnCount = state.turnCount;
+  }
+}
+
+function clearAscensionRegistryDeferrals(
+  state: GameStateData,
+  claimantPlayerId: string,
+): void {
+  for (const owner of state.players) {
+    const device = getManifestedDevice(owner, "bp_ascension_registry");
+    const privateState = findPrivateBlueprintState(owner, "bp_ascension_registry");
+    if (!device || !privateState) continue;
+    if ((device.ascensionDeferrals ?? 0) > 0) {
+      device.ascensionDeferrals = 0;
+      pushLog(state, {
+        playerId: owner.playerId,
+        playerName: owner.playerName,
+        summary: "Ascension Registry cleared its Deferral record after a legal Tier II claim",
+        turn: state.roundNumber,
+      });
+    }
+    if (privateState.ascensionObservedPlayerId === claimantPlayerId) {
+      privateState.ascensionObservedPlayerId = null;
+      privateState.ascensionObservedTurnCount = null;
+    }
+  }
+}
+
+function settleAscensionRegistryObservation(
+  state: GameStateData,
+  observedPlayer: PlayerGameState,
+): void {
+  for (const owner of state.players) {
+    const device = getManifestedDevice(owner, "bp_ascension_registry");
+    const privateState = findPrivateBlueprintState(owner, "bp_ascension_registry");
+    if (!device || !privateState || device.state !== "ready") continue;
+    const observedThisTurn =
+      privateState.ascensionObservedPlayerId === observedPlayer.playerId &&
+      privateState.ascensionObservedTurnCount === state.turnCount;
+    privateState.ascensionObservedPlayerId = null;
+    privateState.ascensionObservedTurnCount = null;
+    if (!observedThisTurn || privateState.ascensionLastDeferralRound === state.roundNumber) {
+      continue;
+    }
+
+    privateState.ascensionLastDeferralRound = state.roundNumber;
+    device.ascensionDeferrals = Math.min(2, (device.ascensionDeferrals ?? 0) + 1);
+    pushLog(state, {
+      playerId: owner.playerId,
+      playerName: owner.playerName,
+      summary: `Ascension Registry recorded Deferral ${device.ascensionDeferrals}/2`,
+      turn: state.roundNumber,
+    });
+    if (device.ascensionDeferrals < 2) continue;
+
+    owner.eminence += 2;
+    if (state.brokenCovenantDeclared) {
+      device.ascensionDeferrals = 0;
+    } else {
+      device.state = "spent";
+    }
+    recordBlueprintCivilizationEvent(
+      state,
+      owner,
+      "bp_ascension_registry",
+      "ascension_judgment",
+      `bp-ascension-judgment-v${state.version}-${Date.now()}-${observedPlayer.playerId}`,
+      "Ascension Registry completed a two-Deferral public judgment",
+      state.brokenCovenantDeclared ? "record_cleared" : "registry_spent",
+    );
+    refreshPlayerCivilization(owner, state.turnCount);
+    pushLog(state, {
+      playerId: owner.playerId,
+      playerName: owner.playerName,
+      summary: state.brokenCovenantDeclared
+        ? "Ascension Registry judged two Deferrals: +2 Eminence; record cleared"
+        : "Ascension Registry judged two Deferrals: +2 Eminence; Registry spent",
+      turn: state.roundNumber,
+    });
+  }
+}
+
+function removeAnnihilatedOwnedTierOneArtifact(
+  state: GameStateData,
+  player: PlayerGameState,
+  artifactId: string,
+): void {
+  const index = player.forgedArtifactIds.indexOf(artifactId);
+  if (index === -1) return;
+  const card = CARD_MAP.get(artifactId);
+  player.forgedArtifactIds.splice(index, 1);
+  if (card) {
+    player.bonuses[card.bonusAffinity] = Math.max(0, player.bonuses[card.bonusAffinity] - 1);
+  }
+  if (player.forgedArtifactBonusSnapshots) delete player.forgedArtifactBonusSnapshots[artifactId];
+  if (state.artifactMarkers) delete state.artifactMarkers[artifactId];
+  if (!state.annihilatedArtifactIds.includes(artifactId)) {
+    state.annihilatedArtifactIds.push(artifactId);
+  }
+}
+
+type AntimatterClaimResult = "none" | "intercepted" | "detonated";
+
+function snapshotBlueprintArtifact(cardId: string): BlueprintArtifactSnapshot | undefined {
+  const card = CARD_MAP.get(cardId);
+  if (!card) return undefined;
+  const lore = getCardLore(cardId);
+  return {
+    id: card.id,
+    name: lore.name,
+    tier: card.tier,
+    bonusAffinity: card.bonusAffinity,
+    eminence: card.eminence,
+    cost: { ...card.cost },
+    flavor: lore.flavor,
+  };
+}
+
+function resolveAntimatterClaim(
+  state: GameStateData,
+  claimant: PlayerGameState,
+  targetCardId: string,
+  submittedBeforeManifestation: boolean,
+  trigger: "forged" | "encrypted",
+): AntimatterClaimResult {
+  const candidates = state.players
+    .flatMap((owner, ownerIndex) => {
+      const privateState = findPrivateBlueprintState(owner, "bp_antimatter_detonator");
+      const device = getManifestedDevice(owner, "bp_antimatter_detonator");
+      return privateState?.secretTargetCardId === targetCardId && device?.state === "armed"
+        ? [{ owner, ownerIndex, privateState, device }]
+        : [];
+    })
+    .sort((left, right) =>
+      left.ownerIndex - right.ownerIndex || left.device.slotIndex - right.device.slotIndex,
+    );
+  const candidate = candidates[0];
+  if (!candidate) return "none";
+  if (
+    submittedBeforeManifestation &&
+    candidate.privateState.safePreManifestActionPlayerIds?.includes(claimant.playerId)
+  ) {
+    return "none";
+  }
+
+  const worldshield = getManifestedDevice(claimant, "bp_worldshield_covenant");
+  claimant.civilization = normalizeCivilizationState(claimant);
+  const worldshieldVigilant = worldshield?.state === "vigilant";
+  const hostileClaim = claimant.playerId !== candidate.owner.playerId;
+  const collateralCandidates = state.brokenCovenantDeclared && !(hostileClaim && worldshieldVigilant)
+    ? shuffle(
+        claimant.forgedArtifactIds.filter((artifactId) => CARD_MAP.get(artifactId)?.tier === 1),
+      ).slice(0, 2)
+    : [];
+  const pendingEventId = hostileClaim && worldshieldVigilant
+    ? `bp-antimatter-intercept-v${state.version}-${Date.now()}`
+    : `bp-antimatter-detonate-v${state.version}-${Date.now()}`;
+  const civilizationResolution = resolveAntimatterCivilizationPolicy({
+    eventId: pendingEventId,
+    civilization: claimant.civilization,
+    targetArtifactId: targetCardId,
+    collateralArtifactIds: collateralCandidates,
+    turnCount: state.turnCount,
+    hostileClaim,
+    worldshieldVigilant,
+    brokenCovenant: state.brokenCovenantDeclared === true,
+  });
+  claimant.civilization = civilizationResolution.civilization;
+
+  if (civilizationResolution.outcome === "intercepted" && worldshield) {
+    candidate.device.state = "spent";
+    candidate.privateState.secretTargetCardId = null;
+    if (!state.brokenCovenantDeclared) worldshield.state = "spent";
+    state.pendingBlueprintDetonationEvents.push({
+      eventId: pendingEventId,
+      blueprintId: "bp_antimatter_detonator",
+      ownerPlayerId: candidate.owner.playerId,
+      triggeringPlayerId: claimant.playerId,
+      targetCardId,
+      trigger,
+      hostileEffect: "annihilation",
+      targetArtifact: snapshotBlueprintArtifact(targetCardId),
+      interceptedByBlueprintId: "bp_worldshield_covenant",
+      presentationVariant: candidate.device.presentationVariant,
+      createdAt: Date.now(),
+    });
+    pushLog(state, {
+      playerId: claimant.playerId,
+      playerName: claimant.playerName,
+      summary: "Worldshield Covenant intercepted an Antimatter charge",
+      turn: state.roundNumber,
+    });
+    refreshPlayerCivilization(candidate.owner, state.turnCount);
+    if (claimant.playerId !== candidate.owner.playerId) {
+      refreshPlayerCivilization(claimant, state.turnCount);
+    }
+    return "intercepted";
+  }
+
+  candidate.device.state = "spent";
+  candidate.privateState.secretTargetCardId = null;
+  if (!state.annihilatedArtifactIds.includes(targetCardId)) {
+    state.annihilatedArtifactIds.push(targetCardId);
+  }
+  if (state.artifactMarkers) delete state.artifactMarkers[targetCardId];
+
+  const collateralCardIds: string[] = [];
+  const collateralArtifacts: BlueprintArtifactSnapshot[] = [];
+  for (const artifactId of civilizationResolution.collateralArtifactIds) {
+    const snapshot = snapshotBlueprintArtifact(artifactId);
+    if (snapshot) collateralArtifacts.push(snapshot);
+    removeAnnihilatedOwnedTierOneArtifact(state, claimant, artifactId);
+    collateralCardIds.push(artifactId);
+  }
+  if (collateralCardIds.length > 0) {
+    checkBlueprintManifestations(state, claimant);
+  }
+
+  const forgeRow = state.forgeTier2;
+  refillForgeSlot(state, forgeRow, state.deckTier2, targetCardId);
+  candidate.owner.eminence += 2;
+  state.pendingBlueprintDetonationEvents.push({
+    eventId: pendingEventId,
+    blueprintId: "bp_antimatter_detonator",
+    ownerPlayerId: candidate.owner.playerId,
+    triggeringPlayerId: claimant.playerId,
+    targetCardId,
+    trigger,
+    targetArtifact: snapshotBlueprintArtifact(targetCardId),
+    collateralCardIds,
+    collateralArtifacts,
+    presentationVariant: candidate.device.presentationVariant,
+    createdAt: Date.now(),
+  });
+  pushLog(state, {
+    playerId: candidate.owner.playerId,
+    playerName: candidate.owner.playerName,
+    summary: `Antimatter Detonator Annihilated ${getCardLore(targetCardId).name}: +2 Eminence`,
+    turn: state.roundNumber,
+  });
+  refreshPlayerCivilization(candidate.owner, state.turnCount);
+  if (claimant.playerId !== candidate.owner.playerId) {
+    refreshPlayerCivilization(claimant, state.turnCount);
+  }
+  retargetUnavailableAntimatterCharges(state);
+  return "detonated";
+}
+
 function canAfford(
   cost: AffinityCounts,
   playerAffinities: AffinityCounts,
@@ -1226,8 +3441,9 @@ function payForgeCost(
   player: PlayerGameState,
   bank: AffinityCounts,
   bonusOverride?: AffinityCounts,
+  costOverride?: AffinityCounts,
 ): void {
-  const needed = effectiveCost(card, player, bonusOverride);
+  const needed = costOverride ?? effectiveCost(card, player, bonusOverride);
   let singularityUsed = 0;
   for (const color of STANDARD_AFFINITY_KEYS) {
     const fromAffinities = Math.min(needed[color], player.affinities[color]);
@@ -1310,6 +3526,7 @@ function applyLuminaryBatch(
 
     // Register the claim.
     player.luminaries.push(lumId);
+    player.luminaryAllianceCounts = incrementUsageCount(player.luminaryAllianceCounts, lumId);
     const eligible = STANDARD_AFFINITY_KEYS.filter((c) => lum.requirements[c] > 0);
     const activeAffinity = randomActiveAffinity(eligible);
     // Remove any stale entry for the same lum+player before inserting the fresh
@@ -1329,9 +3546,6 @@ function applyLuminaryBatch(
 
     if (lum.oblivion) {
       oblivionLumIds.push(lumId);
-      if (lumId === "lum_void") {
-        pushActivationEvent(state, lumId, "summon", player.playerId);
-      }
     }
 
     const eminenceBeforeSummon = player.eminence;
@@ -1367,6 +3581,7 @@ function applyLuminaryBatch(
         eventId,
         luminaryId: lumId,
         claimedByPlayerId: player.playerId,
+        arrivalSound: player.luminaryArrivalSound ?? "standard",
         createdAt: Date.now(),
       });
     }
@@ -1386,7 +3601,16 @@ function applyLuminaryBatch(
   // full summon/effect sequence has resolved.
   for (const lumId of oblivionLumIds) {
     const lum = LUMINARY_MAP.get(lumId)!;
-    state.victoryRequirement = getVictoryRequirement(state) + lum.oblivion!;
+    const victoryRequirementBefore = getVictoryRequirement(state);
+    state.victoryRequirement = victoryRequirementBefore + lum.oblivion!;
+    const victoryRequirementAfter = getVictoryRequirement(state);
+    if (lumId === "lum_void") {
+      pushActivationEvent(state, lumId, "summon", player.playerId, undefined, {
+        victoryRequirementBefore,
+        victoryRequirementAfter,
+        victoryRequirementChange: lum.oblivion!,
+      });
+    }
     pushLog(state, {
       playerId: player.playerId,
       playerName: player.playerName,
@@ -1467,8 +3691,8 @@ function isLuminaryAlreadyClaimed(state: GameStateData, luminaryId: string): boo
 
 /**
  * Remove an Artifact from the Forge and refill its slot from the deck.
- * Handles marker cleanup (removes marker from the removed card) and
- * Avatar Seed token transfer (if the incoming deck card was seeded).
+ * Handles marker cleanup on the removed Artifact. Avatar Seeds belong to mold
+ * positions, so replacement Artifacts remain unseeded until the end of a turn.
  * Returns the ID of the card that now occupies the slot, or null if the slot
  * was collapsed (deck empty).
  */
@@ -1487,21 +3711,11 @@ function refillForgeSlot(
   if (deck.length > 0) {
     const newId = deck.shift()!;
     forgeRow[idx] = newId;
-    // Transfer Avatar Seed token if the incoming card was seeded in the deck.
-    if (state.avatarSeedState) {
-      const si = state.avatarSeedState.deckSeeds.indexOf(newId);
-      if (si !== -1) {
-        state.avatarSeedState.deckSeeds.splice(si, 1);
-        addArtifactBrand(state, newId, {
-          type: "avatar_seed",
-          ownerId: state.avatarSeedState.ownerId,
-          summonedAtTurnCount: state.avatarSeedState.summonedAtTurnCount,
-        });
-      }
-    }
+    retargetUnavailableAntimatterCharges(state);
     return newId;
   } else {
     forgeRow.splice(idx, 1);
+    retargetUnavailableAntimatterCharges(state);
     return null;
   }
 }
@@ -1509,54 +3723,59 @@ function refillForgeSlot(
 // ─── v0.8 Burn / Scry Helpers ─────────────────────────────────────────────────
 
 /** Sum of all Affinity costs on an Artifact (used for lowest-cost comparisons). */
-function markerSuppressesForgeValue(marker?: ArtifactMarker | null): boolean {
+function markerSuppressesForgeValue(
+  marker?: ArtifactMarker | null,
+  ignoreNullified = false,
+): boolean {
   return getArtifactBrands(marker).some(
-    (brand) => brand.type === "forgotten" || brand.type === "condemned" || brand.type === "nullified",
+    (brand) => brand.type === "forgotten" ||
+      brand.type === "condemned" ||
+      (brand.type === "nullified" && !ignoreNullified),
   );
 }
 
-function isForgottenHourActive(state: GameStateData): boolean {
-  const activeCycle = Object.values(state.forgottenHourCycle ?? {}).some(
-    (cycle) => cycle?.cooldownOwnerTurnsRemaining === null,
-  );
-  if (activeCycle) return true;
-
-  return Object.values(state.artifactMarkers ?? {}).some((marker) => markerHasBrand(marker, "forgotten"));
+function isForgottenHourBlockingPlayer(state: GameStateData, playerId: string): boolean {
+  const activeOwnerIds = new Set<string>();
+  for (const [ownerId, cycle] of Object.entries(state.forgottenHourCycle ?? {})) {
+    if (cycle?.cooldownOwnerTurnsRemaining === null) activeOwnerIds.add(ownerId);
+  }
+  for (const marker of Object.values(state.artifactMarkers ?? {})) {
+    for (const brand of getArtifactBrands(marker)) {
+      if (brand.type === "forgotten") activeOwnerIds.add(brand.ownerId);
+    }
+  }
+  return activeOwnerIds.size > 0 && !activeOwnerIds.has(playerId);
 }
 
-function markBlueprintBlockedIfForgotten(
+function resolveNullifiedForge(
+  state: GameStateData,
+  playerId: string,
+  cardId: string,
+  marker?: ArtifactMarker | null,
+): boolean {
+  const nullifiedOwners = getArtifactBrands(marker)
+    .filter((brand) => brand.type === "nullified")
+    .map((brand) => brand.ownerId);
+  if (nullifiedOwners.length === 0 || state.nullifiedFirstForge) return false;
+
+  const exempt = nullifiedOwners.includes(playerId);
+  state.nullifiedFirstForge = { cardId, playerId, exempt };
+  return exempt;
+}
+
+function markBlueprintBlockedByBrand(
   player: PlayerGameState,
   cardId: string,
   marker?: ArtifactMarker | null,
+  nullifiedExempt = false,
 ): void {
-  if (!markerHasBrand(marker, "forgotten")) return;
+  const blocked = markerHasBrand(marker, "forgotten") ||
+    (markerHasBrand(marker, "nullified") && !nullifiedExempt);
+  if (!blocked) return;
   if (!Array.isArray(player.blueprintBlockedCardIds)) player.blueprintBlockedCardIds = [];
   if (!player.blueprintBlockedCardIds.includes(cardId)) {
     player.blueprintBlockedCardIds.push(cardId);
   }
-}
-
-/**
- * Scry top `count` cards of the given tier's deck and reorder:
- * cards with `keepColor` in their cost stay on top (original order),
- * cards without `keepColor` go to the bottom (original order).
- */
-function scryAndReorder(
-  state: GameStateData,
-  tier: 1 | 2 | 3,
-  keepColor: StandardAffinityKey,
-): void {
-  const deck = getDeckForTier(state, tier);
-  if (deck.length === 0) return;
-  const scryCount = Math.min(3, deck.length);
-  const scried = deck.splice(0, scryCount);
-  const keep = scried.filter((id) => {
-    const card = CARD_MAP.get(id);
-    return card && (card.cost[keepColor] ?? 0) > 0;
-  });
-  const bottom = scried.filter((id) => !keep.includes(id));
-  deck.unshift(...keep);
-  deck.push(...bottom);
 }
 
 /**
@@ -1569,6 +3788,89 @@ function incrementBloomCount(state: GameStateData): void {
   if (bloomClaimed) {
     state.catalystBloomBurnCount = (state.catalystBloomBurnCount ?? 0) + 1;
   }
+}
+
+function isProtectedPlannedClaimLegal(
+  state: GameStateData,
+  player: PlayerGameState,
+  cardId: string,
+): boolean {
+  const action = player.plannedAction;
+  if (!action || action.cardId !== cardId) return false;
+  const card = CARD_MAP.get(cardId);
+  if (!card || !getForgeRowForTier(state, card.tier).includes(cardId)) return false;
+
+  if (action.type === "forge_artifact") {
+    const bonuses = effectiveAffinityBonuses(state, player);
+    return canAfford(effectiveCost(card, player, bonuses), player.affinities);
+  }
+  if (action.type !== "reserve_artifact") return false;
+  if (isForgottenHourBlockingPlayer(state, player.playerId)) return false;
+  if (ordinaryEncryptedCount(player) >= 3) return false;
+  if (markerHasBrand(state.artifactMarkers?.[cardId], "nullified")) return false;
+
+  const held = AFFINITY_KEYS.reduce(
+    (total, affinity) => total + (player.affinities[affinity] ?? 0),
+    0,
+  );
+  if (state.affinityWell.singularity <= 0 || held < 10) return true;
+  const returns = action.returnAffinities ?? {};
+  const returned = AFFINITY_KEYS.reduce(
+    (total, affinity) => total + Math.max(0, returns[affinity] ?? 0),
+    0,
+  );
+  return returned >= 1 && AFFINITY_KEYS.every(
+    (affinity) => (returns[affinity] ?? 0) <= (player.affinities[affinity] ?? 0),
+  );
+}
+
+function interceptHostilePlannedClaim(
+  state: GameStateData,
+  cardId: string,
+  sourcePlayerId: string | undefined,
+  hostileEffect: NonNullable<BlueprintDetonationEvent["hostileEffect"]>,
+): boolean {
+  const protectedPlayer = state.players.find((candidate) => {
+    if (candidate.playerId === sourcePlayerId) return false;
+    const worldshield = getManifestedDevice(candidate, "bp_worldshield_covenant");
+    return worldshield?.state === "vigilant" &&
+      isProtectedPlannedClaimLegal(state, candidate, cardId);
+  });
+  if (!protectedPlayer) return false;
+
+  const worldshield = getManifestedDevice(protectedPlayer, "bp_worldshield_covenant");
+  if (!worldshield) return false;
+  const eventId = `bp-worldshield-${hostileEffect}-v${state.version}-${Date.now()}-${cardId}`;
+  if (!state.brokenCovenantDeclared) worldshield.state = "spent";
+  recordBlueprintCivilizationEvent(
+    state,
+    protectedPlayer,
+    "bp_worldshield_covenant",
+    "worldshield_interception",
+    eventId,
+    `Worldshield Covenant preserved a legal claim from hostile ${hostileEffect.replace("_", " ")}`,
+    cardId,
+  );
+  refreshPlayerCivilization(protectedPlayer, state.turnCount);
+  state.pendingBlueprintDetonationEvents.push({
+    eventId,
+    blueprintId: "bp_worldshield_covenant",
+    ownerPlayerId: protectedPlayer.playerId,
+    triggeringPlayerId: sourcePlayerId ?? "system",
+    targetCardId: cardId,
+    hostileEffect,
+    targetArtifact: snapshotBlueprintArtifact(cardId),
+    interceptedByBlueprintId: "bp_worldshield_covenant",
+    presentationVariant: "armored",
+    createdAt: Date.now(),
+  });
+  pushLog(state, {
+    playerId: protectedPlayer.playerId,
+    playerName: protectedPlayer.playerName,
+    summary: `Worldshield Covenant prevented a hostile ${hostileEffect.replace("_", " ")} against ${getCardLore(cardId).name}`,
+    turn: state.roundNumber,
+  });
+  return true;
 }
 
 /**
@@ -1591,9 +3893,16 @@ function burnCard(
   sourceLuminaryId: string,
   suppressLog = false,
   opts?: { triggeredByPlayerId?: string },
-): void {
+): boolean {
   if (!Array.isArray(state.burnPile)) state.burnPile = [];
   if (!Array.isArray(state.burnEvents)) state.burnEvents = [];
+  const burntLore = getCardLore(cardId);
+  const lum = LUMINARIES.find((l) => l.id === sourceLuminaryId);
+  const owner = state.players.find((p) => p.luminaries.includes(sourceLuminaryId));
+  if (interceptHostilePlannedClaim(state, cardId, owner?.playerId, "burn")) {
+    return false;
+  }
+
   const recurrenceActive = state.players.some((p) => p.luminaries.includes("lum_astral"));
   const destination: BurnEvent["destination"] = recurrenceActive ? "archive" : "burn_pile";
   if (recurrenceActive) {
@@ -1602,11 +3911,6 @@ function burnCard(
   } else if (!state.burnPile.includes(cardId)) {
     state.burnPile.push(cardId);
   }
-
-  // Resolve lookup values shared by the event payload and the log entry.
-  const burntLore = getCardLore(cardId);
-  const lum = LUMINARIES.find((l) => l.id === sourceLuminaryId);
-  const owner = state.players.find((p) => p.luminaries.includes(sourceLuminaryId));
 
   state.burnEvents.push({
     eventId: `burn-${state.turnCount}-${state.burnEvents.length}-${cardId}`,
@@ -1642,6 +3946,7 @@ function burnCard(
   }
 
   refillForgeSlot(state, getForgeRowForTier(state, tier), getDeckForTier(state, tier), cardId);
+  return true;
 }
 
 // ─── v0.8 On-Summon Effect Helpers ────────────────────────────────────────────
@@ -1694,26 +3999,24 @@ function applySummonEffect_avatarSeeds(
   player: PlayerGameState,
   summonedAtTurnCount: number,
 ): string[] {
-  const deckSeeds: string[] = [];
+  const moldSlots: string[] = [];
   for (const tier of [1, 2, 3] as const) {
-    const deck = getDeckForTier(state, tier);
-    for (const id of deck.slice(0, 2)) {
-      if (!deckSeeds.includes(id)) deckSeeds.push(id);
-    }
+    const forgeRow = getForgeRowForTier(state, tier);
+    if (forgeRow.length === 0) continue;
+    const slotIndex = Math.floor(Math.random() * forgeRow.length);
+    moldSlots.push(`${tier}-${slotIndex}`);
   }
   state.avatarSeedState = {
     ownerId: player.playerId,
     summonedAtTurnCount,
-    pendingEminence: 0,
-    deckSeeds,
-    payoutDone: false,
+    moldSlots,
   };
   pushLog(state, {
     playerId: player.playerId, playerName: player.playerName,
-    summary: `Seed Beyond Seasons — Avatar Seeds: ${deckSeeds.length} future manifestation(s) seeded in the Archives`,
+    summary: `Seed Beyond Seasons — Avatar Seeds: ${moldSlots.length} permanent Forge mold(s) marked`,
     turn: state.roundNumber,
   });
-  return deckSeeds;
+  return moldSlots;
 }
 
 function applySummonEffect_balanceDue(
@@ -1813,6 +4116,9 @@ function applySummonEffect_blackDomain(
       (card.cost.abyss ?? 0) === 0 ||
       (card.cost.radiance ?? 0) === 0
     ) {
+      if (interceptHostilePlannedClaim(state, id, player.playerId, "nullification")) {
+        continue;
+      }
       if (addArtifactBrand(state, id, {
         type: "nullified",
         ownerId: player.playerId,
@@ -1843,20 +4149,65 @@ function pushActivationEvent(
   effectType: PendingLuminaryActivationEvent["effectType"],
   triggeringPlayerId: string,
   targetCardIds?: string[],
-  affinityResult?: Pick<PendingLuminaryActivationEvent, "affinityType" | "affinityAmount" | "affinityReturns">,
+  eventDetails?: Pick<
+    PendingLuminaryActivationEvent,
+    | "affinityType"
+    | "affinityAmount"
+    | "affinityReturns"
+    | "targetSlotIds"
+    | "victoryRequirementBefore"
+    | "victoryRequirementAfter"
+    | "victoryRequirementChange"
+  >,
 ): void {
   if (!Array.isArray(state.pendingLuminaryActivationEvents)) {
     state.pendingLuminaryActivationEvents = [];
   }
   state.pendingLuminaryActivationEvents.push({
-    eventId: `${luminaryId}-${effectType}-v${state.version}-${Date.now()}`,
+    eventId: `${luminaryId}-${effectType}-v${state.version}-${Date.now()}-${state.pendingLuminaryActivationEvents.length}`,
     luminaryId,
     effectType,
     triggeringPlayerId,
     createdAt: Date.now(),
     ...(targetCardIds && targetCardIds.length > 0 ? { targetCardIds } : {}),
-    ...affinityResult,
+    ...eventDetails,
   });
+}
+
+function applyAvatarSeedImbuement(
+  state: GameStateData,
+  card: ArtifactCard,
+  marker: ArtifactMarker | null | undefined,
+  forgingPlayerId: string,
+  targetSlotId?: string,
+): PlayerGameState | null {
+  const seedBrand = getArtifactBrands(marker).find((brand) => brand.type === "avatar_seed");
+  if (!seedBrand || seedBrand.ownerId === forgingPlayerId) return null;
+
+  const alliedPlayer = state.players.find((candidate) => candidate.playerId === seedBrand.ownerId);
+  if (!alliedPlayer) return null;
+
+  alliedPlayer.bonuses[card.bonusAffinity] =
+    (alliedPlayer.bonuses[card.bonusAffinity] ?? 0) + 1;
+  pushLog(state, {
+    playerId: alliedPlayer.playerId,
+    playerName: alliedPlayer.playerName,
+    summary: `Seed Beyond Seasons — Avatar Imbuement: ${AFFINITY_LABEL[card.bonusAffinity]} permanent Affinity gained from a Seeded Artifact`,
+    turn: state.roundNumber,
+  });
+  pushActivationEvent(
+    state,
+    "lum_seed",
+    "action",
+    alliedPlayer.playerId,
+    [card.id],
+    {
+      affinityType: card.bonusAffinity,
+      affinityAmount: 1,
+      ...(targetSlotId ? { targetSlotIds: [targetSlotId] } : {}),
+    },
+  );
+  return alliedPlayer;
 }
 
 function applySummonEffect(
@@ -1873,31 +4224,71 @@ function applySummonEffect(
         const card = CARD_MAP.get(cardId);
         return card != null && (card.cost.flare ?? 0) < 5;
       });
+      const burnedTargets: string[] = [];
       for (const cardId of targets) {
         if (state.forgeTier3.includes(cardId)) {
-          burnCard(state, cardId, 3, "lum_moth", true);
+          if (burnCard(state, cardId, 3, "lum_moth", true)) {
+            burnedTargets.push(cardId);
+          }
         }
       }
-      if (targets.length > 0) {
+      if (burnedTargets.length > 0) {
         pushLog(state, {
           playerId: player.playerId, playerName: player.playerName,
-          summary: `Red Moth — Rupture of the Still: burned ${targets.length} Tier III Artifact${targets.length === 1 ? "" : "s"} costing 4 or less Flare`,
+          summary: `Red Moth — Rupture of the Still: burned ${burnedTargets.length} Tier III Artifact${burnedTargets.length === 1 ? "" : "s"} costing 4 or less Flare`,
           turn: state.roundNumber,
         });
       }
-      pushActivationEvent(state, lumId, "summon", player.playerId, targets);
+      pushActivationEvent(state, lumId, "summon", player.playerId, burnedTargets);
       break;
     }
     case "lum_tide": {
-      // The Observer Effect: scry+reorder top 3 of T2 and T3 decks by Continuum.
-      scryAndReorder(state, 2, "continuum");
-      scryAndReorder(state, 3, "continuum");
+      // The Observer Effect grants private, persistent Archive-top visibility
+      // and one normal-cost Forge directly from an Archive. No arrival choice.
+      player.tideArchiveForgeAvailable = true;
       pushLog(state, {
         playerId: player.playerId, playerName: player.playerName,
-        summary: `Tide Architect — The Observer Effect: Archives reordered (Continuum Artifacts promoted)`,
+        summary: `Tide Architect — The Observer Effect: Archive tops revealed; one Archive Forge available`,
         turn: state.roundNumber,
       });
       pushActivationEvent(state, lumId, "summon", player.playerId);
+      break;
+    }
+    case "lum_verdant": {
+      // Early Bloom is automatic and must never interrupt arrival resolution
+      // with a hand-limit choice. If the owner cannot hold another token, the
+      // presentation still fires with an authoritative zero-gain payload.
+      const heldAffinityCount = AFFINITY_KEYS.reduce(
+        (total, affinity) => total + (player.affinities[affinity] ?? 0),
+        0,
+      );
+      const affinityAmount = state.affinityWell.verdance > 0 && heldAffinityCount < 10
+        ? 1
+        : 0;
+      if (affinityAmount > 0) {
+        state.affinityWell.verdance -= affinityAmount;
+        player.affinities.verdance += affinityAmount;
+        pushLog(state, {
+          playerId: player.playerId,
+          playerName: player.playerName,
+          summary: `Verdant Oracle — Early Bloom: gained ${affinityAmount} Verdance from the Affinity Well`,
+          turn: state.roundNumber,
+        });
+      } else {
+        const reason = state.affinityWell.verdance <= 0
+          ? "no Verdance remained in the Affinity Well"
+          : "the 10-token Affinity limit was already reached";
+        pushLog(state, {
+          playerId: player.playerId,
+          playerName: player.playerName,
+          summary: `Verdant Oracle — Early Bloom: no token gained (${reason})`,
+          turn: state.roundNumber,
+        });
+      }
+      pushActivationEvent(state, lumId, "summon", player.playerId, undefined, {
+        affinityType: "verdance",
+        affinityAmount,
+      });
       break;
     }
     case "lum_forge": {
@@ -1905,7 +4296,7 @@ function applySummonEffect(
       // randomize each complete tier pool, then manifest four new Artifacts per row.
       // This is explicitly not a Burn: it emits no BurnEvent and never touches
       // the Burn Pile, Phoenix recurrence, or burn-dependent payouts.
-      const returnedIds = resetForgeThroughArchives(state);
+      const returnedIds = resetForgeThroughArchives(state, player.playerId);
       pushLog(state, {
         playerId: player.playerId,
         playerName: player.playerName,
@@ -1928,21 +4319,23 @@ function applySummonEffect(
         summary: `Phoenix Paradox — Eternal Recurrence manifested; existing Burned Artifacts will return at the beginning of ${player.playerName}'s next turn`,
         turn: state.roundNumber,
       });
-      pushActivationEvent(state, lumId, "summon", player.playerId);
       break;
     }
     case "lum_compass": {
       // The Forgotten Hour: mark all face-up Forge cards as Forgotten.
+      const victoryRequirementBefore = getVictoryRequirement(state);
       const forgottenIds = applySummonEffect_forgottenHour(state, player, summonedAtTurnCount);
-      pushActivationEvent(state, lumId, "summon", player.playerId, forgottenIds);
+      const victoryRequirementAfter = getVictoryRequirement(state);
+      pushActivationEvent(state, lumId, "summon", player.playerId, forgottenIds, {
+        victoryRequirementBefore,
+        victoryRequirementAfter,
+        victoryRequirementChange: victoryRequirementAfter - victoryRequirementBefore,
+      });
       break;
     }
     case "lum_seed": {
-      // Avatar Seeds: reveal and mark top 2 cards of each deck.
-      // The frontend plays Seed's activation announcement before the board-level
-      // deck-seeding flourish so the seeded strike does not appear without its cue.
-      const seededIds = applySummonEffect_avatarSeeds(state, player, summonedAtTurnCount);
-      pushActivationEvent(state, lumId, "summon", player.playerId, seededIds);
+      const moldSlots = applySummonEffect_avatarSeeds(state, player, summonedAtTurnCount);
+      pushActivationEvent(state, lumId, "summon", player.playerId, undefined, { targetSlotIds: moldSlots });
       break;
     }
     case "lum_pale": {
@@ -1970,14 +4363,14 @@ function applySummonEffect(
       break;
     }
     case "lum_hunger": {
-      // Assimilation: enable this turn's Assimilation action for the claimer.
+      // The one-use action is granted silently. Its activation presentation is
+      // queued only when the owner actually uses Assimilation.
       state.firstHungerAvailable = player.playerId;
       pushLog(state, {
         playerId: player.playerId, playerName: player.playerName,
-        summary: `Final Hunger — Assimilation available: choose a face-up Artifact to Burn for Eminence`,
+        summary: `Final Hunger — Assimilation is available once`,
         turn: state.roundNumber,
       });
-      pushActivationEvent(state, lumId, "summon", player.playerId);
       break;
     }
     case "lum_scholar": {
@@ -1994,6 +4387,9 @@ function applySummonEffect(
         const card = CARD_MAP.get(chosen.id);
         if (card) {
           player.forgedArtifactIds.push(chosen.id);
+          recordArtifactImplementation(player, chosen.id, state.turnCount, {
+            countForgeAction: false,
+          });
           player.bonuses[card.bonusAffinity]++;
           player.eminence += card.eminence;
           player.discountedForgeIds.push(chosen.id);
@@ -2008,7 +4404,6 @@ function applySummonEffect(
       break;
     }
     // Passive / delayed effects — nothing on summon:
-    // lum_verdant: cheaper cost, no arrival effect.
     // lum_void: Oblivion threshold change is handled after this call.
     // lum_radiant (Concordance Mandala): delayed end-of-turn check.
     // lum_bloom (Catalyst Bloom): delayed end-of-turn check.
@@ -2026,17 +4421,29 @@ function applySummonEffect(
  * action, but before turnCount advances to the incoming turn.
  */
 function applyEndOfTurnEffects(state: GameStateData, player: PlayerGameState): void {
-  // ── Concordance Mandala (lum_radiant): +2 Eminence if ≥8 Radiance Artifacts ──
-  if (player.luminaries.includes("lum_radiant") && !state.concordanceMandalaTriggered) {
+  // ── Concordance Mandala: one +2 payout at 8 and another at 10 Radiance Artifacts ──
+  if (player.luminaries.includes("lum_radiant")) {
     const radianceArtifacts = player.forgedArtifactIds.filter(
       (id) => CARD_MAP.get(id)?.bonusAffinity === "radiance",
     ).length;
-    if (radianceArtifacts >= 8) {
+
+    if (radianceArtifacts >= 8 && !state.concordanceMandalaTriggered) {
       player.eminence += 2;
       state.concordanceMandalaTriggered = true;
       pushLog(state, {
         playerId: player.playerId, playerName: player.playerName,
-        summary: `Concordance Mandala — Perfect Coherence: 8+ Radiance Artifacts → +2 Eminence`,
+        summary: `Concordance Mandala — Perfect Coherence: 8 Radiance Artifacts → +2 Eminence`,
+        turn: state.roundNumber,
+      });
+      pushActivationEvent(state, "lum_radiant", "end_of_turn", player.playerId);
+    }
+
+    if (radianceArtifacts >= 10 && !state.concordanceMandalaFinalTriggered) {
+      player.eminence += 2;
+      state.concordanceMandalaFinalTriggered = true;
+      pushLog(state, {
+        playerId: player.playerId, playerName: player.playerName,
+        summary: `Concordance Mandala — Perfect Coherence: 10 Radiance Artifacts → +2 Eminence`,
         turn: state.roundNumber,
       });
       pushActivationEvent(state, "lum_radiant", "end_of_turn", player.playerId);
@@ -2056,42 +4463,6 @@ function applyEndOfTurnEffects(state: GameStateData, player: PlayerGameState): v
       pushActivationEvent(state, "lum_bloom", "end_of_turn", player.playerId);
     }
     state.catalystBloomBurnCount = 0; // Reset for next period.
-  }
-
-  // ── Seed Beyond Seasons (lum_seed): payout pending Eminence at end of next turn ──
-  const seedLa = state.luminaryAffinities.find(
-    (x) => x.luminaryId === "lum_seed" && x.ownerId === player.playerId,
-  );
-  if (
-    seedLa &&
-    state.avatarSeedState?.ownerId === player.playerId &&
-    !state.avatarSeedState.payoutDone &&
-    state.turnCount > seedLa.summonedAtTurnCount
-  ) {
-    const pending = state.avatarSeedState.pendingEminence;
-    if (pending > 0) {
-      player.eminence += pending;
-      pushLog(state, {
-        playerId: player.playerId, playerName: player.playerName,
-        summary: `Seed Beyond Seasons — Avatar Seeds: +${pending} pending Eminence paid out`,
-        turn: state.roundNumber,
-      });
-      pushActivationEvent(state, "lum_seed", "end_of_turn", player.playerId);
-    }
-    state.avatarSeedState.payoutDone = true;
-    // Remove all remaining Avatar Seed tokens from deck tops, the Forge, and
-    // reserved Artifacts (tracked through deckSeeds and artifactMarkers).
-    state.avatarSeedState.deckSeeds = [];
-    if (state.artifactMarkers) {
-      for (const id of Object.keys(state.artifactMarkers)) {
-        removeArtifactBrands(state, id, (brand) => brand.type === "avatar_seed");
-      }
-    }
-    pushLog(state, {
-      playerId: player.playerId, playerName: player.playerName,
-      summary: `Seed Beyond Seasons — Avatar Seed tokens expired and cleared`,
-      turn: state.roundNumber,
-    });
   }
 
   // ── Forgotten Hour (lum_compass): clear, wait 12 owner turns, then repeat ──
@@ -2156,14 +4527,16 @@ function applyEndOfTurnEffects(state: GameStateData, player: PlayerGameState): v
       // Capture IDs before the burn loop clears them from artifactMarkers.
       // The client animation procedure needs these IDs to drive the burn
       // cinematic even after state.artifactMarkers has been cleared by burnCard.
-      const condemnedCardIds = condemned.map(([id]) => id);
+      const burnedCardIds: string[] = [];
       let burnCount = 0;
       for (const [cardId] of condemned) {
         for (const tier of [1, 2, 3] as const) {
           const forgeRow = getForgeRowForTier(state, tier);
           if (forgeRow.includes(cardId)) {
-            burnCard(state, cardId, tier, "lum_ember");
-            burnCount++;
+            if (burnCard(state, cardId, tier, "lum_ember")) {
+              burnedCardIds.push(cardId);
+              burnCount++;
+            }
             break;
           }
         }
@@ -2175,8 +4548,39 @@ function applyEndOfTurnEffects(state: GameStateData, player: PlayerGameState): v
           summary: `Ember Sovereign — Cinder Mandate: burned ${burnCount} Condemned Artifact(s)`,
           turn: state.roundNumber,
         });
-        pushActivationEvent(state, "lum_ember", "end_of_turn", player.playerId, condemnedCardIds);
+        pushActivationEvent(state, "lum_ember", "end_of_turn", player.playerId, burnedCardIds);
       }
+    }
+  }
+
+  // ── Seed Beyond Seasons: occupied Avatar Seed molds brand unseeded Artifacts ──
+  const avatarSeeds = state.avatarSeedState;
+  if (avatarSeeds) {
+    const newlySeededIds: string[] = [];
+    for (const slotKey of avatarSeeds.moldSlots) {
+      const [tierText, slotText] = slotKey.split("-");
+      const tier = Number(tierText);
+      const slotIndex = Number(slotText);
+      if (![1, 2, 3].includes(tier) || !Number.isInteger(slotIndex)) continue;
+      const artifactId = getForgeRowForTier(state, tier as 1 | 2 | 3)[slotIndex];
+      if (!artifactId || markerHasBrand(state.artifactMarkers?.[artifactId], "avatar_seed")) continue;
+      if (addArtifactBrand(state, artifactId, {
+        type: "avatar_seed",
+        ownerId: avatarSeeds.ownerId,
+        summonedAtTurnCount: avatarSeeds.summonedAtTurnCount,
+      })) {
+        newlySeededIds.push(artifactId);
+      }
+    }
+    if (newlySeededIds.length > 0) {
+      const owner = state.players.find((candidate) => candidate.playerId === avatarSeeds.ownerId);
+      pushLog(state, {
+        playerId: avatarSeeds.ownerId,
+        playerName: owner?.playerName ?? "Unknown",
+        summary: `Seed Beyond Seasons — Avatar Seeds: ${newlySeededIds.length} Artifact(s) became Seeded`,
+        turn: state.roundNumber,
+      });
+      pushActivationEvent(state, "lum_seed", "end_of_turn", avatarSeeds.ownerId, newlySeededIds);
     }
   }
 }
@@ -2226,10 +4630,14 @@ function applyStartOfTurnEffects(state: GameStateData, player: PlayerGameState):
       pushActivationEvent(state, "lum_astral", "start_of_turn", player.playerId, returnedIds);
     }
   }
+
+  beginAscensionRegistryObservation(state, player);
 }
 
 export interface DevLuminarySequenceOptions {
   luminaryIds: string[];
+  includeNextTurnEffects?: boolean;
+  /** Compatibility with callers using the former implementation-facing controls. */
   includeEndOfTurnEffects?: boolean;
   includeStartOfTurnEffects?: boolean;
 }
@@ -2254,7 +4662,10 @@ function removeArtifactsFromSharedZones(state: GameStateData, artifactIds: Set<s
     otherPlayer.privateReservedArtifactIds =
       otherPlayer.privateReservedArtifactIds?.filter((id) => !artifactIds.has(id));
     otherPlayer.forgedArtifactIds = otherPlayer.forgedArtifactIds.filter((id) => !artifactIds.has(id));
+    otherPlayer.assimilatedArtifactIds = (otherPlayer.assimilatedArtifactIds ?? [])
+      .filter((id) => !artifactIds.has(id));
     otherPlayer.discountedForgeIds = otherPlayer.discountedForgeIds.filter((id) => !artifactIds.has(id));
+    otherPlayer.civilization = normalizeCivilizationState(otherPlayer);
   }
 }
 
@@ -2273,12 +4684,22 @@ function clearDevLuminaryResidue(
   playerId: string,
   selectedIds: Set<string>,
 ): void {
-  if (selectedIds.has("lum_radiant")) state.concordanceMandalaTriggered = false;
+  if (selectedIds.has("lum_radiant")) {
+    state.concordanceMandalaTriggered = false;
+    state.concordanceMandalaFinalTriggered = false;
+  }
   if (selectedIds.has("lum_orchard")) state.glassOrchardTriggered = false;
   if (selectedIds.has("lum_astral")) state.phoenixRecurrence = undefined;
   if (selectedIds.has("lum_seed")) state.avatarSeedState = undefined;
+  if (selectedIds.has("lum_tide")) {
+    const player = state.players.find((candidate) => candidate.playerId === playerId);
+    if (player) player.tideArchiveForgeAvailable = false;
+  }
   if (selectedIds.has("lum_hunger") && state.firstHungerAvailable === playerId) {
     state.firstHungerAvailable = null;
+  }
+  if (selectedIds.has("lum_void") && state.voidSealOwnerId === playerId) {
+    state.voidSealOwnerId = null;
   }
   if (selectedIds.has("lum_compass") && state.forgottenHourCycle) {
     delete state.forgottenHourCycle[playerId];
@@ -2320,9 +4741,15 @@ function primeDevEndOfTurnEffects(
     removeArtifactsFromSharedZones(state, radianceSet);
     player.forgedArtifactIds.push(...radianceIds);
     player.forgedArtifactIds = [...new Set(player.forgedArtifactIds)];
+    for (const artifactId of radianceIds) {
+      recordArtifactImplementation(player, artifactId, state.turnCount, {
+        countForgeAction: false,
+      });
+    }
     player.bonuses.radiance = Math.max(player.bonuses.radiance, radianceIds.length);
     refillDevForgeRows(state);
     state.concordanceMandalaTriggered = false;
+    state.concordanceMandalaFinalTriggered = false;
   }
 
   if (selectedIds.has("lum_bloom")) {
@@ -2331,8 +4758,6 @@ function primeDevEndOfTurnEffects(
 
   if (selectedIds.has("lum_seed") && state.avatarSeedState?.ownerId === player.playerId) {
     state.avatarSeedState.summonedAtTurnCount = state.turnCount - 1;
-    state.avatarSeedState.pendingEminence = Math.max(2, state.avatarSeedState.pendingEminence);
-    state.avatarSeedState.payoutDone = false;
   }
 
 }
@@ -2361,7 +4786,9 @@ function primeDevStartOfTurnEffects(
 function hasPendingLuminaryPresentation(state: GameStateData): boolean {
   return (
     (state.pendingSummonEvents?.length ?? 0) > 0 ||
-    (state.pendingLuminaryActivationEvents?.length ?? 0) > 0
+    (state.pendingLuminaryActivationEvents?.length ?? 0) > 0 ||
+    (state.pendingBlueprintManifestationEvents?.length ?? 0) > 0 ||
+    (state.pendingBlueprintDetonationEvents?.length ?? 0) > 0
   );
 }
 
@@ -2393,11 +4820,14 @@ function advanceDevLuminarySequenceStage(state: GameStateData): void {
   }
 
   const selectedIds = new Set(stage.luminaryIds);
+  const includeNextTurnEffects = stage.includeNextTurnEffects ?? !!(
+    stage.includeEndOfTurnEffects || stage.includeStartOfTurnEffects
+  );
   while (state.devLuminarySequenceStage && !hasPendingLuminaryPresentation(state)) {
     const phase = stage.phase ?? "arrivals";
     if (phase === "arrivals") {
       stage.phase = "end_of_turn";
-      if (stage.includeEndOfTurnEffects) {
+      if (includeNextTurnEffects) {
         primeDevEndOfTurnEffects(state, player, selectedIds);
         applyEndOfTurnEffects(state, player);
       }
@@ -2405,7 +4835,7 @@ function advanceDevLuminarySequenceStage(state: GameStateData): void {
     }
     if (phase === "end_of_turn") {
       stage.phase = "start_of_turn";
-      if (stage.includeStartOfTurnEffects) {
+      if (includeNextTurnEffects) {
         primeDevStartOfTurnEffects(state, player, selectedIds);
         applyStartOfTurnEffects(state, player);
       }
@@ -2496,12 +4926,14 @@ export function runDevLuminarySequence(
 
   applyLuminaryBatch(state, player, orderedIds, 1);
 
-  if (options.includeEndOfTurnEffects || options.includeStartOfTurnEffects) {
+  const includeNextTurnEffects = options.includeNextTurnEffects ?? !!(
+    options.includeEndOfTurnEffects || options.includeStartOfTurnEffects
+  );
+  if (includeNextTurnEffects) {
     state.devLuminarySequenceStage = {
       playerId: player.playerId,
       luminaryIds: orderedIds,
-      includeEndOfTurnEffects: !!options.includeEndOfTurnEffects,
-      includeStartOfTurnEffects: !!options.includeStartOfTurnEffects,
+      includeNextTurnEffects: true,
       phase: "arrivals",
     };
   } else {
@@ -2514,8 +4946,7 @@ export function runDevLuminarySequence(
     type: "dev_luminary_sequence",
     playerId,
     luminaryIds: orderedIds,
-    includeEndOfTurnEffects: !!options.includeEndOfTurnEffects,
-    includeStartOfTurnEffects: !!options.includeStartOfTurnEffects,
+    includeNextTurnEffects,
   };
 
   return {
@@ -2529,10 +4960,13 @@ export function runDevLuminarySequence(
 
 // ─── Win Condition ────────────────────────────────────────────────────────────
 
-const WIN_THRESHOLD = 15;
-
 function getVictoryRequirement(state: GameStateData): number {
-  return Math.max(WIN_THRESHOLD, state.victoryRequirement ?? WIN_THRESHOLD);
+  // A missing requirement identifies a pre-setting legacy save, whose original
+  // rules target was 15. New games always receive the explicit default of 20.
+  return Math.max(
+    MIN_VICTORY_REQUIREMENT,
+    state.victoryRequirement ?? MIN_VICTORY_REQUIREMENT,
+  );
 }
 
 function checkWin(state: GameStateData): boolean {
@@ -2559,14 +4993,14 @@ function selectWinnerId(players: ReadonlyArray<PlayerGameState>): string | null 
     const comparison = compareVictoryStandings(
       {
         eminence: contender.eminence,
-        reservedArtifactCount: contender.reservedArtifactIds.length,
+        reservedArtifactCount: ordinaryEncryptedCount(contender),
         forgedArtifacts: contender.forgedArtifactIds
           .map((id) => CARD_MAP.get(id))
           .filter((card): card is ArtifactCard => !!card),
       },
       {
         eminence: winner.eminence,
-        reservedArtifactCount: winner.reservedArtifactIds.length,
+        reservedArtifactCount: ordinaryEncryptedCount(winner),
         forgedArtifacts: winner.forgedArtifactIds
           .map((id) => CARD_MAP.get(id))
           .filter((card): card is ArtifactCard => !!card),
@@ -2613,6 +5047,10 @@ function plannedActionAlreadyResolvedForPlayer(
     return true;
   }
 
+  if ((player.assimilatedArtifactIds ?? []).includes(action.cardId)) {
+    return true;
+  }
+
   return false;
 }
 
@@ -2655,7 +5093,9 @@ function recordFailedPlannedAction(
 function hasPendingLuminaryEvents(state: GameStateData): boolean {
   return (
     (state.pendingSummonEvents?.length ?? 0) > 0 ||
-    (state.pendingLuminaryActivationEvents?.length ?? 0) > 0
+    (state.pendingLuminaryActivationEvents?.length ?? 0) > 0 ||
+    (state.pendingBlueprintManifestationEvents?.length ?? 0) > 0 ||
+    (state.pendingBlueprintDetonationEvents?.length ?? 0) > 0
   );
 }
 
@@ -2667,6 +5107,9 @@ function finishGameIfNeeded(
     state.phase = "finished";
     state.finishReason = "win";
     assignWinner(state);
+    finalizeTraceScenarioOutcome(state);
+    finalizeRecurrenceScenarioOutcome(state);
+    finalizeTriangulationScenarioOutcome(state);
     return;
   }
 
@@ -2679,6 +5122,9 @@ function finishGameIfNeeded(
   state.phase = "finished";
   state.finishReason = "win";
   assignWinner(state);
+  finalizeTraceScenarioOutcome(state);
+  finalizeRecurrenceScenarioOutcome(state);
+  finalizeTriangulationScenarioOutcome(state);
 }
 
 /**
@@ -2690,6 +5136,9 @@ function continuePendingTurnTransition(state: GameStateData): void {
   while (
     state.pendingTurnTransition &&
     !state.pendingLuminaryChoice &&
+    state.traceScenario?.phase !== 'awaiting_guidance' &&
+    state.recurrenceScenario?.phase !== 'awaiting_custody' &&
+    state.triangulationScenario?.phase !== 'awaiting_alignment' &&
     !hasPendingLuminaryEvents(state) &&
     safety++ < 4
   ) {
@@ -2702,12 +5151,14 @@ function continuePendingTurnTransition(state: GameStateData): void {
       const endingPlayer = state.players.find(
         (player) => player.playerId === transition.endingPlayerId,
       );
-      if (endingPlayer) applyEndOfTurnEffects(state, endingPlayer);
+      if (endingPlayer) {
+        settleAscensionRegistryObservation(state, endingPlayer);
+        applyEndOfTurnEffects(state, endingPlayer);
+      }
       continue;
     }
 
     if (transition.stage === "after_end_effects") {
-      state.turnCount = (state.turnCount ?? 0) + 1;
       const playerCount = state.players.length;
       if (playerCount === 0) {
         state.pendingTurnTransition = null;
@@ -2721,6 +5172,53 @@ function continuePendingTurnTransition(state: GameStateData): void {
       const nextPlayerIndex =
         ((endingPlayerIndex >= 0 ? endingPlayerIndex : state.currentPlayerIndex) + 1) %
         playerCount;
+
+      const unresolvedTrace = state.traceScenario?.guidanceMethod === null &&
+        state.traceScenario.phase !== 'finished';
+      const terminalTraceWindow = unresolvedTrace && (
+        forgeAndArchivesAreEmpty(state) ||
+        ((state.phase === 'last_round' || checkWin(state)) && nextPlayerIndex === 0)
+      );
+      if (traceGuidanceIsDue(state) || terminalTraceWindow) {
+        state.traceScenario!.phase = 'awaiting_guidance';
+        state.lastAction = {
+          type: 'chronicle_guidance_ready',
+          playerId: state.traceScenario!.architectPlayerId,
+        };
+        return;
+      }
+
+      const unresolvedRecurrence = state.recurrenceScenario?.custodyMethod === null &&
+        state.recurrenceScenario.phase !== 'finished';
+      const terminalRecurrenceWindow = unresolvedRecurrence && (
+        forgeAndArchivesAreEmpty(state) ||
+        ((state.phase === 'last_round' || checkWin(state)) && nextPlayerIndex === 0)
+      );
+      if (recurrenceCustodyIsDue(state) || terminalRecurrenceWindow) {
+        state.recurrenceScenario!.phase = 'awaiting_custody';
+        state.lastAction = {
+          type: 'chronicle_custody_ready',
+          playerId: state.recurrenceScenario!.architectPlayerId,
+        };
+        return;
+      }
+
+      const unresolvedTriangulation = state.triangulationScenario?.coordinationArchitecture === null &&
+        state.triangulationScenario.phase !== 'finished';
+      const terminalTriangulationWindow = unresolvedTriangulation && (
+        forgeAndArchivesAreEmpty(state) ||
+        ((state.phase === 'last_round' || checkWin(state)) && nextPlayerIndex === 0)
+      );
+      if (triangulationAlignmentIsDue(state) || terminalTriangulationWindow) {
+        state.triangulationScenario!.phase = 'awaiting_alignment';
+        state.lastAction = {
+          type: 'chronicle_alignment_ready',
+          playerId: state.triangulationScenario!.architectPlayerId,
+        };
+        return;
+      }
+
+      state.turnCount = (state.turnCount ?? 0) + 1;
 
       finishGameIfNeeded(state, nextPlayerIndex);
       if (state.phase === "finished") {
@@ -2787,10 +5285,14 @@ function validatePlannedAction(
   // against the post-presentation state without consuming real events.
   clone.pendingSummonEvents = [];
   clone.pendingLuminaryActivationEvents = [];
+  clone.pendingBlueprintManifestationEvents = [];
+  clone.pendingBlueprintDetonationEvents = [];
   clone.pendingLuminaryChoice = null;
   continuePendingTurnTransition(clone);
   clone.pendingSummonEvents = [];
   clone.pendingLuminaryActivationEvents = [];
+  clone.pendingBlueprintManifestationEvents = [];
+  clone.pendingBlueprintDetonationEvents = [];
   clone.pendingTurnTransition = null;
   clone.currentPlayerIndex = idx;
   clone.coreActionUsed = false;
@@ -2811,6 +5313,25 @@ export function applyAction(
   if (playerIdx === -1) return { success: false, error: "Player not found" };
   if (state.phase === "finished")
     return { success: false, error: "Game is over" };
+
+  if (
+    state.traceScenario?.phase === 'awaiting_guidance' &&
+    action.type !== 'resolve_chronicle_choice'
+  ) {
+    return { success: false, error: 'Resolve the Crownfall guidance window before acting' };
+  }
+  if (
+    state.recurrenceScenario?.phase === 'awaiting_custody' &&
+    action.type !== 'resolve_chronicle_choice'
+  ) {
+    return { success: false, error: 'Resolve custody of the Deep Index before acting' };
+  }
+  if (
+    state.triangulationScenario?.phase === 'awaiting_alignment' &&
+    action.type !== 'resolve_chronicle_choice'
+  ) {
+    return { success: false, error: 'Resolve the Alignment before acting' };
+  }
 
   // Auto-expire stale pending summon events.  If a client disconnects before
   // sending resolve_summon, the event would otherwise gate planned-action
@@ -2875,7 +5396,10 @@ export function applyAction(
   const allowedDuringLuminaryResolution =
     action.type === "resolve_summon" ||
     action.type === "resolve_luminary_activation" ||
+    action.type === "resolve_blueprint_manifestation" ||
+    action.type === "resolve_blueprint_detonation" ||
     action.type === "choose_luminary_order" ||
+    action.type === "resolve_chronicle_choice" ||
     action.type === "plan_action" ||
     action.type === "cancel_plan" ||
     action.type === "tutorial_fast_forward";
@@ -2892,11 +5416,14 @@ export function applyAction(
     action.type !== "toggle_luminary_affinity" &&
     action.type !== "resolve_summon" &&
     action.type !== "resolve_luminary_activation" &&
+    action.type !== "resolve_blueprint_manifestation" &&
+    action.type !== "resolve_blueprint_detonation" &&
     action.type !== "plan_action" &&
     action.type !== "cancel_plan" &&
     action.type !== "tutorial_fast_forward" &&
     action.type !== "set_civ_name" &&
-    action.type !== "choose_luminary_order";
+    action.type !== "choose_luminary_order" &&
+    action.type !== "resolve_chronicle_choice";
   if (isTurnGated && state.currentPlayerIndex !== playerIdx) {
     return { success: false, error: "Not your turn" };
   }
@@ -2908,6 +5435,11 @@ export function applyAction(
   }
 
   const player = state.players[playerIdx];
+  let actionSummaryOverride: string | null = null;
+
+  if (action.blueprintAction && action.type !== "forge_artifact") {
+    return { success: false, error: "Blueprint claim action requires a face-up Forge action" };
+  }
 
   switch (action.type) {
     case "toggle_luminary_affinity": {
@@ -3028,9 +5560,9 @@ export function applyAction(
     }
 
     case "reserve_artifact": {
-      if (isForgottenHourActive(state))
+      if (isForgottenHourBlockingPlayer(state, playerId))
         return { success: false, error: ERR_CANNOT_ENCRYPT_DURING_FORGOTTEN_HOUR };
-      if (player.reservedArtifactIds.length >= 3)
+      if (ordinaryEncryptedCount(player) >= 3)
         return { success: false, error: "Cannot reserve more than 3 Artifacts" };
       if (!action.cardId && !action.tier)
         return { success: false, error: "cardId or tier required" };
@@ -3089,20 +5621,8 @@ export function applyAction(
         const deck = getDeckForTier(state, tier);
         if (deck.length === 0)
           return { success: false, error: "Archive is empty" };
+        if (tier === 2) clearAscensionRegistryDeferrals(state, playerId);
         const blindId = deck.shift()!;
-        // Avatar Seed: if the drawn card was seeded in the deck, transfer the token
-        // to artifactMarkers so it follows the card into the reserved pile.
-        if (state.avatarSeedState && !state.avatarSeedState.payoutDone) {
-          const si = state.avatarSeedState.deckSeeds.indexOf(blindId);
-          if (si !== -1) {
-            state.avatarSeedState.deckSeeds.splice(si, 1);
-            addArtifactBrand(state, blindId, {
-              type: "avatar_seed",
-              ownerId: state.avatarSeedState.ownerId,
-              summonedAtTurnCount: state.avatarSeedState.summonedAtTurnCount,
-            });
-          }
-        }
         player.reservedArtifactIds.push(blindId);
         if (!player.privateReservedArtifactIds) player.privateReservedArtifactIds = [];
         player.privateReservedArtifactIds.push(blindId);
@@ -3116,6 +5636,23 @@ export function applyAction(
       const forgeRow = getForgeRowForTier(state, card.tier as 1 | 2 | 3);
       if (!forgeRow.includes(action.cardId))
         return { success: false, error: ERR_ARTIFACT_NOT_IN_FORGE };
+      if (markerHasBrand(state.artifactMarkers?.[action.cardId], "nullified")) {
+        return { success: false, error: ERR_CANNOT_ENCRYPT_NULLIFIED };
+      }
+
+      if (card.tier === 2) clearAscensionRegistryDeferrals(state, playerId);
+
+      const antimatterResult = resolveAntimatterClaim(
+        state,
+        player,
+        action.cardId,
+        _isAutoExec,
+        "encrypted",
+      );
+      if (antimatterResult === "detonated") {
+        actionSummaryOverride = `triggered an Antimatter charge while Encrypting ${getCardLore(action.cardId).name}; action consumed`;
+        break;
+      }
 
       // Reserve from the Forge. Save the marker before the slot is refilled so
       // it follows the Artifact into the reserved pile.
@@ -3123,11 +5660,7 @@ export function applyAction(
       player.reservedArtifactIds.push(action.cardId);
       refillForgeSlot(state, forgeRow, getDeckForTier(state, card.tier as 1 | 2 | 3), action.cardId);
       if (reserveMarker) {
-        const retainedBrands = getArtifactBrands(reserveMarker).filter(
-          (brand) => brand.type !== "avatar_seed" ||
-            (state.avatarSeedState !== undefined && !state.avatarSeedState.payoutDone),
-        );
-        const retainedMarker = buildArtifactMarker(retainedBrands);
+        const retainedMarker = buildArtifactMarker(getArtifactBrands(reserveMarker));
         if (retainedMarker) {
           if (!state.artifactMarkers) state.artifactMarkers = {};
           state.artifactMarkers[action.cardId] = retainedMarker;
@@ -3142,42 +5675,89 @@ export function applyAction(
       const card = CARD_MAP.get(action.cardId);
       if (!card) return { success: false, error: "Artifact not found" };
 
+      const foundryValidationError = validateFoundryClaim(player, action, card);
+      if (foundryValidationError) return { success: false, error: foundryValidationError };
+      const isFoundryRecovery = action.blueprintAction === "foundry_recovery";
+
       if ((state.burnPile ?? []).includes(action.cardId))
         return { success: false, error: "Artifact has been burned" };
 
       const forgeRow = getForgeRowForTier(state, card.tier as 1 | 2 | 3);
-      if (!forgeRow.includes(action.cardId))
+      const forgeSlotIndex = forgeRow.indexOf(action.cardId);
+      const archive = getDeckForTier(state, card.tier as 1 | 2 | 3);
+      const isTideArchiveForge =
+        forgeSlotIndex === -1 &&
+        player.tideArchiveForgeAvailable === true &&
+        player.luminaries.includes("lum_tide") &&
+        archive[0] === action.cardId;
+      if (action.blueprintAction && isTideArchiveForge) {
+        return { success: false, error: "Foundry Forge requires a face-up Tier II Artifact" };
+      }
+      if (forgeSlotIndex === -1 && !isTideArchiveForge && !isFoundryRecovery)
         return { success: false, error: ERR_ARTIFACT_NOT_IN_FORGE };
+      if (
+        action.blueprintAction &&
+        !isFoundryRecovery &&
+        forgeSlotIndex === -1
+      ) {
+        return { success: false, error: "Foundry Forge requires a face-up Tier II Artifact" };
+      }
       const liveAffinityBonuses = effectiveAffinityBonuses(state, player);
-      const eff = effectiveCost(card, player, liveAffinityBonuses);
+      const baseCost = effectiveCost(card, player, liveAffinityBonuses);
+      const eff = isFoundryRecovery
+        ? zeroAffinities()
+        : action.blueprintAction
+          ? applyFoundryForgeCost(card, baseCost)
+          : baseCost;
       if (!canAfford(eff, player.affinities))
         return { success: false, error: "Cannot afford this Artifact" };
+      if (card.tier === 2) clearAscensionRegistryDeferrals(state, playerId);
+      const antimatterResult = isFoundryRecovery
+        ? "none"
+        : resolveAntimatterClaim(
+            state,
+            player,
+            action.cardId,
+            _isAutoExec,
+            "forged",
+          );
+      if (antimatterResult === "detonated") {
+        actionSummaryOverride = `triggered an Antimatter charge while Forging ${getCardLore(action.cardId).name}; action consumed`;
+        break;
+      }
       const kardashevBefore = computeKardashevTier(player.forgedArtifactIds, player.discountedForgeIds);
 
       // Read the marker before refillForgeSlot removes it.
       const forgeMarker = (state.artifactMarkers ?? {})[action.cardId];
-      const markerSuppressesEminence = markerSuppressesForgeValue(forgeMarker);
+      const nullifiedExempt = resolveNullifiedForge(state, playerId, action.cardId, forgeMarker);
+      const markerSuppressesEminence = markerSuppressesForgeValue(forgeMarker, nullifiedExempt);
 
-      // Avatar Seed: if forged by an opponent, increment pending.
-      const forgeSeedBrand = getArtifactBrands(forgeMarker).find(
-        (brand) => brand.type === "avatar_seed",
+      payForgeCost(
+        card,
+        player,
+        state.affinityWell,
+        liveAffinityBonuses,
+        eff,
       );
-      if (forgeSeedBrand && forgeSeedBrand.ownerId !== playerId) {
-        if (state.avatarSeedState && !state.avatarSeedState.payoutDone) {
-          state.avatarSeedState.pendingEminence++;
-        }
-      }
-
-      payForgeCost(card, player, state.affinityWell, liveAffinityBonuses);
       player.forgedArtifactIds.push(action.cardId);
+      recordArtifactImplementation(player, action.cardId, state.turnCount);
       const isZeroCostForge = Object.values(eff).every((v) => v === 0);
       if (isZeroCostForge) {
         player.discountedForgeIds.push(action.cardId);
       }
       if (!player.forgedArtifactBonusSnapshots) player.forgedArtifactBonusSnapshots = {};
       player.forgedArtifactBonusSnapshots[action.cardId] = { ...liveAffinityBonuses };
-      markBlueprintBlockedIfForgotten(player, action.cardId, forgeMarker);
+      markBlueprintBlockedByBrand(player, action.cardId, forgeMarker, nullifiedExempt);
       player.bonuses[card.bonusAffinity]++;
+      completeFoundryClaim(state, player, action);
+
+      const seedAlly = applyAvatarSeedImbuement(
+        state,
+        card,
+        forgeMarker,
+        playerId,
+        forgeSlotIndex >= 0 ? `${card.tier}-${forgeSlotIndex}` : undefined,
+      );
 
       // Marked cards grant 0 Eminence; unmarked/avatar-seeded grant normal printed value.
       player.eminence += markerSuppressesEminence ? 0 : card.eminence;
@@ -3196,10 +5776,30 @@ export function applyAction(
           summary: `The Glass Orchard — Perfect Replication: +1 extra ${AFFINITY_LABEL[card.bonusAffinity]} bonus`,
           turn: state.roundNumber,
         });
+        pushActivationEvent(state, "lum_orchard", "action", player.playerId, [card.id], {
+          affinityType: card.bonusAffinity,
+          affinityAmount: 1,
+        });
       }
 
-      refillForgeSlot(state, forgeRow, getDeckForTier(state, card.tier as 1 | 2 | 3), action.cardId);
+      if (isFoundryRecovery) {
+        const storedIndex = player.reservedArtifactIds.indexOf(action.cardId);
+        if (storedIndex !== -1) player.reservedArtifactIds.splice(storedIndex, 1);
+        if (player.privateReservedArtifactIds) {
+          player.privateReservedArtifactIds = player.privateReservedArtifactIds
+            .filter((id) => id !== action.cardId);
+        }
+        if (state.artifactMarkers) delete state.artifactMarkers[action.cardId];
+      } else if (isTideArchiveForge) {
+        archive.shift();
+        if (state.artifactMarkers) delete state.artifactMarkers[action.cardId];
+        player.tideArchiveForgeAvailable = false;
+      } else {
+        refillForgeSlot(state, forgeRow, archive, action.cardId);
+      }
+      checkBlueprintManifestations(state, player);
       checkLuminaries(state, player);
+      if (seedAlly && seedAlly.playerId !== player.playerId) checkLuminaries(state, seedAlly);
       checkKardashevAdvance(state, player, kardashevBefore, isZeroCostForge, card.tier);
       break;
     }
@@ -3211,44 +5811,66 @@ export function applyAction(
         return { success: false, error: "Artifact not in your reserve" };
       const card = CARD_MAP.get(action.cardId);
       if (!card) return { success: false, error: "Artifact not found" };
+      const isFoundryStored = foundryStoredArtifactIds(player).includes(action.cardId);
+      const foundry = getManifestedDevice(player, "bp_mantle_to_orbit_foundry");
+      if (isFoundryStored && foundry?.state === "recovering") {
+        return {
+          success: false,
+          error: "Use free Foundry recovery while the Broken Covenant recovery is active",
+        };
+      }
       const liveBonusesReserved = effectiveAffinityBonuses(state, player);
       const eff = effectiveCost(card, player, liveBonusesReserved);
       if (!canAfford(eff, player.affinities))
         return { success: false, error: "Cannot afford this Artifact" };
       const kardashevBeforeReserved = computeKardashevTier(player.forgedArtifactIds, player.discountedForgeIds);
 
-      // Avatar Seed: the token follows the card into the reserved pile (v0.8 spec).
-      // If forged by an opponent, accumulate +1 pending Eminence on The Seed Beyond Seasons.
-      // If forged by the owner, just remove the token — no pending.
       const reservedMarker = (state.artifactMarkers ?? {})[action.cardId];
-      const reservedMarkerSuppressesEminence = markerSuppressesForgeValue(reservedMarker);
-      const reservedSeedBrand = getArtifactBrands(reservedMarker).find(
-        (brand) => brand.type === "avatar_seed",
+      const reservedNullifiedExempt = resolveNullifiedForge(state, playerId, action.cardId, reservedMarker);
+      const reservedMarkerSuppressesEminence = markerSuppressesForgeValue(
+        reservedMarker,
+        reservedNullifiedExempt,
       );
-      if (reservedSeedBrand && state.avatarSeedState && !state.avatarSeedState.payoutDone) {
-        if (reservedSeedBrand.ownerId !== playerId) {
-          state.avatarSeedState.pendingEminence++;
-        }
-        // Token is consumed on forge regardless of who forges.
-      }
       // Clean up any marker (Forgotten/Condemned/Nullified/AvatarSeed) now that the card is forged.
       if (state.artifactMarkers) delete state.artifactMarkers[action.cardId];
 
-      payForgeCost(card, player, state.affinityWell, liveBonusesReserved);
+      payForgeCost(
+        card,
+        player,
+        state.affinityWell,
+        liveBonusesReserved,
+        eff,
+      );
       player.reservedArtifactIds.splice(idx, 1);
       if (player.privateReservedArtifactIds) {
         const privateIdx = player.privateReservedArtifactIds.indexOf(action.cardId);
         if (privateIdx !== -1) player.privateReservedArtifactIds.splice(privateIdx, 1);
       }
+      if (isFoundryStored) {
+        const foundryPrivateState = findPrivateBlueprintState(
+          player,
+          "bp_mantle_to_orbit_foundry",
+        );
+        if (foundryPrivateState) {
+          removeArtifactFromFoundryStorage(foundryPrivateState, action.cardId);
+        }
+      }
       player.forgedArtifactIds.push(action.cardId);
+      recordArtifactImplementation(player, action.cardId, state.turnCount);
       const isDiscountReserved = Object.values(eff).every((v) => v === 0);
       if (isDiscountReserved) {
         player.discountedForgeIds.push(action.cardId);
       }
       if (!player.forgedArtifactBonusSnapshots) player.forgedArtifactBonusSnapshots = {};
       player.forgedArtifactBonusSnapshots[action.cardId] = { ...liveBonusesReserved };
-      markBlueprintBlockedIfForgotten(player, action.cardId, reservedMarker);
+      markBlueprintBlockedByBrand(player, action.cardId, reservedMarker, reservedNullifiedExempt);
       player.bonuses[card.bonusAffinity]++;
+      const reservedSeedAlly = applyAvatarSeedImbuement(
+        state,
+        card,
+        reservedMarker,
+        playerId,
+      );
       player.eminence += reservedMarkerSuppressesEminence ? 0 : card.eminence;
 
       // The Glass Orchard — Perfect Replication (reserved forge path).
@@ -3265,17 +5887,25 @@ export function applyAction(
           summary: `The Glass Orchard — Perfect Replication: +1 extra ${AFFINITY_LABEL[card.bonusAffinity]} bonus`,
           turn: state.roundNumber,
         });
+        pushActivationEvent(state, "lum_orchard", "action", player.playerId, [card.id], {
+          affinityType: card.bonusAffinity,
+          affinityAmount: 1,
+        });
       }
 
+      checkBlueprintManifestations(state, player);
       checkLuminaries(state, player);
+      if (reservedSeedAlly && reservedSeedAlly.playerId !== player.playerId) {
+        checkLuminaries(state, reservedSeedAlly);
+      }
       checkKardashevAdvance(state, player, kardashevBeforeReserved, isDiscountReserved, card.tier);
       break;
     }
 
     case "assimilate": {
-      // Final Hunger — Assimilation: one-time action replacing the forge on the summon turn.
+      // Final Hunger — Assimilation: one-time replacement for a Forge action.
       if (!state.firstHungerAvailable || state.firstHungerAvailable !== playerId) {
-        return { success: false, error: "Assimilation is not available this turn" };
+        return { success: false, error: "Assimilation is not available" };
       }
       if (!action.cardId) return { success: false, error: "cardId required" };
       const assimCard = CARD_MAP.get(action.cardId);
@@ -3283,38 +5913,17 @@ export function applyAction(
       const assimilationForgeRow = getForgeRowForTier(state, assimCard.tier as 1 | 2 | 3);
       if (!assimilationForgeRow.includes(action.cardId))
         return { success: false, error: ERR_ARTIFACT_NOT_IN_FORGE };
-      if (assimCard.cost.flare === 0 && assimCard.cost.verdance === 0 && assimCard.cost.radiance === 0)
-        return { success: false, error: "Target must have Flare, Verdance, or Radiance in its cost" };
 
-      // Cost: printed base cost, reduced by player's card-derived bonuses for Flare (flare),
-      // Verdance (verdance), and Radiance (radiance) only. Continuum/Abyss/Singularity costs
-      // are paid in full from the printed cost. Luminary bonuses do not apply here.
-      const assimCost: AffinityCounts = { ...assimCard.cost } as AffinityCounts;
-      assimCost.flare   = Math.max(0, (assimCost.flare   ?? 0) - (player.bonuses.flare   ?? 0));
-      assimCost.verdance = Math.max(0, (assimCost.verdance ?? 0) - (player.bonuses.verdance ?? 0));
-      assimCost.radiance  = Math.max(0, (assimCost.radiance  ?? 0) - (player.bonuses.radiance  ?? 0));
-      if (!canAfford(assimCost, player.affinities))
-        return { success: false, error: "Cannot afford Assimilation" };
-
-      // Pay manually with the reduced cost (payForgeCost uses normal effective cost).
-      let singularityUsed = 0;
-      for (const c of STANDARD_AFFINITY_KEYS) {
-        const needed = assimCost[c] ?? 0;
-        const avail = player.affinities[c] ?? 0;
-        const fromOwn = Math.min(needed, avail);
-        player.affinities[c] -= fromOwn;
-        state.affinityWell[c] += fromOwn;
-        singularityUsed += needed - fromOwn;
-      }
-      player.affinities.singularity -= singularityUsed;
-      state.affinityWell.singularity += singularityUsed;
-
-      // Burn via shared burnCard — emits BurnEvent, increments Catalyst Bloom, refills slot.
-      burnCard(state, action.cardId, assimCard.tier as 1 | 2 | 3, "lum_hunger", false, { triggeredByPlayerId: playerId });
-
-      // Grant printed Eminence + 2 bonus.
-      const assimilationEminence = assimCard.eminence + 2;
-      player.eminence += assimilationEminence;
+      if (!Array.isArray(player.assimilatedArtifactIds)) player.assimilatedArtifactIds = [];
+      player.assimilatedArtifactIds.push(action.cardId);
+      player.bonuses[assimCard.bonusAffinity] =
+        (player.bonuses[assimCard.bonusAffinity] ?? 0) + 1;
+      refillForgeSlot(
+        state,
+        assimilationForgeRow,
+        getDeckForTier(state, assimCard.tier as 1 | 2 | 3),
+        action.cardId,
+      );
 
       // Assimilation is consumed.
       state.firstHungerAvailable = null;
@@ -3322,10 +5931,18 @@ export function applyAction(
       const assimLore = getCardLore(action.cardId);
       pushLog(state, {
         playerId: player.playerId, playerName: player.playerName,
-        summary: `The Final Hunger Assimilated ${assimLore.name}: it was Burned, and you gained ${assimilationEminence} Eminence.`,
+        summary: `The Final Hunger Assimilated ${assimLore.name}: +1 ${AFFINITY_LABEL[assimCard.bonusAffinity]} permanent Affinity, 0 Eminence.`,
         turn: state.roundNumber,
       });
-      checkLuminaries(state, player);
+      pushActivationEvent(
+        state,
+        "lum_hunger",
+        "action",
+        player.playerId,
+        [action.cardId],
+        { affinityType: assimCard.bonusAffinity, affinityAmount: 1 },
+      );
+      checkBlueprintManifestations(state, player);
       break;
     }
 
@@ -3335,6 +5952,15 @@ export function applyAction(
     }
 
     case "surrender": {
+      if (state.traceScenario?.guidanceMethod === null) {
+        return { success: false, error: 'Resolve Crownfall before conceding this history' };
+      }
+      if (state.recurrenceScenario?.custodyMethod === null) {
+        return { success: false, error: 'Resolve custody of the Deep Index before conceding this history' };
+      }
+      if (state.triangulationScenario?.coordinationArchitecture === null) {
+        return { success: false, error: 'Resolve the Alignment before conceding this history' };
+      }
       // Player surrenders; end the game with them as last place
       state.phase = "finished";
       state.finishReason = "surrender";
@@ -3344,7 +5970,81 @@ export function applyAction(
       // Set the winner to the remaining player with the highest Eminence.
       const others = state.players.filter((p) => p.playerId !== playerId);
       state.winnerId = selectWinnerId(others);
+      finalizeTraceScenarioOutcome(state);
+      finalizeRecurrenceScenarioOutcome(state);
+      finalizeTriangulationScenarioOutcome(state);
       break;
+    }
+
+    case "resolve_chronicle_choice": {
+      if (state.triangulationScenario) {
+        if (!isTriangulationCoordinationArchitecture(action.triangulationCoordinationArchitecture)) {
+          return { success: false, error: 'A valid Alignment architecture is required' };
+        }
+        const result = resolveTriangulationAlignment(
+          state,
+          playerId,
+          action.triangulationCoordinationArchitecture,
+        );
+        if (!result.success) return { success: false, error: result.error };
+        if (!result.changed) return { success: true };
+        state.lastAction = {
+          type: 'resolve_chronicle_choice',
+          playerId,
+          triangulationCoordinationArchitecture: action.triangulationCoordinationArchitecture,
+        };
+        pushLog(state, {
+          playerId,
+          playerName: player.playerName,
+          summary: 'established the Three-Bearing Alignment',
+          turn: state.roundNumber,
+        });
+        continuePendingTurnTransition(state);
+        state.version++;
+        return { success: true };
+      }
+      if (state.recurrenceScenario) {
+        if (!isRecurrenceCustodyMethod(action.recurrenceCustodyMethod)) {
+          return { success: false, error: 'A valid Deep Index custody method is required' };
+        }
+        const result = resolveRecurrenceCustody(state, playerId, action.recurrenceCustodyMethod);
+        if (!result.success) return { success: false, error: result.error };
+        if (!result.changed) return { success: true };
+        state.lastAction = {
+          type: 'resolve_chronicle_choice',
+          playerId,
+          recurrenceCustodyMethod: action.recurrenceCustodyMethod,
+        };
+        pushLog(state, {
+          playerId,
+          playerName: player.playerName,
+          summary: 'set custody of the Deep Index',
+          turn: state.roundNumber,
+        });
+        continuePendingTurnTransition(state);
+        state.version++;
+        return { success: true };
+      }
+      if (!isTraceGuidanceMethod(action.traceGuidanceMethod)) {
+        return { success: false, error: 'A valid Crownfall guidance method is required' };
+      }
+      const result = resolveTraceGuidance(state, playerId, action.traceGuidanceMethod);
+      if (!result.success) return { success: false, error: result.error };
+      if (!result.changed) return { success: true };
+      state.lastAction = {
+        type: 'resolve_chronicle_choice',
+        playerId,
+        traceGuidanceMethod: action.traceGuidanceMethod,
+      };
+      pushLog(state, {
+        playerId,
+        playerName: player.playerName,
+        summary: 'set the Crownfall guidance posture',
+        turn: state.roundNumber,
+      });
+      continuePendingTurnTransition(state);
+      state.version++;
+      return { success: true };
     }
 
     case "resolve_summon": {
@@ -3380,6 +6080,9 @@ export function applyAction(
       if (!Array.isArray(state.pendingLuminaryActivationEvents)) {
         state.pendingLuminaryActivationEvents = [];
       }
+      const resolvedActivation = state.pendingLuminaryActivationEvents.find(
+        (event) => event.eventId === eventId,
+      );
       const lenBefore = state.pendingLuminaryActivationEvents.length;
       state.pendingLuminaryActivationEvents = state.pendingLuminaryActivationEvents.filter(
         (e) => e.eventId !== eventId,
@@ -3389,7 +6092,46 @@ export function applyAction(
         return { success: true };
       }
       state.lastAction = { type: "resolve_luminary_activation", playerId, eventId };
+      if (
+        resolvedActivation?.luminaryId === "lum_hunger" &&
+        resolvedActivation.effectType === "action"
+      ) {
+        const owner = state.players.find(
+          (candidate) => candidate.playerId === resolvedActivation.triggeringPlayerId,
+        );
+        if (owner) checkLuminaries(state, owner);
+      }
       advanceDevLuminarySequenceStage(state);
+      continuePendingTurnTransition(state);
+      state.version++;
+      return { success: true };
+    }
+
+    case "resolve_blueprint_manifestation": {
+      const { eventId } = action;
+      const before = state.pendingBlueprintManifestationEvents.length;
+      state.pendingBlueprintManifestationEvents = state.pendingBlueprintManifestationEvents.filter(
+        (event) => event.eventId !== eventId,
+      );
+      if (state.pendingBlueprintManifestationEvents.length === before) {
+        return { success: true };
+      }
+      state.lastAction = { type: "resolve_blueprint_manifestation", playerId, eventId };
+      continuePendingTurnTransition(state);
+      state.version++;
+      return { success: true };
+    }
+
+    case "resolve_blueprint_detonation": {
+      const { eventId } = action;
+      const before = state.pendingBlueprintDetonationEvents.length;
+      state.pendingBlueprintDetonationEvents = state.pendingBlueprintDetonationEvents.filter(
+        (event) => event.eventId !== eventId,
+      );
+      if (state.pendingBlueprintDetonationEvents.length === before) {
+        return { success: true };
+      }
+      state.lastAction = { type: "resolve_blueprint_detonation", playerId, eventId };
       continuePendingTurnTransition(state);
       state.version++;
       return { success: true };
@@ -3404,9 +6146,6 @@ export function applyAction(
       }
       if (state.pendingLuminaryChoice.playerId !== playerId) {
         return { success: false, error: "This choice belongs to another player" };
-      }
-      if (state.currentPlayerIndex !== playerIdx) {
-        return { success: false, error: "Not your turn" };
       }
       const { orderedIds } = action;
       if (!orderedIds || !Array.isArray(orderedIds)) {
@@ -3435,7 +6174,17 @@ export function applyAction(
       // upcoming turn.  Validate legality first via a dry-run clone.
       const inner = action.plannedActionData;
       if (!inner) return { success: false, error: "No plannedActionData provided" };
-      const disallowed: ActionType[] = ["plan_action", "cancel_plan", "resolve_summon", "resolve_luminary_activation", "surrender", "pass"];
+      settlePreManifestAction(state, playerId);
+      const disallowed: ActionType[] = [
+        "plan_action",
+        "cancel_plan",
+        "resolve_summon",
+        "resolve_luminary_activation",
+        "resolve_blueprint_manifestation",
+        "resolve_blueprint_detonation",
+        "surrender",
+        "pass",
+      ];
       if (disallowed.includes(inner.type)) {
         return { success: false, error: `Cannot plan a '${inner.type}' action` };
       }
@@ -3481,6 +6230,7 @@ export function applyAction(
       // Non-turn-gated: cancel any standing planned action.
       player.plannedAction = null;
       player.plannedActionCancelReason = null;
+      settlePreManifestAction(state, playerId);
       // Stamp lastAction so the broadcast does not carry a stale Forge action
       // type, which would confuse animation-queue gating on the client.
       state.lastAction = { type: "cancel_plan", playerId };
@@ -3495,7 +6245,8 @@ export function applyAction(
       const ENDGAME_FORGED = [
         "t2e01", "t2e02", "t2e03", "t2e04", "t2e06", // 5 Verdance bonuses, 8 Eminence
         "t2r01", "t2r02", "t2r03",                    // 3 Flare bonuses, 5 Eminence
-      ];                                                 // total: 13 Eminence, 5 Verdance bonuses
+        "t3s01", "t3p01",                              // 1 Continuum, 1 Radiance, 6 Eminence
+      ];                                                 // total: 19 Eminence, 5 Verdance bonuses
       const ENDGAME_RESERVED = ["t1e07"]; // verdance, cost abyss=2 radiance=1
       const allEndgameCards = [...ENDGAME_FORGED, ...ENDGAME_RESERVED];
 
@@ -3528,11 +6279,18 @@ export function applyAction(
 
       // Set up the player's endgame state
       player.forgedArtifactIds = [...ENDGAME_FORGED];
+      player.artifactForgeCounts = usageCountsFromIds(ENDGAME_FORGED);
+      player.civilization = normalizeCivilizationState({
+        civilization: emptyCivilizationState(),
+        forgedArtifactIds: player.forgedArtifactIds,
+        artifactForgeCounts: player.artifactForgeCounts,
+      });
+      player.assimilatedArtifactIds = [];
       player.reservedArtifactIds  = [...ENDGAME_RESERVED];
       player.privateReservedArtifactIds = [];
       player.affinities  = { flare: 0, continuum: 0, verdance: 0, abyss: 3, radiance: 2, singularity: 0 };
-      player.bonuses   = { flare: 3, continuum: 0, verdance: 5, abyss: 0, radiance: 0, singularity: 0 };
-      player.eminence    = 13;
+      player.bonuses   = { flare: 3, continuum: 1, verdance: 5, abyss: 0, radiance: 1, singularity: 0 };
+      player.eminence    = DEFAULT_VICTORY_REQUIREMENT - 1;
       player.luminaries = [];
       // Clear any luminaryAffinities entries owned by this player so that a
       // subsequent Luminary summon starts with a fresh summonedAtTurnCount.
@@ -3542,6 +6300,7 @@ export function applyAction(
       state.luminaryAffinities = state.luminaryAffinities.filter(
         (x) => x.ownerId !== player.playerId,
       );
+      if (state.voidSealOwnerId === player.playerId) state.voidSealOwnerId = null;
       // Clear any Forge markers (condemned, forgotten, nullified) owned by
       // this player so the board is clean for the next test.
       if (state.artifactMarkers) {
@@ -3576,7 +6335,7 @@ export function applyAction(
   pushLog(state, {
     playerId,
     playerName: player.playerName,
-    summary: describeAction(action, player),
+    summary: actionSummaryOverride ?? describeAction(action, player),
     turn: state.roundNumber,
   });
   // Mark the core action slot as consumed until the full resolution pipeline
@@ -3584,6 +6343,10 @@ export function applyAction(
   if (CORE_ACTIONS.has(action.type)) {
     state.coreActionUsed = true;
   }
+  updateTraceProgressAfterAction(state, player, action);
+  updateRecurrenceProgressAfterAction(state, player, action);
+  updateTriangulationProgressAfterAction(state, player, action);
+  if (_isAutoExec) settlePreManifestAction(state, playerId);
   state.version++;
   
   // Begin the durable resolution pipeline. It advances synchronously when no
@@ -3652,11 +6415,28 @@ function describeAction(action: ActionPayload, _player: PlayerGameState): string
       if (action.cardId) {
         const card = CARD_MAP.get(action.cardId);
         const lore = getCardLore(action.cardId);
-        const verb = action.type === "forge_reserved_artifact" ? "Forged reserved" : "Forged";
+        const verb = action.type === "forge_reserved_artifact"
+          ? "Forged reserved"
+          : action.blueprintAction === "foundry_recovery"
+            ? "Recovered through Mantle-to-Orbit Foundry"
+          : action.blueprintAction === "foundry_overdrive"
+            ? "Forged with Mantle-to-Orbit Overdrive"
+          : action.blueprintAction === "foundry_sustainable"
+            ? "Forged through Mantle-to-Orbit Foundry"
+          : action.luminaryId === "lum_tide"
+            ? "Forged from an Archive"
+            : "Forged";
         const eminence = card?.eminence ?? 0;
         return `${verb} "${lore.name}"${eminence ? ` (+${eminence} Eminence)` : ""}`;
       }
       return "Forged an Artifact";
+    }
+    case "assimilate": {
+      if (!action.cardId) return "Used Assimilation";
+      const card = CARD_MAP.get(action.cardId);
+      const lore = getCardLore(action.cardId);
+      const bonus = card ? AFFINITY_LABEL[card.bonusAffinity] : "Affinity";
+      return `Assimilated "${lore.name}" (+1 ${bonus}, 0 Eminence)`;
     }
     case "pass":
       return "Time expired — turn passed";
@@ -3687,23 +6467,36 @@ function getDeckForTier(state: GameStateData, tier: 1 | 2 | 3): string[] {
  * the board presentation (Tier III, Tier II, Tier I) so clients can map the
  * activation payload back to the twelve original slots.
  */
-function resetForgeThroughArchives(state: GameStateData): string[] {
+function resetForgeThroughArchives(state: GameStateData, sourcePlayerId: string): string[] {
   const returnedIds: string[] = [];
 
   for (const tier of [3, 2, 1] as const) {
     const forgeRow = getForgeRowForTier(state, tier);
     const archive = getDeckForTier(state, tier);
-    const returnedFromRow = [...forgeRow];
+    const protectedSlots = new Map<number, string>();
+    const returnedFromRow = forgeRow.filter((cardId, slotIndex) => {
+      const protectedClaim = interceptHostilePlannedClaim(
+        state,
+        cardId,
+        sourcePlayerId,
+        "claim_cancellation",
+      );
+      if (protectedClaim) protectedSlots.set(slotIndex, cardId);
+      return !protectedClaim;
+    });
     returnedIds.push(...returnedFromRow);
 
     const randomizedPool = shuffle([...archive, ...returnedFromRow]);
-    const nextRow = randomizedPool.slice(0, 4);
-    const nextArchive = randomizedPool.slice(nextRow.length);
+    const nextRow = forgeRow.map((_, slotIndex) =>
+      protectedSlots.get(slotIndex) ?? randomizedPool.shift()!,
+    );
+    const nextArchive = randomizedPool;
 
     forgeRow.splice(0, forgeRow.length, ...nextRow);
     archive.splice(0, archive.length, ...nextArchive);
   }
 
+  retargetUnavailableAntimatterCharges(state);
   return returnedIds;
 }
 
@@ -3726,6 +6519,9 @@ export function normalizeState(raw: unknown): GameStateData {
     state.players = (state.players as Record<string, unknown>[]).map((p) => {
       // ensure luminaries array exists
       if (!Array.isArray(p.luminaries)) p = { ...p, luminaries: [] };
+      if (p.luminaryArrivalSound !== "first_resonance") {
+        p = { ...p, luminaryArrivalSound: "standard" };
+      }
       // filter out old luminary IDs (lum01-lum05) no longer in the pantheon
       p = {
         ...p,
@@ -3749,6 +6545,63 @@ export function normalizeState(raw: unknown): GameStateData {
         };
       }
       if (!Array.isArray(p.blueprintBlockedCardIds)) p = { ...p, blueprintBlockedCardIds: [] };
+      if (!Array.isArray(p.blueprintPrivateStates)) p = { ...p, blueprintPrivateStates: [] };
+      const foundryPrivateState = (p.blueprintPrivateStates as Array<Record<string, unknown>>)
+        .find((entry) => entry.blueprintId === "bp_mantle_to_orbit_foundry");
+      if (foundryPrivateState) {
+        const legacyRecoveryIds = Array.isArray(foundryPrivateState.foundryRecoveryArtifactIds)
+          ? foundryPrivateState.foundryRecoveryArtifactIds.filter(
+              (artifactId): artifactId is string => typeof artifactId === "string",
+            )
+          : [];
+        if (!Array.isArray(foundryPrivateState.foundryStoredArtifactIds)) {
+          foundryPrivateState.foundryStoredArtifactIds = [...legacyRecoveryIds];
+        }
+        const storedIds = (foundryPrivateState.foundryStoredArtifactIds as unknown[])
+          .filter((artifactId): artifactId is string => typeof artifactId === "string");
+        foundryPrivateState.foundryStoredArtifactIds = [...new Set(storedIds)];
+        delete foundryPrivateState.foundryRecoveryArtifactIds;
+        if (storedIds.length > 0) {
+          const reservedIds = Array.isArray(p.reservedArtifactIds)
+            ? p.reservedArtifactIds.filter((artifactId): artifactId is string => typeof artifactId === "string")
+            : [];
+          p = {
+            ...p,
+            reservedArtifactIds: [...new Set([...reservedIds, ...storedIds])],
+            privateReservedArtifactIds: (p.privateReservedArtifactIds as string[])
+              .filter((artifactId) => !storedIds.includes(artifactId)),
+          };
+        }
+      }
+      if (!Array.isArray(p.manifestedBlueprintDevices)) p = { ...p, manifestedBlueprintDevices: [] };
+      if (!p.blueprintPresentationVariants || typeof p.blueprintPresentationVariants !== "object" || Array.isArray(p.blueprintPresentationVariants)) {
+        p = { ...p, blueprintPresentationVariants: {} };
+      }
+      if (!Array.isArray(p.assimilatedArtifactIds)) p = { ...p, assimilatedArtifactIds: [] };
+      if (!p.artifactForgeCounts || typeof p.artifactForgeCounts !== "object" || Array.isArray(p.artifactForgeCounts)) {
+        p = { ...p, artifactForgeCounts: usageCountsFromIds(p.forgedArtifactIds) };
+      }
+      p = {
+        ...p,
+        civilization: normalizeCivilizationState({
+          civilization: p.civilization,
+          forgedArtifactIds: p.forgedArtifactIds,
+          artifactForgeCounts: p.artifactForgeCounts,
+          discountedForgeIds: p.discountedForgeIds,
+          manifestedBlueprintDevices: p.manifestedBlueprintDevices,
+          civilizationTurnCount: typeof state.turnCount === "number" ? state.turnCount : null,
+        }),
+      };
+      if (!p.luminaryAllianceCounts || typeof p.luminaryAllianceCounts !== "object" || Array.isArray(p.luminaryAllianceCounts)) {
+        p = { ...p, luminaryAllianceCounts: usageCountsFromIds(p.luminaries) };
+      }
+      if (typeof p.tideArchiveForgeAvailable !== "boolean") {
+        p = {
+          ...p,
+          // Existing games with Tide already claimed gain the redesigned use.
+          tideArchiveForgeAvailable: (p.luminaries as string[]).includes("lum_tide"),
+        };
+      }
       // ensure forgedArtifactBonusSnapshots exists (added in bonus-snapshot feature)
       if (!p.forgedArtifactBonusSnapshots || typeof p.forgedArtifactBonusSnapshots !== 'object' || Array.isArray(p.forgedArtifactBonusSnapshots)) {
         p = { ...p, forgedArtifactBonusSnapshots: {} };
@@ -3760,9 +6613,150 @@ export function normalizeState(raw: unknown): GameStateData {
   if (typeof state.turnCount !== "number") {
     state.turnCount = 0;
   }
+  if (state.traceScenario && typeof state.traceScenario === 'object' && !Array.isArray(state.traceScenario)) {
+    const trace = state.traceScenario as unknown as Partial<TraceScenarioState>;
+    if (
+      trace.chronicleId === TRACE_CHRONICLE_ID &&
+      trace.scenarioId === TRACE_SCENARIO_ID &&
+      typeof trace.architectPlayerId === 'string' &&
+      typeof trace.autonomousPlayerId === 'string'
+    ) {
+      state.traceScenario = {
+        chronicleId: TRACE_CHRONICLE_ID,
+        scenarioId: TRACE_SCENARIO_ID,
+        definitionVersion: TRACE_DEFINITION_VERSION,
+        runKind: trace.runKind === 'rehearsal' ? 'rehearsal' : 'primary',
+        architectPlayerId: trace.architectPlayerId,
+        autonomousPlayerId: trace.autonomousPlayerId,
+        phase: trace.phase === 'awaiting_guidance' || trace.phase === 'guidance_resolved' ||
+          trace.phase === 'finished' || trace.phase === 'setup'
+          ? trace.phase
+          : 'playing',
+        architectCoreActionCount: Math.max(0, Math.trunc(trace.architectCoreActionCount ?? 0)),
+        guidanceDueAfterCoreActions: Math.max(
+          1,
+          Math.trunc(trace.guidanceDueAfterCoreActions ?? TRACE_GUIDANCE_DUE_AFTER_CORE_ACTIONS),
+        ),
+        guidanceMethod: isTraceGuidanceMethod(trace.guidanceMethod) ? trace.guidanceMethod : null,
+        guidanceResolvedAtTurnCount: typeof trace.guidanceResolvedAtTurnCount === 'number'
+          ? Math.max(0, Math.trunc(trace.guidanceResolvedAtTurnCount))
+          : null,
+        preparednessObjectiveMet: trace.preparednessObjectiveMet === true,
+        preparednessArtifactId: typeof trace.preparednessArtifactId === 'string'
+          ? trace.preparednessArtifactId
+          : null,
+        outcomeId: typeof trace.outcomeId === 'string'
+          ? trace.outcomeId as TraceScenarioState['outcomeId']
+          : null,
+      };
+    } else {
+      delete state.traceScenario;
+    }
+  }
+  if (state.recurrenceScenario && typeof state.recurrenceScenario === 'object' && !Array.isArray(state.recurrenceScenario)) {
+    const recurrence = state.recurrenceScenario as unknown as Partial<RecurrenceScenarioState>;
+    if (
+      recurrence.chronicleId === RECURRENCE_CHRONICLE_ID &&
+      recurrence.scenarioId === RECURRENCE_SCENARIO_ID &&
+      typeof recurrence.architectPlayerId === 'string' &&
+      typeof recurrence.autonomousPlayerId === 'string'
+    ) {
+      state.recurrenceScenario = {
+        chronicleId: RECURRENCE_CHRONICLE_ID,
+        scenarioId: RECURRENCE_SCENARIO_ID,
+        definitionVersion: RECURRENCE_DEFINITION_VERSION,
+        runKind: recurrence.runKind === 'rehearsal' ? 'rehearsal' : 'primary',
+        architectPlayerId: recurrence.architectPlayerId,
+        autonomousPlayerId: recurrence.autonomousPlayerId,
+        phase: recurrence.phase === 'awaiting_custody' || recurrence.phase === 'custody_resolved' ||
+          recurrence.phase === 'finished' || recurrence.phase === 'setup'
+          ? recurrence.phase
+          : 'playing',
+        architectCoreActionCount: Math.max(0, Math.trunc(recurrence.architectCoreActionCount ?? 0)),
+        custodyDueAfterCoreActions: Math.max(
+          1,
+          Math.trunc(recurrence.custodyDueAfterCoreActions ?? RECURRENCE_CUSTODY_DUE_AFTER_CORE_ACTIONS),
+        ),
+        custodyMethod: isRecurrenceCustodyMethod(recurrence.custodyMethod)
+          ? recurrence.custodyMethod
+          : null,
+        custodyResolvedAtTurnCount: typeof recurrence.custodyResolvedAtTurnCount === 'number'
+          ? Math.max(0, Math.trunc(recurrence.custodyResolvedAtTurnCount))
+          : null,
+        preparednessObjectiveMet: recurrence.preparednessObjectiveMet === true,
+        preparednessArtifactId: typeof recurrence.preparednessArtifactId === 'string'
+          ? recurrence.preparednessArtifactId
+          : null,
+        outcomeId: typeof recurrence.outcomeId === 'string' &&
+          (RECURRENCE_OUTCOME_IDS as readonly string[]).includes(recurrence.outcomeId)
+          ? recurrence.outcomeId as RecurrenceScenarioState['outcomeId']
+          : null,
+      };
+    } else {
+      delete state.recurrenceScenario;
+    }
+  }
+  if (state.triangulationScenario && typeof state.triangulationScenario === 'object' && !Array.isArray(state.triangulationScenario)) {
+    const scenario = state.triangulationScenario as unknown as Partial<TriangulationScenarioState>;
+    if (
+      scenario.chronicleId === TRIANGULATION_CHRONICLE_ID &&
+      scenario.scenarioId === TRIANGULATION_SCENARIO_ID &&
+      typeof scenario.architectPlayerId === 'string' &&
+      typeof scenario.myriaPlayerId === 'string' &&
+      typeof scenario.vesperPlayerId === 'string'
+    ) {
+      state.triangulationScenario = {
+        chronicleId: TRIANGULATION_CHRONICLE_ID,
+        scenarioId: TRIANGULATION_SCENARIO_ID,
+        definitionVersion: TRIANGULATION_DEFINITION_VERSION,
+        runKind: scenario.runKind === 'rehearsal' ? 'rehearsal' : 'primary',
+        architectPlayerId: scenario.architectPlayerId,
+        myriaPlayerId: scenario.myriaPlayerId,
+        vesperPlayerId: scenario.vesperPlayerId,
+        phase: scenario.phase === 'awaiting_alignment' || scenario.phase === 'alignment_resolved' ||
+          scenario.phase === 'finished' || scenario.phase === 'setup'
+          ? scenario.phase
+          : 'playing',
+        architectCoreActions: Math.max(0, Math.trunc(scenario.architectCoreActions ?? 0)),
+        alignmentDueAfterActions: Math.max(
+          1,
+          Math.trunc(scenario.alignmentDueAfterActions ?? TRIANGULATION_ALIGNMENT_DUE_AFTER_CORE_ACTIONS),
+        ),
+        coordinationArchitecture: isTriangulationCoordinationArchitecture(scenario.coordinationArchitecture)
+          ? scenario.coordinationArchitecture
+          : null,
+        choiceResolvedAtTurn: typeof scenario.choiceResolvedAtTurn === 'number'
+          ? Math.max(0, Math.trunc(scenario.choiceResolvedAtTurn))
+          : null,
+        preparednessMet: scenario.preparednessMet === true,
+        preparednessCapabilityId: typeof scenario.preparednessCapabilityId === 'string' &&
+          (TRIANGULATION_PREPAREDNESS_CAPABILITY_IDS as readonly string[]).includes(scenario.preparednessCapabilityId)
+          ? scenario.preparednessCapabilityId as TriangulationScenarioState['preparednessCapabilityId']
+          : null,
+        preparednessArtifactId: typeof scenario.preparednessArtifactId === 'string'
+          ? scenario.preparednessArtifactId
+          : null,
+        priorMemoryLines: Array.isArray(scenario.priorMemoryLines)
+          ? scenario.priorMemoryLines.filter((line): line is string => typeof line === 'string').slice(0, 2)
+          : [],
+        referenceCivilization: isTriangulationReferenceCivilization(scenario.referenceCivilization)
+          ? scenario.referenceCivilization
+          : null,
+        outcomeId: typeof scenario.outcomeId === 'string' &&
+          (TRIANGULATION_OUTCOME_IDS as readonly string[]).includes(scenario.outcomeId)
+          ? scenario.outcomeId as TriangulationScenarioState['outcomeId']
+          : null,
+      };
+    } else {
+      delete state.triangulationScenario;
+    }
+  }
   // ensure victoryRequirement exists (added in Oblivion-as-threshold feature)
-  if (typeof state.victoryRequirement !== "number" || state.victoryRequirement < WIN_THRESHOLD) {
-    state.victoryRequirement = WIN_THRESHOLD;
+  if (
+    typeof state.victoryRequirement !== "number" ||
+    state.victoryRequirement < MIN_VICTORY_REQUIREMENT
+  ) {
+    state.victoryRequirement = MIN_VICTORY_REQUIREMENT;
   }
   if (state.cinematicMode !== "epic") {
     state.cinematicMode = "standard";
@@ -3774,10 +6768,21 @@ export function normalizeState(raw: unknown): GameStateData {
   // ensure pendingSummonEvents array exists (added in summon gate feature)
   if (!Array.isArray(state.pendingSummonEvents)) {
     state.pendingSummonEvents = [];
+  } else {
+    state.pendingSummonEvents = (state.pendingSummonEvents as Record<string, unknown>[]).map((event) => ({
+      ...event,
+      arrivalSound: event.arrivalSound === "first_resonance" ? "first_resonance" : "standard",
+    }));
   }
   // ensure pendingLuminaryActivationEvents array exists (added in activation cinematic feature)
   if (!Array.isArray(state.pendingLuminaryActivationEvents)) {
     state.pendingLuminaryActivationEvents = [];
+  }
+  if (!Array.isArray(state.pendingBlueprintManifestationEvents)) {
+    state.pendingBlueprintManifestationEvents = [];
+  }
+  if (!Array.isArray(state.pendingBlueprintDetonationEvents)) {
+    state.pendingBlueprintDetonationEvents = [];
   }
   // Older persisted games have already advanced around any legacy pending
   // cinematic events. Never infer a transition retroactively.
@@ -3795,6 +6800,18 @@ export function normalizeState(raw: unknown): GameStateData {
   // ensure v0.8 fields exist (optional fields default to absent; guard avoids runtime errors)
   if (typeof state.artifactMarkers !== "object" || state.artifactMarkers === null || Array.isArray(state.artifactMarkers)) {
     state.artifactMarkers = {};
+  }
+  if (
+    state.nullifiedFirstForge !== null &&
+    (
+      typeof state.nullifiedFirstForge !== "object" ||
+      Array.isArray(state.nullifiedFirstForge) ||
+      typeof (state.nullifiedFirstForge as Record<string, unknown>).cardId !== "string" ||
+      typeof (state.nullifiedFirstForge as Record<string, unknown>).playerId !== "string" ||
+      typeof (state.nullifiedFirstForge as Record<string, unknown>).exempt !== "boolean"
+    )
+  ) {
+    state.nullifiedFirstForge = null;
   }
   if (typeof state.forgottenHourCycle !== "object" || state.forgottenHourCycle === null || Array.isArray(state.forgottenHourCycle)) {
     state.forgottenHourCycle = {};
@@ -3845,18 +6862,45 @@ export function normalizeState(raw: unknown): GameStateData {
   if (typeof state.concordanceMandalaTriggered !== "boolean") {
     state.concordanceMandalaTriggered = false;
   }
+  if (typeof state.concordanceMandalaFinalTriggered !== "boolean") {
+    state.concordanceMandalaFinalTriggered = false;
+  }
   if (typeof state.glassOrchardTriggered !== "boolean") {
     state.glassOrchardTriggered = false;
   }
   if (!("firstHungerAvailable" in state)) {
     state.firstHungerAvailable = null;
   }
+  // Retain the legacy field for save/client compatibility, but the removed
+  // Void Seal mechanic must never be restored from an older game snapshot.
+  state.voidSealOwnerId = null;
   // ensure burnPile and burnEvents exist (added in Burn keyword feature)
   if (!Array.isArray(state.burnPile)) {
     state.burnPile = [];
   }
   if (!Array.isArray(state.burnEvents)) {
     state.burnEvents = [];
+  }
+  if (!Array.isArray(state.annihilatedArtifactIds)) {
+    state.annihilatedArtifactIds = [];
+  }
+  if (typeof state.brokenCovenantDeclared !== "boolean") {
+    state.brokenCovenantDeclared = false;
+  }
+  if (
+    state.lumiiThresholdApproach !== "kinship" &&
+    state.lumiiThresholdApproach !== "inquiry" &&
+    state.lumiiThresholdApproach !== "dominion"
+  ) {
+    state.lumiiThresholdApproach = undefined;
+  }
+  if (
+    state.phase === "finished" &&
+    state.finishReason !== "win" &&
+    state.finishReason !== "surrender" &&
+    state.finishReason !== "withdrawal"
+  ) {
+    state.finishReason = "win";
   }
   // ensure coreActionUsed exists (added in double-action exploit prevention)
   if (typeof state.coreActionUsed !== "boolean") {
@@ -3904,9 +6948,34 @@ export function normalizeState(raw: unknown): GameStateData {
     !Array.isArray(state.avatarSeedState)
   ) {
     const avatarSeedState = state.avatarSeedState as Record<string, unknown>;
-    if (typeof avatarSeedState.pendingEminence !== "number") {
-      avatarSeedState.pendingEminence = 0;
+    const rawSlots = Array.isArray(avatarSeedState.moldSlots)
+      ? avatarSeedState.moldSlots.filter((slot): slot is string => typeof slot === "string")
+      : [];
+    const validByTier = new Map<number, string>();
+    for (const slot of rawSlots) {
+      const [tierText, slotText] = slot.split("-");
+      const tier = Number(tierText);
+      const slotIndex = Number(slotText);
+      if (![1, 2, 3].includes(tier) || !Number.isInteger(slotIndex)) continue;
+      const row = getForgeRowForTier(state as unknown as GameStateData, tier as 1 | 2 | 3);
+      if (Array.isArray(row) && slotIndex >= 0 && slotIndex < row.length && !validByTier.has(tier)) {
+        validByTier.set(tier, `${tier}-${slotIndex}`);
+      }
     }
+    const summonedAt = typeof avatarSeedState.summonedAtTurnCount === "number"
+      ? avatarSeedState.summonedAtTurnCount
+      : 0;
+    for (const tier of [1, 2, 3] as const) {
+      if (validByTier.has(tier)) continue;
+      const row = getForgeRowForTier(state as unknown as GameStateData, tier);
+      if (Array.isArray(row) && row.length > 0) {
+        validByTier.set(tier, `${tier}-${(summonedAt + tier * 7) % row.length}`);
+      }
+    }
+    avatarSeedState.moldSlots = [...validByTier.values()];
+    delete avatarSeedState.pendingEminence;
+    delete avatarSeedState.deckSeeds;
+    delete avatarSeedState.payoutDone;
   }
 
   // migrate old action log summaries: "Glass Orchard — Perfect Replication" → "The Glass Orchard — Perfect Replication"
@@ -3980,6 +7049,7 @@ export function formatGameState(
   connectedPlayerIds: Set<string>,
   avatarMap?: Map<string, string | null>,
   aiMap?: Map<string, { isAi: boolean; aiDifficulty: AiDifficulty | null }>,
+  scenarioId: string | null = null,
 ) {
   const forgeTier1 = stateData.forgeTier1
     .map((id) => CARD_MAP.get(id))
@@ -3996,14 +7066,27 @@ export function formatGameState(
   const luminaries = stateData.activeLuminaries
     .map((id) => LUMINARY_MAP.get(id))
     .filter(Boolean) as LuminaryDef[];
+  const formatArchiveTop = (cardId: string | undefined): ArtifactCard | null => {
+    const card = cardId ? CARD_MAP.get(cardId) : undefined;
+    return card ? withLore(card) : null;
+  };
 
   const players = stateData.players.map((p) => {
     const aiEntry = aiMap?.get(p.playerId);
+    const tideArchiveTopCards = p.luminaries.includes("lum_tide")
+      ? {
+          tier1: formatArchiveTop(stateData.deckTier1[0]),
+          tier2: formatArchiveTop(stateData.deckTier2[0]),
+          tier3: formatArchiveTop(stateData.deckTier3[0]),
+        }
+      : undefined;
     return {
       playerId: p.playerId,
       playerName: p.playerName,
       civName: p.civName ?? null,
-      avatarId: avatarMap?.get(p.playerId) ?? null,
+      avatarId: aiEntry?.isAi && aiEntry.aiDifficulty === "passive"
+        ? GUIDED_LUMII_AVATAR_ID
+        : avatarMap?.get(p.playerId) ?? null,
       isAi: aiEntry?.isAi ?? false,
       aiDifficulty: aiEntry?.aiDifficulty ?? null,
       affinities: p.affinities,
@@ -4015,6 +7098,11 @@ export function formatGameState(
         .map((c) => withLore(c as ArtifactCard)),
       privateReservedArtifactIds: p.privateReservedArtifactIds ?? [],
       forgedArtifactIds: p.forgedArtifactIds,
+      civilization: normalizeCivilizationState({
+        ...p,
+        civilizationTurnCount: stateData.turnCount,
+      }),
+      assimilatedArtifactIds: p.assimilatedArtifactIds ?? [],
       discountedForgeIds: p.discountedForgeIds ?? [],
       forgedArtifacts: p.forgedArtifactIds
         .map((id) => CARD_MAP.get(id))
@@ -4026,14 +7114,20 @@ export function formatGameState(
         }),
       isConnected: connectedPlayerIds.has(p.playerId),
       claimedLuminaryIds: p.luminaries ?? [],
+      tideArchiveTopCards,
+      tideArchiveForgeAvailable: p.tideArchiveForgeAvailable === true,
       plannedAction: p.plannedAction ?? null,
       plannedActionCancelReason: p.plannedActionCancelReason ?? null,
+      blueprintPrivateStates: p.blueprintPrivateStates ?? [],
+      manifestedBlueprintDevices: p.manifestedBlueprintDevices ?? [],
     };
   });
 
   return {
     roomId,
     status: stateData.phase === "finished" ? "finished" : status,
+    scenarioId,
+    finishReason: stateData.phase === "finished" ? stateData.finishReason ?? "win" : null,
     startedAt: stateData.startedAt ?? 0,
     openingTurnOrder: stateData.openingTurnOrder ?? null,
     canReplaySameBoard: !!stateData.initialBoard,
@@ -4063,20 +7157,39 @@ export function formatGameState(
     version: stateData.version,
     pendingSummonEvents: stateData.pendingSummonEvents ?? [],
     pendingLuminaryActivationEvents: stateData.pendingLuminaryActivationEvents ?? [],
+    pendingBlueprintManifestationEvents: stateData.pendingBlueprintManifestationEvents ?? [],
+    pendingBlueprintDetonationEvents: stateData.pendingBlueprintDetonationEvents ?? [],
+    scenarioProtocols: [],
+    pendingScenarioProtocolEvents: [],
     pendingTurnTransition: stateData.pendingTurnTransition ?? null,
+    traceScenario: scenarioId === TRACE_SCENARIO_ID ? stateData.traceScenario ?? null : null,
+    recurrenceScenario: scenarioId === RECURRENCE_SCENARIO_ID
+      ? stateData.recurrenceScenario ?? null
+      : null,
+    triangulationScenario: scenarioId === TRIANGULATION_SCENARIO_ID
+      ? stateData.triangulationScenario ?? null
+      : null,
     devLuminarySequenceActive: stateData.devLuminarySequenceActive === true,
     pendingLuminaryChoice: stateData.pendingLuminaryChoice ?? null,
     // v0.8 marker / effect state exposed to clients
     artifactMarkers: stateData.artifactMarkers ?? {},
+    nullifiedFirstForge: stateData.nullifiedFirstForge ?? null,
     forgottenHourCycle: stateData.forgottenHourCycle ?? {},
-    avatarSeedDeckSeeds: stateData.avatarSeedState?.deckSeeds ?? [],
+    avatarSeedMoldSlots: stateData.avatarSeedState?.moldSlots ?? [],
     avatarSeedOwnerId: stateData.avatarSeedState?.ownerId ?? null,
     firstHungerAvailable: stateData.firstHungerAvailable ?? null,
+    voidSealOwnerId: null,
     catalystBloomBurnCount: stateData.catalystBloomBurnCount ?? 0,
     concordanceMandalaTriggered: stateData.concordanceMandalaTriggered ?? false,
+    concordanceMandalaFinalTriggered: stateData.concordanceMandalaFinalTriggered ?? false,
     glassOrchardTriggered: stateData.glassOrchardTriggered ?? false,
+    brokenCovenantDeclared: stateData.brokenCovenantDeclared === true,
+    lumiiThresholdApproach: scenarioId === "blueprint_clearance_lumii"
+      ? stateData.lumiiThresholdApproach ?? "inquiry"
+      : null,
     burnPile: stateData.burnPile ?? [],
     burnEvents: stateData.burnEvents ?? [],
+    annihilatedArtifactIds: stateData.annihilatedArtifactIds ?? [],
     coreActionUsed: stateData.coreActionUsed ?? false,
   };
 }

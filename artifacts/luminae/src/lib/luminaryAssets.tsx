@@ -5,10 +5,19 @@ import { motion, AnimatePresence, useReducedMotion } from 'framer-motion';
 import { useIsMobile } from '@/hooks/use-mobile';
 import { useRuntimePerformanceState } from './runtimePerformance';
 import cardTier3Bg from '@assets/generated_images/card_tier3.png';
-import { ARRIVAL_CUTSCENE_BEATS_MS, gameAudio } from './audio';
+import {
+  ARRIVAL_CUTSCENE_BEATS_MS,
+  LUMINARY_SWEEP_IN_BEATS_MS,
+  gameAudio,
+} from './audio';
 import { KNOWN_AURA_STYLES } from '@workspace/game-types';
-import type { AuraStyle, LuminaryId } from '@workspace/game-types';
+import type {
+  AuraStyle,
+  LuminaryArrivalSoundVariant,
+  LuminaryId,
+} from '@workspace/game-types';
 import { BOARD_CARD_W, BOARD_CARD_H } from './constants';
+import { LUMINARY_RUNTIME_ART } from './luminaryArtManifest';
 export { BOARD_CARD_W, BOARD_CARD_H };
 
 // ─── Types ────────────────────────────────────────────────────────────────────
@@ -132,29 +141,10 @@ const ILLUSTRATED_IDS = new Set<string>([
   'lum_scholar',
 ]);
 
-const _luminaryImageModules = import.meta.glob<{ default: string }>([
-  '../assets/luminaries/*/panel.{webp,png,jpg}',
-  '../assets/luminaries/*/panel_runtime.webp',
-  '../assets/luminaries/*/entity.{webp,png,jpg}',
-  '../assets/luminaries/*/entity_runtime.webp',
-  '../assets/luminaries/*/cinematic.{webp,png,jpg}',
-  '../assets/luminaries/lum_radiant/Radiant 1.png',
-  '../assets/luminaries/lum_radiant/Radiant 2.png',
-  '../assets/luminaries/lum_radiant/Radiant 3.png',
-  '../assets/luminaries/lum_radiant/radiant_1_runtime.webp',
-  '../assets/luminaries/lum_radiant/radiant_2_runtime.webp',
-  '../assets/luminaries/lum_radiant/radiant_3_runtime.webp',
-], { eager: true });
-
-// Flat lookup: "lum_ember/panel" → resolved asset URL
-const _luminaryImageMap: Record<string, string> = {};
-for (const [path, mod] of Object.entries(_luminaryImageModules)) {
-  // path shape: ../assets/luminaries/lum_ember/panel.webp
-  const match = path.match(/luminaries\/([^/]+)\/([^/]+)\.[^.]+$/);
-  if (match) {
-    const [, id, slot] = match;
-    _luminaryImageMap[`${id}/${slot}`] = mod.default;
-  }
+const _luminaryImageMap: Record<string, string> = { ...LUMINARY_RUNTIME_ART };
+for (const index of [1, 2, 3] as const) {
+  const runtime = _luminaryImageMap[`lum_radiant/radiant_${index}_runtime`];
+  if (runtime) _luminaryImageMap[`lum_radiant/Radiant ${index}`] = runtime;
 }
 
 function _getLuminaryImage(
@@ -162,7 +152,14 @@ function _getLuminaryImage(
   slot: 'panel' | 'panel_runtime' | 'entity' | 'entity_runtime' | 'background' | 'cinematic',
 ): string | null {
   if (!ILLUSTRATED_IDS.has(id)) return null;
-  return _luminaryImageMap[`${id}/${slot}`] ?? null;
+  const runtimeSlot = slot === 'panel'
+    ? 'panel_runtime'
+    : slot === 'entity'
+      ? 'entity_runtime'
+      : slot;
+  return _luminaryImageMap[`${id}/${runtimeSlot}`]
+    ?? _luminaryImageMap[`${id}/panel_runtime`]
+    ?? null;
 }
 
 /** Illustrated image slots for one Luminary. null = not yet available → fallback to procedural art. */
@@ -478,15 +475,6 @@ function TideEyeOverlay({
             <ellipse cx={cx - irisR * 0.28} cy={cy - irisR * 0.24}
               rx={irisR * 0.05} ry={irisR * 0.04}
               fill="rgba(255,255,255,0.88)" />
-            {/* Eyelid — static half-closed at 15% (blink-neutral) */}
-            <path d={`M ${cx - scleraRX * 1.04} ${cy - scleraRY * 0.08}
-                      Q ${cx - scleraRX * 0.52} ${cy - scleraRY * 0.82}
-                      ${cx} ${cy - scleraRY * 0.82}
-                      Q ${cx + scleraRX * 0.52} ${cy - scleraRY * 0.82}
-                      ${cx + scleraRX * 1.04} ${cy - scleraRY * 0.08}
-                      L ${cx + scleraRX * 1.04} ${cy - scleraRY * 1.30}
-                      L ${cx - scleraRX * 1.04} ${cy - scleraRY * 1.30} Z`}
-              fill="#f8fafb" opacity="0.88" />
           </g>
         ) : (
           <motion.g
@@ -673,10 +661,24 @@ function RadiantEntity({ size = 140, className = '' }: { size?: number; classNam
  * `size` is a CSS length string applied to both width and height of the square
  * container (e.g. '75vmin').  Returns null if the layer images aren't loaded.
  */
-export function RadiantLivingEntityComposite({ size = '75vmin' }: { size?: string }) {
-  const ring = _luminaryImageMap['lum_radiant/Radiant 1'] ?? null;
-  const body = _luminaryImageMap['lum_radiant/Radiant 2'] ?? null;
-  const core = _luminaryImageMap['lum_radiant/Radiant 3'] ?? null;
+export function RadiantLivingEntityComposite({
+  size = '75vmin',
+  runtime = false,
+  animate = true,
+}: {
+  size?: string;
+  runtime?: boolean;
+  animate?: boolean;
+}) {
+  const ring = runtime
+    ? (_luminaryImageMap['lum_radiant/radiant_1_runtime'] ?? _luminaryImageMap['lum_radiant/Radiant 1'] ?? null)
+    : (_luminaryImageMap['lum_radiant/Radiant 1'] ?? null);
+  const body = runtime
+    ? (_luminaryImageMap['lum_radiant/radiant_2_runtime'] ?? _luminaryImageMap['lum_radiant/Radiant 2'] ?? null)
+    : (_luminaryImageMap['lum_radiant/Radiant 2'] ?? null);
+  const core = runtime
+    ? (_luminaryImageMap['lum_radiant/radiant_3_runtime'] ?? _luminaryImageMap['lum_radiant/Radiant 3'] ?? null)
+    : (_luminaryImageMap['lum_radiant/Radiant 3'] ?? null);
 
   if (!ring || !body || !core) return null;
 
@@ -687,26 +689,30 @@ export function RadiantLivingEntityComposite({ size = '75vmin' }: { size?: strin
   const absfill: React.CSSProperties = { position: 'absolute', inset: 0 };
 
   return (
-    <div style={{ position: 'relative', width: size, height: size, flexShrink: 0 }}>
+    <div
+      data-testid="radiant-entity-composite"
+      data-runtime={runtime ? 'true' : 'false'}
+      style={{ position: 'relative', width: size, height: size, flexShrink: 0 }}
+    >
       {/* Single float wrapper so all layers bob in sync */}
-      <div className="lum-idle-float" style={absfill}>
+      <div className={animate ? 'lum-idle-float' : undefined} style={absfill}>
         {/* Ring — slow CCW spin, permanent glow */}
         <div
-          className="lum-radiant-ring-pulse"
+          className={animate ? 'lum-radiant-ring-pulse' : undefined}
           style={{ ...absfill, transform: 'scale(1.25) translateY(-3px)', transformOrigin: 'center center' }}
         >
-          <img src={ring} draggable={false} alt="" className="lum-radiant-ring" style={layerImg} />
+          <img src={ring} draggable={false} alt="" className={animate ? 'lum-radiant-ring' : undefined} data-radiant-layer="ring" style={layerImg} />
         </div>
         {/* Body */}
         <div style={{ ...absfill, transform: 'scale(1.1)', transformOrigin: 'center center' }}>
-          <img src={body} draggable={false} alt="" style={layerImg} />
+          <img src={body} draggable={false} alt="" data-radiant-layer="body" style={layerImg} />
         </div>
         {/* Core orb — slow CW spin, glow pulse */}
         <div
-          className="lum-radiant-core-pulse"
+          className={animate ? 'lum-radiant-core-pulse' : undefined}
           style={{ ...absfill, transform: 'translateY(-5px) scale(0.20)', transformOrigin: 'center center' }}
         >
-          <img src={core} draggable={false} alt="" className="lum-radiant-core" style={layerImg} />
+          <img src={core} draggable={false} alt="" className={animate ? 'lum-radiant-core' : undefined} data-radiant-layer="core" style={layerImg} />
         </div>
       </div>
     </div>
@@ -1082,11 +1088,12 @@ function PaleEntity({ size = 140, className = '' }: { size?: number; className?:
 }
 
 // ── The Final Hunger (lum_hunger) ─────────────────────────────────────────────
-// Nanite swarm intelligence — Abyss + Flare.
+// Living nanite swarm intelligence — Flare + Verdance + Radiance.
 // Background crossfade layers (background1/2) were removed to reduce GPU load.
 // Only the static entity PNG is rendered now — fast, no animation churn.
 function HungerEntity({ size = 140, className = '' }: { size?: number; className?: string }) {
-  const entity = _getLuminaryImage('lum_hunger', 'entity');
+  const entity = _getLuminaryImage('lum_hunger', 'entity_runtime')
+    ?? _getLuminaryImage('lum_hunger', 'entity');
   const w = size;
   const h = Math.round(size * 1.5);
   return (
@@ -1425,6 +1432,7 @@ interface LuminaryArrivalCutsceneProps {
   cardRect?: { cx: number; cy: number; w: number };
   boardSnapshot?: ArrivalBoardSnapshot;
   cinematicMode?: 'standard' | 'epic';
+  arrivalSound?: LuminaryArrivalSoundVariant;
   onComplete: () => void;
   onFlash?: () => void;
   onSkip?: () => void;
@@ -2666,6 +2674,7 @@ function LuminaryArrivalCutsceneCanvas({
   cardRect,
   boardSnapshot,
   cinematicMode,
+  arrivalSound = 'standard',
   onComplete,
   onFlash,
   onSkip,
@@ -3106,8 +3115,8 @@ function LuminaryArrivalCutsceneCanvas({
       ctx.fillRect(0, 0, w, h);
     }
 
-    const swingStart = CANVAS_ARRIVAL_TIMES.shattering + 0.18;
-    const swingEnd = CANVAS_ARRIVAL_TIMES.revealed + 0.62;
+    const swingStart = LUMINARY_SWEEP_IN_BEATS_MS.start / 1000;
+    const swingEnd = LUMINARY_SWEEP_IN_BEATS_MS.settle / 1000;
     const swingLinear = clamp01((t - swingStart) / (swingEnd - swingStart));
     const swingProgress = swingLinear * 0.16 + easeInOutSine(swingLinear) * 0.84;
     const shadow = t < CANVAS_ARRIVAL_TIMES.revealed ? Math.min(0.92, swingProgress) : 1;
@@ -3525,7 +3534,7 @@ function LuminaryArrivalCutsceneCanvas({
     fadeStartRef.current = null;
     setAwaitingDismiss(false);
     setIsFinishing(false);
-    gameAudio.playArrivalCutscene(auraStyle);
+    gameAudio.playArrivalCutscene(auraStyle, arrivalSound);
     startRef.current = performance.now();
     lastDrawRef.current = 0;
     const resize = () => redrawRef.current?.();
@@ -3683,6 +3692,7 @@ function LuminaryArrivalCutscenePerformance({
   effectName,
   claimedBy,
   cardRect,
+  arrivalSound = 'standard',
   onComplete,
   onSkip,
   overrideColor,
@@ -3696,7 +3706,7 @@ function LuminaryArrivalCutscenePerformance({
   useEffect(() => { onCompleteRef.current = onComplete; }, [onComplete]);
 
   const vis = getLuminaryVisuals(luminaryId);
-  const { primaryColor: visPrimaryColor, secondaryColor, glowColor, EntityArt } = vis;
+  const { primaryColor: visPrimaryColor, secondaryColor, glowColor, EntityArt, auraStyle } = vis;
   const primaryColor = (overrideColor && overrideColor.startsWith('#') && overrideColor.length >= 7)
     ? overrideColor
     : visPrimaryColor;
@@ -3734,7 +3744,9 @@ function LuminaryArrivalCutscenePerformance({
       setTimeout(() => setPhase('crack'), 420),
       setTimeout(() => {
         setPhase('flash');
-        gameAudio.playLuminaryFanfare(primaryColor);
+        if (arrivalSound !== 'first_resonance') {
+          gameAudio.playLuminaryFanfare(primaryColor);
+        }
       }, 1080),
       setTimeout(() => setPhase('reveal'), 1320),
       setTimeout(() => setAwaitingDismiss(true), 2320),
@@ -3743,7 +3755,14 @@ function LuminaryArrivalCutscenePerformance({
       timersRef.current.forEach(clearTimeout);
       timersRef.current = [];
       gameAudio.stopActivationSting();
+      if (arrivalSound === 'first_resonance') gameAudio.stopArrivalCutscene();
     };
+  }, []); // eslint-disable-line react-hooks/exhaustive-deps
+
+  useEffect(() => {
+    if (arrivalSound === 'first_resonance') {
+      gameAudio.playArrivalCutscene(auraStyle, arrivalSound);
+    }
   }, []); // eslint-disable-line react-hooks/exhaustive-deps
 
   const showVessel = phase === 'forming' || phase === 'crack';
@@ -3924,6 +3943,7 @@ function LuminaryArrivalCutsceneFull({
   onFlash,
   onSkip,
   overrideColor,
+  arrivalSound = 'standard',
 }: LuminaryArrivalCutsceneProps) {
   const [phase, setPhase] = useState<CutscenePhase>('establish');
   // True once the cutscene reaches the fully-revealed phase and lingers,
@@ -4014,7 +4034,7 @@ function LuminaryArrivalCutsceneFull({
   // Runs exactly once on mount; respects the user's mute setting internally.
   // auraStyle is stable for the lifetime of this component (derived from luminaryId).
   useEffect(() => {
-    gameAudio.playArrivalCutscene(auraStyle);
+    gameAudio.playArrivalCutscene(auraStyle, arrivalSound);
   }, []); // eslint-disable-line react-hooks/exhaustive-deps
 
   // Phase timer chain — empty dep array: runs exactly once on mount.
@@ -5217,7 +5237,8 @@ function LuminaryArrivalCutsceneFull({
                           </>
                         );
                       })() : luminaryId === 'lum_hunger' ? (() => {
-                        const hEnt = _getLuminaryImage('lum_hunger', 'entity');
+                        const hEnt = _getLuminaryImage('lum_hunger', 'entity_runtime')
+                          ?? _getLuminaryImage('lum_hunger', 'entity');
                         return (
                           <div style={{ position: 'relative', width: ENT_W, height: ENT_H }}>
                             {hEnt && (
@@ -6040,7 +6061,8 @@ export const LuminaryIdleOverlay = React.memo(function LuminaryIdleOverlay({
 
     // ── lum_hunger: entity only — backgrounds removed for performance ──
     if (luminaryId === 'lum_hunger') {
-      const hEnt = _getLuminaryImage('lum_hunger', 'entity');
+      const hEnt = _getLuminaryImage('lum_hunger', 'entity_runtime')
+        ?? _getLuminaryImage('lum_hunger', 'entity');
       return (
         <div className={isIdle ? 'lum-claimed-hover' : undefined} style={{ position: 'relative', width: IDLE_W, height: IDLE_H }}>
           {hEnt && (

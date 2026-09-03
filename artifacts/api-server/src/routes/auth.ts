@@ -1,23 +1,80 @@
 import { Router, type IRouter } from "express";
-import { eq, and, inArray, isNull, count, desc } from "drizzle-orm";
+import { eq, and, inArray, isNull } from "drizzle-orm";
 import { db } from "@workspace/db";
 import {
   accountsTable,
   accountSessionsTable,
+  accountBlueprintClearanceTable,
+  accountDeletionRequestsTable,
+  accountLumiiRelationshipMemoriesTable,
   playersTable,
   roomsTable,
-  gameStatesTable,
 } from "@workspace/db";
 import bcrypt from "bcryptjs";
 import { randomBytes } from "crypto";
 import { z } from "zod";
 import { accountAuth } from "../lib/accountAuth";
+import { buildAccountArchiveFromPersistedStats } from "../lib/accountArchive";
+import { ensureAccountProgressBackfilled, readAccountProgress } from "../lib/accountProgress";
+import { getEquippedCosmeticItems } from "../lib/accountCosmetics";
+import {
+  isLumiiThresholdDialoguePathPrefix,
+  normalizeLumiiThresholdDialoguePath,
+  normalizeLumiiThresholdDialogueResolution,
+} from "../lib/blueprintClearance";
+import {
+  BLUEPRINT_CLEARANCE_REQUIRED_WINS,
+  CIVILIZATION_RECORD_VERSION,
+  ARCHITECT_FIRST_CONTACT_STANCES,
+  isArchitectFirstContactStance,
+  summarizeCivilizationRecord,
+  type CivilizationRecord,
+} from "@workspace/game-types";
 import type { Request } from "express";
+import { rateLimit } from "../lib/httpSecurity";
 
 const router: IRouter = Router();
 
 const SALT_ROUNDS = 10;
 const SESSION_DAYS = 30;
+const FIRST_CONTACT_MEMORY_SOURCE_ID = "00000000-0000-4000-8000-000000000001";
+const FIRST_CONTACT_MEMORY_KEY = "first_contact_stance";
+
+type AccountClearanceRow = typeof accountBlueprintClearanceTable.$inferSelect | undefined;
+
+function hasVaultThresholdAccess(clearance: AccountClearanceRow): boolean {
+  return Boolean(clearance) && (
+    clearance!.qualifyingWins >= BLUEPRINT_CLEARANCE_REQUIRED_WINS ||
+    clearance!.decryptionKeyBypassActiveAt != null
+  );
+}
+
+function publicClearanceStatus(clearance: AccountClearanceRow) {
+  if (clearance?.status === "cleared" || clearance?.status === "challenge_active") return clearance.status;
+  if (clearance?.status === "challenge_ready" && hasVaultThresholdAccess(clearance)) return "challenge_ready";
+  return "classified" as const;
+}
+
+function publicCipherDeactivated(clearance: AccountClearanceRow): boolean {
+  return Boolean(clearance?.cipherDeactivatedAt && clearance.qualifyingWins >= BLUEPRINT_CLEARANCE_REQUIRED_WINS);
+}
+
+function publicThresholdRuptured(clearance: AccountClearanceRow): boolean {
+  return Boolean(
+    (clearance?.thresholdRupturedAt ?? clearance?.covenantBrokenAt) &&
+    hasVaultThresholdAccess(clearance),
+  );
+}
+
+function storedCivilizationRecord(value: unknown): CivilizationRecord | null {
+  const version = typeof value === "object" && value !== null
+    ? (value as { version?: unknown }).version
+    : null;
+  return typeof value === "object" && value !== null &&
+    (version === 1 || version === CIVILIZATION_RECORD_VERSION)
+    ? value as CivilizationRecord
+    : null;
+}
 
 function generateToken(): string {
   return randomBytes(32).toString("hex");
@@ -41,7 +98,7 @@ const LoginBody = z.object({
 });
 
 // POST /api/auth/register
-router.post("/auth/register", async (req, res): Promise<void> => {
+router.post("/auth/register", rateLimit({ scope: "register", max: 8, windowMs: 15 * 60_000 }), async (req, res): Promise<void> => {
   const parsed = RegisterBody.safeParse(req.body);
   if (!parsed.success) {
     res.status(400).json({ error: parsed.error.errors[0]?.message ?? "Invalid request" });
@@ -96,7 +153,7 @@ router.post("/auth/register", async (req, res): Promise<void> => {
 });
 
 // POST /api/auth/login
-router.post("/auth/login", async (req, res): Promise<void> => {
+router.post("/auth/login", rateLimit({ scope: "login", max: 12, windowMs: 15 * 60_000 }), async (req, res): Promise<void> => {
   const parsed = LoginBody.safeParse(req.body);
   if (!parsed.success) {
     res.status(400).json({ error: "Invalid request" });
@@ -122,18 +179,28 @@ router.post("/auth/login", async (req, res): Promise<void> => {
     return;
   }
 
+  const [cancelledDeletion] = await db
+    .update(accountDeletionRequestsTable)
+    .set({ status: "cancelled", cancelledAt: new Date() })
+    .where(and(
+      eq(accountDeletionRequestsTable.accountId, account.id),
+      eq(accountDeletionRequestsTable.status, "pending"),
+    ))
+    .returning({ id: accountDeletionRequestsTable.id });
+
   const token = generateToken();
   const [session] = await db
     .insert(accountSessionsTable)
     .values({ accountId: account.id, token, expiresAt: sessionExpiry() })
     .returning();
 
-  req.log.info({ accountId: account.id }, "Account logged in");
+  req.log.info({ accountId: account.id, deletionCancelled: Boolean(cancelledDeletion) }, "Account logged in");
 
   res.json({
     account: { id: account.id, username: account.username, email: account.email },
     token: session.token,
     expiresAt: session.expiresAt,
+    deletionCancelled: Boolean(cancelledDeletion),
   });
 });
 
@@ -151,16 +218,40 @@ router.post("/auth/logout", accountAuth, async (req: Request, res): Promise<void
 router.get("/auth/me", accountAuth, async (req: Request, res): Promise<void> => {
   const account = req.account!;
 
-  const playerRows = await db
-    .select({ player: playersTable, room: roomsTable })
-    .from(playersTable)
-    .innerJoin(roomsTable, eq(playersTable.roomId, roomsTable.id))
-    .where(
-      and(
-        eq(playersTable.accountId, account.id),
-        eq(playersTable.isAi, false),
+  await ensureAccountProgressBackfilled(account.id);
+
+  const [playerRows, clearanceRows, cosmeticLoadout] = await Promise.all([
+    db
+      .select({ player: playersTable, room: roomsTable })
+      .from(playersTable)
+      .innerJoin(roomsTable, eq(playersTable.roomId, roomsTable.id))
+      .where(
+        and(
+          eq(playersTable.accountId, account.id),
+          eq(playersTable.isAi, false),
+        ),
       ),
-    );
+    db
+      .select()
+      .from(accountBlueprintClearanceTable)
+      .where(eq(accountBlueprintClearanceTable.accountId, account.id))
+      .limit(1),
+    getEquippedCosmeticItems(account.id),
+  ]);
+  const clearance = clearanceRows[0];
+  const thresholdApproach = clearance?.thresholdApproach === "kinship" ||
+    clearance?.thresholdApproach === "inquiry" ||
+    clearance?.thresholdApproach === "dominion"
+    ? clearance.thresholdApproach
+    : null;
+  const storedDialoguePath = normalizeLumiiThresholdDialoguePath(clearance?.thresholdDialoguePath);
+  const thresholdDialoguePath = thresholdApproach && isLumiiThresholdDialoguePathPrefix(
+    thresholdApproach,
+    storedDialoguePath,
+  ) ? storedDialoguePath : [];
+  const visibleCosmeticLoadout = clearance?.status === "cleared"
+    ? cosmeticLoadout
+    : cosmeticLoadout.filter((item) => item.slot !== "blueprint_presentation");
 
   const activeRooms = playerRows
     .filter((r) => r.room.status !== "finished")
@@ -171,6 +262,8 @@ router.get("/auth/me", accountAuth, async (req: Request, res): Promise<void> => 
       sessionToken: r.player.sessionToken,
       playerId: r.player.id,
       isHost: r.player.isHost,
+      gameMode: r.room.gameMode,
+      scenarioId: r.room.scenarioId,
     }));
 
   res.json({
@@ -178,6 +271,23 @@ router.get("/auth/me", accountAuth, async (req: Request, res): Promise<void> => 
     username: account.username,
     email: account.email,
     createdAt: account.createdAt,
+    clearance: {
+      qualifyingWins: clearance?.qualifyingWins ?? 0,
+      requiredWins: BLUEPRINT_CLEARANCE_REQUIRED_WINS,
+      status: publicClearanceStatus(clearance),
+      challengeRoomId: clearance?.challengeRoomId ?? null,
+      cipherDeactivated: publicCipherDeactivated(clearance),
+      thresholdApproach,
+      thresholdDialoguePath,
+      thresholdDialogueResolution: thresholdApproach
+        ? normalizeLumiiThresholdDialogueResolution(clearance?.thresholdDialogueResolution)
+        : null,
+      thresholdRuptured: publicThresholdRuptured(clearance),
+      covenantBroken: publicThresholdRuptured(clearance),
+      decryptionKeyBypassActive: clearance?.decryptionKeyBypassActiveAt != null,
+      revealPending: clearance?.status === "cleared" && clearance.completedAt != null && clearance.vaultRevealSeenAt == null,
+    },
+    cosmeticLoadout: visibleCosmeticLoadout,
     activeRooms,
   });
 });
@@ -254,126 +364,65 @@ router.get("/auth/me/games", accountAuth, async (req: Request, res): Promise<voi
 // GET /api/auth/me/stats — lifetime stats and recent game history for this account
 router.get("/auth/me/stats", accountAuth, async (req: Request, res): Promise<void> => {
   const account = req.account!;
-
-  // Find all finished rooms where this account had a human player
-  const finishedRows = await db
-    .select({
-      player: playersTable,
-      room: roomsTable,
-    })
-    .from(playersTable)
-    .innerJoin(roomsTable, eq(playersTable.roomId, roomsTable.id))
-    .where(
-      and(
-        eq(playersTable.accountId, account.id),
-        eq(playersTable.isAi, false),
-        eq(roomsTable.status, "finished"),
-      ),
-    )
-    .orderBy(desc(roomsTable.updatedAt));
-
-  if (finishedRows.length === 0) {
-    res.json({
-      gamesPlayed: 0,
-      wins: 0,
-      losses: 0,
-      ties: 0,
-      avgEminence: 0,
-      recentGames: [],
-    });
-    return;
-  }
-
-  const roomIds = finishedRows.map((r) => r.room.id);
-
-  // Load game states and human player counts for all finished rooms in parallel
-  const [gameStateRows, humanPlayerCounts] = await Promise.all([
-    db
-      .select()
-      .from(gameStatesTable)
-      .where(inArray(gameStatesTable.roomId, roomIds)),
-    db
-      .select({ roomId: playersTable.roomId, count: count() })
-      .from(playersTable)
-      .where(
-        and(
-          inArray(playersTable.roomId, roomIds),
-          eq(playersTable.isAi, false),
-        ),
-      )
-      .groupBy(playersTable.roomId),
-  ]);
-
-  const gameStateByRoomId = new Map(gameStateRows.map((gs) => [gs.roomId, gs.state as Record<string, unknown>]));
-  const humanCountByRoomId = new Map(humanPlayerCounts.map((r) => [r.roomId, Number(r.count)]));
-
-  // Tally stats
-  let wins = 0;
-  let losses = 0;
-  let ties = 0;
-  let totalEminence = 0;
-
-  interface GameHistoryEntry {
-    roomId: string;
-    inviteCode: string;
-    finishedAt: string;
-    result: "win" | "loss" | "tie";
-    eminenceEarned: number;
-    totalPlayers: number;
-  }
-
-  const recentGames: GameHistoryEntry[] = [];
-
-  for (const row of finishedRows) {
-    const state = gameStateByRoomId.get(row.room.id);
-    if (!state) continue;
-
-    const winnerId = state.winnerId as string | null;
-    const players = (state.players as Array<{ playerId: string; eminence: number }>) ?? [];
-
-    const playerData = players.find((p) => p.playerId === row.player.id);
-    const eminenceEarned = playerData?.eminence ?? 0;
-
-    let result: "win" | "loss" | "tie";
-    if (winnerId === null) {
-      result = "tie";
-      ties++;
-    } else if (winnerId === row.player.id) {
-      result = "win";
-      wins++;
-    } else {
-      result = "loss";
-      losses++;
-    }
-
-    totalEminence += eminenceEarned;
-
-    recentGames.push({
-      roomId: row.room.id,
-      inviteCode: row.room.inviteCode,
-      finishedAt: row.room.updatedAt.toISOString(),
-      result,
-      eminenceEarned,
-      totalPlayers: humanCountByRoomId.get(row.room.id) ?? players.length,
-    });
-  }
-
-  const gamesPlayed = wins + losses + ties;
-  const avgEminence = gamesPlayed > 0 ? totalEminence / gamesPlayed : 0;
+  const progress = await readAccountProgress(account.id);
+  const roomIds = [...new Set(progress.matchHistory.map((match) => match.roomId))];
+  const rooms = roomIds.length > 0
+    ? await db.select({ id: roomsTable.id, inviteCode: roomsTable.inviteCode })
+      .from(roomsTable)
+      .where(inArray(roomsTable.id, roomIds))
+    : [];
+  const inviteCodes = new Map(rooms.map((room) => [room.id, room.inviteCode]));
+  const archive = buildAccountArchiveFromPersistedStats({
+    artifacts: progress.artifactStats,
+    luminaries: progress.luminaryStats,
+    chronicles: progress.chronicleUnlocks,
+    qualifyingWins: progress.clearance?.qualifyingWins ?? 0,
+    clearanceStatus: publicClearanceStatus(progress.clearance),
+    challengeRoomId: progress.clearance?.challengeRoomId ?? null,
+  });
+  const summary = progress.summary;
+  const gamesPlayed = summary?.gamesPlayed ?? 0;
+  const recentGames = progress.matchHistory.map((match) => ({
+    roomId: match.roomId,
+    inviteCode: inviteCodes.get(match.roomId) ?? "ARCHIVED",
+    finishedAt: match.finishedAt.toISOString(),
+    result: match.result as "win" | "loss" | "tie",
+    eminenceEarned: match.eminence,
+    totalPlayers: match.totalPlayers,
+    civilizationRecord: summarizeCivilizationRecord(
+      storedCivilizationRecord(match.civilizationRecord),
+    ),
+  }));
+  const avgEminence = gamesPlayed > 0
+    ? (summary?.totalEminence ?? 0) / gamesPlayed
+    : 0;
 
   res.json({
     gamesPlayed,
-    wins,
-    losses,
-    ties,
+    wins: summary?.wins ?? 0,
+    losses: summary?.losses ?? 0,
+    ties: summary?.ties ?? 0,
     avgEminence: Math.round(avgEminence * 10) / 10,
+    totalLume: summary?.totalLume ?? 0,
     recentGames: recentGames.slice(0, 20),
+    matchHistory: recentGames,
+    archive,
   });
 });
 
 // GET /api/auth/me/preferences
 router.get("/auth/me/preferences", accountAuth, async (req: Request, res): Promise<void> => {
   const account = req.account!;
+  const [firstContactMemory] = await db
+    .select({ detail: accountLumiiRelationshipMemoriesTable.detail })
+    .from(accountLumiiRelationshipMemoriesTable)
+    .where(and(
+      eq(accountLumiiRelationshipMemoriesTable.accountId, account.id),
+      eq(accountLumiiRelationshipMemoriesTable.sourceKind, "tutorial"),
+      eq(accountLumiiRelationshipMemoriesTable.sourceRecordId, FIRST_CONTACT_MEMORY_SOURCE_ID),
+      eq(accountLumiiRelationshipMemoriesTable.memoryKey, FIRST_CONTACT_MEMORY_KEY),
+    ))
+    .limit(1);
   res.json({
     skipCinematics: account.skipCinematics,
     abridgedAnims: account.abridgedAnims,
@@ -382,6 +431,9 @@ router.get("/auth/me/preferences", accountAuth, async (req: Request, res): Promi
     hintsSeen: account.hintsSeen ?? [],
     tutorialSeen: account.tutorialSeen ?? false,
     tutorialCompleted: account.tutorialCompleted ?? false,
+    firstContactStance: isArchitectFirstContactStance(firstContactMemory?.detail)
+      ? firstContactMemory.detail
+      : null,
   });
 });
 
@@ -394,6 +446,7 @@ const PreferencesBody = z.object({
   hintsSeen: z.array(z.string()).optional(),
   tutorialSeen: z.boolean().optional(),
   tutorialCompleted: z.boolean().optional(),
+  firstContactStance: z.enum(ARCHITECT_FIRST_CONTACT_STANCES).optional(),
 });
 
 router.patch("/auth/me/preferences", accountAuth, async (req: Request, res): Promise<void> => {
@@ -404,7 +457,16 @@ router.patch("/auth/me/preferences", accountAuth, async (req: Request, res): Pro
   }
 
   const account = req.account!;
-  const { skipCinematics, abridgedAnims, hintsEnabled, muted, hintsSeen, tutorialSeen, tutorialCompleted } = parsed.data;
+  const {
+    skipCinematics,
+    abridgedAnims,
+    hintsEnabled,
+    muted,
+    hintsSeen,
+    tutorialSeen,
+    tutorialCompleted,
+    firstContactStance,
+  } = parsed.data;
 
   const updates: Partial<typeof accountsTable.$inferInsert> = {};
   if (skipCinematics !== undefined) updates.skipCinematics = skipCinematics;
@@ -422,7 +484,52 @@ router.patch("/auth/me/preferences", accountAuth, async (req: Request, res): Pro
       .where(eq(accountsTable.id, account.id));
   }
 
+  if (firstContactStance) {
+    await db.insert(accountLumiiRelationshipMemoriesTable).values({
+      accountId: account.id,
+      sourceKind: "tutorial",
+      sourceRecordId: FIRST_CONTACT_MEMORY_SOURCE_ID,
+      definitionVersion: 1,
+      memoryKey: FIRST_CONTACT_MEMORY_KEY,
+      valence: 0,
+      detail: firstContactStance,
+      visibility: "account",
+      simulation: false,
+    }).onConflictDoNothing();
+  }
+
   res.json({ ok: true });
 });
+
+const DeleteAccountBody = z.object({ password: z.string().min(1).max(200) });
+
+router.delete(
+  "/auth/me",
+  accountAuth,
+  rateLimit({ scope: "account-delete", max: 3, windowMs: 60 * 60_000 }),
+  async (req: Request, res): Promise<void> => {
+    const parsed = DeleteAccountBody.safeParse(req.body);
+    if (!parsed.success || !await bcrypt.compare(parsed.data.password, req.account!.passwordHash)) {
+      res.status(401).json({ error: "Password confirmation failed" });
+      return;
+    }
+    const now = new Date();
+    const executeAfter = new Date(now.getTime() + 7 * 24 * 60 * 60_000);
+    await db.insert(accountDeletionRequestsTable).values({
+      accountId: req.account!.id,
+      status: "pending",
+      requestedAt: now,
+      executeAfter,
+      cancelledAt: null,
+      completedAt: null,
+    }).onConflictDoUpdate({
+      target: accountDeletionRequestsTable.accountId,
+      set: { status: "pending", requestedAt: now, executeAfter, cancelledAt: null, completedAt: null },
+    });
+    await db.delete(accountSessionsTable).where(eq(accountSessionsTable.accountId, req.account!.id));
+    req.log.info({ accountId: req.account!.id, executeAfter }, "Account deletion scheduled");
+    res.status(202).json({ ok: true, executeAfter: executeAfter.toISOString() });
+  },
+);
 
 export default router;

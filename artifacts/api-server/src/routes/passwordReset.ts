@@ -6,6 +6,7 @@ import bcrypt from "bcryptjs";
 import { randomBytes } from "crypto";
 import { z } from "zod";
 import { sendPasswordResetEmail } from "../lib/email";
+import { rateLimit } from "../lib/httpSecurity";
 
 const router: IRouter = Router();
 
@@ -32,7 +33,7 @@ const ResetPasswordBody = z.object({
 });
 
 // POST /api/auth/forgot-password
-router.post("/auth/forgot-password", async (req, res): Promise<void> => {
+router.post("/auth/forgot-password", rateLimit({ scope: "forgot-password", max: 5, windowMs: 60 * 60_000 }), async (req, res): Promise<void> => {
   const parsed = ForgotPasswordBody.safeParse(req.body);
   if (!parsed.success) {
     res.status(400).json({ error: "A valid email address is required." });
@@ -100,7 +101,7 @@ router.post("/auth/forgot-password", async (req, res): Promise<void> => {
 });
 
 // POST /api/auth/reset-password
-router.post("/auth/reset-password", async (req, res): Promise<void> => {
+router.post("/auth/reset-password", rateLimit({ scope: "reset-password", max: 8, windowMs: 60 * 60_000 }), async (req, res): Promise<void> => {
   const parsed = ResetPasswordBody.safeParse(req.body);
   if (!parsed.success) {
     res.status(400).json({ error: parsed.error.errors[0]?.message ?? "Invalid request" });

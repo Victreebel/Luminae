@@ -2,7 +2,15 @@
 // Simple, deterministic-ish AI with three difficulty levels.
 
 import {
+  ARTIFACT_CIVILIZATION_CAPABILITIES_BY_ID,
+  BLUEPRINT_DEFINITIONS,
+  foundryStoredArtifactIds,
+  ordinaryEncryptedCount,
   STANDARD_AFFINITY_KEYS,
+  type BlueprintId,
+  type BlueprintClaimAction,
+} from "@workspace/game-types";
+import {
   CARD_MAP,
   LUMINARY_MAP,
   zeroAffinities,
@@ -18,6 +26,8 @@ import {
 } from "./gameEngine";
 
 export type { AiDifficulty };
+
+const TRIANGULATION_ARCHITECT_WELL_RESERVE = 3;
 
 function totalAffinities(c: AffinityCounts): number {
   return c.flare + c.continuum + c.verdance + c.abyss + c.radiance + c.singularity;
@@ -40,9 +50,54 @@ function canAfford(cost: AffinityCounts, heldAffinities: AffinityCounts): boolea
   return singularityNeeded <= heldAffinities.singularity;
 }
 
+function foundryCost(card: ArtifactCard, player: PlayerGameState, state: GameStateData): AffinityCounts {
+  const result = effectiveCost(card, player, state);
+  for (const affinity of STANDARD_AFFINITY_KEYS) {
+    if (card.cost[affinity] > 0 && result[affinity] > 0) result[affinity]--;
+  }
+  return result;
+}
+
+function getFoundryClaimAction(player: PlayerGameState): BlueprintClaimAction | null {
+  const device = player.manifestedBlueprintDevices?.find(
+    (candidate) => candidate.blueprintId === "bp_mantle_to_orbit_foundry",
+  );
+  if (!device || device.state !== "ready") return null;
+  const legacyUses = Number(device.foundryTier2Ready === true) +
+    Number(device.foundryTier3Ready === true);
+  const usesRemaining = device.foundryUsesRemaining ?? (legacyUses > 0 ? legacyUses : 2);
+  return usesRemaining > 0 ? "foundry_sustainable" : "foundry_overdrive";
+}
+
+function findAffordableFoundryCards(
+  player: PlayerGameState,
+  state: GameStateData,
+  difficulty: AiDifficulty,
+): ArtifactCard[] {
+  if (!getFoundryClaimAction(player)) return [];
+  const candidates = state.forgeTier2
+    .map((id) => CARD_MAP.get(id))
+    .filter((card): card is ArtifactCard => !!card)
+    .filter((card) => canAfford(foundryCost(card, player, state), player.affinities));
+  const antimatterTarget = player.blueprintPrivateStates?.find(
+    (entry) => entry.blueprintId === "bp_antimatter_detonator",
+  )?.secretTargetCardId;
+  const safeCandidates = candidates.filter((card) => card.id !== antimatterTarget);
+  return (safeCandidates.length > 0 ? safeCandidates : candidates).sort(
+    (left, right) =>
+      scoreCard(right, player, state, difficulty) - scoreCard(left, player, state, difficulty),
+  );
+}
+
 function getForgeArtifacts(state: GameStateData): ArtifactCard[] {
   const ids = [...state.forgeTier1, ...state.forgeTier2, ...state.forgeTier3];
   return ids.map((id) => CARD_MAP.get(id)).filter(Boolean) as ArtifactCard[];
+}
+
+function getReservedArtifacts(player: PlayerGameState): ArtifactCard[] {
+  return [...new Set([...player.reservedArtifactIds, ...(player.privateReservedArtifactIds ?? [])])]
+    .map((id) => CARD_MAP.get(id))
+    .filter(Boolean) as ArtifactCard[];
 }
 
 // Score how strongly the AI wants an Artifact (Eminence plus bonus utility).
@@ -53,6 +108,48 @@ function scoreCard(
   difficulty: AiDifficulty,
 ): number {
   let score = card.eminence * 3;
+
+  const triangulation = state.triangulationScenario;
+  if (triangulation && player.playerId === triangulation.myriaPlayerId) {
+    const capabilities = ARTIFACT_CIVILIZATION_CAPABILITIES_BY_ID[
+      card.id as keyof typeof ARTIFACT_CIVILIZATION_CAPABILITIES_BY_ID
+    ] ?? [];
+    if (capabilities.some((capability) => [
+      'artifact:cross_ecology_mediation',
+      'artifact:memory_preservation',
+      'artifact:distributed_coordination',
+      'artifact:system_stabilization',
+    ].includes(capability))) score += 9;
+  }
+  if (triangulation && player.playerId === triangulation.vesperPlayerId) {
+    const capabilities = ARTIFACT_CIVILIZATION_CAPABILITIES_BY_ID[
+      card.id as keyof typeof ARTIFACT_CIVILIZATION_CAPABILITIES_BY_ID
+    ] ?? [];
+    if (capabilities.some((capability) => [
+      'artifact:signal_interpretation',
+      'artifact:predictive_modeling',
+      'artifact:controlled_energy',
+      'artifact:temporal_coordination',
+    ].includes(capability))) score += 9;
+  }
+
+  if (difficulty === "hard") {
+    for (const blueprint of player.blueprintPrivateStates ?? []) {
+      if (blueprint.manifested) continue;
+      const definition = BLUEPRINT_DEFINITIONS[blueprint.blueprintId as BlueprintId];
+      if (!definition) continue;
+      const isMissingComponent = definition.components.some(
+        (component) =>
+          component.artifactId === card.id &&
+          !blueprint.matchedComponentIds.includes(component.artifactId),
+      );
+      if (isMissingComponent) {
+        // Assigned-slot order is strategic priority; slot zero is Lumii's
+        // disclosed Antimatter plan in the clearance scenario.
+        score += Math.max(18, 32 - blueprint.slotIndex * 6);
+      }
+    }
+  }
 
   if (difficulty !== "easy") {
     // Bonus value: helps build engine for affordability
@@ -95,10 +192,13 @@ function findAffordableCards(
   difficulty: AiDifficulty,
 ): ArtifactCard[] {
   const forgeArtifacts = getForgeArtifacts(state);
-  const reserved = player.reservedArtifactIds
-    .map((id) => CARD_MAP.get(id))
-    .filter(Boolean) as ArtifactCard[];
-  const all = [...forgeArtifacts, ...reserved];
+  const reserved = getReservedArtifacts(player);
+  const archiveTops = player.tideArchiveForgeAvailable
+    ? [state.deckTier1[0], state.deckTier2[0], state.deckTier3[0]]
+        .map((id) => id ? CARD_MAP.get(id) : undefined)
+        .filter(Boolean) as ArtifactCard[]
+    : [];
+  const all = [...forgeArtifacts, ...reserved, ...archiveTops];
   return all
     .filter((c) => canAfford(effectiveCost(c, player, state), player.affinities))
     .sort(
@@ -126,18 +226,21 @@ function chooseHarnessSelection(
     return result;
   }
 
-  // Medium/hard: weight by deficits across reachable cards, prioritising one-away cards
-  const forgeArtifacts = getForgeArtifacts(state);
+  // Medium/hard: weight by deficits across reachable cards, prioritising one-away cards.
+  // Secured scenario cards belong in this planning set even though opponents
+  // cannot see their identities.
+  const forgeArtifacts = [...getForgeArtifacts(state), ...getReservedArtifacts(player)];
 
   // Compute effective cost and total remaining Affinity deficit per Artifact.
   // effectiveCost already accounts for Living Luminary bonuses via effectiveAffinityBonuses.
   type CardWithCost = { card: ArtifactCard; eff: AffinityCounts; totalDeficit: number };
   const cardsWithCosts: CardWithCost[] = forgeArtifacts.map((card) => {
     const eff = effectiveCost(card, player, state);
-    const totalDeficit = STANDARD_AFFINITY_KEYS.reduce(
+    const coloredDeficit = STANDARD_AFFINITY_KEYS.reduce(
       (sum, c) => sum + Math.max(0, eff[c] - player.affinities[c]),
       0,
     );
+    const totalDeficit = Math.max(0, coloredDeficit - player.affinities.singularity);
     return { card, eff, totalDeficit };
   });
 
@@ -200,12 +303,58 @@ function chooseHarnessSelection(
   return result;
 }
 
+function chooseTriangulationHarnessSelection(
+  state: GameStateData,
+  player: PlayerGameState,
+  difficulty: AiDifficulty,
+): Partial<AffinityCounts> {
+  const candidates = [...getForgeArtifacts(state), ...getReservedArtifacts(player)]
+    .map((card) => {
+      const cost = effectiveCost(card, player, state);
+      const deficits = Object.fromEntries(STANDARD_AFFINITY_KEYS.map((affinity) => [
+        affinity,
+        Math.max(0, cost[affinity] - player.affinities[affinity]),
+      ])) as Record<StandardAffinityKey, number>;
+      const coloredDeficit = STANDARD_AFFINITY_KEYS.reduce(
+        (sum, affinity) => sum + deficits[affinity],
+        0,
+      );
+      return {
+        card,
+        deficits,
+        totalDeficit: Math.max(0, coloredDeficit - player.affinities.singularity),
+      };
+    })
+    .filter((candidate) => candidate.totalDeficit > 0)
+    .sort((left, right) =>
+      left.totalDeficit - right.totalDeficit ||
+      scoreCard(right.card, player, state, difficulty) -
+        scoreCard(left.card, player, state, difficulty),
+    );
+
+  for (const candidate of candidates) {
+    const usefulAffinities = STANDARD_AFFINITY_KEYS
+      .filter((affinity) => candidate.deficits[affinity] > 0 && state.affinityWell[affinity] > 0)
+      .sort((left, right) =>
+        candidate.deficits[right] - candidate.deficits[left] ||
+        state.affinityWell[right] - state.affinityWell[left],
+      )
+      .slice(0, 3);
+    if (usefulAffinities.length === 0) continue;
+    return Object.fromEntries(usefulAffinities.map((affinity) => [affinity, 1]));
+  }
+
+  return {};
+}
+
 function pickReserveCard(
   state: GameStateData,
   player: PlayerGameState,
   difficulty: AiDifficulty,
 ): { cardId?: string; tier?: 1 | 2 | 3 } | null {
-  if (player.reservedArtifactIds.length >= 3) return null;
+  if (ordinaryEncryptedCount(player) >= 3) {
+    return null;
+  }
   const forgeArtifacts = getForgeArtifacts(state);
   const ranked = forgeArtifacts.sort(
     (a, b) =>
@@ -272,7 +421,11 @@ function chooseAffinitiesToReturn(
 
   // Medium/hard: compute how useful each Affinity is for target Artifacts.
   const ranked = [...CARD_MAP.values()]
-    .filter(card => !player.forgedArtifactIds.includes(card.id) && !player.reservedArtifactIds.includes(card.id))
+    .filter(card =>
+      !player.forgedArtifactIds.includes(card.id) &&
+      !player.reservedArtifactIds.includes(card.id) &&
+      !(player.privateReservedArtifactIds ?? []).includes(card.id)
+    )
     .sort((a, b) => scoreCard(b, player, state, difficulty) - scoreCard(a, player, state, difficulty))
     .slice(0, 6);
 
@@ -328,22 +481,65 @@ export function chooseAiAction(
   }
 
   const totalHeld = totalAffinities(player.affinities);
+  const triangulationAutonomous = !!state.triangulationScenario && (
+    playerId === state.triangulationScenario.myriaPlayerId ||
+    playerId === state.triangulationScenario.vesperPlayerId
+  );
+
+  const foundryDevice = player.manifestedBlueprintDevices?.find(
+    (entry) => entry.blueprintId === "bp_mantle_to_orbit_foundry",
+  );
+  const recoveryArtifactId = foundryDevice?.state === "recovering"
+    ? foundryStoredArtifactIds(player)[0]
+    : undefined;
+  if (recoveryArtifactId) {
+    return {
+      type: "forge_artifact",
+      cardId: recoveryArtifactId,
+      blueprintAction: "foundry_recovery",
+    };
+  }
+
+  const foundryAction = getFoundryClaimAction(player);
+  const foundryAffordable = findAffordableFoundryCards(player, state, difficulty);
+  if (foundryAction && foundryAffordable.length > 0 && difficulty === "hard") {
+    return {
+      type: "forge_artifact",
+      cardId: foundryAffordable[0].id,
+      blueprintAction: foundryAction,
+    };
+  }
 
   // 1. If an Artifact is affordable, Forge the best one.
   const affordable = findAffordableCards(player, state, difficulty);
   if (affordable.length > 0) {
     const card = affordable[0];
-    const isReserved = player.reservedArtifactIds.includes(card.id);
+    const isReserved =
+      player.reservedArtifactIds.includes(card.id) ||
+      (player.privateReservedArtifactIds ?? []).includes(card.id);
+    const isTideArchiveTop =
+      player.tideArchiveForgeAvailable === true &&
+      [state.deckTier1[0], state.deckTier2[0], state.deckTier3[0]].includes(card.id);
     return {
       type: isReserved ? "forge_reserved_artifact" : "forge_artifact",
       cardId: card.id,
+      ...(isTideArchiveTop ? { luminaryId: "lum_tide", tier: card.tier } : {}),
+    };
+  }
+
+
+  if (foundryAction && foundryAffordable.length > 0) {
+    return {
+      type: "forge_artifact",
+      cardId: foundryAffordable[0].id,
+      blueprintAction: foundryAction,
     };
   }
 
   // 2. If the hand is getting full, consider reserving.
   const wouldExceed = totalHeld + 3 > 10;
-  if ((wouldExceed || difficulty !== "easy") && Math.random() < (difficulty === "hard" ? 0.3 : 0.15)) {
-    const reserve = pickReserveCard(state, player, difficulty);
+  if (!triangulationAutonomous && (wouldExceed || difficulty !== "easy") && Math.random() < (difficulty === "hard" ? 0.3 : 0.15)) {
+    const reserve = triangulationAutonomous ? null : pickReserveCard(state, player, difficulty);
     if (reserve?.cardId) {
       const overflowReturn = chooseReserveOverflowReturn(player, state, difficulty);
       return { type: "reserve_artifact", cardId: reserve.cardId, ...(overflowReturn ? { returnAffinities: overflowReturn } : {}) };
@@ -351,10 +547,27 @@ export function chooseAiAction(
   }
 
   // 3. Harness 3 different Affinities, or 2 of one Affinity when the Well allows it.
-  const selectedAffinities = chooseHarnessSelection(state, player, difficulty);
+  const selectedAffinities = state.triangulationScenario
+    ? chooseTriangulationHarnessSelection(state, player, difficulty)
+    : chooseHarnessSelection(state, player, difficulty);
+  if (triangulationAutonomous) {
+    const availableStandardAffinities = STANDARD_AFFINITY_KEYS.reduce(
+      (sum, affinity) => sum + state.affinityWell[affinity],
+      0,
+    );
+    const autonomousTakeLimit = Math.max(
+      0,
+      availableStandardAffinities - TRIANGULATION_ARCHITECT_WELL_RESERVE,
+    );
+    const selectedKeys = Object.keys(selectedAffinities) as StandardAffinityKey[];
+    for (const affinity of selectedKeys.slice(autonomousTakeLimit)) {
+      delete selectedAffinities[affinity];
+    }
+  }
   const numPicked = Object.keys(selectedAffinities).length;
 
   if (numPicked === 0) {
+    if (triangulationAutonomous) return { type: "pass" };
     // The Well has no standard Affinities available: try Harness 2 where possible.
     for (const c of STANDARD_AFFINITY_KEYS) {
       if (state.affinityWell[c] >= 4) {
@@ -376,7 +589,7 @@ export function chooseAiAction(
       }
     }
     // Last resort: try to reserve a card
-    const reserve = pickReserveCard(state, player, difficulty);
+    const reserve = triangulationAutonomous ? null : pickReserveCard(state, player, difficulty);
     if (reserve?.cardId) {
       const overflowReturn = chooseReserveOverflowReturn(player, state, difficulty);
       return { type: "reserve_artifact", cardId: reserve.cardId, ...(overflowReturn ? { returnAffinities: overflowReturn } : {}) };
@@ -388,16 +601,18 @@ export function chooseAiAction(
       }
     }
     // Truly stuck: try reserving blind from any tier with cards
-    for (const tier of [1, 2, 3] as const) {
+    for (const tier of triangulationAutonomous ? [] : [1, 2, 3] as const) {
       const deck =
         tier === 1 ? state.deckTier1 : tier === 2 ? state.deckTier2 : state.deckTier3;
-      if (deck.length > 0 && player.reservedArtifactIds.length < 3) {
+      if (deck.length > 0 && ordinaryEncryptedCount(player) < 3) {
         const overflowReturn = chooseReserveOverflowReturn(player, state, difficulty);
         return { type: "reserve_artifact", tier, ...(overflowReturn ? { returnAffinities: overflowReturn } : {}) };
       }
     }
-    // Absolute fallback (turn will fail validation, but engine handles it)
-    return { type: "harness_three_affinities", affinities: {} };
+    // No legal Forge, Harness, or Encrypt is available. Passing keeps the
+    // turn valid and lets another seat release resources without manufacturing
+    // a validation failure.
+    return { type: "pass" };
   }
 
   // If the Harness selection would exceed 10, compute returned Affinities.

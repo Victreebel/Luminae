@@ -8,6 +8,8 @@ import {
   isLuminaryActivationGateActive,
   isLuminaryArrivalSequenceActive,
   isLuminaryCameraLeaseRequested,
+  partitionDeferredBrandStrikesByActivation,
+  reconcileDeferredLuminaryActivations,
   type LuminaryActivationGateReason,
   type LuminarySequenceGateSnapshot,
 } from '../luminarySequenceGate';
@@ -116,6 +118,54 @@ describe('luminarySequenceGate', () => {
 
     expect(delayedResultBelongsToActivation(result, first)).toBe(true);
     expect(delayedResultBelongsToActivation(result, second)).toBe(false);
+  });
+
+  it('recovers an authoritative activation that missed the local deferred snapshot', () => {
+    const earlyBloom = {
+      eventId: 'early-bloom-1',
+      luminaryId: 'lum_verdant',
+      effectType: 'summon',
+    };
+
+    expect(reconcileDeferredLuminaryActivations([], [earlyBloom])).toEqual([earlyBloom]);
+  });
+
+  it('deduplicates deferred activations and excludes events already in the queue', () => {
+    const earlyBloom = {
+      eventId: 'early-bloom-1',
+      luminaryId: 'lum_verdant',
+      effectType: 'summon',
+    };
+
+    expect(reconcileDeferredLuminaryActivations(
+      [earlyBloom],
+      [earlyBloom],
+      new Set([earlyBloom.eventId]),
+    )).toEqual([]);
+  });
+
+  it('keeps deferred brands attached to their originating Luminary activation', () => {
+    const tide = { eventId: 'tide-1', luminaryId: 'lum_tide', effectType: 'summon' };
+    const forgotten = { eventId: 'forgotten-1', luminaryId: 'lum_compass', effectType: 'summon' };
+    const tideStrike = { id: 'tide-strike', srcMeta: { lumId: 'lum_tide' } };
+    const forgottenStrike = { id: 'forgotten-strike', srcMeta: { lumId: 'lum_compass' } };
+    const legacyStrike = { id: 'legacy-strike', srcMeta: null };
+
+    expect(partitionDeferredBrandStrikesByActivation(
+      [forgottenStrike, tideStrike, legacyStrike],
+      [tide, forgotten],
+    )).toEqual({
+      owned: [forgottenStrike, tideStrike],
+      unowned: [legacyStrike],
+    });
+
+    expect(partitionDeferredBrandStrikesByActivation(
+      [forgottenStrike],
+      [tide],
+    )).toEqual({
+      owned: [],
+      unowned: [forgottenStrike],
+    });
   });
 
   it('holds camera ownership only for semantic developer-sequence work', () => {

@@ -105,8 +105,14 @@ if (rawPort) {
 }
 
 const basePath = process.env.BASE_PATH ?? "/";
-const buildStamp = new Date().toISOString();
-const buildLabel = process.env.LUMINAE_BUILD_LABEL ?? buildStamp;
+const sourceDateEpoch = process.env.SOURCE_DATE_EPOCH;
+const buildStamp = process.env.LUMINAE_BUILD_STAMP
+  ?? (sourceDateEpoch ? new Date(Number(sourceDateEpoch) * 1_000).toISOString() : undefined)
+  ?? (isBuild ? "unversioned-build" : new Date().toISOString());
+const releaseVersion = process.env.LUMINAE_RELEASE_VERSION ?? "0.1.0-dev";
+const buildLabel = process.env.LUMINAE_BUILD_LABEL ?? `${releaseVersion}+${buildStamp}`;
+const sealedBlueprintOutputPattern =
+  /antimatter|blueprintpresentationoverlay|lumiivaultrewardreveal/i;
 
 export default defineConfig({
   base: basePath,
@@ -166,6 +172,12 @@ export default defineConfig({
         // and precaching it all competes with animation/rendering on mobile and
         // wrapper builds. Browser HTTP cache can handle art assets on demand.
         globPatterns: ["**/*.{js,css,html,ico,svg,woff,woff2}"],
+        // Blueprint identities and reward art are fetched only when a server-
+        // revealed manifestation or Vault reward reaches the client. Do not
+        // disclose them during service-worker installation.
+        globIgnores: [
+          "**/sealed-*.*",
+        ],
         maximumFileSizeToCacheInBytes: 2 * 1024 * 1024,
         cleanupOutdatedCaches: true,
         clientsClaim: true,
@@ -222,6 +234,23 @@ export default defineConfig({
   build: {
     outDir: path.resolve(import.meta.dirname, "dist/public"),
     emptyOutDir: true,
+    rollupOptions: {
+      output: {
+        chunkFileNames: (chunkInfo) =>
+          sealedBlueprintOutputPattern.test(chunkInfo.name)
+            ? "assets/sealed-[hash].js"
+            : "assets/[name]-[hash].js",
+        assetFileNames: (assetInfo) => {
+          const sourceNames = [
+            ...(assetInfo.names ?? []),
+            ...(assetInfo.originalFileNames ?? []),
+          ].join(" ");
+          return sealedBlueprintOutputPattern.test(sourceNames)
+            ? "assets/sealed-[hash][extname]"
+            : "assets/[name]-[hash][extname]";
+        },
+      },
+    },
   },
   server: {
     port,

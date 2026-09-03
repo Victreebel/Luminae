@@ -68,7 +68,7 @@ export function ForgotPasswordForm({ onBack }: Props) {
           value={email}
           onChange={(e) => setEmail(e.target.value)}
           placeholder="you@example.com"
-          className="h-11 bg-input/60 rounded-xl"
+          className="h-12 rounded-md bg-input/60"
           autoComplete="email"
           autoFocus
           onKeyDown={(e) => e.key === "Enter" && handleSubmit()}
@@ -76,13 +76,13 @@ export function ForgotPasswordForm({ onBack }: Props) {
       </div>
 
       {error && (
-        <p className="text-xs text-destructive bg-destructive/10 border border-destructive/30 rounded-lg px-3 py-2">
+        <p className="rounded-md border border-destructive/30 bg-destructive/10 px-3 py-2 text-xs text-destructive" role="alert">
           {error}
         </p>
       )}
 
       <Button
-        className="h-12 font-bold rounded-xl"
+        className="oom-action-primary h-12"
         onClick={handleSubmit}
         disabled={isLoading || !email.trim()}
       >

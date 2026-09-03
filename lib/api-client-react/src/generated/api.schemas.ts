@@ -14,14 +14,27 @@ export const CardLoreEntryEngineeringScale = {
   Galactic: "Galactic",
 } as const;
 
+export type CardLoreEntryDepictionScale =
+  (typeof CardLoreEntryDepictionScale)[keyof typeof CardLoreEntryDepictionScale];
+
+export const CardLoreEntryDepictionScale = {
+  macro: "macro",
+  tabletop: "tabletop",
+  room: "room",
+  installation: "installation",
+  planetary: "planetary",
+  stellar: "stellar",
+  galactic: "galactic",
+} as const;
+
 export interface CardLoreEntry {
   name: string;
   flavor: string;
   artifactForm?: string;
-  blueprintRole?: string;
-  blueprintFamilies?: string;
+  practicalCapability?: string;
   civLane?: string;
   engineeringScale?: CardLoreEntryEngineeringScale;
+  depictionScale?: CardLoreEntryDepictionScale;
   artPrompt?: string;
 }
 
@@ -61,6 +74,15 @@ export const ActiveRoomEntryStatus = {
   playing: "playing",
 } as const;
 
+export type GameMode = (typeof GameMode)[keyof typeof GameMode];
+
+export const GameMode = {
+  standard: "standard",
+  campaign: "campaign",
+  custom: "custom",
+  competitive: "competitive",
+} as const;
+
 export interface ActiveRoomEntry {
   roomId: string;
   inviteCode: string;
@@ -68,6 +90,795 @@ export interface ActiveRoomEntry {
   sessionToken: string;
   playerId: string;
   isHost: boolean;
+  gameMode: GameMode;
+  /** @nullable */
+  scenarioId: string | null;
+}
+
+export type BlueprintClearanceSummaryStatus =
+  (typeof BlueprintClearanceSummaryStatus)[keyof typeof BlueprintClearanceSummaryStatus];
+
+export const BlueprintClearanceSummaryStatus = {
+  classified: "classified",
+  challenge_ready: "challenge_ready",
+  challenge_active: "challenge_active",
+  cleared: "cleared",
+} as const;
+
+export type LumiiThresholdApproach =
+  (typeof LumiiThresholdApproach)[keyof typeof LumiiThresholdApproach];
+
+export const LumiiThresholdApproach = {
+  kinship: "kinship",
+  inquiry: "inquiry",
+  dominion: "dominion",
+} as const;
+
+export type LumiiThresholdDialogueChoiceId =
+  (typeof LumiiThresholdDialogueChoiceId)[keyof typeof LumiiThresholdDialogueChoiceId];
+
+export const LumiiThresholdDialogueChoiceId = {
+  "kinship-want": "kinship-want",
+  "kinship-fear": "kinship-fear",
+  "kinship-familiar": "kinship-familiar",
+  "kinship-with-you": "kinship-with-you",
+  "kinship-help": "kinship-help",
+  "kinship-grow": "kinship-grow",
+  "inquiry-answer": "inquiry-answer",
+  "inquiry-warning": "inquiry-warning",
+  "inquiry-relation": "inquiry-relation",
+  "inquiry-unsayable": "inquiry-unsayable",
+  "inquiry-warning-against": "inquiry-warning-against",
+  "inquiry-preserve": "inquiry-preserve",
+  "inquiry-risk": "inquiry-risk",
+  "inquiry-pattern": "inquiry-pattern",
+  "dominion-decide": "dominion-decide",
+  "dominion-cipher": "dominion-cipher",
+  "dominion-stand": "dominion-stand",
+  "dominion-stop": "dominion-stop",
+} as const;
+
+export type LumiiThresholdDialogueResolution =
+  (typeof LumiiThresholdDialogueResolution)[keyof typeof LumiiThresholdDialogueResolution];
+
+export const LumiiThresholdDialogueResolution = {
+  left: "left",
+  continued: "continued",
+} as const;
+
+export interface BlueprintClearanceSummary {
+  qualifyingWins: number;
+  requiredWins: number;
+  status: BlueprintClearanceSummaryStatus;
+  /** @nullable */
+  challengeRoomId: string | null;
+  cipherDeactivated: boolean;
+  thresholdApproach: LumiiThresholdApproach | null;
+  thresholdDialoguePath: LumiiThresholdDialogueChoiceId[];
+  thresholdDialogueResolution: LumiiThresholdDialogueResolution | null;
+  thresholdRuptured: boolean;
+  /**
+   * Compatibility alias for thresholdRuptured.
+   * @deprecated
+   */
+  covenantBroken: boolean;
+  decryptionKeyBypassActive: boolean;
+  revealPending: boolean;
+}
+
+export type BlueprintVaultThresholdBody =
+  | {
+      action: "deactivate_cipher";
+    }
+  | {
+      action: "choose_approach";
+      approach: LumiiThresholdApproach;
+    }
+  | {
+      action: "record_dialogue_path";
+      /** @maxItems 3 */
+      path: LumiiThresholdDialogueChoiceId[];
+    }
+  | {
+      action: "resolve_dialogue";
+      resolution: "left";
+    };
+
+export type BlueprintVaultThresholdResultStatus =
+  (typeof BlueprintVaultThresholdResultStatus)[keyof typeof BlueprintVaultThresholdResultStatus];
+
+export const BlueprintVaultThresholdResultStatus = {
+  classified: "classified",
+  challenge_ready: "challenge_ready",
+  challenge_active: "challenge_active",
+  cleared: "cleared",
+} as const;
+
+export interface BlueprintVaultThresholdResult {
+  ok: boolean;
+  status: BlueprintVaultThresholdResultStatus;
+  cipherDeactivated: boolean;
+  decryptionKeyBypassActive: boolean;
+  thresholdApproach: LumiiThresholdApproach | null;
+  thresholdDialoguePath: LumiiThresholdDialogueChoiceId[];
+  thresholdDialogueResolution: LumiiThresholdDialogueResolution | null;
+}
+
+export type BlueprintDecryptionKeyUseResultStatus =
+  (typeof BlueprintDecryptionKeyUseResultStatus)[keyof typeof BlueprintDecryptionKeyUseResultStatus];
+
+export const BlueprintDecryptionKeyUseResultStatus = {
+  challenge_ready: "challenge_ready",
+} as const;
+
+export interface BlueprintDecryptionKeyUseResult {
+  ok: boolean;
+  status: BlueprintDecryptionKeyUseResultStatus;
+  alreadyActive: boolean;
+  decryptionKeyAvailable: boolean;
+  decryptionKeyBypassActive: boolean;
+}
+
+export type CosmeticLoadoutItemSlot =
+  (typeof CosmeticLoadoutItemSlot)[keyof typeof CosmeticLoadoutItemSlot];
+
+export const CosmeticLoadoutItemSlot = {
+  card_back: "card_back",
+  civilization_ambience: "civilization_ambience",
+  luminary_arrival_sound: "luminary_arrival_sound",
+  blueprint_presentation: "blueprint_presentation",
+  vault_seal: "vault_seal",
+} as const;
+
+export interface CosmeticLoadoutItem {
+  slot: CosmeticLoadoutItemSlot;
+  scopeKey: string;
+  itemId: string;
+}
+
+export interface BlueprintComponentDefinition {
+  artifactId: string;
+  stage: string;
+  function: string;
+}
+
+export type BlueprintDefinitionFamily =
+  (typeof BlueprintDefinitionFamily)[keyof typeof BlueprintDefinitionFamily];
+
+export const BlueprintDefinitionFamily = {
+  catastrophe_engine: "catastrophe_engine",
+  industrial_chain: "industrial_chain",
+  institution: "institution",
+  covenant: "covenant",
+} as const;
+
+export type BlueprintDefinitionPresentationScaleLabel =
+  (typeof BlueprintDefinitionPresentationScaleLabel)[keyof typeof BlueprintDefinitionPresentationScaleLabel];
+
+export const BlueprintDefinitionPresentationScaleLabel = {
+  Planetary: "Planetary",
+  Stellar: "Stellar",
+} as const;
+
+export type BlueprintDefinitionPresentationManifestationTreatment =
+  (typeof BlueprintDefinitionPresentationManifestationTreatment)[keyof typeof BlueprintDefinitionPresentationManifestationTreatment];
+
+export const BlueprintDefinitionPresentationManifestationTreatment = {
+  dedicated: "dedicated",
+  shared: "shared",
+} as const;
+
+export type BlueprintDefinitionPresentationDetonationTreatment =
+  (typeof BlueprintDefinitionPresentationDetonationTreatment)[keyof typeof BlueprintDefinitionPresentationDetonationTreatment];
+
+export const BlueprintDefinitionPresentationDetonationTreatment = {
+  dedicated: "dedicated",
+  none: "none",
+} as const;
+
+export type BlueprintPresentationVariant =
+  (typeof BlueprintPresentationVariant)[keyof typeof BlueprintPresentationVariant];
+
+export const BlueprintPresentationVariant = {
+  armored: "armored",
+  original: "original",
+  asymmetric: "asymmetric",
+  lattice: "lattice",
+} as const;
+
+export type BlueprintDefinitionPresentation = {
+  serialCode: string;
+  scaleLabel: BlueprintDefinitionPresentationScaleLabel;
+  canonicalVariant: BlueprintPresentationVariant;
+  manifestationTreatment: BlueprintDefinitionPresentationManifestationTreatment;
+  detonationTreatment: BlueprintDefinitionPresentationDetonationTreatment;
+};
+
+export type BlueprintDefinitionCivilizationScaleBand =
+  (typeof BlueprintDefinitionCivilizationScaleBand)[keyof typeof BlueprintDefinitionCivilizationScaleBand];
+
+export const BlueprintDefinitionCivilizationScaleBand = {
+  planetary: "planetary",
+  stellar: "stellar",
+  galactic: "galactic",
+} as const;
+
+export type BlueprintDefinitionCivilizationAffinity =
+  (typeof BlueprintDefinitionCivilizationAffinity)[keyof typeof BlueprintDefinitionCivilizationAffinity];
+
+export const BlueprintDefinitionCivilizationAffinity = {
+  flare: "flare",
+  continuum: "continuum",
+  verdance: "verdance",
+  abyss: "abyss",
+  radiance: "radiance",
+} as const;
+
+export type BlueprintDefinitionCivilization = {
+  projectForm: string;
+  scaleBand: BlueprintDefinitionCivilizationScaleBand;
+  affinity: BlueprintDefinitionCivilizationAffinity;
+  siteTitle: string;
+  visibleAs: string;
+  siteSummary: string;
+  laneLabel: string;
+  manifestation: "automatic";
+  triggerWindows: string[];
+  resolutionForm: string;
+  pressureTags: string[];
+  providedCapabilityIds: string[];
+  interactingCapabilityIds: string[];
+  consequencePolicyStatus: string;
+};
+
+export type BlueprintId = (typeof BlueprintId)[keyof typeof BlueprintId];
+
+export const BlueprintId = {
+  bp_antimatter_detonator: "bp_antimatter_detonator",
+  bp_mantle_to_orbit_foundry: "bp_mantle_to_orbit_foundry",
+  bp_ascension_registry: "bp_ascension_registry",
+  bp_worldshield_covenant: "bp_worldshield_covenant",
+} as const;
+
+export type BlueprintDeviceState =
+  (typeof BlueprintDeviceState)[keyof typeof BlueprintDeviceState];
+
+export const BlueprintDeviceState = {
+  armed: "armed",
+  ready: "ready",
+  recovering: "recovering",
+  vigilant: "vigilant",
+  spent: "spent",
+} as const;
+
+export interface BlueprintDefinition {
+  id: BlueprintId;
+  name: string;
+  family: BlueprintDefinitionFamily;
+  components: BlueprintComponentDefinition[];
+  publicEffect: string;
+  initialDeviceState: BlueprintDeviceState;
+  competitiveApproved: boolean;
+  presentation: BlueprintDefinitionPresentation;
+  civilization: BlueprintDefinitionCivilization;
+}
+
+export interface BlueprintLoadout {
+  mode: GameMode;
+  /** @maxItems 2 */
+  slots: (BlueprintId | null)[];
+}
+
+export interface BlueprintLoadoutBody {
+  /** @maxItems 2 */
+  slots: (BlueprintId | null)[];
+}
+
+export interface BlueprintMastery {
+  blueprintId: BlueprintId;
+  manifestations: number;
+  triggers: number;
+  armedMatchFinishes: number;
+}
+
+export type BlueprintVaultClearance = BlueprintClearanceSummary & {
+  warningSeen: boolean;
+};
+
+export type CampaignContentState =
+  (typeof CampaignContentState)[keyof typeof CampaignContentState];
+
+export const CampaignContentState = {
+  locked: "locked",
+  pending_release: "pending_release",
+  available: "available",
+  completed: "completed",
+  rehearsal: "rehearsal",
+} as const;
+
+export type ChroniclePrimaryOutcomeSummaryResult =
+  (typeof ChroniclePrimaryOutcomeSummaryResult)[keyof typeof ChroniclePrimaryOutcomeSummaryResult];
+
+export const ChroniclePrimaryOutcomeSummaryResult = {
+  victory: "victory",
+  defeat: "defeat",
+} as const;
+
+export interface ChroniclePrimaryOutcomeSummary {
+  chronicleId: string;
+  definitionVersion: number;
+  outcomeId: string;
+  result: ChroniclePrimaryOutcomeSummaryResult;
+  /** @nullable */
+  roomId: string | null;
+  completedAt: string;
+  lumeEarned: number;
+}
+
+export type CampaignChronicleProgressChronicleId =
+  (typeof CampaignChronicleProgressChronicleId)[keyof typeof CampaignChronicleProgressChronicleId];
+
+export const CampaignChronicleProgressChronicleId = {
+  chronicle_trace: "chronicle_trace",
+  chronicle_recurrence: "chronicle_recurrence",
+  chronicle_triangulation: "chronicle_triangulation",
+} as const;
+
+export interface CampaignChronicleProgress {
+  chronicleId: CampaignChronicleProgressChronicleId;
+  title: string;
+  state: CampaignContentState;
+  primary: ChroniclePrimaryOutcomeSummary | null;
+  rehearsalCount: number;
+  calibrationInsightEarned: boolean;
+}
+
+export interface CampaignProgressProjection {
+  openingChronicles: CampaignChronicleProgress[];
+  thresholdAvailable: boolean;
+  completedPrimaryCount: number;
+  calibrationInsightCount: number;
+}
+
+export type TraceGuidanceMethod =
+  (typeof TraceGuidanceMethod)[keyof typeof TraceGuidanceMethod];
+
+export const TraceGuidanceMethod = {
+  expose_all_routes: "expose_all_routes",
+  withhold_alternatives: "withhold_alternatives",
+  force_helm_lock: "force_helm_lock",
+} as const;
+
+export type TraceScenarioStateChronicleId =
+  (typeof TraceScenarioStateChronicleId)[keyof typeof TraceScenarioStateChronicleId];
+
+export const TraceScenarioStateChronicleId = {
+  chronicle_trace: "chronicle_trace",
+} as const;
+
+export type TraceScenarioStateScenarioId =
+  (typeof TraceScenarioStateScenarioId)[keyof typeof TraceScenarioStateScenarioId];
+
+export const TraceScenarioStateScenarioId = {
+  chronicle_trace_v1: "chronicle_trace_v1",
+} as const;
+
+export type TraceScenarioStateDefinitionVersion =
+  (typeof TraceScenarioStateDefinitionVersion)[keyof typeof TraceScenarioStateDefinitionVersion];
+
+export const TraceScenarioStateDefinitionVersion = {
+  NUMBER_1: 1,
+} as const;
+
+export type TraceScenarioStateRunKind =
+  (typeof TraceScenarioStateRunKind)[keyof typeof TraceScenarioStateRunKind];
+
+export const TraceScenarioStateRunKind = {
+  primary: "primary",
+  rehearsal: "rehearsal",
+} as const;
+
+export type TraceScenarioStatePhase =
+  (typeof TraceScenarioStatePhase)[keyof typeof TraceScenarioStatePhase];
+
+export const TraceScenarioStatePhase = {
+  setup: "setup",
+  playing: "playing",
+  awaiting_guidance: "awaiting_guidance",
+  guidance_resolved: "guidance_resolved",
+  finished: "finished",
+} as const;
+
+/**
+ * @nullable
+ */
+export type TraceScenarioStateOutcomeId =
+  | (typeof TraceScenarioStateOutcomeId)[keyof typeof TraceScenarioStateOutcomeId]
+  | null;
+
+export const TraceScenarioStateOutcomeId = {
+  trace_exposed_victory: "trace_exposed_victory",
+  trace_exposed_defeat: "trace_exposed_defeat",
+  trace_withheld_victory: "trace_withheld_victory",
+  trace_withheld_defeat: "trace_withheld_defeat",
+  trace_forced_victory: "trace_forced_victory",
+  trace_forced_defeat: "trace_forced_defeat",
+} as const;
+
+export interface TraceScenarioState {
+  chronicleId: TraceScenarioStateChronicleId;
+  scenarioId: TraceScenarioStateScenarioId;
+  definitionVersion: TraceScenarioStateDefinitionVersion;
+  runKind: TraceScenarioStateRunKind;
+  architectPlayerId: string;
+  autonomousPlayerId: string;
+  phase: TraceScenarioStatePhase;
+  architectCoreActionCount: number;
+  guidanceDueAfterCoreActions: number;
+  guidanceMethod: TraceGuidanceMethod | null;
+  /** @nullable */
+  guidanceResolvedAtTurnCount: number | null;
+  preparednessObjectiveMet: boolean;
+  /** @nullable */
+  preparednessArtifactId: string | null;
+  /** @nullable */
+  outcomeId: TraceScenarioStateOutcomeId;
+}
+
+export type TraceChronicleSessionScenarioId =
+  (typeof TraceChronicleSessionScenarioId)[keyof typeof TraceChronicleSessionScenarioId];
+
+export const TraceChronicleSessionScenarioId = {
+  chronicle_trace_v1: "chronicle_trace_v1",
+} as const;
+
+export type TraceChronicleSessionRunKind =
+  (typeof TraceChronicleSessionRunKind)[keyof typeof TraceChronicleSessionRunKind];
+
+export const TraceChronicleSessionRunKind = {
+  primary: "primary",
+  rehearsal: "rehearsal",
+} as const;
+
+export interface TraceChronicleSession {
+  roomId: string;
+  inviteCode: string;
+  playerId: string;
+  sessionToken: string;
+  resumed: boolean;
+  scenarioId: TraceChronicleSessionScenarioId;
+  runKind: TraceChronicleSessionRunKind;
+}
+
+export type RecurrenceCustodyMethod =
+  (typeof RecurrenceCustodyMethod)[keyof typeof RecurrenceCustodyMethod];
+
+export const RecurrenceCustodyMethod = {
+  publish_complete_index: "publish_complete_index",
+  seal_operational_grammar: "seal_operational_grammar",
+  establish_dual_custody: "establish_dual_custody",
+} as const;
+
+export type RecurrenceScenarioStateChronicleId =
+  (typeof RecurrenceScenarioStateChronicleId)[keyof typeof RecurrenceScenarioStateChronicleId];
+
+export const RecurrenceScenarioStateChronicleId = {
+  chronicle_recurrence: "chronicle_recurrence",
+} as const;
+
+export type RecurrenceScenarioStateScenarioId =
+  (typeof RecurrenceScenarioStateScenarioId)[keyof typeof RecurrenceScenarioStateScenarioId];
+
+export const RecurrenceScenarioStateScenarioId = {
+  chronicle_recurrence_v1: "chronicle_recurrence_v1",
+} as const;
+
+export type RecurrenceScenarioStateDefinitionVersion =
+  (typeof RecurrenceScenarioStateDefinitionVersion)[keyof typeof RecurrenceScenarioStateDefinitionVersion];
+
+export const RecurrenceScenarioStateDefinitionVersion = {
+  NUMBER_1: 1,
+} as const;
+
+export type RecurrenceScenarioStateRunKind =
+  (typeof RecurrenceScenarioStateRunKind)[keyof typeof RecurrenceScenarioStateRunKind];
+
+export const RecurrenceScenarioStateRunKind = {
+  primary: "primary",
+  rehearsal: "rehearsal",
+} as const;
+
+export type RecurrenceScenarioStatePhase =
+  (typeof RecurrenceScenarioStatePhase)[keyof typeof RecurrenceScenarioStatePhase];
+
+export const RecurrenceScenarioStatePhase = {
+  setup: "setup",
+  playing: "playing",
+  awaiting_custody: "awaiting_custody",
+  custody_resolved: "custody_resolved",
+  finished: "finished",
+} as const;
+
+/**
+ * @nullable
+ */
+export type RecurrenceScenarioStateOutcomeId =
+  | (typeof RecurrenceScenarioStateOutcomeId)[keyof typeof RecurrenceScenarioStateOutcomeId]
+  | null;
+
+export const RecurrenceScenarioStateOutcomeId = {
+  recurrence_published_victory: "recurrence_published_victory",
+  recurrence_published_defeat: "recurrence_published_defeat",
+  recurrence_sealed_victory: "recurrence_sealed_victory",
+  recurrence_sealed_defeat: "recurrence_sealed_defeat",
+  recurrence_conditional_victory: "recurrence_conditional_victory",
+  recurrence_conditional_defeat: "recurrence_conditional_defeat",
+} as const;
+
+export interface RecurrenceScenarioState {
+  chronicleId: RecurrenceScenarioStateChronicleId;
+  scenarioId: RecurrenceScenarioStateScenarioId;
+  definitionVersion: RecurrenceScenarioStateDefinitionVersion;
+  runKind: RecurrenceScenarioStateRunKind;
+  architectPlayerId: string;
+  autonomousPlayerId: string;
+  phase: RecurrenceScenarioStatePhase;
+  architectCoreActionCount: number;
+  custodyDueAfterCoreActions: number;
+  custodyMethod: RecurrenceCustodyMethod | null;
+  /** @nullable */
+  custodyResolvedAtTurnCount: number | null;
+  preparednessObjectiveMet: boolean;
+  /** @nullable */
+  preparednessArtifactId: string | null;
+  /** @nullable */
+  outcomeId: RecurrenceScenarioStateOutcomeId;
+}
+
+export type RecurrenceChronicleSessionScenarioId =
+  (typeof RecurrenceChronicleSessionScenarioId)[keyof typeof RecurrenceChronicleSessionScenarioId];
+
+export const RecurrenceChronicleSessionScenarioId = {
+  chronicle_recurrence_v1: "chronicle_recurrence_v1",
+} as const;
+
+export type RecurrenceChronicleSessionRunKind =
+  (typeof RecurrenceChronicleSessionRunKind)[keyof typeof RecurrenceChronicleSessionRunKind];
+
+export const RecurrenceChronicleSessionRunKind = {
+  primary: "primary",
+  rehearsal: "rehearsal",
+} as const;
+
+export interface RecurrenceChronicleSession {
+  roomId: string;
+  inviteCode: string;
+  playerId: string;
+  sessionToken: string;
+  resumed: boolean;
+  scenarioId: RecurrenceChronicleSessionScenarioId;
+  runKind: RecurrenceChronicleSessionRunKind;
+}
+
+export type TriangulationCoordinationArchitecture =
+  (typeof TriangulationCoordinationArchitecture)[keyof typeof TriangulationCoordinationArchitecture];
+
+export const TriangulationCoordinationArchitecture = {
+  preserve_independent_frames: "preserve_independent_frames",
+  establish_unowned_measure: "establish_unowned_measure",
+  instantiate_composite_mind: "instantiate_composite_mind",
+} as const;
+
+export type TriangulationScenarioStateChronicleId =
+  (typeof TriangulationScenarioStateChronicleId)[keyof typeof TriangulationScenarioStateChronicleId];
+
+export const TriangulationScenarioStateChronicleId = {
+  chronicle_triangulation: "chronicle_triangulation",
+} as const;
+
+export type TriangulationScenarioStateScenarioId =
+  (typeof TriangulationScenarioStateScenarioId)[keyof typeof TriangulationScenarioStateScenarioId];
+
+export const TriangulationScenarioStateScenarioId = {
+  chronicle_triangulation_v1: "chronicle_triangulation_v1",
+} as const;
+
+export type TriangulationScenarioStateDefinitionVersion =
+  (typeof TriangulationScenarioStateDefinitionVersion)[keyof typeof TriangulationScenarioStateDefinitionVersion];
+
+export const TriangulationScenarioStateDefinitionVersion = {
+  NUMBER_1: 1,
+} as const;
+
+export type TriangulationScenarioStateRunKind =
+  (typeof TriangulationScenarioStateRunKind)[keyof typeof TriangulationScenarioStateRunKind];
+
+export const TriangulationScenarioStateRunKind = {
+  primary: "primary",
+  rehearsal: "rehearsal",
+} as const;
+
+export type TriangulationScenarioStatePhase =
+  (typeof TriangulationScenarioStatePhase)[keyof typeof TriangulationScenarioStatePhase];
+
+export const TriangulationScenarioStatePhase = {
+  setup: "setup",
+  playing: "playing",
+  awaiting_alignment: "awaiting_alignment",
+  alignment_resolved: "alignment_resolved",
+  finished: "finished",
+} as const;
+
+/**
+ * @nullable
+ */
+export type TriangulationScenarioStateReferenceCivilization =
+  | (typeof TriangulationScenarioStateReferenceCivilization)[keyof typeof TriangulationScenarioStateReferenceCivilization]
+  | null;
+
+export const TriangulationScenarioStateReferenceCivilization = {
+  deme: "deme",
+  myria: "myria",
+  vesper: "vesper",
+} as const;
+
+/**
+ * @nullable
+ */
+export type TriangulationScenarioStateOutcomeId =
+  | (typeof TriangulationScenarioStateOutcomeId)[keyof typeof TriangulationScenarioStateOutcomeId]
+  | null;
+
+export const TriangulationScenarioStateOutcomeId = {
+  triangulation_frames_deme_reference: "triangulation_frames_deme_reference",
+  triangulation_frames_myria_reference: "triangulation_frames_myria_reference",
+  triangulation_frames_vesper_reference:
+    "triangulation_frames_vesper_reference",
+  triangulation_measure_deme_reference: "triangulation_measure_deme_reference",
+  triangulation_measure_myria_reference:
+    "triangulation_measure_myria_reference",
+  triangulation_measure_vesper_reference:
+    "triangulation_measure_vesper_reference",
+  triangulation_composite_deme_reference:
+    "triangulation_composite_deme_reference",
+  triangulation_composite_myria_reference:
+    "triangulation_composite_myria_reference",
+  triangulation_composite_vesper_reference:
+    "triangulation_composite_vesper_reference",
+} as const;
+
+export interface TriangulationScenarioState {
+  chronicleId: TriangulationScenarioStateChronicleId;
+  scenarioId: TriangulationScenarioStateScenarioId;
+  definitionVersion: TriangulationScenarioStateDefinitionVersion;
+  runKind: TriangulationScenarioStateRunKind;
+  architectPlayerId: string;
+  myriaPlayerId: string;
+  vesperPlayerId: string;
+  phase: TriangulationScenarioStatePhase;
+  architectCoreActions: number;
+  alignmentDueAfterActions: number;
+  coordinationArchitecture: TriangulationCoordinationArchitecture | null;
+  /** @nullable */
+  choiceResolvedAtTurn: number | null;
+  preparednessMet: boolean;
+  /** @nullable */
+  preparednessCapabilityId: string | null;
+  /** @nullable */
+  preparednessArtifactId: string | null;
+  priorMemoryLines: string[];
+  /** @nullable */
+  referenceCivilization: TriangulationScenarioStateReferenceCivilization;
+  /** @nullable */
+  outcomeId: TriangulationScenarioStateOutcomeId;
+}
+
+export type TriangulationChronicleSessionScenarioId =
+  (typeof TriangulationChronicleSessionScenarioId)[keyof typeof TriangulationChronicleSessionScenarioId];
+
+export const TriangulationChronicleSessionScenarioId = {
+  chronicle_triangulation_v1: "chronicle_triangulation_v1",
+} as const;
+
+export type TriangulationChronicleSessionRunKind =
+  (typeof TriangulationChronicleSessionRunKind)[keyof typeof TriangulationChronicleSessionRunKind];
+
+export const TriangulationChronicleSessionRunKind = {
+  primary: "primary",
+  rehearsal: "rehearsal",
+} as const;
+
+export interface TriangulationChronicleSession {
+  roomId: string;
+  inviteCode: string;
+  playerId: string;
+  sessionToken: string;
+  resumed: boolean;
+  scenarioId: TriangulationChronicleSessionScenarioId;
+  runKind: TriangulationChronicleSessionRunKind;
+}
+
+export type BlueprintVaultResponseCampaignNodesItem = {
+  id: string;
+  blueprintId: BlueprintId;
+  title: string;
+  status: CampaignContentState;
+};
+
+export type ChronicleId = (typeof ChronicleId)[keyof typeof ChronicleId];
+
+export const ChronicleId = {
+  chronicle_outer_vault_access: "chronicle_outer_vault_access",
+} as const;
+
+export type ChronicleStatus =
+  (typeof ChronicleStatus)[keyof typeof ChronicleStatus];
+
+export const ChronicleStatus = {
+  sealed: "sealed",
+  available: "available",
+  recovered: "recovered",
+} as const;
+
+export interface AccountArchiveChronicle {
+  id: ChronicleId;
+  title: string;
+  chapterLabel: string;
+  summary: string;
+  status: ChronicleStatus;
+  /** @nullable */
+  unlockedAt: string | null;
+  relatedBlueprintIds: BlueprintId[];
+}
+
+export interface BlueprintVaultResponse {
+  clearance: BlueprintVaultClearance;
+  decryptionKeyAvailable: boolean;
+  slotCount: number;
+  competitiveEnabled: boolean;
+  unlockedBlueprintIds: BlueprintId[];
+  blueprints: BlueprintDefinition[];
+  /** @nullable */
+  corruptedRecordCount: number | null;
+  campaignNodes: BlueprintVaultResponseCampaignNodesItem[];
+  campaignProgress: CampaignProgressProjection;
+  loadouts: BlueprintLoadout[];
+  mastery: BlueprintMastery[];
+  chronicles: AccountArchiveChronicle[];
+}
+
+export interface BlueprintChallengeSession {
+  roomId: string;
+  inviteCode: string;
+  playerId: string;
+  sessionToken: string;
+  resumed: boolean;
+  scenarioId: string;
+  lumiiThresholdApproach: LumiiThresholdApproach;
+  campaignAssistance: string;
+}
+
+export type CosmeticLoadoutBodySlot =
+  (typeof CosmeticLoadoutBodySlot)[keyof typeof CosmeticLoadoutBodySlot];
+
+export const CosmeticLoadoutBodySlot = {
+  card_back: "card_back",
+  civilization_ambience: "civilization_ambience",
+  luminary_arrival_sound: "luminary_arrival_sound",
+  blueprint_presentation: "blueprint_presentation",
+  vault_seal: "vault_seal",
+} as const;
+
+export interface CosmeticLoadoutBody {
+  slot: CosmeticLoadoutBodySlot;
+  scopeKey: string;
+  /** @nullable */
+  itemId: string | null;
+}
+
+export interface CosmeticLoadoutResponse {
+  ok: boolean;
+  equippedItems: CosmeticLoadoutItem[];
 }
 
 export interface AccountInfo {
@@ -85,12 +896,228 @@ export interface GetMeResponse {
   email?: string | null;
   createdAt?: string;
   activeRooms: ActiveRoomEntry[];
+  clearance: BlueprintClearanceSummary;
+  cosmeticLoadout: CosmeticLoadoutItem[];
 }
 
 export interface AccountWithToken {
   account: AccountInfo;
   token: string;
   expiresAt: string;
+  /** True when this login cancelled a pending account-deletion request */
+  deletionCancelled?: boolean;
+}
+
+export interface DeleteAccountBody {
+  /**
+   * @minLength 1
+   * @maxLength 200
+   */
+  password: string;
+}
+
+export interface AccountDeletionResult {
+  ok: true;
+  executeAfter: string;
+}
+
+/**
+ * Owner-private catalog, ownership, loadout, Lume packs, and engagement state
+ */
+export interface StoreResponse {
+  [key: string]: unknown;
+}
+
+export type NativeStoreProvider =
+  (typeof NativeStoreProvider)[keyof typeof NativeStoreProvider];
+
+export const NativeStoreProvider = {
+  google_play: "google_play",
+  samsung_iap: "samsung_iap",
+} as const;
+
+export type LumePackId = (typeof LumePackId)[keyof typeof LumePackId];
+
+export const LumePackId = {
+  lume_100: "lume_100",
+  lume_300: "lume_300",
+  lume_700: "lume_700",
+} as const;
+
+export interface NativePurchaseBody {
+  provider: NativeStoreProvider;
+  packId: LumePackId;
+  /**
+   * @minLength 1
+   * @maxLength 200
+   */
+  productId: string;
+  /**
+   * @minLength 8
+   * @maxLength 4096
+   */
+  purchaseToken: string;
+}
+
+export interface ReconcileNativePurchaseBody {
+  provider: NativeStoreProvider;
+  /**
+   * @minLength 8
+   * @maxLength 4096
+   */
+  purchaseToken: string;
+}
+
+export type NativePurchaseResultStatus =
+  (typeof NativePurchaseResultStatus)[keyof typeof NativePurchaseResultStatus];
+
+export const NativePurchaseResultStatus = {
+  pending: "pending",
+  credited: "credited",
+  already_credited: "already_credited",
+  settlement_pending: "settlement_pending",
+} as const;
+
+export interface NativePurchaseResult {
+  status: NativePurchaseResultStatus;
+  provider: NativeStoreProvider;
+  packId: LumePackId;
+  /** @minimum 0 */
+  lumeAmount: number;
+  lumeBalance: number;
+}
+
+export type NativePurchaseReconciliationResultStatus =
+  (typeof NativePurchaseReconciliationResultStatus)[keyof typeof NativePurchaseReconciliationResultStatus];
+
+export const NativePurchaseReconciliationResultStatus = {
+  settled: "settled",
+  pending: "pending",
+  cancelled: "cancelled",
+  refunded: "refunded",
+} as const;
+
+export interface NativePurchaseReconciliationResult {
+  status: NativePurchaseReconciliationResultStatus;
+  lumeBalance: number;
+}
+
+export interface ModerationBlockBody {
+  roomId: string;
+  playerId: string;
+  blocked: boolean;
+}
+
+export interface ModerationBlockResult {
+  ok: true;
+  blocked: boolean;
+}
+
+export type ModerationReportBodyCategory =
+  (typeof ModerationReportBodyCategory)[keyof typeof ModerationReportBodyCategory];
+
+export const ModerationReportBodyCategory = {
+  harassment: "harassment",
+  hate: "hate",
+  threat: "threat",
+  privacy: "privacy",
+  spam: "spam",
+  other: "other",
+} as const;
+
+export interface ModerationReportBody {
+  roomId: string;
+  playerId: string;
+  category: ModerationReportBodyCategory;
+  /** @maxLength 200 */
+  evidenceText?: string;
+  evidenceTimestamp?: string;
+}
+
+export interface ModerationReportResult {
+  ok: true;
+  reportId: string;
+}
+
+export type TelemetryEventEventName =
+  (typeof TelemetryEventEventName)[keyof typeof TelemetryEventEventName];
+
+export const TelemetryEventEventName = {
+  app_started: "app_started",
+  client_error: "client_error",
+  long_frame: "long_frame",
+  ws_disconnect: "ws_disconnect",
+  ws_reconnect: "ws_reconnect",
+  progression_step: "progression_step",
+  chronicle_closed: "chronicle_closed",
+  lumii_outcome: "lumii_outcome",
+  purchase_started: "purchase_started",
+  purchase_pending: "purchase_pending",
+  purchase_completed: "purchase_completed",
+  purchase_failed: "purchase_failed",
+} as const;
+
+export type TelemetryEventPlatform =
+  (typeof TelemetryEventPlatform)[keyof typeof TelemetryEventPlatform];
+
+export const TelemetryEventPlatform = {
+  web: "web",
+  android_play: "android_play",
+  android_galaxy: "android_galaxy",
+  mac: "mac",
+} as const;
+
+export type TelemetryEventDetail = {
+  [key: string]: string | number | boolean | null;
+};
+
+export interface TelemetryEvent {
+  /**
+   * @minLength 8
+   * @maxLength 80
+   */
+  sessionId: string;
+  eventName: TelemetryEventEventName;
+  platform: TelemetryEventPlatform;
+  /** @maxLength 120 */
+  clientBuild?: string;
+  detail?: TelemetryEventDetail;
+  occurredAt: string;
+}
+
+export interface TelemetryBatch {
+  /**
+   * @minItems 1
+   * @maxItems 20
+   */
+  events: TelemetryEvent[];
+}
+
+export interface TelemetryAcceptedResult {
+  /**
+   * @minimum 0
+   * @maximum 20
+   */
+  accepted: number;
+}
+
+export type OperationsHealthResultStatus =
+  (typeof OperationsHealthResultStatus)[keyof typeof OperationsHealthResultStatus];
+
+export const OperationsHealthResultStatus = {
+  ok: "ok",
+  degraded: "degraded",
+} as const;
+
+export type OperationsHealthResultWebsocket = { [key: string]: unknown };
+
+export interface OperationsHealthResult {
+  status: OperationsHealthResultStatus;
+  buildLabel?: string;
+  /** @minimum 0 */
+  databaseLatencyMs?: number;
+  database?: string;
+  websocket?: OperationsHealthResultWebsocket;
 }
 
 export type ActiveGameStatus =
@@ -129,6 +1156,311 @@ export const GameHistoryEntryResult = {
   tie: "tie",
 } as const;
 
+export type CivilizationRecordSummaryVersion =
+  (typeof CivilizationRecordSummaryVersion)[keyof typeof CivilizationRecordSummaryVersion];
+
+export const CivilizationRecordSummaryVersion = {
+  NUMBER_1: 1,
+  NUMBER_2: 2,
+} as const;
+
+export type CivilizationRecordSummaryEvidence =
+  (typeof CivilizationRecordSummaryEvidence)[keyof typeof CivilizationRecordSummaryEvidence];
+
+export const CivilizationRecordSummaryEvidence = {
+  recorded: "recorded",
+  partial_legacy: "partial_legacy",
+  legacy_unavailable: "legacy_unavailable",
+} as const;
+
+export type CivilizationRecordSummaryHistoricalContext =
+  (typeof CivilizationRecordSummaryHistoricalContext)[keyof typeof CivilizationRecordSummaryHistoricalContext];
+
+export const CivilizationRecordSummaryHistoricalContext = {
+  historical: "historical",
+  forecast: "forecast",
+  rehearsal: "rehearsal",
+  interface_simulation: "interface_simulation",
+  unknown: "unknown",
+} as const;
+
+/**
+ * @nullable
+ */
+export type CivilizationRecordSummaryHistoricalMaturity =
+  | (typeof CivilizationRecordSummaryHistoricalMaturity)[keyof typeof CivilizationRecordSummaryHistoricalMaturity]
+  | null;
+
+export const CivilizationRecordSummaryHistoricalMaturity = {
+  planetary: "planetary",
+  stellar: "stellar",
+  galactic: "galactic",
+} as const;
+
+/**
+ * @nullable
+ */
+export type CivilizationRecordSummaryCurrentReach =
+  | (typeof CivilizationRecordSummaryCurrentReach)[keyof typeof CivilizationRecordSummaryCurrentReach]
+  | null;
+
+export const CivilizationRecordSummaryCurrentReach = {
+  planetary: "planetary",
+  stellar: "stellar",
+  galactic: "galactic",
+  unknown: "unknown",
+} as const;
+
+/**
+ * @nullable
+ */
+export type CivilizationRecordSummaryCurrentReachCondition =
+  | (typeof CivilizationRecordSummaryCurrentReachCondition)[keyof typeof CivilizationRecordSummaryCurrentReachCondition]
+  | null;
+
+export const CivilizationRecordSummaryCurrentReachCondition = {
+  intact: "intact",
+  degraded: "degraded",
+  fractured: "fractured",
+  unknown: "unknown",
+} as const;
+
+/**
+ * @nullable
+ */
+export type CivilizationRecordSummaryStabilityBand =
+  | (typeof CivilizationRecordSummaryStabilityBand)[keyof typeof CivilizationRecordSummaryStabilityBand]
+  | null;
+
+export const CivilizationRecordSummaryStabilityBand = {
+  stable: "stable",
+  strained: "strained",
+  unstable: "unstable",
+  crisis: "crisis",
+} as const;
+
+/**
+ * @nullable
+ */
+export type CivilizationRecordSummaryAffinityForm =
+  | (typeof CivilizationRecordSummaryAffinityForm)[keyof typeof CivilizationRecordSummaryAffinityForm]
+  | null;
+
+export const CivilizationRecordSummaryAffinityForm = {
+  unformed: "unformed",
+  singular: "singular",
+  dyad: "dyad",
+  plural: "plural",
+} as const;
+
+/**
+ * @nullable
+ */
+export type CivilizationRecordSummaryDominantAffinity =
+  | (typeof CivilizationRecordSummaryDominantAffinity)[keyof typeof CivilizationRecordSummaryDominantAffinity]
+  | null;
+
+export const CivilizationRecordSummaryDominantAffinity = {
+  flare: "flare",
+  radiance: "radiance",
+  verdance: "verdance",
+  continuum: "continuum",
+  abyss: "abyss",
+} as const;
+
+/**
+ * @nullable
+ */
+export type CivilizationRecordSummaryDominantDyad =
+  | (typeof CivilizationRecordSummaryDominantDyad)[keyof typeof CivilizationRecordSummaryDominantDyad]
+  | null;
+
+export const CivilizationRecordSummaryDominantDyad = {
+  vortex: "vortex",
+  flux: "flux",
+  bloom: "bloom",
+  chrysalis: "chrysalis",
+  orbit: "orbit",
+  canopy: "canopy",
+  eclipse: "eclipse",
+  lineage: "lineage",
+  echo: "echo",
+  spore: "spore",
+} as const;
+
+export type CivilizationOutcomeSummaryPolicyId =
+  (typeof CivilizationOutcomeSummaryPolicyId)[keyof typeof CivilizationOutcomeSummaryPolicyId];
+
+export const CivilizationOutcomeSummaryPolicyId = {
+  "civilization-outcome-v1": "civilization-outcome-v1",
+} as const;
+
+export type CivilizationOutcomeSummaryEvidence =
+  (typeof CivilizationOutcomeSummaryEvidence)[keyof typeof CivilizationOutcomeSummaryEvidence];
+
+export const CivilizationOutcomeSummaryEvidence = {
+  recorded: "recorded",
+  partial_legacy: "partial_legacy",
+  legacy_unavailable: "legacy_unavailable",
+} as const;
+
+export type CivilizationOutcomeSummaryCategory =
+  (typeof CivilizationOutcomeSummaryCategory)[keyof typeof CivilizationOutcomeSummaryCategory];
+
+export const CivilizationOutcomeSummaryCategory = {
+  ascendant: "ascendant",
+  enduring: "enduring",
+  precarious: "precarious",
+  subordinated: "subordinated",
+  collapsed: "collapsed",
+} as const;
+
+export type CivilizationOutcomePublicFactorDirection =
+  (typeof CivilizationOutcomePublicFactorDirection)[keyof typeof CivilizationOutcomePublicFactorDirection];
+
+export const CivilizationOutcomePublicFactorDirection = {
+  support: "support",
+  pressure: "pressure",
+} as const;
+
+export interface CivilizationOutcomePublicFactor {
+  direction: CivilizationOutcomePublicFactorDirection;
+  /** @minimum 0 */
+  points: number;
+  label: string;
+}
+
+export type CivilizationOutcomeSummaryPrimaryFactors = {
+  continuity: CivilizationOutcomePublicFactor[];
+  agency: CivilizationOutcomePublicFactor[];
+  achievement: CivilizationOutcomePublicFactor[];
+  stability: CivilizationOutcomePublicFactor[];
+};
+
+export interface CivilizationOutcomeSummary {
+  policyId: CivilizationOutcomeSummaryPolicyId;
+  evidence: CivilizationOutcomeSummaryEvidence;
+  category: CivilizationOutcomeSummaryCategory;
+  /**
+   * @minimum 0
+   * @maximum 100
+   */
+  qualityScore: number;
+  /**
+   * @minimum 0
+   * @maximum 100
+   */
+  continuity: number;
+  /**
+   * @minimum 0
+   * @maximum 100
+   */
+  agency: number;
+  /**
+   * @minimum 0
+   * @maximum 100
+   */
+  achievement: number;
+  /**
+   * @minimum 0
+   * @maximum 100
+   */
+  stability: number;
+  /**
+   * @minimum 0
+   * @maximum 100
+   */
+  adversityIntensity: number;
+  /**
+   * @minimum 0
+   * @maximum 8
+   */
+  recoveryCredit: number;
+  primaryFactors: CivilizationOutcomeSummaryPrimaryFactors;
+  explanation: string[];
+}
+
+export type CivilizationLumeAssessmentPolicyId =
+  (typeof CivilizationLumeAssessmentPolicyId)[keyof typeof CivilizationLumeAssessmentPolicyId];
+
+export const CivilizationLumeAssessmentPolicyId = {
+  "civilization-lume-v1": "civilization-lume-v1",
+} as const;
+
+export type CivilizationLumeAssessmentStatus =
+  (typeof CivilizationLumeAssessmentStatus)[keyof typeof CivilizationLumeAssessmentStatus];
+
+export const CivilizationLumeAssessmentStatus = {
+  awarded: "awarded",
+  insufficient_evidence: "insufficient_evidence",
+  retroactive_ineligible: "retroactive_ineligible",
+  campaign_record_only: "campaign_record_only",
+  campaign_policy_required: "campaign_policy_required",
+  custom_ineligible: "custom_ineligible",
+  unavailable: "unavailable",
+} as const;
+
+export interface CivilizationLumeAssessment {
+  policyId: CivilizationLumeAssessmentPolicyId;
+  status: CivilizationLumeAssessmentStatus;
+  /**
+   * @minimum 0
+   * @maximum 10
+   */
+  amount: number;
+  /**
+   * @minimum 0
+   * @maximum 100
+   * @nullable
+   */
+  qualityScore: number | null;
+  /**
+   * @minimum 0
+   * @maximum 8
+   */
+  recoveryCredit: number;
+  explanation: string[];
+}
+
+/**
+ * Identity-safe summary of the immutable civilization snapshot captured at match closure
+ */
+export interface CivilizationRecordSummary {
+  version: CivilizationRecordSummaryVersion;
+  evidence: CivilizationRecordSummaryEvidence;
+  historicalContext: CivilizationRecordSummaryHistoricalContext;
+  /** @nullable */
+  historicalMaturity: CivilizationRecordSummaryHistoricalMaturity;
+  /** @nullable */
+  currentReach: CivilizationRecordSummaryCurrentReach;
+  /** @nullable */
+  currentReachCondition: CivilizationRecordSummaryCurrentReachCondition;
+  /** @nullable */
+  stabilityBand: CivilizationRecordSummaryStabilityBand;
+  /** @nullable */
+  stabilityScore: number | null;
+  /** @nullable */
+  affinityForm: CivilizationRecordSummaryAffinityForm;
+  /** @nullable */
+  dominantAffinity: CivilizationRecordSummaryDominantAffinity;
+  /** @nullable */
+  dominantDyad: CivilizationRecordSummaryDominantDyad;
+  /** @nullable */
+  masteredArtifactCount: number | null;
+  /** @nullable */
+  operationalArtifactCount: number | null;
+  /** @nullable */
+  damagedArtifactCount: number | null;
+  /** @nullable */
+  annihilatedArtifactCount: number | null;
+  manifestedProjectCount: number;
+  /** @nullable */
+  civilizationEventCount: number | null;
+  outcome: CivilizationOutcomeSummary | null;
+  lume: CivilizationLumeAssessment;
+  unavailableFields: string[];
+}
+
 export interface GameHistoryEntry {
   roomId: string;
   inviteCode: string;
@@ -139,6 +1471,7 @@ export interface GameHistoryEntry {
   eminenceEarned: number;
   /** Number of human players in the game */
   totalPlayers: number;
+  civilizationRecord?: CivilizationRecordSummary | null;
 }
 
 export interface PlayerStatsResponse {
@@ -148,6 +1481,8 @@ export interface PlayerStatsResponse {
   ties: number;
   /** Average Eminence earned across all finished games */
   avgEminence: number;
+  /** Lifetime Lume awarded by recorded Civilization histories */
+  totalLume: number;
   /** Most recent finished games, newest first (up to 20) */
   recentGames: GameHistoryEntry[];
 }
@@ -208,7 +1543,7 @@ export interface ChallengesResponse {
 }
 
 /**
- * Eminence required to trigger the final round
+ * Eminence required to trigger the final round; 20 is standard and 15 is the shorter custom format
  */
 export type CreateChallengeBodyVictoryRequirement =
   (typeof CreateChallengeBodyVictoryRequirement)[keyof typeof CreateChallengeBodyVictoryRequirement];
@@ -237,7 +1572,7 @@ export interface CreateChallengeBody {
    * @maximum 4
    */
   maxPlayers?: number;
-  /** Eminence required to trigger the final round */
+  /** Eminence required to trigger the final round; 20 is standard and 15 is the shorter custom format */
   victoryRequirement?: CreateChallengeBodyVictoryRequirement;
   /** Luminary cinematic presentation mode */
   cinematicMode?: CreateChallengeBodyCinematicMode;
@@ -280,6 +1615,11 @@ export type ChallengeAcceptedResponsePlayer = {
   id: string;
   name: string;
   isHost: boolean;
+  /**
+   * Unique avatar assigned to the joining player in this room
+   * @nullable
+   */
+  avatarId?: string | null;
 };
 
 export interface ChallengeAcceptedResponse {
@@ -291,7 +1631,7 @@ export interface ChallengeAcceptedResponse {
 }
 
 /**
- * Eminence required to trigger the final round
+ * Eminence required to trigger the final round; standard rooms use 20 and custom rooms may use 15
  */
 export type CreateRoomBodyVictoryRequirement =
   (typeof CreateRoomBodyVictoryRequirement)[keyof typeof CreateRoomBodyVictoryRequirement];
@@ -313,6 +1653,17 @@ export const CreateRoomBodyCinematicMode = {
   epic: "epic",
 } as const;
 
+export type BlueprintPolicy =
+  (typeof BlueprintPolicy)[keyof typeof BlueprintPolicy];
+
+export const BlueprintPolicy = {
+  none: "none",
+  owned: "owned",
+  all: "all",
+  seasonal: "seasonal",
+  scenario: "scenario",
+} as const;
+
 export interface CreateRoomBody {
   hostName: string;
   /**
@@ -320,7 +1671,7 @@ export interface CreateRoomBody {
    * @maximum 4
    */
   maxPlayers: number;
-  /** Eminence required to trigger the final round */
+  /** Eminence required to trigger the final round; standard rooms use 20 and custom rooms may use 15 */
   victoryRequirement?: CreateRoomBodyVictoryRequirement;
   /** Luminary cinematic presentation mode */
   cinematicMode?: CreateRoomBodyCinematicMode;
@@ -334,6 +1685,13 @@ export interface CreateRoomBody {
    * @nullable
    */
   avatarId?: string | null;
+  gameMode?: GameMode;
+  /**
+   * Server-authored campaign scenario identifier
+   * @nullable
+   */
+  scenarioId?: string | null;
+  blueprintPolicy?: BlueprintPolicy;
 }
 
 export interface JoinRoomBody {
@@ -444,6 +1802,10 @@ export interface RoomInfo {
   cinematicMode: RoomInfoCinematicMode;
   /** @nullable */
   turnTimerSeconds?: number | null;
+  gameMode: GameMode;
+  /** @nullable */
+  scenarioId: string | null;
+  blueprintPolicy: BlueprintPolicy;
   players: RoomPlayer[];
 }
 
@@ -452,6 +1814,87 @@ export interface RoomWithPlayer {
   player: RoomPlayer;
   sessionToken: string;
 }
+
+/**
+ * Owner-only Blueprint assembly and secret targeting state
+ */
+export interface BlueprintPrivateState {
+  blueprintId: BlueprintId;
+  slotIndex: number;
+  matchedComponentIds: string[];
+  manifested: boolean;
+  definition?: BlueprintDefinition;
+  /** @nullable */
+  secretTargetCardId?: string | null;
+  safePreManifestActionPlayerIds?: string[];
+  /** Owner-only Foundry components held in exceptional Cipher storage after Overdrive */
+  foundryStoredArtifactIds?: string[];
+  /**
+   * Legacy Broken-Covenant recovery list retained for compatibility
+   * @deprecated
+   */
+  foundryRecoveryArtifactIds?: string[];
+  /** @nullable */
+  ascensionObservedPlayerId?: string | null;
+  /** @nullable */
+  ascensionObservedTurnCount?: number | null;
+  /** @nullable */
+  ascensionLastDeferralRound?: number | null;
+}
+
+/**
+ * Public state revealed only after a Blueprint manifests
+ */
+export interface ManifestedDevicePublicState {
+  blueprintId: BlueprintId;
+  ownerPlayerId: string;
+  slotIndex: number;
+  state: BlueprintDeviceState;
+  presentationVariant: BlueprintPresentationVariant;
+  definition?: BlueprintDefinition;
+  /**
+   * @minimum 0
+   * @maximum 2
+   */
+  foundryUsesRemaining?: number;
+  /**
+   * @minimum 0
+   * @maximum 2
+   */
+  ascensionDeferrals?: number;
+  foundryTier2Ready?: boolean;
+  foundryTier3Ready?: boolean;
+}
+
+export interface BlueprintManifestationEvent {
+  eventId: string;
+  blueprintId: BlueprintId;
+  ownerPlayerId: string;
+  slotIndex: number;
+  presentationVariant: BlueprintPresentationVariant;
+  definition?: BlueprintDefinition;
+  createdAt: number;
+}
+
+export type BlueprintArtifactSnapshotTier =
+  (typeof BlueprintArtifactSnapshotTier)[keyof typeof BlueprintArtifactSnapshotTier];
+
+export const BlueprintArtifactSnapshotTier = {
+  NUMBER_1: 1,
+  NUMBER_2: 2,
+  NUMBER_3: 3,
+} as const;
+
+export type BlueprintArtifactSnapshotBonusAffinity =
+  (typeof BlueprintArtifactSnapshotBonusAffinity)[keyof typeof BlueprintArtifactSnapshotBonusAffinity];
+
+export const BlueprintArtifactSnapshotBonusAffinity = {
+  flare: "flare",
+  continuum: "continuum",
+  verdance: "verdance",
+  abyss: "abyss",
+  radiance: "radiance",
+} as const;
 
 /**
  * A complete set of Luminae Affinity counts.
@@ -463,6 +1906,124 @@ export interface AffinityCounts {
   abyss: number;
   radiance: number;
   singularity: number;
+}
+
+export interface BlueprintArtifactSnapshot {
+  id: string;
+  name: string;
+  tier: BlueprintArtifactSnapshotTier;
+  bonusAffinity: BlueprintArtifactSnapshotBonusAffinity;
+  eminence: number;
+  cost: AffinityCounts;
+  flavor: string;
+}
+
+export type BlueprintDetonationEventTrigger =
+  (typeof BlueprintDetonationEventTrigger)[keyof typeof BlueprintDetonationEventTrigger];
+
+export const BlueprintDetonationEventTrigger = {
+  forged: "forged",
+  encrypted: "encrypted",
+} as const;
+
+export type BlueprintDetonationEventHostileEffect =
+  (typeof BlueprintDetonationEventHostileEffect)[keyof typeof BlueprintDetonationEventHostileEffect];
+
+export const BlueprintDetonationEventHostileEffect = {
+  burn: "burn",
+  annihilation: "annihilation",
+  nullification: "nullification",
+  claim_cancellation: "claim_cancellation",
+} as const;
+
+export interface BlueprintDetonationEvent {
+  eventId: string;
+  blueprintId: BlueprintId;
+  ownerPlayerId: string;
+  triggeringPlayerId: string;
+  targetCardId: string;
+  trigger?: BlueprintDetonationEventTrigger;
+  hostileEffect?: BlueprintDetonationEventHostileEffect;
+  targetArtifact?: BlueprintArtifactSnapshot;
+  collateralCardIds?: string[];
+  collateralArtifacts?: BlueprintArtifactSnapshot[];
+  interceptedByBlueprintId?: BlueprintId;
+  presentationVariant: BlueprintPresentationVariant;
+  definition?: BlueprintDefinition;
+  createdAt: number;
+}
+
+export type ScenarioProtocolId =
+  (typeof ScenarioProtocolId)[keyof typeof ScenarioProtocolId];
+
+export const ScenarioProtocolId = {
+  sealed_protocol_01: "sealed_protocol_01",
+  sealed_protocol_02: "sealed_protocol_02",
+  sealed_protocol_03: "sealed_protocol_03",
+} as const;
+
+export interface ScenarioProtocolPublicState {
+  protocolId: ScenarioProtocolId;
+  ownerPlayerId: string;
+  slotIndex: number;
+  state: BlueprintDeviceState;
+  publicEffect: string;
+  /**
+   * @minimum 0
+   * @maximum 2
+   */
+  foundryUsesRemaining?: number;
+  /**
+   * @minimum 0
+   * @maximum 2
+   */
+  ascensionDeferrals?: number;
+  foundryTier2Ready?: boolean;
+  foundryTier3Ready?: boolean;
+}
+
+export type ScenarioProtocolEventKind =
+  (typeof ScenarioProtocolEventKind)[keyof typeof ScenarioProtocolEventKind];
+
+export const ScenarioProtocolEventKind = {
+  manifestation: "manifestation",
+  effect: "effect",
+} as const;
+
+export type ScenarioProtocolEventTrigger =
+  (typeof ScenarioProtocolEventTrigger)[keyof typeof ScenarioProtocolEventTrigger];
+
+export const ScenarioProtocolEventTrigger = {
+  forged: "forged",
+  encrypted: "encrypted",
+} as const;
+
+export type ScenarioProtocolEventHostileEffect =
+  (typeof ScenarioProtocolEventHostileEffect)[keyof typeof ScenarioProtocolEventHostileEffect];
+
+export const ScenarioProtocolEventHostileEffect = {
+  burn: "burn",
+  annihilation: "annihilation",
+  nullification: "nullification",
+  claim_cancellation: "claim_cancellation",
+} as const;
+
+export interface ScenarioProtocolEvent {
+  eventId: string;
+  protocolId: ScenarioProtocolId;
+  ownerPlayerId: string;
+  slotIndex: number;
+  kind: ScenarioProtocolEventKind;
+  publicEffect: string;
+  triggeringPlayerId?: string;
+  targetCardId?: string;
+  trigger?: ScenarioProtocolEventTrigger;
+  hostileEffect?: ScenarioProtocolEventHostileEffect;
+  targetArtifact?: BlueprintArtifactSnapshot;
+  collateralCardIds?: string[];
+  collateralArtifacts?: BlueprintArtifactSnapshot[];
+  intercepted?: boolean;
+  createdAt: number;
 }
 
 export type ArtifactCardBonusAffinity =
@@ -568,6 +2129,445 @@ export interface Luminary {
   effectDescription?: string;
 }
 
+export interface CivilizationNaturalAffinityCounts {
+  flare: number;
+  radiance: number;
+  verdance: number;
+  continuum: number;
+  abyss: number;
+}
+
+export type CivilizationRankedAffinityAffinity =
+  (typeof CivilizationRankedAffinityAffinity)[keyof typeof CivilizationRankedAffinityAffinity];
+
+export const CivilizationRankedAffinityAffinity = {
+  flare: "flare",
+  radiance: "radiance",
+  verdance: "verdance",
+  continuum: "continuum",
+  abyss: "abyss",
+} as const;
+
+export interface CivilizationRankedAffinity {
+  affinity: CivilizationRankedAffinityAffinity;
+  historicalWeight: number;
+  operationalWeight: number;
+}
+
+export type CivilizationAffinityIdentityPolicyId =
+  (typeof CivilizationAffinityIdentityPolicyId)[keyof typeof CivilizationAffinityIdentityPolicyId];
+
+export const CivilizationAffinityIdentityPolicyId = {
+  "provisional-ratio-v1": "provisional-ratio-v1",
+} as const;
+
+export type CivilizationAffinityIdentityForm =
+  (typeof CivilizationAffinityIdentityForm)[keyof typeof CivilizationAffinityIdentityForm];
+
+export const CivilizationAffinityIdentityForm = {
+  unformed: "unformed",
+  singular: "singular",
+  dyad: "dyad",
+  plural: "plural",
+} as const;
+
+/**
+ * @nullable
+ */
+export type CivilizationAffinityIdentityDominantAffinity =
+  | (typeof CivilizationAffinityIdentityDominantAffinity)[keyof typeof CivilizationAffinityIdentityDominantAffinity]
+  | null;
+
+export const CivilizationAffinityIdentityDominantAffinity = {
+  flare: "flare",
+  radiance: "radiance",
+  verdance: "verdance",
+  continuum: "continuum",
+  abyss: "abyss",
+} as const;
+
+/**
+ * @nullable
+ */
+export type CivilizationAffinityIdentityDominantDyad =
+  | (typeof CivilizationAffinityIdentityDominantDyad)[keyof typeof CivilizationAffinityIdentityDominantDyad]
+  | null;
+
+export const CivilizationAffinityIdentityDominantDyad = {
+  vortex: "vortex",
+  flux: "flux",
+  bloom: "bloom",
+  chrysalis: "chrysalis",
+  orbit: "orbit",
+  canopy: "canopy",
+  eclipse: "eclipse",
+  lineage: "lineage",
+  echo: "echo",
+  spore: "spore",
+} as const;
+
+/**
+ * @nullable
+ */
+export type CivilizationAffinityIdentityThirdAffinity =
+  | (typeof CivilizationAffinityIdentityThirdAffinity)[keyof typeof CivilizationAffinityIdentityThirdAffinity]
+  | null;
+
+export const CivilizationAffinityIdentityThirdAffinity = {
+  flare: "flare",
+  radiance: "radiance",
+  verdance: "verdance",
+  continuum: "continuum",
+  abyss: "abyss",
+} as const;
+
+export interface CivilizationAffinityIdentity {
+  policyId: CivilizationAffinityIdentityPolicyId;
+  form: CivilizationAffinityIdentityForm;
+  historicalCounts: CivilizationNaturalAffinityCounts;
+  operationalCounts: CivilizationNaturalAffinityCounts;
+  rankedAffinities: CivilizationRankedAffinity[];
+  /** @nullable */
+  dominantAffinity: CivilizationAffinityIdentityDominantAffinity;
+  /** @nullable */
+  dominantDyad: CivilizationAffinityIdentityDominantDyad;
+  /** @nullable */
+  thirdAffinity: CivilizationAffinityIdentityThirdAffinity;
+  dominantShare: number;
+  secondaryToPrimaryRatio: number;
+  thirdToPrimaryRatio: number;
+}
+
+/**
+ * @nullable
+ */
+export type CivilizationPublicArtifactStateImplementationState =
+  | (typeof CivilizationPublicArtifactStateImplementationState)[keyof typeof CivilizationPublicArtifactStateImplementationState]
+  | null;
+
+export const CivilizationPublicArtifactStateImplementationState = {
+  operational: "operational",
+  damaged: "damaged",
+  archived: "archived",
+  annihilated: "annihilated",
+} as const;
+
+/**
+ * @nullable
+ */
+export type CivilizationPublicArtifactStateChangeSourceType =
+  | (typeof CivilizationPublicArtifactStateChangeSourceType)[keyof typeof CivilizationPublicArtifactStateChangeSourceType]
+  | null;
+
+export const CivilizationPublicArtifactStateChangeSourceType = {
+  artifact: "artifact",
+  blueprint: "blueprint",
+  chronicle: "chronicle",
+  scenario: "scenario",
+  system: "system",
+} as const;
+
+export type CivilizationPublicArtifactStateHistoryEvidence =
+  (typeof CivilizationPublicArtifactStateHistoryEvidence)[keyof typeof CivilizationPublicArtifactStateHistoryEvidence];
+
+export const CivilizationPublicArtifactStateHistoryEvidence = {
+  recorded: "recorded",
+  legacy_inferred: "legacy_inferred",
+} as const;
+
+export interface CivilizationPublicArtifactState {
+  artifactId: string;
+  /** @nullable */
+  firstMasteredTurnCount: number | null;
+  /** @minimum 1 */
+  masteryCount: number;
+  /** @nullable */
+  implementationState: CivilizationPublicArtifactStateImplementationState;
+  /** @nullable */
+  implementationStateChangedTurnCount: number | null;
+  /** @nullable */
+  changeSourceType: CivilizationPublicArtifactStateChangeSourceType;
+  historyEvidence: CivilizationPublicArtifactStateHistoryEvidence;
+}
+
+/**
+ * @nullable
+ */
+export type CivilizationPublicConditionStateCoreType =
+  | (typeof CivilizationPublicConditionStateCoreType)[keyof typeof CivilizationPublicConditionStateCoreType]
+  | null;
+
+export const CivilizationPublicConditionStateCoreType = {
+  damaged: "damaged",
+  isolated: "isolated",
+  quarantined: "quarantined",
+  disrupted: "disrupted",
+} as const;
+
+export type CivilizationPublicConditionStateTargetKind =
+  (typeof CivilizationPublicConditionStateTargetKind)[keyof typeof CivilizationPublicConditionStateTargetKind];
+
+export const CivilizationPublicConditionStateTargetKind = {
+  world: "world",
+  artifact_implementation: "artifact_implementation",
+  network: "network",
+  installation: "installation",
+  project: "project",
+} as const;
+
+export type CivilizationPublicConditionStateSourceType =
+  (typeof CivilizationPublicConditionStateSourceType)[keyof typeof CivilizationPublicConditionStateSourceType];
+
+export const CivilizationPublicConditionStateSourceType = {
+  artifact: "artifact",
+  blueprint: "blueprint",
+  chronicle: "chronicle",
+  scenario: "scenario",
+  system: "system",
+} as const;
+
+export type CivilizationPublicConditionStateHistoryEvidence =
+  (typeof CivilizationPublicConditionStateHistoryEvidence)[keyof typeof CivilizationPublicConditionStateHistoryEvidence];
+
+export const CivilizationPublicConditionStateHistoryEvidence = {
+  recorded: "recorded",
+  legacy_inferred: "legacy_inferred",
+} as const;
+
+export interface CivilizationPublicConditionState {
+  type: string;
+  /** @nullable */
+  coreType: CivilizationPublicConditionStateCoreType;
+  targetKind: CivilizationPublicConditionStateTargetKind;
+  sourceType: CivilizationPublicConditionStateSourceType;
+  /** @nullable */
+  appliedTurnCount: number | null;
+  historyEvidence: CivilizationPublicConditionStateHistoryEvidence;
+}
+
+export type CivilizationPublicStabilityContributorDirection =
+  (typeof CivilizationPublicStabilityContributorDirection)[keyof typeof CivilizationPublicStabilityContributorDirection];
+
+export const CivilizationPublicStabilityContributorDirection = {
+  support: "support",
+  pressure: "pressure",
+} as const;
+
+export type CivilizationPublicStabilityContributorSourceType =
+  (typeof CivilizationPublicStabilityContributorSourceType)[keyof typeof CivilizationPublicStabilityContributorSourceType];
+
+export const CivilizationPublicStabilityContributorSourceType = {
+  artifact: "artifact",
+  blueprint: "blueprint",
+  chronicle: "chronicle",
+  scenario: "scenario",
+  system: "system",
+} as const;
+
+/**
+ * @nullable
+ */
+export type CivilizationPublicStabilityContributorTargetKind =
+  | (typeof CivilizationPublicStabilityContributorTargetKind)[keyof typeof CivilizationPublicStabilityContributorTargetKind]
+  | null;
+
+export const CivilizationPublicStabilityContributorTargetKind = {
+  world: "world",
+  artifact_implementation: "artifact_implementation",
+  network: "network",
+  installation: "installation",
+  project: "project",
+} as const;
+
+export type CivilizationPublicStabilityContributorHistoryEvidence =
+  (typeof CivilizationPublicStabilityContributorHistoryEvidence)[keyof typeof CivilizationPublicStabilityContributorHistoryEvidence];
+
+export const CivilizationPublicStabilityContributorHistoryEvidence = {
+  recorded: "recorded",
+  legacy_inferred: "legacy_inferred",
+} as const;
+
+export interface CivilizationPublicStabilityContributor {
+  direction: CivilizationPublicStabilityContributorDirection;
+  magnitude: number;
+  label: string;
+  sourceType: CivilizationPublicStabilityContributorSourceType;
+  /** @nullable */
+  targetKind: CivilizationPublicStabilityContributorTargetKind;
+  /** @nullable */
+  appliedTurnCount: number | null;
+  /** @nullable */
+  resolvedTurnCount: number | null;
+  historyEvidence: CivilizationPublicStabilityContributorHistoryEvidence;
+}
+
+export type CivilizationPublicScaleStateHistoricalMaturity =
+  (typeof CivilizationPublicScaleStateHistoricalMaturity)[keyof typeof CivilizationPublicScaleStateHistoricalMaturity];
+
+export const CivilizationPublicScaleStateHistoricalMaturity = {
+  planetary: "planetary",
+  stellar: "stellar",
+  galactic: "galactic",
+} as const;
+
+export type CivilizationPublicScaleStateCurrentReach =
+  (typeof CivilizationPublicScaleStateCurrentReach)[keyof typeof CivilizationPublicScaleStateCurrentReach];
+
+export const CivilizationPublicScaleStateCurrentReach = {
+  planetary: "planetary",
+  stellar: "stellar",
+  galactic: "galactic",
+  unknown: "unknown",
+} as const;
+
+export type CivilizationPublicScaleStateCurrentReachCondition =
+  (typeof CivilizationPublicScaleStateCurrentReachCondition)[keyof typeof CivilizationPublicScaleStateCurrentReachCondition];
+
+export const CivilizationPublicScaleStateCurrentReachCondition = {
+  intact: "intact",
+  degraded: "degraded",
+  fractured: "fractured",
+  unknown: "unknown",
+} as const;
+
+export type CivilizationPublicScaleStateLiteralKardashevType =
+  (typeof CivilizationPublicScaleStateLiteralKardashevType)[keyof typeof CivilizationPublicScaleStateLiteralKardashevType];
+
+export const CivilizationPublicScaleStateLiteralKardashevType = {
+  NUMBER_0: 0,
+  NUMBER_1: 1,
+  NUMBER_2: 2,
+  NUMBER_3: 3,
+} as const;
+
+export type CivilizationPublicScaleStateLiteralKardashevEvidence =
+  (typeof CivilizationPublicScaleStateLiteralKardashevEvidence)[keyof typeof CivilizationPublicScaleStateLiteralKardashevEvidence];
+
+export const CivilizationPublicScaleStateLiteralKardashevEvidence = {
+  recorded: "recorded",
+  legacy_inferred: "legacy_inferred",
+} as const;
+
+export interface CivilizationPublicScaleState {
+  historicalMaturity: CivilizationPublicScaleStateHistoricalMaturity;
+  currentReach: CivilizationPublicScaleStateCurrentReach;
+  currentReachCondition: CivilizationPublicScaleStateCurrentReachCondition;
+  literalKardashevType: CivilizationPublicScaleStateLiteralKardashevType;
+  literalKardashevEvidence: CivilizationPublicScaleStateLiteralKardashevEvidence;
+}
+
+export type CivilizationPublicStabilityStateBand =
+  (typeof CivilizationPublicStabilityStateBand)[keyof typeof CivilizationPublicStabilityStateBand];
+
+export const CivilizationPublicStabilityStateBand = {
+  stable: "stable",
+  strained: "strained",
+  unstable: "unstable",
+  crisis: "crisis",
+} as const;
+
+export type CivilizationPublicStabilityStateHistoryEvidence =
+  (typeof CivilizationPublicStabilityStateHistoryEvidence)[keyof typeof CivilizationPublicStabilityStateHistoryEvidence];
+
+export const CivilizationPublicStabilityStateHistoryEvidence = {
+  recorded: "recorded",
+  legacy_inferred: "legacy_inferred",
+} as const;
+
+export interface CivilizationPublicStabilityState {
+  band: CivilizationPublicStabilityStateBand;
+  /** @nullable */
+  score: number | null;
+  /** @nullable */
+  calibrationId: string | null;
+  contributors: CivilizationPublicStabilityContributor[];
+  /** @nullable */
+  calculatedTurnCount: number | null;
+  historyEvidence: CivilizationPublicStabilityStateHistoryEvidence;
+}
+
+export type CivilizationPublicEventHistoryEntrySourceType =
+  (typeof CivilizationPublicEventHistoryEntrySourceType)[keyof typeof CivilizationPublicEventHistoryEntrySourceType];
+
+export const CivilizationPublicEventHistoryEntrySourceType = {
+  artifact: "artifact",
+  blueprint: "blueprint",
+  chronicle: "chronicle",
+  scenario: "scenario",
+  system: "system",
+} as const;
+
+export type CivilizationPublicEventHistoryEntryForm =
+  (typeof CivilizationPublicEventHistoryEntryForm)[keyof typeof CivilizationPublicEventHistoryEntryForm];
+
+export const CivilizationPublicEventHistoryEntryForm = {
+  automatic: "automatic",
+  contextual: "contextual",
+  state_modified: "state_modified",
+} as const;
+
+export type CivilizationPublicEventHistoryEntryPressureTagsItem =
+  (typeof CivilizationPublicEventHistoryEntryPressureTagsItem)[keyof typeof CivilizationPublicEventHistoryEntryPressureTagsItem];
+
+export const CivilizationPublicEventHistoryEntryPressureTagsItem = {
+  disruption: "disruption",
+  isolation: "isolation",
+  proliferation: "proliferation",
+  exposure: "exposure",
+  attrition: "attrition",
+  coordination: "coordination",
+  transformation: "transformation",
+} as const;
+
+export type CivilizationPublicEventHistoryEntryOutcome =
+  (typeof CivilizationPublicEventHistoryEntryOutcome)[keyof typeof CivilizationPublicEventHistoryEntryOutcome];
+
+export const CivilizationPublicEventHistoryEntryOutcome = {
+  success: "success",
+  failure: "failure",
+} as const;
+
+export type CivilizationPublicEventHistoryEntryHistoryEvidence =
+  (typeof CivilizationPublicEventHistoryEntryHistoryEvidence)[keyof typeof CivilizationPublicEventHistoryEntryHistoryEvidence];
+
+export const CivilizationPublicEventHistoryEntryHistoryEvidence = {
+  recorded: "recorded",
+  legacy_inferred: "legacy_inferred",
+} as const;
+
+export interface CivilizationPublicEventHistoryEntry {
+  eventId: string;
+  sourceType: CivilizationPublicEventHistoryEntrySourceType;
+  /** @nullable */
+  turnCount: number | null;
+  form: CivilizationPublicEventHistoryEntryForm;
+  pressureTags: CivilizationPublicEventHistoryEntryPressureTagsItem[];
+  outcome: CivilizationPublicEventHistoryEntryOutcome;
+  summary: string;
+  historyEvidence: CivilizationPublicEventHistoryEntryHistoryEvidence;
+}
+
+export type CivilizationPublicStateVersion =
+  (typeof CivilizationPublicStateVersion)[keyof typeof CivilizationPublicStateVersion];
+
+export const CivilizationPublicStateVersion = {
+  NUMBER_2: 2,
+} as const;
+
+/**
+ * Public, identity-safe Civilization history and current operational summary
+ */
+export interface CivilizationPublicState {
+  version: CivilizationPublicStateVersion;
+  artifacts: CivilizationPublicArtifactState[];
+  affinityIdentity: CivilizationAffinityIdentity;
+  scale: CivilizationPublicScaleState;
+  stability: CivilizationPublicStabilityState;
+  activeConditions: CivilizationPublicConditionState[];
+  activeCapabilityIds: string[];
+  events: CivilizationPublicEventHistoryEntry[];
+}
+
 /**
  * AI difficulty level, null for human players or easy AI that never toggles
  * @nullable
@@ -581,6 +2581,22 @@ export const GamePlayerStateAiDifficulty = {
   medium: "medium",
   hard: "hard",
 } as const;
+
+/**
+ * Owner-only presentation snapshot before manifestation
+ */
+export type GamePlayerStateBlueprintPresentationVariants = {
+  [key: string]: BlueprintPresentationVariant;
+};
+
+/**
+ * Owner-only top Artifact of each Archive, revealed by Tide Architect
+ */
+export type GamePlayerStateTideArchiveTopCards = {
+  tier1: ArtifactCard | null;
+  tier2: ArtifactCard | null;
+  tier3: ArtifactCard | null;
+};
 
 /**
  * Pre-committed action to auto-execute when this player's turn arrives
@@ -605,12 +2621,26 @@ export interface GamePlayerState {
   eminence: number;
   reservedArtifacts: ArtifactCard[];
   forgedArtifactIds: string[];
+  /** Public Civilization history and operational state; omitted only for legacy responses */
+  civilization?: CivilizationPublicState;
+  /** Owner-only assembly and secret device state; omitted from opponent projections */
+  blueprintPrivateStates?: BlueprintPrivateState[];
+  /** Owner-only presentation snapshot before manifestation */
+  blueprintPresentationVariants?: GamePlayerStateBlueprintPresentationVariants;
+  /** Public devices revealed after manifestation */
+  manifestedBlueprintDevices?: ManifestedDevicePublicState[];
+  /** Historical IDs consumed by Final Hunger; no longer operational and do not count for Blueprint recipes, forged-card effects, or victory tie-breaks */
+  assimilatedArtifactIds?: string[];
   /** Artifact IDs forged with zero Affinities spent (fully covered by bonuses at forge time) */
   discountedForgeIds: string[];
   forgedArtifacts: ArtifactCard[];
   isConnected: boolean;
   /** IDs of luminaries this player has claimed */
   claimedLuminaryIds: string[];
+  /** Owner-only top Artifact of each Archive, revealed by Tide Architect */
+  tideArchiveTopCards?: GamePlayerStateTideArchiveTopCards;
+  /** Whether this player retains Tide Architect's one-use Archive-top Forge */
+  tideArchiveForgeAvailable?: boolean;
   /**
    * Pre-committed action to auto-execute when this player's turn arrives
    * @nullable
@@ -658,10 +2688,23 @@ export interface LuminaryActiveState {
   summonedAtTurnCount: number;
 }
 
+/**
+ * Public arrival cue snapshotted from the claiming player's equipped cosmetic
+ */
+export type PendingSummonEventArrivalSound =
+  (typeof PendingSummonEventArrivalSound)[keyof typeof PendingSummonEventArrivalSound];
+
+export const PendingSummonEventArrivalSound = {
+  standard: "standard",
+  first_resonance: "first_resonance",
+} as const;
+
 export interface PendingSummonEvent {
   eventId: string;
   luminaryId: string;
   claimedByPlayerId: string;
+  /** Public arrival cue snapshotted from the claiming player's equipped cosmetic */
+  arrivalSound?: PendingSummonEventArrivalSound;
   /** Unix ms timestamp when this event was created; optional for backward compat */
   createdAt?: number;
 }
@@ -696,6 +2739,7 @@ export type PendingLuminaryActivationEventEffectType =
 
 export const PendingLuminaryActivationEventEffectType = {
   summon: "summon",
+  action: "action",
   end_of_turn: "end_of_turn",
   start_of_turn: "start_of_turn",
 } as const;
@@ -728,6 +2772,8 @@ export interface PendingLuminaryActivationEvent {
   createdAt?: number;
   /** Artifact IDs targeted by this activation (e.g. condemned Artifacts for start_of_turn burn). Captured server-side before state mutations clear artifactMarkers. */
   targetCardIds?: string[];
+  /** Forge mold coordinates targeted by this activation, encoded as tier-slotIndex */
+  targetSlotIds?: string[];
   /** Legacy single-return Affinity retained for queued games created before Balance Due became global */
   affinityType?: PendingLuminaryActivationEventAffinityType;
   /**
@@ -737,6 +2783,12 @@ export interface PendingLuminaryActivationEvent {
   affinityAmount?: number;
   /** Authoritative player/Affinity pairs returned by a global activation such as Balance Due */
   affinityReturns?: LuminaryAffinityReturn[];
+  /** Victory threshold immediately before this activation changed it */
+  victoryRequirementBefore?: number;
+  /** Victory threshold immediately after this activation changed it */
+  victoryRequirementAfter?: number;
+  /** Signed victory-threshold delta presented by this activation */
+  victoryRequirementChange?: number;
 }
 
 export type ArtifactMarkerType =
@@ -769,6 +2821,20 @@ export const GameStateStatus = {
   lobby: "lobby",
   playing: "playing",
   finished: "finished",
+} as const;
+
+/**
+ * Normalized reason a finished game ended
+ * @nullable
+ */
+export type GameStateFinishReason =
+  | (typeof GameStateFinishReason)[keyof typeof GameStateFinishReason]
+  | null;
+
+export const GameStateFinishReason = {
+  win: "win",
+  surrender: "surrender",
+  withdrawal: "withdrawal",
 } as const;
 
 /**
@@ -825,6 +2891,16 @@ export type GameStatePendingTurnTransition = {
 export type GameStateArtifactMarkers = { [key: string]: ArtifactMarker };
 
 /**
+ * The first Nullified Artifact forged this game and whether the allied-player exemption applied.
+ * @nullable
+ */
+export type GameStateNullifiedFirstForge = {
+  cardId: string;
+  playerId: string;
+  exempt: boolean;
+} | null;
+
+/**
  * Owner-relative Forgotten Hour timing keyed by source playerId
  */
 export type GameStateForgottenHourCycle = {
@@ -847,6 +2923,24 @@ export type GameStatePendingLuminaryChoice = {
 export interface GameState {
   roomId: string;
   status: GameStateStatus;
+  /**
+   * Server-authored campaign scenario identifier
+   * @nullable
+   */
+  scenarioId: string | null;
+  /**
+   * Normalized reason a finished game ended
+   * @nullable
+   */
+  finishReason: GameStateFinishReason;
+  /** Immutable approach chosen for the Lumii Vault encounter */
+  lumiiThresholdApproach: LumiiThresholdApproach | null;
+  /** Public, reconnect-safe state for The Trace Chronicle */
+  traceScenario: TraceScenarioState | null;
+  /** Public, reconnect-safe state for The Recurrence Chronicle */
+  recurrenceScenario: RecurrenceScenarioState | null;
+  /** Public, reconnect-safe state for The Triangulation Chronicle */
+  triangulationScenario: TriangulationScenarioState | null;
   /** Unix timestamp (ms) when this game instance was initialized */
   startedAt: number;
   /**
@@ -862,6 +2956,11 @@ export interface GameState {
   turnCount: number;
   /** Eminence required to trigger the final round */
   victoryRequirement: number;
+  /**
+   * Deprecated compatibility field; Void Seal was removed and this is always null
+   * @nullable
+   */
+  voidSealOwnerId?: string | null;
   cinematicMode: GameStateCinematicMode;
   affinityWell: AffinityCounts;
   forgeTier1: ArtifactCard[];
@@ -894,36 +2993,55 @@ export interface GameState {
   pendingSummonEvents: PendingSummonEvent[];
   /** Activation events queued for the short (~4s) per-effect cinematic overlay */
   pendingLuminaryActivationEvents: PendingLuminaryActivationEvent[];
+  /** Blueprint manifestation events awaiting synchronized presentation acknowledgement */
+  pendingBlueprintManifestationEvents: BlueprintManifestationEvent[];
+  /** Blueprint detonation events awaiting synchronized presentation acknowledgement */
+  pendingBlueprintDetonationEvents: BlueprintDetonationEvent[];
+  /** Anonymous public protocol devices used by identity-redacted scenarios */
+  scenarioProtocols: ScenarioProtocolPublicState[];
+  /** Anonymous scenario protocol events awaiting normal Blueprint acknowledgement */
+  pendingScenarioProtocolEvents: ScenarioProtocolEvent[];
   /** Durable turn-resolution cursor held until all Luminary presentation events are acknowledged */
   pendingTurnTransition: GameStatePendingTurnTransition;
   /** Development-only lease held while the in-game Luminary Sequence Lab still has staged presentations to resolve */
   devLuminarySequenceActive?: boolean;
   /** Active Artifact markers keyed by cardId (v0.8 — Forgotten/Condemned/Nullified/AvatarSeed) */
   artifactMarkers?: GameStateArtifactMarkers;
+  /**
+   * The first Nullified Artifact forged this game and whether the allied-player exemption applied.
+   * @nullable
+   */
+  nullifiedFirstForge?: GameStateNullifiedFirstForge;
   /** Owner-relative Forgotten Hour timing keyed by source playerId */
   forgottenHourCycle?: GameStateForgottenHourCycle;
-  /** Card IDs currently in deck with Avatar Seed markers (v0.8) */
-  avatarSeedDeckSeeds?: string[];
+  /** Permanent Forge molds carrying Avatar Seeds, encoded as tier-slotIndex */
+  avatarSeedMoldSlots?: string[];
   /**
    * Player ID who owns Avatar Seeds; null if inactive (v0.8)
    * @nullable
    */
   avatarSeedOwnerId?: string | null;
   /**
-   * Player ID if Final Hunger Assimilation is available this turn (v0.8)
+   * Player ID holding Final Hunger's one-use Assimilation action until it is consumed
    * @nullable
    */
   firstHungerAvailable?: string | null;
   /** Burn count accumulator for Catalyst Bloom since owner's last turn (v0.8) */
   catalystBloomBurnCount?: number;
-  /** True once Concordance Mandala Perfect Coherence has fired (v0.8) */
+  /** True once Concordance Mandala's 8-Radiance Perfect Coherence milestone has fired */
   concordanceMandalaTriggered?: boolean;
+  /** True once Concordance Mandala's 10-Radiance Perfect Coherence milestone has fired */
+  concordanceMandalaFinalTriggered?: boolean;
   /** True once The Glass Orchard Perfect Replication has fired (v0.8) */
   glassOrchardTriggered?: boolean;
   /** Ordered list of Burned Artifact IDs awaiting an effect that may return them to their Archives */
   burnPile?: string[];
   /** Ordered list of individual Burn events, including source Luminary and final destination */
   burnEvents?: BurnEvent[];
+  /** Artifacts permanently removed from this game by Annihilation */
+  annihilatedArtifactIds?: string[];
+  /** Campaign-only state that reveals Antimatter's Broken Covenant rider */
+  brokenCovenantDeclared?: boolean;
   /** True once the current player has used their core action this turn (Harness, Forge, or reserve); resets only when the staged Luminary resolution pipeline releases the next turn */
   coreActionUsed?: boolean;
   /** Set when the current player must choose the order to claim multiple simultaneous Luminaries */
@@ -944,12 +3062,15 @@ export const ActionRequestType = {
   toggle_luminary_affinity: "toggle_luminary_affinity",
   resolve_summon: "resolve_summon",
   resolve_luminary_activation: "resolve_luminary_activation",
+  resolve_blueprint_manifestation: "resolve_blueprint_manifestation",
+  resolve_blueprint_detonation: "resolve_blueprint_detonation",
   plan_action: "plan_action",
   execute_plan: "execute_plan",
   cancel_plan: "cancel_plan",
   tutorial_fast_forward: "tutorial_fast_forward",
   set_civ_name: "set_civ_name",
   choose_luminary_order: "choose_luminary_order",
+  resolve_chronicle_choice: "resolve_chronicle_choice",
   assimilate: "assimilate",
 } as const;
 
@@ -965,6 +3086,32 @@ export const ActionRequestAffinity = {
   verdance: "verdance",
   abyss: "abyss",
   radiance: "radiance",
+} as const;
+
+/**
+ * Deprecated compatibility field; ignored by the game engine
+ */
+export type ActionRequestVoidSealAffinity =
+  (typeof ActionRequestVoidSealAffinity)[keyof typeof ActionRequestVoidSealAffinity];
+
+export const ActionRequestVoidSealAffinity = {
+  flare: "flare",
+  continuum: "continuum",
+  verdance: "verdance",
+  abyss: "abyss",
+  radiance: "radiance",
+} as const;
+
+/**
+ * Explicit Project claim path; absent means an ordinary Forge
+ */
+export type ActionRequestBlueprintAction =
+  (typeof ActionRequestBlueprintAction)[keyof typeof ActionRequestBlueprintAction];
+
+export const ActionRequestBlueprintAction = {
+  foundry_sustainable: "foundry_sustainable",
+  foundry_overdrive: "foundry_overdrive",
+  foundry_recovery: "foundry_recovery",
 } as const;
 
 /**
@@ -990,8 +3137,12 @@ export interface ActionRequest {
   affinities?: AffinityCounts;
   /** Affinity selected for a same-Affinity Harness; legacy Luminary toggle requests are rejected */
   affinity?: ActionRequestAffinity;
+  /** Deprecated compatibility field; ignored by the game engine */
+  voidSealAffinity?: ActionRequestVoidSealAffinity;
   cardId?: string;
   tier?: number;
+  /** Explicit Project claim path; absent means an ordinary Forge */
+  blueprintAction?: ActionRequestBlueprintAction;
   /** Luminary ID for Luminary-specific action payloads */
   luminaryId?: string;
   /** Event ID for resolve_summon action */
@@ -1004,8 +3155,34 @@ export interface ActionRequest {
   civName?: string;
   /** Ordered list of luminaryIds for choose_luminary_order action */
   orderedIds?: string[];
+  traceGuidanceMethod?: TraceGuidanceMethod;
+  /** Architect custody selected during The Recurrence decision window */
+  recurrenceCustodyMethod?: RecurrenceCustodyMethod;
+  /** Architect coordination architecture selected during The Triangulation Alignment */
+  triangulationCoordinationArchitecture?: TriangulationCoordinationArchitecture;
 }
 
 export type GetGameStateParams = {
   sessionToken: string;
+};
+
+export type WithdrawBlueprintClearanceChallengeBody = {
+  roomId: string;
+};
+
+export type WithdrawBlueprintClearanceChallenge200Status =
+  (typeof WithdrawBlueprintClearanceChallenge200Status)[keyof typeof WithdrawBlueprintClearanceChallenge200Status];
+
+export const WithdrawBlueprintClearanceChallenge200Status = {
+  classified: "classified",
+  challenge_ready: "challenge_ready",
+} as const;
+
+export type WithdrawBlueprintClearanceChallenge200 = {
+  roomId: string;
+  status: WithdrawBlueprintClearanceChallenge200Status;
+};
+
+export type AcknowledgeBlueprintVaultReveal200 = {
+  ok: boolean;
 };

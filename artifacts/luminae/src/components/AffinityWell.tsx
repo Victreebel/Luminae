@@ -7,6 +7,7 @@ import type {
   GamePlayerState,
   LuminaryActiveState,
 } from '@workspace/api-client-react';
+import { ordinaryEncryptedCount } from '@workspace/game-types';
 import { AFFINITY_META, AFFINITY_KEYS, type AffinityKey } from '@/lib/affinityMeta';
 import { gameAudio } from '@/lib/audio';
 import { AffinityEmblem } from '@/components/AffinityEmblem';
@@ -17,7 +18,10 @@ const AFFINITIES: AffinityKey[] = [...AFFINITY_KEYS];
 // Cell width used for all six modules
 const CELL_W = 'var(--well-cell-w, 64px)';
 
-type AffinityWellPlayerState = Pick<GamePlayerState, 'affinities' | 'bonuses' | 'reservedArtifacts'>;
+type AffinityWellPlayerState = Pick<
+  GamePlayerState,
+  'affinities' | 'bonuses' | 'reservedArtifacts' | 'blueprintPrivateStates'
+>;
 type AffinityWellGameState = Pick<GameState, 'affinityWell' | 'luminaryAffinities' | 'turnCount'> & {
   players: readonly unknown[];
 };
@@ -37,6 +41,9 @@ export interface AffinityWellCellsProps {
   harnessBlockedKeys?: Partial<Record<AffinityKey, number>>;
   forgeDeductions?: Partial<Record<AffinityKey, number>>;
   singularityAbsorbKey?: number;
+  allowedSingleAffinities?: readonly AffinityKey[];
+  allowedTakeTwoAffinities?: readonly AffinityKey[];
+  singularityInteractive?: boolean;
   onAffinityClick: (color: keyof AffinityCounts) => void;
   onPromoteToTake2: (color: AffinityKey) => void;
   onOpenReserved: () => void;
@@ -169,6 +176,9 @@ export function AffinityWellCells({
   harnessBlockedKeys,
   forgeDeductions,
   singularityAbsorbKey,
+  allowedSingleAffinities,
+  allowedTakeTwoAffinities,
+  singularityInteractive = true,
   onAffinityClick,
   onPromoteToTake2,
   onOpenReserved,
@@ -182,6 +192,10 @@ export function AffinityWellCells({
   const selectedMap    = selectedAffinities as Partial<Record<AffinityKey, number>>;
   const forgeDeductionMap = forgeDeductions ?? {};
   const bankMap        = state.affinityWell as Partial<Record<AffinityKey, number>>;
+  const ordinaryReservedCount = ordinaryEncryptedCount({
+    reservedArtifactIds: me.reservedArtifacts.map((artifact) => artifact.id),
+    blueprintPrivateStates: me.blueprintPrivateStates,
+  });
   const anyPending     = AFFINITIES.some((c) => (selectedMap[c] ?? 0) > 0);
   const showPlanningCue = isPlanningMode && anyPending;
 
@@ -445,14 +459,23 @@ export function AffinityWellCells({
                       la.activeAffinity === c,
                   ).length
               );
-              const reservedCount = me.reservedArtifacts.length;
+              const reservedCount = ordinaryReservedCount;
               const pending       = selectedMap[c] ?? 0;
               const forgeDed      = forgeDeductionMap[c] ?? 0;
               const bankCount     = bankMap[c] ?? 0;
               const selectable    = isMyTurn || (!isActivePlayer && canPlan);
               const bankEmpty     = bankCount === 0;
-              const canTake2      = selectable && !isSingularity && bankCount >= 4 && pending !== 2;
+              const singleGateActive = allowedSingleAffinities !== undefined;
+              const takeTwoGateActive = allowedTakeTwoAffinities !== undefined;
+              const singleAllowed = !singleGateActive || allowedSingleAffinities.includes(c);
+              const takeTwoAllowed = !takeTwoGateActive || allowedTakeTwoAffinities.includes(c);
+              const canSelectSingle = selectable && !isSingularity && !bankEmpty && singleAllowed;
+              const canTake2      = selectable && !isSingularity && bankCount >= 4 && pending !== 2 && takeTwoAllowed;
               const showForgedLink = !isSingularity && bonus > 0;
+              const canOpenForged = showForgedLink && !selectable && (!singleGateActive || singleAllowed);
+              const mainInteractive = isSingularity
+                ? singularityInteractive
+                : canSelectSingle || canOpenForged;
               const gaugeFilledCount = Math.max(0, bankCount - pending);
               const tentativeCount   = heldCount + pending;
               const hasContent       = isSingularity
@@ -504,22 +527,19 @@ export function AffinityWellCells({
                     data-well-cell-style="instrument"
                     data-selected={pending > 0 ? 'true' : undefined}
                     data-reservoir-dry={bankDim ? 'true' : undefined}
-                    // Singularity always tappable; others need selectable + non-empty bank
-                    disabled={isSingularity ? false : !selectable && !showForgedLink || bankEmpty && !showForgedLink}
+                    data-tutorial-action-target={singleGateActive && singleAllowed ? 'true' : undefined}
+                    data-tutorial-action-locked={singleGateActive && !singleAllowed ? 'true' : undefined}
+                    disabled={!mainInteractive}
                     {...(isSingularity ? { 'data-singularity-well': '' } : { 'data-affinity-well': c })}
-                    whileTap={
-                      (isSingularity || (selectable && !bankEmpty) || showForgedLink)
-                        ? { opacity: 0.82 }
-                        : {}
-                    }
+                    whileTap={mainInteractive ? { opacity: 0.82 } : {}}
                     onClick={() => {
                       if (isDragging.current) return;
-                      if (isSingularity) {
+                      if (isSingularity && singularityInteractive) {
                         onOpenReserved();
-                      } else if (showForgedLink && !selectable) {
+                      } else if (canOpenForged) {
                         // Off-turn: tapping a cell with a forged bonus shows the forged list
                         onOpenForged(c);
-                      } else if (selectable && !bankEmpty) {
+                      } else if (canSelectSingle) {
                         // On turn and available in the Well: select this Affinity.
                         onAffinityClick(c as keyof AffinityCounts);
                       }
@@ -539,7 +559,7 @@ export function AffinityWellCells({
                           : 'default',
                       position: 'relative',
                       overflow: 'hidden',
-                      opacity: 1,
+                      opacity: mainInteractive || pending > 0 || !singleGateActive ? 1 : 0.34,
                       transition: 'opacity 0.35s ease',
                       ...cellStyle,
                     }}
@@ -825,12 +845,16 @@ export function AffinityWellCells({
                       data-singularity-reserve-target=""
                       data-cipher-landing={absorbFlash > 0 ? 'true' : undefined}
                       aria-label={`Open encrypted Artifacts, ${reservedCount} of 3`}
-                      whileTap={{ scale: 0.96 }}
+                      disabled={!singularityInteractive}
+                      tabIndex={singularityInteractive ? 0 : -1}
+                      animate={{ opacity: singularityInteractive ? 1 : 0.32 }}
+                      whileTap={singularityInteractive ? { scale: 0.96 } : {}}
                       onClick={(e) => {
-                        if (isDragging.current) return;
+                        if (!singularityInteractive || isDragging.current) return;
                         e.stopPropagation();
                         onOpenReserved();
                       }}
+                      style={{ pointerEvents: singularityInteractive ? 'auto' : 'none' }}
                       className="affinity-well-take2 affinity-well-singularity-footer"
                     >
                       <span>{reservedCount}/3</span>
@@ -882,6 +906,9 @@ export function AffinityWellCells({
                           type="button"
                           aria-label={takeTwoSelected ? `2 ${meta.name} selected` : `Take 2 ${meta.name}`}
                           aria-pressed={takeTwoSelected}
+                          disabled={!takeTwoInteractive}
+                          data-tutorial-action-target={takeTwoGateActive && takeTwoAllowed ? 'true' : undefined}
+                          data-tutorial-action-locked={takeTwoGateActive && !takeTwoAllowed ? 'true' : undefined}
                           tabIndex={canTake2 ? 0 : -1}
                           animate={{ opacity: takeTwoSelected || canTake2 ? 1 : 0.32 }}
                           transition={{ duration: 0.15 }}

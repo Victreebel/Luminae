@@ -2,6 +2,7 @@ import { Router, type IRouter } from "express";
 import { eq, and, isNull, ne } from "drizzle-orm";
 import { z } from "zod";
 import { db, roomsTable, playersTable, gameStatesTable } from "@workspace/db";
+import { DEFAULT_VICTORY_REQUIREMENT } from "@workspace/game-types";
 import {
   CreateRoomBody,
   JoinRoomBody,
@@ -22,6 +23,14 @@ import { broadcastToRoom, getConnectedPlayerIds, sendToPlayer, filterStateForPla
 import { runAiTurnsIfNeeded } from "../lib/aiTurnRunner";
 import { armTurnTimer, updateTurnDeadline, clearTurnTimer } from "../lib/turnTimer";
 import { castVote, getRematchInfo } from "../lib/rematchManager";
+import { GUIDED_LUMII_AVATAR_ID, pickUniqueAvatar } from "../lib/avatarAssignment";
+import { ensureAccountProgressBackfilled } from "../lib/accountProgress";
+import {
+  accountHasBlueprintClearance,
+  BlueprintRoomAccessError,
+  resolveBlueprintSetupsForMatch,
+} from "../lib/blueprintLoadouts";
+import { resolveLuminaryArrivalSoundsForPlayers } from "../lib/accountCosmetics";
 
 const router: IRouter = Router();
 
@@ -58,6 +67,9 @@ function serializeRoomBase(room: DbRoom) {
     victoryRequirement: room.victoryRequirement,
     cinematicMode: room.cinematicMode,
     turnTimerSeconds: room.turnTimerSeconds,
+    gameMode: room.gameMode,
+    scenarioId: room.scenarioId,
+    blueprintPolicy: room.blueprintPolicy,
   };
 }
 
@@ -72,17 +84,6 @@ const AI_NAME_POOL = [
   "Thalia",
 ];
 
-const AI_AVATAR_POOL = [
-  "stargazer",
-  "forgemaster",
-  "voidcaller",
-  "archivist",
-  "cultivator",
-  "sentinel",
-  "oracle",
-  "sovereign",
-];
-
 function pickAiName(existing: string[]): string {
   const taken = new Set(existing);
   const free = AI_NAME_POOL.filter((n) => !taken.has(n));
@@ -91,10 +92,33 @@ function pickAiName(existing: string[]): string {
 }
 
 function pickAiAvatar(existing: string[]): string {
-  const taken = new Set(existing);
-  const free = AI_AVATAR_POOL.filter((id) => !taken.has(id));
-  if (free.length > 0) return free[Math.floor(Math.random() * free.length)];
-  return AI_AVATAR_POOL[Math.floor(Math.random() * AI_AVATAR_POOL.length)];
+  return pickUniqueAvatar(null, existing, true);
+}
+
+async function ensureUniquePlayerAvatars(players: DbPlayer[]): Promise<DbPlayer[]> {
+  const taken = new Set<string>();
+  const normalized: DbPlayer[] = [];
+
+  for (const player of players) {
+    if (player.isAi && player.name === "Lumii" && player.avatarId === GUIDED_LUMII_AVATAR_ID) {
+      taken.add(GUIDED_LUMII_AVATAR_ID);
+      normalized.push(player);
+      continue;
+    }
+    const avatarId = pickUniqueAvatar(player.avatarId, taken);
+    taken.add(avatarId);
+    if (avatarId === player.avatarId) {
+      normalized.push(player);
+      continue;
+    }
+    const [updated] = await db
+      .update(playersTable)
+      .set({ avatarId })
+      .where(eq(playersTable.id, player.id))
+      .returning();
+    normalized.push(updated);
+  }
+  return normalized;
 }
 
 const MAX_ACTIVE_GAMES = 5;
@@ -102,6 +126,34 @@ const MAX_ACTIVE_GAMES = 5;
 const UpdateRoomSettingsBody = z.object({
   sessionToken: z.string(),
   cinematicMode: z.union([z.literal("standard"), z.literal("epic")]).optional(),
+  gameMode: z.union([z.literal("standard"), z.literal("custom")]).optional(),
+  blueprintPolicy: z.union([z.literal("none"), z.literal("owned")]).optional(),
+});
+
+const PublicCreateRoomBody = CreateRoomBody.extend({
+  victoryRequirement: z.union([z.literal(15), z.literal(20), z.literal(25)])
+    .default(DEFAULT_VICTORY_REQUIREMENT),
+  gameMode: z.union([z.literal("standard"), z.literal("custom")]).default("standard"),
+  blueprintPolicy: z.union([z.literal("none"), z.literal("owned")]).optional(),
+}).superRefine((value, context) => {
+  const policy = value.blueprintPolicy ?? (value.gameMode === "custom" ? "owned" : "none");
+  if (value.gameMode === "standard" && policy !== "none") {
+    context.addIssue({
+      code: z.ZodIssueCode.custom,
+      path: ["blueprintPolicy"],
+      message: "Standard rooms cannot enable Blueprints",
+    });
+  }
+  if (
+    value.gameMode === "standard" &&
+    value.victoryRequirement !== DEFAULT_VICTORY_REQUIREMENT
+  ) {
+    context.addIssue({
+      code: z.ZodIssueCode.custom,
+      path: ["victoryRequirement"],
+      message: `Standard rooms require ${DEFAULT_VICTORY_REQUIREMENT} Eminence; use a custom room for a shorter match`,
+    });
+  }
 });
 
 const RematchBody = StartGameBody.extend({
@@ -127,12 +179,34 @@ async function countActiveGames(accountId: string): Promise<number> {
 
 // POST /api/rooms — create room
 router.post("/rooms", optionalAccountAuth, async (req, res): Promise<void> => {
-  const parsed = CreateRoomBody.safeParse(req.body);
+  const parsed = PublicCreateRoomBody.safeParse(req.body);
   if (!parsed.success) {
     res.status(400).json({ error: parsed.error.message });
     return;
   }
-  const { hostName, maxPlayers, victoryRequirement, cinematicMode, turnTimerSeconds, avatarId: hostAvatarId } = parsed.data;
+  const {
+    hostName,
+    maxPlayers,
+    victoryRequirement,
+    cinematicMode,
+    turnTimerSeconds,
+    avatarId: hostAvatarId,
+    gameMode,
+  } = parsed.data;
+  const blueprintPolicy =
+    parsed.data.blueprintPolicy ?? (gameMode === "custom" ? "owned" : "none");
+
+  if (blueprintPolicy !== "none") {
+    if (!req.account) {
+      res.status(401).json({ error: "A cleared account is required for Blueprint rooms" });
+      return;
+    }
+    await ensureAccountProgressBackfilled(req.account.id);
+    if (!(await accountHasBlueprintClearance(req.account.id))) {
+      res.status(403).json({ error: "Clear the Blueprint Vault before creating this room" });
+      return;
+    }
+  }
 
   if (req.account) {
     const active = await countActiveGames(req.account.id);
@@ -154,6 +228,8 @@ router.post("/rooms", optionalAccountAuth, async (req, res): Promise<void> => {
       cinematicMode,
       status: "lobby",
       turnTimerSeconds: turnTimerSeconds ?? null,
+      gameMode,
+      blueprintPolicy,
     })
     .returning();
 
@@ -168,7 +244,7 @@ router.post("/rooms", optionalAccountAuth, async (req, res): Promise<void> => {
       orderIndex: 0,
       isConnected: false,
       isAi: false,
-      avatarId: hostAvatarId ?? null,
+      avatarId: pickUniqueAvatar(hostAvatarId, []),
     })
     .returning();
 
@@ -260,6 +336,18 @@ router.post("/rooms/:roomId/join", optionalAccountAuth, async (req, res): Promis
     return;
   }
 
+  if (room.blueprintPolicy !== "none") {
+    if (!req.account) {
+      res.status(401).json({ error: "A cleared account is required for Blueprint rooms" });
+      return;
+    }
+    await ensureAccountProgressBackfilled(req.account.id);
+    if (!(await accountHasBlueprintClearance(req.account.id))) {
+      res.status(403).json({ error: "Clear the Blueprint Vault before joining this room" });
+      return;
+    }
+  }
+
   const players = await db
     .select()
     .from(playersTable)
@@ -280,6 +368,7 @@ router.post("/rooms/:roomId/join", optionalAccountAuth, async (req, res): Promis
 
   const sessionToken = generateSessionToken();
   const orderIndex = players.length;
+  const avatarId = pickUniqueAvatar(joiningAvatarId, players.map((p) => p.avatarId));
 
   const [player] = await db
     .insert(playersTable)
@@ -292,7 +381,7 @@ router.post("/rooms/:roomId/join", optionalAccountAuth, async (req, res): Promis
       orderIndex,
       isConnected: false,
       isAi: false,
-      avatarId: joiningAvatarId ?? null,
+      avatarId,
     })
     .returning();
 
@@ -442,7 +531,7 @@ router.post("/rooms/:roomId/ai-players", async (req, res): Promise<void> => {
   const isGuidedLumii = validatedDifficulty === "passive";
   const aiName = isGuidedLumii ? "Lumii" : pickAiName(players.map((p) => p.name));
   const aiAvatarId = isGuidedLumii
-    ? "oracle"
+    ? GUIDED_LUMII_AVATAR_ID
     : pickAiAvatar(players.map((p) => p.avatarId).filter((v): v is string => !!v));
   const orderIndex = players.length;
   const aiSessionToken = `ai-${randomBytes(16).toString("hex")}`;
@@ -516,10 +605,65 @@ router.patch("/rooms/:roomId/settings", async (req, res): Promise<void> => {
     return;
   }
 
+  const modeSettingsTouched =
+    parsed.data.gameMode !== undefined || parsed.data.blueprintPolicy !== undefined;
+  const nextGameMode = parsed.data.gameMode ?? room.gameMode;
+  if (modeSettingsTouched && nextGameMode !== "standard" && nextGameMode !== "custom") {
+    res.status(400).json({ error: "Only standard and Blueprint Custom lobby settings can be changed here" });
+    return;
+  }
+
+  const nextBlueprintPolicy = modeSettingsTouched
+    ? nextGameMode === "custom"
+      ? parsed.data.blueprintPolicy ?? (room.blueprintPolicy !== "none" ? room.blueprintPolicy : "owned")
+      : "none"
+    : room.blueprintPolicy;
+
+  if (modeSettingsTouched && nextBlueprintPolicy !== "none") {
+    if (!host.accountId) {
+      res.status(401).json({ error: "A cleared account is required for Blueprint rooms" });
+      return;
+    }
+
+    await ensureAccountProgressBackfilled(host.accountId);
+    if (!(await accountHasBlueprintClearance(host.accountId))) {
+      res.status(403).json({ error: "Clear the Blueprint Vault before enabling Blueprints" });
+      return;
+    }
+
+    const roomPlayers = await db
+      .select({
+        accountId: playersTable.accountId,
+        isAi: playersTable.isAi,
+      })
+      .from(playersTable)
+      .where(eq(playersTable.roomId, rawId));
+
+    const humanAccountIds = roomPlayers
+      .filter((player) => !player.isAi)
+      .map((player) => player.accountId);
+
+    if (humanAccountIds.some((accountId) => !accountId)) {
+      res.status(403).json({ error: "Every player must use a cleared account before Blueprints can be enabled" });
+      return;
+    }
+
+    for (const accountId of humanAccountIds) {
+      if (!accountId) continue;
+      await ensureAccountProgressBackfilled(accountId);
+      if (!(await accountHasBlueprintClearance(accountId))) {
+        res.status(403).json({ error: "Every player must clear the Blueprint Vault before Blueprints can be enabled" });
+        return;
+      }
+    }
+  }
+
   const [updatedRoom] = await db
     .update(roomsTable)
     .set({
       cinematicMode: parsed.data.cinematicMode ?? room.cinematicMode,
+      gameMode: nextGameMode,
+      blueprintPolicy: nextBlueprintPolicy,
       updatedAt: new Date(),
     })
     .where(eq(roomsTable.id, rawId))
@@ -585,7 +729,7 @@ router.post("/rooms/:roomId/start", async (req, res): Promise<void> => {
     return;
   }
 
-  const players = await db
+  let players = await db
     .select()
     .from(playersTable)
     .where(eq(playersTable.roomId, rawId))
@@ -596,11 +740,28 @@ router.post("/rooms/:roomId/start", async (req, res): Promise<void> => {
     return;
   }
 
+  players = await ensureUniquePlayerAvatars(players);
+
+  let blueprintSetups;
+  try {
+    blueprintSetups = await resolveBlueprintSetupsForMatch(room, players);
+  } catch (error) {
+    if (!(error instanceof BlueprintRoomAccessError)) throw error;
+    res.status(403).json({ error: error.message });
+    return;
+  }
+  const luminaryArrivalSounds = await resolveLuminaryArrivalSoundsForPlayers(players);
+
   const gameData = initializeGame(
-    players.map((p) => ({ id: p.id, name: p.name })),
+    players.map((p) => ({
+      id: p.id,
+      name: p.name,
+      luminaryArrivalSound: luminaryArrivalSounds[p.id],
+    })),
     players.length,
     room.victoryRequirement,
     room.cinematicMode === "epic" ? "epic" : "standard",
+    { blueprintSetups },
   );
   gameData.turnTimerSeconds = room.turnTimerSeconds ?? null;
   updateTurnDeadline(gameData);
@@ -638,7 +799,7 @@ router.post("/rooms/:roomId/start", async (req, res): Promise<void> => {
     players.map((p) => [p.id, { isAi: p.isAi, aiDifficulty: p.aiDifficulty != null ? parseAiDifficulty(p.aiDifficulty) : null }]),
   );
 
-  const formatted = formatGameState(rawId, "playing", gameData, connectedIds, avatarMap, aiMap);
+  const formatted = formatGameState(rawId, "playing", gameData, connectedIds, avatarMap, aiMap, room.scenarioId);
 
   for (const p of players) {
     if (p.isAi) continue;
@@ -680,6 +841,16 @@ router.get("/rooms/:roomId/rematch", async (req, res): Promise<void> => {
     return;
   }
 
+  const [room] = await db
+    .select({ scenarioId: roomsTable.scenarioId })
+    .from(roomsTable)
+    .where(eq(roomsTable.id, rawId))
+    .limit(1);
+  if (room?.scenarioId === "blueprint_clearance_lumii") {
+    res.status(403).json({ error: "Return to the Vault for scenario outcomes" });
+    return;
+  }
+
   res.json(getRematchInfo(rawId));
 });
 
@@ -708,6 +879,12 @@ router.post("/rooms/:roomId/rematch", async (req, res): Promise<void> => {
   }
   if (room.status !== "finished") {
     res.status(400).json({ error: "Game is not finished yet" });
+    return;
+  }
+  if (room.scenarioId === "blueprint_clearance_lumii") {
+    res.status(403).json({
+      error: "Return to the Vault to begin a fresh defense forecast",
+    });
     return;
   }
 

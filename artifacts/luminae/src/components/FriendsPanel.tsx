@@ -128,6 +128,7 @@ export function FriendsPanel({ isOpen, onClose, onChallengeCreated }: Props) {
             exit={{ opacity: 0 }}
             className="fixed inset-0 z-40 bg-black/50"
             onClick={onClose}
+            data-oom-sound="close"
           />
 
           {/* Panel */}

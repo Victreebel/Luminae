@@ -25,10 +25,7 @@
 import { useEffect, useRef } from 'react';
 import { animate } from 'framer-motion';
 import { createPortal } from 'react-dom';
-import {
-  LuminaryEffectAnnouncement,
-  LuminaryEffectSkipControl,
-} from './LuminaryEffectChrome';
+import { LuminaryEffectSkipControl } from './LuminaryEffectChrome';
 import type { AnimationProcedureStep } from '@/lib/animationProcedure';
 import {
   createLuminaryEffectSequence,
@@ -37,9 +34,10 @@ import {
 import {
   boundedLuminaryStagger,
   luminaryPacedDuration,
-  luminaryReadDuration,
   type LuminaryPlaybackMode,
 } from '@/lib/luminaryPresentationPacing';
+import { gameAudio } from '@/lib/audio';
+import { playLuminaryEffectPhaseSound } from '@/lib/luminaryEffectSound';
 
 // ─── Timing constants ─────────────────────────────────────────────────────────
 
@@ -113,7 +111,7 @@ interface ArtifactBrandingDirectorProps {
   reducedMotion: boolean;
   playbackMode?: LuminaryPlaybackMode;
   timelinePlaybackRate?: number;
-  markerType?: 'condemned' | 'forgotten' | 'nullified';
+  markerType?: 'condemned' | 'forgotten' | 'nullified' | 'avatar_seed';
   effectName?: string;
   resultLabel?: string;
   effectDescription?: string;
@@ -138,13 +136,6 @@ export function ArtifactBrandingDirector({
   timelinePlaybackRate = 1,
   markerType = 'condemned',
   effectName = 'Cinder Mandate',
-  resultLabel = 'Condemned',
-  effectDescription,
-  luminaryName = 'The Ember Sovereign',
-  triggeringPlayerName,
-  effectType = 'summon',
-  queuePosition = 1,
-  queueTotal = 1,
   actions,
   onComplete,
 }: ArtifactBrandingDirectorProps) {
@@ -158,16 +149,6 @@ export function ArtifactBrandingDirector({
   // Ref to the beat overlay DOM node for imperative animation.
   const beatOverlayRef = useRef<HTMLDivElement | null>(null);
 
-  const effectTypeLabel =
-    effectType === 'end_of_turn'
-      ? 'END OF TURN EFFECT'
-      : effectType === 'start_of_turn'
-        ? 'START OF TURN EFFECT'
-        : 'ARRIVAL EFFECT';
-  const queueLabel = queueTotal > 1
-    ? `${effectTypeLabel} · ${queuePosition} OF ${queueTotal}`
-    : effectTypeLabel;
-
   // ── Single mount effect — phases are advanced by the shared controller ─────
   useEffect(() => {
     if (targetCardIds.length === 0) {
@@ -177,20 +158,16 @@ export function ArtifactBrandingDirector({
 
     actionsRef.current.lockBoardScroll();
 
+    const markerKeyword = markerType === 'avatar_seed' ? 'seeded' : markerType;
     const procedure: AnimationProcedureStep[] = [
-      { type: 'targetClaim', targetIds: targetCardIds, keyword: markerType },
+      { type: 'targetClaim', targetIds: targetCardIds, keyword: markerKeyword },
     ];
     const paced = (durationMs: number) => luminaryPacedDuration(
       durationMs,
       playbackMode,
       timelinePlaybackRate,
     );
-    const announcementReadMs = luminaryReadDuration(
-      effectDescription ?? `${targetCardIds.length} Artifacts become ${resultLabel}.`,
-      playbackMode,
-      timelinePlaybackRate,
-    );
-    const announceLeadMs = paced(180);
+    const announceLeadMs = reducedMotion ? 0 : paced(80);
     const settleEstimateMs = paced(SETTLE_ESTIMATE_MS);
     const lead = reducedMotion ? 0 : paced(SOURCE_PULSE_LEAD_MS);
     const staggerMs = boundedLuminaryStagger(
@@ -209,10 +186,7 @@ export function ArtifactBrandingDirector({
       strikeVisualMs +
       paced(240);
     const estimatedTotalMs =
-      Math.max(
-        announcementReadMs,
-        announceLeadMs + settleEstimateMs + strikeTotalMs,
-      ) + paced(AFTERMATH_HOLD_MS);
+      announceLeadMs + settleEstimateMs + strikeTotalMs + paced(AFTERMATH_HOLD_MS);
     actionsRef.current.setAnimEndTime(estimatedTotalMs);
 
     let source:
@@ -320,8 +294,10 @@ export function ArtifactBrandingDirector({
       onPhaseChange: phase => {
         const overlay = beatOverlayRef.current;
         if (overlay) overlay.dataset.effectPhase = phase;
+        playLuminaryEffectPhaseSound(luminaryId, phase, lumSummonColor);
       },
       onSkip: () => {
+        gameAudio.stopActivationSting();
         const overlay = beatOverlayRef.current;
         if (overlay) overlay.style.opacity = '0';
         actionsRef.current.unsuppressMarkers(targetCardIds);
@@ -338,6 +314,7 @@ export function ArtifactBrandingDirector({
     return () => {
       sequence.cancel();
       if (sequenceRef.current === sequence) sequenceRef.current = null;
+      gameAudio.stopActivationSting();
       actionsRef.current.unlockBoardScroll();
     };
     // eslint-disable-next-line react-hooks/exhaustive-deps
@@ -364,22 +341,13 @@ export function ArtifactBrandingDirector({
       }}
       data-testid="luminary-branding-director"
     >
-      <LuminaryEffectAnnouncement
-        effectName={effectName}
-        luminaryName={luminaryName}
-        resultLabel={resultLabel}
-        description={effectDescription}
-        triggeringPlayerName={triggeringPlayerName}
-        queueLabel={queueLabel}
-        primaryColor={lumSummonColor ?? '#ef4444'}
-        secondaryColor={lumSummonSecondaryColor ?? '#fbbf24'}
-      />
       <LuminaryEffectSkipControl
         color={lumSummonColor ?? '#ef4444'}
         reducedMotion={reducedMotion}
         onAdvance={() => sequenceRef.current?.advance()}
         onSkip={() => sequenceRef.current?.skip()}
         label={`Advance ${effectName}; hold to skip`}
+        docked
       />
     </div>,
     document.body,

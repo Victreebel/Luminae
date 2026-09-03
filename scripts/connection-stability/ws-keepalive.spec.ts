@@ -65,7 +65,7 @@ import { mkdirSync } from 'node:fs';
 
 // ── Constants ─────────────────────────────────────────────────────────────────
 
-const BASE = 'http://localhost:80';
+const BASE = process.env.LUMINAE_E2E_BASE_URL ?? 'http://localhost:5191';
 const OUT  = '/tmp/ws-keepalive';
 
 /** How long to idle and monitor after the game loads (ms). */

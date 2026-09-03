@@ -5,6 +5,7 @@ import {
   getAddedArtifactBrandTypes,
   getArtifactBrandTypes,
   getPendingArtifactBrandTypes,
+  isNullifiedFirstForgeExempt,
 } from '../artifactBrands';
 
 describe('Artifact brand normalization', () => {
@@ -41,6 +42,21 @@ describe('Artifact brand normalization', () => {
     expect(getArtifactBrandTypes(next)).toEqual(['forgotten', 'nullified']);
     expect(getAddedArtifactBrandTypes(previous, next)).toEqual(['nullified']);
     expect(artifactMarkerBlocksForgeEminence(next)).toBe(true);
+    expect(isNullifiedFirstForgeExempt(next, 'p2', null)).toBe(true);
+    expect(artifactMarkerBlocksForgeEminence(next, true)).toBe(true);
+  });
+
+  it('exempts only the allied player while the first Nullified forge remains unused', () => {
+    const marker = {
+      type: 'nullified' as const,
+      ownerId: 'p1',
+      summonedAtTurnCount: 4,
+    };
+
+    expect(isNullifiedFirstForgeExempt(marker, 'p1', null)).toBe(true);
+    expect(isNullifiedFirstForgeExempt(marker, 'p2', null)).toBe(false);
+    expect(isNullifiedFirstForgeExempt(marker, 'p1', { cardId: 'used' })).toBe(false);
+    expect(artifactMarkerBlocksForgeEminence(marker, true)).toBe(false);
   });
 
   it('treats a refreshed persistent brand as a new strike without duplicating it', () => {
