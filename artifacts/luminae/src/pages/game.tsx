@@ -786,7 +786,7 @@ export default function GameBoard() {
   const [forgeCompact, setForgeCompact] = useState(() => {
     const stored = getAccountSession();
     const key = stored ? `luminae_forge_view_reliquary_${stored.account.id}` : 'luminae_forge_view_reliquary';
-    return localStorage.getItem(key) === 'compact';
+    return localStorage.getItem(key) !== 'full';
   });
   const boardLayoutPolicy = useBoardLayoutPolicy();
   const boardLayoutMode = boardLayoutPolicy.layout;
