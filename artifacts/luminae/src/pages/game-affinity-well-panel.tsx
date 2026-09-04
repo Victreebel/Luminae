@@ -122,7 +122,7 @@ export const AffinityWellPanel = React.memo(function AffinityWellPanel({ scope }
     tutorialZone,
     victoryRequirement,
   } = scope;
-  const [wellDockExpanded, setWellDockExpanded] = React.useState(true);
+  const [wellDockExpanded, setWellDockExpanded] = React.useState(false);
   const wellActionActive = affinityQueueActive || !!returnPhase;
   const wellForcedOpen = isSideAffinityWell || isTutorial || wellActionActive;
   const wellExpanded = wellForcedOpen || wellDockExpanded;
@@ -148,15 +148,14 @@ export const AffinityWellPanel = React.memo(function AffinityWellPanel({ scope }
     return `${meta.name} ${held}${bonus > 0 ? ` plus ${bonus} permanent` : ''}, reservoir ${reservoir} of ${capacity}`;
   }).join('. ');
 
-  return (
-    <div
-      ref={playerPanelRef}
-      data-testid="affinity-well-panel"
-      data-shared-affinity-well=""
-      data-well-expanded={wellExpanded ? 'true' : 'false'}
-      data-affinity-action-active={wellActionActive ? 'true' : 'false'}
-      data-return-phase={returnPhase && isMyTurn ? 'true' : 'false'}
-      className={`affinity-well-panel shrink-0 z-20 transition-all ${isSideAffinityWell ? 'affinity-well-panel--side' : ''}`}
+	  return (
+	    <div
+	      ref={playerPanelRef}
+          data-testid="affinity-well-panel"
+	      data-shared-affinity-well=""
+          data-well-expanded={wellExpanded ? 'true' : 'false'}
+          data-return-phase={returnPhase && isMyTurn ? 'true' : 'false'}
+	          className={`affinity-well-panel shrink-0 z-20 transition-all ${isSideAffinityWell ? 'affinity-well-panel--side' : ''}`}
           style={{
             background: 'linear-gradient(180deg, rgba(6,4,20,0.97) 0%, rgba(4,2,14,0.99) 100%)',
             borderTop: isMyTurn
@@ -383,7 +382,7 @@ export const AffinityWellPanel = React.memo(function AffinityWellPanel({ scope }
                 } : {}),
               }}
             >
-              <div className="affinity-well-action-bar px-2 pb-2 pt-1 border-t border-white/10">
+                <div className="px-2 pb-2 pt-1 border-t border-white/10">
                   <div className="flex items-center gap-2">
                     <div className="flex gap-1.5 flex-1 items-center flex-wrap">
                       {Object.entries(selectedAffinities).filter(([c, n]) =>

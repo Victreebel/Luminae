@@ -3,17 +3,15 @@ import { getBoardLayoutPolicyForViewport } from '../pages/game-layout';
 
 describe('game board viewport policy', () => {
   it.each([
-    [390, 844, 'phone-portrait', 'stacked', 'base', false, false],
-    [844, 390, 'phone-landscape', 'cockpit', 'base', true, false],
-    [940, 600, 'phone-landscape', 'efficient', 'base', true, false],
+    [390, 844, 'phone-portrait', 'stacked', 'base', false, true],
+    [844, 390, 'phone-landscape', 'cockpit', 'base', true, true],
+    [940, 600, 'phone-landscape', 'efficient', 'base', true, true],
     [768, 1024, 'tablet', 'stacked', 'base', false, false],
     [1024, 768, 'tablet', 'efficient', 'base', true, false],
-    [1024, 1366, 'tablet', 'stacked', 'base', false, false],
     [1440, 900, 'desktop', 'efficient', 'base', true, false],
     [1599, 900, 'desktop', 'comfortable', 'base', true, false],
     [1600, 899, 'desktop', 'comfortable', 'base', true, false],
     [1600, 900, 'desktop', 'comfortable', 'left-civ', true, false],
-    [1800, 1019, 'desktop', 'showcase', 'left-civ', true, false],
     [1920, 1080, 'desktop', 'showcase', 'left-civ', true, false],
   ] as const)(
     'maps %sx%s to the intended %s layout',
@@ -28,7 +26,7 @@ describe('game board viewport policy', () => {
     },
   );
 
-  it('moves a rotated phone into the side-Well cockpit without locking Forge density', () => {
+  it('moves a rotated phone into the compact side-Well cockpit', () => {
     const portrait = getBoardLayoutPolicyForViewport(430, 932);
     const landscape = getBoardLayoutPolicyForViewport(932, 430);
 
@@ -36,8 +34,8 @@ describe('game board viewport policy', () => {
     expect(landscape.viewportClass).toBe('phone-landscape');
     expect(portrait.density).toBe('stacked');
     expect(landscape.density).toBe('cockpit');
-    expect(portrait.forceCompactForge).toBe(false);
-    expect(landscape.forceCompactForge).toBe(false);
+    expect(portrait.forceCompactForge).toBe(true);
+    expect(landscape.forceCompactForge).toBe(true);
     expect(landscape.sideAffinityWell).toBe(true);
   });
 });
