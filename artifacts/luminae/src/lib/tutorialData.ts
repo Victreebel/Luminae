@@ -430,7 +430,6 @@ export const TUTORIAL_BEATS: TutorialBeat[] = [
     lumiiZone: "center",
     dialogue: [
       { text: "Perhaps." },
-      { text: "I don't know why." },
     ],
     completion: { type: "dialogue" },
     nextBeatId: "b5_affinities",

@@ -336,9 +336,8 @@ describe('opening tutorial choices', () => {
     );
     expect(TUTORIAL_BEATS[state.beat]).toMatchObject({
       id: 'b5a3_luminae_expected',
-      dialogue: [{ text: 'Perhaps.' }, { text: "I don't know why." }],
+      dialogue: [{ text: 'Perhaps.' }],
     });
-    state = tutorialReducer(state, { type: 'NEXT_DLG' });
     state = tutorialReducer(state, { type: 'NEXT_DLG' });
     expect(TUTORIAL_BEATS[state.beat].id).toBe('b5_affinities');
   });
