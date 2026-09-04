@@ -227,7 +227,7 @@ describe('opening tutorial choices', () => {
     expect(TUTORIAL_BEATS[BEAT_INDEX.b3_architect]).toMatchObject({
       dialogue: [
         { text: 'In my Universe, that is what we call those who have the power to shape cosmic society.' },
-        { text: 'They determine what my people reach for, and what we become.' },
+        { text: 'You determine what my people reach for, and what we become.' },
       ],
       playerResponse: "So I'm in your universe now?",
       nextBeatId: 'b3c_border',
@@ -379,7 +379,7 @@ describe('opening tutorial choices', () => {
     expect(preActionDialogue).toContain("You've been wandering along the border.");
     expect(preActionDialogue).toContain("We'll begin with a simulation.");
     expect(preActionDialogue).toContain('power to shape cosmic society');
-    expect(preActionDialogue).toContain('what my people reach for, and what we become');
+    expect(preActionDialogue).toContain('You determine what my people reach for, and what we become');
   });
 });
 

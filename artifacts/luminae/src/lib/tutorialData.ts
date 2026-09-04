@@ -317,7 +317,7 @@ export const TUTORIAL_BEATS: TutorialBeat[] = [
     lumiiZone: "center",
     dialogue: [
       { text: "In my Universe, that is what we call those who have the power to shape cosmic society." },
-      { text: "They determine what my people reach for, and what we become." },
+      { text: "You determine what my people reach for, and what we become." },
     ],
     completion: { type: "dialogue" },
     playerResponse: "So I'm in your universe now?",
