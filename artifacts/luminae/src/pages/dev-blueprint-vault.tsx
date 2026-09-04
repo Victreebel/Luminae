@@ -1,19 +1,63 @@
+import { useEffect, useMemo, useState } from "react";
 import { AccountArchive } from "@/components/archive/AccountArchive";
-import type { BlueprintVaultState, PlayerStats } from "@/lib/accountSession";
+import type {
+  AccountArchiveArtifact,
+  BlueprintVaultState,
+  PlayerStats,
+} from "@/lib/accountSession";
 import {
-  ARTIFACT_DEFINITIONS,
-  BLUEPRINT_CLEARANCE_REQUIRED_WINS,
   BLUEPRINT_DEFINITIONS,
-  type AccountArchiveArtifact,
-  type ArtifactId,
+  buildCampaignProgressProjection,
+  type BlueprintLoadout,
 } from "@workspace/game-types";
 
-const lockedStats: PlayerStats = {
+type PreviewState =
+  | "locked"
+  | "threshold-ready"
+  | "decryption-key"
+  | "just-opened"
+  | "opened"
+  | "mobile-open"
+  | "future-sealed";
+
+const PREVIEW_STATES: Array<{ id: PreviewState; label: string }> = [
+  { id: "locked", label: "Locked" },
+  { id: "threshold-ready", label: "Threshold Ready" },
+  { id: "decryption-key", label: "Decryption Key" },
+  { id: "just-opened", label: "Just Opened" },
+  { id: "opened", label: "Stable Opened Hub" },
+  { id: "mobile-open", label: "Mobile Opened Hub" },
+  { id: "future-sealed", label: "Future Records Sealed" },
+];
+
+const forgedAntimatterPreviewArtifacts: AccountArchiveArtifact[] = [
+  {
+    id: "t1r01",
+    name: "Ignition Kernel",
+    flavor: "A recovered ignition control artifact.",
+    tier: 1,
+    bonusAffinity: "flare",
+    eminence: 0,
+    forgeCount: 1,
+  },
+  {
+    id: "t1p04",
+    name: "Magnetic Bottle",
+    flavor: "A recovered containment artifact.",
+    tier: 1,
+    bonusAffinity: "radiance",
+    eminence: 0,
+    forgeCount: 1,
+  },
+];
+
+const baseStats: PlayerStats = {
   gamesPlayed: 8,
   wins: 4,
   losses: 4,
   ties: 0,
   avgEminence: 9,
+  totalLume: 0,
   recentGames: [],
   archive: {
     artifacts: {
@@ -28,35 +72,10 @@ const lockedStats: PlayerStats = {
       totalAlliances: 0,
       signatureArtifactId: null,
       closestLuminaryId: null,
-      selected: {
-        lineage: null,
-        affinity: null,
-        signatureArtifactId: null,
-        signatureLuminaryId: null,
-        signatureBlueprintId: null,
-        displayName: null,
-        scaleType: 0,
-        scaleLabel: "Pre-Type I",
-        projectEpithet: null,
-      },
-      suggested: {
-        lineage: null,
-        affinity: null,
-        signatureArtifactId: null,
-        signatureLuminaryId: null,
-        signatureBlueprintId: null,
-      },
-      options: {
-        lineages: [],
-        affinities: [],
-        artifactIds: [],
-        luminaryIds: [],
-        blueprintIds: [],
-      },
     },
     vault: {
       qualifyingWins: 2,
-      requiredWins: BLUEPRINT_CLEARANCE_REQUIRED_WINS,
+      requiredWins: 5,
       unlocked: false,
       status: "classified",
       challengeRoomId: null,
@@ -64,142 +83,172 @@ const lockedStats: PlayerStats = {
   },
 };
 
-const revealedStats: PlayerStats = {
-  ...lockedStats,
-  archive: {
-    ...lockedStats.archive!,
-    vault: {
-      qualifyingWins: BLUEPRINT_CLEARANCE_REQUIRED_WINS,
-      requiredWins: BLUEPRINT_CLEARANCE_REQUIRED_WINS,
-      unlocked: true,
-      status: "cleared",
-      challengeRoomId: null,
-    },
-  },
-};
-
-const artifactFixtureIds = new Set<ArtifactId>([
-  "t1s04",
-  "t1o05",
-  "t1p04",
-  "t2r01",
-  "t2r05",
-  "t2o03",
-  "t2p01",
-  "t3r01",
-]);
-
-const artifactFixture = Array.from(artifactFixtureIds).map((id, index): AccountArchiveArtifact => {
-  const definition = ARTIFACT_DEFINITIONS[id];
-  const relationship = (relatedId: ArtifactId) => {
-    const known = artifactFixtureIds.has(relatedId);
+function statsForPreview(preview: PreviewState): PlayerStats {
+  if (preview === "threshold-ready") {
     return {
-      id: known ? relatedId : null,
-      name: known ? ARTIFACT_DEFINITIONS[relatedId].name : null,
-      tier: ARTIFACT_DEFINITIONS[relatedId].tier,
-      known,
+      ...baseStats,
+      archive: {
+        ...baseStats.archive!,
+        vault: {
+          qualifyingWins: 5,
+          requiredWins: 5,
+          unlocked: false,
+          status: "challenge_ready",
+          challengeRoomId: null,
+        },
+      },
     };
-  };
-
-  return {
-    ...definition,
-    forms: [...definition.forms],
-    forgeCount: Math.max(1, 8 - index),
-    builtOn: definition.builtOn.map(relationship),
-    leadsToward: definition.leadsToward.map(relationship),
-    projectLeads: definition.projectLeads.map((lead, leadIndex) => ({
-      name: leadIndex === 0 ? lead.name : null,
-      priority: lead.priority,
-      revealed: leadIndex === 0,
-    })),
-    blueprintEligibility: Object.values(BLUEPRINT_DEFINITIONS)
-      .filter((blueprint) => blueprint.components.some((component) => component.artifactId === id))
-      .map((blueprint) => blueprint.id),
-  };
-});
-
-const artifactStats: PlayerStats = {
-  ...revealedStats,
-  archive: {
-    ...revealedStats.archive!,
-    artifacts: {
-      discovered: artifactFixture,
-      total: 90,
-      discoveredByTier: { 1: 3, 2: 4, 3: 1 },
-      totalByTier: { 1: 40, 2: 30, 3: 20 },
-    },
-    identity: {
-      ...revealedStats.archive!.identity!,
-      totalForges: artifactFixture.reduce((sum, artifact) => sum + artifact.forgeCount, 0),
-      signatureArtifactId: "t1s04",
-      selected: {
-        ...revealedStats.archive!.identity!.selected,
-        lineage: "causality",
-        affinity: "continuum",
-        signatureArtifactId: "t1s04",
-        displayName: "The Recursive Chronicle",
+  }
+  if (preview === "decryption-key") {
+    return {
+      ...baseStats,
+      archive: {
+        ...baseStats.archive!,
+        vault: {
+          qualifyingWins: 2,
+          requiredWins: 5,
+          unlocked: false,
+          status: "challenge_ready",
+          challengeRoomId: null,
+        },
       },
-      options: {
-        ...revealedStats.archive!.identity!.options,
-        lineages: ["causality", "energy", "boundary_science"],
-        affinities: ["continuum", "flare", "abyss"],
-        artifactIds: Array.from(artifactFixtureIds),
-        blueprintIds: ["bp_antimatter_detonator"],
+    };
+  }
+  if (
+    preview === "just-opened" ||
+    preview === "opened" ||
+    preview === "mobile-open" ||
+    preview === "future-sealed"
+  ) {
+    return {
+      ...baseStats,
+      archive: {
+        ...baseStats.archive!,
+        artifacts: {
+          ...baseStats.archive!.artifacts,
+          discovered: forgedAntimatterPreviewArtifacts,
+          discoveredByTier: {
+            1: forgedAntimatterPreviewArtifacts.length,
+            2: 0,
+            3: 0,
+          },
+        },
+        vault: {
+          qualifyingWins: 5,
+          requiredWins: 5,
+          unlocked: true,
+          status: "cleared",
+          challengeRoomId: null,
+        },
       },
-    },
-  },
-};
+    };
+  }
+  return baseStats;
+}
 
-const revealedVault: BlueprintVaultState = {
-  clearance: {
-    qualifyingWins: BLUEPRINT_CLEARANCE_REQUIRED_WINS,
-    requiredWins: BLUEPRINT_CLEARANCE_REQUIRED_WINS,
-    status: "cleared",
-    challengeRoomId: null,
-    warningSeen: true,
-    cipherDeactivated: true,
-    thresholdApproach: "inquiry",
-    thresholdDialoguePath: ["inquiry-answer"],
-    thresholdDialogueResolution: "continued",
-    covenantBroken: true,
-    decryptionKeyBypassActive: false,
-    revealPending: false,
-  },
-  decryptionKeyAvailable: false,
-  slotCount: 2,
-  competitiveEnabled: false,
-  unlockedBlueprintIds: ["bp_antimatter_detonator"],
-  blueprints: [BLUEPRINT_DEFINITIONS.bp_antimatter_detonator],
-  corruptedRecordCount: 2,
-  campaignNodes: [
-    {
-      id: "campaign_antimatter_first_charge",
-      blueprintId: "bp_antimatter_detonator",
-      title: "The First Charge",
-      status: "available",
-    },
-  ],
-  loadouts: [
+function loadoutsForPreview(): BlueprintLoadout[] {
+  return [
     { mode: "campaign", slots: ["bp_antimatter_detonator", null] },
-    { mode: "custom", slots: ["bp_antimatter_detonator", null] },
+    { mode: "custom", slots: [null, null] },
     { mode: "competitive", slots: [null, null] },
-  ],
-  mastery: [
-    {
-      blueprintId: "bp_antimatter_detonator",
-      manifestations: 0,
-      triggers: 0,
-      armedMatchFinishes: 0,
+  ];
+}
+
+function vaultForPreview(preview: PreviewState): BlueprintVaultState {
+  const unlocked =
+    preview === "just-opened" ||
+    preview === "opened" ||
+    preview === "mobile-open" ||
+    preview === "future-sealed";
+  return {
+    clearance: {
+      qualifyingWins:
+        preview === "decryption-key"
+          ? 2
+          : unlocked || preview === "threshold-ready"
+            ? 5
+            : 2,
+      requiredWins: 5,
+      status: unlocked
+        ? "cleared"
+        : preview === "locked"
+          ? "classified"
+          : "challenge_ready",
+      challengeRoomId: null,
+      warningSeen: preview !== "locked",
+      cipherDeactivated: unlocked,
+      thresholdApproach: unlocked ? "inquiry" : null,
+      thresholdDialoguePath: unlocked ? ["inquiry-answer"] : [],
+      thresholdDialogueResolution: unlocked ? "continued" : null,
+      thresholdRuptured: unlocked,
+      covenantBroken: unlocked,
+      decryptionKeyBypassActive: preview === "decryption-key",
+      revealPending: preview === "just-opened",
     },
-  ],
-};
+    decryptionKeyAvailable: preview === "locked",
+    slotCount: 2,
+    competitiveEnabled: false,
+    unlockedBlueprintIds: unlocked ? ["bp_antimatter_detonator"] : [],
+    blueprints: unlocked ? [BLUEPRINT_DEFINITIONS.bp_antimatter_detonator] : [],
+    corruptedRecordCount: unlocked ? 2 : null,
+    campaignNodes:
+      unlocked && preview !== "future-sealed"
+        ? [
+            {
+              id: "campaign_antimatter_first_charge",
+              blueprintId: "bp_antimatter_detonator",
+              title: "The First Charge",
+              status: "pending_release",
+            },
+          ]
+        : [],
+    campaignProgress: buildCampaignProgressProjection({
+      releasedChronicleIds: [],
+      primaryOutcomes: [],
+      rehearsals: [],
+      calibrationInsightChronicleIds: [],
+    }),
+    loadouts: unlocked ? loadoutsForPreview() : [],
+    mastery: [],
+  };
+}
+
+function getInitialPreview(): PreviewState {
+  const state = new URLSearchParams(window.location.search).get("state");
+  return PREVIEW_STATES.some((entry) => entry.id === state)
+    ? (state as PreviewState)
+    : "opened";
+}
 
 export default function DevBlueprintVault() {
-  const searchParams = typeof window !== "undefined"
-    ? new URLSearchParams(window.location.search)
-    : new URLSearchParams();
-  const unlockedOnly = searchParams.get("state") === "unlocked";
-  const artifactOnly = searchParams.get("page") === "artifacts";
+  const [preview, setPreview] = useState<PreviewState>(() =>
+    getInitialPreview(),
+  );
+  const [phoneViewport, setPhoneViewport] = useState(
+    () =>
+      typeof window !== "undefined" &&
+      window.matchMedia("(max-width: 430px)").matches,
+  );
+  const stats = useMemo(() => statsForPreview(preview), [preview]);
+  const vault = useMemo(() => vaultForPreview(preview), [preview]);
+  const isMobile = preview === "mobile-open";
+  const compactBench = isMobile || phoneViewport;
+
+  useEffect(() => {
+    if (typeof window === "undefined") return undefined;
+    const query = window.matchMedia("(max-width: 430px)");
+    const update = () => setPhoneViewport(query.matches);
+    update();
+    query.addEventListener("change", update);
+    return () => query.removeEventListener("change", update);
+  }, []);
+
+  const choosePreview = (next: PreviewState) => {
+    setPreview(next);
+    const url = new URL(window.location.href);
+    url.searchParams.set("state", next);
+    window.history.replaceState(null, "", url);
+  };
 
   return (
     <main
@@ -207,56 +256,108 @@ export default function DevBlueprintVault() {
         minHeight: "100dvh",
         overflowX: "auto",
         background: "#04070b",
-        padding: "28px",
+        padding: compactBench ? "3px" : "28px",
       }}
     >
-      <header style={{ margin: "0 auto 18px", maxWidth: "1500px" }}>
-        <p style={{ margin: 0, color: "#8d9aa5", fontFamily: "monospace", fontSize: "10px", textTransform: "uppercase" }}>
-          {artifactOnly
-            ? "Technology System v2 Archive Fixture"
-            : unlockedOnly
-              ? "Post-Lumii Civilization Archive"
-              : "Production State Comparison"}
-        </p>
-        <h1 style={{ margin: "4px 0 0", fontFamily: "var(--font-serif, serif)", fontSize: "28px" }}>
-          {artifactOnly ? "Artifact Dossiers" : unlockedOnly ? "Discovered Blueprints" : "Blueprint Vault"}
-        </h1>
-      </header>
-
-      <div
+      <header
         style={{
-          display: "grid",
-          gridTemplateColumns: unlockedOnly || artifactOnly ? "minmax(0, 1080px)" : "repeat(2, minmax(560px, 1fr))",
-          justifyContent: "center",
-          gap: "18px",
-          margin: "0 auto",
+          display: compactBench ? "none" : undefined,
+          margin: "0 auto 18px",
           maxWidth: "1500px",
         }}
       >
-        {!unlockedOnly && !artifactOnly && (
-          <section style={{ minWidth: 0 }}>
-            <div style={{ marginBottom: "8px", color: "#e76a61", fontFamily: "monospace", fontSize: "10px", fontWeight: 900, textTransform: "uppercase" }}>
-              Redacted / Classified
-            </div>
-            <AccountArchive stats={lockedStats} isLoading={false} page="vault" />
-          </section>
-        )}
+        <p
+          style={{
+            margin: 0,
+            color: "#8d9aa5",
+            fontFamily: "monospace",
+            fontSize: "10px",
+            textTransform: "uppercase",
+          }}
+        >
+          Production State Preview
+        </p>
+        <h1
+          style={{
+            margin: "4px 0 0",
+            fontFamily: "var(--font-serif, serif)",
+            fontSize: "28px",
+          }}
+        >
+          Blueprint Vault Hub
+        </h1>
+      </header>
 
-        <section style={{ minWidth: 0 }}>
-          {!unlockedOnly && !artifactOnly && (
-            <div style={{ marginBottom: "8px", color: "#f0ce74", fontFamily: "monospace", fontSize: "10px", fontWeight: 900, textTransform: "uppercase" }}>
-              Revealed / Cleared
-            </div>
-          )}
-          <AccountArchive
-            stats={artifactOnly ? artifactStats : revealedStats}
-            isLoading={false}
-            page={artifactOnly ? "artifacts" : "vault"}
-            blueprintVault={artifactOnly ? undefined : revealedVault}
-            onUpdateBlueprintLoadout={() => undefined}
-          />
-        </section>
-      </div>
+      <nav
+        aria-label="Blueprint Vault preview states"
+        style={{
+          display: compactBench ? "none" : "flex",
+          flexWrap: "wrap",
+          gap: "8px",
+          margin: "0 auto 18px",
+          maxWidth: "1500px",
+        }}
+      >
+        {PREVIEW_STATES.map((entry) => (
+          <button
+            key={entry.id}
+            type="button"
+            onClick={() => choosePreview(entry.id)}
+            data-active={preview === entry.id}
+            style={{
+              minHeight: "34px",
+              border:
+                preview === entry.id
+                  ? "1px solid #d8ad51"
+                  : "1px solid rgba(154, 168, 180, 0.22)",
+              borderRadius: "4px",
+              background:
+                preview === entry.id
+                  ? "rgba(213, 173, 91, 0.18)"
+                  : "rgba(9, 14, 20, 0.82)",
+              color: preview === entry.id ? "#f0ce74" : "#aab4bc",
+              fontFamily: "monospace",
+              fontSize: "9px",
+              fontWeight: 900,
+              padding: "8px 10px",
+              textTransform: "uppercase",
+            }}
+          >
+            {entry.label}
+          </button>
+        ))}
+      </nav>
+
+      <section
+        style={{
+          margin: "0 auto",
+          maxWidth: compactBench ? "390px" : "980px",
+          minWidth: compactBench ? "0" : "min(560px, 100%)",
+        }}
+      >
+        <div
+          style={{
+            display: compactBench ? "none" : undefined,
+            marginBottom: "8px",
+            color: "#f0ce74",
+            fontFamily: "monospace",
+            fontSize: "10px",
+            fontWeight: 900,
+            textTransform: "uppercase",
+          }}
+        >
+          {PREVIEW_STATES.find((entry) => entry.id === preview)?.label}
+        </div>
+        <AccountArchive
+          stats={stats}
+          isLoading={false}
+          page="vault"
+          blueprintVault={vault}
+          onUseBlueprintDecryptionKey={() => undefined}
+          onUpdateBlueprintLoadout={() => undefined}
+          onAcknowledgeVaultReveal={() => undefined}
+        />
+      </section>
     </main>
   );
 }

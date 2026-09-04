@@ -1,9 +1,12 @@
-const BASE_URL = import.meta.env.BASE_URL ?? "/";
-
-function apiUrl(path: string): string {
-  const base = BASE_URL.replace(/\/$/, "");
-  return `${base}/api${path}`;
-}
+import { apiUrl } from "@/lib/network";
+import {
+  getLocalFirstContactStance,
+  syncLocalFirstContactStance,
+} from "@/lib/firstContactMemory";
+import {
+  isArchitectFirstContactStance,
+  type ArchitectFirstContactStance,
+} from "@workspace/game-types";
 
 const GLOBAL_KEY = "luminae_skip_cinematics";
 
@@ -50,6 +53,7 @@ export interface AccountPreferences {
   hintsSeen: string[];
   tutorialSeen: boolean;
   tutorialCompleted: boolean;
+  firstContactStance: ArchitectFirstContactStance | null;
 }
 
 export async function apiGetPreferences(token: string): Promise<AccountPreferences> {
@@ -147,6 +151,8 @@ export const HINT_KEYS = [
   "luminae_reserve_hint_seen",
   "luminae_deck_reserve_hint_seen",
   "luminae_forge_hint_seen",
+  "luminae_civilization_portrait_hint_seen",
+  "luminae_civilization_scan_hint_seen",
 ] as const;
 
 export type HintKey = (typeof HINT_KEYS)[number];
@@ -211,6 +217,14 @@ export async function syncAccountPreferences(
   accountId: string,
 ): Promise<AccountPreferences> {
   const prefs = await apiGetPreferences(token);
+  const serverStance = isArchitectFirstContactStance(prefs.firstContactStance)
+    ? prefs.firstContactStance
+    : null;
+  const localStance = getLocalFirstContactStance();
+  const firstContactStance = serverStance ?? localStance;
+  if (!serverStance && localStance) {
+    await apiUpdatePreferences(token, { firstContactStance: localStance }).catch(() => undefined);
+  }
   try {
     writeSkipLocal(prefs.skipCinematics, accountId);
     localStorage.setItem("luminae_abridged_anims", prefs.abridgedAnims ? "1" : "0");
@@ -227,14 +241,14 @@ export async function syncAccountPreferences(
     } else {
       localStorage.removeItem("luminae_tutorial_seen");
     }
-    const pendingTutorialClaim = localStorage.getItem("luminae_tutorial_completion_claim") !== null;
-    if (prefs.tutorialCompleted || pendingTutorialClaim) {
+    if (prefs.tutorialCompleted) {
       localStorage.setItem("luminae_tutorial_completed", "1");
     } else {
       localStorage.removeItem("luminae_tutorial_completed");
     }
+    if (firstContactStance) syncLocalFirstContactStance(firstContactStance);
   } catch {
     // ignore storage errors
   }
-  return prefs;
+  return { ...prefs, firstContactStance };
 }

@@ -1,10 +1,6 @@
 #!/usr/bin/env tsx
 /**
- * Legacy exploratory AI-vs-AI simulation.
- *
- * Do not use this script for certification or production balance conclusions.
- * Its event handling and winner fallback predate the authoritative deterministic
- * matrix in simulateArtifacts.ts, which is the controlling balance harness.
+ * Headless AI-vs-AI game simulation for Luminae balance testing.
  *
  * Usage:
  *   pnpm --filter @workspace/api-server run simulate
@@ -53,6 +49,7 @@ import {
   type ActionPayload,
 } from "../lib/gameEngine.js";
 import { chooseAiAction, type AiDifficulty } from "../lib/aiPlayer.js";
+import { ordinaryEncryptedCount } from "@workspace/game-types";
 
 // ── CLI args ──────────────────────────────────────────────────────────────────
 
@@ -879,7 +876,7 @@ function chooseProbeAction(
     return { type: isReserved ? "forge_reserved_artifact" : "forge_artifact", cardId: card.id };
   }
 
-  if (player.reservedArtifactIds.length < 3) {
+  if (ordinaryEncryptedCount(player) < 3) {
     const bestUnaffordable = allArtifacts
       .filter((c) => !canAffordCard(c) && !player.reservedArtifactIds.includes(c.id))
       .sort((a, b) => probeScoreCard(b, player, targetLum) - probeScoreCard(a, player, targetLum));

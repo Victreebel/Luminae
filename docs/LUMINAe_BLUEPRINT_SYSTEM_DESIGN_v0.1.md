@@ -1,9 +1,5 @@
 # LUMINAe Blueprint System Design v0.1
 
-> **Superseded:** Technology doctrine is controlled by
-> `LUMINAe_TECHNOLOGY_SYSTEM_v2.0.md`; current first-pool and clearance rules
-> are controlled by `LUMINAe_BLUEPRINT_FIRST_POOL_SPEC_v2.0.md`.
-
 ## Status
 
 **System doctrine with a locked first-release implementation.**
@@ -24,7 +20,7 @@ hierarchy, `LUMINAe_TECHNOLOGY_SYSTEM_v1.0.md` controls.
 ## Locked Doctrine
 
 ```text
-The 3/3 threshold activates the Architect-owned Supreme Cipher.
+The 5/5 threshold activates the Architect-owned Supreme Cipher.
 Deactivating that Cipher exposes Lumii's independent firewall.
 Defeating Lumii's defense forecast reveals the system and the first Blueprint.
 Competitive standardizes Blueprints.
@@ -47,7 +43,7 @@ The Blueprint system is itself a secret until the player earns clearance. Before
 1. **Blueprints carry secret synthesis.**
    Tier I Artifacts are planetary enabling technologies and Tier II Artifacts are stellar subsystems. Tier III Artifacts may be complete galactic works. Blueprints are distinguished by hidden assembly knowledge: they synthesize specific public technologies into an exceptional device or project, whether compact or immense.
 
-2. **Blueprints create strategic direction without replacing the race to 15 Eminence.**
+2. **Blueprints create strategic direction without replacing the race to the configured Eminence target.**
    They should add a private mid/late-game agenda for the owner, not become a separate game stapled onto the board.
 
 3. **Blueprint access is mode-defined.**
@@ -95,13 +91,13 @@ The entire Blueprint system begins locked.
 
 ### Qualifying Condition
 
-The player earns clearance by winning **three qualifying four-civilization games**, with:
+The player earns clearance by winning **five qualifying four-civilization games**, with:
 
 - the player occupying one seat
 - all three opposing seats occupied by Hard AI
 - standard victory and rules settings
 
-Each qualifying victory advances a persistent account counter from 0/3 to 3/3. Losses do not remove progress.
+Each qualifying victory advances a persistent account counter from 0/5 to 5/5. Losses do not remove progress.
 
 ### Before The Threshold
 
@@ -116,25 +112,16 @@ Suggested locked copy:
 ```text
 TOP SECRET
 ACCESS CONDITION
-CIPHER PROGRESS: 0 / 3
-Win three standard games against three Hard AI civilizations.
+CIPHER PROGRESS: 0 / 5
+Win five standard games against three Hard AI civilizations.
 ```
 
 ### Vault Threshold Event
 
-The third qualifying victory sets the account to `challenge_ready`; it does not
+The fifth qualifying victory sets the account to `challenge_ready`; it does not
 reveal the system or grant a Blueprint. It energizes the Architect-owned Supreme
 Cipher. Deactivating the Cipher is permanent. The doors then open to a partial
-threshold, where Lumii's independent five-node firewall arrests them. Lumii's
-five nodes represent the five natural Affinities; Singularity belongs to
-Architects, helping explain both their exceptional authority and why
-civilizations summon them.
-
-The mechanical invariant is origin-only: an Architect creates Singularity by
-Encrypting, while Lumii cannot Encrypt, Harness Singularity, embody it, require
-it for a Luminary, or grant it as an Artifact bonus. Once created, Singularity
-remains a normal sixth Affinity for holding, spending, returning, and effects.
-Lumii's three forecast protocols are seeded directly without generating it.
+threshold, where Lumii's independent six-node firewall arrests them.
 
 The player records one encounter approach, Kinship, Inquiry, or Dominion. It is
 exclusive and durable but does not select a final campaign route. Continuing
@@ -144,7 +131,7 @@ three opening projects internally, but the player receives only anonymous
 
 The forecast models whether Lumii can physically defend the Vault's secured
 server from the Architect. A withdrawal creates no match rollup. A defeat is a
-normal loss and preserves 3/3 progress. On victory, Lumii predicts that continued
+normal loss and preserves 5/5 progress. On victory, Lumii predicts that continued
 resistance would fail and cause mass casualty, releases her firewall, and opens
 the doors without reconciliation. Victory permanently unlocks **Antimatter
 Detonator**, assigns it to Campaign and Custom slot one, and leaves Foundry and
@@ -473,9 +460,9 @@ Artifact a failure point for several plans.
 
 ## Campaign Discovery Loop
 
-1. The player sees a locked Top Secret destination and a 0/3 Cipher counter.
-2. The player wins three standard four-civilization games against three Hard AI opponents.
-3. The third victory energizes the Supreme Cipher.
+1. The player sees a locked Top Secret destination and a 0/5 Cipher counter.
+2. The player wins five standard four-civilization games against three Hard AI opponents.
+3. The fifth victory energizes the Supreme Cipher.
 4. The Architect deactivates the Cipher and encounters Lumii's firewall.
 5. Continuing breaks the Covenant and begins the defense forecast.
 6. Defeating Lumii reveals the system and guarantees Antimatter Detonator.
@@ -579,7 +566,7 @@ Forbidden:
 ## Locked First-Release Model
 
 ```text
-Win three qualifying games against three Hard AI opponents to energize the Supreme Cipher.
+Win five qualifying games against three Hard AI opponents to energize the Supreme Cipher.
 Before the Vault opens, the system is Top Secret and all Blueprint references are redacted.
 Deactivate the Cipher, pass Lumii's defense forecast, and guarantee Antimatter Detonator.
 Afterward, the Blueprint Vault manages ownership, tracking, and assignment.

@@ -12,6 +12,7 @@ export type MantleToOrbitBlueprintState = "assembling" | "manifested";
 type MantleToOrbitBlueprintCardProps = {
   state?: MantleToOrbitBlueprintState;
   matchedSockets?: number;
+  knownComponentIds?: readonly string[];
 };
 
 const components = [
@@ -52,7 +53,8 @@ const components = [
       "Each coil is one link in the ascent line, but its timing must agree with every link above it. Once mass moves upward cheaply, orbit becomes a place of manufacture rather than visitation.",
     artifactForm: "Transit Component / Power Component",
     blueprintRole: "Planetary-to-orbit mass acceleration",
-    blueprintFamilies: "Mantle-to-Orbit Foundry; Arkseed Migration Fleet precursor",
+    blueprintFamilies:
+      "Mantle-to-Orbit Foundry; Arkseed Migration Fleet precursor",
     civilizationLane: "Orbital logistics civilization",
     engineeringScale: "Planetary",
     hotspot: { left: "50%", top: "52%" },
@@ -73,20 +75,34 @@ const components = [
       "Blackglass holds its geometry in vacuum, swallowing stray radiation while imprinting feedstock with surfaces precise enough for orbital assembly.",
     artifactForm: "Fabrication Tool / Material",
     blueprintRole: "Vacuum-stable precision forming",
-    blueprintFamilies: "Mantle-to-Orbit Foundry; Galactic Relic Forge precursor",
+    blueprintFamilies:
+      "Mantle-to-Orbit Foundry; Galactic Relic Forge precursor",
     civilizationLane: "Vacuum manufacturing civilization",
     engineeringScale: "Planetary",
     hotspot: { left: "51%", top: "20%" },
   },
 ] as const satisfies readonly HorizontalBlueprintComponentRecord[];
 
+const definition = {
+  name: "Mantle-to-Orbit Foundry",
+  publicEffect:
+    "Gain 1 Eminence. Twice, Foundry Forge a face-up Tier II Artifact with each nonzero printed natural Affinity cost reduced by 1. Then Overdrive may repeat the discount and seal this Project's components.",
+  presentation: { scaleLabel: "Planetary", serialCode: "BP-MO-01" },
+  components: [
+    { artifactId: "t1r07", stage: "Thermal Baffle", function: "Routes mantle heat and decay into useful work before either can destroy the ascent chambers." },
+    { artifactId: "t1s02", stage: "Mantlelift Coil", function: "Accelerates sealed feedstock capsules from the deep crust into stable orbit along a timed induction line." },
+    { artifactId: "t1o05", stage: "Vacuum Forge Die", function: "Forms lifted feedstock into precise orbital structures without atmosphere, convection, or contaminating vapor." },
+  ],
+} as const;
+
 export function MantleToOrbitBlueprintCard({
   state = "assembling",
   matchedSockets = 2,
+  knownComponentIds,
 }: MantleToOrbitBlueprintCardProps) {
   return (
     <HorizontalBlueprintCard
-      blueprintId="bp_mantle_to_orbit_foundry"
+      definition={definition}
       state={state}
       matchedComponents={matchedSockets}
       artwork={mantleToOrbitFoundryArtwork}
@@ -95,9 +111,15 @@ export function MantleToOrbitBlueprintCard({
       publicStateLabel="Ready"
       publicLabel="Public Foundry"
       components={components}
+      knownComponentIds={knownComponentIds}
       testId="mantle-to-orbit-blueprint-card"
       componentPanelTestId="mantle-to-orbit-component-panel"
       tone="industry"
+      secondaryRule={{
+        label: "Foundry Seal",
+        text: "Overdrive completes the Forge, archives all three components, and seals them in Foundry storage. Intact Covenant: paid re-Forge; the Foundry remains Spent. Broken Covenant: free recovery; restoring all three returns it Ready with 0 sustainable uses. Foundry storage does not consume ordinary Encryption capacity.",
+      }}
+      secondaryRulePlacement="back"
     />
   );
 }

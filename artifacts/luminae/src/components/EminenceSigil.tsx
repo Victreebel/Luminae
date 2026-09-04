@@ -1,9 +1,11 @@
+import { DEFAULT_VICTORY_REQUIREMENT } from "@workspace/game-types";
+
 const SEAL_STAGES = [0, 1, 2] as const;
 
 export function EminenceSigil({
   size = 24,
   value = 0,
-  target = 15,
+  target = DEFAULT_VICTORY_REQUIREMENT,
 }: {
   size?: number;
   value?: number;

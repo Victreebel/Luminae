@@ -5,10 +5,13 @@ import {
   accountsTable,
   accountSessionsTable,
   accountBlueprintClearanceTable,
+  accountDeletionRequestsTable,
+  accountLumiiRelationshipMemoriesTable,
   playersTable,
   roomsTable,
 } from "@workspace/db";
 import bcrypt from "bcryptjs";
+import { randomBytes } from "crypto";
 import { z } from "zod";
 import { accountAuth } from "../lib/accountAuth";
 import { buildAccountArchiveFromPersistedStats } from "../lib/accountArchive";
@@ -20,32 +23,22 @@ import {
   normalizeLumiiThresholdDialogueResolution,
 } from "../lib/blueprintClearance";
 import {
-  ARTIFACT_IDS,
   BLUEPRINT_CLEARANCE_REQUIRED_WINS,
-  BLUEPRINT_DEFINITIONS,
-  BLUEPRINT_IDS,
-  LUMINARY_IDS,
-  NATURAL_AFFINITY_KEYS,
-  TECHNOLOGY_LINEAGES,
-  type CivilizationIdentitySelection,
-  type CivilizationIdentitySummary,
+  CIVILIZATION_RECORD_VERSION,
+  ARCHITECT_FIRST_CONTACT_STANCES,
+  isArchitectFirstContactStance,
+  summarizeCivilizationRecord,
+  type CivilizationRecord,
 } from "@workspace/game-types";
-import {
-  readAccountCivilizationIdentity,
-  validateCivilizationIdentitySelection,
-  writeAccountCivilizationIdentity,
-} from "../lib/accountIdentity";
 import type { Request } from "express";
-import {
-  generateAccountSessionToken,
-  hashAccountSessionToken,
-} from "../lib/accountSessionTokens";
+import { rateLimit } from "../lib/httpSecurity";
 
 const router: IRouter = Router();
 
 const SALT_ROUNDS = 10;
 const SESSION_DAYS = 30;
-const INVALID_PASSWORD_HASH = bcrypt.hashSync("luminae-invalid-account", SALT_ROUNDS);
+const FIRST_CONTACT_MEMORY_SOURCE_ID = "00000000-0000-4000-8000-000000000001";
+const FIRST_CONTACT_MEMORY_KEY = "first_contact_stance";
 
 type AccountClearanceRow = typeof accountBlueprintClearanceTable.$inferSelect | undefined;
 
@@ -58,7 +51,7 @@ function hasVaultThresholdAccess(clearance: AccountClearanceRow): boolean {
 
 function publicClearanceStatus(clearance: AccountClearanceRow) {
   if (clearance?.status === "cleared" || clearance?.status === "challenge_active") return clearance.status;
-  if (hasVaultThresholdAccess(clearance)) return "challenge_ready";
+  if (clearance?.status === "challenge_ready" && hasVaultThresholdAccess(clearance)) return "challenge_ready";
   return "classified" as const;
 }
 
@@ -66,8 +59,25 @@ function publicCipherDeactivated(clearance: AccountClearanceRow): boolean {
   return Boolean(clearance?.cipherDeactivatedAt && clearance.qualifyingWins >= BLUEPRINT_CLEARANCE_REQUIRED_WINS);
 }
 
-function publicCovenantBroken(clearance: AccountClearanceRow): boolean {
-  return Boolean(clearance?.covenantBrokenAt && hasVaultThresholdAccess(clearance));
+function publicThresholdRuptured(clearance: AccountClearanceRow): boolean {
+  return Boolean(
+    (clearance?.thresholdRupturedAt ?? clearance?.covenantBrokenAt) &&
+    hasVaultThresholdAccess(clearance),
+  );
+}
+
+function storedCivilizationRecord(value: unknown): CivilizationRecord | null {
+  const version = typeof value === "object" && value !== null
+    ? (value as { version?: unknown }).version
+    : null;
+  return typeof value === "object" && value !== null &&
+    (version === 1 || version === CIVILIZATION_RECORD_VERSION)
+    ? value as CivilizationRecord
+    : null;
+}
+
+function generateToken(): string {
+  return randomBytes(32).toString("hex");
 }
 
 function sessionExpiry(): Date {
@@ -77,36 +87,18 @@ function sessionExpiry(): Date {
 }
 
 const RegisterBody = z.object({
-  username: z.string().trim().min(2).max(32).regex(/^[a-zA-Z0-9_-]+$/, "Username can only contain letters, numbers, underscores, and hyphens"),
-  password: z.string().min(10).max(128),
-  email: z.string().trim().toLowerCase().email().optional(),
-}).strict();
+  username: z.string().min(2).max(32).regex(/^[a-zA-Z0-9_-]+$/, "Username can only contain letters, numbers, underscores, and hyphens"),
+  password: z.string().min(6),
+  email: z.string().email().optional(),
+});
 
 const LoginBody = z.object({
-  username: z.string().trim().min(1).max(32),
-  password: z.string().min(1).max(128),
-}).strict();
-
-const CivilizationIdentityBody = z.object({
-  lineage: z.enum(TECHNOLOGY_LINEAGES).nullable(),
-  affinity: z.enum(NATURAL_AFFINITY_KEYS).nullable(),
-  signatureArtifactId: z.string()
-    .refine((value) => ARTIFACT_IDS.includes(value as typeof ARTIFACT_IDS[number]), "Unknown Artifact")
-    .nullable(),
-  signatureLuminaryId: z.enum(LUMINARY_IDS).nullable(),
-  signatureBlueprintId: z.enum(BLUEPRINT_IDS).nullable(),
-}).strict();
-
-function asIdentitySnapshot(value: unknown): CivilizationIdentitySummary | null {
-  if (!value || typeof value !== "object") return null;
-  const candidate = value as Partial<CivilizationIdentitySummary>;
-  return typeof candidate.scaleType === "number" && typeof candidate.scaleLabel === "string"
-    ? candidate as CivilizationIdentitySummary
-    : null;
-}
+  username: z.string(),
+  password: z.string(),
+});
 
 // POST /api/auth/register
-router.post("/auth/register", async (req, res): Promise<void> => {
+router.post("/auth/register", rateLimit({ scope: "register", max: 8, windowMs: 15 * 60_000 }), async (req, res): Promise<void> => {
   const parsed = RegisterBody.safeParse(req.body);
   if (!parsed.success) {
     res.status(400).json({ error: parsed.error.errors[0]?.message ?? "Invalid request" });
@@ -140,44 +132,28 @@ router.post("/auth/register", async (req, res): Promise<void> => {
 
   const passwordHash = await bcrypt.hash(password, SALT_ROUNDS);
 
-  const token = generateAccountSessionToken();
-  const expiresAt = sessionExpiry();
-  let account: typeof accountsTable.$inferSelect;
+  const [account] = await db
+    .insert(accountsTable)
+    .values({ username, email: email ?? null, passwordHash })
+    .returning();
 
-  try {
-    account = await db.transaction(async (tx) => {
-      const [createdAccount] = await tx
-        .insert(accountsTable)
-        .values({ username, email: email ?? null, passwordHash })
-        .returning();
-      await tx
-        .insert(accountSessionsTable)
-        .values({
-          accountId: createdAccount.id,
-          token: hashAccountSessionToken(token),
-          expiresAt,
-        });
-      return createdAccount;
-    });
-  } catch (error) {
-    if (typeof error === "object" && error !== null && "code" in error && error.code === "23505") {
-      res.status(409).json({ error: "Username or email already in use" });
-      return;
-    }
-    throw error;
-  }
+  const token = generateToken();
+  const [session] = await db
+    .insert(accountSessionsTable)
+    .values({ accountId: account.id, token, expiresAt: sessionExpiry() })
+    .returning();
 
   req.log.info({ accountId: account.id }, "Account registered");
 
   res.status(201).json({
     account: { id: account.id, username: account.username, email: account.email },
-    token,
-    expiresAt,
+    token: session.token,
+    expiresAt: session.expiresAt,
   });
 });
 
 // POST /api/auth/login
-router.post("/auth/login", async (req, res): Promise<void> => {
+router.post("/auth/login", rateLimit({ scope: "login", max: 12, windowMs: 15 * 60_000 }), async (req, res): Promise<void> => {
   const parsed = LoginBody.safeParse(req.body);
   if (!parsed.success) {
     res.status(400).json({ error: "Invalid request" });
@@ -192,28 +168,39 @@ router.post("/auth/login", async (req, res): Promise<void> => {
     .where(eq(accountsTable.username, username))
     .limit(1);
 
-  const valid = await bcrypt.compare(password, account?.passwordHash ?? INVALID_PASSWORD_HASH);
-  if (!account || !valid) {
+  if (!account) {
     res.status(401).json({ error: "Invalid username or password" });
     return;
   }
 
-  const token = generateAccountSessionToken();
-  const expiresAt = sessionExpiry();
-  await db
-    .insert(accountSessionsTable)
-    .values({
-      accountId: account.id,
-      token: hashAccountSessionToken(token),
-      expiresAt,
-    });
+  const valid = await bcrypt.compare(password, account.passwordHash);
+  if (!valid) {
+    res.status(401).json({ error: "Invalid username or password" });
+    return;
+  }
 
-  req.log.info({ accountId: account.id }, "Account logged in");
+  const [cancelledDeletion] = await db
+    .update(accountDeletionRequestsTable)
+    .set({ status: "cancelled", cancelledAt: new Date() })
+    .where(and(
+      eq(accountDeletionRequestsTable.accountId, account.id),
+      eq(accountDeletionRequestsTable.status, "pending"),
+    ))
+    .returning({ id: accountDeletionRequestsTable.id });
+
+  const token = generateToken();
+  const [session] = await db
+    .insert(accountSessionsTable)
+    .values({ accountId: account.id, token, expiresAt: sessionExpiry() })
+    .returning();
+
+  req.log.info({ accountId: account.id, deletionCancelled: Boolean(cancelledDeletion) }, "Account logged in");
 
   res.json({
     account: { id: account.id, username: account.username, email: account.email },
-    token,
-    expiresAt,
+    token: session.token,
+    expiresAt: session.expiresAt,
+    deletionCancelled: Boolean(cancelledDeletion),
   });
 });
 
@@ -233,7 +220,7 @@ router.get("/auth/me", accountAuth, async (req: Request, res): Promise<void> => 
 
   await ensureAccountProgressBackfilled(account.id);
 
-  const [playerRows, clearanceRows, cosmeticLoadout, civilizationIdentity] = await Promise.all([
+  const [playerRows, clearanceRows, cosmeticLoadout] = await Promise.all([
     db
       .select({ player: playersTable, room: roomsTable })
       .from(playersTable)
@@ -250,7 +237,6 @@ router.get("/auth/me", accountAuth, async (req: Request, res): Promise<void> => 
       .where(eq(accountBlueprintClearanceTable.accountId, account.id))
       .limit(1),
     getEquippedCosmeticItems(account.id),
-    readAccountCivilizationIdentity(account.id),
   ]);
   const clearance = clearanceRows[0];
   const thresholdApproach = clearance?.thresholdApproach === "kinship" ||
@@ -286,7 +272,7 @@ router.get("/auth/me", accountAuth, async (req: Request, res): Promise<void> => 
     email: account.email,
     createdAt: account.createdAt,
     clearance: {
-      qualifyingWins: Math.min(clearance?.qualifyingWins ?? 0, BLUEPRINT_CLEARANCE_REQUIRED_WINS),
+      qualifyingWins: clearance?.qualifyingWins ?? 0,
       requiredWins: BLUEPRINT_CLEARANCE_REQUIRED_WINS,
       status: publicClearanceStatus(clearance),
       challengeRoomId: clearance?.challengeRoomId ?? null,
@@ -296,12 +282,12 @@ router.get("/auth/me", accountAuth, async (req: Request, res): Promise<void> => 
       thresholdDialogueResolution: thresholdApproach
         ? normalizeLumiiThresholdDialogueResolution(clearance?.thresholdDialogueResolution)
         : null,
-      covenantBroken: publicCovenantBroken(clearance),
+      thresholdRuptured: publicThresholdRuptured(clearance),
+      covenantBroken: publicThresholdRuptured(clearance),
       decryptionKeyBypassActive: clearance?.decryptionKeyBypassActiveAt != null,
       revealPending: clearance?.status === "cleared" && clearance.completedAt != null && clearance.vaultRevealSeenAt == null,
     },
     cosmeticLoadout: visibleCosmeticLoadout,
-    civilizationIdentity,
     activeRooms,
   });
 });
@@ -389,18 +375,10 @@ router.get("/auth/me/stats", accountAuth, async (req: Request, res): Promise<voi
   const archive = buildAccountArchiveFromPersistedStats({
     artifacts: progress.artifactStats,
     luminaries: progress.luminaryStats,
-    blueprints: progress.blueprintStats.map((entry) => ({
-      blueprintId: entry.blueprintId as typeof BLUEPRINT_IDS[number],
-      manifestationCount: entry.manifestations,
-    })),
+    chronicles: progress.chronicleUnlocks,
     qualifyingWins: progress.clearance?.qualifyingWins ?? 0,
     clearanceStatus: publicClearanceStatus(progress.clearance),
     challengeRoomId: progress.clearance?.challengeRoomId ?? null,
-    identitySelection: progress.identitySelection,
-    highestKardashevType: (progress.summary?.highestKardashevType ?? 0) as 0 | 1 | 2 | 3,
-    revealedProjectNames: progress.blueprintStats
-      .filter((entry) => entry.manifestations > 0 && entry.blueprintId in BLUEPRINT_DEFINITIONS)
-      .map((entry) => BLUEPRINT_DEFINITIONS[entry.blueprintId as typeof BLUEPRINT_IDS[number]].name),
   });
   const summary = progress.summary;
   const gamesPlayed = summary?.gamesPlayed ?? 0;
@@ -411,7 +389,9 @@ router.get("/auth/me/stats", accountAuth, async (req: Request, res): Promise<voi
     result: match.result as "win" | "loss" | "tie",
     eminenceEarned: match.eminence,
     totalPlayers: match.totalPlayers,
-    civilizationIdentity: asIdentitySnapshot(match.civilizationIdentitySnapshot),
+    civilizationRecord: summarizeCivilizationRecord(
+      storedCivilizationRecord(match.civilizationRecord),
+    ),
   }));
   const avgEminence = gamesPlayed > 0
     ? (summary?.totalEminence ?? 0) / gamesPlayed
@@ -423,50 +403,26 @@ router.get("/auth/me/stats", accountAuth, async (req: Request, res): Promise<voi
     losses: summary?.losses ?? 0,
     ties: summary?.ties ?? 0,
     avgEminence: Math.round(avgEminence * 10) / 10,
+    totalLume: summary?.totalLume ?? 0,
     recentGames: recentGames.slice(0, 20),
     matchHistory: recentGames,
     archive,
   });
 });
 
-// PUT /api/auth/me/civilization-identity — confirm an earned public identity.
-router.put("/auth/me/civilization-identity", accountAuth, async (req: Request, res): Promise<void> => {
-  const parsed = CivilizationIdentityBody.safeParse(req.body);
-  if (!parsed.success) {
-    res.status(400).json({ error: parsed.error.issues[0]?.message ?? "Invalid identity" });
-    return;
-  }
-
-  const account = req.account!;
-  const progress = await readAccountProgress(account.id);
-  const archive = buildAccountArchiveFromPersistedStats({
-    artifacts: progress.artifactStats,
-    luminaries: progress.luminaryStats,
-    blueprints: progress.blueprintStats.map((entry) => ({
-      blueprintId: entry.blueprintId as typeof BLUEPRINT_IDS[number],
-      manifestationCount: entry.manifestations,
-    })),
-    qualifyingWins: progress.clearance?.qualifyingWins ?? 0,
-    clearanceStatus: publicClearanceStatus(progress.clearance),
-    challengeRoomId: progress.clearance?.challengeRoomId ?? null,
-    identitySelection: progress.identitySelection,
-    highestKardashevType: (progress.summary?.highestKardashevType ?? 0) as 0 | 1 | 2 | 3,
-  });
-  const selection = parsed.data as CivilizationIdentitySelection;
-  const validationError = validateCivilizationIdentitySelection(selection, archive.identity.options);
-  if (validationError) {
-    res.status(403).json({ error: validationError });
-    return;
-  }
-
-  await writeAccountCivilizationIdentity(account.id, selection);
-  const civilizationIdentity = await readAccountCivilizationIdentity(account.id);
-  res.json({ ok: true, civilizationIdentity });
-});
-
 // GET /api/auth/me/preferences
 router.get("/auth/me/preferences", accountAuth, async (req: Request, res): Promise<void> => {
   const account = req.account!;
+  const [firstContactMemory] = await db
+    .select({ detail: accountLumiiRelationshipMemoriesTable.detail })
+    .from(accountLumiiRelationshipMemoriesTable)
+    .where(and(
+      eq(accountLumiiRelationshipMemoriesTable.accountId, account.id),
+      eq(accountLumiiRelationshipMemoriesTable.sourceKind, "tutorial"),
+      eq(accountLumiiRelationshipMemoriesTable.sourceRecordId, FIRST_CONTACT_MEMORY_SOURCE_ID),
+      eq(accountLumiiRelationshipMemoriesTable.memoryKey, FIRST_CONTACT_MEMORY_KEY),
+    ))
+    .limit(1);
   res.json({
     skipCinematics: account.skipCinematics,
     abridgedAnims: account.abridgedAnims,
@@ -475,28 +431,23 @@ router.get("/auth/me/preferences", accountAuth, async (req: Request, res): Promi
     hintsSeen: account.hintsSeen ?? [],
     tutorialSeen: account.tutorialSeen ?? false,
     tutorialCompleted: account.tutorialCompleted ?? false,
+    firstContactStance: isArchitectFirstContactStance(firstContactMemory?.detail)
+      ? firstContactMemory.detail
+      : null,
   });
 });
 
 // PATCH /api/auth/me/preferences
-const HINT_KEYS = [
-  "luminae_swipe_hint_seen",
-  "luminae_undo_hint_seen",
-  "luminae_reserve_hint_seen",
-  "luminae_deck_reserve_hint_seen",
-  "luminae_forge_hint_seen",
-] as const;
 const PreferencesBody = z.object({
   skipCinematics: z.boolean().optional(),
   abridgedAnims: z.boolean().optional(),
   hintsEnabled: z.boolean().optional(),
   muted: z.boolean().optional(),
-  hintsSeen: z.array(z.enum(HINT_KEYS)).max(HINT_KEYS.length)
-    .transform((keys) => [...new Set(keys)])
-    .optional(),
+  hintsSeen: z.array(z.string()).optional(),
   tutorialSeen: z.boolean().optional(),
   tutorialCompleted: z.boolean().optional(),
-}).strict();
+  firstContactStance: z.enum(ARCHITECT_FIRST_CONTACT_STANCES).optional(),
+});
 
 router.patch("/auth/me/preferences", accountAuth, async (req: Request, res): Promise<void> => {
   const parsed = PreferencesBody.safeParse(req.body);
@@ -506,7 +457,16 @@ router.patch("/auth/me/preferences", accountAuth, async (req: Request, res): Pro
   }
 
   const account = req.account!;
-  const { skipCinematics, abridgedAnims, hintsEnabled, muted, hintsSeen, tutorialSeen, tutorialCompleted } = parsed.data;
+  const {
+    skipCinematics,
+    abridgedAnims,
+    hintsEnabled,
+    muted,
+    hintsSeen,
+    tutorialSeen,
+    tutorialCompleted,
+    firstContactStance,
+  } = parsed.data;
 
   const updates: Partial<typeof accountsTable.$inferInsert> = {};
   if (skipCinematics !== undefined) updates.skipCinematics = skipCinematics;
@@ -524,7 +484,52 @@ router.patch("/auth/me/preferences", accountAuth, async (req: Request, res): Pro
       .where(eq(accountsTable.id, account.id));
   }
 
+  if (firstContactStance) {
+    await db.insert(accountLumiiRelationshipMemoriesTable).values({
+      accountId: account.id,
+      sourceKind: "tutorial",
+      sourceRecordId: FIRST_CONTACT_MEMORY_SOURCE_ID,
+      definitionVersion: 1,
+      memoryKey: FIRST_CONTACT_MEMORY_KEY,
+      valence: 0,
+      detail: firstContactStance,
+      visibility: "account",
+      simulation: false,
+    }).onConflictDoNothing();
+  }
+
   res.json({ ok: true });
 });
+
+const DeleteAccountBody = z.object({ password: z.string().min(1).max(200) });
+
+router.delete(
+  "/auth/me",
+  accountAuth,
+  rateLimit({ scope: "account-delete", max: 3, windowMs: 60 * 60_000 }),
+  async (req: Request, res): Promise<void> => {
+    const parsed = DeleteAccountBody.safeParse(req.body);
+    if (!parsed.success || !await bcrypt.compare(parsed.data.password, req.account!.passwordHash)) {
+      res.status(401).json({ error: "Password confirmation failed" });
+      return;
+    }
+    const now = new Date();
+    const executeAfter = new Date(now.getTime() + 7 * 24 * 60 * 60_000);
+    await db.insert(accountDeletionRequestsTable).values({
+      accountId: req.account!.id,
+      status: "pending",
+      requestedAt: now,
+      executeAfter,
+      cancelledAt: null,
+      completedAt: null,
+    }).onConflictDoUpdate({
+      target: accountDeletionRequestsTable.accountId,
+      set: { status: "pending", requestedAt: now, executeAfter, cancelledAt: null, completedAt: null },
+    });
+    await db.delete(accountSessionsTable).where(eq(accountSessionsTable.accountId, req.account!.id));
+    req.log.info({ accountId: req.account!.id, executeAfter }, "Account deletion scheduled");
+    res.status(202).json({ ok: true, executeAfter: executeAfter.toISOString() });
+  },
+);
 
 export default router;

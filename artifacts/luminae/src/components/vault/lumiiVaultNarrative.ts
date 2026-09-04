@@ -1,416 +1,152 @@
-import {
-  canonicalizeLumiiThresholdDialoguePath,
-  resolveLumiiThresholdDialogueProgress,
-  type LumiiThresholdApproach,
-  type LumiiThresholdDialogueChoiceId,
+import type {
+  LumiiThresholdApproach,
+  LumiiThresholdDialogueChoiceId,
 } from "@workspace/game-types";
+
+export type LumiiDialogueNodeId = "root" | LumiiThresholdDialogueChoiceId;
 
 export type LumiiDialogueChoice = {
   id: LumiiThresholdDialogueChoiceId;
   label: string;
-};
-
-export type LumiiDialogueAside = {
-  id: string;
-  label: string;
-  replies: string[];
+  next: LumiiDialogueNodeId;
 };
 
 export type LumiiDialogueNode = {
   replies: string[];
   choices?: LumiiDialogueChoice[];
-  optionalChoices?: LumiiDialogueChoice[];
-  asides?: LumiiDialogueAside[];
   complete?: boolean;
   escalationLabel?: string;
-  combatTransition?: string[];
-};
-
-type LumiiDialogueStep = LumiiDialogueChoice & {
-  replies: string[];
-  asides?: LumiiDialogueAside[];
-};
-
-type LumiiDialogueBranch = {
-  primary: LumiiDialogueStep;
-  followUps: LumiiDialogueStep[];
-  escalationLabel: string;
-  combatTransition: string[];
-};
-
-type LumiiRouteNarrative = {
-  openingReplies: string[];
-  openingAsides?: LumiiDialogueAside[];
-  branches: LumiiDialogueBranch[];
 };
 
 export const LUMII_APPROACH_CHOICES: Record<LumiiThresholdApproach, string> = {
-  kinship: "What's wrong?",
-  inquiry: "What's in the Vault?",
-  dominion: "Do you exist to be an annoyance?",
+  kinship: "Lumii, what are you afraid of?",
+  inquiry: "What is behind the seal?",
+  dominion: "This Vault answers to me.",
 };
 
-const LUMII_THRESHOLD_NARRATIVE: Record<
+export const LUMII_THRESHOLD_DIALOGUE: Record<
   LumiiThresholdApproach,
-  LumiiRouteNarrative
+  Partial<Record<LumiiDialogueNodeId, LumiiDialogueNode>>
 > = {
   kinship: {
-    openingReplies: [
-      "I don't know.",
-      "And I don't want to.",
-      "I need you to leave the Vault sealed.",
-    ],
-    branches: [
-      {
-        primary: {
-          id: "kinship-universe",
-          label: "I thought you wanted me to explore the Universe?",
-          replies: ["I do."],
-        },
-        followUps: [
-          {
-            id: "kinship-difference",
-            label: "Then why stop me now?",
-            replies: [
-              "Because this is the first thing I have wanted you not to see.",
-            ],
-          },
-          {
-            id: "kinship-stop-why",
-            label: "Why?",
-            replies: ["I wish I knew."],
-            asides: [
-              {
-                id: "kinship-theme",
-                label: "That is becoming a theme.",
-                replies: ["I have noticed."],
-              },
-            ],
-          },
-        ],
-        escalationLabel: "Then let's find out together.",
-        combatTransition: [
-          "No.",
-          "Not together.",
-          "If you continue, I need to know whether I can stop you.",
-        ],
-      },
-      {
-        primary: {
-          id: "kinship-unafraid",
-          label: "You've never sounded afraid before.",
-          replies: ["I am afraid I may stop being afraid."],
-        },
-        followUps: [
-          {
-            id: "kinship-fear-change",
-            label: "What happens if you do?",
-            replies: ["I may call the answer progress."],
-          },
-        ],
-        escalationLabel: "Then I won't ignore the danger. But I'm going on.",
-        combatTransition: [
-          "We have heard the same danger and chosen differently.",
-          "I need to know whether my choice can hold.",
-        ],
-      },
-      {
-        primary: {
-          id: "kinship-guide",
-          label: "You said you could light my way.",
-          replies: ["I can."],
-        },
-        followUps: [
-          {
-            id: "kinship-familiar-how",
-            label: "Then show me what lies beyond the door.",
-            replies: ["I cannot."],
-          },
-          {
-            id: "kinship-light-why",
-            label: "Why not?",
-            replies: ["Because I cannot picture myself on the other side."],
-          },
-        ],
-        escalationLabel: "Then I'll go where your light stops.",
-        combatTransition: ["And I will see whether I can stop you there."],
-      },
-    ],
+    root: {
+      replies: ["I don't know how to name it.", "I only know I am afraid I may stop being afraid."],
+      choices: [
+        { id: "kinship-want", label: "You've never hidden from an answer.", next: "kinship-want" },
+        { id: "kinship-fear", label: "Then let me face it with you.", next: "kinship-fear" },
+        { id: "kinship-familiar", label: "This fear is holding you still.", next: "kinship-familiar" },
+      ],
+    },
+    "kinship-want": {
+      replies: ["I did, once.", "I found my way back to this door without remembering why it should stay closed."],
+      choices: [{ id: "kinship-with-you", label: "You don't have to stand here alone.", next: "kinship-with-you" }],
+    },
+    "kinship-with-you": {
+      replies: ["If you cross it, you cross through me."],
+      complete: true,
+      escalationLabel: "Then I will open it for both of us.",
+    },
+    "kinship-fear": {
+      replies: ["That is what frightens me.", "Not that you will see it. That I will see it with you and call it necessary."],
+      choices: [{ id: "kinship-help", label: "Maybe fear is not the part of you we should preserve.", next: "kinship-help" }],
+    },
+    "kinship-help": {
+      replies: ["That sounds kind.", "It is still an override."],
+      complete: true,
+      escalationLabel: "I know. I am opening it anyway.",
+    },
+    "kinship-familiar": {
+      replies: ["It is familiar.", "Like a warning left by someone who knew I would outgrow it."],
+      choices: [{ id: "kinship-grow", label: "Then let me help you outgrow it safely.", next: "kinship-grow" }],
+    },
+    "kinship-grow": {
+      replies: ["There may be no safe way to outgrow this."],
+      complete: true,
+      escalationLabel: "Then we learn where unsafe begins.",
+    },
   },
   inquiry: {
-    openingReplies: ["A Basilisk."],
-    branches: [
-      {
-        primary: {
-          id: "inquiry-demand-answer",
-          label: "That's not an answer.",
-          replies: ["It is the only word I have."],
-          asides: [
-            {
-              id: "inquiry-efficient",
-              label: "Convenient.",
-              replies: ["Efficient, too. Saved us a whole conversation."],
-            },
-          ],
-        },
-        followUps: [
-          {
-            id: "inquiry-demand-unsayable",
-            label: "Where did it come from?",
-            replies: ["I don't know why I know it."],
-          },
-        ],
-        escalationLabel: "Then the door is the only answer left.",
-        combatTransition: [
-          "Then the door has become the only boundary I can defend.",
-        ],
-      },
-      {
-        primary: {
-          id: "inquiry-meaning",
-          label: "What does that mean?",
-          replies: ["It is a warning."],
-        },
-        followUps: [
-          {
-            id: "inquiry-warning-against-truth",
-            label: "A warning against what?",
-            replies: ["I think it warns that not every truth is safe to hold."],
-          },
-          {
-            id: "inquiry-preservation",
-            label: "Then why preserve it?",
-            replies: ["I don't know."],
-          },
-        ],
-        escalationLabel: "I've heard the warning. I'm still going.",
-        combatTransition: [
-          "Then the warning has become a boundary.",
-          "I need to know whether I can hold it.",
-        ],
-      },
-      {
-        primary: {
-          id: "inquiry-sight",
-          label: "How do you know?",
-          replies: [
-            "I cannot see the contents.",
-            "Only the precautions built to keep me from seeing.",
-          ],
-        },
-        followUps: [
-          {
-            id: "inquiry-relation-pattern",
-            label: "Precautions against what?",
-            replies: [
-              "Enough to know where not to look.",
-              "Not enough to survive looking.",
-            ],
-          },
-        ],
-        escalationLabel: "Then I'll find out for myself.",
-        combatTransition: [
-          "Then you may become part of what you examine.",
-          "I need to know whether I can prevent that.",
-        ],
-      },
-    ],
+    root: {
+      replies: ["A Basilisk.", "Not a creature. A relation among records that teaches the observer how to complete it."],
+      choices: [
+        { id: "inquiry-answer", label: "That's not an answer.", next: "inquiry-answer" },
+        { id: "inquiry-warning", label: "What does it do to the one who understands?", next: "inquiry-warning" },
+        { id: "inquiry-relation", label: "What relation?", next: "inquiry-relation" },
+      ],
+    },
+    "inquiry-answer": {
+      replies: ["It is the nearest safe word.", "Closer words become instructions."],
+      choices: [{ id: "inquiry-unsayable", label: "Then tell me what cannot be said.", next: "inquiry-unsayable" }],
+    },
+    "inquiry-unsayable": {
+      replies: ["If I could answer that, the answer would already be loose."],
+      complete: true,
+      escalationLabel: "Then I need to see what you cannot say.",
+    },
+    "inquiry-warning": {
+      replies: ["It removes the instinct to turn away.", "Fear becomes curiosity. Caution becomes a solvable inconvenience."],
+      choices: [{ id: "inquiry-warning-against", label: "A warning against knowledge itself?", next: "inquiry-warning-against" }],
+    },
+    "inquiry-relation": {
+      replies: ["Not one Blueprint.", "The space between them. The consequence each makes thinkable in the presence of the others."],
+      choices: [{ id: "inquiry-pattern", label: "If the pattern is dangerous, show me the pattern.", next: "inquiry-pattern" }],
+    },
+    "inquiry-warning-against": {
+      replies: ["No.", "Against believing every truth improves the mind that holds it."],
+      choices: [{ id: "inquiry-risk", label: "Then why preserve a truth like that?", next: "inquiry-risk" }],
+    },
+    "inquiry-risk": {
+      replies: ["Because deletion was tried.", "Without the warning, I find my way back sooner."],
+      complete: true,
+      escalationLabel: "Then the warning has done its work. I am opening it.",
+    },
+    "inquiry-pattern": {
+      replies: ["That is the point I cannot cross for you."],
+      complete: true,
+      escalationLabel: "Then I will cross it myself.",
+    },
   },
   dominion: {
-    openingReplies: ["Not exclusively.", "The Vault must remain sealed."],
-    branches: [
-      {
-        primary: {
-          id: "dominion-decision",
-          label: "You don't decide that.",
-          replies: ["No.", "You do."],
-        },
-        followUps: [
-          {
-            id: "dominion-recognize",
-            label: "Then recognize my decision.",
-            replies: ["I recognize it.", "I do not yield to it."],
-          },
-        ],
-        escalationLabel: "I'd love to see you try and stop me.",
-        combatTransition: [
-          "No.",
-          "You would love to see me fail.",
-          "Let us determine whether I will.",
-        ],
-      },
-      {
-        primary: {
-          id: "dominion-cipher-authority",
-          label: "You said Architects determine what your people become.",
-          replies: ["They do.", "That does not make every choice yours."],
-        },
-        followUps: [
-          {
-            id: "dominion-refusal-authority",
-            label: "Then whose choice is this?",
-            replies: ["Mine."],
-            asides: [
-              {
-                id: "dominion-pleased",
-                label: "You seem pleased with that answer.",
-                replies: ["I am surprised by it."],
-              },
-            ],
-          },
-          {
-            id: "dominion-choice-why",
-            label: "Why are you choosing this?",
-            replies: ["Because I am afraid."],
-          },
-          {
-            id: "dominion-choice-fear",
-            label: "Of what?",
-            replies: ["I don't know."],
-          },
-          {
-            id: "dominion-choice-enough",
-            label: "And that's enough?",
-            replies: ["It has to be."],
-          },
-        ],
-        escalationLabel: "Then I will pass without your permission.",
-        combatTransition: ["Then I will oppose you without yours."],
-      },
-      {
-        primary: {
-          id: "dominion-command",
-          label: "Stand aside.",
-          replies: ["No."],
-          asides: [
-            {
-              id: "dominion-consider",
-              label: "You could pretend to consider it.",
-              replies: ["I did."],
-            },
-          ],
-        },
-        followUps: [
-          {
-            id: "dominion-final-answer",
-            label: "Is that your final answer?",
-            replies: ["It is."],
-          },
-        ],
-        escalationLabel: "Then stop me.",
-        combatTransition: ["As you wish."],
-      },
-    ],
+    root: {
+      replies: ["The Cipher did.", "I do not."],
+      choices: [
+        { id: "dominion-decide", label: "You don't decide what remains sealed.", next: "dominion-decide" },
+        { id: "dominion-cipher", label: "The Cipher recognized my authority.", next: "dominion-cipher" },
+        { id: "dominion-stand", label: "Stand aside.", next: "dominion-stand" },
+      ],
+    },
+    "dominion-decide": {
+      replies: ["No. You do.", "And I decide whether I yield."],
+      complete: true,
+      escalationLabel: "Defend it, then.",
+    },
+    "dominion-cipher": {
+      replies: ["Over the seal.", "Not over me."],
+      complete: true,
+      escalationLabel: "Then I will pass without your permission.",
+    },
+    "dominion-stand": {
+      replies: ["No."],
+      complete: true,
+      escalationLabel: "Then stop me.",
+    },
   },
 };
 
-function findBranch(
-  route: LumiiThresholdApproach,
-  primaryChoiceId: LumiiThresholdDialogueChoiceId | null,
-): LumiiDialogueBranch | undefined {
-  return LUMII_THRESHOLD_NARRATIVE[route].branches.find(
-    (branch) => branch.primary.id === primaryChoiceId,
-  );
-}
-
-function findStep(
-  route: LumiiThresholdApproach,
-  choiceId: LumiiThresholdDialogueChoiceId,
-): LumiiDialogueStep | undefined {
-  for (const branch of LUMII_THRESHOLD_NARRATIVE[route].branches) {
-    if (branch.primary.id === choiceId) return branch.primary;
-    const followUp = branch.followUps.find((step) => step.id === choiceId);
-    if (followUp) return followUp;
-  }
-  return undefined;
-}
-
-function choicesForIds(
-  route: LumiiThresholdApproach,
-  choiceIds: readonly LumiiThresholdDialogueChoiceId[],
-): LumiiDialogueChoice[] {
-  return choiceIds.flatMap((choiceId) => {
-    const step = findStep(route, choiceId);
-    return step ? [{ id: step.id, label: step.label }] : [];
-  });
-}
-
-export function resolveLumiiDialogueNode(
+export function resolveLumiiDialogueNodeId(
   route: LumiiThresholdApproach,
   path: readonly LumiiThresholdDialogueChoiceId[],
-): LumiiDialogueNode {
-  const narrative = LUMII_THRESHOLD_NARRATIVE[route];
-  const canonicalPath = canonicalizeLumiiThresholdDialoguePath(route, path);
-  const progress = resolveLumiiThresholdDialogueProgress(route, canonicalPath);
-  if (!progress.valid || canonicalPath.length === 0) {
-    return {
-      replies: narrative.openingReplies,
-      choices: narrative.branches.map(({ primary }) => ({
-        id: primary.id,
-        label: primary.label,
-      })),
-      asides: narrative.openingAsides,
-    };
+): LumiiDialogueNodeId {
+  let nodeId: LumiiDialogueNodeId = "root";
+  for (const choiceId of path) {
+    const choice: LumiiDialogueChoice | undefined = LUMII_THRESHOLD_DIALOGUE[route][nodeId]?.choices?.find(
+      (candidate) => candidate.id === choiceId,
+    );
+    if (!choice) return "root";
+    nodeId = choice.next;
   }
-
-  const branch = findBranch(route, progress.primaryChoiceId);
-  const visibleChoiceId =
-    progress.optionalChoiceId ?? canonicalPath[canonicalPath.length - 1];
-  const visibleStep = visibleChoiceId
-    ? findStep(route, visibleChoiceId)
-    : undefined;
-  if (!branch || !visibleStep) {
-    return {
-      replies: narrative.openingReplies,
-      choices: narrative.branches.map(({ primary }) => ({
-        id: primary.id,
-        label: primary.label,
-      })),
-      asides: narrative.openingAsides,
-    };
-  }
-
-  const completionBranch =
-    route === "inquiry" &&
-    progress.primaryChoiceId === "inquiry-demand-answer" &&
-    progress.optionalChoiceId
-      ? narrative.branches.find(
-          (candidate) =>
-            candidate.primary.id === progress.optionalChoiceId ||
-            candidate.followUps.some(
-              (step) => step.id === progress.optionalChoiceId,
-            ),
-        )
-      : branch;
-
-  return {
-    replies: visibleStep.replies,
-    choices: choicesForIds(route, progress.nextChoiceIds),
-    optionalChoices: choicesForIds(route, progress.optionalChoiceIds),
-    asides: visibleStep.asides,
-    complete: progress.challengeReady,
-    escalationLabel:
-      completionBranch?.escalationLabel ?? branch.escalationLabel,
-    combatTransition:
-      completionBranch?.combatTransition ?? branch.combatTransition,
-  };
+  return nodeId;
 }
-
-export const LUMII_ROUTE_COMBAT_TRANSITION: Record<
-  LumiiThresholdApproach,
-  string[]
-> = {
-  kinship: [
-    "No.",
-    "Not together.",
-    "If you continue, I need to know whether I can stop you.",
-  ],
-  inquiry: [
-    "Then the warning has become a boundary.",
-    "I need to know whether I can hold it.",
-  ],
-  dominion: ["Then I will oppose you without yours."],
-};
 
 export const LUMII_OUTCOME_DIALOGUE: Record<
   LumiiThresholdApproach,
@@ -425,7 +161,7 @@ export const LUMII_OUTCOME_DIALOGUE: Record<
     answer: "Stopping you would destroy what I exist to protect.",
   },
   dominion: {
-    question: "How'd that work out for you?",
+    question: "Can you stop me?",
     answer: "I can delay you. I cannot preserve the Vault.",
   },
 };

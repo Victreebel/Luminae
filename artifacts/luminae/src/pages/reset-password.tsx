@@ -36,8 +36,8 @@ export default function ResetPassword() {
 
   const handleSubmit = async () => {
     if (!token) return;
-    if (password.length < 10) {
-      setError("Password must be at least 10 characters.");
+    if (password.length < 6) {
+      setError("Password must be at least 6 characters.");
       return;
     }
     if (password !== confirm) {
@@ -134,11 +134,9 @@ export default function ResetPassword() {
                     type={showPassword ? "text" : "password"}
                     value={password}
                     onChange={(e) => setPassword(e.target.value)}
-                    placeholder="At least 10 characters"
+                    placeholder="At least 6 characters"
                     className="h-12 rounded-md bg-input/60 pr-11"
                     autoComplete="new-password"
-                    minLength={10}
-                    maxLength={128}
                     onKeyDown={(e) => e.key === "Enter" && handleSubmit()}
                   />
                   <button
@@ -177,7 +175,7 @@ export default function ResetPassword() {
               <Button
                 className="oom-action-primary h-12"
                 onClick={handleSubmit}
-                disabled={isLoading || password.length < 10 || !confirm.trim()}
+                disabled={isLoading || !password.trim() || !confirm.trim()}
               >
                 {isLoading ? (
                   <Loader2 className="h-4 w-4 animate-spin" />

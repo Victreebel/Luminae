@@ -12,6 +12,9 @@ vi.mock("@/contexts/CosmeticsContext", () => ({
     equippedItemIds: {
       card_back: cosmeticState.cardBack,
       civilization_ambience: cosmeticState.ambience,
+      luminary_arrival_sound: null,
+      blueprint_presentation: null,
+      vault_seal: null,
     },
   }),
 }));

@@ -1,4 +1,8 @@
 import type { GamePlayerState } from '@workspace/api-client-react';
+import {
+  foundryStoredArtifactIds,
+  ordinaryEncryptedCount,
+} from '@workspace/game-types';
 
 export interface PlannedActionInfo {
   actionType?: string;
@@ -70,8 +74,25 @@ export function canCommitPlannedAction({
   );
 }
 
-export function canReserveMore(player: Pick<GamePlayerState, 'reservedArtifacts'>): boolean {
-  return player.reservedArtifacts.length < 3;
+type ClientEncryptedState = Pick<GamePlayerState, 'reservedArtifacts' | 'blueprintPrivateStates'>;
+
+function encryptedState(player: ClientEncryptedState) {
+  return {
+    reservedArtifactIds: player.reservedArtifacts.map((artifact) => artifact.id),
+    blueprintPrivateStates: player.blueprintPrivateStates,
+  };
+}
+
+export function getFoundryStoredIds(player: ClientEncryptedState): string[] {
+  return foundryStoredArtifactIds(encryptedState(player));
+}
+
+export function getOrdinaryEncryptedCount(player: ClientEncryptedState): number {
+  return ordinaryEncryptedCount(encryptedState(player));
+}
+
+export function canReserveMore(player: ClientEncryptedState): boolean {
+  return getOrdinaryEncryptedCount(player) < 3;
 }
 
 export function getPlannedActionInfo(plannedAction?: Record<string, unknown> | null): PlannedActionInfo {
@@ -88,7 +109,9 @@ export function getPlannedActionInfo(plannedAction?: Record<string, unknown> | n
       : null;
   const label = actionType === 'reserve_artifact'
     ? 'Encrypt pending'
-    : actionType === 'foundry_forge_artifact'
+    : actionType === 'forge_artifact' && plannedAction?.blueprintAction === 'foundry_overdrive'
+      ? 'Foundry Overdrive pending'
+    : actionType === 'forge_artifact' && plannedAction?.blueprintAction === 'foundry_sustainable'
       ? 'Foundry Forge pending'
     : actionType === 'forge_artifact' && plannedAction?.luminaryId === 'lum_tide'
       ? 'Archive Forge pending'

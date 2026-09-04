@@ -1,7 +1,6 @@
 /* The guided match composes the live Forge and Affinity Well modules inside a
    controlled viewport. Keep these final constraints after index.css. */
 .tutorial-gameplay.game-shell[data-tutorial-gameplay="true"] {
-  --tutorial-artifact-aspect: 0.7;
   --tutorial-well-h: 140px;
   --tutorial-nav-h: 58px;
   --tutorial-lower-chrome-h: calc(var(--tutorial-well-h) + var(--tutorial-nav-h));
@@ -16,111 +15,10 @@
   min-height: 48px !important;
 }
 
-.tutorial-gameplay .tutorial-opponent-dock {
-  display: flex;
-  min-width: 118px;
-  max-width: 142px;
-  height: 30px;
-  align-items: center;
-  justify-content: center;
-  gap: 4px;
-  transition: border-color 180ms ease, box-shadow 180ms ease, background-color 180ms ease;
-}
-
-.tutorial-gameplay .tutorial-opponent-dock[data-tutorial-opponent-active="true"] {
-  border-color: rgba(165, 180, 252, 0.72);
-  background: rgba(49, 46, 129, 0.5);
-  box-shadow: 0 0 18px rgba(129, 140, 248, 0.28);
-}
-
-.tutorial-gameplay .tutorial-opponent-orb-socket {
-  width: 22px;
-  height: 22px;
-  flex: 0 0 22px;
-  border: 1px solid rgba(165, 180, 252, 0.42);
-  border-radius: 999px;
-  background:
-    radial-gradient(circle at center, rgba(255,255,255,0.08) 0 14%, transparent 16%),
-    conic-gradient(from 20deg, rgba(96,165,250,0.3), rgba(250,204,21,0.25), rgba(74,222,128,0.25), rgba(168,85,247,0.25), rgba(248,113,113,0.28), rgba(96,165,250,0.3));
-  box-shadow: inset 0 0 8px rgba(129, 140, 248, 0.2);
-}
-
-@media (max-width: 360px) {
-  .tutorial-gameplay.game-shell[data-tutorial-gameplay="true"] > .game-header {
-    padding-inline: 8px !important;
-  }
-
-  .tutorial-gameplay .tutorial-opponent-dock {
-    min-width: 108px;
-    max-width: 118px;
-    gap: 3px;
-    padding-inline: 4px !important;
-  }
-}
-
 .tutorial-gameplay.game-shell[data-tutorial-gameplay="true"] > .game-main {
   width: 100%;
   min-height: 0;
   padding: 0 !important;
-}
-
-/* The tutorial omits the production Forge's cost-control row. Give its two
-   rendered children (header and tiers) two real tracks so the tiers contribute
-   to the module's height instead of overflowing a phantom controls row. */
-.tutorial-gameplay.game-shell[data-tutorial-gameplay="true"][data-board-presentation][data-board-density][data-board-layout][data-forge-density]
-  .board-forge.board-forge--compact {
-  height: auto !important;
-  min-height: 0 !important;
-  grid-template-rows: auto auto !important;
-}
-
-/* Constrained phones use a static camera. Show only the current teaching
-   surface so the Terminus cannot push the required Forge card off-screen. */
-.tutorial-gameplay.game-shell[data-tutorial-camera="static"][data-tutorial-surface="forge"]
-  .tutorial-secondary-board {
-  display: none !important;
-}
-
-.tutorial-gameplay.game-shell[data-tutorial-gameplay="true"][data-tutorial-camera="static"][data-tutorial-surface="forge"][data-board-presentation][data-board-density][data-board-layout][data-forge-density]
-  .board-forge.board-forge--compact {
-  height: 100% !important;
-  min-height: 0 !important;
-  grid-template-rows: 48px minmax(0, 1fr) !important;
-}
-
-.tutorial-gameplay.game-shell[data-tutorial-gameplay="true"][data-tutorial-camera="static"][data-tutorial-surface="forge"][data-board-presentation][data-board-density][data-board-layout][data-forge-density]
-  .board-forge--compact [data-forge-tiers="true"] {
-  height: 100% !important;
-  min-height: 0 !important;
-}
-
-.tutorial-gameplay.game-shell[data-tutorial-camera="static"][data-tutorial-surface="luminary"]
-  .board-forge {
-  display: none !important;
-}
-
-.tutorial-gameplay.game-shell[data-tutorial-camera="static"][data-tutorial-surface="luminary"]
-  .tutorial-secondary-board {
-  display: block !important;
-  width: 100%;
-}
-
-.tutorial-gameplay.game-shell[data-tutorial-camera="static"][data-tutorial-surface="luminary"]
-  .tutorial-board-scroll {
-  justify-content: flex-start;
-  padding-top: 4px !important;
-}
-
-@media (max-width: 360px) and (orientation: portrait) {
-  .tutorial-gameplay.game-shell[data-tutorial-camera="static"][data-tutorial-surface="luminary"]
-    [data-tutorial-luminary-target],
-  .tutorial-gameplay.game-shell[data-tutorial-camera="static"][data-tutorial-surface="luminary"]
-    [data-tutorial-luminary-target] > div:first-child,
-  .tutorial-gameplay.game-shell[data-tutorial-camera="static"][data-tutorial-surface="luminary"]
-    [data-tutorial-luminary-target] > div:first-child > div {
-    width: 97px !important;
-    height: 138px !important;
-  }
 }
 
 .tutorial-gameplay.game-shell[data-tutorial-gameplay="true"] > .game-bottom-nav {
@@ -222,35 +120,24 @@
   height: 100%;
 }
 
-.tutorial-gameplay.game-shell[data-tutorial-gameplay="true"] .tutorial-dialogue[data-camera-focus="overview"],
-.tutorial-gameplay.game-shell[data-tutorial-gameplay="true"] .tutorial-dialogue[data-camera-focus="tier1"],
-.tutorial-gameplay.game-shell[data-tutorial-gameplay="true"] .tutorial-dialogue[data-camera-focus="tier2"],
-.tutorial-gameplay.game-shell[data-tutorial-gameplay="true"] .tutorial-dialogue[data-camera-focus="tier3"] {
-  top: auto !important;
-  bottom: calc(var(--tutorial-lower-chrome-h) + 4px + env(safe-area-inset-bottom, 0px)) !important;
-}
-
-.tutorial-gameplay.game-shell[data-tutorial-gameplay="true"] .tutorial-dialogue[data-camera-focus="well"],
-.tutorial-gameplay.game-shell[data-tutorial-gameplay="true"][data-tutorial-beat="b8_first_harness"] .tutorial-dialogue {
+.tutorial-dialogue-dock,
+.tutorial-gameplay.game-shell[data-tutorial-gameplay="true"] .tutorial-dialogue.tutorial-dialogue-dock {
+  position: fixed !important;
+  top: calc(96px + env(safe-area-inset-top, 0px)) !important;
+  right: 0 !important;
   bottom: auto !important;
+  left: 0 !important;
+  width: auto !important;
+  max-width: none !important;
+  margin: 0 !important;
+  padding-inline: 16px !important;
+  z-index: 50;
 }
 
-/* Keep the first Encrypt instruction clear of Lichen Vein. The centered
-   dialogue otherwise sits directly over the required Tier I target. */
-@media (min-width: 681px) and (min-height: 641px) {
-  .tutorial-gameplay.game-shell[data-tutorial-gameplay="true"][data-tutorial-beat="b10_reserve"] .tutorial-dialogue {
-    top: calc(72px + env(safe-area-inset-top, 0px)) !important;
-    right: 18px !important;
-    bottom: auto !important;
-    left: auto !important;
-    width: min(360px, calc(100vw - 36px));
-    padding: 0 !important;
-  }
-
-  .tutorial-gameplay.game-shell[data-tutorial-gameplay="true"][data-tutorial-beat="b10_reserve"] .tutorial-dialogue > div {
-    max-width: none;
-    margin-inline: 0;
-  }
+.tutorial-dialogue-dock > div {
+  width: 100%;
+  max-width: 24rem;
+  margin-inline: auto;
 }
 
 @media (max-width: 680px) and (max-height: 640px) and (orientation: portrait) {
@@ -274,11 +161,11 @@
     height: 100% !important;
   }
 
-  .tutorial-gameplay.game-shell[data-tutorial-gameplay="true"][data-tutorial-camera="static"][data-tutorial-surface="forge"][data-board-presentation][data-board-density][data-board-layout][data-forge-density]
+  .tutorial-gameplay.game-shell[data-tutorial-gameplay="true"][data-board-presentation][data-board-density][data-board-layout][data-forge-density]
     .board-forge.board-forge--compact {
-    height: 100% !important;
-    min-height: 0 !important;
-    grid-template-rows: minmax(0, 1fr) !important;
+    height: 330px !important;
+    min-height: 330px !important;
+    grid-template-rows: 28px 302px !important;
   }
 
   .tutorial-gameplay.game-shell[data-tutorial-gameplay="true"][data-board-presentation][data-board-density][data-board-layout][data-forge-density]
@@ -303,15 +190,7 @@
   }
 
   .tutorial-gameplay.game-shell[data-tutorial-gameplay="true"][data-board-presentation][data-board-density][data-board-layout][data-forge-density]
-    .board-forge--compact .board-forge-compact-chip {
-    width: auto !important;
-    min-width: 0 !important;
-    height: 79px !important;
-    min-height: 79px !important;
-    aspect-ratio: var(--tutorial-artifact-aspect) !important;
-    justify-self: center !important;
-  }
-
+    .board-forge--compact .board-forge-compact-chip,
   .tutorial-gameplay.game-shell[data-tutorial-gameplay="true"][data-board-presentation][data-board-density][data-board-layout][data-forge-density]
     .board-forge--compact .board-forge-archive-rail,
   .tutorial-gameplay.game-shell[data-tutorial-gameplay="true"][data-board-presentation][data-board-density][data-board-layout][data-forge-density]
@@ -321,12 +200,6 @@
     height: 79px !important;
     min-height: 79px !important;
     aspect-ratio: auto !important;
-  }
-
-  .tutorial-gameplay.game-shell[data-tutorial-gameplay="true"] .tutorial-dialogue[data-camera-focus="tier1"],
-  .tutorial-gameplay.game-shell[data-tutorial-gameplay="true"] .tutorial-dialogue[data-camera-focus="tier2"] {
-    top: 52px !important;
-    bottom: auto !important;
   }
 
   .tutorial-gameplay.game-shell[data-tutorial-gameplay="true"][data-board-density][data-board-layout]
@@ -384,62 +257,6 @@
     --tutorial-well-h: 114px;
   }
 
-  .tutorial-gameplay.game-shell[data-tutorial-camera="static"][data-tutorial-surface="luminary"]
-    .tutorial-luminary-section {
-    display: grid;
-    grid-template-rows: 28px minmax(0, 1fr);
-    width: 100%;
-    height: 100%;
-    min-height: 0;
-  }
-
-  .tutorial-gameplay.game-shell[data-tutorial-camera="static"][data-tutorial-surface="luminary"]
-    .tutorial-luminary-header {
-    min-height: 28px;
-    padding: 2px 8px !important;
-  }
-
-  .tutorial-gameplay.game-shell[data-tutorial-camera="static"][data-tutorial-surface="luminary"]
-    .tutorial-luminary-cards {
-    height: 100%;
-    min-height: 0;
-    align-items: center;
-    justify-content: flex-start;
-    padding: 2px 8px 2px calc(25% - 56px) !important;
-    overflow: hidden;
-  }
-
-  .tutorial-gameplay.game-shell[data-tutorial-camera="static"][data-tutorial-surface="luminary"]
-    .tutorial-luminary-card {
-    width: auto !important;
-    height: 100% !important;
-    max-height: 132px;
-    aspect-ratio: var(--tutorial-artifact-aspect) !important;
-  }
-
-  .tutorial-gameplay.game-shell[data-tutorial-camera="static"][data-tutorial-surface="luminary"]
-    .tutorial-luminary-card > div:first-child,
-  .tutorial-gameplay.game-shell[data-tutorial-camera="static"][data-tutorial-surface="luminary"]
-    .tutorial-luminary-card :is(img, svg, canvas) {
-    width: 100% !important;
-    height: 100% !important;
-  }
-
-  .tutorial-gameplay.game-shell[data-tutorial-camera="static"][data-tutorial-surface="luminary"]
-    .tutorial-luminary-cards > .tutorial-luminary-card:last-child {
-    display: none;
-  }
-
-  .tutorial-gameplay.game-shell[data-tutorial-camera="static"][data-tutorial-surface="luminary"]
-    .tutorial-dialogue {
-    top: 54px !important;
-    right: 8px !important;
-    bottom: auto !important;
-    left: calc(50% + 8px) !important;
-    width: auto !important;
-    padding: 0 !important;
-  }
-
   .tutorial-gameplay.game-shell[data-tutorial-gameplay="true"] > .game-header {
     height: 46px !important;
     min-height: 46px !important;
@@ -458,10 +275,10 @@
     padding: 0 !important;
   }
 
-  .tutorial-gameplay.game-shell[data-tutorial-gameplay="true"][data-tutorial-camera="static"][data-tutorial-surface="forge"][data-board-presentation][data-board-density][data-board-layout][data-forge-density]
+  .tutorial-gameplay.game-shell[data-tutorial-gameplay="true"][data-board-presentation][data-board-density][data-board-layout][data-forge-density]
     .board-forge.board-forge--compact {
     display: grid !important;
-    grid-template-rows: 92px !important;
+    grid-template-rows: 28px 92px !important;
     width: 100% !important;
     height: 120px !important;
     min-height: 120px !important;
@@ -528,11 +345,11 @@
 
   .tutorial-gameplay.game-shell[data-tutorial-gameplay="true"][data-board-presentation][data-board-density][data-board-layout][data-forge-density]
     .board-forge--compact .board-forge-compact-chip {
-    width: auto !important;
+    width: min(100%, 48px) !important;
     height: 68px !important;
     min-width: 0 !important;
     min-height: 68px !important;
-    aspect-ratio: var(--tutorial-artifact-aspect) !important;
+    aspect-ratio: auto !important;
     justify-self: center !important;
   }
 
@@ -551,21 +368,8 @@
 
   .tutorial-gameplay.game-shell[data-tutorial-gameplay="true"][data-board-density][data-board-layout]
     > .tutorial-affinity-panel.affinity-well-panel[data-shared-affinity-well] {
-    --well-icon-size: 22px;
-    display: grid !important;
-    grid-template-rows: 38px minmax(0, 1fr) 46px !important;
-    height: 100% !important;
-    min-height: 100% !important;
-    max-height: 100% !important;
-    padding: 0 3px !important;
-  }
-
-  .tutorial-gameplay.game-shell[data-tutorial-gameplay="true"][data-board-density][data-board-layout]
-    > .tutorial-affinity-panel.affinity-well-panel[data-shared-affinity-well] .affinity-well-header {
-    height: 38px !important;
-    min-height: 38px !important;
-    max-height: 38px !important;
-    padding: 3px 4px !important;
+    --well-icon-size: 18px;
+    grid-template-rows: 28px 50px 30px !important;
   }
 
   .tutorial-gameplay.game-shell[data-tutorial-gameplay="true"][data-board-density][data-board-layout]
@@ -574,64 +378,52 @@
     > .tutorial-affinity-panel.affinity-well-panel[data-shared-affinity-well] [data-well-carousel],
   .tutorial-gameplay.game-shell[data-tutorial-gameplay="true"][data-board-density][data-board-layout]
     > .tutorial-affinity-panel.affinity-well-panel[data-shared-affinity-well] .affinity-well-cell {
-    height: 100% !important;
-    min-height: 0 !important;
-    max-height: none !important;
+    height: 50px !important;
+    min-height: 50px !important;
+    max-height: 50px !important;
   }
 
   .tutorial-gameplay.game-shell[data-tutorial-gameplay="true"][data-board-density][data-board-layout]
     > .tutorial-affinity-panel.affinity-well-panel[data-shared-affinity-well] [data-well-carousel] > div {
-    grid-template-columns: repeat(3, minmax(0, 1fr)) !important;
-    grid-template-rows: repeat(2, minmax(0, 1fr)) !important;
-    width: 100% !important;
-    height: 100% !important;
-    gap: 3px !important;
-    padding: 3px !important;
+    grid-template-columns: repeat(6, minmax(0, 1fr)) !important;
+    grid-template-rows: 50px !important;
+    height: 50px !important;
   }
 
   .tutorial-gameplay.game-shell[data-tutorial-gameplay="true"][data-board-density][data-board-layout]
     > .tutorial-affinity-panel.affinity-well-panel[data-shared-affinity-well] .affinity-well-cell .affinity-well-cell-button,
   .tutorial-gameplay.game-shell[data-tutorial-gameplay="true"][data-board-density][data-board-layout]
     > .tutorial-affinity-panel.affinity-well-panel[data-shared-affinity-well] .affinity-well-cell[data-affinity="singularity"] .affinity-well-cell-button {
-    grid-template-rows: minmax(18px, 1fr) 13px 7px !important;
-    width: 100% !important;
-    height: calc(100% - 45px) !important;
-    min-height: 44px !important;
-    max-height: none !important;
-    flex-basis: auto !important;
+    grid-template-rows: 13px 9px 4px !important;
+    height: 30px !important;
+    min-height: 30px !important;
+    max-height: 30px !important;
+    flex-basis: 30px !important;
   }
 
   .tutorial-gameplay.game-shell[data-tutorial-gameplay="true"][data-board-density][data-board-layout]
     > .tutorial-affinity-panel.affinity-well-panel[data-shared-affinity-well] .affinity-well-take2 {
-    position: static !important;
-    width: 100% !important;
-    height: 44px !important;
-    min-height: 44px !important;
-    max-height: 44px !important;
-    padding: 0 !important;
+    height: 20px !important;
+    min-height: 20px !important;
+    max-height: 20px !important;
   }
 
   .tutorial-gameplay.game-shell[data-tutorial-gameplay="true"][data-board-density][data-board-layout]
     > .tutorial-affinity-panel.affinity-well-panel[data-shared-affinity-well] .affinity-well-action-zone {
-    height: 46px !important;
-    min-height: 46px !important;
-    max-height: 46px !important;
-    padding: 3px 4px !important;
-  }
-
-  .tutorial-gameplay.game-shell[data-tutorial-gameplay="true"] .tutorial-affinity-panel .affinity-well-action-zone button {
-    height: 44px !important;
-    min-height: 44px !important;
+    height: 30px !important;
+    min-height: 30px !important;
+    max-height: 30px !important;
+    padding: 2px !important;
   }
 }
 
 /* In portrait, the Affinity Well shares primary-board priority with the Forge. */
 @media (max-width: 680px) and (orientation: portrait) {
   .tutorial-gameplay.game-shell[data-tutorial-gameplay="true"][data-board-density][data-board-layout] {
-    --tutorial-phone-well-h: clamp(204px, 40dvh, 228px);
-    --tutorial-phone-well-header-h: clamp(44px, 9dvh, 52px);
-    --tutorial-phone-well-action-h: 46px;
-    --tutorial-phone-well-take2-h: 44px;
+    --tutorial-phone-well-h: clamp(170px, 30dvh, 204px);
+    --tutorial-phone-well-header-h: clamp(34px, 6dvh, 42px);
+    --tutorial-phone-well-action-h: clamp(36px, 6dvh, 40px);
+    --tutorial-phone-well-take2-h: clamp(28px, 4.8dvh, 32px);
     --tutorial-phone-well-cells-h: calc(var(--tutorial-phone-well-h) - var(--tutorial-phone-well-header-h) - var(--tutorial-phone-well-action-h) - 2px);
     --tutorial-phone-well-cell-h: calc(var(--tutorial-phone-well-cells-h) - 6px);
     --tutorial-phone-well-main-h: calc(var(--tutorial-phone-well-cell-h) - var(--tutorial-phone-well-take2-h));
@@ -763,14 +555,7 @@
   }
 
   .tutorial-gameplay.game-shell[data-tutorial-gameplay="true"] .tutorial-affinity-panel .affinity-well-action-zone button {
-    height: 44px !important;
-    min-height: 44px !important;
-  }
-
-  .tutorial-gameplay.game-shell[data-tutorial-gameplay="true"] .tutorial-affinity-panel .affinity-well-action-zone button[aria-label="Undo last affinity"],
-  .tutorial-gameplay.game-shell[data-tutorial-gameplay="true"] .tutorial-affinity-panel .affinity-well-action-zone button[aria-label="Clear selected affinities"] {
-    width: 44px !important;
-    min-width: 44px !important;
+    height: 32px !important;
   }
 
   .tutorial-gameplay.game-shell[data-tutorial-gameplay="true"] .tutorial-affinity-panel [data-tutorial-action-locked="true"] {
@@ -784,32 +569,29 @@
   }
 }
 
-@media (max-width: 680px) and (max-height: 800px) and (orientation: portrait) {
-  .tutorial-gameplay.game-shell[data-tutorial-gameplay="true"][data-tutorial-camera="static"][data-tutorial-surface="forge"][data-board-presentation][data-board-density][data-board-layout][data-forge-density]
-    .board-forge.board-forge--compact {
-    grid-template-rows: minmax(0, 1fr) !important;
+@media (max-width: 680px) and (max-height: 620px) and (orientation: portrait) {
+  .tutorial-gameplay.game-shell[data-tutorial-gameplay="true"] .board-forge.board-forge--compact {
+    grid-template-rows: 28px minmax(0, 1fr) !important;
     height: 100% !important;
     min-height: 0 !important;
   }
 
-  .tutorial-gameplay.game-shell[data-tutorial-gameplay="true"][data-board-presentation][data-board-density][data-board-layout][data-forge-density]
-    .board-forge--compact [data-forge-tiers="true"] {
+  .tutorial-gameplay.game-shell[data-tutorial-gameplay="true"] .board-forge--compact [data-forge-tiers="true"] {
     grid-template-rows: repeat(3, minmax(0, 1fr)) !important;
     height: 100% !important;
     min-height: 0 !important;
   }
 
-  .tutorial-gameplay.game-shell[data-tutorial-gameplay="true"][data-board-presentation][data-board-density][data-board-layout][data-forge-density]
-    .board-forge--compact .board-forge-shelf {
+  .tutorial-gameplay.game-shell[data-tutorial-gameplay="true"] .board-forge--compact .board-forge-shelf {
     grid-template-rows: 14px minmax(0, 1fr) !important;
     height: 100% !important;
     min-height: 0 !important;
   }
 
-  .tutorial-gameplay.game-shell[data-tutorial-gameplay="true"][data-board-presentation][data-board-density][data-board-layout][data-forge-density]
-    .board-forge--compact :is(
+  .tutorial-gameplay.game-shell[data-tutorial-gameplay="true"] .board-forge--compact :is(
     .board-forge-shelf-content,
     .board-forge-card-row,
+    .board-forge-compact-chip,
     .board-forge-archive-rail,
     .board-forge-compact-deck,
     .board-forge-compact-deck > div:first-child
@@ -817,17 +599,6 @@
     height: 100% !important;
     min-height: 0 !important;
     aspect-ratio: auto !important;
-  }
-
-  .tutorial-gameplay.game-shell[data-tutorial-gameplay="true"][data-board-presentation][data-board-density][data-board-layout][data-forge-density]
-    .board-forge--compact .board-forge-compact-chip {
-    width: auto !important;
-    max-width: 100% !important;
-    height: 100% !important;
-    min-width: 0 !important;
-    min-height: 0 !important;
-    aspect-ratio: var(--tutorial-artifact-aspect) !important;
-    justify-self: center !important;
   }
 }
 
@@ -838,40 +609,25 @@
   }
 }
 
-@media (max-width: 680px) and (orientation: portrait) {
-  .tutorial-gameplay.game-shell[data-tutorial-gameplay="true"] .tutorial-affinity-panel .affinity-well-status {
-    height: var(--tutorial-phone-well-header-h) !important;
-    min-height: 44px !important;
-  }
+/* The shared Celestial compact Forge stretches molds to fill each grid track.
+   Tutorial cards must instead retain the same 0.7 portrait geometry as their
+   artwork through the face-down, flip, and settled states. */
+.tutorial-gameplay.game-shell[data-tutorial-gameplay="true"][data-board-presentation][data-board-density][data-board-layout][data-forge-density]
+  .board-forge--compact .board-forge-card-row {
+  align-items: center !important;
+}
 
-  .tutorial-gameplay.game-shell[data-tutorial-gameplay="true"] .tutorial-affinity-panel .affinity-well-eminence {
-    width: 44px !important;
-    min-width: 44px !important;
-    height: 44px !important;
-    min-height: 44px !important;
-    transform: none !important;
-  }
-
-  .tutorial-gameplay.game-shell[data-tutorial-gameplay="true"][data-board-density][data-board-layout]
-    > .tutorial-affinity-panel.affinity-well-panel[data-shared-affinity-well] .affinity-well-action-zone {
-    padding: 1px 4px !important;
-  }
-
-  .tutorial-gameplay.game-shell[data-tutorial-gameplay="true"][data-board-presentation][data-board-density][data-board-layout][data-forge-density]
-    .board-forge--compact .board-forge-shelf {
-    grid-template-rows: 10px minmax(0, 1fr) !important;
-    padding: 0 3px !important;
-  }
-
-  .tutorial-gameplay.game-shell[data-tutorial-gameplay="true"][data-board-presentation][data-board-density][data-board-layout][data-forge-density]
-    .board-forge--compact .board-forge-tier-header {
-    height: 10px !important;
-    min-height: 10px !important;
-    padding-block: 0 !important;
-  }
-
-  .tutorial-gameplay.game-shell[data-tutorial-gameplay="true"][data-board-presentation][data-board-density][data-board-layout][data-forge-density]
-    .board-forge--compact .board-forge-card-row {
-    padding-block: 0 !important;
-  }
+.tutorial-gameplay.game-shell[data-tutorial-gameplay="true"][data-board-presentation][data-board-density][data-board-layout][data-forge-density]
+  .board-forge--compact .board-forge-card-row > .board-forge-compact-chip,
+.tutorial-gameplay.game-shell[data-tutorial-gameplay="true"][data-board-presentation][data-board-density][data-board-layout][data-forge-density]
+  .board-forge--compact .board-forge-card-row > .tutorial-compact-flip-reveal {
+  box-sizing: border-box;
+  width: auto !important;
+  height: 100% !important;
+  min-width: 0 !important;
+  min-height: 0 !important;
+  max-width: 100% !important;
+  max-height: 100% !important;
+  aspect-ratio: 0.7 !important;
+  justify-self: center !important;
 }

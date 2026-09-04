@@ -1,12 +1,13 @@
-const { app, BrowserWindow, dialog, session } = require("electron");
+const { app, BrowserWindow, dialog, shell } = require("electron");
 const http = require("node:http");
 const path = require("node:path");
 const fs = require("node:fs");
-const { spawn, spawnSync } = require("node:child_process");
+const { spawn } = require("node:child_process");
 
-const projectRoot = process.env.LUMINAE_PROJECT_ROOT || "/Users/chaoscalligraphy/Documents/Lumiane";
+const developerMode = process.env.LUMINAE_DESKTOP_DEV === "1";
+const projectRoot = path.resolve(__dirname, "..");
 const children = [];
-const pnpm = "/opt/homebrew/bin/pnpm";
+const pnpm = process.env.PNPM_BIN || "pnpm";
 const frontendPort = Number(process.env.LUMINAE_DESKTOP_FRONTEND_PORT || 5187);
 const apiPort = Number(process.env.LUMINAE_DESKTOP_API_PORT || 8080);
 
@@ -31,102 +32,95 @@ function portIsOpen(port) {
 }
 
 function start(command, args, env) {
-  const log = fs.openSync("/tmp/luminae-desktop.log", "a");
+  const logPath = path.join(app.getPath("logs"), "desktop-development.log");
+  const log = fs.openSync(logPath, "a");
   const child = spawn(command, args, {
     cwd: projectRoot,
-    env: {
-      ...process.env,
-      PATH: "/opt/homebrew/bin:/usr/local/bin:/usr/bin:/bin:/usr/sbin:/sbin",
-      ...env,
-    },
+    env: { ...process.env, ...env },
     stdio: ["ignore", log, log],
   });
-  child.on("error", (error) => fs.appendFileSync("/tmp/luminae-desktop.log", `${error.stack}\n`));
+  child.on("error", (error) => fs.appendFileSync(logPath, `${error.stack}\n`));
   children.push(child);
-  return child;
-}
-
-function ensureFrontendBuild() {
-  const indexPath = path.join(projectRoot, "artifacts", "luminae", "dist", "public", "index.html");
-  if (fs.existsSync(indexPath) && process.env.LUMINAE_DESKTOP_SKIP_BUILD === "1") return;
-
-  const log = fs.openSync("/tmp/luminae-desktop.log", "a");
-  const result = spawnSync(pnpm, ["--filter", "@workspace/luminae", "run", "build"], {
-    cwd: projectRoot,
-    env: {
-      ...process.env,
-      PATH: "/opt/homebrew/bin:/usr/local/bin:/usr/bin:/bin:/usr/sbin:/sbin",
-    },
-    stdio: ["ignore", log, log],
-  });
-  if (result.status !== 0) {
-    throw new Error("Luminae game screen could not be built. See /tmp/luminae-desktop.log.");
-  }
-}
-
-async function clearDesktopWebCache() {
-  try {
-    await session.defaultSession.clearCache();
-    await session.defaultSession.clearStorageData({
-      origin: `http://127.0.0.1:${frontendPort}`,
-      storages: ["serviceworkers", "cachestorage"],
-    });
-  } catch (error) {
-    fs.appendFileSync("/tmp/luminae-desktop.log", `cache cleanup failed: ${error.stack ?? error}\n`);
-  }
 }
 
 async function waitForPort(port, label) {
-  for (let attempt = 0; attempt < 240; attempt += 1) {
+  for (let attempt = 0; attempt < 120; attempt += 1) {
     if (await portIsOpen(port)) return;
     await new Promise((resolve) => setTimeout(resolve, 500));
   }
   throw new Error(`${label} did not start.`);
 }
 
-async function ensureGameIsRunning() {
-  const databaseUrl = process.env.DATABASE_URL || "postgresql:///luminae";
-  const frontendWasOpen = await portIsOpen(frontendPort);
-
+async function developmentUrl() {
+  const databaseUrl = process.env.DATABASE_URL;
+  if (!databaseUrl) {
+    throw new Error("DATABASE_URL is required when LUMINAE_DESKTOP_DEV=1.");
+  }
   if (!(await portIsOpen(apiPort))) {
     start(pnpm, ["--filter", "@workspace/api-server", "run", "dev"], {
       PORT: String(apiPort),
       DATABASE_URL: databaseUrl,
     });
-    await waitForPort(apiPort, "Luminae game server");
+    await waitForPort(apiPort, "Luminae API");
   }
-
-  ensureFrontendBuild();
-  if (!frontendWasOpen) {
-    start(pnpm, ["--filter", "@workspace/luminae", "run", "serve"], {
+  if (!(await portIsOpen(frontendPort))) {
+    start(pnpm, ["--filter", "@workspace/luminae", "run", "dev"], {
       PORT: String(frontendPort),
-      NODE_ENV: "production",
     });
-    await waitForPort(frontendPort, "Luminae game screen");
+    await waitForPort(frontendPort, "Luminae web client");
   }
+  return new URL(`http://127.0.0.1:${frontendPort}/?desktop=1`);
+}
+
+function productionUrl() {
+  const configured = process.env.LUMINAE_WEB_URL;
+  if (!configured) {
+    throw new Error("LUMINAE_WEB_URL must be configured for a production Mac build.");
+  }
+  const url = new URL(configured);
+  if (url.protocol !== "https:") {
+    throw new Error("LUMINAE_WEB_URL must use HTTPS.");
+  }
+  url.searchParams.set("desktop", "1");
+  return url;
+}
+
+async function createWindow() {
+  const gameUrl = developerMode ? await developmentUrl() : productionUrl();
+  const allowedOrigin = gameUrl.origin;
+  const window = new BrowserWindow({
+    width: 940,
+    height: 1440,
+    minWidth: 720,
+    minHeight: 800,
+    title: "Luminae",
+    backgroundColor: "#0a0c14",
+    autoHideMenuBar: true,
+    webPreferences: {
+      backgroundThrottling: false,
+      contextIsolation: true,
+      nodeIntegration: false,
+      sandbox: true,
+      webSecurity: true,
+    },
+  });
+
+  window.webContents.setWindowOpenHandler(({ url }) => {
+    const target = new URL(url);
+    if (target.protocol === "https:") void shell.openExternal(target.toString());
+    return { action: "deny" };
+  });
+  window.webContents.on("will-navigate", (event, url) => {
+    if (new URL(url).origin !== allowedOrigin) event.preventDefault();
+  });
+  await window.loadURL(gameUrl.toString());
 }
 
 app.whenReady().then(async () => {
   try {
-    await ensureGameIsRunning();
-    await clearDesktopWebCache();
-    const window = new BrowserWindow({
-      width: 940,
-      height: 1440,
-      minWidth: 720,
-      minHeight: 980,
-      title: "Luminae",
-      backgroundColor: "#0a0c14",
-      autoHideMenuBar: true,
-      webPreferences: {
-        backgroundThrottling: false,
-      },
-    });
-    // Use the numeric loopback host so an old localhost PWA cache cannot mask
-    // the live game code inside the desktop shell.
-    await window.loadURL(`http://127.0.0.1:${frontendPort}?desktop=1`);
+    await createWindow();
   } catch (error) {
-    dialog.showErrorBox("Luminae could not start", error.message);
+    dialog.showErrorBox("Luminae could not start", error instanceof Error ? error.message : String(error));
     app.quit();
   }
 });

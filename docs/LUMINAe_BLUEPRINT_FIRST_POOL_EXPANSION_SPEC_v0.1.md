@@ -1,5 +1,8 @@
 # LUMINAe Blueprint First-Pool Expansion Spec v0.1
 
+> **Superseded historical design.** Blueprint First Pool v2.0 is authoritative;
+> this file remains only as first-pool provenance.
+
 ## Status
 
 **Historical proposal. Superseded by
@@ -102,7 +105,7 @@ When assembly is complete, this device manifests automatically.
 Gain 1 Eminence. Place it in your public civilization as Ready.
 
 On your next Tier II or Tier III Forge, this Foundry automatically pays up to
-2 natural Affinity toward its cost. You must still pay at least 1 Affinity.
+2 standard Affinity toward its cost. You must still pay at least 1 Affinity.
 Resolve the Forge normally.
 Then this device becomes Spent.
 ```
@@ -114,7 +117,7 @@ Then this device becomes Spent.
 - The reduction cannot pay Singularity and cannot reduce the final token payment below 1.
 - The Foundry does not apply to Tier I, Encrypt, Assimilate, or non-Forge claims.
 - The Foundry engages automatically on the owner's next eligible Forge and creates no reaction prompt.
-- If several natural Affinity requirements remain, the payment resolver allocates the Foundry contribution automatically; the owner never chooses an Affinity.
+- If several standard Affinity requirements remain, the payment resolver allocates the Foundry contribution automatically; the owner never chooses an Affinity.
 - The normal Artifact Eminence and permanent Affinity bonus are unchanged.
 - The Foundry can manifest only once for that owner per match.
 

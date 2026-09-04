@@ -10,13 +10,9 @@ import { ForgotPasswordForm } from "@/components/ForgotPasswordForm";
 interface Props {
   onSuccess?: () => void;
   defaultMode?: "login" | "register";
-  onAuthOutcome?: (
-    mode: "login" | "register",
-    outcome: "success" | "failure",
-  ) => void;
 }
 
-export function LoginRegisterForm({ onSuccess, defaultMode = "login", onAuthOutcome }: Props) {
+export function LoginRegisterForm({ onSuccess, defaultMode = "login" }: Props) {
   const { login, register } = useAccount();
   const [mode, setMode] = useState<"login" | "register" | "forgot">(defaultMode);
   const [username, setUsername] = useState("");
@@ -27,7 +23,6 @@ export function LoginRegisterForm({ onSuccess, defaultMode = "login", onAuthOutc
   const [error, setError] = useState<string | null>(null);
 
   const handleSubmit = async () => {
-    if (mode === "forgot") return;
     if (!username.trim() || !password.trim()) return;
     setError(null);
     setIsLoading(true);
@@ -37,10 +32,8 @@ export function LoginRegisterForm({ onSuccess, defaultMode = "login", onAuthOutc
       } else {
         await register(username.trim(), password, email.trim() || undefined);
       }
-      onAuthOutcome?.(mode, "success");
       onSuccess?.();
     } catch (err: unknown) {
-      onAuthOutcome?.(mode, "failure");
       setError(err instanceof Error ? err.message : "Something went wrong");
     } finally {
       setIsLoading(false);
@@ -136,9 +129,7 @@ export function LoginRegisterForm({ onSuccess, defaultMode = "login", onAuthOutc
                 type={showPassword ? "text" : "password"}
                 value={password}
                 onChange={(e) => setPassword(e.target.value)}
-                placeholder={mode === "register" ? "At least 10 characters" : "Your password"}
-                minLength={mode === "register" ? 10 : undefined}
-                maxLength={128}
+                placeholder={mode === "register" ? "At least 6 characters" : "Your password"}
                 className="h-12 rounded-md bg-input/60 pr-11"
                 autoComplete={mode === "login" ? "current-password" : "new-password"}
                 onKeyDown={(e) => e.key === "Enter" && handleSubmit()}
@@ -163,7 +154,7 @@ export function LoginRegisterForm({ onSuccess, defaultMode = "login", onAuthOutc
           <Button
             className="oom-action-primary mt-1 h-12"
             onClick={handleSubmit}
-            disabled={isLoading || !username.trim() || !password.trim() || (mode === "register" && password.length < 10)}
+            disabled={isLoading || !username.trim() || !password.trim()}
           >
             {isLoading ? (
               <Loader2 className="h-4 w-4 animate-spin" />

@@ -1,28 +1,55 @@
 import type { ArtifactCard } from '@workspace/api-client-react';
 import {
-  ARTIFACT_DEFINITIONS,
-  TECHNOLOGY_LINEAGES,
+  ARTIFACT_LINEAGE_BY_ID,
   type ArtifactId,
   type TechnologyLineage,
 } from '@workspace/game-types';
 
-export const CIVILIZATION_TRAITS = TECHNOLOGY_LINEAGES;
+export const CIVILIZATION_TRAITS = [
+  'ignition',
+  'biosphere',
+  'chronology',
+  'transit',
+  'archive',
+  'lattice',
+  'veil',
+  'containment',
+  'replication',
+  'accord',
+  'entropy',
+  'aperture',
+] as const;
 
-export type CivilizationTrait = TechnologyLineage;
+export type CivilizationTrait = (typeof CIVILIZATION_TRAITS)[number];
 
 export const CIVILIZATION_TRAIT_LABELS: Record<CivilizationTrait, string> = {
-  energy: 'Energy works',
-  ecology: 'Ecology preserve',
-  causality: 'Causality array',
+  ignition: 'Reactor district',
+  biosphere: 'Biosphere arcology',
+  chronology: 'Chronometric array',
   transit: 'Transit gate',
-  memory: 'Memory archive',
-  infrastructure: 'Infrastructure lattice',
-  concealment: 'Concealment field',
+  archive: 'Archive citadel',
+  lattice: 'Linked habitats',
+  veil: 'Veil emitter field',
   containment: 'Containment vault',
-  fabrication: 'Fabrication yard',
+  replication: 'Fabrication yard',
   accord: 'Concord complex',
-  reclamation: 'Reclamation complex',
-  boundary_science: 'Boundary observatory',
+  entropy: 'Entropy furnace',
+  aperture: 'Aperture station',
+};
+
+const LINEAGE_TRAIT: Record<TechnologyLineage, CivilizationTrait> = {
+  energy: 'ignition',
+  ecology: 'biosphere',
+  causality: 'chronology',
+  transit: 'transit',
+  memory: 'archive',
+  infrastructure: 'lattice',
+  concealment: 'veil',
+  containment: 'containment',
+  fabrication: 'replication',
+  accord: 'accord',
+  reclamation: 'entropy',
+  boundary_science: 'aperture',
 };
 
 type ArtifactAffinity = ArtifactCard['bonusAffinity'];
@@ -75,18 +102,19 @@ export function hashCivilizationValue(value: string): number {
 
 function fallbackTrait(card: ArtifactCard): CivilizationTrait {
   const affinityFallbacks: Record<ArtifactAffinity, readonly CivilizationTrait[]> = {
-    flare: ['energy', 'transit', 'reclamation'],
-    continuum: ['causality', 'memory', 'transit'],
-    verdance: ['ecology', 'fabrication', 'infrastructure'],
-    abyss: ['concealment', 'reclamation', 'boundary_science'],
-    radiance: ['accord', 'containment', 'infrastructure'],
+    flare: ['ignition', 'transit', 'entropy'],
+    continuum: ['chronology', 'archive', 'transit'],
+    verdance: ['biosphere', 'replication', 'lattice'],
+    abyss: ['veil', 'entropy', 'aperture'],
+    radiance: ['accord', 'containment', 'lattice'],
   };
   const options = affinityFallbacks[card.bonusAffinity];
   return options[hashCivilizationValue(card.id) % options.length]!;
 }
 
 export function getArtifactCivilizationTrait(card: ArtifactCard): CivilizationTrait {
-  return ARTIFACT_DEFINITIONS[card.id as ArtifactId]?.lineage ?? fallbackTrait(card);
+  const lineage = ARTIFACT_LINEAGE_BY_ID[card.id as ArtifactId];
+  return lineage ? LINEAGE_TRAIT[lineage] : fallbackTrait(card);
 }
 
 function landmarkPriority(landmark: CivilizationLandmark): number {

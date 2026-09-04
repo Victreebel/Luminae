@@ -386,49 +386,6 @@
   }
 }
 
-/* The Vault preview can place the production effect inside a transformed
-   mobile board while the browser itself remains desktop-sized. */
-@container (max-width: 700px) {
-  .antimatter-detonation {
-    --card-w: clamp(138px, 36cqw, 186px);
-  }
-
-  .antimatter-detonation__outcome {
-    top: calc(48% + min(31cqw, 176px));
-    padding: 0 clamp(12px, 5cqw, 24px);
-  }
-
-  .antimatter-detonation__outcome strong {
-    font-size: clamp(20px, 8cqw, 34px);
-  }
-
-  .antimatter-detonation__eyebrow,
-  .antimatter-detonation__owner {
-    font-size: clamp(9px, 3cqw, 12px);
-  }
-
-  .antimatter-detonation__covenant-outcome {
-    font-size: clamp(8px, 2.6cqw, 11px);
-  }
-
-  .antimatter-detonation__covenant-slot {
-    --card-w: clamp(72px, 22cqw, 92px);
-  }
-
-  .antimatter-detonation__covenant-slot--left {
-    left: calc(14% - var(--card-w) * 0.5);
-  }
-
-  .antimatter-detonation__covenant-slot--right {
-    right: calc(14% - var(--card-w) * 0.5);
-  }
-
-  .antimatter-detonation__covenant-label {
-    max-width: 38cqw;
-    white-space: normal;
-  }
-}
-
 @media (max-height: 560px) and (orientation: landscape) {
   .antimatter-detonation {
     --card-w: clamp(112px, 24vh, 146px);

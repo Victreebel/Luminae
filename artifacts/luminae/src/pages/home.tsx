@@ -1,7 +1,8 @@
-import { useState, useEffect, useCallback, useLayoutEffect, useRef } from "react";
+import { useState, useEffect, useCallback } from "react";
 import { useEscapeToClose } from "@/hooks/use-escape-to-close";
 import { useLocation } from "wouter";
-import { loadTutorialProgress, clearTutorialProgress, hasTutorialBeenCompleted, hasTutorialSeen, clearIntroSeen } from "@/lib/tutorialProgress";
+import { apiUrl } from "@/lib/network";
+import { loadTutorialProgress, clearTutorialProgress, hasTutorialBeenCompleted, getIntroSeenBeat, clearIntroSeen } from "@/lib/tutorialProgress";
 import { TUTORIAL_BEATS } from "@/lib/tutorialData";
 import { setPendingStartBeat } from "@/lib/tutorialStartBeat";
 import { TutorialStartModal } from "@/components/tutorial/TutorialStartModal";
@@ -19,8 +20,13 @@ import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { saveSession, getSession, clearSession } from "@/lib/session";
-import { type ActiveGame } from "@/lib/accountSession";
+import { getAccountToken, type ActiveGame } from "@/lib/accountSession";
 import { getGameState } from "@workspace/api-client-react";
+import {
+  DEFAULT_VICTORY_REQUIREMENT,
+  VICTORY_REQUIREMENT_OPTIONS,
+  type VictoryRequirementOption,
+} from "@workspace/game-types";
 import { getSavedAvatarId, saveAvatarId, getAvatarForPlayer } from "@/lib/avatars";
 import { AvatarPicker } from "@/components/AvatarPicker";
 import { LoginRegisterForm } from "@/components/LoginRegisterForm";
@@ -33,7 +39,6 @@ import {
   ArrowLeft,
   Clock,
   ChevronDown,
-  ChevronUp,
   LogIn,
   UserPlus,
   LayoutDashboard,
@@ -42,7 +47,6 @@ import {
   BookOpen,
   Play,
   Hash,
-  Archive,
   ShieldCheck,
 } from "lucide-react";
 import {
@@ -76,13 +80,66 @@ const HOME_ARTIFACT_TIERS = [
   { tier: "III", image: tierThreeArtifact, width: 26, height: 36, border: "#B895EA" },
 ] as const;
 
+function MatchIdentitySelector({
+  avatarId,
+  expanded,
+  onToggle,
+  onSelect,
+}: {
+  avatarId: string;
+  expanded: boolean;
+  onToggle: () => void;
+  onSelect: (id: string) => void;
+}) {
+  const avatar = getAvatarForPlayer(avatarId);
+
+  return (
+    <div className="space-y-2">
+      <Label>Player identity</Label>
+      <button
+        type="button"
+        onClick={onToggle}
+        aria-expanded={expanded}
+        aria-label={`Change player identity. Current identity: ${avatar.name}`}
+        className="flex w-full items-center gap-3 rounded-md border border-border/40 bg-input/40 px-3 py-2.5 text-left transition-colors hover:border-primary/35 hover:bg-input/60"
+      >
+        <span
+          className="h-10 w-10 shrink-0 overflow-hidden rounded-md border"
+          style={{ borderColor: `${avatar.accent}88` }}
+        >
+          <img src={avatar.image} alt="" className="h-full w-full object-cover" draggable={false} />
+        </span>
+        <span className="min-w-0 flex-1">
+          <span className="block truncate text-sm font-semibold">{avatar.name}</span>
+          <span className="mt-0.5 block text-[11px] text-muted-foreground">Your presence at this table</span>
+        </span>
+        <ChevronDown className={`h-4 w-4 shrink-0 text-muted-foreground transition-transform ${expanded ? "rotate-180" : ""}`} />
+      </button>
+      <AnimatePresence initial={false}>
+        {expanded && (
+          <motion.div
+            initial={{ height: 0, opacity: 0 }}
+            animate={{ height: "auto", opacity: 1 }}
+            exit={{ height: 0, opacity: 0 }}
+            className="overflow-hidden"
+          >
+            <div className="pt-2">
+              <AvatarPicker selectedId={avatarId} onSelect={onSelect} />
+            </div>
+          </motion.div>
+        )}
+      </AnimatePresence>
+    </div>
+  );
+}
+
 export default function Home() {
   const [, setLocation] = useLocation();
   const { toast } = useToast();
   const { account, token, isLoading: accountLoading, logout } = useAccount();
   const [confirmLogout, setConfirmLogout] = useState(false);
-  const [tutorialSeen, setTutorialSeen] = useState(() => hasTutorialSeen());
-  const [tutorialCompleted, setTutorialCompleted] = useState(() => hasTutorialBeenCompleted());
+  const [tutorialSeen] = useState(() => !!localStorage.getItem("luminae_tutorial_seen"));
+  const [tutorialCompleted] = useState(() => hasTutorialBeenCompleted());
   const [showTutorialModal, setShowTutorialModal] = useState(false);
   const [tutorialHasProgress, setTutorialHasProgress] = useState(false);
   const [tutorialSavedBeat, setTutorialSavedBeat] = useState<number | null>(null);
@@ -94,19 +151,19 @@ export default function Home() {
   const [hostName, setHostName] = useState("");
   const [maxPlayers, setMaxPlayers] = useState(2);
   const [matchMode, setMatchMode] = useState<"standard" | "custom">("standard");
-  const [victoryRequirement, setVictoryRequirement] = useState<15 | 20 | 25>(20);
+  const [victoryRequirement, setVictoryRequirement] = useState<VictoryRequirementOption>(
+    DEFAULT_VICTORY_REQUIREMENT,
+  );
   const [turnTimer, setTurnTimer] = useState<string>("0");
   const [playerName, setPlayerName] = useState("");
   const [inviteCode, setInviteCode] = useState("");
-  const mainScrollRef = useRef<HTMLElement | null>(null);
 
-  useLayoutEffect(() => {
-    if (mainScrollRef.current) mainScrollRef.current.scrollTop = 0;
+  useEffect(() => {
+    setShowAvatarPicker(false);
   }, [mode]);
 
   const handleLogout = async () => {
     await logout();
-    setActiveSession(null);
     setConfirmLogout(false);
     setMode("home");
   };
@@ -123,18 +180,12 @@ export default function Home() {
       setPendingStartBeat(0);
     } else if (choice === "begin") {
       clearTutorialProgress();
-      setPendingStartBeat(0);
+      const introSkipBeat = getIntroSeenBeat();
+      setPendingStartBeat(introSkipBeat ?? 0);
     } else {
       const saved = loadTutorialProgress();
       setPendingStartBeat(saved ?? 0);
     }
-    setShowCinematic(true);
-  }, []);
-
-  const handleTutorialChapter = useCallback((beat: number) => {
-    clearTutorialProgress();
-    setPendingStartBeat(beat);
-    setShowTutorialModal(false);
     setShowCinematic(true);
   }, []);
 
@@ -155,8 +206,7 @@ export default function Home() {
     const params = new URLSearchParams(window.location.search);
     if (params.get("newgame") === "1" || params.get("menu") === "1") return;
 
-    const base = import.meta.env.BASE_URL?.replace(/\/$/, "") ?? "";
-    fetch(`${base}/api/auth/me/games`, { headers: { Authorization: `Bearer ${token}` } })
+    fetch(apiUrl("/auth/me/games"), { headers: { Authorization: `Bearer ${token}` } })
       .then((response) => response.json())
       .then((data: { games?: ActiveGame[] }) => {
         const games = data.games ?? [];
@@ -199,16 +249,6 @@ export default function Home() {
     }
   }, [account]);
 
-  useEffect(() => {
-    setActiveSession(getSession());
-  }, [account?.id, token]);
-
-  useEffect(() => {
-    if (accountLoading) return;
-    setTutorialSeen(hasTutorialSeen());
-    setTutorialCompleted(hasTutorialBeenCompleted());
-  }, [account?.id, accountLoading]);
-
   const blueprintCleared = account?.clearance?.status === "cleared";
 
   useEffect(() => {
@@ -222,11 +262,7 @@ export default function Home() {
 
   const createRoom = useCreateRoom();
   const joinRoom = useJoinRoom();
-  const rejoinRoom = useRejoinRoom({
-    request: token
-      ? { headers: { Authorization: `Bearer ${token}` } }
-      : undefined,
-  });
+  const rejoinRoom = useRejoinRoom();
   const { refetch: fetchRoom } = useGetRoomByInviteCode(inviteCode, {
     query: { enabled: false, queryKey: getGetRoomByInviteCodeQueryKey(inviteCode) },
   });
@@ -249,6 +285,8 @@ export default function Home() {
       });
   }, []);
 
+  const accountToken = getAccountToken();
+
   const handleCreate = async () => {
     const name = account?.username ?? hostName;
     if (!name.trim()) return;
@@ -264,7 +302,7 @@ export default function Home() {
           gameMode: matchMode,
           blueprintPolicy: matchMode === "custom" ? "owned" : "none",
         },
-        ...(token ? { headers: { Authorization: `Bearer ${token}` } } : {}),
+        ...(accountToken ? { headers: { Authorization: `Bearer ${accountToken}` } } : {}),
       });
       saveSession({
         roomId: response.room.id,
@@ -294,15 +332,8 @@ export default function Home() {
       const alreadyMember = roomInfo.players?.some(
         (player) => !player.isAi && player.name.toLowerCase() === name.trim().toLowerCase(),
       );
-      const savedSession = getSession();
-      const existingSessionToken = savedSession?.roomId === roomInfo.id
-        ? savedSession.sessionToken
-        : undefined;
       const response = isPlaying || alreadyMember
-        ? await rejoinRoom.mutateAsync({
-            roomId: roomInfo.id,
-            data: { playerName: name, sessionToken: existingSessionToken },
-          })
+        ? await rejoinRoom.mutateAsync({ roomId: roomInfo.id, data: { playerName: name } })
         : await joinRoom.mutateAsync({ roomId: roomInfo.id, data: { playerName: name, avatarId } });
       saveSession({
         roomId: response.room.id,
@@ -365,7 +396,7 @@ export default function Home() {
   };
 
   return (
-    <div className="oom-shell h-[100dvh] overflow-hidden flex flex-col" data-home-mode={mode}>
+    <div className="oom-shell h-[100dvh] overflow-hidden flex flex-col">
       <OutOfMatchBackdrop />
       <OutOfMatchHeader
         center={<span className="hidden sm:block oom-kicker !mb-0">Main Menu</span>}
@@ -387,8 +418,8 @@ export default function Home() {
         )}
       />
 
-      <main ref={mainScrollRef} className="oom-frame flex-1 min-h-0 overflow-y-auto py-5 sm:py-8">
-        <div className="grid min-h-full items-center gap-6 lg:grid-cols-[minmax(0,0.82fr)_minmax(400px,520px)] lg:gap-12">
+      <main className="oom-frame oom-home-main flex min-h-0 flex-1 flex-col overflow-y-auto py-5 sm:py-8">
+        <div className="oom-home-layout grid flex-1 items-center gap-6 lg:grid-cols-[minmax(0,0.82fr)_minmax(400px,520px)] lg:gap-12">
           <section className="oom-home-hero min-w-0 w-full px-2 py-4 text-center lg:px-4 lg:text-left">
             <motion.p initial={{ opacity: 0 }} animate={{ opacity: 1 }} className="oom-kicker">
               Cosmic civilization strategy
@@ -406,7 +437,7 @@ export default function Home() {
               transition={{ delay: 0.08 }}
               className="oom-hero-motto mt-4"
             >
-              Harness. Forge. Ascend.
+              Harness | Forge | Ascend
             </motion.p>
             <motion.div
               initial={{ opacity: 0, y: 4 }}
@@ -445,12 +476,20 @@ export default function Home() {
                   ))}
                 </span>
               </p>
-              <p className="oom-eminence-teaching-line m-0 flex items-center justify-center gap-2 font-medium text-[#E4C982] lg:justify-start">
+              <p
+                className="oom-eminence-teaching-line m-0 flex items-center justify-center gap-2 font-medium text-[#E4C982] lg:justify-start"
+                role="img"
+                aria-label={`Gain ${DEFAULT_VICTORY_REQUIREMENT} Eminence to Ascend to Legend`}
+              >
                 <span>Gain Eminence</span>
                 <span className="origin-center drop-shadow-[0_0_7px_rgba(231,188,82,0.28)] lg:scale-110" aria-hidden="true">
-                  <EminenceSigil size={32} value={15} target={15} />
+                  <EminenceSigil
+                    size={32}
+                    value={DEFAULT_VICTORY_REQUIREMENT}
+                    target={DEFAULT_VICTORY_REQUIREMENT}
+                  />
                 </span>
-                <span>Become a Legend</span>
+                <span>Ascend to Legend</span>
               </p>
             </motion.div>
           </section>
@@ -459,12 +498,12 @@ export default function Home() {
             initial={{ opacity: 0, y: 12 }}
             animate={{ opacity: 1, y: 0 }}
             transition={{ duration: 0.24 }}
-            className="oom-panel min-w-0 w-full p-4 sm:p-5"
+            className="oom-panel oom-home-command-panel min-w-0 w-full p-4 sm:p-5"
             data-testid="home-command-panel"
           >
             <AnimatePresence mode="wait" initial={false}>
               {mode === "home" && (
-                <motion.div key="home" initial={{ opacity: 0 }} animate={{ opacity: 1 }} exit={{ opacity: 0 }} className="space-y-4">
+                <motion.div key="home" initial={{ opacity: 0 }} animate={{ opacity: 1 }} exit={{ opacity: 0 }} className="oom-home-command-content space-y-3">
                   <OutOfMatchSectionHeading eyebrow="Command" title="Play Luminae" detail={account ? "Signed in" : "Guest play"} />
 
                   {activeSession && (
@@ -486,7 +525,7 @@ export default function Home() {
                     </button>
                   )}
 
-                  <div className="grid gap-3 sm:grid-cols-2">
+                  <div className="oom-home-primary-actions grid gap-3 sm:grid-cols-2">
                     <button type="button" className="oom-action-primary" onClick={() => setMode("create")}>
                       <Play className="h-4 w-4 fill-current" />
                       New Match
@@ -502,7 +541,7 @@ export default function Home() {
                   <button
                     type="button"
                     onClick={openTutorial}
-                    className="flex w-full items-center gap-3 rounded-lg px-2 py-2 text-left transition-colors hover:bg-white/[0.04]"
+                    className="oom-home-tutorial-action flex w-full items-center gap-3 rounded-lg px-2 py-2 text-left transition-colors hover:bg-white/[0.04]"
                   >
                     <span className="flex h-9 w-9 shrink-0 items-center justify-center rounded-md border border-primary/25 bg-primary/10 text-primary">
                       <BookOpen className="h-4 w-4" />
@@ -511,63 +550,17 @@ export default function Home() {
                       <span className="block text-sm font-semibold text-foreground">
                         {tutorialCompleted ? "Replay Tutorial" : tutorialSeen ? "Continue Tutorial" : "Learn with Lumii"}
                       </span>
-                      <span className="mt-0.5 block text-xs text-muted-foreground">
+                      <span className="oom-home-action-detail mt-0.5 block text-xs text-muted-foreground">
                         {tutorialCompleted ? "Practice the four core actions again" : tutorialSeen ? "Pick up where you left off" : "Practice the four core actions with Lumii"}
                       </span>
                     </span>
                     <ArrowRight className="h-4 w-4 shrink-0 text-muted-foreground" />
                   </button>
 
-                  {blueprintCleared && (
-                    <button
-                      type="button"
-                      onClick={() => setLocation("/dashboard/archive/vault")}
-                      className="flex w-full items-center gap-3 rounded-lg px-2 py-2 text-left transition-colors hover:bg-white/[0.04]"
-                    >
-                      <span className="flex h-9 w-9 shrink-0 items-center justify-center rounded-md border border-[#D9BC73]/30 bg-[#D9BC73]/10 text-[#E4C982]">
-                        <Archive className="h-4 w-4" />
-                      </span>
-                      <span className="min-w-0 flex-1">
-                        <span className="block text-sm font-semibold text-foreground">Enter Vault</span>
-                        <span className="mt-0.5 block text-xs text-muted-foreground">Review your sealed Architect Record</span>
-                      </span>
-                      <ArrowRight className="h-4 w-4 shrink-0 text-muted-foreground" />
-                    </button>
-                  )}
-
                   <div className="oom-divider" />
 
-                  <div>
-                    <button
-                      type="button"
-                      onClick={() => setShowAvatarPicker((open) => !open)}
-                      className="flex w-full items-center gap-3 rounded-lg px-2 py-2 text-left transition-colors hover:bg-white/[0.04]"
-                    >
-                      <span
-                        className="h-9 w-9 shrink-0 overflow-hidden rounded-md border"
-                        style={{ borderColor: `${getAvatarForPlayer(avatarId).accent}88` }}
-                      >
-                        <img src={getAvatarForPlayer(avatarId).image} alt="" className="h-full w-full object-cover" draggable={false} />
-                      </span>
-                      <span className="min-w-0 flex-1">
-                        <span className="block text-[10px] font-bold uppercase tracking-[0.14em] text-muted-foreground">Player identity</span>
-                        <span className="block truncate text-sm font-semibold">{getAvatarForPlayer(avatarId).name}</span>
-                      </span>
-                      {showAvatarPicker ? <ChevronUp className="h-4 w-4 text-muted-foreground" /> : <ChevronDown className="h-4 w-4 text-muted-foreground" />}
-                    </button>
-                    <AnimatePresence initial={false}>
-                      {showAvatarPicker && (
-                        <motion.div initial={{ height: 0, opacity: 0 }} animate={{ height: "auto", opacity: 1 }} exit={{ height: 0, opacity: 0 }} className="overflow-hidden">
-                          <div className="pt-3">
-                            <AvatarPicker selectedId={avatarId} onSelect={(id) => { handleAvatarSelect(id); setShowAvatarPicker(false); }} />
-                          </div>
-                        </motion.div>
-                      )}
-                    </AnimatePresence>
-                  </div>
-
                   {account ? (
-                    <div className="flex items-center justify-between gap-3 rounded-lg bg-black/20 px-3 py-2.5">
+                    <div className="oom-home-account-action flex items-center justify-between gap-3 rounded-lg bg-black/20 px-3 py-2.5">
                       <div className="min-w-0">
                         <span className="block text-[10px] font-bold uppercase tracking-[0.14em] text-muted-foreground">Signed in</span>
                         <span className="block truncate text-sm font-semibold">{account.username}</span>
@@ -591,10 +584,10 @@ export default function Home() {
                       </div>
                     </div>
                   ) : (
-                    <button type="button" onClick={() => setMode("auth")} className="flex w-full items-center justify-between rounded-lg bg-black/20 px-3 py-2.5 text-left hover:bg-black/30">
+                    <button type="button" onClick={() => setMode("auth")} className="oom-home-account-action flex w-full items-center justify-between rounded-lg bg-black/20 px-3 py-2.5 text-left hover:bg-black/30">
                       <span>
                         <span className="block text-sm font-semibold">Create a free account</span>
-                        <span className="block text-xs text-muted-foreground">Keep games, history, and cosmetics together</span>
+                        <span className="oom-home-action-detail block text-xs text-muted-foreground">Keep games, history, and cosmetics together</span>
                       </span>
                       <UserPlus className="h-4 w-4 text-primary" />
                     </button>
@@ -605,11 +598,11 @@ export default function Home() {
               {mode === "create" && (
                 <motion.div key="create" initial={{ opacity: 0, x: 12 }} animate={{ opacity: 1, x: 0 }} exit={{ opacity: 0, x: -12 }} className="space-y-5">
                   <div className="flex items-center gap-3">
-                    <button type="button" className="oom-icon-button" onClick={() => setMode("home")} title="Back" aria-label="Back">
+                    <button type="button" className="oom-icon-button" onClick={() => setMode("home")} title="Back">
                       <ArrowLeft className="h-4 w-4" />
                     </button>
                     <div className="min-w-0 flex-1">
-                      <OutOfMatchSectionHeading eyebrow="Match setup" title="Create a Lobby" detail={`${maxPlayers} players · ${matchMode === "custom" ? "Blueprint Custom" : "Core Game"} · ${victoryRequirement === 15 ? "Quick 15" : victoryRequirement === 20 ? "Standard 20" : "Epic 25"}`} />
+                      <OutOfMatchSectionHeading eyebrow="Match setup" title="Create a Lobby" detail={`${maxPlayers} players · ${matchMode === "custom" ? "Blueprint Custom" : "Standard"}`} />
                     </div>
                   </div>
 
@@ -624,24 +617,33 @@ export default function Home() {
                     </div>
                   )}
 
-                  {blueprintCleared && (
-                    <div className="space-y-2">
-                      <Label>Mode</Label>
-                      <div className="oom-segmented" role="radiogroup" aria-label="Match mode">
+                  <MatchIdentitySelector
+                    avatarId={avatarId}
+                    expanded={showAvatarPicker}
+                    onToggle={() => setShowAvatarPicker((open) => !open)}
+                    onSelect={(id) => {
+                      handleAvatarSelect(id);
+                      setShowAvatarPicker(false);
+                    }}
+                  />
+
+                  <div className="space-y-2">
+                    <Label>Mode</Label>
+                    <div className="oom-segmented" aria-label="Match mode">
+                      <button
+                        type="button"
+                        data-active={matchMode === "standard"}
+                        onClick={() => {
+                          setMatchMode("standard");
+                          setVictoryRequirement(DEFAULT_VICTORY_REQUIREMENT);
+                        }}
+                      >
+                        <ShieldCheck className="h-3.5 w-3.5" aria-hidden="true" />
+                        Standard
+                      </button>
+                      {blueprintCleared && (
                         <button
                           type="button"
-                          role="radio"
-                          aria-checked={matchMode === "standard"}
-                          data-active={matchMode === "standard"}
-                          onClick={() => setMatchMode("standard")}
-                        >
-                          <ShieldCheck className="h-3.5 w-3.5" aria-hidden="true" />
-                          Core Game
-                        </button>
-                        <button
-                          type="button"
-                          role="radio"
-                          aria-checked={matchMode === "custom"}
                           data-active={matchMode === "custom"}
                           onClick={() => setMatchMode("custom")}
                           title="Use your Custom Blueprint loadout"
@@ -649,36 +651,40 @@ export default function Home() {
                           <ShieldCheck className="h-3.5 w-3.5" aria-hidden="true" />
                           Blueprint Custom
                         </button>
-                      </div>
-                      <p className="text-xs text-muted-foreground">Vault-cleared Blueprint loadouts are available.</p>
+                      )}
                     </div>
-                  )}
+                    {blueprintCleared && (
+                      <p className="text-xs text-muted-foreground">Uses each player’s two-slot Custom loadout.</p>
+                    )}
+                  </div>
 
                   <div className="space-y-2">
                     <Label>Players</Label>
-                    <div className="oom-segmented" role="radiogroup" aria-label="Player count">
+                    <div className="oom-segmented">
                       {[2, 3, 4].map((count) => (
-                        <button key={count} type="button" role="radio" aria-checked={maxPlayers === count} data-active={maxPlayers === count} onClick={() => setMaxPlayers(count)}>{count}</button>
+                        <button key={count} type="button" data-active={maxPlayers === count} onClick={() => setMaxPlayers(count)}>{count}</button>
                       ))}
                     </div>
                   </div>
 
                   <div className="space-y-2">
-                    <Label>Match format</Label>
-                    <div className="oom-segmented" role="radiogroup" aria-label="Match format">
-                      {([15, 20, 25] as const).map((target) => (
-                        <button key={target} type="button" role="radio" aria-checked={victoryRequirement === target} data-active={victoryRequirement === target} onClick={() => setVictoryRequirement(target)}>
-                          {target === 15 ? "Quick · 15" : target === 20 ? "Standard · 20" : "Epic · 25"}
-                        </button>
-                      ))}
-                    </div>
-                    <p className="text-xs text-muted-foreground">
-                      {victoryRequirement === 15
-                        ? "Quick: a shorter Tier I–II race"
-                        : victoryRequirement === 20
-                          ? "Standard: the primary balanced civilization arc"
-                          : "Epic: the longest arc · balance remains provisional"}
-                    </p>
+                    <Label>Eminence to win</Label>
+                    {matchMode === "custom" ? (
+                      <>
+                        <div className="oom-segmented" aria-label="Custom Eminence target">
+                          {VICTORY_REQUIREMENT_OPTIONS.map((target) => (
+                            <button key={target} type="button" data-active={victoryRequirement === target} onClick={() => setVictoryRequirement(target)}>{target}</button>
+                          ))}
+                        </div>
+                        <p className="text-xs text-muted-foreground">
+                          {victoryRequirement === 15 ? "Quick custom match" : victoryRequirement === 20 ? "Standard length" : "Epic custom match"}
+                        </p>
+                      </>
+                    ) : (
+                      <p className="text-sm font-semibold text-foreground">
+                        {DEFAULT_VICTORY_REQUIREMENT} Eminence <span className="font-normal text-muted-foreground">· Standard match</span>
+                      </p>
+                    )}
                   </div>
 
                   <div className="space-y-2">
@@ -713,13 +719,13 @@ export default function Home() {
                       <ArrowLeft className="h-4 w-4" />
                     </button>
                     <div className="min-w-0 flex-1">
-                      <OutOfMatchSectionHeading eyebrow="Invitation" title="Join a Match" detail="8 or 10 characters" />
+                      <OutOfMatchSectionHeading eyebrow="Invitation" title="Join a Match" detail="8-character code" />
                     </div>
                   </div>
 
                   <div className="space-y-1.5">
                     <Label htmlFor="inviteCode">Invite code</Label>
-                    <Input id="inviteCode" value={inviteCode} onChange={(event) => setInviteCode(event.target.value.toUpperCase())} placeholder="XXXXXXXXXX" className="h-14 rounded-md bg-input/60 text-center font-mono text-xl tracking-[0.18em] uppercase" maxLength={10} />
+                    <Input id="inviteCode" value={inviteCode} onChange={(event) => setInviteCode(event.target.value.toUpperCase())} placeholder="XXXXXXXX" className="h-14 rounded-md bg-input/60 text-center font-mono text-xl tracking-[0.26em] uppercase" maxLength={8} />
                   </div>
 
                   {!account ? (
@@ -733,7 +739,17 @@ export default function Home() {
                     </div>
                   )}
 
-                  <button type="button" className="oom-action-primary" onClick={handleJoin} disabled={(!account && !playerName.trim()) || ![8, 10].includes(inviteCode.length) || joinRoom.isPending}>
+                  <MatchIdentitySelector
+                    avatarId={avatarId}
+                    expanded={showAvatarPicker}
+                    onToggle={() => setShowAvatarPicker((open) => !open)}
+                    onSelect={(id) => {
+                      handleAvatarSelect(id);
+                      setShowAvatarPicker(false);
+                    }}
+                  />
+
+                  <button type="button" className="oom-action-primary" onClick={handleJoin} disabled={(!account && !playerName.trim()) || inviteCode.length < 8 || joinRoom.isPending}>
                     <ArrowRight className="h-4 w-4" />
                     {joinRoom.isPending ? "Joining Match..." : "Enter Lobby"}
                   </button>
@@ -758,22 +774,23 @@ export default function Home() {
             </AnimatePresence>
           </motion.section>
         </div>
+        <nav className="oom-home-policies mt-3 flex flex-wrap justify-center gap-x-4 gap-y-1 text-[11px] text-muted-foreground/70" aria-label="Policies">
+          <a href="/legal/privacy">Privacy</a>
+          <a href="/legal/terms">Terms</a>
+          <a href="/legal/conduct">Conduct</a>
+          <a href="/legal/refunds">Refunds</a>
+          <a href="/legal/delete-account">Account deletion</a>
+        </nav>
       </main>
 
       {showTutorialModal && (
-        <TutorialStartModal
-          hasProgress={tutorialHasProgress}
-          savedBeat={tutorialSavedBeat ?? undefined}
-          totalBeats={TUTORIAL_BEATS.length}
-          completed={tutorialCompleted}
-          onChoice={handleTutorialChoice}
-          onSelectChapter={handleTutorialChapter}
-        />
+        <TutorialStartModal hasProgress={tutorialHasProgress} savedBeat={tutorialSavedBeat ?? undefined} totalBeats={TUTORIAL_BEATS.length} onChoice={handleTutorialChoice} />
       )}
       {showCinematic && <ThresholdCinematic onComplete={handleCinematicComplete} />}
 
       {import.meta.env.DEV && new URLSearchParams(window.location.search).get("dev") === "1" && (
         <div className="absolute bottom-3 right-3 z-50 hidden flex-col items-end gap-1 md:flex">
+          <button type="button" onClick={() => setLocation("/dev/release-journey")} className="rounded border border-transparent px-2 py-1 font-mono text-[10px] tracking-wider text-muted-foreground/35 hover:border-border/30 hover:text-muted-foreground/70">dev: release journey</button>
           <button type="button" onClick={() => setLocation("/dev/anim-sandbox")} className="rounded border border-transparent px-2 py-1 font-mono text-[10px] tracking-wider text-muted-foreground/35 hover:border-border/30 hover:text-muted-foreground/70">dev: anim sandbox</button>
           <button type="button" onClick={() => setLocation("/dev/card-browser")} className="rounded border border-transparent px-2 py-1 font-mono text-[10px] tracking-wider text-muted-foreground/35 hover:border-border/30 hover:text-muted-foreground/70">dev: card browser</button>
         </div>

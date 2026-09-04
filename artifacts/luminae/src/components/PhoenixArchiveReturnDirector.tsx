@@ -18,10 +18,6 @@ import {
 } from "@/lib/luminaryPresentationPacing";
 import { gameAudio } from "@/lib/audio";
 import { playLuminaryEffectPhaseSound } from "@/lib/luminaryEffectSound";
-import {
-  MOLD_CAST_DURATION_MS,
-  MOLD_CAST_STAGGER_MS,
-} from "@/pages/game-mold-casting";
 
 type Tier = 1 | 2 | 3;
 
@@ -40,12 +36,6 @@ interface ReturnFlight {
 
 interface PhoenixArchiveReturnDirectorProps {
   cardIds: string[];
-  refillSlotKeys: string[];
-  onRevealRefills: (
-    slotKeys: string[],
-    staggerMs: number,
-    immediate: boolean,
-  ) => void;
   reducedMotion?: boolean;
   playbackMode?: LuminaryPlaybackMode;
   timelinePlaybackRate?: number;
@@ -78,8 +68,6 @@ function fallbackArchivePoint(tier: Tier): Point {
 
 export function PhoenixArchiveReturnDirector({
   cardIds,
-  refillSlotKeys,
-  onRevealRefills,
   reducedMotion = false,
   playbackMode = "standard",
   timelinePlaybackRate = 1,
@@ -90,10 +78,6 @@ export function PhoenixArchiveReturnDirector({
     useState<LuminaryEffectPhaseId>("announce");
   const sequenceRef = useRef<LuminaryEffectSequenceController | null>(null);
   const onCompleteRef = useRef(onComplete);
-  const refillStartedRef = useRef(false);
-  const refillSlotKeysRef = useRef(refillSlotKeys);
-  const onRevealRefillsRef = useRef(onRevealRefills);
-  onRevealRefillsRef.current = onRevealRefills;
 
   useEffect(() => {
     onCompleteRef.current = onComplete;
@@ -108,7 +92,6 @@ export function PhoenixArchiveReturnDirector({
   }, [cardIds]);
 
   useEffect(() => {
-    const refills = refillSlotKeysRef.current;
     let preparedFlights: ReturnFlight[] = [];
     const soundTimers: ReturnType<typeof setTimeout>[] = [];
     const staggerMs = boundedLuminaryStagger(
@@ -209,20 +192,6 @@ export function PhoenixArchiveReturnDirector({
         },
         {
           id: "reveal",
-          durationMs: refills.length > 0
-            ? (reducedMotion ? 240 : MOLD_CAST_DURATION_MS) +
-              Math.max(0, refills.length - 1) * MOLD_CAST_STAGGER_MS +
-              120
-            : 0,
-          run: () => {
-            if (refillStartedRef.current || refills.length === 0) return;
-            refillStartedRef.current = true;
-            onRevealRefillsRef.current(
-              refills,
-              reducedMotion ? 0 : MOLD_CAST_STAGGER_MS,
-              false,
-            );
-          },
         },
         {
           id: "aftermath",
@@ -241,18 +210,8 @@ export function PhoenixArchiveReturnDirector({
         gameAudio.stopActivationSting();
         soundTimers.forEach(clearTimeout);
         setFlights([]);
-        if (!refillStartedRef.current && refills.length > 0) {
-          refillStartedRef.current = true;
-          onRevealRefillsRef.current(refills, 0, true);
-        }
       },
-      onComplete: skipped => {
-        if (!refillStartedRef.current && refills.length > 0) {
-          refillStartedRef.current = true;
-          onRevealRefillsRef.current(refills, 0, true);
-        }
-        onCompleteRef.current(skipped);
-      },
+      onComplete: skipped => onCompleteRef.current(skipped),
     });
     sequenceRef.current = sequence;
     sequence.start();

@@ -3,7 +3,7 @@ import { describe, expect, it } from "vitest";
 import { MantleToOrbitBlueprintCard } from "./MantleToOrbitBlueprintCard";
 
 describe("MantleToOrbitBlueprintCard", () => {
-  it("presents a three-component Tier I Foundry and its complete effect", () => {
+  it("keeps the Forge effect concise and the Covenant details on the reverse", () => {
     render(<MantleToOrbitBlueprintCard />);
 
     expect(
@@ -17,8 +17,19 @@ describe("MantleToOrbitBlueprintCard", () => {
     expect(screen.getByText("2 / 3")).toBeInTheDocument();
     expect(
       screen.getByText(
-        /Twice, use Foundry Forge.*reduce each nonzero natural Affinity cost by 1/,
+        /Twice, Foundry Forge a face-up Tier II Artifact/,
       ),
+    ).toBeInTheDocument();
+    expect(
+      screen.queryByText(/Foundry storage does not consume ordinary Encryption capacity/),
+    ).not.toBeInTheDocument();
+
+    fireEvent.click(screen.getByRole("button", { name: "Show Blueprint components" }));
+
+    expect(screen.getByText(/Intact Covenant: paid re-Forge/)).toBeInTheDocument();
+    expect(screen.getByText(/Broken Covenant: free recovery/)).toBeInTheDocument();
+    expect(
+      screen.getByText(/Foundry storage does not consume ordinary Encryption capacity/),
     ).toBeInTheDocument();
     expect(
       screen.queryByText(/divided as you choose/i),

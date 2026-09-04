@@ -1,76 +1,14 @@
 <svg width="512" height="512" viewBox="0 0 512 512" fill="none" xmlns="http://www.w3.org/2000/svg">
-  <!-- outer glow halo -->
-  <circle cx="256" cy="256" r="210" fill="url(#outerGlow)" opacity="0.35"/>
-  <!-- gem body: octagonal faceted crystal -->
-  <polygon points="256,72 374,158 408,256 374,354 256,440 138,354 104,256 138,158" fill="url(#gemGrad)"/>
-  <!-- top-left facet (lighter) -->
-  <polygon points="256,72 138,158 256,208" fill="url(#topFacet2)" opacity="0.75"/>
-  <!-- top-right facet (brightest) -->
-  <polygon points="256,72 374,158 256,208" fill="url(#topFacet)" opacity="0.95"/>
-  <!-- right side -->
-  <polygon points="374,158 408,256 330,236 256,208" fill="url(#rightFacet)" opacity="0.65"/>
-  <!-- left side -->
-  <polygon points="138,158 104,256 182,236 256,208" fill="url(#leftFacet)" opacity="0.55"/>
-  <!-- bottom right -->
-  <polygon points="408,256 374,354 256,304 330,236" fill="url(#brFacet)" opacity="0.45"/>
-  <!-- bottom left -->
-  <polygon points="104,256 138,354 256,304 182,236" fill="url(#blFacet)" opacity="0.40"/>
-  <!-- bottom -->
-  <polygon points="138,354 256,440 374,354 256,304" fill="url(#botFacet)" opacity="0.50"/>
-  <!-- centre highlight -->
-  <ellipse cx="272" cy="210" rx="64" ry="38" fill="white" opacity="0.13" transform="rotate(-12,272,210)"/>
-  <!-- inner gem core glow -->
-  <circle cx="256" cy="260" r="70" fill="url(#coreGrad)" opacity="0.55"/>
-  <!-- starburst spikes -->
-  <line x1="256" y1="18"  x2="256" y2="66"  stroke="#b8d4ff" stroke-width="3.5" stroke-linecap="round" opacity="0.9"/>
-  <line x1="256" y1="446" x2="256" y2="494" stroke="#b8d4ff" stroke-width="2"   stroke-linecap="round" opacity="0.5"/>
-  <line x1="54"  y1="256" x2="94"  y2="256" stroke="#b8d4ff" stroke-width="2"   stroke-linecap="round" opacity="0.5"/>
-  <line x1="418" y1="256" x2="458" y2="256" stroke="#b8d4ff" stroke-width="3.5" stroke-linecap="round" opacity="0.85"/>
-  <!-- diagonal spikes (top corners) -->
-  <line x1="116" y1="100" x2="144" y2="130" stroke="#c8dcff" stroke-width="2.5" stroke-linecap="round" opacity="0.65"/>
-  <line x1="396" y1="100" x2="368" y2="130" stroke="#c8dcff" stroke-width="3"   stroke-linecap="round" opacity="0.80"/>
-  <defs>
-    <radialGradient id="outerGlow" cx="50%" cy="50%" r="50%">
-      <stop offset="0%"   stop-color="#6080ff"/>
-      <stop offset="100%" stop-color="#6080ff" stop-opacity="0"/>
-    </radialGradient>
-    <linearGradient id="gemGrad" x1="138" y1="72" x2="408" y2="440" gradientUnits="userSpaceOnUse">
-      <stop offset="0%"   stop-color="#9ab8ff"/>
-      <stop offset="28%"  stop-color="#4068ff"/>
-      <stop offset="62%"  stop-color="#1a38b0"/>
-      <stop offset="100%" stop-color="#0c1660"/>
-    </linearGradient>
-    <linearGradient id="topFacet" x1="256" y1="72" x2="320" y2="208" gradientUnits="userSpaceOnUse">
-      <stop offset="0%" stop-color="#ddeeff"/>
-      <stop offset="100%" stop-color="#5880ff" stop-opacity="0.5"/>
-    </linearGradient>
-    <linearGradient id="topFacet2" x1="256" y1="72" x2="196" y2="208" gradientUnits="userSpaceOnUse">
-      <stop offset="0%" stop-color="#aac4ff"/>
-      <stop offset="100%" stop-color="#2040cc" stop-opacity="0.4"/>
-    </linearGradient>
-    <linearGradient id="rightFacet" x1="408" y1="158" x2="256" y2="256" gradientUnits="userSpaceOnUse">
-      <stop offset="0%" stop-color="#5878dd"/>
-      <stop offset="100%" stop-color="#1a2888" stop-opacity="0.5"/>
-    </linearGradient>
-    <linearGradient id="leftFacet" x1="104" y1="158" x2="256" y2="256" gradientUnits="userSpaceOnUse">
-      <stop offset="0%" stop-color="#3458cc"/>
-      <stop offset="100%" stop-color="#0e1860" stop-opacity="0.5"/>
-    </linearGradient>
-    <linearGradient id="brFacet" x1="408" y1="256" x2="256" y2="354" gradientUnits="userSpaceOnUse">
-      <stop offset="0%" stop-color="#2040a0"/>
-      <stop offset="100%" stop-color="#0a1040" stop-opacity="0.6"/>
-    </linearGradient>
-    <linearGradient id="blFacet" x1="104" y1="256" x2="256" y2="354" gradientUnits="userSpaceOnUse">
-      <stop offset="0%" stop-color="#182888"/>
-      <stop offset="100%" stop-color="#080c30" stop-opacity="0.6"/>
-    </linearGradient>
-    <linearGradient id="botFacet" x1="256" y1="354" x2="256" y2="440" gradientUnits="userSpaceOnUse">
-      <stop offset="0%" stop-color="#1830a0"/>
-      <stop offset="100%" stop-color="#060a28" stop-opacity="0.7"/>
-    </linearGradient>
-    <radialGradient id="coreGrad" cx="38%" cy="35%" r="60%">
-      <stop offset="0%" stop-color="#8ab4ff" stop-opacity="0.9"/>
-      <stop offset="100%" stop-color="#1020a0" stop-opacity="0.1"/>
-    </radialGradient>
-  </defs>
+  <circle cx="256" cy="256" r="198" fill="#0A1222" stroke="#30445F" stroke-width="8"/>
+  <path d="M256 54L438 160L438 352L256 458L74 352L74 160L256 54Z" stroke="#9FC7E8" stroke-width="10"/>
+  <path d="M256 54L256 174L154 115L256 54Z" fill="#E85A4F"/>
+  <path d="M438 160L334 220L334 102L438 160Z" fill="#E7B84D"/>
+  <path d="M438 352L334 292L436 233L438 352Z" fill="#57B877"/>
+  <path d="M256 458L256 338L358 397L256 458Z" fill="#7656C8"/>
+  <path d="M74 352L178 292L178 410L74 352Z" fill="#4F8FD5"/>
+  <path d="M74 160L178 220L76 279L74 160Z" fill="#26395A"/>
+  <path d="M256 142L355 199V313L256 370L157 313V199L256 142Z" fill="#07101D" stroke="#D8EDFF" stroke-width="14"/>
+  <path d="M256 184L318 220V292L256 328L194 292V220L256 184Z" fill="#11233A" stroke="#6DA7D6" stroke-width="8"/>
+  <circle cx="256" cy="256" r="35" fill="#F8FCFF"/>
+  <circle cx="245" cy="244" r="11" fill="#FFFFFF"/>
 </svg>

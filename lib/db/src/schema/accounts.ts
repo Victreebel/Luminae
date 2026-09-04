@@ -116,7 +116,12 @@ export type AccountEntitlement = typeof accountEntitlementsTable.$inferSelect;
 
 export const accountEngagementTable = pgTable("account_engagement", {
   accountId: uuid("account_id").primaryKey().references(() => accountsTable.id, { onDelete: "cascade" }),
-  cosmeticBalance: integer("cosmetic_balance").notNull().default(0),
+  lumeBalance: integer("lume_balance").notNull().default(0),
+  lifetimeEarnedLume: integer("lifetime_earned_lume").notNull().default(0),
+  lifetimePurchasedLume: integer("lifetime_purchased_lume").notNull().default(0),
+  lifetimeGrantedLume: integer("lifetime_granted_lume").notNull().default(0),
+  lifetimeSpentLume: integer("lifetime_spent_lume").notNull().default(0),
+  lifetimeRefundedLume: integer("lifetime_refunded_lume").notNull().default(0),
   dailyClaimStreak: integer("daily_claim_streak").notNull().default(0),
   lastDailyClaimDate: text("last_daily_claim_date"),
   updatedAt: timestamp("updated_at", { withTimezone: true }).notNull().defaultNow(),
@@ -125,6 +130,139 @@ export const accountEngagementTable = pgTable("account_engagement", {
 export const insertAccountEngagementSchema = createInsertSchema(accountEngagementTable);
 export type InsertAccountEngagement = z.infer<typeof insertAccountEngagementSchema>;
 export type AccountEngagement = typeof accountEngagementTable.$inferSelect;
+
+export const accountLumeTransactionsTable = pgTable(
+  "account_lume_transactions",
+  {
+    id: uuid("id").primaryKey().defaultRandom(),
+    accountId: uuid("account_id").notNull().references(() => accountsTable.id, { onDelete: "cascade" }),
+    source: text("source").notNull(),
+    category: text("category").notNull(),
+    amount: integer("amount").notNull(),
+    balanceAfter: integer("balance_after"),
+    idempotencyKey: text("idempotency_key").notNull(),
+    externalReference: text("external_reference"),
+    metadata: jsonb("metadata").$type<Record<string, unknown>>().notNull().default({}),
+    createdAt: timestamp("created_at", { withTimezone: true }).notNull().defaultNow(),
+  },
+  (table) => ({
+    idempotencyIdx: uniqueIndex("account_lume_transactions_idempotency_idx").on(table.idempotencyKey),
+  }),
+);
+
+export const insertAccountLumeTransactionSchema = createInsertSchema(accountLumeTransactionsTable).omit({
+  id: true,
+  createdAt: true,
+});
+export type InsertAccountLumeTransaction = z.infer<typeof insertAccountLumeTransactionSchema>;
+export type AccountLumeTransaction = typeof accountLumeTransactionsTable.$inferSelect;
+
+export const accountNativePurchasesTable = pgTable(
+  "account_native_purchases",
+  {
+    id: uuid("id").primaryKey().defaultRandom(),
+    accountId: uuid("account_id").notNull().references(() => accountsTable.id, { onDelete: "cascade" }),
+    provider: text("provider").notNull(),
+    packId: text("pack_id").notNull(),
+    productId: text("product_id").notNull(),
+    purchaseToken: text("purchase_token").notNull(),
+    providerOrderId: text("provider_order_id"),
+    lumeAmount: integer("lume_amount").notNull(),
+    status: text("status").notNull().default("pending"),
+    grantTransactionId: uuid("grant_transaction_id").references(() => accountLumeTransactionsTable.id),
+    verifiedAt: timestamp("verified_at", { withTimezone: true }),
+    grantedAt: timestamp("granted_at", { withTimezone: true }),
+    settledAt: timestamp("settled_at", { withTimezone: true }),
+    refundedAt: timestamp("refunded_at", { withTimezone: true }),
+    lastError: text("last_error"),
+    metadata: jsonb("metadata").$type<Record<string, unknown>>().notNull().default({}),
+    createdAt: timestamp("created_at", { withTimezone: true }).notNull().defaultNow(),
+    updatedAt: timestamp("updated_at", { withTimezone: true }).notNull().defaultNow(),
+  },
+  (table) => ({
+    providerTokenIdx: uniqueIndex("account_native_purchases_provider_token_idx")
+      .on(table.provider, table.purchaseToken),
+  }),
+);
+
+export const insertAccountNativePurchaseSchema = createInsertSchema(accountNativePurchasesTable).omit({
+  id: true,
+  createdAt: true,
+  updatedAt: true,
+});
+export type InsertAccountNativePurchase = z.infer<typeof insertAccountNativePurchaseSchema>;
+export type AccountNativePurchase = typeof accountNativePurchasesTable.$inferSelect;
+
+export const accountBlocksTable = pgTable(
+  "account_blocks",
+  {
+    id: uuid("id").primaryKey().defaultRandom(),
+    blockerAccountId: uuid("blocker_account_id").notNull()
+      .references(() => accountsTable.id, { onDelete: "cascade" }),
+    blockedAccountId: uuid("blocked_account_id").notNull()
+      .references(() => accountsTable.id, { onDelete: "cascade" }),
+    createdAt: timestamp("created_at", { withTimezone: true }).notNull().defaultNow(),
+  },
+  (table) => ({
+    pairIdx: uniqueIndex("account_blocks_pair_idx")
+      .on(table.blockerAccountId, table.blockedAccountId),
+  }),
+);
+
+export const moderationReportsTable = pgTable("moderation_reports", {
+  id: uuid("id").primaryKey().defaultRandom(),
+  reporterAccountId: uuid("reporter_account_id").notNull()
+    .references(() => accountsTable.id, { onDelete: "cascade" }),
+  reportedAccountId: uuid("reported_account_id")
+    .references(() => accountsTable.id, { onDelete: "set null" }),
+  roomId: uuid("room_id"),
+  reportedPlayerId: uuid("reported_player_id"),
+  category: text("category").notNull(),
+  evidenceText: text("evidence_text"),
+  evidenceTimestamp: timestamp("evidence_timestamp", { withTimezone: true }),
+  status: text("status").notNull().default("open"),
+  createdAt: timestamp("created_at", { withTimezone: true }).notNull().defaultNow(),
+  reviewedAt: timestamp("reviewed_at", { withTimezone: true }),
+});
+
+export const moderationEventsTable = pgTable("moderation_events", {
+  id: uuid("id").primaryKey().defaultRandom(),
+  accountId: uuid("account_id").references(() => accountsTable.id, { onDelete: "set null" }),
+  roomId: uuid("room_id"),
+  playerId: uuid("player_id"),
+  eventType: text("event_type").notNull(),
+  detail: jsonb("detail").$type<Record<string, unknown>>().notNull().default({}),
+  createdAt: timestamp("created_at", { withTimezone: true }).notNull().defaultNow(),
+});
+
+export const accountDeletionRequestsTable = pgTable(
+  "account_deletion_requests",
+  {
+    id: uuid("id").primaryKey().defaultRandom(),
+    accountId: uuid("account_id").notNull()
+      .references(() => accountsTable.id, { onDelete: "cascade" }),
+    status: text("status").notNull().default("pending"),
+    requestedAt: timestamp("requested_at", { withTimezone: true }).notNull().defaultNow(),
+    executeAfter: timestamp("execute_after", { withTimezone: true }).notNull(),
+    cancelledAt: timestamp("cancelled_at", { withTimezone: true }),
+    completedAt: timestamp("completed_at", { withTimezone: true }),
+  },
+  (table) => ({
+    accountIdx: uniqueIndex("account_deletion_requests_account_idx").on(table.accountId),
+  }),
+);
+
+export const telemetryEventsTable = pgTable("telemetry_events", {
+  id: uuid("id").primaryKey().defaultRandom(),
+  accountId: uuid("account_id").references(() => accountsTable.id, { onDelete: "set null" }),
+  sessionId: text("session_id").notNull(),
+  eventName: text("event_name").notNull(),
+  platform: text("platform").notNull(),
+  clientBuild: text("client_build"),
+  detail: jsonb("detail").$type<Record<string, string | number | boolean | null>>().notNull().default({}),
+  occurredAt: timestamp("occurred_at", { withTimezone: true }).notNull(),
+  receivedAt: timestamp("received_at", { withTimezone: true }).notNull().defaultNow(),
+});
 
 export const accountCosmeticLoadoutItemsTable = pgTable(
   "account_cosmetic_loadout_items",
@@ -152,6 +290,7 @@ export const accountBlueprintClearanceTable = pgTable("account_blueprint_clearan
   thresholdApproach: text("threshold_approach"),
   thresholdDialoguePath: text("threshold_dialogue_path").array().notNull().default([]),
   thresholdDialogueResolution: text("threshold_dialogue_resolution"),
+  thresholdRupturedAt: timestamp("threshold_ruptured_at", { withTimezone: true }),
   covenantBrokenAt: timestamp("covenant_broken_at", { withTimezone: true }),
   decryptionKeyBypassActiveAt: timestamp("decryption_key_bypass_active_at", { withTimezone: true }),
   completedAt: timestamp("completed_at", { withTimezone: true }),
@@ -219,7 +358,8 @@ export const accountMatchRollupsTable = pgTable(
     eminence: integer("eminence").notNull().default(0),
     totalPlayers: integer("total_players").notNull().default(0),
     qualifyingBlueprintWin: boolean("qualifying_blueprint_win").notNull().default(false),
-    civilizationIdentitySnapshot: jsonb("civilization_identity_snapshot").$type<Record<string, unknown> | null>(),
+    civilizationRecord: jsonb("civilization_record").$type<Record<string, unknown> | null>(),
+    lumeEarned: integer("lume_earned").notNull().default(0),
     finishedAt: timestamp("finished_at", { withTimezone: true }).notNull(),
   },
   (table) => ({
@@ -236,25 +376,11 @@ export const accountArchiveSummaryTable = pgTable("account_archive_summary", {
   losses: integer("losses").notNull().default(0),
   ties: integer("ties").notNull().default(0),
   totalEminence: integer("total_eminence").notNull().default(0),
+  totalLume: integer("total_lume").notNull().default(0),
   totalForges: integer("total_forges").notNull().default(0),
   totalAlliances: integer("total_alliances").notNull().default(0),
-  highestKardashevType: integer("highest_kardashev_type").notNull().default(0),
   updatedAt: timestamp("updated_at", { withTimezone: true }).notNull().defaultNow(),
 });
-
-export const accountCivilizationIdentityTable = pgTable("account_civilization_identity", {
-  accountId: uuid("account_id").primaryKey().references(() => accountsTable.id, { onDelete: "cascade" }),
-  lineage: text("lineage"),
-  affinity: text("affinity"),
-  signatureArtifactId: text("signature_artifact_id"),
-  signatureLuminaryId: text("signature_luminary_id"),
-  signatureBlueprintId: text("signature_blueprint_id"),
-  updatedAt: timestamp("updated_at", { withTimezone: true }).notNull().defaultNow(),
-});
-
-export const insertAccountCivilizationIdentitySchema = createInsertSchema(accountCivilizationIdentityTable);
-export type InsertAccountCivilizationIdentity = z.infer<typeof insertAccountCivilizationIdentitySchema>;
-export type AccountCivilizationIdentity = typeof accountCivilizationIdentityTable.$inferSelect;
 
 export const accountArchiveArtifactStatsTable = pgTable(
   "account_archive_artifact_stats",
@@ -287,89 +413,160 @@ export const accountArchiveLuminaryStatsTable = pgTable(
   }),
 );
 
-export const accountCampaignProgressTable = pgTable(
-  "account_campaign_progress",
+export const accountChronicleUnlocksTable = pgTable(
+  "account_chronicle_unlocks",
   {
     id: uuid("id").primaryKey().defaultRandom(),
     accountId: uuid("account_id").notNull().references(() => accountsTable.id, { onDelete: "cascade" }),
-    campaignId: text("campaign_id").notNull(),
-    currentNodeId: text("current_node_id").notNull().default("first_contact"),
-    tutorialCompletedAt: timestamp("tutorial_completed_at", { withTimezone: true }),
-    firstContactStance: text("first_contact_stance"),
-    lastOnboardingClaimId: uuid("last_onboarding_claim_id"),
-    backfillVersion: integer("backfill_version").notNull().default(0),
-    createdAt: timestamp("created_at", { withTimezone: true }).notNull().defaultNow(),
-    updatedAt: timestamp("updated_at", { withTimezone: true }).notNull().defaultNow(),
+    chronicleId: text("chronicle_id").notNull(),
+    source: text("source").notNull(),
+    unlockedAt: timestamp("unlocked_at", { withTimezone: true }).notNull().defaultNow(),
+    metadata: jsonb("metadata").$type<Record<string, unknown>>().notNull().default({}),
   },
   (table) => ({
-    accountCampaignIdx: uniqueIndex("account_campaign_progress_account_campaign_idx")
-      .on(table.accountId, table.campaignId),
+    accountChronicleIdx: uniqueIndex("account_chronicle_unlocks_account_chronicle_idx")
+      .on(table.accountId, table.chronicleId),
   }),
 );
 
-export const accountCampaignNodesTable = pgTable(
-  "account_campaign_nodes",
+export const accountChroniclePrimaryOutcomesTable = pgTable(
+  "account_chronicle_primary_outcomes",
   {
     id: uuid("id").primaryKey().defaultRandom(),
     accountId: uuid("account_id").notNull().references(() => accountsTable.id, { onDelete: "cascade" }),
-    campaignId: text("campaign_id").notNull(),
-    nodeId: text("node_id").notNull(),
-    status: text("status").notNull().default("locked"),
-    activatedAt: timestamp("activated_at", { withTimezone: true }),
-    completedAt: timestamp("completed_at", { withTimezone: true }),
-    updatedAt: timestamp("updated_at", { withTimezone: true }).notNull().defaultNow(),
+    chronicleId: text("chronicle_id").notNull(),
+    definitionVersion: integer("definition_version").notNull(),
+    roomId: uuid("room_id"),
+    matchInstanceId: text("match_instance_id").notNull(),
+    outcomeId: text("outcome_id").notNull(),
+    result: text("result").notNull(),
+    lumeEarned: integer("lume_earned").notNull().default(0),
+    completedAt: timestamp("completed_at", { withTimezone: true }).notNull().defaultNow(),
   },
   (table) => ({
-    accountCampaignNodeIdx: uniqueIndex("account_campaign_nodes_account_node_idx")
-      .on(table.accountId, table.campaignId, table.nodeId),
+    accountChronicleIdx: uniqueIndex("account_chronicle_primary_outcomes_account_chronicle_idx")
+      .on(table.accountId, table.chronicleId),
+    accountMatchIdx: uniqueIndex("account_chronicle_primary_outcomes_account_match_idx")
+      .on(table.accountId, table.matchInstanceId),
   }),
 );
 
-export const accountCampaignChoicesTable = pgTable(
-  "account_campaign_choices",
+export const accountChronicleRehearsalsTable = pgTable(
+  "account_chronicle_rehearsals",
   {
     id: uuid("id").primaryKey().defaultRandom(),
     accountId: uuid("account_id").notNull().references(() => accountsTable.id, { onDelete: "cascade" }),
-    campaignId: text("campaign_id").notNull(),
-    claimId: uuid("claim_id").notNull(),
-    choiceId: text("choice_id").notNull(),
-    value: text("value").notNull(),
+    primaryOutcomeId: uuid("primary_outcome_id").notNull()
+      .references(() => accountChroniclePrimaryOutcomesTable.id, { onDelete: "cascade" }),
+    chronicleId: text("chronicle_id").notNull(),
+    definitionVersion: integer("definition_version").notNull(),
+    roomId: uuid("room_id"),
+    matchInstanceId: text("match_instance_id").notNull(),
+    outcomeId: text("outcome_id").notNull(),
+    result: text("result").notNull(),
+    preparednessObjectiveMet: boolean("preparedness_objective_met").notNull().default(false),
+    completedAt: timestamp("completed_at", { withTimezone: true }).notNull().defaultNow(),
+  },
+  (table) => ({
+    accountMatchIdx: uniqueIndex("account_chronicle_rehearsals_account_match_idx")
+      .on(table.accountId, table.matchInstanceId),
+  }),
+);
+
+export const accountChronicleHistoricalRecordsTable = pgTable(
+  "account_chronicle_historical_records",
+  {
+    id: uuid("id").primaryKey().defaultRandom(),
+    accountId: uuid("account_id").notNull().references(() => accountsTable.id, { onDelete: "cascade" }),
+    primaryOutcomeId: uuid("primary_outcome_id").notNull()
+      .references(() => accountChroniclePrimaryOutcomesTable.id, { onDelete: "cascade" }),
+    chronicleId: text("chronicle_id").notNull(),
+    definitionVersion: integer("definition_version").notNull(),
+    recordKind: text("record_kind").notNull(),
+    recordKey: text("record_key").notNull(),
+    payload: jsonb("payload").$type<Record<string, unknown>>().notNull(),
     recordedAt: timestamp("recorded_at", { withTimezone: true }).notNull().defaultNow(),
   },
   (table) => ({
-    accountCampaignChoiceClaimIdx: uniqueIndex("account_campaign_choices_claim_idx")
-      .on(table.accountId, table.campaignId, table.claimId, table.choiceId),
+    primaryRecordIdx: uniqueIndex("account_chronicle_historical_records_primary_record_idx")
+      .on(table.primaryOutcomeId, table.recordKey),
   }),
 );
 
-export const accountCampaignPresentationsTable = pgTable(
-  "account_campaign_presentations",
+export const accountCalibrationInsightsTable = pgTable(
+  "account_calibration_insights",
   {
     id: uuid("id").primaryKey().defaultRandom(),
     accountId: uuid("account_id").notNull().references(() => accountsTable.id, { onDelete: "cascade" }),
-    campaignId: text("campaign_id").notNull(),
-    presentationId: text("presentation_id").notNull(),
-    kind: text("kind").notNull(),
-    ordinal: integer("ordinal").notNull(),
-    acknowledgedAt: timestamp("acknowledged_at", { withTimezone: true }),
-    createdAt: timestamp("created_at", { withTimezone: true }).notNull().defaultNow(),
+    chronicleId: text("chronicle_id").notNull(),
+    sourceKind: text("source_kind").notNull(),
+    sourceRecordId: uuid("source_record_id").notNull(),
+    earnedAt: timestamp("earned_at", { withTimezone: true }).notNull().defaultNow(),
   },
   (table) => ({
-    accountCampaignPresentationIdx: uniqueIndex("account_campaign_presentations_account_presentation_idx")
-      .on(table.accountId, table.campaignId, table.presentationId),
+    accountChronicleIdx: uniqueIndex("account_calibration_insights_account_chronicle_idx")
+      .on(table.accountId, table.chronicleId),
   }),
 );
 
-export const firstPartyEventsTable = pgTable("first_party_events", {
-  id: uuid("id").primaryKey(),
-  accountId: uuid("account_id").references(() => accountsTable.id, { onDelete: "set null" }),
-  anonymousSessionId: uuid("anonymous_session_id"),
-  eventName: text("event_name").notNull(),
-  chapterId: text("chapter_id"),
-  beatId: text("beat_id"),
-  actionId: text("action_id"),
-  outcome: text("outcome"),
-  ordinal: integer("ordinal"),
-  durationMs: integer("duration_ms"),
-  occurredAt: timestamp("occurred_at", { withTimezone: true }).notNull().defaultNow(),
-});
+export const accountCampaignFactsTable = pgTable(
+  "account_campaign_facts",
+  {
+    id: uuid("id").primaryKey().defaultRandom(),
+    accountId: uuid("account_id").notNull().references(() => accountsTable.id, { onDelete: "cascade" }),
+    sourceKind: text("source_kind").notNull(),
+    sourceRecordId: uuid("source_record_id").notNull(),
+    definitionVersion: integer("definition_version").notNull(),
+    factKey: text("fact_key").notNull(),
+    value: jsonb("value").$type<string | number | boolean | null>().notNull(),
+    visibility: text("visibility").notNull(),
+    supersedesFactId: uuid("supersedes_fact_id"),
+    recordedAt: timestamp("recorded_at", { withTimezone: true }).notNull().defaultNow(),
+  },
+  (table) => ({
+    sourceFactIdx: uniqueIndex("account_campaign_facts_source_fact_idx")
+      .on(table.accountId, table.sourceKind, table.sourceRecordId, table.factKey),
+  }),
+);
+
+export const accountCampaignDimensionContributionsTable = pgTable(
+  "account_campaign_dimension_contributions",
+  {
+    id: uuid("id").primaryKey().defaultRandom(),
+    accountId: uuid("account_id").notNull().references(() => accountsTable.id, { onDelete: "cascade" }),
+    sourceKind: text("source_kind").notNull(),
+    sourceRecordId: uuid("source_record_id").notNull(),
+    definitionVersion: integer("definition_version").notNull(),
+    dimension: text("dimension").notNull(),
+    direction: text("direction").notNull(),
+    magnitude: integer("magnitude").notNull(),
+    rationaleKey: text("rationale_key").notNull(),
+    visibility: text("visibility").notNull(),
+    recordedAt: timestamp("recorded_at", { withTimezone: true }).notNull().defaultNow(),
+  },
+  (table) => ({
+    sourceContributionIdx: uniqueIndex("account_campaign_dimension_contributions_source_idx")
+      .on(table.accountId, table.sourceKind, table.sourceRecordId, table.dimension, table.rationaleKey),
+  }),
+);
+
+export const accountLumiiRelationshipMemoriesTable = pgTable(
+  "account_lumii_relationship_memories",
+  {
+    id: uuid("id").primaryKey().defaultRandom(),
+    accountId: uuid("account_id").notNull().references(() => accountsTable.id, { onDelete: "cascade" }),
+    sourceKind: text("source_kind").notNull(),
+    sourceRecordId: uuid("source_record_id").notNull(),
+    definitionVersion: integer("definition_version").notNull(),
+    memoryKey: text("memory_key").notNull(),
+    valence: integer("valence").notNull().default(0),
+    detail: jsonb("detail").$type<string | number | boolean | null>(),
+    visibility: text("visibility").notNull(),
+    simulation: boolean("simulation").notNull().default(false),
+    recordedAt: timestamp("recorded_at", { withTimezone: true }).notNull().defaultNow(),
+  },
+  (table) => ({
+    sourceMemoryIdx: uniqueIndex("account_lumii_relationship_memories_source_memory_idx")
+      .on(table.accountId, table.sourceKind, table.sourceRecordId, table.memoryKey),
+  }),
+);

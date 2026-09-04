@@ -135,7 +135,7 @@ assert(
         .join(", ")}`
 );
 
-// ── Aura style validation (KNOWN_AURA_STYLES from game-types) ─────────────────
+// ── Aura style validation (KNOWN_AURA_STYLES from shared game types) ──────────
 
 console.log("\n── Aura style validation ────────────────────────────────────────────");
 
@@ -211,7 +211,7 @@ for (const [id, entry] of assetsColors) {
 
 console.log("\n── auraStyle allowlist unit tests ───────────────────────────────────");
 
-assert(knownStyles.size > 0, "KNOWN_AURA_STYLES (parsed from game-types) is non-empty");
+assert(knownStyles.size > 0, "KNOWN_AURA_STYLES (parsed from shared game types) is non-empty");
 
 // A synthetic engine entry with a bad auraStyle must be flagged.
 {

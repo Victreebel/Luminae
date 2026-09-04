@@ -5,7 +5,6 @@ import {
   AntimatterBlueprintCard,
   type AntimatterBlueprintState,
 } from "@/components/blueprints/AntimatterBlueprintCard";
-import { AscensionRegistryBlueprintCard } from "@/components/blueprints/AscensionRegistryBlueprintCard";
 import { MantleToOrbitBlueprintCard } from "@/components/blueprints/MantleToOrbitBlueprintCard";
 import {
   LuminaeWordmark,
@@ -15,21 +14,22 @@ import {
 
 export default function DevBlueprintCard() {
   const [, navigate] = useLocation();
-  const [blueprint, setBlueprint] = useState<"antimatter" | "foundry" | "ascension">(() => {
-    if (typeof window === "undefined") return "antimatter";
-    const requested = new URLSearchParams(window.location.search).get("blueprint");
-    return requested === "foundry" || requested === "ascension" ? requested : "antimatter";
-  });
+  const [blueprint, setBlueprint] = useState<"antimatter" | "foundry">(() =>
+    typeof window !== "undefined" &&
+    new URLSearchParams(window.location.search).get("blueprint") === "foundry"
+      ? "foundry"
+      : "antimatter",
+  );
   const [state, setState] = useState<AntimatterBlueprintState>("assembling");
   const [covenantBroken, setCovenantBroken] = useState(false);
 
-  const selectBlueprint = (nextBlueprint: "antimatter" | "foundry" | "ascension") => {
+  const selectBlueprint = (nextBlueprint: "antimatter" | "foundry") => {
     setBlueprint(nextBlueprint);
     const url = new URL(window.location.href);
-    if (nextBlueprint === "antimatter") {
-      url.searchParams.delete("blueprint");
+    if (nextBlueprint === "foundry") {
+      url.searchParams.set("blueprint", "foundry");
     } else {
-      url.searchParams.set("blueprint", nextBlueprint);
+      url.searchParams.delete("blueprint");
     }
     window.history.replaceState(window.history.state, "", url);
   };
@@ -66,9 +66,7 @@ export default function DevBlueprintCard() {
             </button>
           ) : (
             <span className="blueprint-card-preview__classification">
-              {blueprint === "foundry"
-                ? "Ascension Industry / Planetary"
-                : "Ascension Institution / Planetary"}
+              Ascension Industry / Planetary
             </span>
           )}
 
@@ -90,13 +88,6 @@ export default function DevBlueprintCard() {
                 onClick={() => selectBlueprint("foundry")}
               >
                 Mantle Foundry
-              </button>
-              <button
-                type="button"
-                data-active={blueprint === "ascension"}
-                onClick={() => selectBlueprint("ascension")}
-              >
-                Ascension
               </button>
             </div>
 
@@ -145,10 +136,8 @@ export default function DevBlueprintCard() {
               matchedSockets={3}
               covenantBroken={covenantBroken}
             />
-          ) : blueprint === "foundry" ? (
-            <MantleToOrbitBlueprintCard state={state} matchedSockets={2} />
           ) : (
-            <AscensionRegistryBlueprintCard state={state} matchedSockets={2} />
+            <MantleToOrbitBlueprintCard state={state} matchedSockets={2} />
           )}
         </div>
       </main>
@@ -265,7 +254,6 @@ export default function DevBlueprintCard() {
         }
 
         .blueprint-card-preview__segments--blueprint button { min-width: 112px; }
-        .blueprint-card-preview__segments--blueprint { grid-template-columns: repeat(3, 1fr); }
 
         .blueprint-card-preview__stage {
           display: flex;

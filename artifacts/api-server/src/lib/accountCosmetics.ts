@@ -5,7 +5,9 @@ import {
   db,
 } from "@workspace/db";
 import type { CosmeticLoadoutItem } from "@workspace/game-types";
+import type { LuminaryArrivalSoundVariant } from "@workspace/game-types";
 import {
+  FIRST_RESONANCE_ITEM_ID,
   INCLUDED_STORE_ITEM_IDS,
   getStoreItem,
   type EquippableStoreItemKind,
@@ -53,7 +55,39 @@ export function equippedItemsByKind(
     card_back: items.find((item) => item.slot === "card_back" && item.scopeKey === "global")?.itemId ?? null,
     civilization_ambience:
       items.find((item) => item.slot === "civilization_ambience" && item.scopeKey === "global")?.itemId ?? null,
+    luminary_arrival_sound:
+      items.find((item) => item.slot === "luminary_arrival_sound" && item.scopeKey === "global")?.itemId ?? null,
     blueprint_presentation:
       items.find((item) => item.slot === "blueprint_presentation")?.itemId ?? null,
+    vault_seal: items.find((item) => item.slot === "vault_seal" && item.scopeKey === "global")?.itemId ?? null,
   };
+}
+
+export async function getEquippedLuminaryArrivalSound(
+  accountId: string,
+): Promise<LuminaryArrivalSoundVariant> {
+  const items = await getEquippedCosmeticItems(accountId);
+  return items.some(
+    (item) => item.slot === "luminary_arrival_sound" &&
+      item.scopeKey === "global" &&
+      item.itemId === FIRST_RESONANCE_ITEM_ID,
+  )
+    ? "first_resonance"
+    : "standard";
+}
+
+export async function resolveLuminaryArrivalSoundsForPlayers(
+  players: ReadonlyArray<{
+    id: string;
+    accountId: string | null;
+    isAi: boolean;
+  }>,
+): Promise<Record<string, LuminaryArrivalSoundVariant>> {
+  const entries = await Promise.all(players.map(async (player) => [
+    player.id,
+    player.isAi || !player.accountId
+      ? "standard"
+      : await getEquippedLuminaryArrivalSound(player.accountId),
+  ] as const));
+  return Object.fromEntries(entries);
 }

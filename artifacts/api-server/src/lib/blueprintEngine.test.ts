@@ -1,6 +1,7 @@
 import { describe, expect, it } from "vitest";
 import {
   BLUEPRINT_DEFINITIONS,
+  ordinaryEncryptedCount,
   type BlueprintId,
   type ManifestedDevicePublicState,
 } from "@workspace/game-types";
@@ -11,10 +12,10 @@ import {
   formatGameState,
   initializeGame,
   normalizeState,
-  refreshTurnStartTechnologyOpportunity,
   type GameStateData,
   type PlayerGameState,
 } from "./gameEngine.js";
+import { chooseAiAction } from "./aiPlayer.js";
 import { filterStateForPlayer } from "./stateProjection.js";
 
 function makeBlueprintGame(
@@ -38,7 +39,6 @@ function makeBlueprintGame(
   ));
   state.currentPlayerIndex = 0;
   state.openingTurnOrder = null;
-  if (state.initialBoard) state.initialBoard.firstPlayerId = state.players[0]!.playerId;
   return state;
 }
 
@@ -111,15 +111,6 @@ function acknowledgeManifestations(state: GameStateData, playerId = "p1"): void 
   for (const event of [...state.pendingBlueprintManifestationEvents]) {
     expect(applyAction(state, playerId, {
       type: "resolve_blueprint_manifestation",
-      eventId: event.eventId,
-    })).toEqual({ success: true });
-  }
-}
-
-function acknowledgeProjectEffects(state: GameStateData, playerId = "p1"): void {
-  for (const event of [...state.pendingBlueprintDetonationEvents]) {
-    expect(applyAction(state, playerId, {
-      type: "resolve_blueprint_detonation",
       eventId: event.eventId,
     })).toEqual({ success: true });
   }
@@ -241,7 +232,6 @@ describe("Antimatter Detonator", () => {
     const { state, owner, privateState } = armedAntimatterGame();
     const claimant = state.players[1];
     const targetCardId = privateState.secretTargetCardId!;
-    const targetSlotIndex = state.forgeTier2.indexOf(targetCardId);
     giveAffinities(state, claimant);
     const beforeAffinity = totalHeld(claimant);
 
@@ -256,9 +246,6 @@ describe("Antimatter Detonator", () => {
     expect(owner.eminence).toBe(2);
     expect(getDevice(owner, "bp_antimatter_detonator").state).toBe("spent");
     expect(state.pendingBlueprintDetonationEvents).toHaveLength(1);
-    expect(state.pendingBlueprintDetonationEvents[0]).toMatchObject({
-      targetSlotId: `2-${targetSlotIndex}`,
-    });
   });
 
   it("annihilates a legal Encrypt claim without awarding or taking Affinity", () => {
@@ -279,12 +266,13 @@ describe("Antimatter Detonator", () => {
   });
 
   it("adds exactly two eligible Tier I collateral targets after a broken Covenant", () => {
-    const { state, owner, privateState } = armedAntimatterGame();
+    const { state, privateState } = armedAntimatterGame();
     const claimant = state.players[1];
     const targetCardId = privateState.secretTargetCardId!;
     claimant.forgedArtifactIds = ["t1e01", "t1e02", "t2r01"];
+    claimant.artifactForgeCounts = { t1e01: 1, t1e02: 1, t2r01: 1 };
+    claimant.eminence = 9;
     state.brokenCovenantDeclared = true;
-    getDevice(owner, "bp_antimatter_detonator").covenantState = "broken";
     giveAffinities(state, claimant);
 
     expect(applyAction(state, claimant.playerId, {
@@ -294,6 +282,39 @@ describe("Antimatter Detonator", () => {
 
     expect(state.pendingBlueprintDetonationEvents[0].collateralCardIds).toHaveLength(2);
     expect(claimant.forgedArtifactIds).toEqual(["t2r01"]);
+    expect(claimant.eminence).toBe(9);
+    expect(claimant.civilization.artifacts.t1e01).toMatchObject({
+      masteryCount: 1,
+      implementationState: "annihilated",
+      implementationChangeSource: {
+        sourceType: "blueprint",
+        sourceId: "bp_antimatter_detonator",
+      },
+    });
+    expect(claimant.civilization.artifacts.t1e02).toMatchObject({
+      masteryCount: 1,
+      implementationState: "annihilated",
+      implementationChangeSource: {
+        sourceType: "blueprint",
+        sourceId: "bp_antimatter_detonator",
+      },
+    });
+    expect(claimant.civilization.artifacts.t2r01).toMatchObject({
+      masteryCount: 1,
+      implementationState: "operational",
+    });
+    expect(claimant.artifactForgeCounts).toMatchObject({ t1e01: 1, t1e02: 1, t2r01: 1 });
+    expect(claimant.civilization.affinityIdentity.historicalCounts.verdance).toBe(2);
+    expect(claimant.civilization.affinityIdentity.operationalCounts.verdance).toBe(0);
+
+    normalizeState(state);
+    const restoredClaimant = state.players.find((player) => player.playerId === claimant.playerId)!;
+    expect(restoredClaimant.civilization.artifacts.t1e01.implementationState)
+      .toBe("annihilated");
+    expect(restoredClaimant.civilization.artifacts.t1e02.implementationState)
+      .toBe("annihilated");
+    expect(restoredClaimant.civilization.artifacts.t2r01.implementationState)
+      .toBe("operational");
   });
 
   it("is intercepted by a vigilant Worldshield and lets the claim continue normally", () => {
@@ -304,7 +325,6 @@ describe("Antimatter Detonator", () => {
       ownerPlayerId: claimant.playerId,
       slotIndex: 0,
       state: "vigilant",
-      covenantState: "intact",
       presentationVariant: "armored",
     }];
     const targetCardId = privateState.secretTargetCardId!;
@@ -322,6 +342,36 @@ describe("Antimatter Detonator", () => {
     expect(getDevice(claimant, "bp_worldshield_covenant").state).toBe("spent");
     expect(state.pendingBlueprintDetonationEvents[0].interceptedByBlueprintId)
       .toBe("bp_worldshield_covenant");
+  });
+
+  it("keeps Worldshield vigilant under Broken Covenant and prevents all collateral", () => {
+    const { state, owner, privateState } = armedAntimatterGame();
+    const claimant = state.players[1];
+    claimant.forgedArtifactIds = ["t1e01", "t1e02"];
+    claimant.artifactForgeCounts = { t1e01: 1, t1e02: 1 };
+    claimant.manifestedBlueprintDevices = [{
+      blueprintId: "bp_worldshield_covenant",
+      ownerPlayerId: claimant.playerId,
+      slotIndex: 0,
+      state: "vigilant",
+      presentationVariant: "armored",
+    }];
+    state.brokenCovenantDeclared = true;
+    const targetCardId = privateState.secretTargetCardId!;
+    giveAffinities(state, claimant);
+
+    expect(applyAction(state, claimant.playerId, {
+      type: "forge_artifact",
+      cardId: targetCardId,
+    })).toEqual({ success: true });
+
+    expect(claimant.forgedArtifactIds).toContain(targetCardId);
+    expect(claimant.forgedArtifactIds).toEqual(expect.arrayContaining(["t1e01", "t1e02"]));
+    expect(state.annihilatedArtifactIds).not.toContain(targetCardId);
+    expect(owner.eminence).toBe(0);
+    expect(getDevice(owner, "bp_antimatter_detonator").state).toBe("spent");
+    expect(getDevice(claimant, "bp_worldshield_covenant").state).toBe("vigilant");
+    expect(state.pendingBlueprintDetonationEvents[0].collateralCardIds ?? []).toEqual([]);
   });
 
   it("waits unarmed-without-a-target when no Tier II Artifact is face up", () => {
@@ -407,53 +457,7 @@ describe("Antimatter Detonator", () => {
 });
 
 describe("Mantle-to-Orbit Foundry", () => {
-  it("keeps the real orbital-forge activation visible in the Lumii forecast", () => {
-    const state = makeBlueprintGame([
-      "bp_antimatter_detonator",
-      "bp_mantle_to_orbit_foundry",
-    ]);
-    const player = state.players[0];
-    giveComponents(player, "bp_mantle_to_orbit_foundry");
-    triggerManifestation(state, player);
-    acknowledgeManifestations(state);
-    resetTurn(state, 0);
-    state.lumiiThresholdApproach = "inquiry";
-
-    const tier2Id = "t2r01";
-    placeInForge(state, tier2Id);
-    giveAffinities(state, player);
-    expect(applyAction(state, player.playerId, {
-      type: "foundry_forge_artifact",
-      cardId: tier2Id,
-    })).toEqual({ success: true });
-
-    const event = state.pendingBlueprintDetonationEvents[0];
-    expect(event).toMatchObject({
-      blueprintId: "bp_mantle_to_orbit_foundry",
-      ownerPlayerId: player.playerId,
-      targetCardId: tier2Id,
-    });
-
-    const formatted = formatGameState(
-      "room",
-      "playing",
-      state,
-      new Set(["p1", "p2"]),
-      undefined,
-      undefined,
-      "blueprint_clearance_lumii",
-    );
-    const projected = filterStateForPlayer(formatted, "p2");
-    expect(projected.pendingBlueprintDetonationEvents).toContainEqual(expect.objectContaining({
-      eventId: event.eventId,
-      blueprintId: "bp_mantle_to_orbit_foundry",
-      targetCardId: tier2Id,
-    }));
-    expect(projected.pendingScenarioProtocolEvents).toEqual([]);
-    expect(JSON.stringify(projected)).toContain("bp_mantle_to_orbit_foundry");
-  });
-
-  it("grants 1 Eminence and gives two sustainable explicit Tier II Foundry Forges", () => {
+  it("grants 1 Eminence and discounts only an explicit Tier II Foundry Forge", () => {
     const state = makeBlueprintGame(["bp_mantle_to_orbit_foundry"]);
     const player = state.players[0];
     giveComponents(player, "bp_mantle_to_orbit_foundry");
@@ -466,229 +470,345 @@ describe("Mantle-to-Orbit Foundry", () => {
     const tier2 = CARD_MAP.get(tier2Id)!;
     placeInForge(state, tier2Id);
     giveAffinities(state, player);
-    const expectedTier2Cost = STANDARD_AFFINITY_KEYS.reduce(
-      (sum, affinity) => sum + Math.max(
-        0,
-        (tier2.cost[affinity] > 0 ? tier2.cost[affinity] - 1 : 0) - player.bonuses[affinity],
-      ),
-      0,
-    );
     const tier2Before = totalHeld(player);
     expect(applyAction(state, player.playerId, {
-      type: "foundry_forge_artifact",
+      type: "forge_artifact",
       cardId: tier2Id,
     })).toEqual({ success: true });
-    expect(tier2Before - totalHeld(player)).toBe(expectedTier2Cost);
-    expect(getDevice(player, "bp_mantle_to_orbit_foundry").foundryUses).toBe(1);
-
-    acknowledgeProjectEffects(state);
-    resetTurn(state, 0);
-    const secondTier2Id = "t2s01";
-    placeInForge(state, secondTier2Id);
-    giveAffinities(state, player);
-    expect(applyAction(state, player.playerId, {
-      type: "foundry_forge_artifact",
-      cardId: secondTier2Id,
-    })).toEqual({ success: true });
-    expect(getDevice(player, "bp_mantle_to_orbit_foundry")).toMatchObject({
-      state: "active",
-      foundryUses: 2,
-      foundryOverdriveAvailable: true,
-    });
-
-    acknowledgeProjectEffects(state);
-    resetTurn(state, 0);
-    const tier3Id = "t3r01";
-    placeInForge(state, tier3Id);
-    expect(applyAction(state, player.playerId, {
-      type: "foundry_forge_artifact",
-      cardId: tier3Id,
-    })).toEqual({
-      success: false,
-      error: "Foundry Forge can claim only Tier II Artifacts",
-    });
-  });
-
-  it("Overdrives only with confirmation and returns Intact components to the Tier I Archive", () => {
-    const state = makeBlueprintGame(["bp_mantle_to_orbit_foundry"]);
-    const player = state.players[0];
-    const componentIds = giveComponents(player, "bp_mantle_to_orbit_foundry");
-    triggerManifestation(state, player);
-    acknowledgeManifestations(state);
-    resetTurn(state, 0);
-    const foundry = getDevice(player, "bp_mantle_to_orbit_foundry");
-    foundry.foundryUses = 2;
-    foundry.foundryOverdriveAvailable = true;
-    const cardId = "t2r01";
-    placeInForge(state, cardId);
-    giveAffinities(state, player);
-
-    expect(applyAction(state, player.playerId, {
-      type: "foundry_forge_artifact",
-      cardId,
-    })).toEqual({
-      success: false,
-      error: "Confirm Overdrive before the Foundry's third use",
-    });
-    expect(applyAction(state, player.playerId, {
-      type: "foundry_forge_artifact",
-      cardId,
-      confirmOverdrive: true,
-    })).toEqual({ success: true });
-    expect(foundry.state).toBe("deactivated");
-    expect(player.forgedArtifactIds).not.toEqual(expect.arrayContaining(componentIds));
-    expect(state.deckTier1).toEqual(expect.arrayContaining(componentIds));
-  });
-
-  it("preserves Broken Overdrive components privately and reactivates through three free Forges", () => {
-    const state = makeBlueprintGame(["bp_mantle_to_orbit_foundry"]);
-    const player = state.players[0];
-    const componentIds = giveComponents(player, "bp_mantle_to_orbit_foundry");
-    for (const componentId of componentIds) removeFromBoard(state, componentId);
-    triggerManifestation(state, player);
-    acknowledgeManifestations(state);
-    resetTurn(state, 0);
-    const foundry = getDevice(player, "bp_mantle_to_orbit_foundry");
-    foundry.covenantState = "broken";
-    foundry.foundryUses = 2;
-    foundry.foundryOverdriveAvailable = true;
-    const cardId = "t2r01";
-    placeInForge(state, cardId);
-    giveAffinities(state, player);
-
-    expect(applyAction(state, player.playerId, {
-      type: "foundry_forge_artifact",
-      cardId,
-      confirmOverdrive: true,
-    })).toEqual({ success: true });
-    expect(foundry).toMatchObject({
-      state: "recovering",
-      foundryRecoveredComponentCount: 0,
-    });
-    expect(player.blueprintPrivateStates?.[0].foundryRecoveryComponentIds).toEqual(componentIds);
-    expect(state.deckTier1).not.toEqual(expect.arrayContaining(componentIds));
-
-    const opponentView = filterStateForPlayer(
-      formatGameState("room", "playing", state, new Set(["p1", "p2"])),
-      "p2",
+    expect(tier2Before - totalHeld(player)).toBe(
+      Object.values(tier2.cost).reduce((sum, value) => sum + value, 0),
     );
-    expect(JSON.stringify(opponentView)).not.toContain("foundryRecoveryComponentIds");
+    expect(getDevice(player, "bp_mantle_to_orbit_foundry").foundryUsesRemaining).toBe(2);
 
-    acknowledgeProjectEffects(state);
-    const eminenceAfterOverdrive = player.eminence;
-    for (const [index, componentId] of componentIds.entries()) {
+    resetTurn(state, 0);
+    const foundryCardId = "t2r02";
+    const foundryCard = CARD_MAP.get(foundryCardId)!;
+    placeInForge(state, foundryCardId);
+    giveAffinities(state, player);
+    const baseCost = STANDARD_AFFINITY_KEYS.reduce(
+      (sum, affinity) => sum + Math.max(0, foundryCard.cost[affinity] - player.bonuses[affinity]),
+      0,
+    );
+    const discountedChannels = STANDARD_AFFINITY_KEYS.filter(
+      (affinity) =>
+        foundryCard.cost[affinity] > 0 &&
+        Math.max(0, foundryCard.cost[affinity] - player.bonuses[affinity]) > 0,
+    ).length;
+    const beforeFoundry = totalHeld(player);
+    expect(applyAction(state, player.playerId, {
+      type: "forge_artifact",
+      cardId: foundryCardId,
+      blueprintAction: "foundry_sustainable",
+    })).toEqual({ success: true });
+    expect(beforeFoundry - totalHeld(player)).toBe(baseCost - discountedChannels);
+    expect(getDevice(player, "bp_mantle_to_orbit_foundry")).toMatchObject({
+      state: "ready",
+      foundryUsesRemaining: 1,
+    });
+  });
+
+  it("uses two sustainable claims, then seals all components for paid re-Forge on intact Overdrive", () => {
+    const state = makeBlueprintGame(["bp_mantle_to_orbit_foundry"]);
+    const player = state.players[0];
+    const components = giveComponents(player, "bp_mantle_to_orbit_foundry");
+    components.forEach((componentId) => removeFromBoard(state, componentId));
+    triggerManifestation(state, player);
+    acknowledgeManifestations(state);
+
+    for (const cardId of ["t2r01", "t2r02"]) {
       resetTurn(state, 0);
-      const beforeAffinity = { ...player.affinities };
+      placeInForge(state, cardId);
+      giveAffinities(state, player);
       expect(applyAction(state, player.playerId, {
-        type: "recover_foundry_component",
-        cardId: componentId,
+        type: "forge_artifact",
+        cardId,
+        blueprintAction: "foundry_sustainable",
       })).toEqual({ success: true });
-      expect(player.affinities).toEqual(beforeAffinity);
-      expect(foundry.foundryRecoveredComponentCount).toBe(index + 1);
     }
 
-    expect(foundry).toMatchObject({
-      state: "active",
-      foundryUses: 0,
-      foundryOverdriveAvailable: false,
+    expect(getDevice(player, "bp_mantle_to_orbit_foundry").foundryUsesRemaining).toBe(0);
+    resetTurn(state, 0);
+    const overdriveCardId = "t2r03";
+    placeInForge(state, overdriveCardId);
+    giveAffinities(state, player);
+    expect(applyAction(state, player.playerId, {
+      type: "forge_artifact",
+      cardId: overdriveCardId,
+      blueprintAction: "foundry_overdrive",
+    })).toEqual({ success: true });
+
+    const foundry = getDevice(player, "bp_mantle_to_orbit_foundry");
+    const privateState = player.blueprintPrivateStates?.find(
+      (entry) => entry.blueprintId === "bp_mantle_to_orbit_foundry",
+    );
+    expect(foundry.state).toBe("spent");
+    expect(player.forgedArtifactIds).not.toEqual(expect.arrayContaining(components));
+    expect(player.reservedArtifactIds).toEqual(expect.arrayContaining(components));
+    expect(player.privateReservedArtifactIds).not.toEqual(expect.arrayContaining(components));
+    expect(privateState?.foundryStoredArtifactIds).toEqual(components);
+    expect(privateState?.foundryRecoveryArtifactIds).toBeUndefined();
+    expect(ordinaryEncryptedCount(player)).toBe(0);
+    expect(player.affinities.singularity).toBe(0);
+    expect(state.affinityWell.singularity).toBe(0);
+    expect(state.deckTier1).not.toEqual(expect.arrayContaining(components));
+    expect(privateState?.matchedComponentIds).toEqual([]);
+    for (const componentId of components) {
+      expect(player.civilization.artifacts[componentId]).toMatchObject({
+        masteryCount: 1,
+        implementationState: "archived",
+        implementationChangeSource: {
+          sourceType: "blueprint",
+          sourceId: "bp_mantle_to_orbit_foundry",
+        },
+      });
+    }
+
+    const restoredId = components[0];
+    const restoredCard = CARD_MAP.get(restoredId)!;
+    const bonusBefore = player.bonuses[restoredCard.bonusAffinity];
+    const eminenceBeforeRestore = player.eminence;
+    resetTurn(state, 0);
+    giveAffinities(state, player);
+    expect(applyAction(state, player.playerId, {
+      type: "forge_reserved_artifact",
+      cardId: restoredId,
+    })).toEqual({ success: true });
+
+    expect(foundry.state).toBe("spent");
+    expect(player.reservedArtifactIds).not.toContain(restoredId);
+    expect(privateState?.foundryStoredArtifactIds).toEqual(components.slice(1));
+    expect(player.forgedArtifactIds).toContain(restoredId);
+    expect(player.bonuses[restoredCard.bonusAffinity]).toBe(bonusBefore + 1);
+    expect(player.civilization.artifacts[restoredId].implementationState).toBe("operational");
+    expect(privateState?.matchedComponentIds).toEqual([restoredId]);
+    expect(player.eminence).toBe(eminenceBeforeRestore);
+  });
+
+  it("allows Foundry storage to overflow three ordinary Encrypted slots without expanding their cap", () => {
+    const state = makeBlueprintGame(["bp_mantle_to_orbit_foundry"]);
+    const player = state.players[0];
+    const components = giveComponents(player, "bp_mantle_to_orbit_foundry");
+    components.forEach((componentId) => removeFromBoard(state, componentId));
+    const ordinaryIds = state.deckTier1
+      .filter((cardId) => !components.includes(cardId) && cardId !== "t1e02")
+      .slice(0, 2);
+    ordinaryIds.forEach((cardId) => removeFromBoard(state, cardId));
+    player.reservedArtifactIds.push(...ordinaryIds);
+    player.privateReservedArtifactIds!.push(...ordinaryIds);
+    triggerManifestation(state, player);
+    acknowledgeManifestations(state);
+    getDevice(player, "bp_mantle_to_orbit_foundry").foundryUsesRemaining = 0;
+
+    resetTurn(state, 0);
+    placeInForge(state, "t2r03");
+    giveAffinities(state, player);
+    expect(applyAction(state, player.playerId, {
+      type: "forge_artifact",
+      cardId: "t2r03",
+      blueprintAction: "foundry_overdrive",
+    })).toEqual({ success: true });
+
+    expect(player.reservedArtifactIds).toHaveLength(5);
+    expect(ordinaryEncryptedCount(player)).toBe(2);
+
+    resetTurn(state, 0);
+    const thirdOrdinaryId = state.forgeTier1[0];
+    expect(applyAction(state, player.playerId, {
+      type: "reserve_artifact",
+      cardId: thirdOrdinaryId,
+    })).toEqual({ success: true });
+    expect(player.reservedArtifactIds).toHaveLength(6);
+    expect(ordinaryEncryptedCount(player)).toBe(3);
+
+    resetTurn(state, 0);
+    expect(applyAction(state, player.playerId, {
+      type: "reserve_artifact",
+      cardId: state.forgeTier1[0],
+    })).toMatchObject({ success: false });
+    expect(ordinaryEncryptedCount(player)).toBe(3);
+  });
+
+  it("creates a Foundry recovery group under Broken Covenant and reactivates at zero uses", () => {
+    const state = makeBlueprintGame(["bp_mantle_to_orbit_foundry"]);
+    const player = state.players[0];
+    const components = giveComponents(player, "bp_mantle_to_orbit_foundry");
+    components.forEach((componentId) => removeFromBoard(state, componentId));
+    triggerManifestation(state, player);
+    acknowledgeManifestations(state);
+    const device = getDevice(player, "bp_mantle_to_orbit_foundry");
+    device.foundryUsesRemaining = 0;
+    state.brokenCovenantDeclared = true;
+
+    resetTurn(state, 0);
+    const overdriveCardId = "t2r03";
+    placeInForge(state, overdriveCardId);
+    giveAffinities(state, player);
+    expect(applyAction(state, player.playerId, {
+      type: "forge_artifact",
+      cardId: overdriveCardId,
+      blueprintAction: "foundry_overdrive",
+    })).toEqual({ success: true });
+    expect(device.state).toBe("recovering");
+    const privateState = player.blueprintPrivateStates?.find(
+      (entry) => entry.blueprintId === "bp_mantle_to_orbit_foundry",
+    );
+    expect(privateState?.foundryStoredArtifactIds).toEqual(components);
+    expect(privateState?.foundryRecoveryArtifactIds).toBeUndefined();
+    expect(player.reservedArtifactIds).toEqual(expect.arrayContaining(components));
+    expect(ordinaryEncryptedCount(player)).toBe(0);
+    expect(player.affinities.singularity).toBe(0);
+    expect(state.affinityWell.singularity).toBe(0);
+    expect(state.deckTier1).not.toEqual(expect.arrayContaining(components));
+    expect(privateState?.matchedComponentIds).toEqual([]);
+
+    expect(chooseAiAction(state, player.playerId, "hard")).toEqual({
+      type: "forge_artifact",
+      cardId: components[0],
+      blueprintAction: "foundry_recovery",
     });
-    expect(player.forgedArtifactIds).toEqual(expect.arrayContaining(componentIds));
-    expect(player.eminence).toBe(eminenceAfterOverdrive);
+
+    resetTurn(state, 0);
+    giveAffinities(state, player);
+    expect(applyAction(state, player.playerId, {
+      type: "forge_reserved_artifact",
+      cardId: components[0],
+    })).toMatchObject({
+      success: false,
+      error: expect.stringContaining("free Foundry recovery"),
+    });
+
+    const eminenceBeforeRecovery = player.eminence;
+    for (const componentId of components) {
+      resetTurn(state, 0);
+      player.affinities = {
+        flare: 0,
+        continuum: 0,
+        verdance: 0,
+        abyss: 0,
+        radiance: 0,
+        singularity: 0,
+      };
+      expect(applyAction(state, player.playerId, {
+        type: "forge_artifact",
+        cardId: componentId,
+        blueprintAction: "foundry_recovery",
+      })).toEqual({ success: true });
+    }
+
+    expect(privateState?.foundryStoredArtifactIds).toEqual([]);
+    expect(privateState?.foundryRecoveryArtifactIds).toBeUndefined();
+    expect(player.reservedArtifactIds).not.toEqual(expect.arrayContaining(components));
+    expect(device).toMatchObject({ state: "ready", foundryUsesRemaining: 0 });
+    expect(player.forgedArtifactIds).toEqual(expect.arrayContaining(components));
+    expect(privateState?.matchedComponentIds).toEqual(components);
+    expect(player.eminence).toBe(eminenceBeforeRecovery);
+    for (const componentId of components) {
+      expect(player.civilization.artifacts[componentId].implementationState).toBe("operational");
+    }
+  });
+
+  it("normalizes legacy Broken Covenant recovery into canonical Cipher storage on reconnect", () => {
+    const state = makeBlueprintGame(["bp_mantle_to_orbit_foundry"]);
+    const player = state.players[0];
+    const components = BLUEPRINT_DEFINITIONS.bp_mantle_to_orbit_foundry.components
+      .map((component) => component.artifactId);
+    const privateState = player.blueprintPrivateStates?.find(
+      (entry) => entry.blueprintId === "bp_mantle_to_orbit_foundry",
+    );
+    expect(privateState).toBeDefined();
+    privateState!.manifested = true;
+    privateState!.foundryRecoveryArtifactIds = [...components];
+    delete privateState!.foundryStoredArtifactIds;
+    player.reservedArtifactIds = [];
+    player.privateReservedArtifactIds = [...components];
+
+    const normalized = normalizeState(state);
+    const normalizedPlayer = normalized.players[0];
+    const normalizedPrivateState = normalizedPlayer.blueprintPrivateStates?.find(
+      (entry) => entry.blueprintId === "bp_mantle_to_orbit_foundry",
+    );
+
+    expect(normalizedPrivateState?.foundryStoredArtifactIds).toEqual(components);
+    expect(normalizedPrivateState?.foundryRecoveryArtifactIds).toBeUndefined();
+    expect(normalizedPlayer.reservedArtifactIds).toEqual(components);
+    expect(normalizedPlayer.privateReservedArtifactIds).toEqual([]);
+    expect(ordinaryEncryptedCount(normalizedPlayer)).toBe(0);
   });
 });
 
 describe("Ascension Registry", () => {
-  function manifestedRegistry(covenantState: "intact" | "broken") {
+  it("records another civilization's unclaimed legal Tier II turns and pays at two", () => {
     const state = makeBlueprintGame(["bp_ascension_registry"]);
     const owner = state.players[0];
+    const observed = state.players[1];
+    giveComponents(owner, "bp_ascension_registry");
+    giveAffinities(state, observed);
+    triggerManifestation(state, owner);
+    expect(owner.eminence).toBe(0);
+    acknowledgeManifestations(state);
+
+    expect(state.currentPlayerIndex).toBe(1);
+    expect(applyAction(state, observed.playerId, { type: "pass" })).toEqual({ success: true });
+    expect(getDevice(owner, "bp_ascension_registry").ascensionDeferrals).toBe(1);
+
+    expect(state.currentPlayerIndex).toBe(0);
+    expect(applyAction(state, owner.playerId, { type: "pass" })).toEqual({ success: true });
+    expect(state.currentPlayerIndex).toBe(1);
+    expect(applyAction(state, observed.playerId, { type: "pass" })).toEqual({ success: true });
+
+    expect(owner.eminence).toBe(2);
+    expect(getDevice(owner, "bp_ascension_registry")).toMatchObject({
+      state: "spent",
+      ascensionDeferrals: 2,
+    });
+  });
+
+  it("clears every Deferral when a legal Tier II claim is annihilated before payment", () => {
+    const state = makeBlueprintGame([
+      "bp_antimatter_detonator",
+      "bp_ascension_registry",
+    ]);
+    const owner = state.players[0];
+    const claimant = state.players[1];
+    giveComponents(owner, "bp_antimatter_detonator");
     giveComponents(owner, "bp_ascension_registry");
     triggerManifestation(state, owner);
     acknowledgeManifestations(state);
     const registry = getDevice(owner, "bp_ascension_registry");
-    registry.covenantState = covenantState;
-    return { state, owner, registry };
-  }
-
-  function deferTierTwo(state: GameStateData, playerIndex: number): void {
-    resetTurn(state, playerIndex);
-    refreshTurnStartTechnologyOpportunity(state);
-    expect(state.tierTwoOpportunityAtTurnStart).toBe(true);
-    expect(applyAction(state, state.players[playerIndex]!.playerId, { type: "pass" }))
-      .toEqual({ success: true });
-  }
-
-  it("records no more than one public Deferral per round and spends after judgment", () => {
-    const { state, owner, registry } = manifestedRegistry("intact");
-    deferTierTwo(state, 1);
-    expect(registry.ascensionDeferral).toBe(1);
-
-    state.roundNumber = registry.ascensionLastCounterRound!;
-    resetTurn(state, 1);
-    refreshTurnStartTechnologyOpportunity(state);
-    expect(applyAction(state, state.players[1]!.playerId, { type: "pass" }))
-      .toEqual({ success: true });
-    expect(registry.ascensionDeferral).toBe(1);
-
-    state.roundNumber++;
-    deferTierTwo(state, 1);
-    expect(registry).toMatchObject({ state: "spent", ascensionDeferral: 2 });
-    expect(owner.eminence).toBe(2);
-  });
-
-  it("clears a Broken judgment and remains Active for repeated judgments", () => {
-    const { state, owner, registry } = manifestedRegistry("broken");
-    deferTierTwo(state, 1);
-    state.roundNumber++;
-    deferTierTwo(state, 1);
-    expect(registry).toMatchObject({ state: "active", ascensionDeferral: 0 });
-    expect(owner.eminence).toBe(2);
-
-    state.roundNumber++;
-    deferTierTwo(state, 1);
-    state.roundNumber++;
-    deferTierTwo(state, 1);
-    expect(registry).toMatchObject({ state: "active", ascensionDeferral: 0 });
-    expect(owner.eminence).toBe(4);
-  });
-
-  it("clears every active Registry when any legal Tier II claim resolves", () => {
-    const { state, registry } = manifestedRegistry("intact");
-    registry.ascensionDeferral = 1;
-    resetTurn(state, 1);
-    const claimant = state.players[1]!;
-    const cardId = state.forgeTier2[0]!;
+    registry.ascensionDeferrals = 1;
+    const targetCardId = owner.blueprintPrivateStates
+      ?.find((entry) => entry.blueprintId === "bp_antimatter_detonator")
+      ?.secretTargetCardId;
+    expect(targetCardId).toBeTruthy();
     giveAffinities(state, claimant);
+    resetTurn(state, 1);
+
     expect(applyAction(state, claimant.playerId, {
-      type: "reserve_artifact",
-      cardId,
+      type: "forge_artifact",
+      cardId: targetCardId!,
     })).toEqual({ success: true });
-    expect(registry.ascensionDeferral).toBe(0);
+    expect(registry.ascensionDeferrals).toBe(0);
+    expect(state.annihilatedArtifactIds).toContain(targetCardId);
   });
-});
 
-describe("civilization identity milestones", () => {
-  it("freezes the selected identity when the first Project manifests", () => {
+  it("clears at two and remains active under Broken Covenant", () => {
     const state = makeBlueprintGame(["bp_ascension_registry"]);
-    const player = state.players[0];
-    player.civilizationIdentity = {
-      lineage: "accord",
-      affinity: "radiance",
-      signatureArtifactId: null,
-      signatureLuminaryId: null,
-      signatureBlueprintId: "bp_ascension_registry",
-      displayName: "The Radiant Concord",
-      scaleType: 1,
-      scaleLabel: "Kardashev Type I",
-      projectEpithet: "Ascension Registry",
-    };
-    giveComponents(player, "bp_ascension_registry");
-    triggerManifestation(state, player);
+    const owner = state.players[0];
+    const observed = state.players[1];
+    giveComponents(owner, "bp_ascension_registry");
+    giveAffinities(state, observed);
+    state.brokenCovenantDeclared = true;
+    triggerManifestation(state, owner);
+    acknowledgeManifestations(state);
 
-    expect(player.civilizationIdentitySnapshot).toMatchObject({
-      displayName: "The Radiant Concord",
-      projectEpithet: "Ascension Registry",
+    expect(applyAction(state, observed.playerId, { type: "pass" })).toEqual({ success: true });
+    expect(applyAction(state, owner.playerId, { type: "pass" })).toEqual({ success: true });
+    expect(applyAction(state, observed.playerId, { type: "pass" })).toEqual({ success: true });
+
+    expect(owner.eminence).toBe(2);
+    expect(getDevice(owner, "bp_ascension_registry")).toMatchObject({
+      state: "ready",
+      ascensionDeferrals: 0,
     });
-    player.civilizationIdentity.displayName = "The Ember Foundry";
-    expect(player.civilizationIdentitySnapshot?.displayName).toBe("The Radiant Concord");
   });
 });

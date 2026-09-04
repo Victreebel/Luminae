@@ -1,8 +1,7 @@
 # LUMINAe Blueprint First Pool v0.2
 
-> **Superseded:** `LUMINAe_BLUEPRINT_FIRST_POOL_SPEC_v2.0.md` replaces this
-> pool. Ascension Registry replaces Worldshield in Lumii's opening challenge,
-> and Foundry now uses explicit sustainable and Overdrive actions.
+> **Superseded historical design.** Blueprint First Pool v2.0 controls current
+> Project rules, including Mantle-to-Orbit Foundry Overdrive and Cipher storage.
 
 ## Status
 
@@ -82,8 +81,8 @@ If any one component is missing, the project has an obvious failure:
 ```text
 When this manifests, gain 1 Eminence.
 
-The first Tier II Artifact you Forge costs 2 fewer natural Affinity.
-The first Tier III Artifact you Forge costs 3 fewer natural Affinity.
+The first Tier II Artifact you Forge costs 2 fewer standard Affinity.
+The first Tier III Artifact you Forge costs 3 fewer standard Affinity.
 You must always pay at least 1.
 
 After both reductions are used, this Foundry becomes Spent.

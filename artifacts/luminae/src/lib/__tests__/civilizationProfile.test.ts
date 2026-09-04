@@ -34,9 +34,9 @@ describe('civilization profiles', () => {
   it('maps known artifacts to lore-aligned infrastructure families', () => {
     expect(getArtifactCivilizationTrait(
       artifact('t2e01', 2, 'verdance', 'Solar Immune Organ'),
-    )).toBe('ecology');
+    )).toBe('biosphere');
     expect(getArtifactCivilizationTrait(
-      artifact('t3s01', 3, 'continuum', 'Wormgate Spine'),
+      artifact('t3s01', 3, 'continuum', 'Voidline Route Solver'),
     )).toBe('transit');
     expect(getArtifactCivilizationTrait(
       artifact('t2p01', 2, 'radiance', 'Containment Lattice'),
@@ -86,11 +86,11 @@ describe('civilization profiles', () => {
     const profile = buildCivilizationProfile([
       artifact('t1e01', 1, 'verdance'),
       artifact('t1e05', 1, 'verdance'),
-      artifact('t3s01', 3, 'continuum', 'Wormgate Spine', 5),
+      artifact('t3s01', 3, 'continuum', 'Voidline Route Solver', 5),
     ]);
 
     expect(profile.dominantTraits[0]).toBe('transit');
-    expect(profile.traitCounts.fabrication).toBe(2);
+    expect(profile.traitCounts.replication).toBe(2);
     expect(profile.traitCounts.transit).toBe(1);
   });
 });

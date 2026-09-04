@@ -22,6 +22,7 @@
 import { defineConfig, devices } from 'playwright/test';
 
 const executablePath = process.env.REPLIT_PLAYWRIGHT_CHROMIUM_EXECUTABLE || undefined;
+const baseURL = process.env.LUMINAE_E2E_BASE_URL ?? 'http://localhost:5191';
 
 export default defineConfig({
   testDir: './overlay-audit',
@@ -33,7 +34,7 @@ export default defineConfig({
       name: 'Pixel 5 — Android Chrome (Chromium)',
       use: {
         ...devices['Pixel 5'],
-        baseURL: 'http://localhost:80',
+        baseURL,
         launchOptions: { executablePath, headless: true },
         screenshot: 'only-on-failure',
       },

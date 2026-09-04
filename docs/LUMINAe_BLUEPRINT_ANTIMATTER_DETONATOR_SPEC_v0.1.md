@@ -330,7 +330,7 @@ Campaign may add a third public device state, `sealed`, after the player explici
 
 Before First Clearance, neither its name nor its silhouette appears. It is covered by the account-wide Top Secret concealment rule.
 
-The third victory reveals only the clearance challenge:
+The fifth victory reveals only the clearance challenge:
 
 ```text
 CLEARANCE THRESHOLD MET

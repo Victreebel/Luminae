@@ -10,13 +10,8 @@ import {
 import { accountAuth } from "../lib/accountAuth";
 import { getPresentIds } from "../lib/presence";
 import { z } from "zod";
-import { requireUuidParam } from "../lib/routeParams";
 
 const router: IRouter = Router();
-router.param("id", requireUuidParam);
-const AccountUsername = z.string().trim().min(2).max(32).regex(/^[a-zA-Z0-9_-]+$/);
-const FriendRequestBody = z.object({ username: AccountUsername }).strict();
-const FriendRequestActionBody = z.object({ action: z.enum(["accept", "decline"]) }).strict();
 
 // Helper — is account online?
 // True if: actively connected inside a game room, OR seen via any authenticated
@@ -80,7 +75,7 @@ router.get("/friends", accountAuth, async (req: Request, res): Promise<void> => 
 router.post("/friends/requests", accountAuth, async (req: Request, res): Promise<void> => {
   const account = req.account!;
 
-  const parsed = FriendRequestBody.safeParse(req.body);
+  const parsed = z.object({ username: z.string() }).safeParse(req.body);
   if (!parsed.success) {
     res.status(400).json({ error: "username is required" });
     return;
@@ -171,7 +166,7 @@ router.patch("/friends/requests/:id", accountAuth, async (req: Request, res): Pr
   const account = req.account!;
   const { id } = req.params as { id: string };
 
-  const parsed = FriendRequestActionBody.safeParse(req.body);
+  const parsed = z.object({ action: z.enum(["accept", "decline"]) }).safeParse(req.body);
   if (!parsed.success) {
     res.status(400).json({ error: "action must be 'accept' or 'decline'" });
     return;

@@ -11,6 +11,10 @@ The Lore Bible governs universal fiction. The Story Mode Framework governs the
 principal campaign. Existing runtime behavior remains evidence about the game,
 not authority over contradictory canon.
 
+For technology reconciliation, Technology System v2 governs Artifact semantics
+and Blueprint First Pool v2 governs exact Project behavior. Mapping and guide
+documents explain implementation; the Unified Reference compiles them.
+
 ## Dispositions
 
 - **Settled:** preserve; do not reopen without an explicit canon revision.
@@ -32,14 +36,16 @@ not authority over contradictory canon.
 | Affinity | Settled | Affinity is morally neutral and is the setting's sole fictional physical departure. It permits bounded higher-dimensional adjacency without bulk-matter transport, free energy, or retrocausality. |
 | Well | Revised | The Well renders a real, temporary limit on Affinity addressability within one Domain. Tokens are stabilized alignments, not consumable matter or energy. |
 | Harness | Settled | Harnessing stabilizes currently uncommitted addressability for possible development. Exact action patterns and caps are normalized interface thresholds. |
-| Forge | Settled | Forging accelerates a civilization to first operational mastery; it does not grant ownership of a universal technology. |
-| Forge removal | Settled | Removal closes the bounded first-mastery acceleration window and advances the cohort frontier. Rivals can develop analogous capabilities later. |
+| Forge | Revised | Forging commits finite Domain addressability to accelerated research, construction, and adoption until first operational mastery; it does not grant ownership of a universal technology. |
+| Forge payment return | Revised | Once implementation is self-sustaining, every paid Affinity returns to its matching Well channel. The permanent bonus is the durable expertise, infrastructure, and institutions left behind. |
+| Artifact signature | Revised | Every Artifact class has a universal recognizable signature and locally different embodiments. First mastery creates Domain-local signature interference for that same class only. |
+| Forge removal | Revised | Signature interference closes the same class's accelerated first-mastery window, often for centuries or the observed epoch. Related technologies and lineages remain available; refill exposes the next reachable possibility. |
 | Artifact bonus | Settled | A bonus is durable civilization-local expertise, infrastructure, and institutional capacity created by operational mastery. |
 | Eminence | Settled | Eminence measures consequence during the observed epoch, not virtue, energy, conquest, or survival. Losing does not imply extinction. |
 | Operational Reach | Confirmed | Artifact tiers and match progression describe planetary, stellar, and galactic capability scale. Literal Kardashev Type is separate historical metadata. |
 | Controllers | Confirmed | Use `player_architect`, `rival_architect`, `architect_emulation`, and `autonomous`. Standard AI defaults to emulation; Chronicles declare controllers. |
 | Agency | Settled | Architect influence changes legibility, timing, coordination, and addressability. Civilizations retain responsibility for acceptance, resistance, and use. |
-| Encrypt | Settled in part | Player, rival, and emulated Architects may Encrypt. Autonomous civilizations and Lumii may not. Concealment affects an acceleration opportunity, not eventual discovery. |
+| Encrypt | Settled in part | Player, rival, and emulated Architects may Encrypt. Autonomous civilizations and Lumii may not. Encryption isolates an uncommitted pathway and creates no mastery signature. |
 | Singularity | Candidate | Keep current behavior as the baseline until Artifact-bound Focus is tested. Never call Singularity a sixth natural Affinity. |
 | Luminaries | Settled | Luminaries are substrate-level persons represented by account-bounded relational facets. Standard alliances compress consent; Chronicles expose terms and refusal. |
 | Luminary timing | Confirmed | Retain immediate qualification. The tested end-of-round alternative failed the seat-parity gate. |
@@ -47,6 +53,8 @@ not authority over contradictory canon.
 | Annihilate | Settled | Permanently destroys a specific implementation or nearly operational program, never its discovery. Reserve for exceptional weapons. |
 | Burn | Settled | Closes an unmastered acceleration pathway during the epoch; it does not destroy an owned implementation. |
 | Nullify | Settled | Suppresses projected consequence or synthesis value without erasing the underlying capability. |
+| Assimilate | Revised | Final Hunger consumes an unmastered pathway into Affinity without creating a normal civilizational implementation or mastery signature. |
+| Foundry seal | Revised | Controlled decommissioning archives mastery, removes operational bonuses, unwinds active interference, and stores the pathway in Cipher storage for re-Forge. Foundry storage is outside the ordinary three-card Encrypt cap. |
 | Lumii | Settled | Each account has a genuine Lumii person-fork; physical hosting remains unspecified. Lumii remembers Rehearsals as simulations, not history. |
 | Tutorial | Settled | First Contact is real. The tutorial civilization and guaranteed result are a non-sapient interface simulation. |
 | Covenant | Settled | Reciprocal networks are more stable; Affinity does not recognize morality or consent. The Threshold rupture does not itself break the Covenant. |
@@ -89,7 +97,7 @@ preserved. Migration must never fabricate Chronicles.
 | Three-card Encrypt cap | Retain provisionally | Treat as bounded private intervention bandwidth; reassess with Focus. |
 | Immediate Luminary alliance | Retain | Balance-tested alternative failed; standard play compresses consent. |
 | Starting-player compensation | Redesign when implemented | Use interface-only initiative adjustment, excluded from historical Eminence. |
-| 15-Eminence closing epoch | Retain provisionally | Historical closure threshold, not a cosmic constant; reassess only through a separate balance program. |
+| 20-Eminence standard closing epoch | Adopt | Twenty is the standard match target; fifteen remains an explicit shorter custom format. The threshold is historical closure, not a cosmic constant. |
 | Kardashev triggers | Remove from match progression | Replace with Operational Reach; store literal Type separately. |
 | Built On / Leads Toward | Retain and expose | Use in details, authored objectives, and autonomous priorities without changing standard costs yet. |
 
@@ -99,7 +107,8 @@ preserved. Migration must never fabricate Chronicles.
   testing preserved completion and game length but exceeded the four-point seat
   spread gate. Immediate claims remain the baseline.
 - **Cumulative 5/4/1 Kardashev candidate: rejected as shipped progression.** It
-  reached the former Type III display for only about 36–45% of 15-Eminence
+  reached the former Type III display for only about 36–45% of winners under
+  the historical 15-Eminence baseline
   winners and also used the wrong ontology. Operational Reach requires fresh
   calibration.
 - **Focus: pending.** Test against current portable Singularity for completion,
@@ -127,6 +136,8 @@ preserved. Migration must never fabricate Chronicles.
 - [x] Standard and authored matches contain 2–4 real civilizations in one Domain.
 - [x] Chronicle is reserved as the formal authored-story term without renaming *Living Chronicle*.
 - [x] Forge acceleration and later independent development are explicit.
+- [x] Paid Affinity return, permanent bonuses, Artifact signatures, and
+  same-class interference are explicit.
 - [x] The shared Well has a settled Domain-addressability ontology.
 - [x] Operational Reach is separated from Kardashev Type.
 - [x] Defeat advances the campaign and Insights never gate Threshold access.

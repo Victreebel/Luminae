@@ -13,7 +13,6 @@ export function CipherSigil({
     <svg
       viewBox="0 0 96 96"
       className="h-full w-full"
-      data-cipher-sigil="true"
       style={{ overflow: "visible" }}
     >
       <defs>
@@ -36,15 +35,12 @@ export function CipherSigil({
         </filter>
       </defs>
       <polygon
-        data-cipher-part="aura"
         points="87,48 67.5,81.5 28.5,81.5 9,48 28.5,14.5 67.5,14.5"
         fill={affinityHex}
         opacity="0.13"
         filter={`url(#${bloomId})`}
       />
       <polygon
-        data-cipher-line="outer"
-        pathLength="1"
         points="87,48 67.5,81.5 28.5,81.5 9,48 28.5,14.5 67.5,14.5"
         fill="none"
         stroke={affinityHex}
@@ -53,8 +49,6 @@ export function CipherSigil({
         filter={`url(#${glowId})`}
       />
       <polygon
-        data-cipher-line="middle"
-        pathLength="1"
         points="82,48 64.5,78 31.5,78 14,48 31.5,18 64.5,18"
         fill="none"
         stroke="rgba(210,240,255,0.28)"
@@ -62,8 +56,6 @@ export function CipherSigil({
         filter={`url(#${whiteId})`}
       />
       <polygon
-        data-cipher-line="inner"
-        pathLength="1"
         points="71,61.5 48,73 25,61.5 25,34.5 48,23 71,34.5"
         fill="none"
         stroke={affinityHex}
@@ -71,7 +63,6 @@ export function CipherSigil({
         opacity="0.52"
       />
       <rect
-        data-cipher-part="core-outer"
         x="37"
         y="37"
         width="22"
@@ -83,7 +74,6 @@ export function CipherSigil({
         filter={`url(#${glowId})`}
       />
       <rect
-        data-cipher-part="core-middle"
         x="41.5"
         y="41.5"
         width="13"
@@ -92,7 +82,6 @@ export function CipherSigil({
         fill="rgba(220,245,255,0.28)"
       />
       <rect
-        data-cipher-part="core-inner"
         x="45"
         y="45"
         width="6"
@@ -114,7 +103,6 @@ export function CipherSigil({
       ).map(([x, y], index) => (
         <circle
           key={index}
-          data-cipher-node={index}
           cx={x}
           cy={y}
           r="2.6"
@@ -123,8 +111,6 @@ export function CipherSigil({
         />
       ))}
       <line
-        data-cipher-line="cross-a"
-        pathLength="1"
         x1="20"
         y1="28"
         x2="76"
@@ -135,8 +121,6 @@ export function CipherSigil({
         strokeDasharray="2.8 4.2"
       />
       <line
-        data-cipher-line="cross-b"
-        pathLength="1"
         x1="20"
         y1="68"
         x2="76"

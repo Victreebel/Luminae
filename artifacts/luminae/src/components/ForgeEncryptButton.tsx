@@ -254,7 +254,7 @@ export function ForgeButton({
 
       {/* Medallion section */}
       <div aria-hidden className="artifact-action-medallion flex-shrink-0 flex items-center justify-center" style={{
-        width: isMobile ? 48 : 66, height: '100%', position: 'relative', zIndex: 1,
+        width: 66, height: '100%', position: 'relative', zIndex: 1,
         background: [
           'radial-gradient(circle at 54% 44%, rgba(185,112,14,0.58) 0%, rgba(85,50,4,0.38) 52%, transparent 78%)',
           'linear-gradient(180deg, rgba(0,0,0,0.20) 0%, rgba(110,68,6,0.20) 30%, rgba(44,26,2,0.18) 70%, rgba(0,0,0,0.28) 100%)',
@@ -272,15 +272,13 @@ export function ForgeButton({
         <div
           className={`artifact-action-medallion-core flex items-center justify-center rounded-full ${isPending ? 'forge-medallion-pending' : 'forge-medallion-glow'}`}
           style={{
-            width: isMobile ? 36 : 44, height: isMobile ? 36 : 44, flexShrink: 0,
+            width: 44, height: 44, flexShrink: 0,
             background: isPending
               ? 'radial-gradient(circle at 38% 34%, #e89c1e 0%, #9a6414 50%, #4e3405 100%)'
               : 'radial-gradient(circle at 38% 34%, #d4941e 0%, #8a5c12 50%, #422e04 100%)',
           }}
         >
-          <Gavel style={{
-            width: isMobile ? 18 : 21,
-            height: isMobile ? 18 : 21,
+          <Gavel className="h-[21px] w-[21px]" style={{
             color: isPending ? '#FFF2AA' : '#FFE89A',
             filter: isPending
               ? 'drop-shadow(0 0 8px rgba(255,220,60,0.95)) drop-shadow(0 1px 3px rgba(0,0,0,0.70))'
@@ -290,34 +288,34 @@ export function ForgeButton({
       </div>
 
       {/* Text */}
-      <div className="artifact-action-copy flex min-w-0 flex-1 flex-col items-start justify-center" style={{ position: 'relative', zIndex: 1, gap: 0, paddingInline: isMobile ? 8 : 16 }}>
+      <div className="artifact-action-copy flex flex-col items-start justify-center flex-1 px-4" style={{ position: 'relative', zIndex: 1, gap: 0 }}>
         <AnimatePresence mode="wait" initial={false}>
           {isSent ? (
             <motion.span key="sent" className="flex items-center gap-1.5 text-emerald-300 font-bold"
-              style={{ fontSize: isMobile ? 12 : 14, letterSpacing: 0 }}
+              style={{ fontSize: 14, letterSpacing: '0.06em' }}
               initial={{ opacity: 0, y: 4 }} animate={{ opacity: 1, y: 0, transition: { duration: 0.10 } }}
               exit={{ opacity: 0, y: -4, transition: { duration: 0.15 } }}>
               <Check className="h-4 w-4" />Sent!
             </motion.span>
           ) : (
-            <motion.span key="label" className="artifact-action-copy-stack flex min-w-0 max-w-full flex-col items-start"
+            <motion.span key="label" className="artifact-action-copy-stack flex flex-col items-start"
               initial={{ opacity: 0 }} animate={{ opacity: 1, transition: { duration: 0.10 } }}
               exit={{ opacity: 0, transition: { duration: 0.12 } }}>
               {isPlan && !isPending && (
-                <span style={{ marginBottom: 4, letterSpacing: 0 }} className="text-[7.5px] font-black uppercase text-amber-400 bg-amber-950/70 border border-amber-500/50 rounded px-[5px] py-[1px] leading-none self-start">PLAN</span>
+                <span style={{ marginBottom: 4 }} className="text-[7.5px] font-black uppercase tracking-wider text-amber-400 bg-amber-950/70 border border-amber-500/50 rounded px-[5px] py-[1px] leading-none self-start">PLAN</span>
               )}
-              <span className="artifact-action-label max-w-full font-bold uppercase leading-none" style={{
-                fontSize: isMobile ? 13 : 17, letterSpacing: 0, whiteSpace: 'nowrap',
+              <span className="artifact-action-label font-bold uppercase leading-none" style={{
+                fontSize: 17, letterSpacing: '0.15em',
                 textShadow: isPending
                   ? `0 0 24px ${confirmGlow}bb, 0 0 10px ${confirmGlow}77, 0 1px 3px rgba(0,0,0,0.80)`
                   : '0 0 20px rgba(255,228,110,0.45), 0 0 8px rgba(255,200,60,0.28), 0 1px 3px rgba(0,0,0,0.80)',
               }}>
                 {label}
               </span>
-              <span className="artifact-action-subtitle max-w-full leading-none" style={{
-                fontSize: isMobile ? 9 : 10.5, marginTop: 5,
+              <span className="artifact-action-subtitle leading-none" style={{
+                fontSize: 10.5, marginTop: 5,
                 opacity: isPending ? 0.78 : 0.52,
-                letterSpacing: 0, overflowWrap: 'anywhere',
+                letterSpacing: '0.09em',
                 textShadow: '0 1px 2px rgba(0,0,0,0.65)',
               }}>
                 {isPending ? '— Confirming… —' : `— ${subtitle} —`}
@@ -496,7 +494,7 @@ export function EncryptButton({
 
       {/* Medallion section */}
       <div aria-hidden className="artifact-action-medallion flex-shrink-0 flex items-center justify-center" style={{
-        width: isMobile ? 48 : 66, height: '100%', position: 'relative', zIndex: 1,
+        width: 66, height: '100%', position: 'relative', zIndex: 1,
         background: [
           'radial-gradient(circle at 54% 42%, rgba(185,205,245,0.42) 0%, rgba(22,24,38,0.30) 52%, transparent 78%)',
           'linear-gradient(180deg, rgba(0,0,0,0.22) 0%, rgba(22,24,40,0.22) 30%, rgba(10,10,20,0.20) 70%, rgba(0,0,0,0.30) 100%)',
@@ -514,14 +512,14 @@ export function EncryptButton({
         <div
           className={`artifact-action-medallion-core flex items-center justify-center rounded-full ${isPending ? 'encrypt-medallion-pending' : 'encrypt-medallion-glow'}`}
           style={{
-            width: isMobile ? 36 : 44, height: isMobile ? 36 : 44, flexShrink: 0,
+            width: 44, height: 44, flexShrink: 0,
             background: isPending
               ? 'radial-gradient(circle at 38% 34%, #1e2035 0%, #0e1020 52%, #060810 100%)'
               : 'radial-gradient(circle at 38% 34%, #181a2e 0%, #0c0e1c 52%, #050610 100%)',
           }}
         >
           <span className="flex items-center justify-center" style={{
-            width: isMobile ? 20 : 24, height: isMobile ? 20 : 24,
+            width: 24, height: 24,
             filter: isPending
               ? 'drop-shadow(0 0 9px rgba(245,250,255,0.95)) drop-shadow(0 1px 3px rgba(0,0,0,0.75))'
               : 'drop-shadow(0 0 7px rgba(220,234,255,0.85)) drop-shadow(0 1px 3px rgba(0,0,0,0.75))',
@@ -532,34 +530,34 @@ export function EncryptButton({
       </div>
 
       {/* Text */}
-      <div className="artifact-action-copy flex min-w-0 flex-1 flex-col items-start justify-center" style={{ position: 'relative', zIndex: 1, gap: 0, paddingInline: isMobile ? 8 : 16 }}>
+      <div className="artifact-action-copy flex flex-col items-start justify-center flex-1 px-4" style={{ position: 'relative', zIndex: 1, gap: 0 }}>
         <AnimatePresence mode="wait" initial={false}>
           {isSent ? (
             <motion.span key="sent" className="flex items-center gap-1.5 text-emerald-300 font-bold"
-              style={{ fontSize: isMobile ? 12 : 14, letterSpacing: 0 }}
+              style={{ fontSize: 14, letterSpacing: '0.06em' }}
               initial={{ opacity: 0, y: 4 }} animate={{ opacity: 1, y: 0, transition: { duration: 0.10 } }}
               exit={{ opacity: 0, y: -4, transition: { duration: 0.15 } }}>
               <Check className="h-4 w-4" />Sent!
             </motion.span>
           ) : (
-            <motion.span key="label" className="artifact-action-copy-stack flex min-w-0 max-w-full flex-col items-start"
+            <motion.span key="label" className="artifact-action-copy-stack flex flex-col items-start"
               initial={{ opacity: 0 }} animate={{ opacity: 1, transition: { duration: 0.10 } }}
               exit={{ opacity: 0, transition: { duration: 0.12 } }}>
               {isPlan && !isPending && (
-                <span style={{ marginBottom: 4, letterSpacing: 0 }} className="text-[7.5px] font-black uppercase text-amber-400 bg-amber-950/70 border border-amber-500/50 rounded px-[5px] py-[1px] leading-none self-start">PLAN</span>
+                <span style={{ marginBottom: 4 }} className="text-[7.5px] font-black uppercase tracking-wider text-amber-400 bg-amber-950/70 border border-amber-500/50 rounded px-[5px] py-[1px] leading-none self-start">PLAN</span>
               )}
-              <span className="artifact-action-label max-w-full font-bold uppercase leading-none" style={{
-                fontSize: isMobile ? 13 : 17, letterSpacing: 0, whiteSpace: 'nowrap',
+              <span className="artifact-action-label font-bold uppercase leading-none" style={{
+                fontSize: 17, letterSpacing: '0.15em',
                 textShadow: isPending
                   ? '0 0 24px rgba(255,255,255,0.72), 0 0 10px rgba(210,228,255,0.50), 0 1px 3px rgba(0,0,0,0.85)'
                   : '0 0 20px rgba(220,234,255,0.40), 0 0 8px rgba(190,212,255,0.25), 0 1px 3px rgba(0,0,0,0.85)',
               }}>
                 {label}
               </span>
-              <span className="artifact-action-subtitle max-w-full leading-none" style={{
-                fontSize: isMobile ? 9 : 10.5, marginTop: 5,
+              <span className="artifact-action-subtitle leading-none" style={{
+                fontSize: 10.5, marginTop: 5,
                 opacity: isPending ? 0.78 : 0.48,
-                letterSpacing: 0, overflowWrap: 'anywhere',
+                letterSpacing: '0.09em',
                 textShadow: '0 1px 2px rgba(0,0,0,0.75)',
               }}>
                 {isPending ? '— Encoding… —' : `— ${subtitle} —`}

@@ -18,13 +18,20 @@ import type {
   ActionRequestAffinity,
   PendingLuminaryActivationEvent,
   BurnEvent,
+  TraceGuidanceMethod,
 } from '@workspace/api-client-react';
 import {
-  BLUEPRINT_CLEARANCE_REQUIRED_WINS,
   compareVictoryStandings,
+  DEFAULT_VICTORY_REQUIREMENT,
   getArtifactTierCounts,
+  MIN_VICTORY_REQUIREMENT,
   OPENING_TURN_ORDER_PRESENTATION_MS,
-  type NaturalAffinityKey,
+  type BlueprintClaimAction,
+  type RecurrenceCustodyMethod,
+  type RecurrenceScenarioState,
+  type TriangulationCoordinationArchitecture,
+  type TriangulationScenarioState,
+  type LuminaryArrivalSoundVariant,
 } from '@workspace/game-types';
 import {
   ActivationDirectorRouter,
@@ -42,7 +49,6 @@ import { resolveLuminaryProcedure } from '@/lib/luminaryAnimationProcedures';
 import { getLuminaryEffectResultReceiptCopy } from '@/lib/luminaryEffectAnnouncements';
 import { usesControlledEminenceBestowal } from '@/lib/delayedEminencePresentation';
 import { createPerfectCoherenceBestowals } from '@/lib/perfectCoherencePresentation';
-import { trackFirstPartyEvent } from '@/lib/firstPartyTelemetry';
 import {
   canAcknowledgeLuminaryActivations,
   delayedResultBelongsToActivation,
@@ -57,17 +63,9 @@ import {
 } from '@/lib/luminarySequenceGate';
 import { useViewOrchestrator } from '@/hooks/use-view-orchestrator';
 import { SeedBeyondSeasonsEffect, SEED_EFFECT_TOTAL_MS } from '@/components/SeedBeyondSeasonsEffect';
-import { BalanceLabFinishedControls } from '@/components/BalanceLabFinishedControls';
 import { useQueryClient } from '@tanstack/react-query';
 import { getSession, clearSession, saveSession } from '@/lib/session';
 import { getSkipCinematics, setSkipCinematics, syncAccountPreferences, apiUpdatePreferences, markHintSeen } from '@/lib/cinematicPrefs';
-import {
-  activeBalanceLabCandidate,
-  balanceLabEncryptAwardsPortableSingularity,
-  balanceLabFocusOptions,
-  balanceLabRemovesLuminaryEminence,
-  resolveBalanceLabForgeCost,
-} from '@/lib/balanceLabClient';
 import { useAccount } from '@/contexts/AccountContext';
 import { AccountLoadingScreen } from '@/components/AccountLoadingScreen';
 import {
@@ -75,9 +73,13 @@ import {
   apiGetBlueprintVault,
   apiStartBlueprintChallenge,
   apiWithdrawBlueprintChallenge,
+  apiReportPlayer,
+  apiSetPlayerBlocked,
   getAccountSession,
 } from '@/lib/accountSession';
 import { useGameWebsocket } from '@/hooks/use-game-websocket';
+import { absoluteServiceUrl } from '@/lib/network';
+import { recordProgressionOnce, recordTelemetry } from '@/lib/telemetry';
 import {
   useLuminaryPresentationEngine,
   type LuminaryPresentationRuntimeSignals,
@@ -86,7 +88,9 @@ import { useCameraInputLease } from '@/hooks/use-camera-input-lease';
 import { useToast } from '@/hooks/use-toast';
 import { gameAudio } from '@/lib/audio';
 import { CipherApertureAnimation, CipherSigil } from '@/components/CipherApertureAnimation';
+import { ForgeReplacementDealAnimation } from '@/components/ForgeReplacementDealAnimation';
 import { ForgeButton, EncryptButton, AssimilateButton } from '@/components/ForgeEncryptButton';
+import { CompactForgeCardReadout } from './game-board-forge-card-slot';
 
 import { motion, AnimatePresence, useAnimation } from 'framer-motion';
 import { Button } from '@/components/ui/button';
@@ -122,8 +126,8 @@ import { useSwipeToDismiss } from '@/hooks/use-swipe-to-dismiss';
 import { useGameKeyboardShortcuts } from '@/hooks/use-game-keyboard-shortcuts';
 import { useForgeKeyboardNav } from '@/hooks/use-forge-keyboard-nav';
 import { KardashevScene } from '@/components/KardashevScene';
-import { getKardashevTier, getDominantAffinityPalette, getCivilizationName, type AffinityPalette } from '@/lib/kardashev';
-import { hexRgba, AFFINITIES, TIER_CIVILIZATION, AFFINITY_KEY_TO_HEX, INITIAL_TURN_GUARD_MS, ABRIDGED_SHRINK_MS, ANIM_LOCK_BUFFER_MS, ABRIDGED_ACTION_MS, FORGE_FULL_MS, RESERVED_FORGE_FULL_MS, FALLBACK_FLIP_ANIM_MS, FALLBACK_FLIP_CLEANUP_MS, CIPHER_TAIL_BUFFER_MS, AFFINITY_BURST_STAGGER_MS, AFFINITY_BURST_BASE_MS, AFFINITY_BURST_SETTLE_MS, ABRIDGED_FORGE_LOCK_MS, CIPHER_GAME_TOTAL_MS, CIPHER_DEAL_FIRE_DELAY_MS, ARRIVAL_LABEL_LINGER_MS, RETURN_FLIGHT_MS } from './game-constants';
+import { getKardashevTier, getDominantAffinityPalette, getCivilizationName, type AffinityPalette, type KardashevTier } from '@/lib/kardashev';
+import { hexRgba, AFFINITIES, TIER_CIVILIZATION, AFFINITY_KEY_TO_HEX, DEAL_ANIM_MS, DEAL_FLIP_SOUND_MS, INITIAL_TURN_GUARD_MS, ABRIDGED_SHRINK_MS, ANIM_LOCK_BUFFER_MS, ABRIDGED_ACTION_MS, FORGE_FULL_MS, RESERVED_FORGE_FULL_MS, FALLBACK_FLIP_ANIM_MS, FALLBACK_FLIP_CLEANUP_MS, CIPHER_TAIL_BUFFER_MS, AFFINITY_BURST_STAGGER_MS, AFFINITY_BURST_BASE_MS, AFFINITY_BURST_SETTLE_MS, ABRIDGED_FORGE_LOCK_MS, CIPHER_GAME_TOTAL_MS, CIPHER_DEAL_FIRE_DELAY_MS, ARRIVAL_LABEL_LINGER_MS, RETURN_FLIGHT_MS } from './game-constants';
 import { PlayerAvatar, OpponentChip } from './game-player';
 import { AffinityToken, BaseDialog, type EminenceBreakdown, ArtifactCardView, ForgedCardWithTooltip, TurnCountdown, CardBack, EminenceBadge, EminenceDiamond, EminenceSigil, PendingActionOverlay } from './game-card';
 import { getLuminaryEminenceTitle } from './game-luminary';
@@ -137,30 +141,23 @@ import { useBoardLayoutPolicy } from './game-layout';
 import { useScrollLock } from './game-scroll-lock';
 import type { ActiveTab, CostMode, ForgeDestination, ForgeDestinationKind, SelectedCard } from './game-types';
 import { getPlannedActionSummary } from './game-action-summary';
-import { BoardAuxModules } from './game-civilization-preview';
+import { BoardAuxModules, BoardCivilizationTraceNotice } from './game-civilization-preview';
 import { BoardTabMain } from './game-board-tab';
 import { AffinityWellPanel } from './game-affinity-well-panel';
-import { ArchiveManifestationTrace, OpponentHarnessTrace } from './game-causal-motion';
+import { OpponentHarnessTrace } from './game-causal-motion';
 import { HandTab, LogTab, OpponentStatStrip, type HandTabScope, type LogTabScope } from './game-tabs';
 import { getVisibleElementRect } from './game-dom-utils';
 import {
   canCommitPlannedAction,
   canReserveMore,
   canUsePlanningEngine,
+  getFoundryStoredIds,
+  getOrdinaryEncryptedCount,
   getPlannedActionInfo,
   getTurnPresentationKey,
 } from './game-planning';
-import {
-  MOLD_CAST_DURATION_MS,
-  MOLD_CAST_STAGGER_MS,
-  type MoldCastCause,
-  type MoldCastCue,
-} from './game-mold-casting';
-import {
-  buildOpeningTurnOrderPlayers,
-  getBalanceTelemetryActionId,
-  type OpeningTurnOrderPlayer,
-} from './game-opening-turn-order';
+import { getReplacementDealMotion } from './game-replacement-motion';
+import { artifactFrameUsesArtCrop } from '@/lib/artifactFramePresentation';
 import {
   artifactMarkerBlocksForgeEminence,
   artifactMarkerHasBrand,
@@ -179,6 +176,13 @@ import { VictoryCinematic } from '@/components/VictoryCinematic';
 import { deriveAccolades } from '@/lib/accolades';
 import { buildCivilizationProfile } from '@/lib/civilizationProfile';
 import {
+  buildCivilizationArtifactHistoryCards,
+  buildCivilizationDeploymentSites,
+  getCivilizationDeploymentSiteSignatureMap,
+  getRecentCivilizationDeploymentSiteIds,
+  prioritizeRecentCivilizationSiteIds,
+} from '@/lib/civilizationDeploymentSites';
+import {
   DevLuminarySequencePanel,
   type DevSequencePlaybackMode,
 } from '@/components/DevLuminarySequencePanel';
@@ -192,6 +196,9 @@ import {
   LumiiEncounterHud,
   LumiiVaultEncounter,
 } from '@/components/vault/LumiiVaultEncounter';
+import { TraceChronicleExperience } from '@/components/chronicles/TraceChronicleExperience';
+import { RecurrenceChronicleExperience } from '@/components/chronicles/RecurrenceChronicleExperience';
+import { TriangulationChronicleExperience } from '@/components/chronicles/TriangulationChronicleExperience';
 
 const BlueprintPresentationOverlay = React.lazy(async () => {
   const module = await import('@/components/blueprints/BlueprintPresentationOverlay');
@@ -257,47 +264,7 @@ function captureArrivalBoardSnapshot(
 }
 
 const TURN_ORDER_SELECTOR_ATTENTION_MS = 680;
-const TURN_ORDER_BALANCE_LEAD_MS = 560;
-const TURN_ORDER_BALANCE_STAGGER_MS = 220;
-const TURN_ORDER_BALANCE_SETTLE_MS = 420;
 const TURN_ORDER_INTRO_SEEN_PREFIX = 'luminae_turn_order_intro_seen';
-const MATCH_BALANCE_RESULT_SEEN_PREFIX = 'luminae_match_balance_result_seen';
-const LUMII_HUD_NAME_PILL_SELECTOR = '[data-lumii-hud-name-pill="true"]';
-const LUMII_HUD_ENTITY_SELECTOR = '[data-lumii-hud-entity="true"]';
-const LUMII_HUD_ABSORB_FULL_MS = 1_120;
-const LUMII_HUD_ABSORB_ABRIDGED_MS = 560;
-
-function readElementCenter(selector: string): { x: number; y: number } | null {
-  if (typeof document === 'undefined') return null;
-  const el = document.querySelector<HTMLElement>(selector);
-  const rect = el?.getBoundingClientRect();
-  if (!rect || rect.width <= 0 || rect.height <= 0) return null;
-  return { x: rect.left + rect.width / 2, y: rect.top + rect.height / 2 };
-}
-
-function isLumiiForecastPlayer(player?: GamePlayerState | null) {
-  return Boolean(player?.isAi && player.playerName === 'Lumii');
-}
-
-function resolveLumiiHudAbsorbCenter() {
-  if (typeof window === 'undefined') return { x: 0, y: 0 };
-  return (
-    readElementCenter(LUMII_HUD_NAME_PILL_SELECTOR) ??
-    readElementCenter(LUMII_HUD_ENTITY_SELECTOR) ??
-    { x: window.innerWidth / 2, y: 32 }
-  );
-}
-
-function resolveOpponentArtifactAbsorbCenter(
-  playerId: string,
-  useLumiiHud: boolean,
-) {
-  if (useLumiiHud) return resolveLumiiHudAbsorbCenter();
-  const chipCenter = readElementCenter(`[data-opponent-chip="${playerId}"]`);
-  if (chipCenter) return chipCenter;
-  if (typeof window === 'undefined') return { x: 0, y: 0 };
-  return { x: window.innerWidth / 2, y: 28 };
-}
 
 function getPlayerVictoryStanding(player: GamePlayerState) {
   return {
@@ -307,14 +274,24 @@ function getPlayerVictoryStanding(player: GamePlayerState) {
   };
 }
 
+function getCivilizationSceneTier(
+  player: Pick<GamePlayerState, 'civilization'> | null | undefined,
+  forgedArtifacts: Parameters<typeof getKardashevTier>[0],
+  discountedForgeIds: readonly string[],
+): KardashevTier {
+  const maturity = player?.civilization?.scale.historicalMaturity;
+  if (maturity === 'galactic') return 3;
+  if (maturity === 'stellar') return 2;
+  if (maturity === 'planetary') return 1;
+  return getKardashevTier(forgedArtifacts, discountedForgeIds);
+}
+
 type TurnOrderIntroState = {
   key: number;
-  introId: string;
-  startedAt: number;
   firstPlayerName: string;
   firstPlayerAccentColor: string;
   isYou: boolean;
-  players: OpeningTurnOrderPlayer[];
+  players: Array<{ playerId: string; playerName: string; avatarId: string | null; isFirst: boolean }>;
 };
 
 type LuminaryBurnVisualEntry = {
@@ -380,43 +357,17 @@ function markTurnOrderIntroSeen(roomId: string | undefined, introId: number | st
   }
 }
 
-function getMatchBalanceResultSeenKey(introId: string, playerId: string) {
-  return `${MATCH_BALANCE_RESULT_SEEN_PREFIX}:${introId}:${playerId}`;
-}
-
-function markMatchBalanceResultTracked(introId: string, playerId: string) {
-  if (typeof window === 'undefined') return false;
-  const key = getMatchBalanceResultSeenKey(introId, playerId);
-  try {
-    if (window.localStorage.getItem(key) === '1') return false;
-    window.localStorage.setItem(key, '1');
-    return true;
-  } catch {
-    return true;
-  }
-}
-
 function TurnOrderIntroOverlay({
   intro,
   onAbridge,
-  onBonusImpact,
 }: {
   intro: TurnOrderIntroState;
   onAbridge: (event: React.PointerEvent<HTMLDivElement>) => void;
-  onBonusImpact: (playerId: string, amount: number) => void;
 }) {
   const firstIndex = Math.max(0, intro.players.findIndex((player) => player.isFirst));
-  const balanceRecipients = useMemo(
-    () => intro.players.filter((player) => player.eminenceBonus > 0),
-    [intro.players],
-  );
   const [selectorArmed, setSelectorArmed] = useState(false);
   const [activeIndex, setActiveIndex] = useState<number | null>(null);
   const [revealed, setRevealed] = useState(false);
-  const [balanceVisible, setBalanceVisible] = useState(false);
-  const [activeGrantPlayerId, setActiveGrantPlayerId] = useState<string | null>(null);
-  const [grantedPlayerIds, setGrantedPlayerIds] = useState<string[]>([]);
-  const [balanceComplete, setBalanceComplete] = useState(false);
 
   useEffect(() => {
     const playerCount = intro.players.length;
@@ -425,10 +376,6 @@ function TurnOrderIntroOverlay({
     setRevealed(false);
     setSelectorArmed(false);
     setActiveIndex(null);
-    setBalanceVisible(false);
-    setActiveGrantPlayerId(null);
-    setGrantedPlayerIds([]);
-    setBalanceComplete(false);
 
     const minSteps = Math.max(9, playerCount * 4 + 2);
     let stepCount = minSteps;
@@ -457,39 +404,10 @@ function TurnOrderIntroOverlay({
       }, elapsed));
     }
 
-    if (balanceRecipients.length > 0) {
-      const balanceStartAt = elapsed + TURN_ORDER_BALANCE_LEAD_MS;
-      timers.push(setTimeout(() => {
-        setBalanceVisible(true);
-      }, balanceStartAt));
-
-      balanceRecipients.forEach((player, index) => {
-        timers.push(setTimeout(() => {
-          setActiveGrantPlayerId(player.playerId);
-          setGrantedPlayerIds((current) => current.includes(player.playerId)
-            ? current
-            : [...current, player.playerId]);
-          gameAudio.playTurnOrderEminenceGrant(player.eminenceBonus, index);
-          onBonusImpact(player.playerId, player.eminenceBonus);
-        }, balanceStartAt + 120 + index * TURN_ORDER_BALANCE_STAGGER_MS));
-      });
-
-      const balanceCompleteAt = balanceStartAt
-        + 120
-        + Math.max(0, balanceRecipients.length - 1) * TURN_ORDER_BALANCE_STAGGER_MS
-        + TURN_ORDER_BALANCE_SETTLE_MS;
-      timers.push(setTimeout(() => {
-        setActiveGrantPlayerId(null);
-        setBalanceComplete(true);
-      }, balanceCompleteAt));
-    }
-
     return () => {
       for (const timer of timers) clearTimeout(timer);
     };
-  }, [balanceRecipients, firstIndex, intro.key, intro.players.length, onBonusImpact]);
-
-  const activeGrant = balanceRecipients.find((player) => player.playerId === activeGrantPlayerId) ?? null;
+  }, [firstIndex, intro.key, intro.players.length]);
 
   return (
     <motion.div
@@ -513,15 +431,6 @@ function TurnOrderIntroOverlay({
         exit={{ opacity: 0 }}
       />
       <motion.div
-        className="absolute inset-0"
-        style={{
-          background: 'radial-gradient(ellipse 62% 48% at 50% 52%, rgba(244,207,120,0.2) 0%, rgba(47,31,11,0.08) 48%, transparent 76%)',
-        }}
-        initial={{ opacity: 0 }}
-        animate={{ opacity: balanceVisible ? 1 : 0 }}
-        transition={{ duration: 0.38 }}
-      />
-      <motion.div
         className="relative flex w-full max-w-lg flex-col items-center gap-5"
         initial={{ opacity: 0, y: 18, scale: 0.96 }}
         animate={{ opacity: 1, y: 0, scale: 1 }}
@@ -538,12 +447,8 @@ function TurnOrderIntroOverlay({
           }}
           transition={{ duration: selectorArmed || revealed ? 0.22 : 0.58, ease: [0.16, 1, 0.3, 1] }}
         >
-          {balanceVisible
-            ? <EminenceSigil size={15} value={1} target={15} />
-            : <Gavel className="h-3.5 w-3.5 text-amber-300" />}
-          {balanceVisible
-            ? 'Opening Balance'
-            : revealed ? 'First Player' : selectorArmed ? 'Selecting First Player' : 'Turn Order'}
+          <Gavel className="h-3.5 w-3.5 text-amber-300" />
+          {revealed ? 'First Player' : selectorArmed ? 'Selecting First Player' : 'Turn Order'}
         </motion.div>
 
         <div className="relative flex items-end justify-center gap-3">
@@ -562,42 +467,31 @@ function TurnOrderIntroOverlay({
           {intro.players.map((player, index) => {
             const delay = 0.16 + index * 0.09;
             const isScanning = !revealed && activeIndex === index;
-            const isWinner = revealed && !balanceVisible && player.isFirst;
-            const isReceiving = balanceVisible && activeGrantPlayerId === player.playerId;
-            const hasReceived = grantedPlayerIds.includes(player.playerId);
-            const isHighlighted = isScanning || isWinner || isReceiving;
-            const avatarSize = isWinner ? 82 : isReceiving ? 66 : 58;
+            const isWinner = revealed && player.isFirst;
+            const isHighlighted = isScanning || isWinner;
             return (
               <motion.div
                 key={player.playerId}
-                data-opening-balance-player={player.playerId}
-                data-opening-balance-bonus={player.eminenceBonus}
                 className="relative z-10 flex flex-col items-center gap-2"
                 initial={{ opacity: 0, y: 16, scale: 0.86 }}
                 animate={{
-                  opacity: isHighlighted || hasReceived ? 1 : balanceVisible ? 0.58 : selectorArmed ? 0.5 : 0.78,
-                  y: isWinner ? -10 : isReceiving ? -7 : isScanning ? -6 : 0,
-                  scale: isWinner ? 1.12 : isReceiving ? 1.06 : isScanning ? 1.04 : balanceVisible ? 0.96 : selectorArmed ? 0.92 : 0.96,
+                  opacity: isHighlighted ? 1 : selectorArmed ? 0.5 : 0.78,
+                  y: isWinner ? -10 : isScanning ? -6 : 0,
+                  scale: isWinner ? 1.12 : isScanning ? 1.04 : selectorArmed ? 0.92 : 0.96,
                 }}
                 transition={{ duration: 0.24, delay: revealed ? 0 : delay, ease: [0.16, 1, 0.3, 1] }}
               >
                 <motion.div
                   className="rounded-full overflow-hidden border-2 bg-black/70"
                   style={{
-                    width: avatarSize,
-                    height: avatarSize,
-                    borderColor: isReceiving || hasReceived
-                      ? 'rgba(255,231,154,0.88)'
-                      : isHighlighted ? hexRgba(intro.firstPlayerAccentColor, 0.82) : 'rgba(255,255,255,0.18)',
-                    boxShadow: isReceiving
-                      ? '0 0 38px rgba(255,222,133,0.58), 0 0 76px rgba(244,207,120,0.22)'
-                      : isHighlighted
+                    width: isWinner ? 82 : 58,
+                    height: isWinner ? 82 : 58,
+                    borderColor: isHighlighted ? hexRgba(intro.firstPlayerAccentColor, 0.82) : 'rgba(255,255,255,0.18)',
+                    boxShadow: isHighlighted
                       ? `0 0 36px ${hexRgba(intro.firstPlayerAccentColor, 0.48)}, 0 0 74px ${hexRgba(intro.firstPlayerAccentColor, 0.18)}`
                       : '0 0 18px rgba(0,0,0,0.35)',
                   }}
-                  animate={isReceiving
-                    ? { rotate: [-1.5, 1.5, -1, 0], scale: [1, 1.07, 1] }
-                    : isScanning ? { rotate: [-2, 2, -1, 0] } : { rotate: 0, scale: 1 }}
+                  animate={isScanning ? { rotate: [-2, 2, -1, 0] } : { rotate: 0 }}
                   transition={{ duration: 0.2 }}
                 >
                   <img
@@ -610,29 +504,6 @@ function TurnOrderIntroOverlay({
                 <span className={`animation-readable-pill max-w-24 truncate px-2 py-0.5 text-xs font-semibold ${isHighlighted ? 'text-amber-100' : 'text-white/60'}`}>
                   {player.playerName}
                 </span>
-                <div className="relative flex h-6 min-w-16 items-center justify-center">
-                  {!balanceVisible ? (
-                    <span className="text-[9px] font-bold uppercase tracking-[0.16em] text-white/35">
-                      {player.openingPosition === 0 ? 'Opener' : `Turn ${player.openingPosition + 1}`}
-                    </span>
-                  ) : player.eminenceBonus > 0 && hasReceived ? (
-                    <motion.span
-                      key={`${intro.key}-${player.playerId}-opening-eminence`}
-                      className="animation-readable-pill flex items-center gap-1 border-amber-200/45 bg-[#171006]/95 px-2 py-1 font-serif text-xs font-black text-[#fff2bd]"
-                      style={{ transformStyle: 'preserve-3d' }}
-                      initial={{ opacity: 0, y: -48, scale: 0.45, rotateY: 0 }}
-                      animate={{ opacity: 1, y: 0, scale: [0.45, 1.18, 1], rotateY: 360 }}
-                      transition={{ duration: 0.46, ease: [0.16, 1, 0.3, 1] }}
-                    >
-                      <EminenceSigil size={17} value={player.eminenceBonus} target={15} />
-                      +{player.eminenceBonus}
-                    </motion.span>
-                  ) : (
-                    <span className="text-[9px] font-bold uppercase tracking-[0.16em] text-amber-100/45">
-                      {player.isFirst ? 'Opener' : 'Balancing'}
-                    </span>
-                  )}
-                </div>
               </motion.div>
             );
           })}
@@ -651,18 +522,12 @@ function TurnOrderIntroOverlay({
               textShadow: `0 0 18px ${hexRgba(intro.firstPlayerAccentColor, 0.68)}`,
             }}
           >
-            {balanceVisible
-              ? activeGrant
-                ? `${activeGrant.playerName} begins with +${activeGrant.eminenceBonus}`
-                : balanceComplete ? 'Starting Eminence set' : 'Balancing turn order'
-              : revealed
-                ? intro.isYou ? 'You go first' : `${intro.firstPlayerName} goes first`
-                : 'Finding the first signal'}
+            {revealed
+              ? intro.isYou ? 'You go first' : `${intro.firstPlayerName} goes first`
+              : 'Finding the first signal'}
           </span>
           <span className="animation-readable-text text-xs font-medium text-white/75">
-            {balanceVisible
-              ? 'Players acting later begin with a small lead. Final-round turns stay equal.'
-              : revealed ? 'Turn order proceeds from there' : 'Chosen at random'}
+            {revealed ? 'Turn order proceeds from there' : 'Chosen at random'}
           </span>
         </motion.div>
       </motion.div>
@@ -672,13 +537,6 @@ function TurnOrderIntroOverlay({
 
 export default function GameBoard() {
   const { roomId } = useParams<{ roomId: string }>();
-  const balanceLabCandidate = useMemo(activeBalanceLabCandidate, []);
-  const balanceLabPortableSingularity = balanceLabEncryptAwardsPortableSingularity(
-    balanceLabCandidate,
-  );
-  const balanceLabLuminaryEminence = balanceLabRemovesLuminaryEminence(
-    balanceLabCandidate,
-  ) ? 0 : null;
   const arrivalDedupKey = useCallback(
     (eventId: string) => `${roomId ?? 'unknown-room'}:${eventId}`,
     [roomId],
@@ -686,7 +544,7 @@ export default function GameBoard() {
   const [, setLocation] = useLocation();
   const { toast } = useToast();
   const queryClient = useQueryClient();
-  const { account, isLoading: accountLoading, prefs: accountPrefs } = useAccount();
+  const { account, token: accountToken, isLoading: accountLoading, prefs: accountPrefs } = useAccount();
   const session = getSession();
 
   const isTutorial = useMemo(() => {
@@ -802,6 +660,16 @@ export default function GameBoard() {
     localStorage.setItem(key, forgeCompact ? 'compact' : 'full');
   }, [forgeCompact]);
   const [activeTab, setActiveTab] = useState<ActiveTab>('board');
+  const [civilizationScanRequested, setCivilizationScanRequested] = useState(false);
+  const openCivilizationScan = useCallback(() => {
+    setCivilizationScanRequested(true);
+    setActiveTab('hand');
+  }, []);
+  useEffect(() => {
+    if (activeTab !== 'hand' || !civilizationScanRequested) return undefined;
+    const timeoutId = window.setTimeout(() => setCivilizationScanRequested(false), 0);
+    return () => window.clearTimeout(timeoutId);
+  }, [activeTab, civilizationScanRequested]);
   const [civLabel, setCivLabel] = useState<string>(() => {
     const stored = getAccountSession();
     if (!stored) return getDefaultCivName(getSavedAvatarId(), undefined);
@@ -860,8 +728,7 @@ export default function GameBoard() {
     () => localStorage.getItem('luminae_card_detail_discovered') === 'true'
   );
   const [cardFlipped, setCardFlipped] = useState(false);
-  const [pendingSheetAction, setPendingSheetAction] = useState<'forge' | 'foundry' | 'reserve' | 'plan_forge' | 'plan_foundry' | 'plan_reserve' | 'assimilate' | null>(null);
-  const [pendingFocusAffinity, setPendingFocusAffinity] = useState<NaturalAffinityKey | null>(null);
+  const [pendingSheetAction, setPendingSheetAction] = useState<'forge' | 'foundry_forge' | 'reserve' | 'plan_forge' | 'plan_foundry' | 'plan_reserve' | 'assimilate' | null>(null);
   const [selectedDeckTier, setSelectedDeckTier] = useState<1 | 2 | 3 | null>(null);
   const [pendingDeckConfirm, setPendingDeckConfirm] = useState(false);
   const [btnAnimKey, setBtnAnimKey] = useState(0);
@@ -871,9 +738,6 @@ export default function GameBoard() {
   const [sentFlashBtn, setSentFlashBtn] = useState<string | null>(null);
   const sentFlashRef = useRef<ReturnType<typeof setTimeout> | null>(null);
   useEffect(() => () => { if (sentFlashRef.current) clearTimeout(sentFlashRef.current); }, []);
-  useEffect(() => {
-    setPendingFocusAffinity(null);
-  }, [selectedCard?.card.id]);
   const [coreActionSubmitted, setCoreActionSubmitted] = useState(false);
   const [plannedActionCommitPending, setPlannedActionCommitPending] = useState(false);
   const [reservedForgeNotice, setReservedForgeNotice] = useState<{ key: number; eminence: number; name: string } | null>(null);
@@ -897,7 +761,6 @@ export default function GameBoard() {
   const [opponentForgeAbsorb, setOpponentForgeAbsorb] = useState<{
     key: number;
     playerId: string;
-    targetKind?: 'opponent' | 'lumii';
     card: ArtifactCard;
     tier: number;
     startRect: { x: number; y: number; w: number; h: number };
@@ -946,14 +809,6 @@ export default function GameBoard() {
     }, 1450);
     opponentEminenceImpactDelayTimersRef.current.push(timer);
   }, [triggerOpponentEminenceImpact]);
-  const triggerOpeningBalanceImpact = useCallback((playerId: string, amount: number) => {
-    if (amount <= 0) return;
-    if (playerId === session?.playerId) {
-      triggerEminencePanelImpact(amount);
-      return;
-    }
-    triggerOpponentEminenceImpact(playerId, amount);
-  }, [session?.playerId, triggerEminencePanelImpact, triggerOpponentEminenceImpact]);
   const [luminaryEminenceBurst, setLuminaryEminenceBurst] = useState<{
     key: number;
     eventId: string;
@@ -1097,7 +952,6 @@ export default function GameBoard() {
     playerId: string;
     playerName: string;
     avatarId: string | null;
-    targetKind?: 'opponent' | 'lumii';
   } | null>(null);
   const affinityBurstKeyRef = useRef(0);
   const affinityBurstTimerRef = useRef<ReturnType<typeof setTimeout> | null>(null);
@@ -1128,6 +982,11 @@ export default function GameBoard() {
   const [showAllLog, setShowAllLog] = useState(false);
   const [showBoardViewLog, setShowBoardViewLog] = useState(true);
   const [chatMessages, setChatMessages] = useState<ChatMessage[]>([]);
+  const [mutedChatPlayerIds, setMutedChatPlayerIds] = useState<Set<string>>(() => {
+    try { return new Set(JSON.parse(localStorage.getItem('luminae_chat_muted_players') ?? '[]') as string[]); }
+    catch { return new Set(); }
+  });
+  const mutedChatPlayerIdsRef = useRef(mutedChatPlayerIds);
   const [chatInput, setChatInput] = useState('');
   const [unreadChat, setUnreadChat] = useState(0);
   const chatEndRef = useRef<HTMLDivElement>(null);
@@ -1136,6 +995,9 @@ export default function GameBoard() {
   const [forgedFilter, setForgedFilter] = useState<AffinityKey | null>(null);
   const [showBurnPileOverlay, setShowBurnPileOverlay] = useState(false);
   const [showReservedOverlay, setShowReservedOverlay] = useState(false);
+  const foundryStorageOwnerRef = useRef<string | null>(null);
+  const previousFoundryStorageIdsRef = useRef<string[]>([]);
+  const foundryStorageRevealTimerRef = useRef<ReturnType<typeof setTimeout> | null>(null);
   const [expandedOpponents, setExpandedOpponents] = useState<Set<string>>(new Set());
   const [expandedHeaderOpponents, setExpandedHeaderOpponents] = useState<Set<string>>(new Set());
   const [boardOpponentsExpanded, setBoardOpponentsExpanded] = useState(false);
@@ -1156,6 +1018,7 @@ export default function GameBoard() {
     eventId: string;    // stable server event ID (or 'dev-test-<id>' for dev panel)
     isDevTest: boolean; // dev tests skip the server resolve_arrival call
     winSealingColor?: string; // arrivalColor of the Luminary when this event seals a win
+    arrivalSound: LuminaryArrivalSoundVariant;
   }>>([]);
   // Tracks which server arrival eventIds have already been pushed into the queue
   // so that duplicate WebSocket / reconnect deliveries are safely deduped.
@@ -1179,6 +1042,7 @@ export default function GameBoard() {
     winSealingColor?: string,
     claimedBy?: string,
     claimedByPlayerId?: string,
+    arrivalSound?: LuminaryArrivalSoundVariant,
   ) => void>(() => {});
   // Luminary IDs that have been detected as newly arrived in processUpdate but
   // whose arrivalQueue entry hasn't been added yet (RAF chain pending). Used to
@@ -1320,7 +1184,6 @@ export default function GameBoard() {
   const directorGhostSlotKeysRef = useRef<string[]>([]);
   const pendingIronHarbingerSlotsRef = useRef<IronHarbingerResetSlot[]>([]);
   const ironHarbingerGhostSlotKeysRef = useRef<string[]>([]);
-  const pendingPhoenixRefillSlotsRef = useRef<string[]>([]);
   const pendingAssimilationSlotRef = useRef<AssimilationVisualSlot | null>(null);
   // IDs of luminaries claimed in this session — their entity overlay persists.
   const [claimedThisSession, setClaimedThisSession] = useState<string[]>([]);
@@ -1442,7 +1305,36 @@ export default function GameBoard() {
   );
   const isActualLumiiScenario = state?.scenarioId === LUMII_CLEARANCE_SCENARIO_ID;
   const isLumiiScenario = isActualLumiiScenario || devLumiiEncounter;
-  const lumiiForecastActive = isLumiiScenario && state?.status === 'playing';
+  const isTraceScenario = state?.scenarioId === 'chronicle_trace_v1' && !!state.traceScenario;
+  const recurrenceScenario = (state as (GameState & {
+    recurrenceScenario?: RecurrenceScenarioState | null;
+  }) | undefined)?.recurrenceScenario;
+  const isRecurrenceScenario = state?.scenarioId === 'chronicle_recurrence_v1' && !!recurrenceScenario;
+  const triangulationScenario = (state as (GameState & {
+    triangulationScenario?: TriangulationScenarioState | null;
+  }) | undefined)?.triangulationScenario;
+  const isTriangulationScenario = state?.scenarioId === 'chronicle_triangulation_v1' && !!triangulationScenario;
+  const isSpecialOutcomeScenario = isLumiiScenario || isTraceScenario || isRecurrenceScenario || isTriangulationScenario;
+  const recordedScenarioClosureRef = useRef<string | null>(null);
+  useEffect(() => {
+    if (state?.status !== 'finished' || !state.scenarioId || recordedScenarioClosureRef.current === state.scenarioId) return;
+    if (isActualLumiiScenario) {
+      recordTelemetry('lumii_outcome', {
+        outcome: state.finishReason === 'withdrawal'
+          ? 'withdrawal'
+          : state.winnerId === session?.playerId ? 'victory' : 'defeat',
+      });
+      recordProgressionOnce('lumii_forecast_closed', { outcome: state.finishReason ?? 'completed' });
+      recordedScenarioClosureRef.current = state.scenarioId;
+    } else if (isTraceScenario || isRecurrenceScenario || isTriangulationScenario) {
+      recordTelemetry('chronicle_closed', {
+        chronicle: state.scenarioId,
+        result: state.winnerId === session?.playerId ? 'victory' : 'defeat',
+      });
+      recordProgressionOnce(`${state.scenarioId}_primary_closed`);
+      recordedScenarioClosureRef.current = state.scenarioId;
+    }
+  }, [isActualLumiiScenario, isRecurrenceScenario, isTraceScenario, isTriangulationScenario, session?.playerId, state?.finishReason, state?.scenarioId, state?.status, state?.winnerId]);
   const lumiiPresentationLocked = isLumiiScenario;
   const effectiveBlueprintPresentationReducedMotion = lumiiPresentationLocked
     ? abridgedAnims
@@ -1456,10 +1348,6 @@ export default function GameBoard() {
   const [devLumiiCommentary, setDevLumiiCommentary] = useState<string | null>(null);
 
   const { data: loreCatalog } = useGetCardLoreCatalog();
-
-  useEffect(() => {
-    if (lumiiForecastActive && activeTab !== 'board') setActiveTab('board');
-  }, [activeTab, lumiiForecastActive]);
 
   useEffect(() => {
     const defeated = isActualLumiiScenario && state?.status === 'finished' &&
@@ -1500,37 +1388,7 @@ export default function GameBoard() {
     isForgottenForge?: boolean;
   } | null>(null);
   const cardActionBurstKeyRef = useRef(0);
-  const [forgeTrapHandoff, setForgeTrapHandoff] = useState<{
-    kind: 'local' | 'opponent';
-    key: number;
-    stampedAt: number;
-  } | null>(null);
-  const trapForgeHandoffEventRef = useRef<string | null>(null);
-  const markForgeTrapHandoff = useCallback((kind: 'local' | 'opponent', key: number) => {
-    setForgeTrapHandoff((current) => {
-      if (current?.kind === kind && current.key === key) return current;
-      return { kind, key, stampedAt: Date.now() };
-    });
-  }, []);
   const cardAnimTimersRef = useRef<ReturnType<typeof setTimeout>[]>([]);
-  const [lumiiHudAbsorbPulse, setLumiiHudAbsorbPulse] = useState<{ key: number } | null>(null);
-  const lumiiHudAbsorbPulseTimerRef = useRef<ReturnType<typeof setTimeout> | null>(null);
-  const triggerLumiiHudAbsorbPulse = useCallback(() => {
-    const key = Date.now();
-    if (lumiiHudAbsorbPulseTimerRef.current) clearTimeout(lumiiHudAbsorbPulseTimerRef.current);
-    setLumiiHudAbsorbPulse({ key });
-    lumiiHudAbsorbPulseTimerRef.current = setTimeout(() => {
-      setLumiiHudAbsorbPulse((current) => current?.key === key ? null : current);
-      lumiiHudAbsorbPulseTimerRef.current = null;
-    }, 900);
-  }, []);
-  useEffect(() => () => {
-    if (lumiiHudAbsorbPulseTimerRef.current) clearTimeout(lumiiHudAbsorbPulseTimerRef.current);
-  }, []);
-  const scheduleLumiiHudAbsorbPulse = useCallback((delayMs: number) => {
-    const timer = setTimeout(triggerLumiiHudAbsorbPulse, delayMs);
-    cardAnimTimersRef.current.push(timer);
-  }, [triggerLumiiHudAbsorbPulse]);
   const [cipherBurst, setCipherBurst] = useState<{
     key: number;
     sourceRect: { x: number; y: number; w: number; h: number };
@@ -1584,25 +1442,8 @@ export default function GameBoard() {
   const orchardPortalRectRef = useRef<DOMRect | null>(null);
   // Luminary currently undergoing an arrival-flash animation (zoom + flash effect)
   const [flashLumId, setFlashLumId] = useState<string | null>(null);
-  // Forge redraws are manifested inside their persistent molds. Each cue owns
-  // its delay/cause so single replacements and mass Luminary cascades share one
-  // visual language without cloning cards across the viewport.
-  const [refillingSlots, setRefillingSlots] = useState<Map<string, MoldCastCue>>(new Map());
-  const moldCastSequenceRef = useRef(0);
-  const moldCastTimersRef = useRef<Map<string, ReturnType<typeof setTimeout>>>(new Map());
-  const pendingBlueprintMoldCastsRef = useRef<Map<string, {
-    card: ArtifactCard;
-    tier: number;
-    slotKey: string;
-  }>>(new Map());
-  const [archiveManifestationTraces, setArchiveManifestationTraces] = useState<Array<{
-    id: string;
-    cardId: string;
-    tier: number;
-    deckRect: { x: number; y: number; w: number; h: number };
-    slotRect: { x: number; y: number; w: number; h: number };
-    delayMs: number;
-  }>>([]);
+  // Forge redraw/refill pulse: slot keys currently showing the refresh cue.
+  const [refillingSlots, setRefillingSlots] = useState<Set<string>>(new Set());
   // Artifact IDs whose Forge-marker badge was just applied (drives the isNew animation).
   const [newlyMarkedCardIds, setNewlyMarkedCardIds] = useState<Set<string>>(new Set());
   // Card IDs whose newly placed markers are visually suppressed until the brand-strike beam
@@ -1633,6 +1474,41 @@ export default function GameBoard() {
   // hovered/focused (source trace-back). null when nothing is traced.
   const [tracedSourceLumId, setTracedSourceLumId] = useState<string | null>(null);
   const prevStateForAnimRef = useRef<typeof state>(null);
+  const [dealingCard, setDealingCard] = useState<{
+    card: ArtifactCard;
+    tier: number;
+    deckRect: { x: number; y: number; w: number; h: number };
+    slotRect: { x: number; y: number; w: number; h: number };
+    // Precomputed stable animate targets — created once at deal-start so the
+    // motion.div receives the same array references across re-renders.  If
+    // these were computed inline, every React re-render (e.g. the
+    // setHandAbsorbBurst(null) call at t≈4100ms) would pass new array
+    // instances to Framer Motion, which compares by reference and can
+    // short-circuit the in-flight animation, firing onAnimationComplete early
+    // and revealing the card before the deal completes.
+    animX: number[];
+    animY: number[];
+    animRotateY: [number, number, number];
+    animScale: [number, number, number];
+    faceScale: number;
+  } | null>(null);
+  // Post-burn refill deals — Cinder Mandate burns multiple cards simultaneously;
+  // each replacement gets its own fly+flip animation staggered by ~120 ms.
+  // Kept separate from dealingCard to avoid touching the existing forge paths.
+  const [directorDealingCards, setDirectorDealingCards] = useState<Array<{
+    id: string;
+    card: ArtifactCard;
+    tier: number;
+    slotKey: string;
+    deckRect: { x: number; y: number; w: number; h: number };
+    slotRect: { x: number; y: number; w: number; h: number };
+    animX: number[];
+    animY: number[];
+    animRotateY: [number, number, number];
+    animScale: [number, number, number];
+    faceScale: number;
+    delay: number;
+  }>>([]);
   const prevStateRef = useRef<GameState | null>(null);
   const audibleLuminaryEligibilityIdsRef = useRef<Set<string>>(new Set());
   const playerPanelRef = useRef<HTMLDivElement>(null);
@@ -1766,7 +1642,7 @@ export default function GameBoard() {
   }, []);
 
   useEffect(() => {
-    const target = Math.max(1, Number(state?.victoryRequirement ?? 15));
+    const target = Math.max(1, Number(state?.victoryRequirement ?? DEFAULT_VICTORY_REQUIREMENT));
     const leaderEminence = Math.max(0, ...(state?.players ?? []).map((p) => p.eminence ?? 0));
     const progress = leaderEminence / target;
     const intensity = Math.max(0, Math.min(1, (progress - 0.68) / 0.28));
@@ -1869,21 +1745,20 @@ export default function GameBoard() {
     summonActivationLockedLuminaryIds: summonActivationLocksRef.current,
   };
   const activationGateActive = isLuminaryActivationGateActive(activationGateSnapshot);
-  const activationHead = activationQueue[0] ?? null;
-  const currentActivationGateDecision = activationHead
-    ? getLuminaryActivationGateDecision(activationHead, activationGateSnapshot)
+  const currentActivationGateDecision = activationQueue[0]
+    ? getLuminaryActivationGateDecision(activationQueue[0], activationGateSnapshot)
     : null;
   const currentActivationBlocked = currentActivationGateDecision ? !currentActivationGateDecision.allowed : false;
   const activationSequenceProgress = activationSequenceProgressRef.current;
-  const activationHeadEventId = activationHead?.eventId ?? null;
+  const activationHeadEventId = activationQueue[0]?.eventId ?? null;
   const queuedDelayedResult = delayedEffectFloatQueue[0] ?? null;
   const delayedResultBelongsToHead = delayedResultBelongsToActivation(
     queuedDelayedResult,
-    activationHead,
+    activationQueue[0],
   );
   const delayedResultBlocksCurrentActivation = !!(
     queuedDelayedResult &&
-    activationHead &&
+    activationQueue[0] &&
     !delayedResultBelongsToHead
   );
   const delayedLuminaryResultActive =
@@ -2001,7 +1876,8 @@ export default function GameBoard() {
   // before the next activation may claim the presentation lane.
   useEffect(() => {
     const next = delayedEffectFloatQueue[0];
-    const belongsToCurrentHead = delayedResultBelongsToActivation(next, activationHead);
+    const head = activationQueue[0];
+    const belongsToCurrentHead = delayedResultBelongsToActivation(next, head);
     if (
       activeDelayedEffectFloat ||
       !next ||
@@ -2054,7 +1930,10 @@ export default function GameBoard() {
           gameAudio.playEminenceSeal(
             next.amount,
             owner.eminence,
-            Math.max(15, Number(state?.victoryRequirement ?? 15)),
+            Math.max(
+              MIN_VICTORY_REQUIREMENT,
+              Number(state?.victoryRequirement ?? DEFAULT_VICTORY_REQUIREMENT),
+            ),
           );
           const impactDelay = abridgedAnims ? 430 : 1450;
           const impactTimer = setTimeout(() => {
@@ -2076,7 +1955,7 @@ export default function GameBoard() {
     activeDelayedEffectFloat,
     abridgedAnims,
     activationGateActive,
-    activationHead,
+    activationQueue[0]?.eventId,
     animationLockUntil,
     delayedEffectFloatQueue,
     session?.playerId,
@@ -2087,7 +1966,6 @@ export default function GameBoard() {
 
   // Keep overlayOpenRef in sync so the touch-forwarding handler above can
   // read it without being re-registered on every state change.
-  const prepareLuminaryView = viewOrchestrator.prepare;
   useEffect(() => {
     overlayOpenRef.current = isAnyOverlayOpen;
   }, [isAnyOverlayOpen]);
@@ -2103,15 +1981,14 @@ export default function GameBoard() {
   // after their source activation has appeared.
   useEffect(() => {
     if (
-      !activationHead ||
+      !activationQueue.length ||
       activationGateActive ||
       currentActivationBlocked ||
       activationAftermathBlocked ||
       delayedLuminaryResultActive ||
       isTutorial
     ) return;
-    const evt = activationHead;
-    if (!evt) return;
+    const evt = activationQueue[0];
     const procedure = resolveLuminaryProcedure(
       evt.luminaryId,
       evt.effectType as 'summon' | 'action' | 'end_of_turn' | 'start_of_turn',
@@ -2132,7 +2009,7 @@ export default function GameBoard() {
       setPreparedRectDirectorEventId(evt.eventId);
       return;
     }
-    prepareLuminaryView(
+    viewOrchestrator.prepare(
       procedure,
       () => setPreparedRectDirectorEventId(evt.eventId),
       activationDirectorForcesCamera(evt.luminaryId, evt.effectType)
@@ -2140,15 +2017,12 @@ export default function GameBoard() {
         : undefined,
     );
   }, [
-    activationHead,
+    activationQueue[0]?.eventId,
     activationAftermathBlocked,
     activationGateActive,
     currentActivationBlocked,
     delayedLuminaryResultActive,
-    isTutorial,
-    prepareLuminaryView,
-    state,
-  ]);
+  ]); // eslint-disable-line react-hooks/exhaustive-deps
 
   // Body scroll lock — a single call covering all overlays at once.
   // To add a new overlay, append its boolean to the overlayStates array above.
@@ -2307,137 +2181,25 @@ export default function GameBoard() {
     authoritativeStateIngress.nudge();
   };
 
-  const beginMoldCasting = (
-    entries: Array<{
-      card: ArtifactCard;
-      tier: number;
-      slotKey: string;
-    }>,
-    cause: MoldCastCause,
-    options: {
-      staggerMs?: number;
-      baseDelayMs?: number;
-      traceArchives?: boolean;
-      playSound?: boolean;
-    } = {},
-  ): boolean => {
-    const visibleEntries = entries.flatMap((entry) => {
-      const slotElement = document.querySelector<HTMLElement>(
-        `[data-slot-key="${entry.slotKey}"]`,
-      );
-      const slotRect = slotElement?.getBoundingClientRect();
-      if (!slotRect || slotRect.width <= 0 || slotRect.height <= 0) return [];
-      const archiveElement = document.querySelector<HTMLElement>(
-        `[data-deck-tier="${entry.tier}"]`,
-      );
-      const archiveRect = archiveElement?.getBoundingClientRect();
-      return [{ ...entry, slotRect, archiveRect }];
+  const dealReplacementIntoSlot = (card: ArtifactCard, tier: number, slotKey: string): boolean => {
+    const deckEl = document.querySelector(`[data-deck-tier="${tier}"]`);
+    const slotEl = document.querySelector(`[data-slot-key="${slotKey}"]`);
+    const deckR = deckEl?.getBoundingClientRect();
+    const slotR = slotEl?.getBoundingClientRect();
+    if (!deckR || !slotR) return false;
+
+    const rawCardW = parseFloat(getComputedStyle(document.documentElement).getPropertyValue('--card-w')) || 112;
+    const motion = getReplacementDealMotion(deckR, slotR, rawCardW);
+
+    setAnimEndTime(DEAL_ANIM_MS);
+    setDealingCard({
+      card,
+      tier,
+      ...motion,
     });
-    if (visibleEntries.length === 0) return false;
-
-    const sequence = ++moldCastSequenceRef.current;
-    const staggerMs = options.staggerMs ?? MOLD_CAST_STAGGER_MS;
-    const baseDelayMs = options.baseDelayMs ?? 90;
-    const castDurationMs = abridgedAnims ? 240 : MOLD_CAST_DURATION_MS;
-    const cueEntries = visibleEntries.map((entry, index) => ({
-      ...entry,
-      cue: {
-        id: `${sequence}:${entry.slotKey}`,
-        cause,
-        delayMs: baseDelayMs + index * staggerMs,
-        durationMs: castDurationMs,
-      } satisfies MoldCastCue,
-    }));
-
-    setRefillingSlots(current => {
-      const next = new Map(current);
-      cueEntries.forEach(({ slotKey, cue }) => next.set(slotKey, cue));
-      return next;
-    });
-    // Reveal the authoritative replacement and its casting mask atomically.
-    setHiddenSlots(current => {
-      if (!cueEntries.some(({ slotKey }) => current.has(slotKey))) return current;
-      const next = new Set(current);
-      cueEntries.forEach(({ slotKey }) => next.delete(slotKey));
-      return next;
-    });
-
-    if (options.traceArchives !== false) {
-      const tracedTiers = new Set<number>();
-      const traces = cueEntries.flatMap(({ card, tier, slotKey, slotRect, archiveRect, cue }) => {
-        if (!archiveRect || archiveRect.width <= 0 || archiveRect.height <= 0) return [];
-        if (tracedTiers.has(tier)) return [];
-        tracedTiers.add(tier);
-        return [{
-          id: `${sequence}:trace:${tier}`,
-          cardId: card.id,
-          tier,
-          deckRect: {
-            x: archiveRect.left,
-            y: archiveRect.top,
-            w: archiveRect.width,
-            h: archiveRect.height,
-          },
-          slotRect: {
-            x: slotRect.left,
-            y: slotRect.top,
-            w: slotRect.width,
-            h: slotRect.height,
-          },
-          delayMs: Math.max(0, cue.delayMs - 90),
-          slotKey,
-        }];
-      });
-      if (traces.length > 0) {
-        setArchiveManifestationTraces(current => [...current, ...traces]);
-      }
-    }
-
-    const totalMs = baseDelayMs +
-      Math.max(0, cueEntries.length - 1) * staggerMs +
-      castDurationMs;
-    setAnimEndTime(totalMs + 80);
-
-    if (options.playSound !== false) {
-      const soundTimer = setTimeout(
-        () => gameAudio.playForgeRefill(),
-        baseDelayMs + Math.round(castDurationMs * 0.42),
-      );
-      moldCastTimersRef.current.set(`sound:${sequence}`, soundTimer);
-    }
-
-    cueEntries.forEach(({ slotKey, cue }) => {
-      const previousTimer = moldCastTimersRef.current.get(slotKey);
-      if (previousTimer) clearTimeout(previousTimer);
-      const timer = setTimeout(() => {
-        setRefillingSlots(current => {
-          if (current.get(slotKey)?.id !== cue.id) return current;
-          const next = new Map(current);
-          next.delete(slotKey);
-          return next;
-        });
-        moldCastTimersRef.current.delete(slotKey);
-      }, cue.delayMs + castDurationMs + 40);
-      moldCastTimersRef.current.set(slotKey, timer);
-    });
-
-    const traceTimer = setTimeout(() => {
-      setArchiveManifestationTraces(current => current.filter(
-        trace => !trace.id.startsWith(`${sequence}:trace:`),
-      ));
-      moldCastTimersRef.current.delete(`trace:${sequence}`);
-      moldCastTimersRef.current.delete(`sound:${sequence}`);
-    }, totalMs + 80);
-    moldCastTimersRef.current.set(`trace:${sequence}`, traceTimer);
+    gameAudio.playCardDraw();
     return true;
   };
-
-  const dealReplacementIntoSlot = (
-    card: ArtifactCard,
-    tier: number,
-    slotKey: string,
-    cause: MoldCastCause = 'refill',
-  ): boolean => beginMoldCasting([{ card, tier, slotKey }], cause);
 
   const playNormalBurnVisuals = (entries: LuminaryBurnVisualEntry[]) => {
     const normalEntries = entries;
@@ -2551,6 +2313,7 @@ export default function GameBoard() {
       }
     }, 320);
 
+    const nonDirectorKeys = resolvedEntries.map(({ tier, slotIndex }) => `${tier}-${slotIndex}`);
     setTimeout(() => {
       if (normalGhostEntries.length > 0) {
         setBurstGhostCards(previous => {
@@ -2561,20 +2324,9 @@ export default function GameBoard() {
           return next;
         });
       }
-      const castEntries = resolvedEntries.flatMap(({ tier, slotIndex }) => {
-        const row = tier === 1
-          ? state?.forgeTier1
-          : tier === 2
-            ? state?.forgeTier2
-            : state?.forgeTier3;
-        const card = row?.[slotIndex] ?? null;
-        return card
-          ? [{ card, tier, slotKey: `${tier}-${slotIndex}` }]
-          : [];
-      });
-      if (castEntries.length > 0) {
-        beginMoldCasting(castEntries, 'burn');
-      }
+      setRefillingSlots(new Set(nonDirectorKeys));
+      gameAudio.playForgeRefill();
+      setTimeout(() => setRefillingSlots(new Set()), 700);
     }, 1520);
   };
 
@@ -2728,20 +2480,6 @@ export default function GameBoard() {
     }, waitMs);
   };
 
-  const recordTurnOrderBalanceView = (
-    intro: TurnOrderIntroState,
-    outcome: 'success' | 'dismissed',
-  ) => {
-    if (!intro.players.some((player) => player.eminenceBonus > 0)) return;
-    const localPlayer = intro.players.find((player) => player.playerId === session?.playerId);
-    trackFirstPartyEvent({
-      eventName: 'turn_order_balance_viewed',
-      outcome,
-      ordinal: localPlayer?.openingPosition,
-      durationMs: Math.max(0, Date.now() - intro.startedAt),
-    }, `turn-order-balance:${intro.introId}:${session?.playerId ?? 'spectator'}`);
-  };
-
   const cancelTurnAnnouncement = () => {
     if (pendingTurnAnnounceRef.current) clearTimeout(pendingTurnAnnounceRef.current);
     pendingTurnAnnounceRef.current = null;
@@ -2756,7 +2494,6 @@ export default function GameBoard() {
 
   const abridgeTurnOrderIntro = () => {
     if (!turnOrderIntro) return;
-    recordTurnOrderBalanceView(turnOrderIntro, 'dismissed');
     if (turnOrderIntroTimerRef.current) clearTimeout(turnOrderIntroTimerRef.current);
     turnOrderIntroTimerRef.current = null;
     setTurnOrderIntro(null);
@@ -2810,10 +2547,10 @@ export default function GameBoard() {
   // can appear without waiting for queued card/arrival animations to drain.
   // Does NOT affect audio — win fanfare and playWin() still fire normally.
   // Should be called at the moment game-over is detected.
-  const cancelPendingAnimations = useCallback(() => {
+  const cancelPendingAnimations = () => {
     // Reset the animation barrier so drainQueue stops waiting.
     animationEndTimeRef.current = 0;
-    // Cancel every tracked card-animation timer (burst, cast, flip watchdogs, etc.).
+    // Cancel every tracked card-animation timer (burst, deal, flip watchdogs, etc.).
     for (const t of cardAnimTimersRef.current) clearTimeout(t);
     cardAnimTimersRef.current = [];
     // Discard all authoritative states waiting behind the visual timeline.
@@ -2822,8 +2559,8 @@ export default function GameBoard() {
     // Clear ghost cards that were waiting for burst animations to start.
     setBurstGhostCards({});
     ghostArtifactMarkerTypesRef.current.clear();
-    // Force-unmount any Forge or reserve animation still in flight so the win
-    // cinematic begins from a clean board.
+    // Force-unmount any forge / reserve / deal animation that is still in flight
+    // so the win cinematic isn't disrupted by a card flying across the board.
     setCardActionBurst(null);
     setOpponentForgeAbsorb(null);
     setLuminaryEminenceBurst(null);
@@ -2831,18 +2568,15 @@ export default function GameBoard() {
     luminaryEminenceBurstTimersRef.current = [];
     pendingLuminaryEminenceBurstsRef.current = [];
     setCipherBurst(null);
-    moldCastTimersRef.current.forEach(timer => clearTimeout(timer));
-    moldCastTimersRef.current.clear();
-    setRefillingSlots(new Map());
-    setArchiveManifestationTraces([]);
+    setDealingCard(null);
+    setDirectorDealingCards([]);
     // Reveal hidden Forge slots and finish flips so the board is clean.
     setHiddenSlots(new Set());
     setFlippingCards(new Set());
-  }, [clearQueuedStateUpdates]);
+  };
 
 
   useEffect(() => {
-    const moldCastTimers = moldCastTimersRef.current;
     return () => {
       for (const t of cardAnimTimersRef.current) clearTimeout(t);
       cardAnimTimersRef.current = [];
@@ -2853,8 +2587,6 @@ export default function GameBoard() {
       if (winBarrierTimerRef.current) clearTimeout(winBarrierTimerRef.current);
       for (const t of luminaryEminenceBurstTimersRef.current) clearTimeout(t);
       luminaryEminenceBurstTimersRef.current = [];
-      moldCastTimers.forEach(timer => clearTimeout(timer));
-      moldCastTimers.clear();
     };
   }, []);
 
@@ -2878,11 +2610,11 @@ export default function GameBoard() {
       localArrivalSkipped,
       gameFinished: gameFinishedRef.current,
       stateStatus: state?.status,
-      stateVersion: state?.version,
+      stateVersion: (state as { version?: number } | undefined)?.version,
       turnCount: state?.turnCount,
     };
     console.info(`[Luminae arrival] ${JSON.stringify(payload)}`);
-  }, [activeTab, localArrivalSkipped, state?.status, state?.turnCount, state?.version]);
+  }, [activeTab, localArrivalSkipped, state?.status, state, state?.turnCount]);
 
   const lockSummonActivation = (lumId: string, eventId?: string) => {
     summonActivationLocksRef.current.add(lumId);
@@ -2999,23 +2731,19 @@ export default function GameBoard() {
         markTurnOrderIntroSeen(roomId, openingTurnOrderId);
         turnOrderIntroKeyRef.current += 1;
         setAnimEndTime(OPENING_TURN_ORDER_PRESENTATION_MS + INITIAL_TURN_GUARD_MS);
-        const introPlayers = buildOpeningTurnOrderPlayers(
-          state.players as GamePlayerState[],
-          selectedFirstPlayer.playerId,
-          state.victoryRequirement ?? 15,
-        );
-        const introState: TurnOrderIntroState = {
+        setTurnOrderIntro({
           key: turnOrderIntroKeyRef.current,
-          introId: String(openingTurnOrderId),
-          startedAt: Date.now(),
           firstPlayerName: selectedFirstPlayer.playerName,
           firstPlayerAccentColor: accentColor,
           isYou: selectedFirstPlayer.playerId === session.playerId,
-          players: introPlayers,
-        };
-        setTurnOrderIntro(introState);
+          players: (state.players as GamePlayerState[]).map((player) => ({
+            playerId: player.playerId,
+            playerName: player.playerName,
+            avatarId: player.avatarId ?? null,
+            isFirst: player.playerId === selectedFirstPlayer.playerId,
+          })),
+        });
         turnOrderIntroTimerRef.current = setTimeout(() => {
-          recordTurnOrderBalanceView(introState, 'success');
           setTurnOrderIntro(null);
           turnOrderIntroTimerRef.current = null;
           fireInitialTurn();
@@ -3027,41 +2755,6 @@ export default function GameBoard() {
     }
   // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [state?.status, state?.version, skipCinematics]);
-
-  useEffect(() => {
-    if (
-      isTutorial
-      || state?.status !== 'finished'
-      || !state.winnerId
-      || !state.openingTurnOrder
-      || !session?.playerId
-      || state.players.some((player) => player.isAi)
-    ) return;
-
-    const introId = state.openingTurnOrder.id;
-    if (!markMatchBalanceResultTracked(introId, session.playerId)) return;
-    const orderedPlayers = buildOpeningTurnOrderPlayers(
-      state.players as GamePlayerState[],
-      state.openingTurnOrder.firstPlayerId,
-      state.victoryRequirement ?? 15,
-    );
-    const localOpeningPosition = orderedPlayers.find(
-      (player) => player.playerId === session.playerId,
-    )?.openingPosition;
-
-    trackFirstPartyEvent({
-      eventName: 'match_balance_result',
-      actionId: getBalanceTelemetryActionId(
-        state.players.length,
-        state.victoryRequirement ?? 15,
-      ),
-      outcome: state.winnerId === session.playerId ? 'success' : 'failure',
-      ordinal: localOpeningPosition,
-      durationMs: state.startedAt
-        ? Math.max(0, Math.min(86_400_000, Date.now() - state.startedAt))
-        : undefined,
-    }, `match-balance:${introId}:${session.playerId}`);
-  }, [isTutorial, session?.playerId, state]);
 
   // ── Initial-load arrival check ─────────────────────────────────────────────
   // Picks up any pendingArrivalEvents already in the REST-loaded state (page
@@ -3103,10 +2796,10 @@ export default function GameBoard() {
           (p.claimedLuminaryIds ?? []).includes(evt.luminaryId));
         enqueueArrivalRef.current(
           evt.luminaryId, lum.name, lum.domain ?? '',
-          balanceLabLuminaryEminence ?? lum.eminence ?? 0,
-          lum.flavor ?? '', evt.eventId, false, wsc,
+          lum.eminence ?? 0, lum.flavor ?? '', evt.eventId, false, wsc,
           (claimer as { playerName?: string })?.playerName,
           evt.claimedByPlayerId,
+          evt.arrivalSound === 'first_resonance' ? 'first_resonance' : 'standard',
         );
       } else {
         logArrivalDebug('initial-check.missing-luminary', {
@@ -3262,7 +2955,6 @@ export default function GameBoard() {
     const lastAction = state.lastAction;
     const isForgeOrReserve =
       lastAction?.type === 'forge_artifact' ||
-      lastAction?.type === 'foundry_forge_artifact' ||
       lastAction?.type === 'forge_reserved_artifact' ||
       lastAction?.type === 'reserve_artifact';
 
@@ -3759,72 +3451,10 @@ export default function GameBoard() {
   const luminaryChoiceIsOurs = !!pendingLuminaryChoice && pendingLuminaryChoice.playerId === session?.playerId;
   const luminaryChoiceActive = !!pendingLuminaryChoice;
   const turnOrderIntroActive = !!turnOrderIntro;
-  const blueprintPresentationQueued =
+  const blueprintPresentationActive =
     (state?.pendingBlueprintManifestationEvents?.length ?? 0) > 0 ||
     (state?.pendingBlueprintDetonationEvents?.length ?? 0) > 0 ||
     (state?.pendingScenarioProtocolEvents?.length ?? 0) > 0;
-  const nextBlueprintManifestationEvent = state?.pendingBlueprintManifestationEvents?.[0] ?? null;
-  const nextBlueprintDetonationEvent = state?.pendingBlueprintDetonationEvents?.[0] ?? null;
-  const nextScenarioProtocolEvent = state?.pendingScenarioProtocolEvents?.[0] ?? null;
-  const pendingTrapPresentationEventId =
-    nextBlueprintManifestationEvent
-      ? null
-      : nextBlueprintDetonationEvent?.eventId ??
-        (nextScenarioProtocolEvent?.kind === 'effect' ? nextScenarioProtocolEvent.eventId : null);
-  const activeForgeVisual = cardActionBurst
-    ? { kind: 'local' as const, key: cardActionBurst.key }
-    : opponentForgeAbsorb
-      ? { kind: 'opponent' as const, key: opponentForgeAbsorb.key }
-      : null;
-  const activeForgeVisualStamped = Boolean(
-    activeForgeVisual &&
-    forgeTrapHandoff?.kind === activeForgeVisual.kind &&
-    forgeTrapHandoff.key === activeForgeVisual.key,
-  );
-  const trapCanInterruptForgeVisual = Boolean(
-    pendingTrapPresentationEventId &&
-    (!activeForgeVisual || activeForgeVisualStamped),
-  );
-  const lastAction = state?.lastAction as { type?: string; cardId?: unknown } | null | undefined;
-  const lastActionType = lastAction?.type;
-  const lastActionUsesForgeVisual =
-    lastActionType === 'forge_artifact' ||
-    lastActionType === 'foundry_forge_artifact' ||
-    (lastActionType === 'reserve_artifact' && Boolean(lastAction?.cardId));
-  const forgeAnimationInFlight =
-    !trapCanInterruptForgeVisual &&
-    (
-      Boolean(cardActionBurst || opponentForgeAbsorb) ||
-      (
-        lastActionUsesForgeVisual &&
-        animationLockUntil > Date.now()
-      )
-    );
-  const blueprintPresentationActive =
-    blueprintPresentationQueued &&
-    !forgeAnimationInFlight;
-  useEffect(() => {
-    if (!pendingTrapPresentationEventId) {
-      trapForgeHandoffEventRef.current = null;
-      return;
-    }
-    if (!blueprintPresentationActive || !trapCanInterruptForgeVisual) return;
-    if (trapForgeHandoffEventRef.current === pendingTrapPresentationEventId) return;
-    trapForgeHandoffEventRef.current = pendingTrapPresentationEventId;
-
-    for (const timer of cardAnimTimersRef.current) clearTimeout(timer);
-    cardAnimTimersRef.current = [];
-    cardActionBurstKeyRef.current += 1;
-    opponentForgeAbsorbKeyRef.current += 1;
-    animationEndTimeRef.current = 0;
-    setAnimationLockUntil(0);
-    setCardActionBurst(null);
-    setOpponentForgeAbsorb(null);
-    setForgeTrapHandoff(null);
-    setHiddenSlots(new Set());
-    setFlippingCards(new Set());
-    setCompactGhost(null);
-  }, [blueprintPresentationActive, pendingTrapPresentationEventId, trapCanInterruptForgeVisual]);
   // isMyTurn is false while we're waiting through modal/intro phases — the active
   // overlay is the only interactive surface during that phase.
   // Camera movement and the broader presentation lease are separate signals.
@@ -3834,10 +3464,10 @@ export default function GameBoard() {
     isActivePlayer &&
     !authoritativeLuminaryResolutionActive &&
     !luminaryPresentationActive &&
-    !blueprintPresentationQueued &&
+    !blueprintPresentationActive &&
     !luminaryChoiceIsOurs &&
     !turnOrderIntroActive;
-  const visualTimelineLocked = queuedStateCount > 0 || blueprintPresentationQueued;
+  const visualTimelineLocked = queuedStateCount > 0 || blueprintPresentationActive;
   const isMyTurnForCoreAction =
     isMyTurn &&
     !coreActionSubmitted &&
@@ -3847,13 +3477,43 @@ export default function GameBoard() {
     !isCameraControlled &&
     !visualTimelineLocked;
   const me = state?.players.find(p => p.playerId === session?.playerId);
+
+  useEffect(() => {
+    if (!me) return;
+    const nextIds = getFoundryStoredIds(me);
+    if (foundryStorageOwnerRef.current !== me.playerId) {
+      foundryStorageOwnerRef.current = me.playerId;
+      previousFoundryStorageIdsRef.current = nextIds;
+      return;
+    }
+    const previous = new Set(previousFoundryStorageIdsRef.current);
+    const addedIds = nextIds.filter((artifactId) => !previous.has(artifactId));
+    previousFoundryStorageIdsRef.current = nextIds;
+    if (addedIds.length === 0) return;
+    if (foundryStorageRevealTimerRef.current) {
+      clearTimeout(foundryStorageRevealTimerRef.current);
+    }
+    foundryStorageRevealTimerRef.current = setTimeout(() => {
+      setShowReservedOverlay(true);
+      foundryStorageRevealTimerRef.current = null;
+    }, abridgedAnims ? 850 : 3150);
+  }, [abridgedAnims, me]);
+
+  useEffect(() => () => {
+    if (foundryStorageRevealTimerRef.current) {
+      clearTimeout(foundryStorageRevealTimerRef.current);
+    }
+  }, []);
+  useEffect(() => {
+    if ((me?.forgedArtifacts.length ?? 0) > 0) recordProgressionOnce('first_artifact_forged');
+  }, [me?.forgedArtifacts.length]);
   // Planning is future intent, not a present-turn mutation. It remains available
   // during opponent turns, queued state, turn presentation, and camera restoration.
   // Only an active exclusive Luminary presentation may temporarily own the surface.
   const canPlan = canUsePlanningEngine({
     gameStatus: state?.status,
     hasLocalPlayer: !!me,
-    exclusivePresentationActive: luminaryCameraSequenceRequested || blueprintPresentationQueued,
+    exclusivePresentationActive: luminaryCameraSequenceRequested || blueprintPresentationActive,
     arrivalGateActive,
     localArrivalSkipped,
   });
@@ -3862,33 +3522,40 @@ export default function GameBoard() {
   // Only active after the victory cinematic has been dismissed.
   useFocusTrap(
     winOverlayContainerRef,
-    !isLumiiScenario && state?.status === 'finished' && !pendingGameOver && !summonSequenceActive && !showCinematic && showWinOverlay,
+    !isSpecialOutcomeScenario && state?.status === 'finished' && !pendingGameOver && !summonSequenceActive && !showCinematic && showWinOverlay,
     () => { /* terminal state — no dismiss action */ },
   );
 
   const myCivilizationKey = useMemo(() => civilizationStateKey(me), [me]);
   const civilizationModel = useMemo(() => {
-    const forgedArtifacts = me?.forgedArtifacts ?? [];
+    const forgedArtifacts = buildCivilizationArtifactHistoryCards(
+      me?.forgedArtifacts ?? [],
+      me?.civilization?.artifacts ?? [],
+      loreCatalog,
+    );
     const discountedForgeIds = me?.discountedForgeIds ?? [];
-    const tier = getKardashevTier(forgedArtifacts, discountedForgeIds);
+    const tier = getCivilizationSceneTier(me, forgedArtifacts, discountedForgeIds);
     const palette = getDominantAffinityPalette(forgedArtifacts);
     const profile = buildCivilizationProfile(forgedArtifacts);
-    // Civilization structure is earned through forging, not temporary affinities.
-    // Each tier's artifacts add lasting visual capacity to the civilization scene.
-    const tierArtifacts = forgedArtifacts.filter((artifact) => artifact.tier === Math.max(1, tier));
-    const milestones = tier === 3 ? 3 : tier === 2 ? 4 : 5;
+    // Maturity is backend-derived from breadth and scale evidence. This fraction
+    // only controls visual density inside the already-earned scene plate.
+    const progressFraction = tier >= 3
+      ? 1
+      : tier === 2
+        ? Math.max(0.35, Math.min(1, (forgedArtifacts.length - 6) / 6))
+        : Math.min(1, forgedArtifacts.length / 6);
     return {
       forgedArtifacts,
       discountedForgeIds,
       tier,
       palette,
       profile,
-      progressFraction: Math.min(1, tierArtifacts.length / milestones),
+      progressFraction,
       name: me?.civName || getCivilizationName(palette, tier),
       forgedCount: forgedArtifacts.length,
     };
   // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [myCivilizationKey]);
+  }, [loreCatalog, myCivilizationKey]);
   const myForgedArtifacts = civilizationModel.forgedArtifacts;
   const revealBlueprintText = myForgedArtifacts.length > 0;
   const forgottenHourCycleState = state?.forgottenHourCycle;
@@ -3908,6 +3575,62 @@ export default function GameBoard() {
   const kardashevPalette = civilizationModel.palette;
   const civilizationProfile = civilizationModel.profile;
   const kardashevProgressFraction = civilizationModel.progressFraction;
+  const civilizationDeploymentSites = useMemo(() => (
+    buildCivilizationDeploymentSites({
+      forgedArtifacts: myForgedArtifacts,
+      loreCatalog,
+      tier: kardashevTier,
+      ownerPlayerId: session?.playerId,
+      turnCount: state?.turnCount ?? 0,
+      luminaryAffinities: state?.luminaryAffinities ?? [],
+      manifestedBlueprintDevices: me?.manifestedBlueprintDevices ?? [],
+      scenarioProtocols: state?.scenarioProtocols ?? [],
+      civilizationArtifacts: me?.civilization?.artifacts ?? [],
+      activeCapabilityIds: me?.civilization?.activeCapabilityIds,
+    })
+  ), [
+    myForgedArtifacts,
+    loreCatalog,
+    kardashevTier,
+    session?.playerId,
+    state?.turnCount,
+    state?.luminaryAffinities,
+    me?.manifestedBlueprintDevices,
+    me?.civilization?.artifacts,
+    me?.civilization?.activeCapabilityIds,
+    state?.scenarioProtocols,
+  ]);
+  const [recentCivilizationSiteIds, setRecentCivilizationSiteIds] = useState<string[]>([]);
+  const previousCivilizationSiteSignaturesRef = useRef<Map<string, string> | null>(null);
+
+  useEffect(() => {
+    if (!me) {
+      previousCivilizationSiteSignaturesRef.current = null;
+      setRecentCivilizationSiteIds([]);
+      return;
+    }
+
+    const nextSignatures = getCivilizationDeploymentSiteSignatureMap(civilizationDeploymentSites);
+    const previousSignatures = previousCivilizationSiteSignaturesRef.current;
+    previousCivilizationSiteSignaturesRef.current = nextSignatures;
+
+    if (!previousSignatures) return;
+
+    const changedSiteIds = getRecentCivilizationDeploymentSiteIds(
+      previousSignatures,
+      nextSignatures,
+      civilizationDeploymentSites,
+    );
+
+    if (changedSiteIds.length === 0) return;
+
+    setRecentCivilizationSiteIds((current) => prioritizeRecentCivilizationSiteIds(changedSiteIds, current));
+  }, [civilizationDeploymentSites, me]);
+
+  const acknowledgeRecentCivilizationSites = useCallback((siteIds: readonly string[]) => {
+    if (siteIds.length === 0) return;
+    setRecentCivilizationSiteIds((current) => current.filter((siteId) => !siteIds.includes(siteId)));
+  }, []);
 
   const opponentData = useMemo(() => {
     const players = state?.players;
@@ -3915,18 +3638,23 @@ export default function GameBoard() {
     return Object.fromEntries(
       players.map(p => {
         const civPalette = getDominantAffinityPalette(p.forgedArtifacts);
+        const civilizationTier = getCivilizationSceneTier(
+          p,
+          p.forgedArtifacts,
+          p.discountedForgeIds,
+        );
         return [p.playerId, {
           totalAffinity: Object.values(p.affinities).reduce<number>((a, b) => a + b, 0),
           cardCount: p.forgedArtifacts.length,
           reservedCount: p.reservedArtifacts.length,
           civPalette,
-          civName: p.civName || getCivilizationName(civPalette, getKardashevTier(p.forgedArtifacts, p.discountedForgeIds)),
+          civName: p.civName || getCivilizationName(civPalette, civilizationTier),
         }];
       })
     );
   }, [state?.players]);
 
-  const ordinaryEffectiveCost = useCallback((
+  const effectiveCost = useCallback((
     card: ArtifactCard,
     p: GamePlayerState,
   ) => {
@@ -3945,93 +3673,55 @@ export default function GameBoard() {
     }
     return out;
   }, [state?.luminaryAffinities, state?.turnCount]);
-  const resolvePlayerForgeCost = useCallback((
+  const canAffordCard = useCallback((
     card: ArtifactCard,
-    p: GamePlayerState,
-    focusAffinity?: NaturalAffinityKey | null,
-  ) => resolveBalanceLabForgeCost({
-    candidate: balanceLabCandidate,
-    card,
-    player: p,
-    ordinaryCost: ordinaryEffectiveCost(card, p),
-    fromReserve: p.reservedArtifacts.some((reserved) => reserved.id === card.id),
-    focusAffinity,
-  }), [balanceLabCandidate, ordinaryEffectiveCost]);
-  const effectiveCost = useCallback((
-    card: ArtifactCard,
-    p: GamePlayerState,
-  ) => resolvePlayerForgeCost(card, p).cost, [resolvePlayerForgeCost]);
-  const canPayForgeResolution = useCallback((
-    resolution: ReturnType<typeof resolvePlayerForgeCost>,
     p: GamePlayerState,
   ): boolean => {
-    if (!resolution.paymentFloorSatisfied) return false;
+    const cost = effectiveCost(card, p);
     let singularityNeeded = 0;
-    for (const [c, need] of Object.entries(resolution.cost)) {
+    for (const [c, need] of Object.entries(cost)) {
       const have = p.affinities[c as keyof AffinityCounts] ?? 0;
       if (have < need) singularityNeeded += need - have;
     }
     return singularityNeeded <= (p.affinities.singularity ?? 0);
-  }, []);
-  const canAffordCard = useCallback((
+  }, [effectiveCost]);
+  const getFoundryClaimAction = useCallback((
     card: ArtifactCard,
-    p: GamePlayerState,
-    focusAffinity?: NaturalAffinityKey | null,
-  ): boolean => {
-    const fromReserve = p.reservedArtifacts.some((reserved) => reserved.id === card.id);
-    const options = balanceLabFocusOptions({
-      candidate: balanceLabCandidate,
-      ordinaryCost: ordinaryEffectiveCost(card, p),
-      fromReserve,
-    });
-    if (focusAffinity || options.length <= 1) {
-      return canPayForgeResolution(resolvePlayerForgeCost(card, p, focusAffinity), p);
-    }
-    return options.some((affinity) =>
-      canPayForgeResolution(resolvePlayerForgeCost(card, p, affinity), p),
+    fromReserve = false,
+    fromArchiveTop = false,
+  ): BlueprintClaimAction | null => {
+    if (card.tier !== 2 || fromReserve || fromArchiveTop) return null;
+    const foundry = me?.manifestedBlueprintDevices?.find(
+      (device) => device.blueprintId === 'bp_mantle_to_orbit_foundry',
     );
-  }, [balanceLabCandidate, canPayForgeResolution, ordinaryEffectiveCost, resolvePlayerForgeCost]);
-  const selectedFocusOptions = selectedCard && me
-    ? balanceLabFocusOptions({
-        candidate: balanceLabCandidate,
-        ordinaryCost: ordinaryEffectiveCost(selectedCard.card, me),
-        fromReserve: selectedCard.fromReserve,
-      })
-    : [];
-  const selectedFocusAffinity = pendingFocusAffinity && selectedFocusOptions.includes(pendingFocusAffinity)
-    ? pendingFocusAffinity
-    : selectedFocusOptions.length === 1
-      ? selectedFocusOptions[0]
-      : null;
-  const focusSelectionRequired = selectedFocusOptions.length > 1 && !selectedFocusAffinity;
-  const foundryProject = (
-    me?.manifestedBlueprintProjects ?? me?.manifestedBlueprintDevices ?? []
-  ).find((project) => project.blueprintId === 'bp_mantle_to_orbit_foundry');
-  const foundryEffectiveCost = useCallback((
-    card: ArtifactCard,
-    p: GamePlayerState,
-  ) => {
-    const ordinary = ordinaryEffectiveCost(card, p);
-    const out: Record<string, number> = {};
+    if (!foundry || foundry.state !== 'ready') return null;
+    const legacyUses = Number(foundry.foundryTier2Ready === true) +
+      Number(foundry.foundryTier3Ready === true);
+    const usesRemaining = foundry.foundryUsesRemaining ?? (legacyUses > 0 ? legacyUses : 2);
+    return usesRemaining > 0 ? 'foundry_sustainable' : 'foundry_overdrive';
+  }, [me?.manifestedBlueprintDevices]);
+  const foundryCost = useCallback((card: ArtifactCard, player: GamePlayerState) => {
+    const base = effectiveCost(card, player);
+    const result = { ...base };
     for (const affinity of AFFINITIES) {
       if (affinity === 'singularity') continue;
-      const printed = card.cost[affinity as keyof AffinityCounts] ?? 0;
-      out[affinity] = printed > 0 ? Math.max(0, ordinary[affinity] - 1) : 0;
+      if ((card.cost[affinity as keyof AffinityCounts] ?? 0) > 0 && (result[affinity] ?? 0) > 0) {
+        result[affinity]--;
+      }
     }
-    return out;
-  }, [ordinaryEffectiveCost]);
-  const canAffordFoundryCard = useCallback((card: ArtifactCard, p: GamePlayerState): boolean => {
-    if (card.tier !== 2 || foundryProject?.state !== 'active') return false;
-    const cost = foundryEffectiveCost(card, p);
+    return result;
+  }, [effectiveCost]);
+  const canAffordFoundryCard = useCallback((card: ArtifactCard, player: GamePlayerState): boolean => {
+    const cost = foundryCost(card, player);
     let singularityNeeded = 0;
     for (const [affinity, needed] of Object.entries(cost)) {
       singularityNeeded += Math.max(
         0,
-        needed - (p.affinities[affinity as keyof AffinityCounts] ?? 0),
+        needed - (player.affinities[affinity as keyof AffinityCounts] ?? 0),
       );
     }
-    return singularityNeeded <= (p.affinities.singularity ?? 0);
-  }, [foundryEffectiveCost, foundryProject?.state]);
+    return singularityNeeded <= (player.affinities.singularity ?? 0);
+  }, [foundryCost]);
 
   // Derived forge-deduction map — how many of each affinity the selected card
   // would spend from the player's current inventory. Placed here (after
@@ -4092,11 +3782,33 @@ export default function GameBoard() {
       if (spend > 0) result[k as AffinityKey] = spend;
       singularityNeeded += Math.max(0, need - have);
     }
-    if (balanceLabPortableSingularity && singularityNeeded > 0) {
-      result.singularity = singularityNeeded;
-    }
+    if (singularityNeeded > 0) result.singularity = singularityNeeded;
     return Object.keys(result).length > 0 ? result : undefined;
-  }, [balanceLabPortableSingularity, effectiveCost, selectedCard, me]);
+  }, [effectiveCost, selectedCard, me]);
+  const selectedFoundryAction = selectedCard
+    ? getFoundryClaimAction(
+        selectedCard.card,
+        selectedCard.fromReserve,
+        selectedCard.fromArchiveTop,
+      )
+    : null;
+  const selectedFoundryName = me?.manifestedBlueprintDevices?.find(
+    (device) => device.blueprintId === 'bp_mantle_to_orbit_foundry',
+  )?.definition?.name ?? 'Manifested Foundry';
+  const selectedFoundryAffordable = !!(
+    selectedFoundryAction &&
+    selectedCard &&
+    me &&
+    canAffordFoundryCard(selectedCard.card, me)
+  );
+  const selectedIsRecoveringFoundryComponent = !!(
+    selectedCard?.fromReserve &&
+    me?.manifestedBlueprintDevices?.some(
+      (device) => device.blueprintId === 'bp_mantle_to_orbit_foundry' && device.state === 'recovering',
+    ) &&
+    me &&
+    getFoundryStoredIds(me).includes(selectedCard.card.id)
+  );
 
   // ── Reserve hint ──────────────────────────────────────────────────────────
   useEffect(() => {
@@ -4170,10 +3882,6 @@ export default function GameBoard() {
     if (isRematch) {
       gameAudio.resetTransientAudio();
       gameAudio.setEndgameIntensity(0);
-      moldCastTimersRef.current.forEach(timer => clearTimeout(timer));
-      moldCastTimersRef.current.clear();
-      setRefillingSlots(new Map());
-      setArchiveManifestationTraces([]);
       viewOrchestrator.endSequence({ immediate: true });
       viewOrchestrator.restore({ immediate: true });
       initialTurnFiredRef.current = false;
@@ -4191,8 +3899,6 @@ export default function GameBoard() {
       pendingActivationServerResolutionsRef.current = new Set();
       pendingIronHarbingerSlotsRef.current = [];
       ironHarbingerGhostSlotKeysRef.current = [];
-      pendingPhoenixRefillSlotsRef.current = [];
-      pendingBlueprintMoldCastsRef.current.clear();
       audibleLuminaryEligibilityIdsRef.current = new Set();
       lastPlannedCancelNoticeRef.current = null;
       for (const timer of opponentEminenceImpactDelayTimersRef.current) clearTimeout(timer);
@@ -4265,7 +3971,6 @@ export default function GameBoard() {
 
       const isForgeAction = action && (
         action.type === 'forge_artifact' ||
-        action.type === 'foundry_forge_artifact' ||
         (action.type === 'reserve_artifact' && action.cardId)
       );
 
@@ -4273,7 +3978,7 @@ export default function GameBoard() {
       const isTideArchiveForgeAction =
         action?.type === 'forge_artifact' && action.luminaryId === 'lum_tide';
       const optimisticForge =
-        (action?.type === 'forge_artifact' || action?.type === 'foundry_forge_artifact') &&
+        action?.type === 'forge_artifact' &&
         action.playerId === session?.playerId &&
         optimisticLocalForgeRef.current?.cardId === action?.cardId
           ? optimisticLocalForgeRef.current
@@ -4354,28 +4059,24 @@ export default function GameBoard() {
             }, abridgedAnims ? 720 : 1300);
             cardAnimTimersRef.current.push(clearTimer);
           } else {
-            const isLumiiForgeTarget = isLumiiScenario && isLumiiForecastPlayer(player);
-            if (!isLumiiForgeTarget) {
-              traceOpponentActionOwner(
-                actingPlayerId,
-                AFFINITY_META[exitCard.bonusAffinity as AffinityKey]?.glowHex ?? '#d8ad57',
-              );
-            }
-            const chipCenter = resolveOpponentArtifactAbsorbCenter(
+            traceOpponentActionOwner(
               actingPlayerId,
-              isLumiiForgeTarget,
+              AFFINITY_META[exitCard.bonusAffinity as AffinityKey]?.glowHex ?? '#d8ad57',
             );
+            const chip = document.querySelector<HTMLElement>(`[data-opponent-chip="${actingPlayerId}"]`);
+            const chipRect = chip?.getBoundingClientRect();
             opponentForgeAbsorbKeyRef.current += 1;
             const sequence = opponentForgeAbsorbKeyRef.current;
             setAnimEndTime(abridgedAnims ? ABRIDGED_FORGE_LOCK_MS : FORGE_FULL_MS);
             setOpponentForgeAbsorb({
               key: sequence,
               playerId: actingPlayerId,
-              targetKind: isLumiiForgeTarget ? 'lumii' : 'opponent',
               card: exitCard,
               tier,
               startRect,
-              chipCenter,
+              chipCenter: chipRect
+                ? { x: chipRect.left + chipRect.width / 2, y: chipRect.top + chipRect.height / 2 }
+                : { x: window.innerWidth / 2, y: 28 },
               ownerName: player?.playerName,
               eminence: exitCard.eminence ?? 0,
               eminenceTotal: player?.eminence,
@@ -4384,11 +4085,6 @@ export default function GameBoard() {
                 : [],
               isForgottenForge: false,
             });
-            if (isLumiiForgeTarget) {
-              scheduleLumiiHudAbsorbPulse(
-                abridgedAnims ? LUMII_HUD_ABSORB_ABRIDGED_MS : LUMII_HUD_ABSORB_FULL_MS,
-              );
-            }
             if (abridgedAnims) gameAudio.playArtifactForged();
             const clearTimer = setTimeout(() => {
               if (opponentForgeAbsorbKeyRef.current === sequence) setOpponentForgeAbsorb(null);
@@ -4416,11 +4112,11 @@ export default function GameBoard() {
           const replacementCard = forgeRowsAfter[tier][slotIndex];
           setBurstGhostCards(prevGhosts => { const next = { ...prevGhosts }; delete next[slotKey]; return next; });
           const completeIn = Math.max(0, (abridgedAnims ? 720 : 1250) - (Date.now() - optimisticForge.startedAt));
-          setAnimEndTime(completeIn + MOLD_CAST_DURATION_MS + ANIM_LOCK_BUFFER_MS);
+          setAnimEndTime(completeIn + DEAL_ANIM_MS);
           const completionTimer = setTimeout(() => {
             if (cardActionBurstKeyRef.current !== optimisticForge.burstKey) return;
             setCardActionBurst(null);
-            if (replacementCard && dealReplacementIntoSlot(replacementCard, tier, slotKey, 'forge')) {
+            if (replacementCard && dealReplacementIntoSlot(replacementCard, tier, slotKey)) {
               return;
             }
             setHiddenSlots(new Set());
@@ -4478,28 +4174,28 @@ export default function GameBoard() {
             cardAnimTimersRef.current = [];
             setHiddenSlots(new Set());
             setFlippingCards(new Set());
+            setDealingCard(null);
+
             const slotKey = `${tier}-${idx}`;
 
-            if (action.type === 'forge_artifact' || action.type === 'foundry_forge_artifact') {
+            if (action.type === 'forge_artifact') {
               const isLocalForge =
                 (action.playerId as string | undefined) === session?.playerId;
 
               if (!isLocalForge) {
                 // ── Opponent forge: card shrinks and flies into their chip ──────
                 const actingPlayerId = action.playerId as string;
-                const isLumiiForgeTarget = isLumiiScenario && isLumiiForecastPlayer(player);
-                if (!isLumiiForgeTarget) {
-                  traceOpponentActionOwner(
-                    actingPlayerId,
-                    exitCard.bonusAffinity
-                      ? (AFFINITY_META[exitCard.bonusAffinity as AffinityKey]?.glowHex ?? '#d8ad57')
-                      : '#d8ad57',
-                  );
-                }
-                const chipCenter = resolveOpponentArtifactAbsorbCenter(
+                traceOpponentActionOwner(
                   actingPlayerId,
-                  isLumiiForgeTarget,
+                  exitCard.bonusAffinity
+                    ? (AFFINITY_META[exitCard.bonusAffinity as AffinityKey]?.glowHex ?? '#d8ad57')
+                    : '#d8ad57',
                 );
+                const chipEl = document.querySelector(`[data-opponent-chip="${actingPlayerId}"]`);
+                const chipR = chipEl?.getBoundingClientRect();
+                const chipCenter = chipR
+                  ? { x: chipR.left + chipR.width / 2, y: chipR.top + chipR.height / 2 }
+                  : { x: window.innerWidth / 2, y: 28 };
 
                 opponentForgeAbsorbKeyRef.current += 1;
                 const absorbSeq = opponentForgeAbsorbKeyRef.current;
@@ -4509,7 +4205,6 @@ export default function GameBoard() {
                 setOpponentForgeAbsorb({
                   key: absorbSeq,
                   playerId: actingPlayerId,
-                  targetKind: isLumiiForgeTarget ? 'lumii' : 'opponent',
                   card: exitCard,
                   tier,
                   startRect: rect
@@ -4525,11 +4220,6 @@ export default function GameBoard() {
                     : [],
                   isForgottenForge: exitIsForgottenForge,
                 });
-                if (isLumiiForgeTarget) {
-                  scheduleLumiiHudAbsorbPulse(
-                    abridgedAnims ? LUMII_HUD_ABSORB_ABRIDGED_MS : LUMII_HUD_ABSORB_FULL_MS,
-                  );
-                }
                 setHiddenSlots(new Set([slotKey]));
                 // Abridged: no internal audio in AbridgedForgeAnimation, so fire here.
                 // Full-view: OpponentForgeAnimation calls playForgeAnimation() internally.
@@ -4545,7 +4235,7 @@ export default function GameBoard() {
                   setOpponentForgeAbsorb(null);
 
                   if (newCard) {
-                    if (!dealReplacementIntoSlot(newCard, tier, slotKey, 'forge')) {
+                    if (!dealReplacementIntoSlot(newCard, tier, slotKey)) {
                       // Opponent forge fallback: deck or slot element not in DOM
                       // (player on a different tab, compact layout not rendered, etc.).
                       // Do NOT extend the animation lock with FALLBACK_FLIP_ANIM_MS (5800 ms) —
@@ -4604,7 +4294,7 @@ export default function GameBoard() {
                   if (!abridgedAnims) flashForgeDestination(forgeDestination, exitCard);
                   setCardActionBurst(null);
                   if (newCard) {
-                    if (!dealReplacementIntoSlot(newCard, tier, slotKey, 'forge')) {
+                    if (!dealReplacementIntoSlot(newCard, tier, slotKey)) {
                       // Fallback: flip in place if DOM elements not found.
                       // Keep the slot hidden until the flip completes — do NOT clear
                       // hiddenSlots immediately or the new card pops in before the flip.
@@ -4676,7 +4366,7 @@ export default function GameBoard() {
               setBurstGhostCards(prev => { const n = { ...prev }; delete n[slotKey]; return n; }); // cipher burst now owns the card
               if (gotSingularity) gameAudio.playSingularityToken();
               gameAudio.playCipherSeal();
-              setAnimEndTime(abridgedAnims ? ABRIDGED_FORGE_LOCK_MS : CIPHER_GAME_TOTAL_MS + MOLD_CAST_DURATION_MS + ANIM_LOCK_BUFFER_MS); // full: cipher + cast-in-mold + buffer
+              setAnimEndTime(abridgedAnims ? ABRIDGED_FORGE_LOCK_MS : CIPHER_GAME_TOTAL_MS + DEAL_ANIM_MS + ANIM_LOCK_BUFFER_MS); // full: cipher + deal-from-deck + buffer
               setHiddenSlots(new Set([slotKey]));
               // Deal replacement card from deck after the cipher aperture animation clears.
               const cipherSeq = cipherBurstKeyRef.current;
@@ -4684,7 +4374,7 @@ export default function GameBoard() {
 	              const tCipherDeal = setTimeout(() => {
 	                if (cipherBurstKeyRef.current !== cipherSeq) return;
 	                if (cipherNewCard) {
-	                  if (!dealReplacementIntoSlot(cipherNewCard, tier, slotKey, 'encrypt')) {
+	                  if (!dealReplacementIntoSlot(cipherNewCard, tier, slotKey)) {
 	                    setAnimEndTime(FALLBACK_FLIP_ANIM_MS);
 	                    setFlippingCards(new Set([cipherNewCard.id]));
 	                    gameAudio.playCardDraw();
@@ -4773,11 +4463,11 @@ export default function GameBoard() {
           )
             ? 0
             : (reservedArtifact.eminence ?? 0);
-          const isLumiiForgeTarget = isLumiiScenario && isLumiiForecastPlayer(newActingPlayer);
-          const chipCenter = resolveOpponentArtifactAbsorbCenter(
-            actingPlayerId,
-            isLumiiForgeTarget,
-          );
+          const chipEl = document.querySelector(`[data-opponent-chip="${actingPlayerId}"]`);
+          const chipR = chipEl?.getBoundingClientRect();
+          const chipCenter = chipR
+            ? { x: chipR.left + chipR.width / 2, y: chipR.top + chipR.height / 2 }
+            : { x: window.innerWidth / 2, y: 28 };
           const previousCardDomId = directlyMatchedArtifact?.id ?? departedReservedArtifact?.id;
           const cardEl = previousCardDomId
             ? document.querySelector(`[data-reserved-card-id="${previousCardDomId}"]`)
@@ -4792,7 +4482,6 @@ export default function GameBoard() {
           setOpponentForgeAbsorb({
             key: absorbSeq,
             playerId: actingPlayerId,
-            targetKind: isLumiiForgeTarget ? 'lumii' : 'opponent',
             card: reservedArtifact,
             tier: reservedArtifact.tier,
             startRect: cardRect
@@ -4804,11 +4493,6 @@ export default function GameBoard() {
             eminenceTotal: newActingPlayer?.eminence,
             isForgottenForge: reservedIsForgottenForge,
           });
-          if (isLumiiForgeTarget) {
-            scheduleLumiiHudAbsorbPulse(
-              abridgedAnims ? LUMII_HUD_ABSORB_ABRIDGED_MS : LUMII_HUD_ABSORB_FULL_MS,
-            );
-          }
           gameAudio.playArtifactForged();
           const tAbsorb = setTimeout(() => {
             if (opponentForgeAbsorbKeyRef.current !== absorbSeq) return;
@@ -4828,7 +4512,7 @@ export default function GameBoard() {
         const opponentForgeOwnsImpact =
           actionPlayerId &&
           actionPlayerId !== session.playerId &&
-          (actionType === 'forge_artifact' || actionType === 'foundry_forge_artifact' || actionType === 'forge_reserved_artifact');
+          (actionType === 'forge_artifact' || actionType === 'forge_reserved_artifact');
         const prevPending = prev.pendingSummonEvents ?? [];
         const newPending = newState.pendingSummonEvents ?? [];
         const newlyArrivedClaimers = new Set(
@@ -4836,7 +4520,10 @@ export default function GameBoard() {
             .filter((evt) => !prevPending.some((oldEvt) => oldEvt.eventId === evt.eventId))
             .map((evt) => evt.claimedByPlayerId),
         );
-        const victoryTarget = Math.max(15, Number(newState.victoryRequirement ?? 15));
+        const victoryTarget = Math.max(
+          MIN_VICTORY_REQUIREMENT,
+          Number(newState.victoryRequirement ?? DEFAULT_VICTORY_REQUIREMENT),
+        );
 
         for (const nextPlayer of newState.players as GamePlayerState[]) {
           if (nextPlayer.playerId === session.playerId) continue;
@@ -4953,7 +4640,7 @@ export default function GameBoard() {
           );
           let dominantColor = '#fbbf24'; // singularity fallback
 
-          // Prefer the bonusAffinity of the card that pushed the winner over 15 Eminence.
+          // Prefer the bonusAffinity of the card that pushed the winner over the victory requirement.
           // The game transitions to 'finished' via advanceTurn at end-of-last-round, so
           // lastAction may belong to any player's final turn action — not necessarily the
           // winner's Forge action. Use the winner's last forged Artifact; Artifacts are
@@ -5079,13 +4766,14 @@ export default function GameBoard() {
                 evt.luminaryId,
                 lum.name,
                 lum.domain,
-                balanceLabLuminaryEminence ?? lum.eminence ?? 0,
+                lum.eminence ?? 0,
                 lum.flavor,
                 evt.eventId,
                 false,
                 wsc,
                 claimedByPlayer?.playerName,
                 evt.claimedByPlayerId ?? claimedByPlayer?.playerId,
+                evt.arrivalSound === 'first_resonance' ? 'first_resonance' : 'standard',
               );
             } else {
               logArrivalDebug('state-diff.missing-luminary', {
@@ -5146,90 +4834,6 @@ export default function GameBoard() {
           }
           if (emberSlots2.length > 0) {
             pendingDirectorBurnSlotsRef.current = emberSlots2;
-          }
-        }
-      }
-
-      // Phoenix Paradox can repopulate previously empty Forge molds after its
-      // tracked Burned Artifacts return. Keep those authoritative replacements
-      // hidden until Eternal Recurrence reaches its reveal phase.
-      {
-        const previousActivationIds = new Set(
-          (prev?.pendingLuminaryActivationEvents ?? []).map(event => event.eventId),
-        );
-        const recurrenceEvent = (newState.pendingLuminaryActivationEvents ?? []).find(
-          event => (
-            event.luminaryId === 'lum_astral' &&
-            event.effectType === 'start_of_turn' &&
-            !previousActivationIds.has(event.eventId)
-          ),
-        );
-        if (recurrenceEvent) {
-          const previousRows: Record<1 | 2 | 3, (ArtifactCard | null)[]> = {
-            1: (prev?.forgeTier1 ?? []) as (ArtifactCard | null)[],
-            2: (prev?.forgeTier2 ?? []) as (ArtifactCard | null)[],
-            3: (prev?.forgeTier3 ?? []) as (ArtifactCard | null)[],
-          };
-          const nextRows: Record<1 | 2 | 3, (ArtifactCard | null)[]> = {
-            1: newState.forgeTier1 as (ArtifactCard | null)[],
-            2: newState.forgeTier2 as (ArtifactCard | null)[],
-            3: newState.forgeTier3 as (ArtifactCard | null)[],
-          };
-          const refillKeys = [...(recurrenceEvent.targetSlotIds ?? [])];
-          for (const tier of [3, 2, 1] as const) {
-            for (let slotIndex = 0; slotIndex < nextRows[tier].length; slotIndex++) {
-              const slotKey = `${tier}-${slotIndex}`;
-              if (
-                !refillKeys.includes(slotKey) &&
-                !previousRows[tier][slotIndex] &&
-                nextRows[tier][slotIndex]
-              ) {
-                refillKeys.push(slotKey);
-              }
-            }
-          }
-          pendingPhoenixRefillSlotsRef.current = refillKeys;
-          if (refillKeys.length > 0) {
-            setHiddenSlots(current => new Set([...current, ...refillKeys]));
-          }
-        }
-      }
-
-      // Antimatter owns the Artifact's departure, but its authoritative state
-      // already contains the replacement. Hold that mold empty until the
-      // detonation presentation completes, then let the Archive cast the new
-      // Artifact through the same universal refill language as every other path.
-      {
-        const previousDetonationIds = new Set(
-          (prev?.pendingBlueprintDetonationEvents ?? []).map(event => event.eventId),
-        );
-        const detonationEvent = (newState.pendingBlueprintDetonationEvents ?? []).find(
-          event => (
-            event.blueprintId === 'bp_antimatter_detonator' &&
-            !event.interceptedByBlueprintId &&
-            !previousDetonationIds.has(event.eventId)
-          ),
-        );
-        const slotKey = detonationEvent?.targetSlotId;
-        if (detonationEvent && slotKey) {
-          const [tierText, slotText] = slotKey.split('-');
-          const tier = Number(tierText);
-          const slotIndex = Number(slotText);
-          const row = tier === 1
-            ? newState.forgeTier1
-            : tier === 2
-              ? newState.forgeTier2
-              : tier === 3
-                ? newState.forgeTier3
-                : null;
-          const replacement = row?.[slotIndex];
-          if (replacement) {
-            pendingBlueprintMoldCastsRef.current.set(detonationEvent.eventId, {
-              card: replacement,
-              tier,
-              slotKey,
-            });
-            setHiddenSlots(current => new Set([...current, slotKey]));
           }
         }
       }
@@ -5431,14 +5035,7 @@ export default function GameBoard() {
                 const color = action.affinity as string;
                 if (color) affinities = { [color]: 2 };
               }
-              const isLumiiHarnessTarget = isLumiiScenario && isLumiiForecastPlayer(player);
-              playAffinityBurst(
-                affinities,
-                actorId,
-                player.playerName,
-                player.avatarId ?? null,
-                isLumiiHarnessTarget ? 'lumii' : 'opponent',
-              );
+              playAffinityBurst(affinities, actorId, player.playerName, player.avatarId ?? null);
             }
           } else if (actorId && actorId === session?.playerId) {
             // Local Harness: fire the token flip only if its optimistic burst did
@@ -5591,7 +5188,7 @@ export default function GameBoard() {
     setVotePending(true);
     if (action === 'join') setRematchVoteMode(mode);
     try {
-      const resp = await fetch(`/api/rooms/${roomId}/rematch`, {
+      const resp = await fetch(absoluteServiceUrl(`/api/rooms/${roomId}/rematch`), {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({ sessionToken: session.sessionToken, action, sameBoard }),
@@ -5631,24 +5228,24 @@ export default function GameBoard() {
   }, [canReplaySameBoard, rematchVote?.sameBoard, roomId, session?.sessionToken, toast, votePending]);
 
   const loadRematchInfo = useCallback(async () => {
-    if (balanceLabCandidate || isLumiiScenario || !roomId || !session?.sessionToken) return;
+    if (isSpecialOutcomeScenario || !roomId || !session?.sessionToken) return;
     try {
       const params = new URLSearchParams({ sessionToken: session.sessionToken });
-      const resp = await fetch(`/api/rooms/${roomId}/rematch?${params.toString()}`);
+      const resp = await fetch(absoluteServiceUrl(`/api/rooms/${roomId}/rematch?${params.toString()}`));
       if (!resp.ok) return;
       setRematchVote(await resp.json() as RematchVoteUpdate);
     } catch {
       // WebSocket updates remain the primary path; reconnect polling retries.
     }
-  }, [balanceLabCandidate, isLumiiScenario, roomId, session?.sessionToken]);
+  }, [isSpecialOutcomeScenario, roomId, session?.sessionToken]);
 
   useEffect(() => {
-    if (balanceLabCandidate || isLumiiScenario || state?.status !== 'finished') return;
+    if (isSpecialOutcomeScenario || state?.status !== 'finished') return;
     void loadRematchInfo();
-  }, [balanceLabCandidate, isLumiiScenario, loadRematchInfo, state?.status]);
+  }, [isSpecialOutcomeScenario, loadRematchInfo, state?.status]);
 
   useEffect(() => {
-    if (balanceLabCandidate || isLumiiScenario || state?.status !== 'finished' || !rematchVote?.active || !roomId || !session?.sessionToken) {
+    if (isSpecialOutcomeScenario || state?.status !== 'finished' || !rematchVote?.active || !roomId || !session?.sessionToken) {
       return;
     }
 
@@ -5662,8 +5259,7 @@ export default function GameBoard() {
     return () => window.clearInterval(interval);
   }, [
     loadRematchInfo,
-    balanceLabCandidate,
-    isLumiiScenario,
+    isSpecialOutcomeScenario,
     queryClient,
     rematchVote?.active,
     roomId,
@@ -5679,8 +5275,8 @@ export default function GameBoard() {
   }, [state?.status]);
 
   const leaveFinishedRoom = useCallback(() => {
-    if (!balanceLabCandidate && !isLumiiScenario && state?.status === 'finished' && roomId && session?.sessionToken) {
-      void fetch(`/api/rooms/${roomId}/rematch`, {
+    if (!isSpecialOutcomeScenario && state?.status === 'finished' && roomId && session?.sessionToken) {
+      void fetch(absoluteServiceUrl(`/api/rooms/${roomId}/rematch`), {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({
@@ -5693,7 +5289,7 @@ export default function GameBoard() {
       });
     }
     setLocation('/?menu=1');
-  }, [balanceLabCandidate, isLumiiScenario, roomId, session?.sessionToken, setLocation, state?.status]);
+  }, [isSpecialOutcomeScenario, roomId, session?.sessionToken, setLocation, state?.status]);
 
   const [reconnectBannerDismissed, setReconnectBannerDismissed] = useState(false);
   const { sendChatMessage, isConnected, isReconnecting } = useGameWebsocket({
@@ -5736,9 +5332,11 @@ export default function GameBoard() {
       setTimeout(() => setLocation('/'), 3000);
     },
     onChatMessage: (msg) => {
+      if (mutedChatPlayerIdsRef.current.has(msg.playerId)) return;
       setChatMessages(prev => [...prev, msg]);
       if (activeTab !== 'log') setUnreadChat(prev => prev + 1);
     },
+    onChatRejected: (reason) => toast({ variant: 'destructive', title: 'Chat unavailable', description: reason }),
   });
   // Inline sync — runs on every render, keeps the ref current so the
   // refetchInterval callback always sees the latest WS health without
@@ -5816,13 +5414,7 @@ export default function GameBoard() {
         );
       }
     }
-  }, [
-    authoritativeStateIngress,
-    queryClient,
-    roomId,
-    session?.sessionToken,
-    state,
-  ]);
+  }, [state]);
 
   // ── Burst-ghost safety valve ───────────────────────────────────────────────
   // Ghost cards should be cleared within ~1–3 s (queue drain + animation start).
@@ -5884,6 +5476,7 @@ export default function GameBoard() {
     winSealingColor?: string,
     claimedBy?: string,
     claimedByPlayerId?: string,
+    arrivalSound: LuminaryArrivalSoundVariant = 'standard',
   ) => {
     // 1. Dedup guard (skip for dev tests which intentionally replay)
     if (!isDevTest) {
@@ -5926,7 +5519,7 @@ export default function GameBoard() {
             logArrivalDebug('enqueue.no-dom-element', { eventId, luminaryId: lumId, isDevTest });
             pendingSuppressArrivalIdsRef.current.delete(lumId);
             const queueEntry = { id: lumId, name: lumName, domain: lumDomain,
-              eminence: lumEminence, flavor: lumFlavor, claimedBy, claimedByPlayerId, cardRect: undefined, eventId, isDevTest, winSealingColor };
+              eminence: lumEminence, flavor: lumFlavor, claimedBy, claimedByPlayerId, cardRect: undefined, eventId, isDevTest, winSealingColor, arrivalSound };
             setArrivalQueue(q => {
               const next = [...q, queueEntry];
               logArrivalDebug('arrivalQueue.push', {
@@ -5972,7 +5565,7 @@ export default function GameBoard() {
 
             pendingSuppressArrivalIdsRef.current.delete(lumId);
             const queueEntry = { id: lumId, name: lumName, domain: lumDomain,
-              eminence: lumEminence, flavor: lumFlavor, claimedBy, claimedByPlayerId, cardRect: cardRectVal, boardSnapshot, eventId, isDevTest, winSealingColor };
+              eminence: lumEminence, flavor: lumFlavor, claimedBy, claimedByPlayerId, cardRect: cardRectVal, boardSnapshot, eventId, isDevTest, winSealingColor, arrivalSound };
             setArrivalQueue(q => {                   // 7. start the cutscene
               const next = [...q, queueEntry];
               logArrivalDebug('arrivalQueue.push', {
@@ -6054,13 +5647,14 @@ export default function GameBoard() {
         evt.luminaryId,
         lum.name,
         lum.domain ?? '',
-        balanceLabLuminaryEminence ?? lum.eminence ?? 0,
+        lum.eminence ?? 0,
         lum.flavor ?? '',
         evt.eventId,
         false,
         undefined,
         claimer?.playerName,
         evt.claimedByPlayerId ?? claimer?.playerId,
+        evt.arrivalSound === 'first_resonance' ? 'first_resonance' : 'standard',
       );
     }
 
@@ -6154,7 +5748,7 @@ export default function GameBoard() {
         if (!isActualLumiiScenario) gameAudio.playWin();
       }, WIN_FANFARE_DELAY_MS + arrivalFlushBarrierMs);
     }
-  }, [cancelPendingAnimations, isActualLumiiScenario, summonSequenceActive, pendingGameOver]);
+  }, [isActualLumiiScenario, summonSequenceActive, pendingGameOver]);
 
   // In tutorial mode, suppress the arrival cutscene entirely — immediately drain
   // any queued arrival entries by running the onComplete logic synchronously.
@@ -6187,7 +5781,6 @@ export default function GameBoard() {
     playerId: string,
     playerName: string,
     avatarId: string | null,
-    targetKind: 'opponent' | 'lumii' = 'opponent',
   ) => {
     const affinities: AffinityKey[] = [];
     for (const [color, count] of Object.entries(counts)) {
@@ -6200,7 +5793,7 @@ export default function GameBoard() {
     if (affinityBurstTimerRef.current) clearTimeout(affinityBurstTimerRef.current);
     affinityBurstKeyRef.current += 1;
     const seq = affinityBurstKeyRef.current;
-    setAffinityBurst({ key: seq, affinities, playerId, playerName, avatarId, targetKind });
+    setAffinityBurst({ key: seq, affinities, playerId, playerName, avatarId });
     gameAudio.playChipsCollected();
     const totalDuration = (affinities.length - 1) * AFFINITY_BURST_STAGGER_MS + AFFINITY_BURST_BASE_MS + AFFINITY_BURST_SETTLE_MS;
     setAnimEndTime(totalDuration);
@@ -6283,11 +5876,7 @@ export default function GameBoard() {
   ): Partial<Record<AffinityKey, number>> | undefined => {
     if (!me) return undefined;
     if (mode === 'printed') return undefined;
-    const afterBonus = (
-      selectedCard?.card.id === card.id && selectedCard.fromReserve
-        ? resolvePlayerForgeCost(card, me, selectedFocusAffinity).cost
-        : effectiveCost(card, me)
-    ) as Record<string, number>;
+    const afterBonus = effectiveCost(card, me) as Record<string, number>;
     if (mode === 'after_bonuses') return afterBonus as Partial<Record<AffinityKey, number>>;
     // 'needed_now': after bonuses, subtract held tokens and pending Harness tally.
     const check = pendingHarnessCheckRef.current;
@@ -6307,13 +5896,13 @@ export default function GameBoard() {
       out[c as AffinityKey] = Math.max(0, eff - held - pendingHarnessCount);
     }
     return out;
-  }, [me, effectiveCost, resolvePlayerForgeCost, selectedAffinities, selectedCard, selectedFocusAffinity]);
+  }, [me, effectiveCost, selectedAffinities]);
 
   const handleBuy = (
     card: ArtifactCard,
     fromReserve = false,
     fromArchiveTop = false,
-    focusAffinity?: NaturalAffinityKey | null,
+    blueprintAction?: BlueprintClaimAction,
   ) => {
     if (!isMyTurnForCoreAction) return;
     triggerForgeIgnition(card.id);
@@ -6321,30 +5910,15 @@ export default function GameBoard() {
       type: fromReserve ? 'forge_reserved_artifact' : 'forge_artifact',
       cardId: card.id,
       cardRef: card,
-      ...(fromReserve && focusAffinity ? { affinity: focusAffinity } : {}),
+      ...(blueprintAction ? { blueprintAction } : {}),
       ...(fromArchiveTop ? { luminaryId: 'lum_tide', tier: card.tier } : {}),
-    });
-  };
-
-  const handleFoundryForge = (card: ArtifactCard) => {
-    if (!isMyTurnForCoreAction || !foundryProject) return;
-    triggerForgeIgnition(card.id);
-    executeAction({
-      type: 'foundry_forge_artifact',
-      cardId: card.id,
-      cardRef: card,
-      confirmOverdrive: (foundryProject.foundryUses ?? 0) >= 2,
     });
   };
 
   const handleReserveCard = (card: ArtifactCard) => {
     if (!isMyTurnForCoreAction || !me) return;
     const handTotal = Object.values(me.affinities).reduce((a, b) => a + b, 0);
-    if (
-      balanceLabPortableSingularity &&
-      handTotal >= 10 &&
-      (state?.affinityWell?.singularity ?? 0) > 0
-    ) {
+    if (handTotal >= 10 && (state?.affinityWell?.singularity ?? 0) > 0) {
       setReturnPhase({
         pendingTake: {},
         actionType: 'reserve',
@@ -6360,11 +5934,7 @@ export default function GameBoard() {
   const handleReserveDeck = (tier: number) => {
     if (!isMyTurnForCoreAction || !me) return;
     const handTotal = Object.values(me.affinities).reduce((a, b) => a + b, 0);
-    if (
-      balanceLabPortableSingularity &&
-      handTotal >= 10 &&
-      (state?.affinityWell?.singularity ?? 0) > 0
-    ) {
+    if (handTotal >= 10 && (state?.affinityWell?.singularity ?? 0) > 0) {
       setReturnPhase({
         pendingTake: {},
         actionType: 'reserve',
@@ -6405,7 +5975,7 @@ export default function GameBoard() {
       canReserve: isMyTurnForCoreAction && !fromReserve && !fromArchiveTop && !forgottenHourEncryptBlocked && canReserveMore(me),
       effectiveCosts: computeCosts(card, costMode),
     });
-  }, [me, cardDetailDiscovered, forgottenHourEncryptBlocked, isMyTurnForCoreAction, costMode, computeCosts, canAffordCard]);
+  }, [me, cardDetailDiscovered, forgottenHourEncryptBlocked, isMyTurnForCoreAction, costMode, computeCosts, canAffordCard, canReserveMore]);
 
   const openForgedCardSheet = useCallback((card: ArtifactCard) => {
     setCardFlipped(false);
@@ -6484,12 +6054,10 @@ export default function GameBoard() {
     .map(lum => ({ name: lum.name, amount: lum.oblivion! }));
   const eminenceBreakdown: EminenceBreakdown = {
     artifacts: (me?.forgedArtifacts ?? []).reduce((sum, card) => sum + (card.eminence ?? 0), 0),
-    luminaries: balanceLabLuminaryEminence === 0
-      ? 0
-      : (me?.claimedLuminaryIds ?? []).reduce((sum, lumId) => {
-          const lum = state.luminaries.find((l) => l.id === lumId);
-          return sum + (lum?.eminence ?? 0);
-        }, 0),
+    luminaries: (me?.claimedLuminaryIds ?? []).reduce((sum, lumId) => {
+      const lum = state.luminaries.find((l) => l.id === lumId);
+      return sum + (lum?.eminence ?? 0);
+    }, 0),
     oblivionRows,
     other: 0,
   };
@@ -6578,6 +6146,7 @@ export default function GameBoard() {
     playerId?: string;
     affinities?: Partial<AffinityCounts>;
     affinity?: ActionRequestAffinity;
+    recurrenceCustodyMethod?: RecurrenceCustodyMethod;
   };
 
   type ActionGateResult = { ok: true } | { ok: false; reason: string; staleSelection?: boolean };
@@ -6635,6 +6204,18 @@ export default function GameBoard() {
     if (!isMyTurnForCoreAction) return { ok: false, reason: 'This action is not available right now.' };
 
     if (payload.type === 'forge_artifact') {
+      if (payload.blueprintAction === 'foundry_recovery') {
+        const foundryDevice = me.manifestedBlueprintDevices?.find(
+          (entry) => entry.blueprintId === 'bp_mantle_to_orbit_foundry',
+        );
+        const recoveryIds = foundryDevice?.state === 'recovering'
+          ? getFoundryStoredIds(me)
+          : [];
+        if (!payload.cardId || !recoveryIds.includes(payload.cardId as string)) {
+          return { ok: false, reason: 'Artifact is no longer in Foundry recovery.', staleSelection: true };
+        }
+        return { ok: true };
+      }
       const isArchiveForge = payload.luminaryId === 'lum_tide';
       const card = payload.cardRef ?? (isArchiveForge
         ? findTideArchiveTopCard(payload.cardId as string | undefined)
@@ -6645,26 +6226,10 @@ export default function GameBoard() {
       if (!payload.cardId || !isAvailable) {
         return { ok: false, reason: 'Artifact is no longer in The Forge.', staleSelection: true };
       }
-      if (!card || !canAffordCard(card, me)) return { ok: false, reason: 'Cannot afford this Artifact.' };
-    }
-
-    if (payload.type === 'foundry_forge_artifact') {
-      const card = payload.cardRef ?? findFaceUpForgeCard(payload.cardId as string | undefined);
-      if (!payload.cardId || !isFaceUpForgeCard(payload.cardId as string)) {
-        return { ok: false, reason: 'Artifact is no longer in The Forge.', staleSelection: true };
-      }
-      if (!card || !canAffordFoundryCard(card, me)) {
-        return { ok: false, reason: 'Foundry Forge cannot claim this Artifact.' };
-      }
-    }
-
-    if (payload.type === 'recover_foundry_component') {
-      const recoveryIds = me.blueprintPrivateStates?.find(
-        (blueprint) => blueprint.blueprintId === 'bp_mantle_to_orbit_foundry',
-      )?.foundryRecoveryComponentIds ?? [];
-      if (!payload.cardId || !recoveryIds.includes(payload.cardId as string)) {
-        return { ok: false, reason: 'Foundry component is no longer awaiting recovery.' };
-      }
+      const affordable = card && payload.blueprintAction
+        ? canAffordFoundryCard(card, me)
+        : card && canAffordCard(card, me);
+      if (!card || !affordable) return { ok: false, reason: 'Cannot afford this Artifact.' };
     }
 
     if (payload.type === 'reserve_artifact') {
@@ -6687,24 +6252,16 @@ export default function GameBoard() {
       if (!payload.cardId || !isReservedByMe(payload.cardId as string)) {
         return { ok: false, reason: 'Artifact is no longer encrypted.', staleSelection: true };
       }
-      const card = payload.cardRef ?? (me.reservedArtifacts ?? []).find(
-        (entry) => cardEntryId(entry as ArtifactCard | string | null) === payload.cardId,
-      ) as ArtifactCard | undefined;
-      if (card) {
-        const focusOptions = balanceLabFocusOptions({
-          candidate: balanceLabCandidate,
-          ordinaryCost: ordinaryEffectiveCost(card, me),
-          fromReserve: true,
-        });
-        const requestedFocus = payload.affinity as NaturalAffinityKey | undefined;
-        if (focusOptions.length > 1 && !requestedFocus) {
-          return { ok: false, reason: 'Choose which Affinity Focus satisfies.' };
-        }
-        if (requestedFocus && !focusOptions.includes(requestedFocus)) {
-          return { ok: false, reason: 'That Focus choice is no longer available.' };
-        }
-        if (!canAffordCard(card, me, requestedFocus)) return { ok: false, reason: 'Cannot afford this Artifact.' };
+      const foundryDevice = me.manifestedBlueprintDevices?.find(
+        (entry) => entry.blueprintId === 'bp_mantle_to_orbit_foundry',
+      );
+      if (
+        foundryDevice?.state === 'recovering' &&
+        getFoundryStoredIds(me).includes(payload.cardId as string)
+      ) {
+        return { ok: false, reason: 'Use free Foundry recovery for this component.' };
       }
+      if (payload.cardRef && !canAffordCard(payload.cardRef, me)) return { ok: false, reason: 'Cannot afford this Artifact.' };
     }
 
     if (payload.type === 'assimilate') {
@@ -6725,8 +6282,8 @@ export default function GameBoard() {
       const affinities = payload.affinities ?? {};
       const picks = Object.entries(affinities)
         .filter(([key, value]) => key !== 'singularity' && (value ?? 0) > 0);
-      if (picks.length !== 3 || picks.some(([, value]) => value !== 1)) {
-        return { ok: false, reason: 'Harness exactly 3 different Affinities.' };
+      if (picks.length < 1 || picks.length > 3 || picks.some(([, value]) => value !== 1)) {
+        return { ok: false, reason: 'Harness 1 to 3 different Affinities.' };
       }
       if (picks.some(([key]) => (state.affinityWell[key as keyof AffinityCounts] ?? 0) <= 0)) {
         return { ok: false, reason: 'That affinity is no longer available.' };
@@ -6750,17 +6307,10 @@ export default function GameBoard() {
       if (!cardId || !isAvailable) {
         return { ok: false, reason: 'Artifact is no longer in The Forge.', staleSelection: true };
       }
-      if (!card || !canAffordCard(card, me)) return { ok: false, reason: 'Cannot afford this plan yet.' };
-    }
-
-    if (type === 'foundry_forge_artifact') {
-      const card = findFaceUpForgeCard(cardId);
-      if (!cardId || !isFaceUpForgeCard(cardId)) {
-        return { ok: false, reason: 'Artifact is no longer in The Forge.', staleSelection: true };
-      }
-      if (!card || !canAffordFoundryCard(card, me)) {
-        return { ok: false, reason: 'Foundry Forge cannot claim this Artifact.' };
-      }
+      const affordable = card && plannedActionData.blueprintAction
+        ? canAffordFoundryCard(card, me)
+        : card && canAffordCard(card, me);
+      if (!card || !affordable) return { ok: false, reason: 'Cannot afford this plan yet.' };
     }
 
     if (type === 'reserve_artifact') {
@@ -6786,22 +6336,14 @@ export default function GameBoard() {
       if (!cardId || !isReservedByMe(cardId)) {
         return { ok: false, reason: 'Artifact is no longer encrypted.', staleSelection: true };
       }
-      const card = (me.reservedArtifacts ?? []).find((entry) => cardEntryId(entry as ArtifactCard | string | null) === cardId) as ArtifactCard | undefined;
-      if (card) {
-        const focusOptions = balanceLabFocusOptions({
-          candidate: balanceLabCandidate,
-          ordinaryCost: ordinaryEffectiveCost(card, me),
-          fromReserve: true,
-        });
-        const requestedFocus = plannedActionData.affinity as NaturalAffinityKey | undefined;
-        if (focusOptions.length > 1 && !requestedFocus) {
-          return { ok: false, reason: 'Choose which Affinity Focus satisfies.' };
-        }
-        if (requestedFocus && !focusOptions.includes(requestedFocus)) {
-          return { ok: false, reason: 'That Focus choice is no longer available.' };
-        }
-        if (!canAffordCard(card, me, requestedFocus)) return { ok: false, reason: 'Cannot afford this plan yet.' };
+      const foundryDevice = me.manifestedBlueprintDevices?.find(
+        (entry) => entry.blueprintId === 'bp_mantle_to_orbit_foundry',
+      );
+      if (foundryDevice?.state === 'recovering' && getFoundryStoredIds(me).includes(cardId)) {
+        return { ok: false, reason: 'Use free Foundry recovery for this component.' };
       }
+      const card = (me.reservedArtifacts ?? []).find((entry) => cardEntryId(entry as ArtifactCard | string | null) === cardId) as ArtifactCard | undefined;
+      if (card && !canAffordCard(card, me)) return { ok: false, reason: 'Cannot afford this plan yet.' };
     }
 
     if (type === 'harness_two_affinities') {
@@ -6815,15 +6357,15 @@ export default function GameBoard() {
       const affinities = plannedActionData.affinities ?? {};
       const picks = Object.entries(affinities)
         .filter(([key, value]) => key !== 'singularity' && (value ?? 0) > 0);
-      if (picks.length !== 3 || picks.some(([, value]) => value !== 1)) {
-        return { ok: false, reason: 'Harness exactly 3 different Affinities.' };
+      if (picks.length < 1 || picks.length > 3 || picks.some(([, value]) => value !== 1)) {
+        return { ok: false, reason: 'Harness 1 to 3 different Affinities.' };
       }
       if (picks.some(([key]) => (state.affinityWell[key as keyof AffinityCounts] ?? 0) <= 0)) {
         return { ok: false, reason: 'That affinity is no longer available.' };
       }
     }
 
-    if (!type || !['forge_artifact', 'foundry_forge_artifact', 'forge_reserved_artifact', 'reserve_artifact', 'harness_three_affinities', 'harness_two_affinities'].includes(type)) {
+    if (!type || !['forge_artifact', 'forge_reserved_artifact', 'reserve_artifact', 'harness_three_affinities', 'harness_two_affinities'].includes(type)) {
       return { ok: false, reason: 'That action cannot be planned.' };
     }
 
@@ -6856,7 +6398,7 @@ export default function GameBoard() {
         return;
       }
     }
-    const CORE_ACTION_TYPES = ['harness_three_affinities', 'harness_two_affinities', 'forge_artifact', 'foundry_forge_artifact', 'recover_foundry_component', 'forge_reserved_artifact', 'reserve_artifact', 'assimilate'];
+    const CORE_ACTION_TYPES = ['harness_three_affinities', 'harness_two_affinities', 'forge_artifact', 'forge_reserved_artifact', 'reserve_artifact', 'assimilate'];
     if (CORE_ACTION_TYPES.includes(payload.type)) {
       const gate = validateCoreAction(payload);
       if (!gate.ok) {
@@ -6883,7 +6425,6 @@ export default function GameBoard() {
       if (
         (
           payload.type === 'forge_artifact' ||
-          payload.type === 'foundry_forge_artifact' ||
           payload.type === 'reserve_artifact' ||
           payload.type === 'assimilate'
         ) &&
@@ -6902,7 +6443,7 @@ export default function GameBoard() {
             const preGhostKey = `${tierNum}-${idx}`;
             const sourceCard = tier[idx]!;
             const startsOptimisticForge =
-              (payload.type === 'forge_artifact' || payload.type === 'foundry_forge_artifact') && !optimisticLocalForgeRef.current;
+              payload.type === 'forge_artifact' && !optimisticLocalForgeRef.current;
             // Reserve still needs a ghost while waiting for its confirmed cipher
             // sequence. An optimistic Forge owns the source immediately, so a
             // ghost here would render a duplicate underneath the flying card.
@@ -6937,11 +6478,7 @@ export default function GameBoard() {
               const sourceEl = document.querySelector(`[data-card-id="${targetId}"]`);
               const sourceRect = sourceEl?.getBoundingClientRect();
               const forgeDestination = resolveLocalForgeDestination();
-              const spentCost = me
-                ? (payload.type === 'foundry_forge_artifact'
-                    ? foundryEffectiveCost(sourceCard, me)
-                    : effectiveCost(sourceCard, me)) as Record<string, number>
-                : {};
+              const spentCost = me ? effectiveCost(sourceCard, me) as Record<string, number> : {};
               const spentColors = Object.entries(spentCost)
                 .filter(([, value]) => value > 0)
                 .map(([affinity]) => affinity as AffinityKey);
@@ -7038,13 +6575,7 @@ export default function GameBoard() {
           const cardEl = document.querySelector(`[data-reserved-card-id="${payload.cardId}"]`);
           const cardRect = cardEl?.getBoundingClientRect();
           const forgeDestination = resolveLocalForgeDestination();
-          const _spentCost = me
-            ? resolvePlayerForgeCost(
-                payload.cardRef as ArtifactCard,
-                me as GamePlayerState,
-                payload.affinity as NaturalAffinityKey | undefined,
-              ).cost as Record<string, number>
-            : {};
+          const _spentCost = me ? effectiveCost(payload.cardRef as ArtifactCard, me as GamePlayerState) as Record<string, number> : {};
           const _spentColors = Object.entries(_spentCost)
             .filter(([, v]) => v > 0)
             .map(([c]) => c as AffinityKey);
@@ -7084,7 +6615,7 @@ export default function GameBoard() {
       }
     } catch (err: unknown) {
       if (
-        (payload.type === 'forge_artifact' || payload.type === 'foundry_forge_artifact') &&
+        payload.type === 'forge_artifact' &&
         payload.cardId &&
         optimisticLocalForgeRef.current?.cardId === payload.cardId
       ) {
@@ -7144,16 +6675,10 @@ export default function GameBoard() {
       }
       return { ok: false, reason: `Need 4+ in well to harness 2`, actionType: null };
     }
-    if (distinct.length === 3 && distinct.every(c => (selectedAffinities[c as keyof AffinityCounts] ?? 0) === 1)) {
-      const base = 'Harness 3';
+    if (distinct.every(c => (selectedAffinities[c as keyof AffinityCounts] ?? 0) === 1) && distinct.length <= 3) {
+      const base = distinct.length === 3 ? 'Harness 3' : `Harness ${distinct.length}`;
       const reason = overLimit ? `${base} (return ${excess})` : base;
       return { ok: true, reason, actionType: 'take3' };
-    }
-    if (total === 1 && distinct.length === 1) {
-      return { ok: false, reason: 'Choose 2 other Affinities, or use ×2', actionType: null };
-    }
-    if (total === 2 && distinct.length === 2) {
-      return { ok: false, reason: 'Choose 1 more different Affinity', actionType: null };
     }
     return { ok: false, reason: 'Invalid combination', actionType: null };
   })();
@@ -7232,7 +6757,7 @@ export default function GameBoard() {
   const confirmReturnPhase = () => {
     if (!isMyTurnForCoreAction || !returnPhase || !me) return;
     const totalSelected = Object.values(returnSelections).reduce((a, b) => a + (b ?? 0), 0);
-    if (totalSelected !== returnPhase.excessCount) return;
+    if (totalSelected < returnPhase.excessCount) return;
     if (returnPhase.actionType === 'reserve') {
       if (!returnPhase.pendingReserve) return;
       executeAction({ ...returnPhase.pendingReserve, returnAffinities: returnSelections });
@@ -7258,13 +6783,17 @@ export default function GameBoard() {
   };
 
   const handleSurrender = () => {
-    if ((state?.players.length ?? 0) !== 2) return;
     if (confirm("Surrender? This cannot be undone.")) executeAction({ type: 'surrender' });
   };
 
   const returnToLumiiVault = () => {
     clearSession();
     setLocation('/dashboard/archive/vault');
+  };
+
+  const returnToChronicleArchive = () => {
+    clearSession();
+    setLocation('/dashboard/archive/chronicles');
   };
 
   const withdrawFromLumiiChallenge = async () => {
@@ -7467,7 +6996,13 @@ export default function GameBoard() {
     sentFlashRef.current = setTimeout(() => setSentFlashBtn(null), 900);
   };
 
-  const victoryRequirement = Math.max(15, Number((state as { victoryRequirement?: number }).victoryRequirement ?? 15));
+  const victoryRequirement = Math.max(
+    MIN_VICTORY_REQUIREMENT,
+    Number(
+      (state as { victoryRequirement?: number }).victoryRequirement ??
+      DEFAULT_VICTORY_REQUIREMENT,
+    ),
+  );
   const cinematicMode = new URLSearchParams(window.location.search).get('epicArrival') === '1' ? 'epic' : 'standard';
   const handleCardTap = (card: ArtifactCard, fromReserve: boolean) => {
     if (plannedCardId === card.id) {
@@ -7632,8 +7167,6 @@ export default function GameBoard() {
     directorGhostSlotKeysRef.current = [];
     pendingIronHarbingerSlotsRef.current = [];
     ironHarbingerGhostSlotKeysRef.current = [];
-    pendingPhoenixRefillSlotsRef.current = [];
-    pendingBlueprintMoldCastsRef.current.clear();
     pendingAssimilationSlotRef.current = null;
     pendingSuppressArrivalIdsRef.current = new Set();
     arrivalVisualHoldIdsRef.current = new Set();
@@ -7652,10 +7185,7 @@ export default function GameBoard() {
     setBurstGhostCards({});
     setIronHarbingerGhostIds({});
     setHiddenSlots(new Set());
-    setRefillingSlots(new Map());
-    moldCastTimersRef.current.forEach(timer => clearTimeout(timer));
-    moldCastTimersRef.current.clear();
-    setArchiveManifestationTraces([]);
+    setRefillingSlots(new Set());
     setSuppressedMarkerIds(new Set());
     setRevealedBrandKeys(new Set());
     setBrandStrikes([]);
@@ -7698,7 +7228,18 @@ export default function GameBoard() {
     setShowDeckReserveHint(false);
   };
 
-  const myReservedCount = me?.reservedArtifacts.length ?? 0;
+  const myReservedCount = me ? getOrdinaryEncryptedCount(me) : 0;
+  const foundryStoredIds = me ? getFoundryStoredIds(me) : [];
+  const foundryStoredIdSet = new Set(foundryStoredIds);
+  const ordinaryReservedArtifacts = me?.reservedArtifacts.filter(
+    (artifact) => !foundryStoredIdSet.has(artifact.id),
+  ) ?? [];
+  const foundryStoredArtifacts = me?.reservedArtifacts.filter(
+    (artifact) => foundryStoredIdSet.has(artifact.id),
+  ) ?? [];
+  const foundryDeviceState = me?.manifestedBlueprintDevices?.find(
+    (entry) => entry.blueprintId === 'bp_mantle_to_orbit_foundry',
+  )?.state;
 
   // ---- TABS ----
 
@@ -7828,9 +7369,9 @@ export default function GameBoard() {
               return (
                 <div
                   key={p.playerId}
-                  className={`opponent-card-shell ${isExpanded ? 'opponent-card-shell--details-open' : ''} rounded-2xl border p-3 bg-card/85 transition-[border-color,box-shadow] ${isCurrent ? 'border-primary/50 shadow-[0_0_12px_rgba(99,102,241,0.2)]' : 'border-border/40'}`}
+                  className={`rounded-2xl border p-3 bg-card/85 transition-[border-color,box-shadow] ${isCurrent ? 'border-primary/50 shadow-[0_0_12px_rgba(99,102,241,0.2)]' : 'border-border/40'}`}
                 >
-                  {/* One-row summary keeps identity and opponent counters visible together. */}
+                  {/* Two-row summary keeps identity readable while counters stay tappable on phones. */}
                   <div className="opponent-card-header">
                     <div className="opponent-card-identity">
                       <PlayerAvatar avatarId={p.avatarId ?? null} name={p.playerName} size={22} />
@@ -7912,18 +7453,16 @@ export default function GameBoard() {
                                   >
                                     <AffinityToken color={c as AffinityKey} size={14} />
                                   </div>
-                                  <div className="opponent-affinity-cell__count-row">
-                                    <span className="opponent-affinity-cell__count">
-                                      {n}
-                                    </span>
-                                    {!isSingularity && (bonus + lumBonus > 0) && (
-                                      <span className="opponent-affinity-cell__permanent">
-                                        +{bonus + lumBonus}
-                                      </span>
-                                    )}
-                                  </div>
+                                  {/* Affinity count */}
+                                  <span className="opponent-affinity-cell__count">
+                                    {n}
+                                  </span>
+                                  {/* Card bonus + Luminary alliance bonus */}
                                   {!isSingularity && (bonus > 0 || lumBonus > 0) && (
                                     <div className="opponent-affinity-cell__modifiers">
+                                      {bonus > 0 && (
+                                        <span className="opponent-affinity-cell__bonus">+{bonus} bonus</span>
+                                      )}
                                       {lumBonus > 0 && (
                                         <span className="opponent-affinity-cell__luminary">+{lumBonus}✦</span>
                                       )}
@@ -7960,6 +7499,146 @@ export default function GameBoard() {
     sendChatMessage(text);
   };
 
+  const handleMuteChatPlayer = (message: ChatMessage) => {
+    setMutedChatPlayerIds((current) => {
+      const next = new Set(current).add(message.playerId);
+      mutedChatPlayerIdsRef.current = next;
+      localStorage.setItem('luminae_chat_muted_players', JSON.stringify([...next]));
+      return next;
+    });
+    setChatMessages((current) => current.filter((entry) => entry.playerId !== message.playerId));
+    toast({ title: `${message.playerName} muted` });
+  };
+
+  const handleBlockChatPlayer = (message: ChatMessage) => {
+    if (!accountToken || !roomId) return;
+    handleMuteChatPlayer(message);
+    void apiSetPlayerBlocked({ token: accountToken, roomId, playerId: message.playerId, blocked: true })
+      .then(() => toast({ title: `${message.playerName} blocked` }))
+      .catch((error) => toast({ variant: 'destructive', title: 'Could not block player', description: error.message }));
+  };
+
+  const handleReportChatPlayer = (message: ChatMessage) => {
+    if (!accountToken || !roomId) return;
+    void apiReportPlayer({
+      token: accountToken,
+      roomId,
+      playerId: message.playerId,
+      evidenceText: message.text,
+      evidenceTimestamp: new Date(message.timestamp).toISOString(),
+    }).then(() => toast({ title: 'Report received', description: 'The message was recorded for review.' }))
+      .catch((error) => toast({ variant: 'destructive', title: 'Could not submit report', description: error.message }));
+  };
+
+  const handleFoundryRecovery = (artifactId: string) => {
+    if (!isMyTurnForCoreAction) return;
+    executeAction({
+      type: 'forge_artifact',
+      cardId: artifactId,
+      blueprintAction: 'foundry_recovery',
+    });
+  };
+
+  const renderEncryptedArtifactRow = (
+    card: ArtifactCard,
+    options: { foundryComponent?: boolean; sequenceIndex?: number } = {},
+  ) => {
+    const effective = computeCosts(card, costMode);
+    const bonusCosts = computeCosts(card, 'after_bonuses') ?? undefined;
+    const canBuy = canAffordCard(card, me!);
+    const isPendingPlan = plannedCardId === card.id;
+    const foundryComponent = options.foundryComponent === true;
+    const canRecover = foundryComponent && foundryDeviceState === 'recovering' && isMyTurnForCoreAction;
+    return (
+      <motion.div
+        key={card.id}
+        data-reserved-card-id={card.id}
+        data-foundry-component={foundryComponent || undefined}
+        initial={foundryComponent
+          ? effectiveBlueprintPresentationReducedMotion
+            ? { opacity: 0 }
+            : { opacity: 0, y: -18, scale: 0.96 }
+          : false}
+        animate={{ opacity: 1, y: 0, scale: 1 }}
+        transition={{
+          duration: effectiveBlueprintPresentationReducedMotion ? 0.22 : 0.38,
+          delay: foundryComponent ? (options.sequenceIndex ?? 0) * 0.12 : 0,
+        }}
+        className={`relative flex w-full items-center gap-3 border p-3 text-left ${foundryComponent
+          ? 'border-amber-200/20 bg-amber-950/10'
+          : 'border-transparent'}`}
+      >
+        <button
+          type="button"
+          title={isPendingPlan ? `Click to cancel ${plannedCardLabel.toLowerCase()}` : card.name}
+          aria-label={isPendingPlan ? `Cancel ${plannedCardLabel.toLowerCase()}` : `View ${card.name}`}
+          className="absolute inset-0 z-0 bg-secondary/30 transition-colors hover:bg-secondary/50 active:bg-secondary/60 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-primary/70"
+          onClick={() => {
+            setShowReservedOverlay(false);
+            handleCardTap(card, true);
+          }}
+        />
+        <div className="pointer-events-none relative z-10 shrink-0">
+          <ArtifactCardView
+            card={card}
+            tier={card.tier}
+            effectiveCosts={effective}
+            bonusCosts={bonusCosts}
+            tapped={false}
+            hideStrike={costMode === 'needed_now'}
+          />
+          <ForgeMarkerLayer
+            markerTypes={getArtifactBrandTypes(state?.artifactMarkers?.[card.id])}
+            brandDelay={brandDelayMap.get(card.id)}
+            strikeAura={strikeAuraMap.get(card.id)}
+            suppressed={suppressedMarkerIds.has(card.id)}
+          />
+          {isPendingPlan && (
+            <PendingActionOverlay label={plannedCardLabel} onCancel={handleCancelPlan} />
+          )}
+        </div>
+        <div className="pointer-events-none relative z-10 flex min-w-0 flex-1 flex-col gap-1.5">
+          <div className="font-bold text-sm leading-tight">{card.name}</div>
+          <div className="flex items-center gap-1.5">
+            <AffinityToken color={card.bonusAffinity as AffinityKey} size={13} />
+            <span className="text-xs text-muted-foreground">
+              {AFFINITY_META[card.bonusAffinity as AffinityKey]?.name ?? card.bonusAffinity} bonus
+            </span>
+            {(card.eminence ?? 0) > 0 && (
+              <>
+                <span className="text-muted-foreground/40">·</span>
+                <span className="flex items-center gap-0.5 text-xs font-bold text-white">
+                  {card.eminence}<EminenceDiamond size={9} />
+                </span>
+              </>
+            )}
+          </div>
+          <div className="mt-0.5 flex items-center gap-1.5">
+            <span className={`text-[10px] ${foundryComponent ? 'font-semibold text-amber-200/75' : canBuy ? 'font-semibold text-emerald-400' : 'text-muted-foreground/60'}`}>
+              {foundryComponent
+                ? foundryDeviceState === 'recovering' ? 'Free recovery available' : 'Paid re-Forge'
+                : canBuy ? 'Can forge' : 'Tap to view'}
+            </span>
+            <ChevronRight className="ml-auto h-3 w-3 shrink-0 text-muted-foreground/50" />
+          </div>
+        </div>
+        {foundryComponent && foundryDeviceState === 'recovering' && (
+          <button
+            type="button"
+            disabled={!canRecover}
+            onClick={(event) => {
+              event.stopPropagation();
+              handleFoundryRecovery(card.id);
+            }}
+            className="relative z-20 inline-flex min-h-9 shrink-0 items-center gap-1 border border-amber-200/30 bg-black/55 px-2 text-[9px] font-black uppercase text-amber-100 enabled:hover:bg-amber-300/15 disabled:opacity-45"
+          >
+            <Gavel className="h-3 w-3" aria-hidden="true" /> Recover
+          </button>
+        )}
+      </motion.div>
+    );
+  };
+
   const handTabScope = {
     activationGateActive,
     activationQueue,
@@ -7967,19 +7646,19 @@ export default function GameBoard() {
     cardDetailDiscovered,
     civEditValue,
     civLabel,
+    civilizationDeploymentSites,
     civilizationProfile,
+    civilizationScanRequested,
     computeCosts,
     costMode,
     expandedLumEffects,
     forgedView,
+    hintsEnabled,
     handleCancelPlan,
     handleCardTap,
-    executeBlueprintAction: (payload: { type: 'recover_foundry_component'; cardId: string }) => {
-      void executeAction(payload);
-    },
+    handleFoundryRecovery,
     isEditingCivName,
     isMyTurn,
-    isMyTurnForCoreAction,
     kardashevPalette,
     kardashevProgressFraction,
     kardashevTier,
@@ -7988,6 +7667,8 @@ export default function GameBoard() {
     myReservedCount,
     newlyMarkedCardIds,
     openForgedCardSheet,
+    recentCivilizationSiteIds,
+    acknowledgeRecentCivilizationSites,
     pendingGameOver,
     plannedCardId,
     plannedCardLabel,
@@ -8018,6 +7699,9 @@ export default function GameBoard() {
     chatMessages,
     expandedOpponents,
     handleSendChat,
+    handleBlockChatPlayer,
+    handleMuteChatPlayer,
+    handleReportChatPlayer,
     openForgedCardSheet,
     opponentData,
     session,
@@ -8092,8 +7776,8 @@ export default function GameBoard() {
     !!cardActionBurst ||
     !!cipherBurst ||
     !!affinityBurst ||
-    refillingSlots.size > 0 ||
-    archiveManifestationTraces.length > 0 ||
+    !!dealingCard ||
+    directorDealingCards.length > 0 ||
     brandStrikes.length > 0 ||
     showSeedBoardEffect ||
     turnOrderIntroActive ||
@@ -8111,54 +7795,58 @@ export default function GameBoard() {
         <Button
           variant="ghost"
           size="icon"
-          className="h-11 w-11 text-muted-foreground"
+          className="h-8 w-8 text-muted-foreground"
           aria-label="More game options"
         >
           <MoreVertical className="h-4 w-4" />
         </Button>
       </DropdownMenuTrigger>
       <DropdownMenuContent align="end">
-        {!lumiiForecastActive && (
-          <>
-            <div className="flex w-full items-center justify-between gap-4 px-2 py-1.5 text-xs text-muted-foreground font-mono">
-              <button
-                className="flex min-w-0 items-center gap-2 hover:text-foreground transition-colors"
-                onClick={() => {
-                  navigator.clipboard.writeText(session.inviteCode).then(() =>
-                    toast({ title: 'Game code copied', description: `Share code: ${session.inviteCode}` })
-                  );
-                }}
-                title="Tap to copy game code"
-              >
-                <Package className="h-3.5 w-3.5 shrink-0" />
-                <span className="truncate">{session.inviteCode}</span>
-              </button>
-              <span
-                className="flex shrink-0 items-center gap-1"
-                title={`Round ${state.roundNumber}`}
-                aria-label={`Round ${state.roundNumber}`}
-              >
-                <RefreshCw className="h-3.5 w-3.5" />
-                R{state.roundNumber}
-              </span>
-            </div>
-            <DropdownMenuSeparator />
-          </>
-        )}
+        <div className="flex w-full items-center justify-between gap-4 px-2 py-1.5 text-xs text-muted-foreground font-mono">
+          <button
+            className="flex min-w-0 items-center gap-2 hover:text-foreground transition-colors"
+            onClick={() => {
+              navigator.clipboard.writeText(session.inviteCode).then(() =>
+                toast({ title: 'Game code copied', description: `Share code: ${session.inviteCode}` })
+              );
+            }}
+            title="Tap to copy game code"
+          >
+            <Package className="h-3.5 w-3.5 shrink-0" />
+            <span className="truncate">{session.inviteCode}</span>
+          </button>
+          <span
+            className="flex shrink-0 items-center gap-1"
+            title={`Round ${state.roundNumber}`}
+            aria-label={`Round ${state.roundNumber}`}
+          >
+            <RefreshCw className="h-3.5 w-3.5" />
+            R{state.roundNumber}
+          </span>
+        </div>
+        <DropdownMenuSeparator />
         <DropdownMenuItem onClick={() => { setHeaderMenuOpen(false); setTimeout(() => setShowRules(true), 0); }}>
           <HelpCircle className="h-4 w-4" />
           Rules
         </DropdownMenuItem>
+        {/*
+          Toggle convention — icon-only state, no DropdownMenuCheckboxItem:
+          All boolean settings in this menu communicate their on/off state exclusively
+          through the icon (swap icons for binary toggles, or change icon color/opacity
+          for non-binary toggles). Do NOT use DropdownMenuCheckboxItem — it adds a
+          redundant checkbox indicator alongside the icon, creating a double-indicator.
+          Pattern A (swap): muted → VolumeX/Volume2, label changes too.
+          Pattern B (color): abridgedAnims → Zap always shown, yellow = on, muted = off.
+        */}
         <DropdownMenuItem onClick={toggleMute}>
           {muted ? <VolumeX className="h-4 w-4" /> : <Volume2 className="h-4 w-4" />}
           {muted ? 'Unmute' : 'Mute'}
         </DropdownMenuItem>
-        <DropdownMenuItem onClick={toggleAbridgedAnims} aria-pressed={abridgedAnims}>
+        <DropdownMenuItem onClick={toggleAbridgedAnims}>
           <Zap className={`h-4 w-4 ${abridgedAnims ? 'text-yellow-400' : 'text-muted-foreground opacity-50'}`} />
           Reduced motion
         </DropdownMenuItem>
         {lumiiPresentationLocked ? (
-          lumiiForecastActive ? null : (
           <>
             <DropdownMenuSeparator />
             <DropdownMenuItem disabled>
@@ -8174,7 +7862,6 @@ export default function GameBoard() {
               Cinematics required
             </DropdownMenuItem>
           </>
-          )
         ) : (
           <>
             <DropdownMenuItem onClick={toggleLuminaryPlaybackMode}>
@@ -8187,13 +7874,11 @@ export default function GameBoard() {
             </DropdownMenuItem>
           </>
         )}
-        {!lumiiForecastActive && (
-          <DropdownMenuItem onClick={toggleHints}>
-            <Lightbulb className={`h-4 w-4 ${hintsEnabled ? 'text-yellow-400' : 'text-muted-foreground opacity-50'}`} />
-            {hintsEnabled ? 'Hints on' : 'Hints off'}
-          </DropdownMenuItem>
-        )}
-        {import.meta.env.DEV && !lumiiForecastActive && (
+        <DropdownMenuItem onClick={toggleHints}>
+          <Lightbulb className={`h-4 w-4 ${hintsEnabled ? 'text-yellow-400' : 'text-muted-foreground opacity-50'}`} />
+          {hintsEnabled ? 'Hints on' : 'Hints off'}
+        </DropdownMenuItem>
+        {import.meta.env.DEV && (
           <>
             <DropdownMenuSeparator />
             <DropdownMenuItem
@@ -8208,26 +7893,20 @@ export default function GameBoard() {
             <DevBuildIdentity />
           </>
         )}
-        {!lumiiForecastActive && (
-          <DropdownMenuItem onClick={() => { setHeaderMenuOpen(false); setTimeout(handleReturnToMenu, 0); }}>
-            <DoorOpen className="h-4 w-4" />
-            Return to Menu
-          </DropdownMenuItem>
-        )}
+        <DropdownMenuItem onClick={() => { setHeaderMenuOpen(false); setTimeout(handleReturnToMenu, 0); }}>
+          <DoorOpen className="h-4 w-4" />
+          Return to Menu
+        </DropdownMenuItem>
         <DropdownMenuSeparator />
         <DropdownMenuItem onClick={() => window.location.reload()}>
           <RefreshCw className="h-4 w-4" />
           Refresh page
         </DropdownMenuItem>
-        {(state?.players.length ?? 0) === 2 && (
-          <>
-            <DropdownMenuSeparator />
-            <DropdownMenuItem onClick={() => { setHeaderMenuOpen(false); setTimeout(handleSurrender, 0); }} className="text-red-500 focus:text-red-500">
-              <Flag className="h-4 w-4" />
-              Surrender
-            </DropdownMenuItem>
-          </>
-        )}
+        <DropdownMenuSeparator />
+        <DropdownMenuItem onClick={() => { setHeaderMenuOpen(false); setTimeout(handleSurrender, 0); }} className="text-red-500 focus:text-red-500">
+          <Flag className="h-4 w-4" />
+          Surrender
+        </DropdownMenuItem>
       </DropdownMenuContent>
     </DropdownMenu>
   );
@@ -8250,9 +7929,7 @@ export default function GameBoard() {
       data-board-layout={activeTab === 'board' ? boardLayoutMode : 'base'}
       data-board-density={activeTab === 'board' ? boardDensityMode : 'stacked'}
       data-board-viewport={boardViewportClass}
-      data-side-affinity-well={isSideAffinityWell ? 'true' : undefined}
       data-forge-density={activeTab === 'board' ? (effectiveForgeCompact ? 'compact' : 'full') : undefined}
-      data-lumii-forecast-active={lumiiForecastActive ? 'true' : undefined}
     >
       {/* ── Cosmic background layers ──────────────────────────────────────── */}
       {/* Star-field photo: opacity pulses slowly so stars appear to breathe   */}
@@ -8284,7 +7961,7 @@ export default function GameBoard() {
         title="Withdraw to Vault?"
       >
         <div className="space-y-4 text-sm text-white/75">
-          <p>The Vault will reseal. Your clearance remains {BLUEPRINT_CLEARANCE_REQUIRED_WINS} / {BLUEPRINT_CLEARANCE_REQUIRED_WINS} and the Broken Covenant will be remembered, but this room will not count as a game, win, or loss.</p>
+          <p>The Vault will reseal. Your clearance remains 5 / 5 and the Broken Covenant will be remembered, but this room will not count as a game, win, or loss.</p>
           <div className="grid grid-cols-2 gap-2">
             <Button variant="outline" onClick={() => setShowLumiiWithdrawConfirm(false)} disabled={lumiiWithdrawPending}>
               Continue challenge
@@ -8320,74 +7997,118 @@ export default function GameBoard() {
         )}
       </AnimatePresence>
 
-      {lumiiForecastActive && (
+      {/* ── Header ── */}
+      <header className="game-header relative shrink-0 min-h-14 px-4 pt-[env(safe-area-inset-top)] flex items-center bg-card/95 border-b border-border z-20">
+        <span
+          className="pointer-events-none absolute left-4 font-serif text-base font-bold leading-none text-[#c5caff]"
+          style={{ textShadow: '0 0 16px rgba(151, 161, 255, 0.42)' }}
+        >
+          LUMINAe
+        </span>
+        {/* Balancing spacer — same width as the menu button so chips stay centred */}
+        <div className="game-header-balance w-8 shrink-0" />
+
+        {/* Opponent chips — centred in the remaining space */}
+        <div className="game-header-opponents flex-1 flex items-center justify-center gap-1.5 min-w-0 overflow-x-auto no-scrollbar">
+          {state.players
+            .filter(p => p.playerId !== session.playerId)
+            .map(opponent => {
+              const heldAffinityTotals: Partial<Record<AffinityKey, number>> = {};
+              const artifactTotals: Partial<Record<AffinityKey, number>> = {};
+              for (const k of AFFINITIES) {
+                if (k === 'singularity') continue;
+                const raw = opponent.affinities[k as keyof AffinityCounts] ?? 0;
+                const cardBonus = opponent.forgedArtifacts.filter(c => c.bonusAffinity === k).length;
+                heldAffinityTotals[k] = raw;
+                artifactTotals[k] = cardBonus;
+              }
+              const isHeaderExpanded = expandedHeaderOpponents.has(opponent.playerId);
+              const toggleHeaderDetails = () => {
+                setExpandedHeaderOpponents(prev => {
+                  const next = new Set(prev);
+                  if (next.has(opponent.playerId)) next.delete(opponent.playerId);
+                  else next.add(opponent.playerId);
+                  return next;
+                });
+              };
+              return (
+                <OpponentChip
+                  key={opponent.playerId}
+                  player={opponent}
+                  isActive={
+                    state.players[state.currentPlayerIndex]?.playerId === opponent.playerId
+                  }
+                  isLocalTurn={isMyTurn}
+                  affinityTotals={heldAffinityTotals}
+                  artifactTotals={artifactTotals}
+                  isExpanded={isHeaderExpanded}
+                  onToggle={toggleHeaderDetails}
+                  eminenceImpact={opponentEminenceImpact?.playerId === opponent.playerId ? opponentEminenceImpact : null}
+                />
+              );
+            })}
+          <TurnCountdown deadline={state.turnDeadline ?? null} active={isMyTurn} />
+        </div>
+        {renderGameOptionsMenu()}
+      </header>
+
+      {isLumiiScenario && state.status === 'playing' && (
         <LumiiEncounterHud
           state={state}
           localPlayerId={session.playerId}
           suppressed={lumiiHudSuppressed}
           withdrawPending={lumiiWithdrawPending}
           previewMessage={devLumiiCommentary}
-          absorbPulseKey={lumiiHudAbsorbPulse?.key ?? null}
           onWithdraw={isActualLumiiScenario ? () => setShowLumiiWithdrawConfirm(true) : undefined}
-          menuAction={renderGameOptionsMenu()}
           placement="docked"
         />
       )}
 
-      {!lumiiForecastActive && (
-        <header className="game-header relative shrink-0 min-h-14 px-4 pt-[env(safe-area-inset-top)] flex items-center bg-card/95 border-b border-border z-20">
-          <span
-            className="pointer-events-none absolute left-4 font-serif text-base font-bold leading-none text-[#c5caff]"
-            style={{ textShadow: '0 0 16px rgba(151, 161, 255, 0.42)' }}
-          >
-            LUMINAe
-          </span>
-          {/* Balancing spacer — same width as the menu button so chips stay centred */}
-          <div className="game-header-balance w-8 shrink-0" />
+      {isTraceScenario && state.traceScenario && (
+        <TraceChronicleExperience
+          state={state.traceScenario}
+          gameStatus={state.status}
+          localPlayerId={session.playerId}
+          winnerId={state.winnerId}
+          submitting={submitAction.isPending}
+          firstContactStance={accountPrefs?.firstContactStance}
+          onChoose={(method: TraceGuidanceMethod) => executeAction({
+            type: 'resolve_chronicle_choice',
+            traceGuidanceMethod: method,
+          })}
+          onReturn={state.status === 'finished' ? returnToChronicleArchive : undefined}
+        />
+      )}
 
-          {/* Opponent chips — centred in the remaining space */}
-          <div className="game-header-opponents flex-1 flex items-center justify-center gap-1.5 min-w-0 overflow-x-auto no-scrollbar">
-            {state.players
-              .filter(p => p.playerId !== session.playerId)
-              .map(opponent => {
-                const heldAffinityTotals: Partial<Record<AffinityKey, number>> = {};
-                const artifactTotals: Partial<Record<AffinityKey, number>> = {};
-                for (const k of AFFINITIES) {
-                  if (k === 'singularity') continue;
-                  const raw = opponent.affinities[k as keyof AffinityCounts] ?? 0;
-                  const cardBonus = opponent.forgedArtifacts.filter(c => c.bonusAffinity === k).length;
-                  heldAffinityTotals[k] = raw;
-                  artifactTotals[k] = cardBonus;
-                }
-                const isHeaderExpanded = expandedHeaderOpponents.has(opponent.playerId);
-                const toggleHeaderDetails = () => {
-                  setExpandedHeaderOpponents(prev => {
-                    const next = new Set(prev);
-                    if (next.has(opponent.playerId)) next.delete(opponent.playerId);
-                    else next.add(opponent.playerId);
-                    return next;
-                  });
-                };
-                return (
-                  <OpponentChip
-                    key={opponent.playerId}
-                    player={opponent}
-                    isActive={
-                      state.players[state.currentPlayerIndex]?.playerId === opponent.playerId
-                    }
-                    isLocalTurn={isMyTurn}
-                    affinityTotals={heldAffinityTotals}
-                    artifactTotals={artifactTotals}
-                    isExpanded={isHeaderExpanded}
-                    onToggle={toggleHeaderDetails}
-                    eminenceImpact={opponentEminenceImpact?.playerId === opponent.playerId ? opponentEminenceImpact : null}
-                  />
-                );
-              })}
-            <TurnCountdown deadline={state.turnDeadline ?? null} active={isMyTurn} />
-          </div>
-          {renderGameOptionsMenu()}
-        </header>
+      {isRecurrenceScenario && recurrenceScenario && (
+        <RecurrenceChronicleExperience
+          state={recurrenceScenario}
+          gameStatus={state.status}
+          localPlayerId={session.playerId}
+          winnerId={state.winnerId}
+          submitting={submitAction.isPending}
+          instanceId={state.startedAt}
+          onChoose={(method: RecurrenceCustodyMethod) => executeAction({
+            type: 'resolve_chronicle_choice',
+            recurrenceCustodyMethod: method,
+          })}
+          onReturn={state.status === 'finished' ? returnToChronicleArchive : undefined}
+        />
+      )}
+
+      {isTriangulationScenario && triangulationScenario && (
+        <TriangulationChronicleExperience
+          state={triangulationScenario}
+          gameStatus={state.status}
+          localPlayerId={session.playerId}
+          submitting={submitAction.isPending}
+          instanceId={state.startedAt}
+          onChoose={(architecture: TriangulationCoordinationArchitecture) => executeAction({
+            type: 'resolve_chronicle_choice',
+            triangulationCoordinationArchitecture: architecture,
+          } as ActionRequest)}
+          onReturn={state.status === 'finished' ? returnToChronicleArchive : undefined}
+        />
       )}
 
       {/* ── Tab Content ── */}
@@ -8436,54 +8157,67 @@ export default function GameBoard() {
           placement={boardLayoutMode === 'left-civ' ? 'left' : 'rail'}
           playerEminence={me.eminence}
           civilizationModel={civilizationModel}
+          deploymentSites={civilizationDeploymentSites}
+          recentSiteIds={recentCivilizationSiteIds}
           progressFraction={kardashevProgressFraction}
+          onRecentSiteIdsSeen={acknowledgeRecentCivilizationSites}
+          onOpenCivilization={openCivilizationScan}
+        />
+      )}
+
+      {activeTab === 'board' && boardLayoutMode === 'base' && me && (
+        <BoardCivilizationTraceNotice
+          deploymentSites={civilizationDeploymentSites}
+          recentSiteIds={recentCivilizationSiteIds}
+          palette={kardashevPalette}
+          civilizationModel={civilizationModel}
+          progressFraction={kardashevProgressFraction}
+          onRecentSiteIdsSeen={acknowledgeRecentCivilizationSites}
+          onOpenCivilization={openCivilizationScan}
         />
       )}
 
       {/* ── Bottom Navigation ── */}
       <nav className="game-bottom-nav shrink-0 grid grid-cols-3 border-t border-border bg-card z-20 pt-2 pb-[max(env(safe-area-inset-bottom,0px),8px)]">
         {([
-          { tab: 'board' as ActiveTab, label: 'Board', shortLabel: 'Board', icon: LayoutGrid },
-          { tab: 'hand' as ActiveTab, label: 'Civilization', shortLabel: 'Civ', icon: Landmark },
-          { tab: 'log' as ActiveTab, label: 'Log', shortLabel: 'Log', icon: List, badge: unreadChat > 0 ? unreadChat : undefined },
-        ] as const).map(({ tab, label, shortLabel, icon: Icon, badge }: { tab: ActiveTab; label: string; shortLabel: string; icon: React.ComponentType<{ className?: string }>; badge?: number }) => {
-          const disabledForBoss = lumiiForecastActive && tab !== 'board';
+          { tab: 'board' as ActiveTab, label: 'Board', icon: LayoutGrid },
+          { tab: 'hand' as ActiveTab, label: 'Civilization', icon: Landmark },
+          { tab: 'log' as ActiveTab, label: 'Log', icon: List, badge: unreadChat > 0 ? unreadChat : undefined },
+        ] as const).map(({ tab, label, icon: Icon, badge }: { tab: ActiveTab; label: string; icon: React.ComponentType<{ className?: string }>; badge?: number }) => {
+          const hasCivilizationTrace = tab === 'hand' && activeTab !== 'hand' && recentCivilizationSiteIds.length > 0;
           return (
             <button
               key={tab}
               type="button"
-              onClick={() => {
-                if (!disabledForBoss) setActiveTab(tab);
-              }}
-              disabled={disabledForBoss}
-              aria-label={disabledForBoss ? `${label} unavailable during Defense Forecast` : label}
-              aria-current={activeTab === tab ? 'page' : undefined}
-              aria-disabled={disabledForBoss ? 'true' : undefined}
-              data-active={activeTab === tab ? 'true' : undefined}
-              data-disabled={disabledForBoss ? 'true' : undefined}
-              title={disabledForBoss ? 'Defense Forecast locks the battle to the board' : label}
+              onClick={() => setActiveTab(tab)}
               {...(tab === 'hand' ? { 'data-nav-hand': '' } : tab === 'log' ? { 'data-nav-log': '' } : {})}
-              className={`flex flex-col items-center justify-center gap-0.5 relative transition-colors ${
-                disabledForBoss
-                  ? 'text-muted-foreground/35 cursor-not-allowed'
-                  : activeTab === tab
-                    ? 'text-primary'
-                    : 'text-muted-foreground'
-              }`}
+              className={`flex flex-col items-center justify-center gap-0.5 relative transition-colors ${activeTab === tab ? 'text-primary' : hasCivilizationTrace ? 'text-[#82ddff]' : 'text-muted-foreground'}`}
+              aria-label={hasCivilizationTrace ? 'Civilization, new trace recorded' : label}
             >
               <div className="relative">
-                <Icon className="h-5 w-5" />
+                {hasCivilizationTrace && (
+                  <span
+                    className="pointer-events-none absolute -inset-2 rounded-full border border-[#82ddff]/55 opacity-80 animate-ping"
+                    aria-hidden="true"
+                  />
+                )}
+                <Icon className="relative h-5 w-5" />
                 {badge !== undefined && (
                   <span className="absolute -top-1 -right-1.5 h-4 w-4 bg-primary text-primary-foreground text-[9px] font-bold rounded-full flex items-center justify-center">
                     {badge}
                   </span>
                 )}
+                {hasCivilizationTrace && (
+                  <span className="absolute -top-1.5 -right-2 h-2.5 w-2.5 rounded-full bg-[#82ddff] shadow-[0_0_12px_rgba(130,221,255,0.95)]" aria-hidden="true" />
+                )}
               </div>
-              <span className="game-bottom-nav-label text-[10px] font-semibold" aria-hidden="true">
-                <span className="game-bottom-nav-label-full">{label}</span>
-                <span className="game-bottom-nav-label-short">{shortLabel}</span>
-              </span>
-              {activeTab === tab && !disabledForBoss && (
+              <span className="text-[10px] font-semibold">{label}</span>
+              {hasCivilizationTrace && (
+                <span className="absolute top-1 right-3 rounded-full border border-[#82ddff]/45 bg-[#071426]/92 px-1.5 py-0.5 text-[7px] font-black uppercase tracking-wider text-[#bceeff] shadow-[0_0_14px_rgba(130,221,255,0.25)]">
+                  Trace
+                </span>
+              )}
+              {activeTab === tab && (
                 <div className="absolute -top-2 inset-x-4 h-0.5 bg-primary rounded-full" />
               )}
             </button>
@@ -8547,7 +8281,7 @@ export default function GameBoard() {
                 <Button
                   variant="ghost"
                   size="icon"
-                  className="h-11 w-11 shrink-0 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-amber-300/80"
+                  className="h-7 w-7 shrink-0 focus-visible:outline-none focus-visible:ring-0"
                   aria-label="Close Artifact actions"
                   onClick={() => { setSelectedCard(null); setPendingSheetAction(null); }}
                 >
@@ -8566,14 +8300,11 @@ export default function GameBoard() {
               <div className="flex gap-4 mb-5">
                 {/* Flippable thumbnail column */}
                 <div className="flex flex-col items-center gap-1 shrink-0">
-                  <button
-                    type="button"
+                  <div
                     style={{ perspective: '600px', width: 'var(--card-w)', height: 'var(--card-h)' }}
-                    className="cursor-pointer rounded-xl border-0 bg-transparent p-0 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-amber-300/80"
+                    className="cursor-pointer"
                     onClick={() => setCardFlipped(f => !f)}
-                    aria-label={cardFlipped ? 'Show Artifact art' : 'Show Artifact card back'}
-                    aria-pressed={cardFlipped}
-                    title={cardFlipped ? 'Show Artifact art' : 'Show Artifact card back'}
+                    title={cardFlipped ? 'Tap to see art' : 'Tap to flip'}
                   >
                     <motion.div
                       animate={{ rotateY: cardFlipped ? 180 : 0 }}
@@ -8587,7 +8318,7 @@ export default function GameBoard() {
                         <CardBack tier={selectedCard.card.tier as 1 | 2 | 3} />
                       </div>
                     </motion.div>
-                  </button>
+                  </div>
                   {/* Tier civilization label */}
                   <span className="font-serif tracking-[0.16em] uppercase text-[8px] mt-0.5" style={{ color: '#C0A472', textShadow: '0 1px 8px rgba(192,164,114,0.5)' }}>
                     Tier {selectedCard.card.tier}, {TIER_CIVILIZATION[selectedCard.card.tier]}
@@ -8649,7 +8380,7 @@ export default function GameBoard() {
                     if (!lore) return null;
                     const fields: { label: string; value: string | undefined }[] = [
                       { label: 'Form',     value: lore.artifactForm },
-                      { label: 'Role',     value: lore.blueprintRole },
+                      { label: 'Role',     value: lore.practicalCapability },
                       { label: 'Culture',  value: lore.civLane },
                     ];
                     const visible = fields.filter(f => f.value);
@@ -8684,7 +8415,25 @@ export default function GameBoard() {
               {/* My cost breakdown: shortfall per Affinity. */}
               {costMode !== 'printed' && me && (() => {
                 // Live calculation — reacts to costMode and selectedAffinities changes in real time
-                const liveCosts = computeCosts(selectedCard.card, costMode) as Record<string, number> | undefined;
+                const showingFoundryCost = pendingSheetAction === 'foundry_forge' || pendingSheetAction === 'plan_foundry';
+                const foundryAfterBonuses = showingFoundryCost
+                  ? foundryCost(selectedCard.card, me)
+                  : null;
+                const liveCosts = foundryAfterBonuses
+                  ? costMode === 'after_bonuses'
+                    ? foundryAfterBonuses
+                    : Object.fromEntries(AFFINITIES
+                        .filter((affinity) => affinity !== 'singularity')
+                        .map((affinity) => [
+                          affinity,
+                          Math.max(
+                            0,
+                            (foundryAfterBonuses[affinity] ?? 0) -
+                              (me.affinities[affinity as keyof AffinityCounts] ?? 0) -
+                              (selectedAffinities[affinity as keyof AffinityCounts] ?? 0),
+                          ),
+                        ]))
+                  : computeCosts(selectedCard.card, costMode) as Record<string, number> | undefined;
                 if (!liveCosts) return null;
                 const rows: { affinity: AffinityKey; need: number; have: number; short: number }[] = [];
                 let totalShort = 0;
@@ -8704,9 +8453,17 @@ export default function GameBoard() {
                 const singularityHave = me.affinities.singularity ?? 0;
                 const singularityNeeded = Math.max(0, totalShort);
                 const singularityCovers = singularityNeeded <= singularityHave;
-                const canAfford = canAffordCard(selectedCard.card, me);
+                const canAfford = showingFoundryCost
+                  ? canAffordFoundryCard(selectedCard.card, me)
+                  : canAffordCard(selectedCard.card, me);
                 if (rows.length === 0) return null;
-                const modeLabel = costMode === 'after_bonuses' ? 'After bonuses — tokens needed' : 'What you still need right now';
+                const modeLabel = showingFoundryCost
+                  ? costMode === 'after_bonuses'
+                    ? 'Foundry Forge — tokens needed'
+                    : 'Foundry Forge — what you still need'
+                  : costMode === 'after_bonuses'
+                    ? 'After bonuses — tokens needed'
+                    : 'What you still need right now';
                 return (
                   <div className="mb-3 rounded-xl border border-border/50 bg-secondary/30 px-3 py-2.5 flex flex-col gap-2">
                     <p className="text-[10px] font-bold uppercase tracking-widest text-muted-foreground">{modeLabel}</p>
@@ -8722,7 +8479,7 @@ export default function GameBoard() {
                           }
                         </div>
                       ))}
-                      {balanceLabPortableSingularity && singularityNeeded > 0 && (
+                      {singularityNeeded > 0 && (
                         <div className={`flex items-center gap-1.5 rounded-lg px-2 py-1 text-xs font-semibold ${singularityCovers ? 'bg-amber-900/40 text-amber-300' : 'bg-red-900/50 text-red-300'}`}>
                           <AffinityToken color="singularity" size={12} />
                           {singularityCovers
@@ -8762,53 +8519,11 @@ export default function GameBoard() {
                   </div>
                 )}
 
-                {selectedCard.fromReserve && selectedFocusOptions.length > 0 && (
-                  <div
-                    data-balance-focus-selector
-                    className="rounded-lg border border-cyan-300/25 bg-cyan-300/[.06] px-3 py-2.5"
-                  >
-                    <p className="text-[9px] font-bold uppercase tracking-[.16em] text-cyan-200">
-                      Focus · choose one requirement
-                    </p>
-                    <p className="mt-1 text-[10px] leading-relaxed text-muted-foreground">
-                      This encrypted Artifact satisfies one remaining printed Affinity when Forged.
-                    </p>
-                    <div className="mt-2 flex flex-wrap gap-2">
-                      {selectedFocusOptions.map((affinity) => {
-                        const meta = AFFINITY_META[affinity];
-                        const selected = selectedFocusAffinity === affinity;
-                        const affordable = !!me && canAffordCard(selectedCard.card, me, affinity);
-                        return (
-                          <button
-                            key={affinity}
-                            type="button"
-                            aria-pressed={selected}
-                            disabled={!affordable || selectedCardVanished}
-                            onClick={() => {
-                              gameAudio.playAffinitySelected(affinity);
-                              setPendingFocusAffinity(affinity);
-                            }}
-                            className={`flex items-center gap-1.5 rounded-md border px-2.5 py-1.5 text-[10px] font-semibold transition ${
-                              selected
-                                ? 'border-cyan-200 bg-cyan-200/20 text-cyan-50'
-                                : 'border-white/15 bg-black/20 text-muted-foreground hover:border-cyan-200/50 hover:text-foreground'
-                            } disabled:cursor-not-allowed disabled:opacity-35`}
-                            title={affordable ? `Use Focus on ${meta.name}` : `${meta.name} would still be unaffordable`}
-                          >
-                            <AffinityToken color={affinity} size={13} />
-                            {meta.name}
-                          </button>
-                        );
-                      })}
-                    </div>
-                  </div>
-                )}
-
                 {/* ── Immediate actions (your active turn only) ── */}
                 {!selectedCard.readOnly && isMyTurnForCoreAction &&
                   (!selectedCard.fromArchiveTop || me?.tideArchiveForgeAvailable) && (
                   <>
-                    <div
+                    {!selectedIsRecoveringFoundryComponent && <div
                       key={btnAnimTarget === 'forge' ? `forge-${btnAnimKey}` : 'forge'}
                       className={`relative w-full${btnAnimTarget === 'forge' ? ` btn-${btnAnimType}-flash` : ''}`}
                     >
@@ -8831,7 +8546,7 @@ export default function GameBoard() {
                         )}
                       </AnimatePresence>
                       <ForgeButton
-                        disabled={!me || focusSelectionRequired || !canAffordCard(selectedCard.card, me, selectedFocusAffinity) || selectedCardVanished}
+                        disabled={!me || !canAffordCard(selectedCard.card, me) || selectedCardVanished}
                         isPending={pendingSheetAction === 'forge'}
                         isSent={sentFlashBtn === 'forge'}
                         confirmHex={forgeConfirmHex}
@@ -8839,14 +8554,14 @@ export default function GameBoard() {
                         darkText={forgeDarkText}
                         label={pendingSheetAction === 'forge' ? 'CONFIRM' : 'FORGE'}
                         subtitle={pendingSheetAction === 'forge'
-                          ? focusSelectionRequired ? 'Choose Focus above' : 'Tap to forge'
+                          ? 'Tap to forge'
                           : me && canAffordCard(selectedCard.card, me)
                             ? selectedCard.fromArchiveTop ? 'Use Observer Effect' : 'Forge Artifact'
                             : 'Cannot afford yet'}
                         onClick={() => {
                           if (pendingSheetAction === 'forge') {
                             gameAudio.playButtonConfirm(); triggerBtnAnim('forge', 'confirm');
-                            handleBuy(selectedCard.card, selectedCard.fromReserve, selectedCard.fromArchiveTop, selectedFocusAffinity);
+                            handleBuy(selectedCard.card, selectedCard.fromReserve, selectedCard.fromArchiveTop);
                             setSelectedCard(null); setPendingSheetAction(null);
                           } else {
                             gameAudio.playButtonSelect(); triggerBtnAnim('forge', 'select');
@@ -8854,32 +8569,51 @@ export default function GameBoard() {
                           }
                         }}
                       />
-                    </div>
-                    {foundryProject?.state === 'active' &&
-                      selectedCard.card.tier === 2 &&
-                      !selectedCard.fromReserve &&
-                      !selectedCard.fromArchiveTop && (
-                      <div className="border-t border-amber-500/20 pt-2.5">
+                    </div>}
+                    {selectedFoundryAction && (
+                      <div>
+                        <div className="mb-2 flex items-center gap-1.5 px-0.5">
+                          <div className="h-px flex-1 bg-amber-300/20" />
+                          <span className="text-[8.5px] font-black uppercase text-amber-300/70">
+                            {selectedFoundryName}
+                          </span>
+                          <div className="h-px flex-1 bg-amber-300/20" />
+                        </div>
                         <ForgeButton
-                          disabled={!me || !canAffordFoundryCard(selectedCard.card, me) || selectedCardVanished}
-                          isPending={pendingSheetAction === 'foundry'}
-                          label={pendingSheetAction === 'foundry'
-                            ? (foundryProject.foundryUses ?? 0) >= 2 ? 'CONFIRM OVERDRIVE' : 'CONFIRM'
-                            : (foundryProject.foundryUses ?? 0) >= 2 ? 'OVERDRIVE' : 'FOUNDRY FORGE'}
-                          subtitle={pendingSheetAction === 'foundry'
-                            ? (foundryProject.foundryUses ?? 0) >= 2
-                              ? 'Forge, then collapse the host world'
-                              : 'Commit Foundry use'
-                            : `Printed Affinity channels -1 // ${Math.min(foundryProject.foundryUses ?? 0, 2)}/2 used`}
+                          disabled={!selectedFoundryAffordable || selectedCardVanished}
+                          isPending={pendingSheetAction === 'foundry_forge'}
+                          isSent={sentFlashBtn === 'foundry_forge'}
+                          confirmHex={forgeConfirmHex}
+                          confirmGlow={forgeConfirmGlow}
+                          darkText={forgeDarkText}
+                          label={pendingSheetAction === 'foundry_forge'
+                            ? 'CONFIRM'
+                            : selectedFoundryAction === 'foundry_overdrive'
+                              ? 'OVERDRIVE'
+                              : 'FOUNDRY FORGE'}
+                          subtitle={pendingSheetAction === 'foundry_forge'
+                            ? selectedFoundryAction === 'foundry_overdrive'
+                              ? 'Forge, then move all three components'
+                              : 'Use one sustainable claim'
+                            : selectedFoundryAction === 'foundry_overdrive'
+                              ? 'Third claim; component consequence applies'
+                              : 'Reduce each nonzero natural channel by 1'}
                           onClick={() => {
-                            if (pendingSheetAction === 'foundry') {
+                            if (pendingSheetAction === 'foundry_forge') {
                               gameAudio.playButtonConfirm();
-                              handleFoundryForge(selectedCard.card);
+                              triggerBtnAnim('foundry_forge', 'confirm');
+                              handleBuy(
+                                selectedCard.card,
+                                false,
+                                false,
+                                selectedFoundryAction,
+                              );
                               setSelectedCard(null);
                               setPendingSheetAction(null);
                             } else {
                               gameAudio.playButtonSelect();
-                              setPendingSheetAction('foundry');
+                              triggerBtnAnim('foundry_forge', 'select');
+                              setPendingSheetAction('foundry_forge');
                             }
                           }}
                         />
@@ -8997,13 +8731,13 @@ export default function GameBoard() {
                       <div className="flex-1 h-px bg-amber-400/20" />
                     </div>
                     <div className="pl-2.5 border-l-2 border-amber-400/25 flex flex-col gap-2.5">
-                    {me && canAffordCard(selectedCard.card, me) && (
+                    {me && canAffordCard(selectedCard.card, me) && !selectedIsRecoveringFoundryComponent && (
                     <div
                       key={btnAnimTarget === 'plan_forge' ? `plan_forge-${btnAnimKey}` : 'plan_forge'}
                       className={`relative w-full${btnAnimTarget === 'plan_forge' ? ` btn-${btnAnimType}-flash` : ''}`}
                     >
                       <ForgeButton
-                        disabled={selectedCardVanished || focusSelectionRequired || !canAffordCard(selectedCard.card, me, selectedFocusAffinity)}
+                        disabled={selectedCardVanished}
                         isPending={pendingSheetAction === 'plan_forge'}
                         isSent={sentFlashBtn === 'plan_forge'}
                         confirmHex={forgeConfirmHex}
@@ -9011,18 +8745,13 @@ export default function GameBoard() {
                         darkText={forgeDarkText}
                         isPlan
                         label={pendingSheetAction === 'plan_forge' ? 'CONFIRM' : 'FORGE'}
-                        subtitle={pendingSheetAction === 'plan_forge'
-                          ? focusSelectionRequired ? 'Choose Focus above' : 'Confirm pending action'
-                          : 'Plan to Forge'}
+                        subtitle={pendingSheetAction === 'plan_forge' ? 'Confirm pending action' : 'Plan to Forge'}
                         onClick={() => {
                           if (pendingSheetAction === 'plan_forge') {
                             gameAudio.playButtonConfirm(); triggerBtnAnim('plan_forge', 'confirm');
                             handlePlanAction({
                               type: selectedCard.fromReserve ? 'forge_reserved_artifact' : 'forge_artifact',
                               cardId: selectedCard.card.id,
-                              ...(selectedCard.fromReserve && selectedFocusAffinity
-                                ? { affinity: selectedFocusAffinity }
-                                : {}),
                               ...(selectedCard.fromArchiveTop
                                 ? { luminaryId: 'lum_tide', tier: selectedCard.card.tier }
                                 : {}),
@@ -9037,34 +8766,49 @@ export default function GameBoard() {
                       />
                     </div>
                     )}
-                    {me && foundryProject?.state === 'active' &&
-                      selectedCard.card.tier === 2 &&
-                      !selectedCard.fromReserve &&
-                      !selectedCard.fromArchiveTop &&
-                      canAffordFoundryCard(selectedCard.card, me) && (
-                      <ForgeButton
-                        isPending={pendingSheetAction === 'plan_foundry'}
-                        isPlan
-                        label={pendingSheetAction === 'plan_foundry' ? 'CONFIRM' : 'FOUNDRY FORGE'}
-                        subtitle={(foundryProject.foundryUses ?? 0) >= 2
-                          ? 'Plan confirmed Overdrive'
-                          : 'Plan Foundry use'}
-                        onClick={() => {
-                          if (pendingSheetAction === 'plan_foundry') {
-                            gameAudio.playButtonConfirm();
-                            handlePlanAction({
-                              type: 'foundry_forge_artifact',
-                              cardId: selectedCard.card.id,
-                              confirmOverdrive: (foundryProject.foundryUses ?? 0) >= 2,
-                            });
-                            flashSent('plan_foundry');
-                            setTimeout(() => { setSelectedCard(null); setPendingSheetAction(null); }, 750);
-                          } else {
-                            gameAudio.playButtonSelect();
-                            setPendingSheetAction('plan_foundry');
-                          }
-                        }}
-                      />
+                    {selectedFoundryAction && selectedFoundryAffordable && (
+                      <div
+                        key={btnAnimTarget === 'plan_foundry' ? `plan_foundry-${btnAnimKey}` : 'plan_foundry'}
+                        className={`relative w-full${btnAnimTarget === 'plan_foundry' ? ` btn-${btnAnimType}-flash` : ''}`}
+                      >
+                        <ForgeButton
+                          disabled={selectedCardVanished}
+                          isPending={pendingSheetAction === 'plan_foundry'}
+                          isSent={sentFlashBtn === 'plan_foundry'}
+                          confirmHex={forgeConfirmHex}
+                          confirmGlow={forgeConfirmGlow}
+                          darkText={forgeDarkText}
+                          isPlan
+                          label={pendingSheetAction === 'plan_foundry'
+                            ? 'CONFIRM'
+                            : selectedFoundryAction === 'foundry_overdrive'
+                              ? 'PLAN OVERDRIVE'
+                              : 'PLAN FOUNDRY FORGE'}
+                          subtitle={pendingSheetAction === 'plan_foundry'
+                            ? 'Confirm pending Project claim'
+                            : `Use ${selectedFoundryName}`}
+                          onClick={() => {
+                            if (pendingSheetAction === 'plan_foundry') {
+                              gameAudio.playButtonConfirm();
+                              triggerBtnAnim('plan_foundry', 'confirm');
+                              handlePlanAction({
+                                type: 'forge_artifact',
+                                cardId: selectedCard.card.id,
+                                blueprintAction: selectedFoundryAction,
+                              });
+                              flashSent('plan_foundry');
+                              setTimeout(() => {
+                                setSelectedCard(null);
+                                setPendingSheetAction(null);
+                              }, 750);
+                            } else {
+                              gameAudio.playButtonSelect();
+                              triggerBtnAnim('plan_foundry', 'select');
+                              setPendingSheetAction('plan_foundry');
+                            }
+                          }}
+                        />
+                      </div>
                     )}
                     {!selectedCard.fromReserve && !selectedCard.fromArchiveTop && (
                       <div
@@ -9118,7 +8862,7 @@ export default function GameBoard() {
                   </p>
                 )}
 
-                <Button variant="ghost" className="min-h-11 w-full text-muted-foreground focus-visible:ring-2 focus-visible:ring-amber-300/80" onClick={() => { setSelectedCard(null); setPendingSheetAction(null); }}>
+                <Button variant="ghost" className="w-full text-muted-foreground focus:outline-none focus-visible:outline-none focus-visible:ring-0" onClick={() => { setSelectedCard(null); setPendingSheetAction(null); }}>
                   Close
                 </Button>
               </div>
@@ -9162,20 +8906,18 @@ export default function GameBoard() {
               {/* Header row: name + close */}
               <div className="flex items-center gap-2 pb-2 border-b border-border/40 mb-3">
                 <span className="font-semibold text-sm leading-tight flex-1 truncate">{selectedLuminary.name}</span>
-                {(balanceLabLuminaryEminence ?? selectedLuminary.eminence ?? 0) > 0 && (
+                {(selectedLuminary.eminence ?? 0) > 0 && (
                   <EminenceBadge
-                    value={balanceLabLuminaryEminence ?? selectedLuminary.eminence ?? 0}
+                    value={selectedLuminary.eminence ?? 0}
                     compact
                     className="shrink-0"
-                    title={getLuminaryEminenceTitle(
-                      balanceLabLuminaryEminence ?? selectedLuminary.eminence ?? 0,
-                    )}
+                    title={getLuminaryEminenceTitle(selectedLuminary.eminence ?? 0)}
                   />
                 )}
                 <Button
                   variant="ghost"
                   size="icon"
-                  className="h-11 w-11 shrink-0 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-amber-300/80"
+                  className="h-7 w-7 shrink-0 focus-visible:outline-none focus-visible:ring-0"
                   aria-label="Close luminary details"
                   onClick={() => setSelectedLuminary(null)}
                 >
@@ -9588,7 +9330,6 @@ export default function GameBoard() {
             eminenceTargetSelector='[data-eminence-sigil="player"]'
             onEminenceImpact={triggerEminencePanelImpact}
             isForgottenForge={cardActionBurst.isForgottenForge}
-            onForgeStamped={() => markForgeTrapHandoff('local', cardActionBurst.key)}
             onComplete={() => {
               flashForgeDestination(
                 cardActionBurst.destPos && cardActionBurst.destTargetSelector && cardActionBurst.destKind
@@ -9621,7 +9362,6 @@ export default function GameBoard() {
             playerName={cardActionBurst.playerName}
             isCompact={effectiveForgeCompact}
             isForgottenForge={cardActionBurst.isForgottenForge}
-            onForgeStamped={() => markForgeTrapHandoff('local', cardActionBurst.key)}
           />
         ))}
       </AnimatePresence>
@@ -9642,18 +9382,9 @@ export default function GameBoard() {
             eminence={opponentForgeAbsorb.eminence}
             eminenceTotal={opponentForgeAbsorb.eminenceTotal}
             eminenceTarget={victoryRequirement}
-            eminenceTargetSelector={
-              opponentForgeAbsorb.targetKind === 'lumii'
-                ? LUMII_HUD_NAME_PILL_SELECTOR
-                : `[data-eminence-sigil="opponent-${opponentForgeAbsorb.playerId}"]`
-            }
-            onEminenceImpact={
-              opponentForgeAbsorb.targetKind === 'lumii'
-                ? undefined
-                : (amount) => triggerOpponentEminenceImpact(opponentForgeAbsorb.playerId, amount)
-            }
+            eminenceTargetSelector={`[data-eminence-sigil="opponent-${opponentForgeAbsorb.playerId}"]`}
+            onEminenceImpact={(amount) => triggerOpponentEminenceImpact(opponentForgeAbsorb.playerId, amount)}
             isForgottenForge={opponentForgeAbsorb.isForgottenForge}
-            onForgeStamped={() => markForgeTrapHandoff('opponent', opponentForgeAbsorb.key)}
           />
         ) : (
           <OpponentForgeAnimation
@@ -9668,19 +9399,10 @@ export default function GameBoard() {
             eminenceTotal={opponentForgeAbsorb.eminenceTotal}
             eminenceTarget={victoryRequirement}
             spentColors={opponentForgeAbsorb.spentColors}
-            eminenceTargetSelector={
-              opponentForgeAbsorb.targetKind === 'lumii'
-                ? LUMII_HUD_NAME_PILL_SELECTOR
-                : `[data-eminence-sigil="opponent-${opponentForgeAbsorb.playerId}"]`
-            }
+            eminenceTargetSelector={`[data-eminence-sigil="opponent-${opponentForgeAbsorb.playerId}"]`}
             isCompact={effectiveForgeCompact}
-            onEminenceImpact={
-              opponentForgeAbsorb.targetKind === 'lumii'
-                ? undefined
-                : (amount) => triggerOpponentEminenceImpact(opponentForgeAbsorb.playerId, amount)
-            }
+            onEminenceImpact={(amount) => triggerOpponentEminenceImpact(opponentForgeAbsorb.playerId, amount)}
             isForgottenForge={opponentForgeAbsorb.isForgottenForge}
-            onForgeStamped={() => markForgeTrapHandoff('opponent', opponentForgeAbsorb.key)}
           />
         ))}
       </AnimatePresence>
@@ -9732,14 +9454,137 @@ export default function GameBoard() {
         />
       ))}
 
-      {/* Archives transmit a brief pattern trace; the authoritative Artifact
-          is cast inside its fixed mold rather than dealt across the viewport. */}
-      {archiveManifestationTraces.map(trace => (
-        <ArchiveManifestationTrace
-          key={trace.id}
-          manifestation={trace}
+      {/* ── Deal-from-Deck overlay — card flies from deck tile to empty slot ── */}
+      {dealingCard && (
+        <ForgeReplacementDealAnimation
+          animKey={dealingCard.card.id}
+          cardId={dealingCard.card.id}
+          tier={dealingCard.tier}
+          deckRect={dealingCard.deckRect}
+          slotRect={dealingCard.slotRect}
+          animX={dealingCard.animX}
+          animY={dealingCard.animY}
+          animRotateY={dealingCard.animRotateY}
+          animScale={dealingCard.animScale}
+          faceScale={dealingCard.faceScale}
+          cardFace={(
+            <ArtifactCardView
+              card={dealingCard.card}
+              tier={dealingCard.tier}
+              onTap={() => {}}
+              tapped={false}
+              effectiveCosts={computeCosts(dealingCard.card, costMode)}
+              hideStrike={costMode === 'needed_now'}
+              artOnly={artifactFrameUsesArtCrop(dealingCard.slotRect.w, dealingCard.slotRect.h)}
+            />
+          )}
+          cardOverlay={artifactFrameUsesArtCrop(dealingCard.slotRect.w, dealingCard.slotRect.h) ? (
+            <CompactForgeCardReadout
+              card={dealingCard.card}
+              costs={computeCosts(dealingCard.card, costMode) ?? dealingCard.card.cost}
+            />
+          ) : undefined}
+          onComplete={() => {
+            setDealingCard(null);
+            setHiddenSlots(new Set());
+          }}
         />
-      ))}
+      )}
+
+      {/* ── Cinder Mandate post-burn refill deals — staggered fly+flip per slot ── */}
+      {directorDealingCards.length > 0 && (
+        <div style={{ position: 'fixed', inset: 0, zIndex: 9050, pointerEvents: 'none', perspective: '1200px' }}>
+          {directorDealingCards.map(dc => (
+            <motion.div
+              key={dc.id}
+              style={{
+                position: 'absolute',
+                left: dc.deckRect.x,
+                top: dc.deckRect.y,
+                width: dc.deckRect.w,
+                height: dc.deckRect.h,
+                transformStyle: 'preserve-3d',
+              }}
+              initial={{ x: 0, y: 0, rotateY: 0, scale: 1 }}
+              animate={{
+                x: dc.animX,
+                y: dc.animY,
+                rotateY: dc.animRotateY,
+                scale: dc.animScale,
+              }}
+              transition={{
+                duration: 1.5,
+                delay: dc.delay,
+                x: { ease: 'easeInOut', times: [0, 0.4, 1] },
+                y: { ease: 'easeInOut', times: [0, 0.35, 1] },
+                rotateY: { ease: 'easeInOut', times: [0, 0.5, 1] },
+                scale: { ease: 'easeInOut', times: [0, 0.35, 1] },
+              }}
+              onAnimationComplete={() => {
+                setDirectorDealingCards(prev => prev.filter(d => d.id !== dc.id));
+                setHiddenSlots(prev => {
+                  const n = new Set(prev);
+                  n.delete(dc.slotKey);
+                  return n;
+                });
+              }}
+            >
+              {/* Card back — hidden after rotateY reaches 90° */}
+              <div style={{
+                position: 'absolute', inset: 0,
+                backfaceVisibility: 'hidden',
+                WebkitBackfaceVisibility: 'hidden',
+                overflow: 'hidden',
+                borderRadius: 12,
+              }}>
+                <div className="w-full h-full relative rounded-xl bg-[#030509] border border-[#c4a85a]/30">
+                  {dc.tier === 1 && <CardBackTier1 />}
+                  {dc.tier === 2 && <CardBackTier2 />}
+                  {dc.tier === 3 && <CardBackTier3 />}
+                </div>
+              </div>
+              {/* Card face — revealed after rotateY passes 90° */}
+              <div style={{
+                position: 'absolute', inset: 0,
+                backfaceVisibility: 'hidden',
+                WebkitBackfaceVisibility: 'hidden',
+                transform: 'rotateY(180deg)',
+                overflow: 'hidden',
+                borderRadius: 12,
+              }}>
+                <div
+                  data-frame-presentation={artifactFrameUsesArtCrop(dc.slotRect.w, dc.slotRect.h) ? 'compact' : 'full-card'}
+                  className={artifactFrameUsesArtCrop(dc.slotRect.w, dc.slotRect.h)
+                    ? "forge-foundry-mold board-forge-compact-chip relative h-full w-full overflow-hidden rounded-xl"
+                    : "relative h-full w-full overflow-hidden rounded-xl"}
+                  style={{
+                    "--card-w": `${dc.slotRect.w}px`,
+                    "--card-h": `${dc.slotRect.h}px`,
+                    "--forge-chip-w": `${dc.slotRect.w}px`,
+                    "--forge-chip-h": `${dc.slotRect.h}px`,
+                  } as React.CSSProperties}
+                >
+                  <ArtifactCardView
+                    card={dc.card}
+                    tier={dc.tier}
+                    onTap={() => {}}
+                    tapped={false}
+                    effectiveCosts={computeCosts(dc.card, costMode)}
+                    hideStrike={costMode === 'needed_now'}
+                    artOnly={artifactFrameUsesArtCrop(dc.slotRect.w, dc.slotRect.h)}
+                  />
+                  {artifactFrameUsesArtCrop(dc.slotRect.w, dc.slotRect.h) && (
+                    <CompactForgeCardReadout
+                      card={dc.card}
+                      costs={computeCosts(dc.card, costMode) ?? dc.card.cost}
+                    />
+                  )}
+                </div>
+              </div>
+            </motion.div>
+          ))}
+        </div>
+      )}
 
       {/* ── Reserved Artifact Forge notice ── */}
       <AnimatePresence>
@@ -9800,7 +9645,6 @@ export default function GameBoard() {
               affinities: affinityBurst.affinities,
               playerId: affinityBurst.playerId,
               playerName: affinityBurst.playerName,
-              targetKind: affinityBurst.targetKind,
             }}
           />
         )}
@@ -9809,11 +9653,7 @@ export default function GameBoard() {
       {/* ── Turn Order Intro Overlay ── */}
       <AnimatePresence>
         {turnOrderIntro && (
-          <TurnOrderIntroOverlay
-            intro={turnOrderIntro}
-            onAbridge={handleTurnCinematicPointerUp}
-            onBonusImpact={triggerOpeningBalanceImpact}
-          />
+          <TurnOrderIntroOverlay intro={turnOrderIntro} onAbridge={handleTurnCinematicPointerUp} />
         )}
       </AnimatePresence>
 
@@ -9983,7 +9823,7 @@ export default function GameBoard() {
                 <h2 className="text-lg font-serif font-bold">How to Play</h2>
                 <div className="flex items-center gap-1.5">
                   <kbd className="hidden [@media(pointer:fine)]:inline-flex items-center px-1 py-0.5 rounded text-[10px] font-mono text-muted-foreground/40 border border-border/30 bg-muted/10 leading-none select-none">Esc</kbd>
-                  <Button variant="ghost" size="icon" className="h-11 w-11 focus-visible:outline-none focus-visible:ring-0" onClick={() => setShowRules(false)} aria-label="Close rules">
+                  <Button variant="ghost" size="icon" className="h-8 w-8 focus-visible:outline-none focus-visible:ring-0" onClick={() => setShowRules(false)}>
                     <X className="h-4 w-4" />
                   </Button>
                 </div>
@@ -9991,42 +9831,38 @@ export default function GameBoard() {
               <div {...rulesSheetScrollableProps} className="px-5 overflow-y-auto max-h-[60vh] space-y-4 pb-4">
                 {[
                   {
-                    icon: Flag,
+                    icon: '💎',
                     title: 'Goal',
-                    body: balanceLabCandidate === 'reach_gate' || balanceLabCandidate === 'integrated'
-                      ? `Reach ${victoryRequirement} Eminence and ${victoryRequirement >= 25 ? 'Forge at least two Tier III Artifacts' : victoryRequirement >= 20 ? 'Forge at least one Tier III Artifact' : 'complete the Quick-format race'}. The round then completes so every player gets equal turns.`
-                      : `Be the first to reach ${victoryRequirement} Eminence. The round completes so every player gets equal turns, then the highest Eminence wins.`,
+                    body: `Be the first to reach ${victoryRequirement} Eminence. The round completes so every player gets equal turns, then the highest Eminence wins.`,
                   },
                   {
-                    icon: Gavel,
+                    icon: '⚖️',
                     title: 'Ending & ties',
-                    body: 'If the Forge and every Archive empty, an equal-turn closing round begins. Encrypted Artifacts may still be Forged, but public rows no longer refill. Ties are resolved by fewest encrypted Artifacts; then most Tier III forged Artifacts, followed by Tier II and Tier I; then the same tier comparison within the strongest single affinity.',
+                    body: 'If a turn ends with the Forge and every Archive empty, the game ends immediately. Ties are resolved by fewest ordinary Encrypted Artifacts; then most Tier III forged Artifacts, followed by Tier II and Tier I; then the same tier comparison within the strongest single affinity.',
                   },
                   {
-                    icon: Zap,
+                    icon: '🪙',
                     title: 'On your turn — pick one action',
-                    body: `Harness exactly 3 different affinities · Harness 2 of the same (needs 4+ in the well) · ${balanceLabCandidate === 'focus' || balanceLabCandidate === 'integrated' ? 'Encrypt an Artifact (hold up to 3; its bound Focus reduces one remaining requirement when you Forge it)' : balanceLabCandidate === 'encrypt_none' ? 'Encrypt an Artifact (hold up to 3; concealment grants no payment resource)' : 'Encrypt an Artifact (hold up to 3, create 1 Singularity)'} · Forge an Artifact you can afford`,
+                    body: 'Harness up to 3 affinities (1 of each type) · Harness 2 of the same (needs 4+ in the well) · Encrypt an Artifact (hold up to 3, gain 1 Singularity) · Forge an Artifact you can afford',
                   },
                   {
-                    icon: Package,
+                    icon: '🃏',
                     title: 'Artifacts & bonuses',
-                    body: 'Each forged Artifact permanently reduces future costs of its Affinity. Pay only the remaining cost from held Affinities; Singularity can cover any shortfall.',
+                    body: 'Pay Affinity to Forge, using bonuses first; Singularity can cover any shortfall. Every Affinity actually paid returns to the Well after the Forge. The Artifact and its permanent bonus remain.',
                   },
                   {
-                    icon: Sparkles,
+                    icon: '✨',
                     title: 'Eminence',
-                    body: balanceLabLuminaryEminence === 0
-                      ? 'Artifacts award Eminence when forged. Luminaries establish relationships and grant their effects, but award no automatic arrival Eminence in this candidate.'
-                      : 'Some Artifacts award Eminence when forged. Luminaries (the top row) grant bonus Eminence to the first player whose bonuses meet their requirements — claimed automatically.',
+                    body: 'Some Artifacts award Eminence when forged. Luminaries (the top row) grant bonus Eminence to the first player whose bonuses meet their requirements — claimed automatically.',
                   },
                   {
-                    icon: Gauge,
+                    icon: '✋',
                     title: 'Affinity limit',
-                    body: 'You may hold at most 10 affinities at end of turn. You may hold at most 3 encrypted Artifacts at once.',
+                    body: 'You may hold at most 10 Affinities at end of turn and 3 ordinary Encrypted Artifacts. Foundry-bound components appear separately and do not consume those 3 slots.',
                   },
-                ].map(({ icon: RuleIcon, title, body }) => (
+                ].map(({ icon, title, body }) => (
                   <div key={title} className="flex gap-3">
-                    <RuleIcon className="mt-0.5 h-5 w-5 shrink-0 text-primary/80" aria-hidden="true" />
+                    <span className="text-xl shrink-0 mt-0.5">{icon}</span>
                     <div>
                       <div className="font-semibold text-sm mb-0.5">{title}</div>
                       <p className="text-xs text-muted-foreground leading-relaxed">{body}</p>
@@ -10114,7 +9950,12 @@ export default function GameBoard() {
               <div className="px-5 pb-2 flex items-center justify-between border-b border-border/40 mb-1">
                 <h2 className="text-base font-semibold flex items-center gap-2">
                   <span className="h-4 w-4 inline-flex items-center justify-center shrink-0 opacity-70"><CipherSigil affinityHex="#e2e8f0" id={9007} /></span>
-                  Encrypted Artifacts ({me.reservedArtifacts.length}/3)
+                  Encrypted {myReservedCount}/3
+                  {foundryStoredArtifacts.length > 0 && (
+                    <span className="border border-amber-200/20 bg-amber-950/15 px-1.5 py-0.5 text-[9px] font-black uppercase text-amber-100/70">
+                      Foundry {foundryStoredArtifacts.length}
+                    </span>
+                  )}
                 </h2>
                 <div className="flex items-center gap-1.5">
                   <kbd className="hidden [@media(pointer:fine)]:inline-flex items-center px-1 py-0.5 rounded text-[10px] font-mono text-muted-foreground/40 border border-border/30 bg-muted/10 leading-none select-none">Esc</kbd>
@@ -10128,76 +9969,37 @@ export default function GameBoard() {
                 className="px-5 overflow-y-auto max-h-[60vh] pb-4"
                 style={isTutorial ? { paddingBottom: 'var(--tutorial-panel-height, 160px)' } : undefined}
               >
-                {me.reservedArtifacts.length === 0 ? (
+                {ordinaryReservedArtifacts.length === 0 && foundryStoredArtifacts.length === 0 ? (
                   <p className="text-xs text-muted-foreground italic">No Artifacts encrypted.</p>
                 ) : (
-                  <div className="flex flex-col gap-2">
-                    {me.reservedArtifacts.map((c) => {
-                      const ec = computeCosts(c, costMode);
-                      const ecBonus = computeCosts(c, 'after_bonuses') ?? undefined;
-                      const canBuy = canAffordCard(c, me);
-                      const isPendingPlan = plannedCardId === c.id;
-                      return (
-                        <div
-                          key={c.id}
-                          data-reserved-card-id={c.id}
-                          className="relative flex w-full items-center gap-3 rounded-2xl p-3 text-left"
-                        >
-                          <button
-                            type="button"
-                            title={isPendingPlan ? `Click to cancel ${plannedCardLabel.toLowerCase()}` : c.name}
-                            aria-label={isPendingPlan ? `Cancel ${plannedCardLabel.toLowerCase()}` : `View ${c.name}`}
-                            className="absolute inset-0 z-0 rounded-2xl bg-secondary/30 transition-colors hover:bg-secondary/50 active:bg-secondary/60 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-primary/70"
-                            onClick={() => {
-                              setShowReservedOverlay(false);
-                              handleCardTap(c, true);
-                            }}
-                          />
-                          <div className="pointer-events-none relative z-10 shrink-0">
-                            <ArtifactCardView
-                              card={c}
-                              tier={c.tier}
-                              effectiveCosts={ec}
-                              bonusCosts={ecBonus}
-                              tapped={false}
-                              hideStrike={costMode === 'needed_now'}
-                            />
-                            <ForgeMarkerLayer
-                              markerTypes={getArtifactBrandTypes(state?.artifactMarkers?.[c.id])}
-                              brandDelay={brandDelayMap.get(c.id)}
-                              strikeAura={strikeAuraMap.get(c.id)}
-                              suppressed={suppressedMarkerIds.has(c.id)}
-                            />
-                            {isPendingPlan && (
-                              <PendingActionOverlay
-                                label={plannedCardLabel}
-                                onCancel={handleCancelPlan}
-                              />
-                            )}
-                          </div>
-                          <div className="pointer-events-none relative z-10 flex min-w-0 flex-1 flex-col gap-1.5">
-                            <div className="font-bold text-sm leading-tight">{c.name}</div>
-                            <div className="flex items-center gap-1.5">
-                              <AffinityToken color={c.bonusAffinity as AffinityKey} size={13} />
-                              <span className="text-xs text-muted-foreground">{AFFINITY_META[c.bonusAffinity as AffinityKey]?.name ?? c.bonusAffinity} bonus</span>
-                              {(c.eminence ?? 0) > 0 && (
-                                <>
-                                  <span className="text-muted-foreground/40">·</span>
-                                  <span className="flex items-center gap-0.5 text-xs font-bold text-white">{c.eminence}<EminenceDiamond size={9} /></span>
-                                </>
-                              )}
-                            </div>
-                            <div className="flex items-center gap-1.5 mt-0.5">
-                              {canBuy
-                                ? <span className="text-[10px] font-semibold text-emerald-400">Can forge</span>
-                                : <span className="text-[10px] text-muted-foreground/60">Tap to view</span>
-                              }
-                              <ChevronRight className="h-3 w-3 text-muted-foreground/50 ml-auto shrink-0" />
-                            </div>
-                          </div>
+                  <div className="flex flex-col gap-4">
+                    <section aria-label="Ordinary Encrypted Artifacts">
+                      <div className="mb-2 flex items-center justify-between text-[9px] font-black uppercase tracking-wider text-white/45">
+                        <span>Encrypted</span>
+                        <span>{myReservedCount}/3</span>
+                      </div>
+                      {ordinaryReservedArtifacts.length > 0 ? (
+                        <div className="flex flex-col gap-2">
+                          {ordinaryReservedArtifacts.map((card) => renderEncryptedArtifactRow(card))}
                         </div>
-                      );
-                    })}
+                      ) : (
+                        <p className="text-xs italic text-muted-foreground">No ordinary Artifacts encrypted.</p>
+                      )}
+                    </section>
+                    {foundryStoredArtifacts.length > 0 && (
+                      <section aria-label="Foundry Components" className="border-t border-amber-200/15 pt-3">
+                        <div className="mb-2 flex items-center justify-between text-[9px] font-black uppercase tracking-wider text-amber-100/65">
+                          <span>Foundry Components</span>
+                          <span>{foundryStoredArtifacts.length}</span>
+                        </div>
+                        <div className="flex flex-col gap-2">
+                          {foundryStoredArtifacts.map((card, index) => renderEncryptedArtifactRow(card, {
+                            foundryComponent: true,
+                            sequenceIndex: index,
+                          }))}
+                        </div>
+                      </section>
+                    )}
                   </div>
                 )}
               </div>
@@ -10513,14 +10315,18 @@ export default function GameBoard() {
         />
       )}
       <AnimatePresence>
-        {!isLumiiScenario && state.status === 'finished' && !pendingGameOver && !summonSequenceActive && showCinematic && (() => {
+        {!isSpecialOutcomeScenario && state.status === 'finished' && !pendingGameOver && !summonSequenceActive && showCinematic && (() => {
           const winnerId = state.winnerId;
           if (!winnerId) return null;
           const winnerPlayer = (state.players as GamePlayerState[]).find(p => p.playerId === winnerId);
           if (!winnerPlayer) return null;
           const winnerCards = (winnerPlayer.forgedArtifacts ?? []) as ArtifactCard[];
           const winnerDiscountedIds = (winnerPlayer.discountedForgeIds ?? []) as string[];
-          const winnerTier = getKardashevTier(winnerCards, winnerDiscountedIds);
+          const winnerTier = getCivilizationSceneTier(
+            winnerPlayer,
+            winnerCards,
+            winnerDiscountedIds,
+          );
           const winnerPalette = getDominantAffinityPalette(winnerCards);
           const winnerProfile = buildCivilizationProfile(winnerCards);
           const winnerCivName = getCivilizationName(winnerPalette, winnerTier);
@@ -10547,7 +10353,7 @@ export default function GameBoard() {
       </AnimatePresence>
 
       {/* ── Return-to-Results banner (shown when board is visible after game over) ── */}
-      {!isLumiiScenario && state.status === 'finished' && !pendingGameOver && !summonSequenceActive && !showCinematic && !showWinOverlay && (() => {
+      {!isSpecialOutcomeScenario && state.status === 'finished' && !pendingGameOver && !summonSequenceActive && !showCinematic && !showWinOverlay && (() => {
         const onReturnToResults = () => setShowWinOverlay(true);
         return (
           <ReturnResultsBanner
@@ -10559,7 +10365,7 @@ export default function GameBoard() {
       })()}
 
       {/* ── Board-view action log panel (shown when viewing board after game over) ── */}
-      {!isLumiiScenario && state.status === 'finished' && !pendingGameOver && !summonSequenceActive && !showCinematic && !showWinOverlay && (() => {
+      {!isSpecialOutcomeScenario && state.status === 'finished' && !pendingGameOver && !summonSequenceActive && !showCinematic && !showWinOverlay && (() => {
         const AFFINITY_DOT_COLOR: Record<string, string> = {
           Flare: '#FF5A3C',
           Continuum: '#3D6BFF',
@@ -10680,13 +10486,17 @@ export default function GameBoard() {
 
       {/* ── Win Overlay ── */}
       <AnimatePresence>
-        {!isLumiiScenario && state.status === 'finished' && !pendingGameOver && !summonSequenceActive && !showCinematic && showWinOverlay && (() => {
+        {!isSpecialOutcomeScenario && state.status === 'finished' && !pendingGameOver && !summonSequenceActive && !showCinematic && showWinOverlay && (() => {
           const winnerPlayer = state.winnerId
             ? (state.players as GamePlayerState[]).find(p => p.playerId === state.winnerId)
             : null;
           const winnerCards = (winnerPlayer?.forgedArtifacts ?? []) as ArtifactCard[];
           const winnerDiscountedIds = (winnerPlayer?.discountedForgeIds ?? []) as string[];
-          const victoryTier = getKardashevTier(winnerCards, winnerDiscountedIds);
+          const victoryTier = getCivilizationSceneTier(
+            winnerPlayer,
+            winnerCards,
+            winnerDiscountedIds,
+          );
           const victoryPalette = getDominantAffinityPalette(winnerCards);
           const victoryProfile = buildCivilizationProfile(winnerCards);
           return (
@@ -10839,7 +10649,11 @@ export default function GameBoard() {
                     const playerCards = (p.forgedArtifacts ?? []) as Array<{ id: string; tier: number; bonusAffinity: string }>;
                     const playerDiscountedIds = (p.discountedForgeIds ?? []) as string[];
                     const civPalette = getDominantAffinityPalette(playerCards);
-                    const civTier = getKardashevTier(playerCards, playerDiscountedIds);
+                    const civTier = getCivilizationSceneTier(
+                      p,
+                      playerCards,
+                      playerDiscountedIds,
+                    );
                     const civName = getCivilizationName(civPalette, civTier);
                     const forgedCount = playerCards.length;
                     const encryptedCount = p.reservedArtifacts?.length ?? 0;
@@ -10919,7 +10733,7 @@ export default function GameBoard() {
               </div>
 
               {/* ── Session Record ───────────────────────────────────────────── */}
-              {!balanceLabCandidate && rematchVote && Object.keys(rematchVote.sessionStats).length > 0 && (
+              {rematchVote && Object.keys(rematchVote.sessionStats).length > 0 && (
                 <motion.div
                   initial={{ opacity: 0, height: 0 }}
                   animate={{ opacity: 1, height: 'auto' }}
@@ -10954,18 +10768,7 @@ export default function GameBoard() {
                 transition={{ delay: 0.9 }}
                 className="flex flex-col gap-3 border-t border-white/10 pt-4"
               >
-                {balanceLabCandidate ? (
-                  <BalanceLabFinishedControls
-                    onReturnToLab={() => setLocation('/dev/balance-lab')}
-                    onViewBoard={() => {
-                      setShowWinOverlay(false);
-                      setShowCinematic(false);
-                      requestAnimationFrame(() => returnBannerRef.current?.focus());
-                    }}
-                  />
-                ) : (
-                  <>
-                    {rematchVote?.active ? (
+                {rematchVote?.active ? (
                   <div className="rounded-md border border-primary/30 bg-primary/[0.09] p-3 space-y-3">
                     <div className="flex items-start justify-between gap-3">
                       <div className="min-w-0">
@@ -11129,8 +10932,6 @@ export default function GameBoard() {
                     Home
                   </Button>
                 </div>
-                  </>
-                )}
               </motion.div>
             </motion.div>
           </div>
@@ -11138,7 +10939,11 @@ export default function GameBoard() {
         })()}
       </AnimatePresence>
 
-      {blueprintPresentationActive &&
+      {(
+        (state.pendingBlueprintManifestationEvents?.length ?? 0) > 0 ||
+        (state.pendingBlueprintDetonationEvents?.length ?? 0) > 0 ||
+        (state.pendingScenarioProtocolEvents?.length ?? 0) > 0
+      ) &&
         (state.pendingSummonEvents?.length ?? 0) === 0 &&
         (state.pendingLuminaryActivationEvents?.length ?? 0) === 0 &&
         arrivalQueue.length === 0 &&
@@ -11173,21 +10978,6 @@ export default function GameBoard() {
                   players={state.players}
                   reducedMotion={effectiveBlueprintPresentationReducedMotion}
                   onComplete={() => {
-                    if (detonation) {
-                      const castEntry = pendingBlueprintMoldCastsRef.current.get(detonation.eventId);
-                      pendingBlueprintMoldCastsRef.current.delete(detonation.eventId);
-                      if (
-                        castEntry &&
-                        !beginMoldCasting([castEntry], 'annihilation')
-                      ) {
-                        setHiddenSlots(current => {
-                          if (!current.has(castEntry.slotKey)) return current;
-                          const next = new Set(current);
-                          next.delete(castEntry.slotKey);
-                          return next;
-                        });
-                      }
-                    }
                     if (!controller || controller.playerId !== session.playerId) return;
                     if (manifestation) {
                       void executeAction({
@@ -11495,6 +11285,7 @@ export default function GameBoard() {
                 cardRect={entry.cardRect}
                 boardSnapshot={entry.boardSnapshot}
                 cinematicMode={cinematicMode}
+                arrivalSound={entry.arrivalSound}
                 autoSkipAfterMs={
                   devSequencePlaybackActive
                     ? devSequencePlaybackMode === 'instant'
@@ -11592,7 +11383,6 @@ export default function GameBoard() {
             activationTimelineRate={effectiveLuminaryTimelineRate}
             pendingBurnSlots={pendingDirectorBurnSlotsRef.current}
             ironHarbingerSlots={pendingIronHarbingerSlotsRef.current}
-            phoenixRefillSlots={pendingPhoenixRefillSlotsRef.current}
             assimilationSlot={pendingAssimilationSlotRef.current}
             queuePosition={activationSequenceProgress.position}
             queueTotal={activationSequenceProgress.total}
@@ -11703,17 +11493,68 @@ export default function GameBoard() {
                   directorGhostSlotKeysRef.current = [];
                 }
 
-                const castEntries = slotKeys.flatMap((slotKey) => {
+                // Build fly+flip deal animations for each refilling slot.
+                const rawCardW = parseFloat(getComputedStyle(document.documentElement).getPropertyValue('--card-w')) || 112;
+                const dealEntries: typeof directorDealingCards = [];
+                const fallbackSlotKeys: string[] = [];
+                const hiddenDealSlotKeys: string[] = [];
+
+                slotKeys.forEach((slotKey, i) => {
                   const [tierStr, idxStr] = slotKey.split('-');
                   const tier = parseInt(tierStr, 10) as 1 | 2 | 3;
                   const idx = parseInt(idxStr, 10);
                   const forgeRow = tier === 1 ? state?.forgeTier1 : tier === 2 ? state?.forgeTier2 : state?.forgeTier3;
                   const newCard = forgeRow?.[idx] ?? null;
-                  return newCard ? [{ card: newCard, tier, slotKey }] : [];
+
+                  if (!newCard) { fallbackSlotKeys.push(slotKey); return; }
+
+                  const deckEl = document.querySelector(`[data-deck-tier="${tier}"]`);
+                  const slotEl = document.querySelector(`[data-slot-key="${slotKey}"]`);
+                  const deckR = deckEl?.getBoundingClientRect();
+                  const slotR = slotEl?.getBoundingClientRect();
+
+                  if (!deckR || !slotR) { fallbackSlotKeys.push(slotKey); return; }
+
+                  const faceScale = slotR.width / rawCardW;
+                  const startX = deckR.left + (deckR.width  - slotR.width)  / 2;
+                  const startY = deckR.top  + (deckR.height - slotR.height) / 2;
+                  const dx = slotR.left - startX;
+                  const dy = slotR.top  - startY;
+                  const arcY = Math.min(dy - 60, -40);
+
+                  hiddenDealSlotKeys.push(slotKey);
+                  dealEntries.push({
+                    id: `director-deal-${slotKey}-${Date.now()}-${i}`,
+                    card: newCard,
+                    tier,
+                    slotKey,
+                    deckRect: { x: startX, y: startY, w: slotR.width, h: slotR.height },
+                    slotRect: { x: slotR.left, y: slotR.top, w: slotR.width, h: slotR.height },
+                    animX: [0, dx * 0.5, dx],
+                    animY: [0, arcY, dy],
+                    animRotateY: [0, 90, 180],
+                    animScale: [1, 1, 1],
+                    faceScale,
+                    delay: i * 0.12,
+                  });
                 });
 
-                if (castEntries.length > 0) {
-                  beginMoldCasting(castEntries, 'burn');
+                // Keep slots that are receiving a deal animation hidden during flight.
+                // Fallback slots (deck/slot element missing) pop in immediately with ↺.
+                setHiddenSlots(new Set(hiddenDealSlotKeys));
+
+                if (dealEntries.length > 0) {
+                  setDirectorDealingCards(dealEntries);
+                  // Stagger the card-draw flip sound to the half-rotation point of each deal.
+                  dealEntries.forEach((_, i) => {
+                    setTimeout(() => gameAudio.playCardDraw(), i * 120 + DEAL_FLIP_SOUND_MS);
+                  });
+                }
+
+                if (fallbackSlotKeys.length > 0) {
+                  setRefillingSlots(new Set(fallbackSlotKeys));
+                  gameAudio.playForgeRefill();
+                  setTimeout(() => setRefillingSlots(new Set()), 700);
                 }
               },
               playCardBurn: (index, total) => gameAudio.playCardBurn(index, total),
@@ -11738,24 +11579,13 @@ export default function GameBoard() {
                 });
                 setHiddenSlots(current => new Set([...current, ...keySet]));
               },
-              onCastSlots: (slotKeys, staggerMs) => {
-                const castEntries = slotKeys.flatMap((slotKey) => {
-                  const [tierText, indexText] = slotKey.split('-');
-                  const tier = Number(tierText) as 1 | 2 | 3;
-                  const slotIndex = Number(indexText);
-                  const row = tier === 1
-                    ? state?.forgeTier1
-                    : tier === 2
-                      ? state?.forgeTier2
-                      : state?.forgeTier3;
-                  const card = row?.[slotIndex] ?? null;
-                  return card ? [{ card, tier, slotKey }] : [];
+              onRevealSlot: (slotKey) => {
+                setHiddenSlots(current => {
+                  if (!current.has(slotKey)) return current;
+                  const next = new Set(current);
+                  next.delete(slotKey);
+                  return next;
                 });
-                if (castEntries.length > 0) {
-                  beginMoldCasting(castEntries, 'impact_extinction', {
-                    staggerMs,
-                  });
-                }
               },
               onFinish: (slotKeys) => {
                 const keySet = new Set(slotKeys);
@@ -11780,43 +11610,7 @@ export default function GameBoard() {
               },
               playShuffle: () => gameAudio.playCardFlip(),
               playArchiveImpact: () => gameAudio.playImpactExtinctionArchive(),
-            }}
-            onRevealPhoenixRefills={(slotKeys, staggerMs, immediate) => {
-              pendingPhoenixRefillSlotsRef.current = [];
-              if (immediate) {
-                setHiddenSlots(current => {
-                  const next = new Set(current);
-                  slotKeys.forEach(slotKey => next.delete(slotKey));
-                  return next;
-                });
-                return;
-              }
-              const castEntries = slotKeys.flatMap((slotKey) => {
-                const [tierText, indexText] = slotKey.split('-');
-                const tier = Number(tierText) as 1 | 2 | 3;
-                const slotIndex = Number(indexText);
-                const row = tier === 1
-                  ? state?.forgeTier1
-                  : tier === 2
-                    ? state?.forgeTier2
-                    : state?.forgeTier3;
-                const card = row?.[slotIndex] ?? null;
-                return card ? [{ card, tier, slotKey }] : [];
-              });
-              const castSlotKeys = new Set(castEntries.map(({ slotKey }) => slotKey));
-              const castingStarted = castEntries.length > 0
-                && beginMoldCasting(castEntries, 'recurrence', { staggerMs });
-
-              // A late or incomplete server update must never leave a mold hidden.
-              if (!castingStarted || castEntries.length !== slotKeys.length) {
-                setHiddenSlots(current => {
-                  const next = new Set(current);
-                  slotKeys.forEach(slotKey => {
-                    if (!castingStarted || !castSlotKeys.has(slotKey)) next.delete(slotKey);
-                  });
-                  return next;
-                });
-              }
+              playDeal: () => gameAudio.playCardDraw(),
             }}
             assimilationActions={{
               takeOverSlot: (slotKey) => {
@@ -11853,12 +11647,21 @@ export default function GameBoard() {
                   return;
                 }
                 setHiddenSlots(current => new Set([...current, slotKey]));
-                if (!dealReplacementIntoSlot(replacement, tier, slotKey, 'assimilate')) {
+                if (!dealReplacementIntoSlot(replacement, tier, slotKey)) {
                   setHiddenSlots(current => {
                     const next = new Set(current);
                     next.delete(slotKey);
                     return next;
                   });
+                  setRefillingSlots(current => new Set([...current, slotKey]));
+                  gameAudio.playForgeRefill();
+                  setTimeout(() => {
+                    setRefillingSlots(current => {
+                      const next = new Set(current);
+                      next.delete(slotKey);
+                      return next;
+                    });
+                  }, 700);
                 }
               },
               playAffinityAbsorb: (affinity) => {
@@ -11966,6 +11769,7 @@ export default function GameBoard() {
           sessionPlayerId={session?.playerId ?? ''}
           tutorialStep={tutorialStep}
           setTutorialStep={setTutorialStep}
+          executeAction={executeAction}
           nudgeTick={tutorialNudgeTick}
         />
       )}

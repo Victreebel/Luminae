@@ -78,29 +78,9 @@ describe('AffinityWellCells tutorial gates', () => {
       />,
     );
 
-    const verdance = screen.getByRole('button', {
-      name: /Verdance, 0 held\. 1 permanent bonus\. Reservoir 7 of 7/,
-    });
+    const verdance = screen.getByRole('button', { name: /Verdance Verdance/ });
     expect(verdance).toBeDisabled();
     fireEvent.click(verdance);
     expect(onOpenForged).not.toHaveBeenCalled();
-  });
-
-  it('describes Singularity without an Architect label in the Well', () => {
-    render(
-      <AffinityWellCells
-        {...makeProps()}
-        allowedSingleAffinities={[]}
-        allowedTakeTwoAffinities={[]}
-        singularityInteractive={false}
-      />,
-    );
-
-    const singularity = screen.getByRole('button', {
-      name: /Singularity, 0 held\. Convergence capacity 5 of 5/,
-    });
-    expect(singularity).toHaveAttribute('title', 'Created by Encrypting; cannot be Harnessed.');
-    expect(singularity.closest('[data-affinity-origin]')).toHaveAttribute('data-affinity-origin', 'convergence');
-    expect(screen.queryByText('Architect')).not.toBeInTheDocument();
   });
 });

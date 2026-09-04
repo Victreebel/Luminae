@@ -1,6 +1,6 @@
 <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 128 128" role="img" aria-labelledby="title desc">
   <title id="title">Lumii</title>
-  <desc id="desc">A constellation of five colored natural-Affinity lights around a white core.</desc>
+  <desc id="desc">A constellation of six colored Affinity lights.</desc>
   <defs>
     <radialGradient id="field" cx="50%" cy="46%" r="66%">
       <stop offset="0" stop-color="#141637"/>
@@ -23,16 +23,16 @@
     <circle cx="22" cy="103" r="1"/>
   </g>
   <g fill="none" stroke-linecap="round" stroke-width="2" opacity="0.55">
-    <path d="M64 28 93 52 82 91 46 91 35 52 64 28" stroke="#7183cf"/>
-    <path d="M64 28 46 91" stroke="#9074cf" opacity="0.62"/>
+    <path d="M64 28 91 48 85 86 55 96 33 73 41 43 64 28" stroke="#7183cf"/>
+    <path d="M64 28 55 96" stroke="#9074cf" opacity="0.62"/>
   </g>
-  <g filter="url(#glow)" data-lumii-node-count="5">
-    <circle data-lumii-node="flare" cx="64" cy="28" r="5" fill="#FF5A3C"/>
-    <circle data-lumii-node="continuum" cx="93" cy="52" r="5" fill="#3D6BFF"/>
-    <circle data-lumii-node="verdance" cx="82" cy="91" r="5" fill="#2ECC71"/>
-    <circle data-lumii-node="abyss" cx="46" cy="91" r="5" fill="#A832D4"/>
-    <circle data-lumii-node="radiance" cx="35" cy="52" r="5" fill="#DFC878"/>
-    <circle data-lumii-core-role="identity" cx="64" cy="64" r="4" fill="#ffffff"/>
+  <g filter="url(#glow)">
+    <circle cx="64" cy="28" r="5" fill="#f97316"/>
+    <circle cx="91" cy="48" r="5" fill="#3b82f6"/>
+    <circle cx="85" cy="86" r="5" fill="#22c55e"/>
+    <circle cx="55" cy="96" r="5" fill="#a855f7"/>
+    <circle cx="33" cy="73" r="5" fill="#fbbf24"/>
+    <circle cx="41" cy="43" r="5" fill="#e2e8f0"/>
   </g>
   <g fill="#fff" opacity="0.75">
     <circle cx="108" cy="57" r="2.6"/>

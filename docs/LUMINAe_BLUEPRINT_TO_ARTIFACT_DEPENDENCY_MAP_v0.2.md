@@ -1,9 +1,5 @@
 # LUMINAe_BLUEPRINT_TO_ARTIFACT_DEPENDENCY_MAP_v0.2.md
 
-> **Superseded:** `LUMINAe_TECHNOLOGY_LINEAGE_MATRIX_v2.0.md` controls Artifact
-> lineage and `LUMINAe_FUTURE_PROJECT_CONCEPT_VAULT_v1.0.md` preserves future
-> Project concepts from this document.
-
 ## Status
 
 **Historical planning source. Superseded for hierarchy decisions by

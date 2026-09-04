@@ -3,9 +3,10 @@ import { eq, and, gt, lt, isNull, or, isNotNull } from "drizzle-orm";
 import { db } from "@workspace/db";
 import { accountsTable, accountSessionsTable, passwordResetTokensTable } from "@workspace/db";
 import bcrypt from "bcryptjs";
-import { createHash, randomBytes } from "crypto";
+import { randomBytes } from "crypto";
 import { z } from "zod";
 import { sendPasswordResetEmail } from "../lib/email";
+import { rateLimit } from "../lib/httpSecurity";
 
 const router: IRouter = Router();
 
@@ -23,41 +24,16 @@ function resetTokenExpiry(): Date {
 }
 
 const ForgotPasswordBody = z.object({
-  email: z.string().trim().toLowerCase().email(),
-}).strict();
+  email: z.string().email(),
+});
 
 const ResetPasswordBody = z.object({
-  token: z.string().regex(/^[a-f0-9]{64}$/),
-  newPassword: z.string().min(10).max(128),
-}).strict();
-
-function hashResetToken(token: string): string {
-  return createHash("sha256").update(token).digest("hex");
-}
-
-function publicAppUrl(): string {
-  const configured = process.env.PUBLIC_APP_URL?.trim();
-  if (configured) {
-    const parsed = new URL(configured);
-    if (process.env.NODE_ENV === "production" && parsed.protocol !== "https:") {
-      throw new Error("PUBLIC_APP_URL must use HTTPS in production");
-    }
-    return parsed.toString().replace(/\/$/, "");
-  }
-
-  const replitDomain = (process.env.REPLIT_DOMAINS ?? "")
-    .split(",")
-    .map((domain) => domain.trim())
-    .find(Boolean);
-  if (replitDomain) return `https://${replitDomain}`;
-  if (process.env.NODE_ENV === "production") {
-    throw new Error("PUBLIC_APP_URL is required for password recovery in production");
-  }
-  return "http://localhost:5191";
-}
+  token: z.string().min(1),
+  newPassword: z.string().min(6),
+});
 
 // POST /api/auth/forgot-password
-router.post("/auth/forgot-password", async (req, res): Promise<void> => {
+router.post("/auth/forgot-password", rateLimit({ scope: "forgot-password", max: 5, windowMs: 60 * 60_000 }), async (req, res): Promise<void> => {
   const parsed = ForgotPasswordBody.safeParse(req.body);
   if (!parsed.success) {
     res.status(400).json({ error: "A valid email address is required." });
@@ -99,17 +75,19 @@ router.post("/auth/forgot-password", async (req, res): Promise<void> => {
     return;
   }
 
-  const resetBaseUrl = publicAppUrl();
   const token = generateToken();
   const expiresAt = resetTokenExpiry();
 
   await db.insert(passwordResetTokensTable).values({
     accountId: account.id,
-    token: hashResetToken(token),
+    token,
     expiresAt,
   });
 
-  const resetUrl = `${resetBaseUrl}/reset-password?token=${token}`;
+  // Build the reset URL using the public domain
+  const domains = (process.env.REPLIT_DOMAINS ?? "").split(",").filter(Boolean);
+  const domain = domains[0] ?? "localhost:80";
+  const resetUrl = `https://${domain}/reset-password?token=${token}`;
 
   req.log.info({ accountId: account.id }, "Password reset token created");
 
@@ -123,7 +101,7 @@ router.post("/auth/forgot-password", async (req, res): Promise<void> => {
 });
 
 // POST /api/auth/reset-password
-router.post("/auth/reset-password", async (req, res): Promise<void> => {
+router.post("/auth/reset-password", rateLimit({ scope: "reset-password", max: 8, windowMs: 60 * 60_000 }), async (req, res): Promise<void> => {
   const parsed = ResetPasswordBody.safeParse(req.body);
   if (!parsed.success) {
     res.status(400).json({ error: parsed.error.errors[0]?.message ?? "Invalid request" });
@@ -145,7 +123,7 @@ router.post("/auth/reset-password", async (req, res): Promise<void> => {
       .set({ usedAt: now })
       .where(
         and(
-          eq(passwordResetTokensTable.token, hashResetToken(token)),
+          eq(passwordResetTokensTable.token, token),
           gt(passwordResetTokensTable.expiresAt, now),
           isNull(passwordResetTokensTable.usedAt),
         ),

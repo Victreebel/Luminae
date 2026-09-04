@@ -1,5 +1,6 @@
 import { fireEvent, render, screen } from '@testing-library/react';
 import { describe, expect, it, vi } from 'vitest';
+import { DEFAULT_VICTORY_REQUIREMENT } from '@workspace/game-types';
 import {
   ActivationDirectorRouter,
   DIRECTOR_ROUTES,
@@ -418,8 +419,8 @@ describe('ActivationDirectorRouter sequence composition', () => {
       effectType: 'summon',
       triggeringPlayerId: 'player-1',
       targetCardIds: ['t1p01'],
-      victoryRequirementBefore: 15,
-      victoryRequirementAfter: 16,
+      victoryRequirementBefore: DEFAULT_VICTORY_REQUIREMENT,
+      victoryRequirementAfter: DEFAULT_VICTORY_REQUIREMENT + 1,
       victoryRequirementChange: 1,
     } as ActivationDirectorRouterProps['evt'];
     compassProps.lum = {
@@ -437,8 +438,8 @@ describe('ActivationDirectorRouter sequence composition', () => {
     fireEvent.click(screen.getByTestId('branding-director'));
     const threshold = screen.getByTestId('threshold-overlay');
     expect(threshold).toHaveAttribute('data-amount', '1');
-    expect(threshold).toHaveAttribute('data-before', '15');
-    expect(threshold).toHaveAttribute('data-after', '16');
+    expect(threshold).toHaveAttribute('data-before', String(DEFAULT_VICTORY_REQUIREMENT));
+    expect(threshold).toHaveAttribute('data-after', String(DEFAULT_VICTORY_REQUIREMENT + 1));
     expect(onBrandingComplete).not.toHaveBeenCalled();
 
     fireEvent.click(threshold);
@@ -452,8 +453,8 @@ describe('ActivationDirectorRouter sequence composition', () => {
       luminaryId: 'lum_void',
       effectType: 'summon',
       triggeringPlayerId: 'player-1',
-      victoryRequirementBefore: 15,
-      victoryRequirementAfter: 23,
+      victoryRequirementBefore: DEFAULT_VICTORY_REQUIREMENT,
+      victoryRequirementAfter: DEFAULT_VICTORY_REQUIREMENT + 8,
       victoryRequirementChange: 8,
     } as ActivationDirectorRouterProps['evt'];
     voidProps.lum = {
@@ -464,7 +465,13 @@ describe('ActivationDirectorRouter sequence composition', () => {
 
     render(<ActivationDirectorRouter {...voidProps} />);
 
-    expect(screen.getByTestId('activation-prelude')).toHaveAttribute('data-victory-before', '15');
-    expect(screen.getByTestId('activation-prelude')).toHaveAttribute('data-victory-after', '23');
+    expect(screen.getByTestId('activation-prelude')).toHaveAttribute(
+      'data-victory-before',
+      String(DEFAULT_VICTORY_REQUIREMENT),
+    );
+    expect(screen.getByTestId('activation-prelude')).toHaveAttribute(
+      'data-victory-after',
+      String(DEFAULT_VICTORY_REQUIREMENT + 8),
+    );
   });
 });

@@ -1,4 +1,4 @@
-// Central presentation metadata for five natural Affinities plus Singularity.
+// Central presentation metadata for Luminae's six Affinities.
 // Keys are stable transport/storage identifiers; player-facing code should use
 // the names and visuals defined here rather than interpreting the key strings.
 
@@ -82,7 +82,7 @@ export const AFFINITY_META: Record<AffinityKey, AffinityMeta> = {
     hex: '#E8E4FF',
     glowHex: '#C8C0FF',
     image: singularityEmblem,
-    tagline: 'Convergence \u00b7 Wildcard',
+    tagline: 'Wild \u00b7 Rare',
   },
 };
 

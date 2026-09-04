@@ -15,6 +15,7 @@ import {
   useAddAiPlayer,
   getGetRoomByInviteCodeQueryKey,
 } from "@workspace/api-client-react";
+import { DEFAULT_VICTORY_REQUIREMENT } from "@workspace/game-types";
 import { Button } from "@/components/ui/button";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { getSession, clearSession, saveSession } from "@/lib/session";
@@ -26,7 +27,7 @@ import { gameAudio } from "@/lib/audio";
 import { FriendsPanel } from "@/components/FriendsPanel";
 import { ChallengeInbox } from "@/components/ChallengeInbox";
 import { useAccount } from "@/contexts/AccountContext";
-import { apiListFriends, apiInviteFriendToRoom, getAccountToken, type Friend } from "@/lib/accountSession";
+import { apiListFriends, apiInviteFriendToRoom, apiUpdateRoomSettings, getAccountToken, type Friend } from "@/lib/accountSession";
 import { AccountLoadingScreen } from "@/components/AccountLoadingScreen";
 import {
   LuminaeWordmark,
@@ -73,6 +74,7 @@ export default function Lobby() {
   const [hintsEnabled, setHintsEnabledState] = useState(() => getHintsEnabled());
   const [muted, setMutedState] = useState(() => getMuted());
   const [advancedSettingsOpen, setAdvancedSettingsOpen] = useState(false);
+  const [roomSettingsUpdating, setRoomSettingsUpdating] = useState(false);
 
   useEffect(() => {
     const token = getAccountToken();
@@ -283,10 +285,40 @@ export default function Lobby() {
   const connectedPlayers = players.filter((p) => p.isConnected || p.isAi || p.id === session?.playerId);
   const me = players.find((p) => p.id === session?.playerId);
   const isHost = me?.isHost ?? session?.isHost ?? false;
+  const blueprintCleared = account?.clearance?.status === "cleared";
+  const blueprintsEnabled = roomInfo?.gameMode === "custom" && roomInfo?.blueprintPolicy !== "none";
   const maxPlayers = roomInfo?.maxPlayers ?? 4;
   const canStart = isHost && connectedPlayers.length >= 2;
   const canAddMore = players.length < maxPlayers;
   const inviteCode = roomInfo?.inviteCode ?? session?.inviteCode ?? "";
+
+  const handleToggleBlueprints = async () => {
+    if (!session || !roomId || !blueprintCleared || roomSettingsUpdating) return;
+    const nextEnabled = !blueprintsEnabled;
+    setRoomSettingsUpdating(true);
+    try {
+      await apiUpdateRoomSettings(roomId, {
+        sessionToken: session.sessionToken,
+        gameMode: nextEnabled ? "custom" : "standard",
+        blueprintPolicy: nextEnabled ? "owned" : "none",
+      });
+      await refetchRoomInfo();
+      toast({
+        title: nextEnabled ? "Blueprints enabled" : "Blueprints disabled",
+        description: nextEnabled
+          ? "This lobby will use each cleared player’s Custom Blueprint loadout."
+          : "This lobby is back to Standard play.",
+      });
+    } catch (err: unknown) {
+      toast({
+        variant: "destructive",
+        title: "Could not update room settings",
+        description: err instanceof Error ? err.message : "Try again in a moment.",
+      });
+    } finally {
+      setRoomSettingsUpdating(false);
+    }
+  };
 
   return (
     <div className="oom-shell h-[100dvh] flex flex-col overflow-hidden">
@@ -336,9 +368,9 @@ export default function Lobby() {
                   </span>
                   <span className="flex items-center gap-1.5">
                     <Crown className="h-3.5 w-3.5 text-amber-300" />
-                    Victory requirement: {roomInfo?.victoryRequirement ?? 20} Eminence
+                    Victory requirement: {roomInfo?.victoryRequirement ?? DEFAULT_VICTORY_REQUIREMENT} Eminence
                   </span>
-                  {roomInfo?.gameMode === "custom" && (
+                  {blueprintsEnabled && (
                     <span className="flex items-center gap-1.5 text-amber-200/80">
                       <ShieldCheck className="h-3.5 w-3.5" />
                       Blueprint Custom · cleared accounts
@@ -526,6 +558,31 @@ export default function Lobby() {
                   </div>
                 )}
               </div>
+              {isHost && blueprintCleared && (
+                <div className="mt-4 rounded-md border border-border/35 bg-secondary/25 px-3 py-3">
+                  <div className="flex items-center justify-between gap-3">
+                    <div className="min-w-0">
+                      <p className="text-sm font-semibold">Enable Blueprints</p>
+                      <p className="mt-0.5 text-[11px] leading-relaxed text-muted-foreground">
+                        Use each cleared player’s Custom loadout in this match.
+                      </p>
+                    </div>
+                    <button
+                      type="button"
+                      role="switch"
+                      aria-checked={blueprintsEnabled}
+                      aria-label="Enable Blueprints"
+                      disabled={roomSettingsUpdating}
+                      onClick={handleToggleBlueprints}
+                      className={`relative h-6 w-11 rounded-full transition-colors focus-visible:outline focus-visible:outline-2 focus-visible:outline-ring shrink-0 disabled:cursor-wait disabled:opacity-70 ${blueprintsEnabled ? "bg-primary" : "bg-muted-foreground/30"}`}
+                    >
+                      <span
+                        className={`absolute top-0.5 left-0.5 h-5 w-5 rounded-full bg-white shadow-sm transition-transform ${blueprintsEnabled ? "translate-x-5" : "translate-x-0"}`}
+                      />
+                    </button>
+                  </div>
+                </div>
+              )}
             </section>
 
             {isHost && canAddMore && (

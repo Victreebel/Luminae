@@ -31,8 +31,6 @@ export interface AntimatterDetonationAnimationProps {
   eminenceReward?: number;
   eminenceTargetSelector?: string | null;
   reducedMotion?: boolean;
-  identityRedacted?: boolean;
-  trapPreludePlayed?: boolean;
   onEminenceImpact?: (amount: number) => void;
   onComplete?: () => void;
 }
@@ -76,8 +74,6 @@ export function AntimatterDetonationAnimation({
   eminenceReward = ANTIMATTER_DETONATION_EMINENCE_REWARD,
   eminenceTargetSelector,
   reducedMotion,
-  identityRedacted = false,
-  trapPreludePlayed = false,
   onEminenceImpact,
   onComplete,
 }: AntimatterDetonationAnimationProps) {
@@ -130,10 +126,7 @@ export function AntimatterDetonationAnimation({
   }, [onComplete, onEminenceImpact]);
 
   useEffect(() => {
-    gameAudio.playAntimatterDetonation({
-      speed,
-      includeTrapTrigger: !trapPreludePlayed,
-    });
+    gameAudio.playAntimatterDetonation({ speed });
     const impactTimer = window.setTimeout(
       () => onEminenceImpactRef.current?.(eminenceReward),
       timing.reward.impactsAt * speed * 1000,
@@ -150,7 +143,6 @@ export function AntimatterDetonationAnimation({
     animKey,
     eminenceReward,
     speed,
-    trapPreludePlayed,
     timing.duration,
     timing.reward.impactsAt,
   ]);
@@ -167,12 +159,11 @@ export function AntimatterDetonationAnimation({
       key={animKey}
       className={`antimatter-detonation antimatter-detonation--${variant}${isReducedMotion ? " antimatter-detonation--reduced" : ""}`}
       role="img"
-      aria-label={`${identityRedacted ? "A sealed protocol marks" : "Secretly marked"} Tier II Artifact ${card.name}, which is annihilated when ${trigger}. ${covenantBroken ? "The broken Covenant also annihilates two of the Forger's Tier I Artifacts. " : ""}${detonatorOwnerName} gains ${eminenceReward} Eminence.`}
+      aria-label={`Secretly marked Tier II Artifact ${card.name} is annihilated when ${trigger}. ${covenantBroken ? "The broken Covenant also annihilates two of the Forger's Tier I Artifacts. " : ""}${detonatorOwnerName} gains ${eminenceReward} Eminence.`}
       data-testid="antimatter-detonation"
       data-visual-variant={variant}
       data-trigger={trigger}
       data-covenant-state={covenantBroken ? "broken" : "intact"}
-      data-identity-redacted={identityRedacted || undefined}
     >
       <motion.div
         className="antimatter-detonation__veil"
@@ -186,27 +177,25 @@ export function AntimatterDetonationAnimation({
       />
 
       <div className="antimatter-detonation__focal" aria-hidden="true">
-        {!identityRedacted && (
-          <motion.div
-            className="antimatter-detonation__device"
-            initial={{ opacity: 0, scale: 1.16, rotate: -3 }}
-            animate={{
-              opacity: [0, 0.78, 0.78, 0],
-              scale: [1.16, 1, 0.94, 0.03],
-              rotate: [-3, 0, 0, 8],
-            }}
-            transition={{
-              delay: seconds(timing.device.revealsAt),
-              duration: seconds(
-                timing.device.vanishesAt - timing.device.revealsAt,
-              ),
-              times: [0, 0.2, 0.84, 1],
-              ease: ["easeOut", "linear", "easeIn"],
-            }}
-          >
-            <img src={DEVICE_ART[variant]} alt="" draggable={false} />
-          </motion.div>
-        )}
+        <motion.div
+          className="antimatter-detonation__device"
+          initial={{ opacity: 0, scale: 1.16, rotate: -3 }}
+          animate={{
+            opacity: [0, 0.78, 0.78, 0],
+            scale: [1.16, 1, 0.94, 0.03],
+            rotate: [-3, 0, 0, 8],
+          }}
+          transition={{
+            delay: seconds(timing.device.revealsAt),
+            duration: seconds(
+              timing.device.vanishesAt - timing.device.revealsAt,
+            ),
+            times: [0, 0.2, 0.84, 1],
+            ease: ["easeOut", "linear", "easeIn"],
+          }}
+        >
+          <img src={DEVICE_ART[variant]} alt="" draggable={false} />
+        </motion.div>
 
         {timing.implosionWaves.map((startsAt, index) => (
           <motion.span

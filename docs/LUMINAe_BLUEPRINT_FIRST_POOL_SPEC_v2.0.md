@@ -65,12 +65,23 @@ has two sustainable uses.
 
 The third use is an explicit Overdrive:
 
-- Intact Covenant: finish the Forge, return all three recipe components to their
-  respective Tier I Archives, and permanently deactivate the Foundry.
-- Broken Covenant: finish the Forge and place the three components in a private
-  recovery group. Each component returns through a separate free normal Forge
-  action. After all three return, the Foundry becomes Active with zero uses and
-  grants no second manifestation reward.
+- Overdrive always completes its discounted Tier II Forge first. It then
+  performs a controlled **Foundry seal** on all three recipe components:
+  operational bonuses are removed, implementations become Archived, active
+  signature interference unwinds, and the pathways enter Foundry-bound Cipher
+  storage. This grants no Singularity.
+- Foundry-bound components share the Encrypted interface but do not consume the
+  ordinary three-card Encrypt capacity. They are not blind/private Archive
+  draws merely because Overdrive stored them.
+- Intact Covenant: the Foundry becomes permanently Spent. Each stored component
+  may be re-Forged through an ordinary paid `forge_reserved_artifact` action.
+- Broken Covenant: the Foundry becomes Recovering. Each stored component uses a
+  separate free `foundry_recovery` Forge action; ordinary paid Forge is rejected
+  while that recovery is available. Restoring all three returns the Foundry to
+  Ready with zero sustainable uses.
+- A restored component regains its permanent bonus and operational
+  Civilization state, and may satisfy other Blueprint recipes. The already
+  manifested Foundry never grants another manifestation reward.
 
 ## Ascension Registry
 
@@ -146,4 +157,3 @@ seat bias, and no more than a two-percentage-point Blueprint win-rate delta.
 Blueprint gameplay, slots, clearance, and competitive access are never sold.
 Only presentation cosmetics may be monetized, with identical timing,
 information, reduced-motion behavior, and gameplay.
-

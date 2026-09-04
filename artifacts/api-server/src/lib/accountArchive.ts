@@ -1,26 +1,20 @@
 import { CARD_MAP, LUMINARIES } from "./gameEngine";
+import { getCardLore } from "./cardLore";
 import {
-  AFFINITY_IDENTITY_ADJECTIVES,
-  ARTIFACT_DEFINITIONS,
   BLUEPRINT_CLEARANCE_REQUIRED_WINS,
-  BLUEPRINT_DEFINITIONS,
-  KARDASHEV_TYPE_LABELS,
-  TECHNOLOGY_LINEAGE_NOUNS,
-  type ArtifactId,
+  CHRONICLE_DEFINITIONS,
+  CHRONICLE_IDS,
   type AccountArchiveArtifact,
+  type AccountArchiveChronicle,
   type AccountArchiveLuminary,
   type AccountArchiveSummary,
   type BlueprintClearanceStatus,
-  type BlueprintId,
-  type CivilizationIdentitySelection,
-  type KardashevType,
-  type LuminaryId,
-  type NaturalAffinityKey,
-  type TechnologyLineage,
+  type ChronicleId,
 } from "@workspace/game-types";
 
 export type {
   AccountArchiveArtifact,
+  AccountArchiveChronicle,
   AccountArchiveLuminary,
   AccountArchiveSummary,
 } from "@workspace/game-types";
@@ -48,18 +42,15 @@ export interface PersistedLuminaryUsage {
   allianceCount: number;
 }
 
-export interface PersistedBlueprintUsage {
-  blueprintId: BlueprintId;
-  manifestationCount: number;
+export interface PersistedChronicleUnlock {
+  chronicleId: string;
+  source: string;
+  unlockedAt: Date;
 }
 
-const EMPTY_IDENTITY: CivilizationIdentitySelection = {
-  lineage: null,
-  affinity: null,
-  signatureArtifactId: null,
-  signatureLuminaryId: null,
-  signatureBlueprintId: null,
-};
+function isChronicleId(value: string): value is ChronicleId {
+  return (CHRONICLE_IDS as readonly string[]).includes(value);
+}
 
 function asRecord(value: unknown): Record<string, unknown> | null {
   return value !== null && typeof value === "object" && !Array.isArray(value)
@@ -82,6 +73,9 @@ function collectPlayerArtifacts(player: Record<string, unknown>, target: Set<str
   ]) {
     for (const cardId of asStringArray(player[field])) target.add(cardId);
   }
+  const civilization = asRecord(player["civilization"]);
+  const artifactHistory = civilization ? asRecord(civilization["artifacts"]) : null;
+  for (const artifactId of Object.keys(artifactHistory ?? {})) target.add(artifactId);
 }
 
 function asUsageCounts(value: unknown): Record<string, number> | null {
@@ -137,59 +131,21 @@ function buildArchiveSummary(
   luminaryAllianceCounts: Map<string, number>,
   luminaryIds: Set<string>,
   vault: AccountArchiveSummary["vault"],
-  identitySelection: CivilizationIdentitySelection = EMPTY_IDENTITY,
-  blueprintManifestations: Map<BlueprintId, number> = new Map(),
-  scaleType: KardashevType = 0,
-  revealedProjectNames: ReadonlySet<string> = new Set(),
+  chronicleUnlocks: PersistedChronicleUnlock[] = [],
 ): AccountArchiveSummary {
   const discovered = [...artifactIds]
     .map((id): AccountArchiveArtifact | null => {
-      const definition = ARTIFACT_DEFINITIONS[id as ArtifactId];
-      if (!definition) return null;
+      const card = CARD_MAP.get(id);
+      if (!card) return null;
+      const lore = getCardLore(id);
       return {
-        id: definition.id,
-        name: definition.name,
-        flavor: definition.flavor,
-        practicalCapability: definition.practicalCapability,
-        mystery: definition.mystery,
-        forms: [...definition.forms],
-        tier: definition.tier,
-        bonusAffinity: definition.bonusAffinity,
-        cost: { ...definition.cost },
-        eminence: definition.eminence,
+        id,
+        name: lore.name,
+        flavor: lore.flavor,
+        tier: card.tier,
+        bonusAffinity: card.bonusAffinity,
+        eminence: card.eminence,
         forgeCount: artifactForgeCounts.get(id) ?? 0,
-        lineage: definition.lineage,
-        builtOn: definition.builtOn.map((artifactId) => {
-          const known = artifactIds.has(artifactId);
-          const related = ARTIFACT_DEFINITIONS[artifactId];
-          return {
-            id: known ? artifactId : null,
-            name: known ? related.name : null,
-            tier: related.tier,
-            known,
-          };
-        }),
-        leadsToward: definition.leadsToward.map((artifactId) => {
-          const known = artifactIds.has(artifactId);
-          const related = ARTIFACT_DEFINITIONS[artifactId];
-          return {
-            id: known ? artifactId : null,
-            name: known ? related.name : null,
-            tier: related.tier,
-            known,
-          };
-        }),
-        projectLeads: definition.projectLeads.map((lead) => {
-          const revealed = revealedProjectNames.has(lead.name);
-          return {
-            name: revealed ? lead.name : null,
-            priority: lead.priority,
-            revealed,
-          };
-        }),
-        blueprintEligibility: Object.values(BLUEPRINT_DEFINITIONS)
-          .filter((blueprint) => blueprint.components.some((component) => component.artifactId === definition.id))
-          .map((blueprint) => blueprint.id),
       };
     })
     .filter((artifact): artifact is AccountArchiveArtifact => artifact !== null)
@@ -227,50 +183,24 @@ function buildArchiveSummary(
     (luminary) => luminary.allianceCount,
     (luminary) => luminary.name,
   );
-  const forgeCountForLineage = new Map<TechnologyLineage, number>();
-  const forgeCountForAffinity = new Map<NaturalAffinityKey, number>();
-  for (const artifact of discovered) {
-    forgeCountForLineage.set(
-      artifact.lineage,
-      (forgeCountForLineage.get(artifact.lineage) ?? 0) + artifact.forgeCount,
-    );
-    forgeCountForAffinity.set(
-      artifact.bonusAffinity,
-      (forgeCountForAffinity.get(artifact.bonusAffinity) ?? 0) + artifact.forgeCount,
-    );
-  }
-  const earnedLineages = [...forgeCountForLineage]
-    .filter(([, count]) => count >= 3)
-    .map(([lineage]) => lineage);
-  const earnedAffinities = [...forgeCountForAffinity]
-    .filter(([, count]) => count >= 5)
-    .map(([affinity]) => affinity);
-  const earnedBlueprintIds = [...blueprintManifestations]
-    .filter(([, count]) => count > 0)
-    .map(([blueprintId]) => blueprintId);
-  const leadingLineage = uniqueUsageLeader(
-    earnedLineages,
-    (lineage) => forgeCountForLineage.get(lineage) ?? 0,
-    (lineage) => lineage,
+  const chronicleUnlockMap = new Map(
+    chronicleUnlocks
+      .filter((entry) => isChronicleId(entry.chronicleId))
+      .map((entry) => [entry.chronicleId, entry]),
   );
-  const leadingAffinity = uniqueUsageLeader(
-    earnedAffinities,
-    (affinity) => forgeCountForAffinity.get(affinity) ?? 0,
-    (affinity) => affinity,
-  );
-  const suggested: CivilizationIdentitySelection = {
-    lineage: leadingLineage ?? null,
-    affinity: leadingAffinity ?? null,
-    signatureArtifactId: signatureArtifact?.id ?? null,
-    signatureLuminaryId: (closestLuminary?.id as LuminaryId | undefined) ?? null,
-    signatureBlueprintId: earnedBlueprintIds.length === 1 ? earnedBlueprintIds[0] : null,
-  };
-  const displayName = identitySelection.lineage && identitySelection.affinity
-    ? `The ${AFFINITY_IDENTITY_ADJECTIVES[identitySelection.affinity]} ${TECHNOLOGY_LINEAGE_NOUNS[identitySelection.lineage]}`
-    : null;
-  const projectEpithet = identitySelection.signatureBlueprintId
-    ? BLUEPRINT_DEFINITIONS[identitySelection.signatureBlueprintId].name
-    : null;
+  const chronicleEntries: AccountArchiveChronicle[] = CHRONICLE_IDS.map((chronicleId) => {
+    const definition = CHRONICLE_DEFINITIONS[chronicleId];
+    const unlock = chronicleUnlockMap.get(chronicleId);
+    return {
+      id: chronicleId,
+      title: definition.title,
+      chapterLabel: definition.chapterLabel,
+      summary: definition.summary,
+      status: unlock ? 'recovered' : 'sealed',
+      unlockedAt: unlock?.unlockedAt.toISOString() ?? null,
+      relatedBlueprintIds: [...definition.relatedBlueprintIds],
+    };
+  });
 
   return {
     artifacts: {
@@ -288,40 +218,23 @@ function buildArchiveSummary(
       totalAlliances: encountered.reduce((sum, luminary) => sum + luminary.allianceCount, 0),
       signatureArtifactId: signatureArtifact?.id ?? null,
       closestLuminaryId: closestLuminary?.id ?? null,
-      selected: {
-        ...identitySelection,
-        displayName,
-        scaleType,
-        scaleLabel: KARDASHEV_TYPE_LABELS[scaleType],
-        projectEpithet,
-      },
-      suggested,
-      options: {
-        lineages: earnedLineages,
-        affinities: earnedAffinities,
-        artifactIds: discovered
-          .filter((artifact) => artifact.forgeCount > 0)
-          .map((artifact) => artifact.id),
-        luminaryIds: encountered
-          .filter((luminary) => luminary.allianceCount > 0)
-          .map((luminary) => luminary.id as LuminaryId),
-        blueprintIds: earnedBlueprintIds,
-      },
     },
     vault,
+    chronicles: {
+      entries: chronicleEntries,
+      recovered: chronicleEntries.filter((entry) => entry.status === 'recovered').length,
+      total: CHRONICLE_IDS.length,
+    },
   };
 }
 
 export function buildAccountArchiveFromPersistedStats(input: {
   artifacts: PersistedArtifactUsage[];
   luminaries: PersistedLuminaryUsage[];
-  blueprints?: PersistedBlueprintUsage[];
+  chronicles?: PersistedChronicleUnlock[];
   qualifyingWins: number;
   clearanceStatus: BlueprintClearanceStatus;
   challengeRoomId: string | null;
-  identitySelection?: CivilizationIdentitySelection;
-  highestKardashevType?: KardashevType;
-  revealedProjectNames?: string[];
 }): AccountArchiveSummary {
   const artifactIds = new Set(
     input.artifacts.filter((entry) => entry.encounterCount > 0).map((entry) => entry.artifactId),
@@ -335,9 +248,6 @@ export function buildAccountArchiveFromPersistedStats(input: {
   const luminaryAllianceCounts = new Map(
     input.luminaries.map((entry) => [entry.luminaryId, entry.allianceCount]),
   );
-  const blueprintManifestations = new Map(
-    (input.blueprints ?? []).map((entry) => [entry.blueprintId, entry.manifestationCount]),
-  );
 
   return buildArchiveSummary(
     artifactForgeCounts,
@@ -345,16 +255,13 @@ export function buildAccountArchiveFromPersistedStats(input: {
     luminaryAllianceCounts,
     luminaryIds,
     {
-      qualifyingWins: Math.min(input.qualifyingWins, BLUEPRINT_VAULT_REQUIRED_WINS),
+      qualifyingWins: input.qualifyingWins,
       requiredWins: BLUEPRINT_VAULT_REQUIRED_WINS,
       unlocked: input.clearanceStatus === "cleared",
       status: input.clearanceStatus,
       challengeRoomId: input.challengeRoomId,
     },
-    input.identitySelection ?? EMPTY_IDENTITY,
-    blueprintManifestations,
-    input.highestKardashevType ?? 0,
-    new Set(input.revealedProjectNames ?? []),
+    input.chronicles ?? [],
   );
 }
 
@@ -402,7 +309,7 @@ export function buildAccountArchive(matches: AccountArchiveMatch[]): AccountArch
     luminaryAllianceCounts,
     luminaryIds,
     {
-      qualifyingWins: Math.min(qualifyingWins, BLUEPRINT_VAULT_REQUIRED_WINS),
+      qualifyingWins,
       requiredWins: BLUEPRINT_VAULT_REQUIRED_WINS,
       unlocked: false,
       status: qualifyingWins >= BLUEPRINT_VAULT_REQUIRED_WINS

@@ -5,7 +5,7 @@ import {
   formatGameState,
   normalizeState,
   parseAiDifficulty,
-  NATURAL_AFFINITY_KEYS,
+  STANDARD_AFFINITY_KEYS,
   LUMINARY_MAP,
 } from "./gameEngine";
 import { chooseAiAction } from "./aiPlayer";
@@ -15,137 +15,11 @@ import { withRoomLock, tryClaimAiRunner, releaseAiRunner } from "./roomLock";
 import { armTurnTimer, updateTurnDeadline } from "./turnTimer";
 import { getOpeningTurnPresentationWaitMs } from "./turnPresentationGate";
 import { completeFinishedGame } from "./finishedGame";
-import {
-  applyBalanceLabRoomRuleset,
-  getBalanceLabMemoryPlayer,
-  getBalanceLabMemoryRoom,
-  getBalanceLabMemoryStateSnapshot,
-  saveBalanceLabMemoryState,
-  type BalanceLabMemoryRoom,
-} from "./balanceLabRooms";
 
 const AI_TURN_DELAY_MS = 2200;
 
 // AI cadence is game pacing, not a proxy for any one client's animation length.
 const easyDelay = (): number => 2800 + Math.random() * 1600;
-
-type AiTurnOutcome =
-  | { kind: "stop"; actionType?: string; difficulty?: ReturnType<typeof parseAiDifficulty> }
-  | { kind: "wait"; delay: number }
-  | { kind: "continue"; actionType?: string; difficulty?: ReturnType<typeof parseAiDifficulty> };
-
-async function runBalanceLabAiTurnLocked(
-  roomId: string,
-  room: BalanceLabMemoryRoom,
-  skipPresentationDelay: boolean,
-): Promise<AiTurnOutcome> {
-  if (room.status !== "playing") return { kind: "stop" };
-  const snapshot = getBalanceLabMemoryStateSnapshot(roomId);
-  if (!snapshot) return { kind: "stop" };
-  const state = normalizeState(snapshot);
-  applyBalanceLabRoomRuleset(roomId, state);
-  if (state.phase === "finished") return { kind: "stop" };
-  if (
-    !!state.pendingTurnTransition ||
-    (state.pendingSummonEvents?.length ?? 0) > 0 ||
-    (state.pendingLuminaryActivationEvents?.length ?? 0) > 0 ||
-    (state.pendingBlueprintManifestationEvents?.length ?? 0) > 0 ||
-    (state.pendingBlueprintDetonationEvents?.length ?? 0) > 0
-  ) {
-    return { kind: "stop" };
-  }
-
-  const currentPlayerId = state.players[state.currentPlayerIndex]?.playerId;
-  if (!currentPlayerId) return { kind: "stop" };
-  const currentPlayer = getBalanceLabMemoryPlayer(roomId, currentPlayerId);
-  if (!currentPlayer?.isAi) return { kind: "stop" };
-
-  const presentationDelay = getOpeningTurnPresentationWaitMs(state);
-  if (!skipPresentationDelay && presentationDelay > 0) {
-    return { kind: "wait", delay: presentationDelay };
-  }
-  const difficulty = parseAiDifficulty(currentPlayer.aiDifficulty ?? "medium");
-  let action: ReturnType<typeof chooseAiAction>;
-  if (
-    state.pendingLuminaryChoice &&
-    state.pendingLuminaryChoice.playerId === currentPlayerId
-  ) {
-    const candidates = [...state.pendingLuminaryChoice.candidates].sort((a, b) => {
-      const left = LUMINARY_MAP.get(a)?.eminence ?? 0;
-      const right = LUMINARY_MAP.get(b)?.eminence ?? 0;
-      return right - left;
-    });
-    action = { type: "choose_luminary_order" as const, orderedIds: candidates };
-  } else {
-    action = chooseAiAction(state, currentPlayerId, difficulty, {
-      allowEncryption: true,
-      strategy: "adaptive",
-    });
-  }
-
-  const expectedVersion = state.version;
-  const result = applyAction(state, currentPlayerId, action);
-  if (!result.success) {
-    logger.warn(
-      { roomId, playerId: currentPlayerId, error: result.error, action },
-      "Balance-lab AI action failed, attempting fallback",
-    );
-    let recovered = false;
-    for (const color of NATURAL_AFFINITY_KEYS) {
-      if (state.affinityWell[color] <= 0) continue;
-      const fallback = applyAction(state, currentPlayerId, {
-        type: "harness_three_affinities",
-        affinities: { [color]: 1 },
-      });
-      if (fallback.success) {
-        recovered = true;
-        break;
-      }
-    }
-    if (!recovered) return { kind: "stop" };
-  }
-
-  updateTurnDeadline(state);
-  if (!saveBalanceLabMemoryState(roomId, state, expectedVersion)) {
-    return { kind: "continue", difficulty };
-  }
-  const isFinished = (state.phase as string) === "finished";
-  if (isFinished) await completeFinishedGame(roomId, state);
-
-  const connectedIds = getConnectedPlayerIds(roomId);
-  for (const player of room.players) {
-    if (player.isAi) connectedIds.add(player.id);
-  }
-  const avatarMap = new Map<string, string | null>(
-    room.players.map((player) => [player.id, player.avatarId]),
-  );
-  const aiMap = new Map(
-    room.players.map((player) => [player.id, {
-      isAi: player.isAi,
-      aiDifficulty: player.aiDifficulty,
-    }]),
-  );
-  const formatted = formatGameState(
-    roomId,
-    isFinished ? "finished" : "playing",
-    state,
-    connectedIds,
-    avatarMap,
-    aiMap,
-    null,
-  );
-  for (const player of room.players) {
-    if (player.isAi) continue;
-    sendToPlayer(roomId, player.id, {
-      type: "state_update",
-      state: filterStateForPlayer(formatted, player.id),
-    });
-  }
-  armTurnTimer(roomId, state);
-  return isFinished
-    ? { kind: "stop", actionType: action.type, difficulty }
-    : { kind: "continue", actionType: action.type, difficulty };
-}
 
 // On server startup, resume AI turns for any rooms where the game is in
 // progress and the current player is an AI (e.g. the server restarted mid-turn).
@@ -192,16 +66,11 @@ export async function recoverStuckAiRooms(): Promise<void> {
 // Run consecutive AI turns until the active player is human or the game ends.
 // Fire-and-forget: runs in the background. At most one runner per room is
 // active at any time (guarded by tryClaimAiRunner).
-export async function runAiTurnsIfNeeded(
-  roomId: string,
-  options: { skipDelays?: boolean } = {},
-): Promise<void> {
+export async function runAiTurnsIfNeeded(roomId: string): Promise<void> {
   if (!tryClaimAiRunner(roomId)) return;
 
   try {
-    if (!options.skipDelays) {
-      await new Promise((resolve) => setTimeout(resolve, AI_TURN_DELAY_MS));
-    }
+    await new Promise((resolve) => setTimeout(resolve, AI_TURN_DELAY_MS));
 
     for (let i = 0; i < 50; i++) {
       // All read-modify-write happens inside the lock so it can't interleave
@@ -209,15 +78,6 @@ export async function runAiTurnsIfNeeded(
       //   { kind: "stop" } — exit loop (game over, human turn, etc.)
       //   { kind: "continue" } — keep playing
       const outcome = await withRoomLock(roomId, async () => {
-        const balanceRoom = getBalanceLabMemoryRoom(roomId);
-        if (balanceRoom) {
-          return runBalanceLabAiTurnLocked(
-            roomId,
-            balanceRoom,
-            options.skipDelays === true,
-          );
-        }
-
         const [room] = await db
           .select()
           .from(roomsTable)
@@ -233,7 +93,6 @@ export async function runAiTurnsIfNeeded(
         if (!gs) return { kind: "stop" as const };
 
         const state = normalizeState(gs.state);
-        applyBalanceLabRoomRuleset(roomId, state);
         if ((state.phase as string) === "finished") return { kind: "stop" as const };
 
         // The engine owns one durable resolution barrier across arrivals,
@@ -241,6 +100,9 @@ export async function runAiTurnsIfNeeded(
         // re-invoked after each acknowledgement and may act only once the
         // transition has fully released the incoming turn.
         if (
+          state.traceScenario?.phase === "awaiting_guidance" ||
+          state.recurrenceScenario?.phase === "awaiting_custody" ||
+          state.triangulationScenario?.phase === "awaiting_alignment" ||
           !!state.pendingTurnTransition ||
           (state.pendingSummonEvents?.length ?? 0) > 0 ||
           (state.pendingLuminaryActivationEvents?.length ?? 0) > 0 ||
@@ -343,9 +205,7 @@ export async function runAiTurnsIfNeeded(
           return { kind: "continue" as const, delay: AI_TURN_DELAY_MS };
         }
 
-        const action = chooseAiAction(state, currentPlayerId, difficulty, {
-          allowEncryption: room.scenarioId !== "blueprint_clearance_lumii",
-        });
+        const action = chooseAiAction(state, currentPlayerId, difficulty);
 
         const expectedVersion = state.version;
         const result = applyAction(state, currentPlayerId, action);
@@ -355,7 +215,7 @@ export async function runAiTurnsIfNeeded(
             "AI action failed, attempting fallback",
           );
           let recovered = false;
-          for (const color of NATURAL_AFFINITY_KEYS) {
+          for (const color of STANDARD_AFFINITY_KEYS) {
             if (state.affinityWell[color] > 0) {
               const fallback = applyAction(state, currentPlayerId, {
                 type: "harness_three_affinities",
@@ -447,24 +307,17 @@ export async function runAiTurnsIfNeeded(
 
       if (outcome.kind === "stop") return;
       if (outcome.kind === "wait") {
-        if (!options.skipDelays) {
-          await new Promise((resolve) => setTimeout(resolve, outcome.delay));
-        }
+        await new Promise((resolve) => setTimeout(resolve, outcome.delay));
         continue;
       }
 
-      const outcomeDifficulty = "difficulty" in outcome
-        ? outcome.difficulty
-        : undefined;
       const betweenDelay =
-        outcomeDifficulty === "passive"
+        outcome.difficulty === "passive"
           ? 400
-          : outcomeDifficulty === "easy"
+          : outcome.difficulty === "easy"
             ? easyDelay()
             : AI_TURN_DELAY_MS;
-      if (!options.skipDelays) {
-        await new Promise((resolve) => setTimeout(resolve, betweenDelay));
-      }
+      await new Promise((resolve) => setTimeout(resolve, betweenDelay));
     }
   } catch (err) {
     logger.error({ err, roomId }, "Error in AI turn runner");

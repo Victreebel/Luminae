@@ -31,16 +31,14 @@ export function getPlannedActionSummary(
     case 'forge_artifact':
     case 'forge_reserved_artifact': {
       const card = allCards.find((candidate) => candidate.id === action.cardId);
-      const source = action.luminaryId === 'lum_tide' ? ' from Archive' : '';
+      const source = action.blueprintAction === 'foundry_overdrive'
+        ? ' with Foundry Overdrive'
+        : action.blueprintAction === 'foundry_sustainable'
+          ? ' with Foundry Forge'
+          : action.luminaryId === 'lum_tide'
+            ? ' from Archive'
+            : '';
       return card ? `Forge "${card.name}"${source}` : `Forge Artifact${source}`;
-    }
-    case 'foundry_forge_artifact': {
-      const card = allCards.find((candidate) => candidate.id === action.cardId);
-      return card ? `Foundry Forge "${card.name}"` : 'Foundry Forge Artifact';
-    }
-    case 'recover_foundry_component': {
-      const card = player?.forgedArtifacts.find((candidate) => candidate.id === action.cardId);
-      return card ? `Recover "${card.name}"` : 'Recover Foundry component';
     }
     case 'reserve_artifact': {
       if (action.cardId) {

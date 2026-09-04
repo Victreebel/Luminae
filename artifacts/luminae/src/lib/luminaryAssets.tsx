@@ -1,13 +1,21 @@
-import React, { useCallback, useEffect, useLayoutEffect, useRef, useState } from 'react';
+import React, { useEffect, useLayoutEffect, useRef, useState } from 'react';
 import { createPortal } from 'react-dom';
 import { useFocusTrap } from '@/hooks/use-focus-trap';
 import { motion, AnimatePresence, useReducedMotion } from 'framer-motion';
 import { useIsMobile } from '@/hooks/use-mobile';
 import { useRuntimePerformanceState } from './runtimePerformance';
 import cardTier3Bg from '@assets/generated_images/card_tier3.png';
-import { ARRIVAL_CUTSCENE_BEATS_MS, gameAudio } from './audio';
+import {
+  ARRIVAL_CUTSCENE_BEATS_MS,
+  LUMINARY_SWEEP_IN_BEATS_MS,
+  gameAudio,
+} from './audio';
 import { KNOWN_AURA_STYLES } from '@workspace/game-types';
-import type { AuraStyle, LuminaryId } from '@workspace/game-types';
+import type {
+  AuraStyle,
+  LuminaryArrivalSoundVariant,
+  LuminaryId,
+} from '@workspace/game-types';
 import { BOARD_CARD_W, BOARD_CARD_H } from './constants';
 import { LUMINARY_RUNTIME_ART } from './luminaryArtManifest';
 export { BOARD_CARD_W, BOARD_CARD_H };
@@ -56,9 +64,9 @@ interface LuminaryVisuals {
 }
 
 // ─── Illustrated Asset Discovery ──────────────────────────────────────────────
-// Production loads only the bounded textures listed in luminaryArtManifest.ts.
-// Missing slots fall back to the panel texture or procedural SVG art without
-// pulling full-resolution source images into the runtime bundle.
+// Vite scans the luminaries asset folder at build time using import.meta.glob.
+// Files that do not exist simply won't appear in the map — no crash, no error.
+// Missing slots fall back to the procedural SVG art automatically.
 //
 // ─── HOW TO ADD REAL ILLUSTRATED ASSETS ──────────────────────────────────────
 // Drop files into:
@@ -81,13 +89,12 @@ interface LuminaryVisuals {
 //
 // Supported formats: .webp (preferred), .png, .jpg
 //
-// All 17 Luminary IDs:
+// All 12 Luminary IDs:
 //   lum_ember   lum_tide    lum_verdant lum_void    lum_radiant lum_astral
 //   lum_forge   lum_pale    lum_bloom   lum_compass lum_oracle  lum_null
-//   lum_hunger  lum_moth    lum_seed    lum_orchard lum_scholar
 //
-// Before publication, create bounded panel_runtime, entity_runtime, and
-// cinematic textures as appropriate, then add them to luminaryArtManifest.ts.
+// No code changes are needed after dropping files — the glob picks them up on
+// the next build / Vite HMR reload automatically.
 // ─────────────────────────────────────────────────────────────────────────────
 
 // ─── Illustrated Asset Allow-list ─────────────────────────────────────────────
@@ -97,7 +104,7 @@ interface LuminaryVisuals {
 // Update this list when a new panel passes the panel hard-rules review and is
 // accepted for publication. Panels pending regeneration must NOT be added here.
 //
-// Accepted panels (17):
+// Accepted panels (14):
 //   lum_ember   — accepted (gold standard)
 //   lum_forge   — accepted (gold standard)
 //   lum_verdant — accepted (gold standard)
@@ -1425,6 +1432,7 @@ interface LuminaryArrivalCutsceneProps {
   cardRect?: { cx: number; cy: number; w: number };
   boardSnapshot?: ArrivalBoardSnapshot;
   cinematicMode?: 'standard' | 'epic';
+  arrivalSound?: LuminaryArrivalSoundVariant;
   onComplete: () => void;
   onFlash?: () => void;
   onSkip?: () => void;
@@ -2666,6 +2674,7 @@ function LuminaryArrivalCutsceneCanvas({
   cardRect,
   boardSnapshot,
   cinematicMode,
+  arrivalSound = 'standard',
   onComplete,
   onFlash,
   onSkip,
@@ -3106,8 +3115,8 @@ function LuminaryArrivalCutsceneCanvas({
       ctx.fillRect(0, 0, w, h);
     }
 
-    const swingStart = CANVAS_ARRIVAL_TIMES.shattering + 0.18;
-    const swingEnd = CANVAS_ARRIVAL_TIMES.revealed + 0.62;
+    const swingStart = LUMINARY_SWEEP_IN_BEATS_MS.start / 1000;
+    const swingEnd = LUMINARY_SWEEP_IN_BEATS_MS.settle / 1000;
     const swingLinear = clamp01((t - swingStart) / (swingEnd - swingStart));
     const swingProgress = swingLinear * 0.16 + easeInOutSine(swingLinear) * 0.84;
     const shadow = t < CANVAS_ARRIVAL_TIMES.revealed ? Math.min(0.92, swingProgress) : 1;
@@ -3525,7 +3534,7 @@ function LuminaryArrivalCutsceneCanvas({
     fadeStartRef.current = null;
     setAwaitingDismiss(false);
     setIsFinishing(false);
-    gameAudio.playArrivalCutscene(auraStyle);
+    gameAudio.playArrivalCutscene(auraStyle, arrivalSound);
     startRef.current = performance.now();
     lastDrawRef.current = 0;
     const resize = () => redrawRef.current?.();
@@ -3683,6 +3692,7 @@ function LuminaryArrivalCutscenePerformance({
   effectName,
   claimedBy,
   cardRect,
+  arrivalSound = 'standard',
   onComplete,
   onSkip,
   overrideColor,
@@ -3696,7 +3706,7 @@ function LuminaryArrivalCutscenePerformance({
   useEffect(() => { onCompleteRef.current = onComplete; }, [onComplete]);
 
   const vis = getLuminaryVisuals(luminaryId);
-  const { primaryColor: visPrimaryColor, secondaryColor, glowColor, EntityArt } = vis;
+  const { primaryColor: visPrimaryColor, secondaryColor, glowColor, EntityArt, auraStyle } = vis;
   const primaryColor = (overrideColor && overrideColor.startsWith('#') && overrideColor.length >= 7)
     ? overrideColor
     : visPrimaryColor;
@@ -3734,7 +3744,9 @@ function LuminaryArrivalCutscenePerformance({
       setTimeout(() => setPhase('crack'), 420),
       setTimeout(() => {
         setPhase('flash');
-        gameAudio.playLuminaryFanfare(primaryColor);
+        if (arrivalSound !== 'first_resonance') {
+          gameAudio.playLuminaryFanfare(primaryColor);
+        }
       }, 1080),
       setTimeout(() => setPhase('reveal'), 1320),
       setTimeout(() => setAwaitingDismiss(true), 2320),
@@ -3743,7 +3755,14 @@ function LuminaryArrivalCutscenePerformance({
       timersRef.current.forEach(clearTimeout);
       timersRef.current = [];
       gameAudio.stopActivationSting();
+      if (arrivalSound === 'first_resonance') gameAudio.stopArrivalCutscene();
     };
+  }, []); // eslint-disable-line react-hooks/exhaustive-deps
+
+  useEffect(() => {
+    if (arrivalSound === 'first_resonance') {
+      gameAudio.playArrivalCutscene(auraStyle, arrivalSound);
+    }
   }, []); // eslint-disable-line react-hooks/exhaustive-deps
 
   const showVessel = phase === 'forming' || phase === 'crack';
@@ -3924,6 +3943,7 @@ function LuminaryArrivalCutsceneFull({
   onFlash,
   onSkip,
   overrideColor,
+  arrivalSound = 'standard',
 }: LuminaryArrivalCutsceneProps) {
   const [phase, setPhase] = useState<CutscenePhase>('establish');
   // True once the cutscene reaches the fully-revealed phase and lingers,
@@ -3973,7 +3993,7 @@ function LuminaryArrivalCutsceneFull({
   useEffect(() => { onFlashRef.current = onFlash; }, [onFlash]);
   const onCompleteRef = useRef(onComplete);
   useEffect(() => { onCompleteRef.current = onComplete; }, [onComplete]);
-  const logArrivalCutsceneDebug = useCallback((stage: string, detail: Record<string, unknown> = {}) => {
+  const logArrivalCutsceneDebug = (stage: string, detail: Record<string, unknown> = {}) => {
     if (typeof window === 'undefined') return;
     const debugParams = new URLSearchParams(window.location.search);
     if (debugParams.get('debugArrival') !== '1' && debugParams.get('debugCutscene') !== '1') return;
@@ -3983,14 +4003,10 @@ function LuminaryArrivalCutsceneFull({
       luminaryName,
       ...detail,
     })}`);
-  }, [luminaryId, luminaryName]);
-  const logArrivalCutsceneDebugRef = useRef(logArrivalCutsceneDebug);
-  useEffect(() => {
-    logArrivalCutsceneDebugRef.current = logArrivalCutsceneDebug;
-  }, [logArrivalCutsceneDebug]);
+  };
 
   useEffect(() => {
-    logArrivalCutsceneDebugRef.current('mount', {
+    logArrivalCutsceneDebug('mount', {
       domain,
       eminence,
       claimedBy,
@@ -4003,7 +4019,7 @@ function LuminaryArrivalCutsceneFull({
       },
     });
     return () => {
-      logArrivalCutsceneDebugRef.current('unmount');
+      logArrivalCutsceneDebug('unmount');
     };
   }, []); // eslint-disable-line react-hooks/exhaustive-deps
 
@@ -4012,13 +4028,13 @@ function LuminaryArrivalCutsceneFull({
       phase,
       awaitingDismiss,
     });
-  }, [phase, awaitingDismiss, logArrivalCutsceneDebug]);
+  }, [phase, awaitingDismiss, luminaryId, luminaryName]);
 
   // Fire all cutscene sound effects pre-scheduled against AudioContext time.
   // Runs exactly once on mount; respects the user's mute setting internally.
   // auraStyle is stable for the lifetime of this component (derived from luminaryId).
   useEffect(() => {
-    gameAudio.playArrivalCutscene(auraStyle);
+    gameAudio.playArrivalCutscene(auraStyle, arrivalSound);
   }, []); // eslint-disable-line react-hooks/exhaustive-deps
 
   // Phase timer chain — empty dep array: runs exactly once on mount.
@@ -4030,7 +4046,7 @@ function LuminaryArrivalCutsceneFull({
       idx++;
       const next = PHASES[idx] ?? 'done';
       setPhase(next);
-      logArrivalCutsceneDebugRef.current('advance', { next });
+      logArrivalCutsceneDebug('advance', { next });
       if (next === 'flashing') onFlashRef.current?.();
 
       if (next === 'revealed') {
@@ -4039,7 +4055,7 @@ function LuminaryArrivalCutsceneFull({
         setAwaitingDismiss(true);
         dismissRef.current = () => {
           if (cancelled || !dismissRef.current) return;
-          logArrivalCutsceneDebugRef.current('dismiss');
+          logArrivalCutsceneDebug('dismiss');
           dismissRef.current = null; // guard against double-fire
           setAwaitingDismiss(false);
           advance(); // advances idx → fading, then done
@@ -4049,7 +4065,7 @@ function LuminaryArrivalCutsceneFull({
 
       if (next !== 'done') setTimeout(advance, PHASE_DURATIONS[next]);
       else setTimeout(() => {
-        logArrivalCutsceneDebugRef.current('complete');
+        logArrivalCutsceneDebug('complete');
         onCompleteRef.current();
       }, 80);
     }

@@ -22,11 +22,13 @@ tags:
   - name: blueprints
     description: Blueprint clearance, ownership, and loadouts
   - name: store
-    description: Cosmetic catalog and loadouts
-  - name: architect-record
-    description: First-contact continuity and sealed Archive progression
+    description: Store catalog, Lume purchases, and cosmetic loadouts
+  - name: moderation
+    description: Player safety and moderation operations
   - name: telemetry
-    description: Allowlisted first-party product events
+    description: Privacy-preserving first-party operational telemetry
+  - name: operations
+    description: Restricted production operations
 
 paths:
   /cards/lore:
@@ -128,10 +130,7 @@ paths:
     post:
       operationId: rejoinRoom
       tags: [rooms]
-      summary: Securely rotate an existing player's game session
-      security:
-        - accountToken: []
-        - {}
+      summary: Reclaim an existing player slot in a room (works in any status)
       parameters:
         - name: roomId
           in: path
@@ -424,12 +423,10 @@ paths:
                 $ref: "#/components/schemas/GetMeResponse"
         "401":
           description: Unauthorized
-
-  /auth/me/civilization-identity:
-    put:
-      operationId: updateCivilizationIdentity
+    delete:
+      operationId: deleteMyAccount
       tags: [auth]
-      summary: Confirm the account's earned public civilization identity
+      summary: Schedule authenticated account deletion after a seven-day safety period
       security:
         - accountToken: []
       requestBody:
@@ -437,123 +434,176 @@ paths:
         content:
           application/json:
             schema:
-              $ref: "#/components/schemas/CivilizationIdentitySelection"
-      responses:
-        "200":
-          description: Confirmed civilization identity
-          content:
-            application/json:
-              schema:
-                $ref: "#/components/schemas/CivilizationIdentityUpdateResponse"
-        "400":
-          description: Invalid identity selection
-        "403":
-          description: One or more identity choices have not been earned
-
-  /campaigns/architect-record:
-    get:
-      operationId: getArchitectRecord
-      tags: [architect-record]
-      summary: Fetch the account's redacted Architect Record
-      security:
-        - accountToken: []
-      responses:
-        "200":
-          description: Redacted Architect Record state
-          content:
-            application/json:
-              schema:
-                $ref: "#/components/schemas/ArchitectRecordState"
-
-  /campaigns/architect-record/onboarding-claim:
-    post:
-      operationId: claimArchitectRecordOnboarding
-      tags: [architect-record]
-      summary: Idempotently claim a completed first-contact tutorial
-      security:
-        - accountToken: []
-      requestBody:
-        required: true
-        content:
-          application/json:
-            schema:
-              $ref: "#/components/schemas/OnboardingClaimBody"
-      responses:
-        "200":
-          description: Updated Architect Record state
-          content:
-            application/json:
-              schema:
-                $ref: "#/components/schemas/ArchitectRecordState"
-
-  /campaigns/architect-record/presentations/{presentationId}/acknowledge:
-    post:
-      operationId: acknowledgeArchitectRecordPresentation
-      tags: [architect-record]
-      summary: Idempotently acknowledge a saved Architect Record presentation
-      security:
-        - accountToken: []
-      parameters:
-        - name: presentationId
-          in: path
-          required: true
-          schema:
-            type: string
-      responses:
-        "200":
-          description: Presentation acknowledged
-          content:
-            application/json:
-              schema:
-                type: object
-                properties:
-                  ok:
-                    type: boolean
-                required: [ok]
-
-  /campaigns/architect-record/qualifying-match:
-    post:
-      operationId: createOrResumeQualifyingMatch
-      tags: [architect-record]
-      summary: Create or resume a standard 15-Eminence match against three Hard AIs
-      security:
-        - accountToken: []
-      responses:
-        "200":
-          description: Existing qualifying match resumed
-          content:
-            application/json:
-              schema:
-                $ref: "#/components/schemas/QualifyingMatchSession"
-        "201":
-          description: New qualifying match created
-          content:
-            application/json:
-              schema:
-                $ref: "#/components/schemas/QualifyingMatchSession"
-
-  /events/first-party:
-    post:
-      operationId: recordFirstPartyEvent
-      tags: [telemetry]
-      summary: Accept an allowlisted event with fixed, non-personal dimensions
-      requestBody:
-        required: true
-        content:
-          application/json:
-            schema:
-              $ref: "#/components/schemas/FirstPartyEventBody"
+              $ref: "#/components/schemas/DeleteAccountBody"
       responses:
         "202":
-          description: Event accepted
+          description: Account deletion scheduled and active sessions invalidated
           content:
             application/json:
               schema:
-                type: object
-                properties:
-                  accepted:
-                    type: boolean
-                required: [accepted]
+                $ref: "#/components/schemas/AccountDeletionResult"
+        "401":
+          description: Password confirmation failed
+
+  /store:
+    get:
+      operationId: getStore
+      tags: [store]
+      summary: Get the account-visible store, Lume packs, ownership, and balance
+      security:
+        - accountToken: []
+      responses:
+        "200":
+          description: Owner-private store state
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/StoreResponse"
+
+  /store/lume/purchases/verify:
+    post:
+      operationId: verifyNativeLumePurchase
+      tags: [store]
+      summary: Verify a Google Play or Samsung IAP purchase before crediting Lume
+      security:
+        - accountToken: []
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: "#/components/schemas/NativePurchaseBody"
+      responses:
+        "200":
+          description: Purchase credited, already credited, or awaiting provider settlement
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/NativePurchaseResult"
+        "202":
+          description: Provider reports the purchase as pending
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/NativePurchaseResult"
+        "400":
+          description: Invalid purchase proof
+        "403":
+          description: Purchase belongs to another account
+
+  /store/lume/purchases/reconcile:
+    post:
+      operationId: reconcileNativeLumePurchase
+      tags: [operations, store]
+      summary: Reconcile a provider purchase, settlement, cancellation, or refund
+      security:
+        - operationsToken: []
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: "#/components/schemas/ReconcileNativePurchaseBody"
+      responses:
+        "200":
+          description: Purchase reconciliation completed idempotently
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/NativePurchaseReconciliationResult"
+        "401":
+          description: Operations authorization required
+        "404":
+          description: Purchase record not found
+
+  /moderation/block:
+    post:
+      operationId: setPlayerBlocked
+      tags: [moderation]
+      summary: Block or unblock an account represented by a player in a shared room
+      security:
+        - accountToken: []
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: "#/components/schemas/ModerationBlockBody"
+      responses:
+        "200":
+          description: Block state updated
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/ModerationBlockResult"
+        "404":
+          description: Player is unavailable for moderation
+
+  /moderation/report:
+    post:
+      operationId: reportPlayer
+      tags: [moderation]
+      summary: Create an auditable moderation report for a player in a shared room
+      security:
+        - accountToken: []
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: "#/components/schemas/ModerationReportBody"
+      responses:
+        "201":
+          description: Moderation report created
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/ModerationReportResult"
+        "404":
+          description: Player is unavailable for moderation
+
+  /telemetry/events:
+    post:
+      operationId: submitTelemetryEvents
+      tags: [telemetry]
+      summary: Submit a bounded batch of first-party reliability and progression events
+      security:
+        - accountToken: []
+        - {}
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: "#/components/schemas/TelemetryBatch"
+      responses:
+        "202":
+          description: Valid in-window events accepted
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/TelemetryAcceptedResult"
+        "400":
+          description: Invalid telemetry batch
+
+  /ops/health:
+    get:
+      operationId: getOperationsHealth
+      tags: [operations]
+      summary: Check database and WebSocket health for production monitoring
+      security:
+        - operationsToken: []
+      responses:
+        "200":
+          description: Service and dependencies healthy
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/OperationsHealthResult"
+        "404":
+          description: Operations endpoint unavailable without authorization
+        "503":
+          description: A required dependency is degraded
 
   /blueprints/vault:
     get:
@@ -688,6 +738,83 @@ paths:
                 required:
                   - ok
 
+  /chronicles/progress:
+    get:
+      operationId: getChronicleCampaignProgress
+      tags: [chronicles]
+      summary: Read account-private Chronicle campaign progress
+      security:
+        - accountToken: []
+      responses:
+        "200":
+          description: Chronicle campaign progress
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/CampaignProgressProjection"
+
+  /chronicles/trace/start:
+    post:
+      operationId: startTraceChronicle
+      tags: [chronicles]
+      summary: Idempotently start or resume The Trace
+      security:
+        - accountToken: []
+      responses:
+        "200":
+          description: Existing Chronicle resumed
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/TraceChronicleSession"
+        "201":
+          description: New Chronicle created
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/TraceChronicleSession"
+
+  /chronicles/recurrence/start:
+    post:
+      operationId: startRecurrenceChronicle
+      tags: [chronicles]
+      summary: Idempotently start or resume The Recurrence
+      security:
+        - accountToken: []
+      responses:
+        "200":
+          description: Existing Chronicle resumed
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/RecurrenceChronicleSession"
+        "201":
+          description: New Chronicle created
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/RecurrenceChronicleSession"
+
+  /chronicles/triangulation/start:
+    post:
+      operationId: startTriangulationChronicle
+      tags: [chronicles]
+      summary: Idempotently start or resume The Triangulation
+      security:
+        - accountToken: []
+      responses:
+        "200":
+          description: Existing Chronicle resumed
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/TriangulationChronicleSession"
+        "201":
+          description: New Chronicle created
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/TriangulationChronicleSession"
   /blueprints/loadouts/{mode}:
     put:
       operationId: updateBlueprintLoadout
@@ -940,6 +1067,10 @@ components:
     accountToken:
       type: http
       scheme: bearer
+    operationsToken:
+      type: http
+      scheme: bearer
+      description: Dedicated operations or purchase-reconciliation secret
   schemas:
     CardLoreEntry:
       type: object
@@ -950,9 +1081,7 @@ components:
           type: string
         artifactForm:
           type: string
-        blueprintRole:
-          type: string
-        blueprintFamilies:
+        practicalCapability:
           type: string
         civLane:
           type: string
@@ -962,6 +1091,16 @@ components:
             - Planetary
             - Star-system
             - Galactic
+        depictionScale:
+          type: string
+          enum:
+            - macro
+            - tabletop
+            - room
+            - installation
+            - planetary
+            - stellar
+            - galactic
         artPrompt:
           type: string
       required:
@@ -1072,8 +1211,12 @@ components:
           anyOf:
             - $ref: "#/components/schemas/LumiiThresholdDialogueResolution"
             - type: "null"
+        thresholdRuptured:
+          type: boolean
         covenantBroken:
           type: boolean
+          deprecated: true
+          description: Compatibility alias for thresholdRuptured.
         decryptionKeyBypassActive:
           type: boolean
         revealPending:
@@ -1087,6 +1230,7 @@ components:
         - thresholdApproach
         - thresholdDialoguePath
         - thresholdDialogueResolution
+        - thresholdRuptured
         - covenantBroken
         - decryptionKeyBypassActive
         - revealPending
@@ -1116,30 +1260,6 @@ components:
         - dominion-cipher
         - dominion-stand
         - dominion-stop
-        - kinship-universe
-        - kinship-difference
-        - kinship-stop-why
-        - kinship-unafraid
-        - kinship-fear-change
-        - kinship-guide
-        - kinship-familiar-how
-        - kinship-light-why
-        - inquiry-demand-answer
-        - inquiry-demand-unsayable
-        - inquiry-meaning
-        - inquiry-warning-against-truth
-        - inquiry-preservation
-        - inquiry-sight
-        - inquiry-relation-pattern
-        - dominion-decision
-        - dominion-recognize
-        - dominion-cipher-authority
-        - dominion-refusal-authority
-        - dominion-choice-why
-        - dominion-choice-fear
-        - dominion-choice-enough
-        - dominion-command
-        - dominion-final-answer
 
     LumiiThresholdDialogueResolution:
       type: string
@@ -1171,7 +1291,7 @@ components:
               enum: [record_dialogue_path]
             path:
               type: array
-              maxItems: 4
+              maxItems: 3
               items:
                 $ref: "#/components/schemas/LumiiThresholdDialogueChoiceId"
           required:
@@ -1254,13 +1374,7 @@ components:
       properties:
         slot:
           type: string
-          enum:
-            [
-              card_back,
-              civilization_ambience,
-              blueprint_presentation,
-              vault_seal,
-            ]
+          enum: [card_back, civilization_ambience, luminary_arrival_sound, blueprint_presentation, vault_seal]
         scopeKey:
           type: string
         itemId:
@@ -1300,20 +1414,6 @@ components:
             $ref: "#/components/schemas/BlueprintComponentDefinition"
         publicEffect:
           type: string
-        brokenEffect:
-          type: string
-        intactSafeguard:
-          type: string
-        projectForm:
-          type: string
-          enum: [device, infrastructure, network, institution, organism]
-        projectScale:
-          type: string
-          enum: [planetary, stellar, galactic, transcendent]
-        manifestationEminence:
-          type: integer
-        initialProjectState:
-          $ref: "#/components/schemas/BlueprintDeviceState"
         initialDeviceState:
           $ref: "#/components/schemas/BlueprintDeviceState"
         competitiveApproved:
@@ -1325,7 +1425,7 @@ components:
               type: string
             scaleLabel:
               type: string
-              enum: [Planetary, Stellar, Galactic, Transcendent]
+              enum: [Planetary, Stellar]
             canonicalVariant:
               $ref: "#/components/schemas/BlueprintPresentationVariant"
             manifestationTreatment:
@@ -1340,21 +1440,69 @@ components:
             - canonicalVariant
             - manifestationTreatment
             - detonationTreatment
+        civilization:
+          type: object
+          properties:
+            projectForm:
+              type: string
+            scaleBand:
+              type: string
+              enum: [planetary, stellar, galactic]
+            affinity:
+              type: string
+              enum: [flare, continuum, verdance, abyss, radiance]
+            siteTitle:
+              type: string
+            visibleAs:
+              type: string
+            siteSummary:
+              type: string
+            laneLabel:
+              type: string
+            manifestation:
+              type: string
+              const: automatic
+            triggerWindows:
+              type: array
+              items: { type: string }
+            resolutionForm:
+              type: string
+            pressureTags:
+              type: array
+              items: { type: string }
+            providedCapabilityIds:
+              type: array
+              items: { type: string }
+            interactingCapabilityIds:
+              type: array
+              items: { type: string }
+            consequencePolicyStatus:
+              type: string
+          required:
+            - projectForm
+            - scaleBand
+            - affinity
+            - siteTitle
+            - visibleAs
+            - siteSummary
+            - laneLabel
+            - manifestation
+            - triggerWindows
+            - resolutionForm
+            - pressureTags
+            - providedCapabilityIds
+            - interactingCapabilityIds
+            - consequencePolicyStatus
       required:
         - id
         - name
         - family
         - components
         - publicEffect
-        - brokenEffect
-        - intactSafeguard
-        - projectForm
-        - projectScale
-        - manifestationEminence
-        - initialProjectState
         - initialDeviceState
         - competitiveApproved
         - presentation
+        - civilization
 
     BlueprintLoadout:
       type: object
@@ -1402,152 +1550,6 @@ components:
         - triggers
         - armedMatchFinishes
 
-    FirstContactStance:
-      type: string
-      enum: [curious, guarded, resolute]
-
-    CampaignNodeStatus:
-      type: string
-      enum: [locked, available, active, completed, future]
-
-    CampaignPresentation:
-      type: object
-      additionalProperties: false
-      properties:
-        id:
-          type: string
-        kind:
-          type: string
-          enum: [clearance_signal, clearance_recap]
-        ordinal:
-          type: integer
-        title:
-          type: string
-        lines:
-          type: array
-          items:
-            type: string
-        acknowledgedAt:
-          type: [string, "null"]
-          format: date-time
-      required: [id, kind, ordinal, title, lines, acknowledgedAt]
-
-    CampaignNodeSummary:
-      type: object
-      additionalProperties: false
-      properties:
-        id:
-          type: string
-        title:
-          type: string
-        status:
-          $ref: "#/components/schemas/CampaignNodeStatus"
-        progress:
-          type: integer
-        requiredProgress:
-          type: integer
-      required: [id, title, status, progress, requiredProgress]
-
-    ArchitectRecordState:
-      type: object
-      additionalProperties: false
-      properties:
-        campaignId:
-          type: string
-          enum: [architect_record]
-        tutorialCompleted:
-          type: boolean
-        firstContactStance:
-          anyOf:
-            - $ref: "#/components/schemas/FirstContactStance"
-            - type: "null"
-        nodes:
-          type: array
-          items:
-            $ref: "#/components/schemas/CampaignNodeSummary"
-        presentations:
-          type: array
-          items:
-            $ref: "#/components/schemas/CampaignPresentation"
-        pendingPresentations:
-          type: array
-          items:
-            $ref: "#/components/schemas/CampaignPresentation"
-        vaultShortcutVisible:
-          type: boolean
-      required: [campaignId, tutorialCompleted, firstContactStance, nodes, presentations, pendingPresentations, vaultShortcutVisible]
-
-    OnboardingClaimBody:
-      type: object
-      additionalProperties: false
-      properties:
-        claimId:
-          type: string
-          format: uuid
-        stance:
-          anyOf:
-            - $ref: "#/components/schemas/FirstContactStance"
-            - type: "null"
-      required: [claimId, stance]
-
-    QualifyingMatchSession:
-      type: object
-      additionalProperties: false
-      properties:
-        roomId:
-          type: string
-          format: uuid
-        inviteCode:
-          type: string
-        playerId:
-          type: string
-          format: uuid
-        sessionToken:
-          type: string
-        playerName:
-          type: string
-        resumed:
-          type: boolean
-      required: [roomId, inviteCode, playerId, sessionToken, playerName, resumed]
-
-    FirstPartyEventBody:
-      type: object
-      additionalProperties: false
-      properties:
-        id:
-          type: string
-          format: uuid
-        anonymousSessionId:
-          type: [string, "null"]
-          format: uuid
-        eventName:
-          type: string
-          enum: [tutorial_started, tutorial_resumed, tutorial_restarted, tutorial_left, tutorial_chapter_started, tutorial_chapter_completed, tutorial_invalid_action, tutorial_completed, account_prompt_outcome, guided_practice_started, qualification_milestone, interlude_acknowledged, vault_completed, turn_order_balance_viewed, match_balance_result]
-        chapterId:
-          type: [string, "null"]
-          enum: [arrival, board, actions, ascension, null]
-        beatId:
-          type: [string, "null"]
-          maxLength: 64
-        actionId:
-          type: [string, "null"]
-          enum: [harness, forge, encrypt, forge_reserved, forge_final, help, register, sign_in, dismiss, match_2p_v15, match_2p_v20, match_2p_v25, match_3p_v15, match_3p_v20, match_3p_v25, match_4p_v15, match_4p_v20, match_4p_v25, null]
-        outcome:
-          type: [string, "null"]
-          enum: [allowed, blocked, success, failure, accepted, dismissed, resume, start_over, null]
-        ordinal:
-          type: [integer, "null"]
-          minimum: 0
-          maximum: 100
-        durationMs:
-          type: [integer, "null"]
-          minimum: 0
-          maximum: 86400000
-        occurredAt:
-          type: string
-          format: date-time
-      required: [id, eventName]
-
     BlueprintVaultClearance:
       allOf:
         - $ref: "#/components/schemas/BlueprintClearanceSummary"
@@ -1557,6 +1559,336 @@ components:
               type: boolean
           required:
             - warningSeen
+
+    CampaignContentState:
+      type: string
+      enum: [locked, pending_release, available, completed, rehearsal]
+
+    ChroniclePrimaryOutcomeSummary:
+      type: object
+      properties:
+        chronicleId:
+          type: string
+        definitionVersion:
+          type: integer
+        outcomeId:
+          type: string
+        result:
+          type: string
+          enum: [victory, defeat]
+        roomId:
+          type: ["string", "null"]
+        completedAt:
+          type: string
+        lumeEarned:
+          type: integer
+      required:
+        - chronicleId
+        - definitionVersion
+        - outcomeId
+        - result
+        - roomId
+        - completedAt
+        - lumeEarned
+
+    CampaignChronicleProgress:
+      type: object
+      properties:
+        chronicleId:
+          type: string
+          enum: [chronicle_trace, chronicle_recurrence, chronicle_triangulation]
+        title:
+          type: string
+        state:
+          $ref: "#/components/schemas/CampaignContentState"
+        primary:
+          anyOf:
+            - $ref: "#/components/schemas/ChroniclePrimaryOutcomeSummary"
+            - type: "null"
+        rehearsalCount:
+          type: integer
+        calibrationInsightEarned:
+          type: boolean
+      required:
+        - chronicleId
+        - title
+        - state
+        - primary
+        - rehearsalCount
+        - calibrationInsightEarned
+
+    CampaignProgressProjection:
+      type: object
+      properties:
+        openingChronicles:
+          type: array
+          items:
+            $ref: "#/components/schemas/CampaignChronicleProgress"
+        thresholdAvailable:
+          type: boolean
+        completedPrimaryCount:
+          type: integer
+        calibrationInsightCount:
+          type: integer
+      required:
+        - openingChronicles
+        - thresholdAvailable
+        - completedPrimaryCount
+        - calibrationInsightCount
+
+    TraceGuidanceMethod:
+      type: string
+      enum: [expose_all_routes, withhold_alternatives, force_helm_lock]
+
+    TraceScenarioState:
+      type: object
+      properties:
+        chronicleId:
+          type: string
+          enum: [chronicle_trace]
+        scenarioId:
+          type: string
+          enum: [chronicle_trace_v1]
+        definitionVersion:
+          type: integer
+          enum: [1]
+        runKind:
+          type: string
+          enum: [primary, rehearsal]
+        architectPlayerId:
+          type: string
+        autonomousPlayerId:
+          type: string
+        phase:
+          type: string
+          enum: [setup, playing, awaiting_guidance, guidance_resolved, finished]
+        architectCoreActionCount:
+          type: integer
+        guidanceDueAfterCoreActions:
+          type: integer
+        guidanceMethod:
+          anyOf:
+            - $ref: "#/components/schemas/TraceGuidanceMethod"
+            - type: "null"
+        guidanceResolvedAtTurnCount:
+          type: ["integer", "null"]
+        preparednessObjectiveMet:
+          type: boolean
+        preparednessArtifactId:
+          type: ["string", "null"]
+        outcomeId:
+          type: ["string", "null"]
+          enum:
+            - trace_exposed_victory
+            - trace_exposed_defeat
+            - trace_withheld_victory
+            - trace_withheld_defeat
+            - trace_forced_victory
+            - trace_forced_defeat
+            - null
+      required:
+        - chronicleId
+        - scenarioId
+        - definitionVersion
+        - runKind
+        - architectPlayerId
+        - autonomousPlayerId
+        - phase
+        - architectCoreActionCount
+        - guidanceDueAfterCoreActions
+        - guidanceMethod
+        - guidanceResolvedAtTurnCount
+        - preparednessObjectiveMet
+        - preparednessArtifactId
+        - outcomeId
+
+    TraceChronicleSession:
+      type: object
+      properties:
+        roomId:
+          type: string
+        inviteCode:
+          type: string
+        playerId:
+          type: string
+        sessionToken:
+          type: string
+        resumed:
+          type: boolean
+        scenarioId:
+          type: string
+          enum: [chronicle_trace_v1]
+        runKind:
+          type: string
+          enum: [primary, rehearsal]
+      required:
+        - roomId
+        - inviteCode
+        - playerId
+        - sessionToken
+        - resumed
+        - scenarioId
+        - runKind
+
+    RecurrenceCustodyMethod:
+      type: string
+      enum: [publish_complete_index, seal_operational_grammar, establish_dual_custody]
+
+    RecurrenceScenarioState:
+      type: object
+      properties:
+        chronicleId:
+          type: string
+          enum: [chronicle_recurrence]
+        scenarioId:
+          type: string
+          enum: [chronicle_recurrence_v1]
+        definitionVersion:
+          type: integer
+          enum: [1]
+        runKind:
+          type: string
+          enum: [primary, rehearsal]
+        architectPlayerId:
+          type: string
+        autonomousPlayerId:
+          type: string
+        phase:
+          type: string
+          enum: [setup, playing, awaiting_custody, custody_resolved, finished]
+        architectCoreActionCount:
+          type: integer
+        custodyDueAfterCoreActions:
+          type: integer
+        custodyMethod:
+          anyOf:
+            - $ref: "#/components/schemas/RecurrenceCustodyMethod"
+            - type: "null"
+        custodyResolvedAtTurnCount:
+          type: ["integer", "null"]
+        preparednessObjectiveMet:
+          type: boolean
+        preparednessArtifactId:
+          type: ["string", "null"]
+        outcomeId:
+          type: ["string", "null"]
+          enum:
+            - recurrence_published_victory
+            - recurrence_published_defeat
+            - recurrence_sealed_victory
+            - recurrence_sealed_defeat
+            - recurrence_conditional_victory
+            - recurrence_conditional_defeat
+            - null
+      required:
+        - chronicleId
+        - scenarioId
+        - definitionVersion
+        - runKind
+        - architectPlayerId
+        - autonomousPlayerId
+        - phase
+        - architectCoreActionCount
+        - custodyDueAfterCoreActions
+        - custodyMethod
+        - custodyResolvedAtTurnCount
+        - preparednessObjectiveMet
+        - preparednessArtifactId
+        - outcomeId
+
+    RecurrenceChronicleSession:
+      type: object
+      properties:
+        roomId: { type: string }
+        inviteCode: { type: string }
+        playerId: { type: string }
+        sessionToken: { type: string }
+        resumed: { type: boolean }
+        scenarioId:
+          type: string
+          enum: [chronicle_recurrence_v1]
+        runKind:
+          type: string
+          enum: [primary, rehearsal]
+      required: [roomId, inviteCode, playerId, sessionToken, resumed, scenarioId, runKind]
+
+    TriangulationCoordinationArchitecture:
+      type: string
+      enum: [preserve_independent_frames, establish_unowned_measure, instantiate_composite_mind]
+
+    TriangulationScenarioState:
+      type: object
+      properties:
+        chronicleId: { type: string, enum: [chronicle_triangulation] }
+        scenarioId: { type: string, enum: [chronicle_triangulation_v1] }
+        definitionVersion: { type: integer, enum: [1] }
+        runKind: { type: string, enum: [primary, rehearsal] }
+        architectPlayerId: { type: string }
+        myriaPlayerId: { type: string }
+        vesperPlayerId: { type: string }
+        phase:
+          type: string
+          enum: [setup, playing, awaiting_alignment, alignment_resolved, finished]
+        architectCoreActions: { type: integer }
+        alignmentDueAfterActions: { type: integer }
+        coordinationArchitecture:
+          anyOf:
+            - $ref: "#/components/schemas/TriangulationCoordinationArchitecture"
+            - type: "null"
+        choiceResolvedAtTurn: { type: ["integer", "null"] }
+        preparednessMet: { type: boolean }
+        preparednessCapabilityId: { type: ["string", "null"] }
+        preparednessArtifactId: { type: ["string", "null"] }
+        priorMemoryLines:
+          type: array
+          items: { type: string }
+        referenceCivilization:
+          type: ["string", "null"]
+          enum: [deme, myria, vesper, null]
+        outcomeId:
+          type: ["string", "null"]
+          enum:
+            - triangulation_frames_deme_reference
+            - triangulation_frames_myria_reference
+            - triangulation_frames_vesper_reference
+            - triangulation_measure_deme_reference
+            - triangulation_measure_myria_reference
+            - triangulation_measure_vesper_reference
+            - triangulation_composite_deme_reference
+            - triangulation_composite_myria_reference
+            - triangulation_composite_vesper_reference
+            - null
+      required:
+        - chronicleId
+        - scenarioId
+        - definitionVersion
+        - runKind
+        - architectPlayerId
+        - myriaPlayerId
+        - vesperPlayerId
+        - phase
+        - architectCoreActions
+        - alignmentDueAfterActions
+        - coordinationArchitecture
+        - choiceResolvedAtTurn
+        - preparednessMet
+        - preparednessCapabilityId
+        - preparednessArtifactId
+        - priorMemoryLines
+        - referenceCivilization
+        - outcomeId
+
+    TriangulationChronicleSession:
+      type: object
+      properties:
+        roomId: { type: string }
+        inviteCode: { type: string }
+        playerId: { type: string }
+        sessionToken: { type: string }
+        resumed: { type: boolean }
+        scenarioId: { type: string, enum: [chronicle_triangulation_v1] }
+        runKind: { type: string, enum: [primary, rehearsal] }
+      required: [roomId, inviteCode, playerId, sessionToken, resumed, scenarioId, runKind]
 
     BlueprintVaultResponse:
       type: object
@@ -1591,13 +1923,14 @@ components:
               title:
                 type: string
               status:
-                type: string
-                enum: [locked, available, active, completed, future]
+                $ref: "#/components/schemas/CampaignContentState"
             required:
               - id
               - blueprintId
               - title
               - status
+        campaignProgress:
+          $ref: "#/components/schemas/CampaignProgressProjection"
         loadouts:
           type: array
           items:
@@ -1606,6 +1939,10 @@ components:
           type: array
           items:
             $ref: "#/components/schemas/BlueprintMastery"
+        chronicles:
+          type: array
+          items:
+            $ref: "#/components/schemas/AccountArchiveChronicle"
       required:
         - clearance
         - decryptionKeyAvailable
@@ -1615,8 +1952,38 @@ components:
         - blueprints
         - corruptedRecordCount
         - campaignNodes
+        - campaignProgress
         - loadouts
         - mastery
+        - chronicles
+
+    AccountArchiveChronicle:
+      type: object
+      properties:
+        id:
+          $ref: "#/components/schemas/ChronicleId"
+        title:
+          type: string
+        chapterLabel:
+          type: string
+        summary:
+          type: string
+        status:
+          $ref: "#/components/schemas/ChronicleStatus"
+        unlockedAt:
+          type: ["string", "null"]
+        relatedBlueprintIds:
+          type: array
+          items:
+            $ref: "#/components/schemas/BlueprintId"
+      required:
+        - id
+        - title
+        - chapterLabel
+        - summary
+        - status
+        - unlockedAt
+        - relatedBlueprintIds
 
     BlueprintChallengeSession:
       type: object
@@ -1652,13 +2019,7 @@ components:
       properties:
         slot:
           type: string
-          enum:
-            [
-              card_back,
-              civilization_ambience,
-              blueprint_presentation,
-              vault_seal,
-            ]
+          enum: [card_back, civilization_ambience, luminary_arrival_sound, blueprint_presentation, vault_seal]
         scopeKey:
           type: string
         itemId:
@@ -1680,82 +2041,6 @@ components:
       required:
         - ok
         - equippedItems
-
-    TechnologyLineage:
-      type: string
-      enum:
-        - energy
-        - ecology
-        - causality
-        - transit
-        - memory
-        - infrastructure
-        - concealment
-        - containment
-        - fabrication
-        - accord
-        - reclamation
-        - boundary_science
-
-    NaturalAffinity:
-      type: string
-      enum: [flare, continuum, verdance, abyss, radiance]
-
-    CivilizationIdentitySelection:
-      type: object
-      properties:
-        lineage:
-          anyOf:
-            - $ref: "#/components/schemas/TechnologyLineage"
-            - type: "null"
-        affinity:
-          anyOf:
-            - $ref: "#/components/schemas/NaturalAffinity"
-            - type: "null"
-        signatureArtifactId:
-          type: ["string", "null"]
-        signatureLuminaryId:
-          type: ["string", "null"]
-        signatureBlueprintId:
-          anyOf:
-            - $ref: "#/components/schemas/BlueprintId"
-            - type: "null"
-      required:
-        - lineage
-        - affinity
-        - signatureArtifactId
-        - signatureLuminaryId
-        - signatureBlueprintId
-
-    CivilizationIdentitySummary:
-      allOf:
-        - $ref: "#/components/schemas/CivilizationIdentitySelection"
-        - type: object
-          properties:
-            displayName:
-              type: ["string", "null"]
-            scaleType:
-              type: integer
-              enum: [0, 1, 2, 3]
-            scaleLabel:
-              type: string
-            projectEpithet:
-              type: ["string", "null"]
-          required:
-            - displayName
-            - scaleType
-            - scaleLabel
-            - projectEpithet
-
-    CivilizationIdentityUpdateResponse:
-      type: object
-      properties:
-        ok:
-          type: boolean
-          enum: [true]
-        civilizationIdentity:
-          $ref: "#/components/schemas/CivilizationIdentitySummary"
-      required: [ok, civilizationIdentity]
 
     AccountInfo:
       type: object
@@ -1793,15 +2078,12 @@ components:
           type: array
           items:
             $ref: "#/components/schemas/CosmeticLoadoutItem"
-        civilizationIdentity:
-          $ref: "#/components/schemas/CivilizationIdentitySummary"
       required:
         - id
         - username
         - activeRooms
         - clearance
         - cosmeticLoadout
-        - civilizationIdentity
 
     AccountWithToken:
       type: object
@@ -1812,10 +2094,268 @@ components:
           type: string
         expiresAt:
           type: string
+        deletionCancelled:
+          type: boolean
+          description: True when this login cancelled a pending account-deletion request
       required:
         - account
         - token
         - expiresAt
+
+    DeleteAccountBody:
+      type: object
+      properties:
+        password:
+          type: string
+          minLength: 1
+          maxLength: 200
+      required:
+        - password
+
+    AccountDeletionResult:
+      type: object
+      properties:
+        ok:
+          type: boolean
+          const: true
+        executeAfter:
+          type: string
+          format: date-time
+      required:
+        - ok
+        - executeAfter
+
+    StoreResponse:
+      type: object
+      description: Owner-private catalog, ownership, loadout, Lume packs, and engagement state
+      additionalProperties: true
+
+    NativeStoreProvider:
+      type: string
+      enum: [google_play, samsung_iap]
+
+    LumePackId:
+      type: string
+      enum: [lume_100, lume_300, lume_700]
+
+    NativePurchaseBody:
+      type: object
+      properties:
+        provider:
+          $ref: "#/components/schemas/NativeStoreProvider"
+        packId:
+          $ref: "#/components/schemas/LumePackId"
+        productId:
+          type: string
+          minLength: 1
+          maxLength: 200
+        purchaseToken:
+          type: string
+          minLength: 8
+          maxLength: 4096
+      required:
+        - provider
+        - packId
+        - productId
+        - purchaseToken
+
+    ReconcileNativePurchaseBody:
+      type: object
+      properties:
+        provider:
+          $ref: "#/components/schemas/NativeStoreProvider"
+        purchaseToken:
+          type: string
+          minLength: 8
+          maxLength: 4096
+      required:
+        - provider
+        - purchaseToken
+
+    NativePurchaseResult:
+      type: object
+      properties:
+        status:
+          type: string
+          enum: [pending, credited, already_credited, settlement_pending]
+        provider:
+          $ref: "#/components/schemas/NativeStoreProvider"
+        packId:
+          $ref: "#/components/schemas/LumePackId"
+        lumeAmount:
+          type: integer
+          minimum: 0
+        lumeBalance:
+          type: integer
+      required:
+        - status
+        - provider
+        - packId
+        - lumeAmount
+        - lumeBalance
+
+    NativePurchaseReconciliationResult:
+      type: object
+      properties:
+        status:
+          type: string
+          enum: [settled, pending, cancelled, refunded]
+        lumeBalance:
+          type: integer
+      required:
+        - status
+        - lumeBalance
+
+    ModerationBlockBody:
+      type: object
+      properties:
+        roomId:
+          type: string
+          format: uuid
+        playerId:
+          type: string
+          format: uuid
+        blocked:
+          type: boolean
+      required:
+        - roomId
+        - playerId
+        - blocked
+
+    ModerationBlockResult:
+      type: object
+      properties:
+        ok:
+          type: boolean
+          const: true
+        blocked:
+          type: boolean
+      required:
+        - ok
+        - blocked
+
+    ModerationReportBody:
+      type: object
+      properties:
+        roomId:
+          type: string
+          format: uuid
+        playerId:
+          type: string
+          format: uuid
+        category:
+          type: string
+          enum: [harassment, hate, threat, privacy, spam, other]
+        evidenceText:
+          type: string
+          maxLength: 200
+        evidenceTimestamp:
+          type: string
+          format: date-time
+      required:
+        - roomId
+        - playerId
+        - category
+
+    ModerationReportResult:
+      type: object
+      properties:
+        ok:
+          type: boolean
+          const: true
+        reportId:
+          type: string
+          format: uuid
+      required:
+        - ok
+        - reportId
+
+    TelemetryEvent:
+      type: object
+      properties:
+        sessionId:
+          type: string
+          minLength: 8
+          maxLength: 80
+        eventName:
+          type: string
+          enum:
+            - app_started
+            - client_error
+            - long_frame
+            - ws_disconnect
+            - ws_reconnect
+            - progression_step
+            - chronicle_closed
+            - lumii_outcome
+            - purchase_started
+            - purchase_pending
+            - purchase_completed
+            - purchase_failed
+        platform:
+          type: string
+          enum: [web, android_play, android_galaxy, mac]
+        clientBuild:
+          type: string
+          maxLength: 120
+        detail:
+          type: object
+          additionalProperties:
+            oneOf:
+              - type: string
+                maxLength: 200
+              - type: number
+              - type: boolean
+              - type: "null"
+        occurredAt:
+          type: string
+          format: date-time
+      required:
+        - sessionId
+        - eventName
+        - platform
+        - occurredAt
+
+    TelemetryBatch:
+      type: object
+      properties:
+        events:
+          type: array
+          minItems: 1
+          maxItems: 20
+          items:
+            $ref: "#/components/schemas/TelemetryEvent"
+      required:
+        - events
+
+    TelemetryAcceptedResult:
+      type: object
+      properties:
+        accepted:
+          type: integer
+          minimum: 0
+          maximum: 20
+      required:
+        - accepted
+
+    OperationsHealthResult:
+      type: object
+      properties:
+        status:
+          type: string
+          enum: [ok, degraded]
+        buildLabel:
+          type: string
+        databaseLatencyMs:
+          type: integer
+          minimum: 0
+        database:
+          type: string
+        websocket:
+          type: object
+          additionalProperties: true
+      required:
+        - status
 
     ActiveGame:
       type: object
@@ -1884,9 +2424,9 @@ components:
         totalPlayers:
           type: integer
           description: Number of human players in the game
-        civilizationIdentity:
-          anyOf:
-            - $ref: "#/components/schemas/CivilizationIdentitySummary"
+        civilizationRecord:
+          oneOf:
+            - $ref: "#/components/schemas/CivilizationRecordSummary"
             - type: "null"
       required:
         - roomId
@@ -1895,6 +2435,147 @@ components:
         - result
         - eminenceEarned
         - totalPlayers
+
+    CivilizationRecordSummary:
+      type: object
+      description: Identity-safe summary of the immutable civilization snapshot captured at match closure
+      properties:
+        version: { type: integer, enum: [1, 2] }
+        evidence:
+          type: string
+          enum: [recorded, partial_legacy, legacy_unavailable]
+        historicalContext:
+          type: string
+          enum: [historical, forecast, rehearsal, interface_simulation, unknown]
+        historicalMaturity:
+          type: ["string", "null"]
+          enum: [planetary, stellar, galactic, null]
+        currentReach:
+          type: ["string", "null"]
+          enum: [planetary, stellar, galactic, unknown, null]
+        currentReachCondition:
+          type: ["string", "null"]
+          enum: [intact, degraded, fractured, unknown, null]
+        stabilityBand:
+          type: ["string", "null"]
+          enum: [stable, strained, unstable, crisis, null]
+        stabilityScore: { type: ["number", "null"] }
+        affinityForm:
+          type: ["string", "null"]
+          enum: [unformed, singular, dyad, plural, null]
+        dominantAffinity:
+          type: ["string", "null"]
+          enum: [flare, radiance, verdance, continuum, abyss, null]
+        dominantDyad:
+          type: ["string", "null"]
+          enum: [vortex, flux, bloom, chrysalis, orbit, canopy, eclipse, lineage, echo, spore, null]
+        masteredArtifactCount: { type: ["integer", "null"] }
+        operationalArtifactCount: { type: ["integer", "null"] }
+        damagedArtifactCount: { type: ["integer", "null"] }
+        annihilatedArtifactCount: { type: ["integer", "null"] }
+        manifestedProjectCount: { type: integer }
+        civilizationEventCount: { type: ["integer", "null"] }
+        outcome:
+          oneOf:
+            - $ref: "#/components/schemas/CivilizationOutcomeSummary"
+            - type: "null"
+        lume:
+          $ref: "#/components/schemas/CivilizationLumeAssessment"
+        unavailableFields:
+          type: array
+          items: { type: string }
+      required:
+        - version
+        - evidence
+        - historicalContext
+        - historicalMaturity
+        - currentReach
+        - currentReachCondition
+        - stabilityBand
+        - stabilityScore
+        - affinityForm
+        - dominantAffinity
+        - dominantDyad
+        - masteredArtifactCount
+        - operationalArtifactCount
+        - damagedArtifactCount
+        - annihilatedArtifactCount
+        - manifestedProjectCount
+        - civilizationEventCount
+        - outcome
+        - lume
+        - unavailableFields
+
+    CivilizationOutcomeSummary:
+      type: object
+      properties:
+        policyId: { type: string, enum: [civilization-outcome-v1] }
+        evidence:
+          type: string
+          enum: [recorded, partial_legacy, legacy_unavailable]
+        category:
+          type: string
+          enum: [ascendant, enduring, precarious, subordinated, collapsed]
+        qualityScore: { type: integer, minimum: 0, maximum: 100 }
+        continuity: { type: integer, minimum: 0, maximum: 100 }
+        agency: { type: integer, minimum: 0, maximum: 100 }
+        achievement: { type: integer, minimum: 0, maximum: 100 }
+        stability: { type: integer, minimum: 0, maximum: 100 }
+        adversityIntensity: { type: integer, minimum: 0, maximum: 100 }
+        recoveryCredit: { type: integer, minimum: 0, maximum: 8 }
+        primaryFactors:
+          type: object
+          properties:
+            continuity: { type: array, items: { $ref: "#/components/schemas/CivilizationOutcomePublicFactor" } }
+            agency: { type: array, items: { $ref: "#/components/schemas/CivilizationOutcomePublicFactor" } }
+            achievement: { type: array, items: { $ref: "#/components/schemas/CivilizationOutcomePublicFactor" } }
+            stability: { type: array, items: { $ref: "#/components/schemas/CivilizationOutcomePublicFactor" } }
+          required: [continuity, agency, achievement, stability]
+        explanation:
+          type: array
+          items: { type: string }
+      required:
+        - policyId
+        - evidence
+        - category
+        - qualityScore
+        - continuity
+        - agency
+        - achievement
+        - stability
+        - adversityIntensity
+        - recoveryCredit
+        - primaryFactors
+        - explanation
+
+    CivilizationOutcomePublicFactor:
+      type: object
+      properties:
+        direction: { type: string, enum: [support, pressure] }
+        points: { type: integer, minimum: 0 }
+        label: { type: string }
+      required: [direction, points, label]
+
+    CivilizationLumeAssessment:
+      type: object
+      properties:
+        policyId: { type: string, enum: [civilization-lume-v1] }
+        status:
+          type: string
+          enum: [awarded, insufficient_evidence, retroactive_ineligible, campaign_record_only, campaign_policy_required, custom_ineligible, unavailable]
+        amount: { type: integer, minimum: 0, maximum: 10 }
+        qualityScore: { type: ["integer", "null"], minimum: 0, maximum: 100 }
+        recoveryCredit: { type: integer, minimum: 0, maximum: 8 }
+        explanation:
+          type: array
+          items: { type: string }
+      required:
+        - policyId
+        - status
+        - amount
+        - qualityScore
+        - recoveryCredit
+        - explanation
 
     PlayerStatsResponse:
       type: object
@@ -1911,28 +2592,22 @@ components:
           type: number
           format: float
           description: Average Eminence earned across all finished games
+        totalLume:
+          type: integer
+          description: Lifetime Lume awarded by recorded Civilization histories
         recentGames:
           type: array
           items:
             $ref: "#/components/schemas/GameHistoryEntry"
           description: Most recent finished games, newest first (up to 20)
-        matchHistory:
-          type: array
-          items:
-            $ref: "#/components/schemas/GameHistoryEntry"
-        archive:
-          type: object
-          additionalProperties: true
-          description: Technology Archive, identity options, and classified Vault progression
       required:
         - gamesPlayed
         - wins
         - losses
         - ties
         - avgEminence
+        - totalLume
         - recentGames
-        - matchHistory
-        - archive
 
     FriendEntry:
       type: object
@@ -2055,7 +2730,8 @@ components:
         victoryRequirement:
           type: integer
           enum: [15, 20, 25]
-          description: Eminence required to trigger the final round
+          default: 20
+          description: Eminence required to trigger the final round; 20 is standard and 15 is the shorter custom format
         cinematicMode:
           type: string
           enum: [standard, epic]
@@ -2159,7 +2835,8 @@ components:
         victoryRequirement:
           type: integer
           enum: [15, 20, 25]
-          description: Eminence required to trigger the final round
+          default: 20
+          description: Eminence required to trigger the final round; standard rooms use 20 and custom rooms may use 15
         cinematicMode:
           type: string
           enum: [standard, epic]
@@ -2197,9 +2874,6 @@ components:
       properties:
         playerName:
           type: string
-        sessionToken:
-          type: string
-          description: Current game session token; required when recovering a guest seat
       required:
         - playerName
 
@@ -2369,13 +3043,22 @@ components:
         - bp_ascension_registry
         - bp_worldshield_covenant
 
+    ChronicleId:
+      type: string
+      enum:
+        - chronicle_outer_vault_access
+
+    ChronicleStatus:
+      type: string
+      enum: [sealed, available, recovered]
+
     BlueprintPresentationVariant:
       type: string
       enum: [armored, original, asymmetric, lattice]
 
     BlueprintDeviceState:
       type: string
-      enum: [armed, active, vigilant, spent, deactivated, recovering]
+      enum: [armed, ready, recovering, vigilant, spent]
 
     BlueprintPrivateState:
       type: object
@@ -2391,16 +3074,31 @@ components:
             type: string
         manifested:
           type: boolean
+        definition:
+          $ref: "#/components/schemas/BlueprintDefinition"
         secretTargetCardId:
           type: ["string", "null"]
         safePreManifestActionPlayerIds:
           type: array
           items:
             type: string
-        foundryRecoveryComponentIds:
+        foundryStoredArtifactIds:
           type: array
+          description: Owner-only Foundry components held in exceptional Cipher storage after Overdrive
           items:
             type: string
+        foundryRecoveryArtifactIds:
+          type: array
+          deprecated: true
+          description: Legacy Broken-Covenant recovery list retained for compatibility
+          items:
+            type: string
+        ascensionObservedPlayerId:
+          type: ["string", "null"]
+        ascensionObservedTurnCount:
+          type: ["integer", "null"]
+        ascensionLastDeferralRound:
+          type: ["integer", "null"]
       required:
         - blueprintId
         - slotIndex
@@ -2419,21 +3117,18 @@ components:
           type: integer
         state:
           $ref: "#/components/schemas/BlueprintDeviceState"
-        covenantState:
-          type: string
-          enum: [intact, broken]
         presentationVariant:
           $ref: "#/components/schemas/BlueprintPresentationVariant"
-        foundryUses:
+        definition:
+          $ref: "#/components/schemas/BlueprintDefinition"
+        foundryUsesRemaining:
           type: integer
-        foundryOverdriveAvailable:
-          type: boolean
-        foundryRecoveredComponentCount:
+          minimum: 0
+          maximum: 2
+        ascensionDeferrals:
           type: integer
-        ascensionDeferral:
-          type: integer
-        ascensionLastCounterRound:
-          type: [integer, "null"]
+          minimum: 0
+          maximum: 2
         foundryTier2Ready:
           type: boolean
         foundryTier3Ready:
@@ -2443,7 +3138,6 @@ components:
         - ownerPlayerId
         - slotIndex
         - state
-        - covenantState
         - presentationVariant
 
     BlueprintManifestationEvent:
@@ -2459,6 +3153,8 @@ components:
           type: integer
         presentationVariant:
           $ref: "#/components/schemas/BlueprintPresentationVariant"
+        definition:
+          $ref: "#/components/schemas/BlueprintDefinition"
         createdAt:
           type: integer
       required:
@@ -2510,9 +3206,6 @@ components:
           type: string
         targetCardId:
           type: string
-        targetSlotId:
-          type: string
-          description: Forge mold refilled after the target leaves, formatted as tier-slotIndex.
         trigger:
           type: string
           enum: [forged, encrypted]
@@ -2533,6 +3226,8 @@ components:
           $ref: "#/components/schemas/BlueprintId"
         presentationVariant:
           $ref: "#/components/schemas/BlueprintPresentationVariant"
+        definition:
+          $ref: "#/components/schemas/BlueprintDefinition"
         createdAt:
           type: integer
       required:
@@ -2561,6 +3256,14 @@ components:
           $ref: "#/components/schemas/BlueprintDeviceState"
         publicEffect:
           type: string
+        foundryUsesRemaining:
+          type: integer
+          minimum: 0
+          maximum: 2
+        ascensionDeferrals:
+          type: integer
+          minimum: 0
+          maximum: 2
         foundryTier2Ready:
           type: boolean
         foundryTier3Ready:
@@ -2784,6 +3487,249 @@ components:
         - summonSecondaryColor
         - auraStyle
 
+    CivilizationNaturalAffinityCounts:
+      type: object
+      properties:
+        flare: { type: integer }
+        radiance: { type: integer }
+        verdance: { type: integer }
+        continuum: { type: integer }
+        abyss: { type: integer }
+      required: [flare, radiance, verdance, continuum, abyss]
+
+    CivilizationRankedAffinity:
+      type: object
+      properties:
+        affinity:
+          type: string
+          enum: [flare, radiance, verdance, continuum, abyss]
+        historicalWeight: { type: integer }
+        operationalWeight: { type: integer }
+      required: [affinity, historicalWeight, operationalWeight]
+
+    CivilizationAffinityIdentity:
+      type: object
+      properties:
+        policyId:
+          type: string
+          enum: [provisional-ratio-v1]
+        form:
+          type: string
+          enum: [unformed, singular, dyad, plural]
+        historicalCounts:
+          $ref: "#/components/schemas/CivilizationNaturalAffinityCounts"
+        operationalCounts:
+          $ref: "#/components/schemas/CivilizationNaturalAffinityCounts"
+        rankedAffinities:
+          type: array
+          items:
+            $ref: "#/components/schemas/CivilizationRankedAffinity"
+        dominantAffinity:
+          type: ["string", "null"]
+          enum: [flare, radiance, verdance, continuum, abyss, null]
+        dominantDyad:
+          type: ["string", "null"]
+          enum: [vortex, flux, bloom, chrysalis, orbit, canopy, eclipse, lineage, echo, spore, null]
+        thirdAffinity:
+          type: ["string", "null"]
+          enum: [flare, radiance, verdance, continuum, abyss, null]
+        dominantShare: { type: number }
+        secondaryToPrimaryRatio: { type: number }
+        thirdToPrimaryRatio: { type: number }
+      required:
+        - policyId
+        - form
+        - historicalCounts
+        - operationalCounts
+        - rankedAffinities
+        - dominantAffinity
+        - dominantDyad
+        - thirdAffinity
+        - dominantShare
+        - secondaryToPrimaryRatio
+        - thirdToPrimaryRatio
+
+    CivilizationPublicArtifactState:
+      type: object
+      properties:
+        artifactId: { type: string }
+        firstMasteredTurnCount:
+          type: ["integer", "null"]
+        masteryCount:
+          type: integer
+          minimum: 1
+        implementationState:
+          type: ["string", "null"]
+          enum: [operational, damaged, archived, annihilated, null]
+        implementationStateChangedTurnCount:
+          type: ["integer", "null"]
+        changeSourceType:
+          type: ["string", "null"]
+          enum: [artifact, blueprint, chronicle, scenario, system, null]
+        historyEvidence:
+          type: string
+          enum: [recorded, legacy_inferred]
+      required:
+        - artifactId
+        - firstMasteredTurnCount
+        - masteryCount
+        - implementationState
+        - implementationStateChangedTurnCount
+        - changeSourceType
+        - historyEvidence
+
+    CivilizationPublicConditionState:
+      type: object
+      properties:
+        type: { type: string }
+        coreType:
+          type: ["string", "null"]
+          enum: [damaged, isolated, quarantined, disrupted, null]
+        targetKind:
+          type: string
+          enum: [world, artifact_implementation, network, installation, project]
+        sourceType:
+          type: string
+          enum: [artifact, blueprint, chronicle, scenario, system]
+        appliedTurnCount:
+          type: ["integer", "null"]
+        historyEvidence:
+          type: string
+          enum: [recorded, legacy_inferred]
+      required: [type, coreType, targetKind, sourceType, appliedTurnCount, historyEvidence]
+
+    CivilizationPublicStabilityContributor:
+      type: object
+      properties:
+        direction:
+          type: string
+          enum: [support, pressure]
+        magnitude: { type: number }
+        label: { type: string }
+        sourceType:
+          type: string
+          enum: [artifact, blueprint, chronicle, scenario, system]
+        targetKind:
+          type: ["string", "null"]
+          enum: [world, artifact_implementation, network, installation, project, null]
+        appliedTurnCount:
+          type: ["integer", "null"]
+        resolvedTurnCount:
+          type: ["integer", "null"]
+        historyEvidence:
+          type: string
+          enum: [recorded, legacy_inferred]
+      required:
+        - direction
+        - magnitude
+        - label
+        - sourceType
+        - targetKind
+        - appliedTurnCount
+        - resolvedTurnCount
+        - historyEvidence
+
+    CivilizationPublicScaleState:
+      type: object
+      properties:
+        historicalMaturity:
+          type: string
+          enum: [planetary, stellar, galactic]
+        currentReach:
+          type: string
+          enum: [planetary, stellar, galactic, unknown]
+        currentReachCondition:
+          type: string
+          enum: [intact, degraded, fractured, unknown]
+        literalKardashevType:
+          type: integer
+          enum: [0, 1, 2, 3]
+        literalKardashevEvidence:
+          type: string
+          enum: [recorded, legacy_inferred]
+      required:
+        - historicalMaturity
+        - currentReach
+        - currentReachCondition
+        - literalKardashevType
+        - literalKardashevEvidence
+
+    CivilizationPublicStabilityState:
+      type: object
+      properties:
+        band:
+          type: string
+          enum: [stable, strained, unstable, crisis]
+        score:
+          type: ["number", "null"]
+        calibrationId:
+          type: ["string", "null"]
+        contributors:
+          type: array
+          items:
+            $ref: "#/components/schemas/CivilizationPublicStabilityContributor"
+        calculatedTurnCount:
+          type: ["integer", "null"]
+        historyEvidence:
+          type: string
+          enum: [recorded, legacy_inferred]
+      required: [band, score, calibrationId, contributors, calculatedTurnCount, historyEvidence]
+
+    CivilizationPublicEventHistoryEntry:
+      type: object
+      properties:
+        eventId: { type: string }
+        sourceType:
+          type: string
+          enum: [artifact, blueprint, chronicle, scenario, system]
+        turnCount: { type: ["integer", "null"] }
+        form:
+          type: string
+          enum: [automatic, contextual, state_modified]
+        pressureTags:
+          type: array
+          items:
+            type: string
+            enum: [disruption, isolation, proliferation, exposure, attrition, coordination, transformation]
+        outcome:
+          type: string
+          enum: [success, failure]
+        summary: { type: string }
+        historyEvidence:
+          type: string
+          enum: [recorded, legacy_inferred]
+      required: [eventId, sourceType, turnCount, form, pressureTags, outcome, summary, historyEvidence]
+
+    CivilizationPublicState:
+      type: object
+      description: Public, identity-safe Civilization history and current operational summary
+      properties:
+        version:
+          type: integer
+          enum: [2]
+        artifacts:
+          type: array
+          items:
+            $ref: "#/components/schemas/CivilizationPublicArtifactState"
+        affinityIdentity:
+          $ref: "#/components/schemas/CivilizationAffinityIdentity"
+        scale:
+          $ref: "#/components/schemas/CivilizationPublicScaleState"
+        stability:
+          $ref: "#/components/schemas/CivilizationPublicStabilityState"
+        activeConditions:
+          type: array
+          items:
+            $ref: "#/components/schemas/CivilizationPublicConditionState"
+        activeCapabilityIds:
+          type: array
+          items: { type: string }
+        events:
+          type: array
+          items:
+            $ref: "#/components/schemas/CivilizationPublicEventHistoryEntry"
+      required: [version, artifacts, affinityIdentity, scale, stability, activeConditions, activeCapabilityIds, events]
+
     GamePlayerState:
       type: object
       properties:
@@ -2814,6 +3760,9 @@ components:
           type: array
           items:
             type: string
+        civilization:
+          $ref: "#/components/schemas/CivilizationPublicState"
+          description: Public Civilization history and operational state; omitted only for legacy responses
         blueprintPrivateStates:
           type: array
           description: Owner-only assembly and secret device state; omitted from opponent projections
@@ -2826,20 +3775,14 @@ components:
           description: Owner-only presentation snapshot before manifestation
         manifestedBlueprintDevices:
           type: array
-          deprecated: true
-          description: Compatibility alias for public Projects revealed after manifestation
-          items:
-            $ref: "#/components/schemas/ManifestedDevicePublicState"
-        manifestedBlueprintProjects:
-          type: array
-          description: Public Manifested Projects revealed after completion
+          description: Public devices revealed after manifestation
           items:
             $ref: "#/components/schemas/ManifestedDevicePublicState"
         assimilatedArtifactIds:
           type: array
           items:
             type: string
-          description: Artifact IDs consumed by Final Hunger; count only for Blueprint eligibility, not forged-card effects or victory tie-breaks
+          description: Historical IDs consumed by Final Hunger; no longer operational and do not count for Blueprint recipes, forged-card effects, or victory tie-breaks
         discountedForgeIds:
           type: array
           items:
@@ -2889,16 +3832,6 @@ components:
         civName:
           type: ["string", "null"]
           description: Player-chosen civilization name; null if not set
-        civilizationIdentity:
-          anyOf:
-            - $ref: "#/components/schemas/CivilizationIdentitySummary"
-            - type: "null"
-          description: Confirmed public identity loaded when the match begins
-        civilizationIdentitySnapshot:
-          anyOf:
-            - $ref: "#/components/schemas/CivilizationIdentitySummary"
-            - type: "null"
-          description: Immutable account identity captured when the match begins
       required:
         - playerId
         - playerName
@@ -2951,6 +3884,10 @@ components:
           type: string
         claimedByPlayerId:
           type: string
+        arrivalSound:
+          type: string
+          enum: [standard, first_resonance]
+          description: Public arrival cue snapshotted from the claiming player's equipped cosmetic
         createdAt:
           type: integer
           description: Unix ms timestamp when this event was created; optional for backward compat
@@ -3075,13 +4012,28 @@ components:
           description: Server-authored campaign scenario identifier
         finishReason:
           type: ["string", "null"]
-          enum: [win, frontier_exhaustion, surrender, withdrawal, null]
+          enum: [win, surrender, withdrawal, null]
           description: Normalized reason a finished game ended
         lumiiThresholdApproach:
           anyOf:
             - $ref: "#/components/schemas/LumiiThresholdApproach"
             - type: "null"
           description: Immutable approach chosen for the Lumii Vault encounter
+        traceScenario:
+          anyOf:
+            - $ref: "#/components/schemas/TraceScenarioState"
+            - type: "null"
+          description: Public, reconnect-safe state for The Trace Chronicle
+        recurrenceScenario:
+          anyOf:
+            - $ref: "#/components/schemas/RecurrenceScenarioState"
+            - type: "null"
+          description: Public, reconnect-safe state for The Recurrence Chronicle
+        triangulationScenario:
+          anyOf:
+            - $ref: "#/components/schemas/TriangulationScenarioState"
+            - type: "null"
+          description: Public, reconnect-safe state for The Triangulation Chronicle
         startedAt:
           type: integer
           description: Unix timestamp (ms) when this game instance was initialized
@@ -3332,6 +4284,9 @@ components:
         - scenarioId
         - finishReason
         - lumiiThresholdApproach
+        - traceScenario
+        - recurrenceScenario
+        - triangulationScenario
         - startedAt
         - openingTurnOrder
         - canReplaySameBoard
@@ -3375,8 +4330,6 @@ components:
             - harness_two_affinities
             - reserve_artifact
             - forge_artifact
-            - foundry_forge_artifact
-            - recover_foundry_component
             - forge_reserved_artifact
             - pass
             - surrender
@@ -3388,8 +4341,10 @@ components:
             - plan_action
             - execute_plan
             - cancel_plan
+            - tutorial_fast_forward
             - set_civ_name
             - choose_luminary_order
+            - resolve_chronicle_choice
             - assimilate
         affinities:
           $ref: "#/components/schemas/AffinityCounts"
@@ -3405,6 +4360,10 @@ components:
           type: string
         tier:
           type: integer
+        blueprintAction:
+          type: string
+          enum: [foundry_sustainable, foundry_overdrive, foundry_recovery]
+          description: Explicit Project claim path; absent means an ordinary Forge
         luminaryId:
           type: string
           description: Luminary ID for Luminary-specific action payloads
@@ -3417,28 +4376,16 @@ components:
           properties:
             flare:
               type: integer
-              minimum: 0
-              multipleOf: 1
             continuum:
               type: integer
-              minimum: 0
-              multipleOf: 1
             verdance:
               type: integer
-              minimum: 0
-              multipleOf: 1
             abyss:
               type: integer
-              minimum: 0
-              multipleOf: 1
             radiance:
               type: integer
-              minimum: 0
-              multipleOf: 1
             singularity:
               type: integer
-              minimum: 0
-              multipleOf: 1
         plannedActionData:
           type: object
           additionalProperties: true
@@ -3451,9 +4398,14 @@ components:
           items:
             type: string
           description: Ordered list of luminaryIds for choose_luminary_order action
-        confirmOverdrive:
-          type: boolean
-          description: Explicit confirmation required for a Mantle-to-Orbit Foundry third use
+        traceGuidanceMethod:
+          $ref: "#/components/schemas/TraceGuidanceMethod"
+        recurrenceCustodyMethod:
+          $ref: "#/components/schemas/RecurrenceCustodyMethod"
+          description: Architect custody selected during The Recurrence decision window
+        triangulationCoordinationArchitecture:
+          $ref: "#/components/schemas/TriangulationCoordinationArchitecture"
+          description: Architect coordination architecture selected during The Triangulation Alignment
       required:
         - sessionToken
         - type

@@ -1,10 +1,6 @@
 # LUMINAe Blueprint Balance Gate v1.0
 
-> **Superseded:** Technology System v2 uses a match-wide 10-20% manifestation
-> target. A v2 report is generated from the revised simulation before any
-> competitive approval.
-
-## Historical Verdict
+## Current Verdict
 
 **Competitive Blueprints remain disabled.**
 
@@ -29,12 +25,12 @@ are acknowledged immediately so only gameplay time is measured.
 |---|---:|---|
 | Completed games | 1,000 / 1,000 | Pass |
 | Stalled games | 0 | Pass |
-| Average turns | 96.82 | Observe |
-| Antimatter manifestation | 0.75% | Fail |
-| Foundry manifestation | 3.60% | Fail |
-| Worldshield manifestation | 2.25% | Fail |
-| Antimatter detonation after manifestation | 55.00% | Pass |
-| Largest Blueprint win-rate delta | 0.81 points | Pass |
+| Average turns | 96.37 | Observe |
+| Antimatter manifestation | 0.45% | Fail |
+| Foundry manifestation | 3.79% | Fail |
+| Worldshield manifestation | 2.21% | Fail |
+| Antimatter detonation after manifestation | 66.67% | Pass |
+| Largest Blueprint win-rate delta | 0.32 points | Pass |
 | Automated owner/opponent secrecy checks | No leak found | Pass |
 | Human playtests | 0 / 50 recorded | Fail |
 
@@ -45,13 +41,10 @@ average.
 
 ## Additional Finding
 
-The final-round boundary now follows the randomized opening player rather than
-array seat 0. With the same seed, post-fix seat win rates are 22.8%, 26.4%,
-25.9%, and 24.9%. The former 18.6%-31.9% spread was a round-boundary defect, not
-evidence of Blueprint power.
-
-The artifact-only control is documented in
-`LUMINAe_ARTIFACT_BALANCE_BASELINE_v1.0.md`.
+Seat win rates were 18.6%, 22.9%, 26.6%, and 31.9%. Because the two-of-three
+loadouts rotate evenly and Blueprint win-rate deltas stay small, this looks like
+a broader seat-order concern rather than Blueprint power. It should be measured
+against a no-Blueprint control run before competitive launch.
 
 ## Release Decision
 

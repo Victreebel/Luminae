@@ -48,6 +48,7 @@ import {
   type LuminaryActiveState,
   ArtifactCardBonusAffinity,
 } from "@workspace/api-client-react";
+import { DEFAULT_VICTORY_REQUIREMENT } from "@workspace/game-types";
 import { gameAudio } from "@/lib/audio";
 import { resolveLuminaryProcedure } from "@/lib/luminaryAnimationProcedures";
 import { LUMINARY_ANIMATION_CONFIG } from "@/lib/luminaryAnimationConfig";
@@ -91,14 +92,14 @@ const SANDBOX_LUMINARIES: SandboxLuminary[] = [
     id: "lum_void",
     name: "The Void Warden",
     domain: "Void",
-    eminence: 0,
+    eminence: 2,
     flavor: "In the space between stars, something watches without eyes.",
   },
   {
     id: "lum_radiant",
     name: "Concordance Mandala",
     domain: "Coherence",
-    eminence: 3,
+    eminence: 4,
     flavor: "Truth is not revealed. It is aligned.",
   },
   {
@@ -3709,7 +3710,7 @@ export default function DevAnimSandbox() {
   );
 
   // One representative arrival-color hex per AffinityKey that maps through FANFARE_COLOR_MAP.
-  // Unknown and gold hexes fall back to neutral Radiance in playLuminaryFanfare().
+  // Any hex not in the map falls back to 'singularity' inside playLuminaryFanfare().
   const FANFARE_PRESET_COLORS: Record<AffinityKey, string> = {
     flare: "#ff5a3c",
     continuum: "#60a5fa",
@@ -3774,9 +3775,11 @@ export default function DevAnimSandbox() {
     : victoryRequirementStep?.type === "residue"
       ? victoryRequirementStep.victoryRequirementChange
       : undefined;
-  const previewVictoryRequirementBefore = victoryRequirementChange !== undefined ? 15 : undefined;
+  const previewVictoryRequirementBefore = victoryRequirementChange !== undefined
+    ? DEFAULT_VICTORY_REQUIREMENT
+    : undefined;
   const previewVictoryRequirementAfter = victoryRequirementChange !== undefined
-    ? 15 + victoryRequirementChange
+    ? DEFAULT_VICTORY_REQUIREMENT + victoryRequirementChange
     : undefined;
 
   return (
@@ -4048,7 +4051,11 @@ export default function DevAnimSandbox() {
                   </button>
                   <button
                     type="button"
-                    onClick={() => gameAudio.playEminenceSeal(2, 15, 15)}
+                    onClick={() => gameAudio.playEminenceSeal(
+                      2,
+                      DEFAULT_VICTORY_REQUIREMENT,
+                      DEFAULT_VICTORY_REQUIREMENT,
+                    )}
                     className="text-sm font-mono px-3 py-2 rounded border border-yellow-200/30 bg-yellow-200/5 text-yellow-100 transition-colors hover:bg-yellow-200/10"
                   >
                     Eminence Ascension

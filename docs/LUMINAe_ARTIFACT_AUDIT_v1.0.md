@@ -1,8 +1,5 @@
 # LUMINAe Artifact Audit v1.0
 
-> **Superseded:** `LUMINAe_TECHNOLOGY_SYSTEM_v2.0.md` controls the hierarchy
-> and Tier III canon. This audit is retained as the record of the earlier pass.
-
 ## Status
 
 **Complete 90-card technology audit under

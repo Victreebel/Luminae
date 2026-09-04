@@ -1,37 +1,20 @@
-import React, { useCallback, useEffect, useMemo, useRef, useState } from "react";
+import React, { useCallback, useEffect, useRef, useState } from "react";
 import { createPortal } from "react-dom";
 import { motion, AnimatePresence, useReducedMotion } from "framer-motion";
 import { useLocation } from "wouter";
-import {
-  X,
-  ArrowRight,
-  ChevronDown,
-  ChevronLeft,
-  ChevronUp,
-  Check,
-  CircleHelp,
-  ListChecks,
-} from "lucide-react";
+import { X, ArrowRight, ChevronDown, ChevronLeft, ChevronUp } from "lucide-react";
 import type { GameState } from "@workspace/api-client-react";
+import { DEFAULT_VICTORY_REQUIREMENT } from "@workspace/game-types";
 import { clearSession } from "@/lib/session";
 import type { AffinityKey } from "@/lib/affinityMeta";
 import { renderKeywords } from "@/lib/tutorialKeywords";
 import { useFocusTrap } from "@/hooks/use-focus-trap";
 import { useIsMobile } from "@/hooks/use-mobile";
-import {
-  LUMII_NATURAL_AFFINITIES,
-  LUMII_NODE_COLORS,
-} from "@/lib/lumiiIdentity";
-import { trackFirstPartyEvent } from "@/lib/firstPartyTelemetry";
-
-export { LUMII_AFFINITY_NODE_COUNT } from "@/lib/lumiiIdentity";
 
 // ─── Viewport height hook ────────────────────────────────────────────────────
 
 function useViewportH(): number {
-  const [h, setH] = useState(() =>
-    typeof window !== "undefined" ? window.innerHeight : 844,
-  );
+  const [h, setH] = useState(() => (typeof window !== "undefined" ? window.innerHeight : 844));
   useEffect(() => {
     const fn = () => setH(window.innerHeight);
     window.addEventListener("resize", fn);
@@ -42,215 +25,68 @@ function useViewportH(): number {
 
 // ─── Lumii Constellation Wisp ─────────────────────────────────────────────────
 
-// Pulse rings may reflect the current lesson while Lumii's ambient motes retain
-// their canonical natural-Affinity colors.
-const ZONE_PULSE_COLOR: Record<
-  "well" | "forge" | "filters" | "luminaries" | "none",
-  { idle: string; excited: string }
-> = {
-  none: { idle: "rgba(168,85,247,0.7)", excited: "#fbbf24" },
-  well: { idle: "#f97316", excited: "#fbbf24" },
-  luminaries: { idle: "#c084fc", excited: "#d4b8f5" },
-  forge: { idle: "#fbbf24", excited: "#fbbf24" },
-  filters: { idle: "#fbbf24", excited: "#fbbf24" },
+// Pulse ring accent colors per tutorial zone (idle and excited variants)
+const ZONE_PULSE_COLOR: Record<"well" | "forge" | "filters" | "luminaries" | "none", { idle: string; excited: string }> = {
+  none:       { idle: "rgba(168,85,247,0.7)", excited: "#fbbf24" },
+  well:    { idle: "#f97316",              excited: "#fbbf24" },
+  luminaries: { idle: "#c084fc",              excited: "#d4b8f5" },
+  forge:     { idle: "#fbbf24",              excited: "#fbbf24" },
+  filters:    { idle: "#fbbf24",              excited: "#fbbf24" },
 };
 
 export type LumiiAppearance = "spectrum" | "hostile" | "yielding";
 export type LumiiCoreGlow = "white" | "red";
 
-const APPEARANCE_PULSE: Record<
-  Exclude<LumiiAppearance, "spectrum">,
-  { idle: string; excited: string }
-> = {
-  hostile: { idle: "rgba(255,72,104,0.58)", excited: "rgba(248,251,255,0.78)" },
+const APPEARANCE_PULSE: Record<Exclude<LumiiAppearance, "spectrum">, { idle: string; excited: string }> = {
+  hostile: { idle: "#e11d48", excited: "#f8fbff" },
   yielding: { idle: "#9f5263", excited: "#d8ddea" },
 };
 
-// Named constellation shapes — 5 [x,y] node offsets from center (0,0)
+// Named constellation shapes — 6 [x,y] node offsets from center (0,0)
 // Coordinates fit within ±26 so all nodes stay within the 72×72 bounding box
 type WispShape = [number, number][];
 
 const WISP_SHAPES: Record<string, WispShape> = {
   // Organic scatter — Lumii at rest
-  idle: [
-    [0, -21],
-    [19, -5],
-    [11, 18],
-    [-12, 19],
-    [-20, -6],
-  ],
+  idle:    [[ 0,-20],[ 17, -8],[13, 14],[-6, 21],[-19,  6],[-15,-14]],
   // Loose diamond — primary speaking pose
-  speakA: [
-    [0, -24],
-    [21, -6],
-    [13, 19],
-    [-13, 19],
-    [-21, -6],
-  ],
+  speakA:  [[ 0,-23],[ 18, -4],[12, 17],[ 0,  8],[-12, 17],[-18, -4]],
   // Tilted arc — secondary speaking pose
-  speakB: [
-    [-15, -17],
-    [5, -23],
-    [21, -3],
-    [7, 20],
-    [-19, 8],
-  ],
+  speakB:  [[-14,-17],[  0,-23],[14,-17],[20,  3],[  0, 19],[-20,  3]],
   // Wide star — excited/action state
-  excited: [
-    [0, -25],
-    [23, -8],
-    [15, 21],
-    [-15, 21],
-    [-23, -8],
-  ],
+  excited: [[ 0,-25],[ 22, -8],[16, 20],[ 0, 10],[-16, 20],[-22, -8]],
   // Celebration burst — nodes sprung far outward, snaps back after 0.5s
-  burst: [
-    [0, -38],
-    [36, -12],
-    [23, 32],
-    [-23, 32],
-    [-36, -12],
-  ],
+  burst:   [[ 0,-38],[34,-13],[25, 31],[-10, 38],[-32, 10],[-26,-24]],
 };
 
 // Shape morph cycle when Lumii is active
 const MORPH_CYCLE = ["speakA", "idle", "speakB", "idle"] as const;
 
-type LumiiMoteAffinity = (typeof LUMII_NATURAL_AFFINITIES)[number];
-interface LumiiMoteDef {
-  angle: number;
-  r0: number;
-  r1: number;
-  size: number;
-  affinity: LumiiMoteAffinity;
-  delay: number;
-  duration: number;
-}
-
-// Ambient energy shed by Lumii. These are independent motes, not additional
-// constellation nodes, and cycle only through the five natural Affinities.
-const LUMII_MOTES: readonly LumiiMoteDef[] = [
-  {
-    angle: 14,
-    r0: 18,
-    r1: 39,
-    size: 4,
-    affinity: "flare",
-    delay: 0,
-    duration: 2.9,
-  },
-  {
-    angle: 48,
-    r0: 21,
-    r1: 43,
-    size: 3.4,
-    affinity: "continuum",
-    delay: 0.6,
-    duration: 2.6,
-  },
-  {
-    angle: 92,
-    r0: 16,
-    r1: 38,
-    size: 4.4,
-    affinity: "verdance",
-    delay: 1.3,
-    duration: 3.1,
-  },
-  {
-    angle: 145,
-    r0: 20,
-    r1: 41,
-    size: 3.8,
-    affinity: "abyss",
-    delay: 0.3,
-    duration: 2.8,
-  },
-  {
-    angle: 188,
-    r0: 17,
-    r1: 38,
-    size: 4.1,
-    affinity: "radiance",
-    delay: 2.1,
-    duration: 2.7,
-  },
-  {
-    angle: 234,
-    r0: 22,
-    r1: 44,
-    size: 3.6,
-    affinity: "flare",
-    delay: 0.9,
-    duration: 3.3,
-  },
-  {
-    angle: 278,
-    r0: 18,
-    r1: 40,
-    size: 4.2,
-    affinity: "continuum",
-    delay: 1.7,
-    duration: 3,
-  },
-  {
-    angle: 320,
-    r0: 20,
-    r1: 42,
-    size: 3.8,
-    affinity: "verdance",
-    delay: 0.5,
-    duration: 2.7,
-  },
-  {
-    angle: 65,
-    r0: 19,
-    r1: 41,
-    size: 3.5,
-    affinity: "abyss",
-    delay: 2.8,
-    duration: 3.1,
-  },
-  {
-    angle: 165,
-    r0: 16,
-    r1: 37,
-    size: 4.4,
-    affinity: "radiance",
-    delay: 1.4,
-    duration: 2.9,
-  },
-  {
-    angle: 260,
-    r0: 21,
-    r1: 43,
-    size: 3.8,
-    affinity: "flare",
-    delay: 3.2,
-    duration: 3.2,
-  },
-  {
-    angle: 340,
-    r0: 17,
-    r1: 39,
-    size: 4,
-    affinity: "verdance",
-    delay: 0.8,
-    duration: 2.5,
-  },
+// ─── Ember / spark particles ──────────────────────────────────────────────────
+// Six affinity colors cycling across 12 embers
+const EMBER_PALETTE = ["#f87171","#60a5fa","#4ade80","#c084fc","#f8fafc","#fbbf24"] as const;
+interface EmberDef { angle: number; r0: number; r1: number; sz: number; col: string; delay: number; dur: number; }
+const EMBERS: EmberDef[] = [
+  { angle:  14, r0: 22, r1: 46, sz: 3.4, col: EMBER_PALETTE[0], delay: 0.0, dur: 2.1 },
+  { angle:  48, r0: 25, r1: 52, sz: 2.8, col: EMBER_PALETTE[1], delay: 0.6, dur: 1.9 },
+  { angle:  92, r0: 20, r1: 44, sz: 4.0, col: EMBER_PALETTE[2], delay: 1.3, dur: 2.4 },
+  { angle: 145, r0: 24, r1: 49, sz: 3.2, col: EMBER_PALETTE[3], delay: 0.3, dur: 2.0 },
+  { angle: 188, r0: 21, r1: 47, sz: 3.6, col: EMBER_PALETTE[5], delay: 2.1, dur: 1.8 },
+  { angle: 234, r0: 26, r1: 54, sz: 3.0, col: EMBER_PALETTE[4], delay: 0.9, dur: 2.6 },
+  { angle: 278, r0: 22, r1: 47, sz: 3.8, col: EMBER_PALETTE[1], delay: 1.7, dur: 2.2 },
+  { angle: 320, r0: 24, r1: 51, sz: 3.2, col: EMBER_PALETTE[0], delay: 0.5, dur: 1.9 },
+  { angle:  65, r0: 23, r1: 49, sz: 3.0, col: EMBER_PALETTE[5], delay: 2.8, dur: 2.3 },
+  { angle: 165, r0: 20, r1: 45, sz: 4.0, col: EMBER_PALETTE[2], delay: 1.4, dur: 2.0 },
+  { angle: 260, r0: 25, r1: 53, sz: 3.2, col: EMBER_PALETTE[3], delay: 3.2, dur: 2.5 },
+  { angle: 340, r0: 21, r1: 46, sz: 3.4, col: EMBER_PALETTE[4], delay: 0.8, dur: 1.7 },
 ];
 
 // Returns the constellation node closest to the given tether direction
-function getNearestNode(
-  shape: WispShape,
-  direction: "down" | "up" | "left",
-): { x: number; y: number } {
+function getNearestNode(shape: WispShape, direction: "down" | "up" | "left"): { x: number; y: number } {
   const [x, y] =
-    direction === "down"
-      ? shape.reduce((b, n) => (n[1] > b[1] ? n : b))
-      : direction === "up"
-        ? shape.reduce((b, n) => (n[1] < b[1] ? n : b))
-        : /* left */ shape.reduce((b, n) => (n[0] < b[0] ? n : b));
+    direction === "down" ? shape.reduce((b, n) => (n[1] > b[1] ? n : b)) :
+    direction === "up"   ? shape.reduce((b, n) => (n[1] < b[1] ? n : b)) :
+    /* left */             shape.reduce((b, n) => (n[0] < b[0] ? n : b));
   return { x, y };
 }
 
@@ -259,18 +95,18 @@ let _wispInstanceCount = 0;
 // Burst palette per action type: Harness amber, reserve teal, Forge indigo.
 const BURST_COLOR_BY_ACTION: Record<string, string> = {
   harness_three_affinities: "#f97316",
-  harness_two_affinities: "#f97316",
-  reserve_artifact: "#34d399",
-  forge_artifact: "#818cf8",
-  forge_reserved_artifact: "#818cf8",
+  harness_two_affinities:   "#f97316",
+  reserve_artifact:        "#34d399",
+  forge_artifact:       "#818cf8",
+  forge_reserved_artifact:   "#818cf8",
 };
 
 // Burst intensity presets per named game event type.
 // Values >= 1.35 trigger the wide-ring shockwave (ring 2).
 const BURST_INTENSITY: Record<string, number> = {
-  luminary_claimed: 1.5,
+  luminary_claimed:   1.5,
   eminence_milestone: 1.6,
-  card_forged: 1.15,
+  card_forged:        1.15,
 };
 const BURST_INTENSITY_DEFAULT = 1.15;
 
@@ -279,24 +115,21 @@ const BURST_INTENSITY_DEFAULT = 1.15;
 // forge → Continuum (crystallizing permanence).
 const BURST_AFFINITY_KEY_BY_ACTION: Partial<Record<string, AffinityKey>> = {
   harness_three_affinities: "flare",
-  harness_two_affinities: "flare",
-  reserve_artifact: "verdance",
-  forge_artifact: "continuum",
-  forge_reserved_artifact: "continuum",
+  harness_two_affinities:   "flare",
+  reserve_artifact:        "verdance",
+  forge_artifact:       "continuum",
+  forge_reserved_artifact:   "continuum",
 };
 
 // Per-affinity particle color palettes.
 // ring1: 6 colors used for the close-scatter ring (replaces the single-color tint).
 // ring2: 5 colors used for the wide shockwave ring (replaces the hardcoded indigo/cyan).
-const AFFINITY_BURST_PALETTE: Record<
-  AffinityKey,
-  { ring1: readonly string[]; ring2: readonly string[] }
-> = {
-  radiance: {
+const AFFINITY_BURST_PALETTE: Record<AffinityKey, { ring1: readonly string[]; ring2: readonly string[] }> = {
+  radiance:    {
     ring1: ["#F2F5FF", "#E8EEFF", "#A8B8E8", "#D8E4FF", "#FFFFFF", "#C8D4F4"],
     ring2: ["#A8B8E8", "#D8E4FF", "#7090D8", "#F2F5FF", "#B0C4F0"],
   },
-  flare: {
+  flare:     {
     ring1: ["#FF5A3C", "#FF8A6A", "#FFB347", "#FF4500", "#FF7043", "#FFCC80"],
     ring2: ["#FF5A3C", "#FF8A6A", "#FFB347", "#FF6B35", "#FF4500"],
   },
@@ -304,17 +137,17 @@ const AFFINITY_BURST_PALETTE: Record<
     ring1: ["#3D6BFF", "#7090FF", "#4F8EFF", "#A0B8FF", "#2952CC", "#93A4FF"],
     ring2: ["#3D6BFF", "#7090FF", "#A0B8FF", "#2952CC", "#C5D0FF"],
   },
-  verdance: {
+  verdance:  {
     ring1: ["#2ECC71", "#5BE197", "#27AE60", "#7CFC00", "#00C853", "#A8F0C0"],
     ring2: ["#2ECC71", "#5BE197", "#27AE60", "#00C853", "#A8F0C0"],
   },
-  abyss: {
+  abyss:     {
     ring1: ["#7B1FA2", "#B14FD8", "#9C27B0", "#CE93D8", "#4A0072", "#E040FB"],
     ring2: ["#7B1FA2", "#B14FD8", "#CE93D8", "#E040FB", "#9C27B0"],
   },
-  singularity: {
-    ring1: ["#FFFFFF", "#F7F8FF", "#E8E4FF", "#DCE7FF", "#FFFFFF", "#C8D8FF"],
-    ring2: ["#FFFFFF", "#EEF3FF", "#DCE7FF", "#F8FAFF", "#C8D8FF"],
+  singularity:     {
+    ring1: ["#FFC43D", "#FFE08A", "#FFD700", "#FFAB40", "#FFF176", "#FFB300"],
+    ring2: ["#FFC43D", "#FFE08A", "#FFD700", "#FFAB40", "#FFF9C4"],
   },
 };
 
@@ -337,7 +170,6 @@ export function LumiiOrb({
   whiteGlow = false,
   coreGlow,
   appearance = "spectrum",
-  still = false,
 }: {
   size?: number;
   excited?: boolean;
@@ -351,7 +183,6 @@ export function LumiiOrb({
   whiteGlow?: boolean;
   coreGlow?: LumiiCoreGlow;
   appearance?: LumiiAppearance;
-  still?: boolean;
 }) {
   // Stable unique ID for SVG filter defs — safe across StrictMode double-invoke
   const instanceRef = useRef<number | null>(null);
@@ -362,7 +193,7 @@ export function LumiiOrb({
   onNearestNodeRef.current = onNearestNode;
 
   const isMobile = useIsMobile();
-  const prefersReducedMotion = useReducedMotion() || still;
+  const prefersReducedMotion = useReducedMotion();
 
   const [morphIdx, setMorphIdx] = useState(0);
 
@@ -374,22 +205,17 @@ export function LumiiOrb({
       return;
     }
     const ms = excited ? 640 : 1900;
-    const id = setInterval(
-      () => setMorphIdx((i) => (i + 1) % MORPH_CYCLE.length),
-      ms,
-    );
+    const id = setInterval(() => setMorphIdx((i) => (i + 1) % MORPH_CYCLE.length), ms);
     return () => clearInterval(id);
   }, [shouldMorph, excited]);
 
   const shapeKey = burst
     ? "burst"
     : !shouldMorph
-      ? "idle"
-      : excited
-        ? morphIdx % 2 === 0
-          ? "excited"
-          : "speakA"
-        : MORPH_CYCLE[morphIdx];
+    ? "idle"
+    : excited
+    ? (morphIdx % 2 === 0 ? "excited" : "speakA")
+    : MORPH_CYCLE[morphIdx];
 
   // Notify parent of the nearest-node offset whenever shape or tether direction changes
   useEffect(() => {
@@ -399,84 +225,22 @@ export function LumiiOrb({
   }, [shapeKey, tetheredDirection]);
   const blurSd = burst ? 5.0 : excited ? 3.8 : 2.6;
   const zoneKey = highlightZone ?? "none";
-  const appearancePulse =
-    appearance === "spectrum" ? null : APPEARANCE_PULSE[appearance];
+  const appearancePulse = appearance === "spectrum" ? null : APPEARANCE_PULSE[appearance];
   const pulseStroke = burst
     ? burstColor
     : whiteGlow
       ? "#f7fbff"
       : appearancePulse
-        ? excited
-          ? appearancePulse.excited
-          : appearancePulse.idle
-        : excited
-          ? ZONE_PULSE_COLOR[zoneKey].excited
-          : ZONE_PULSE_COLOR[zoneKey].idle;
-  const secondaryPulse =
-    appearance === "spectrum"
-      ? whiteGlow
-        ? "#eef5ff"
-        : "#f97316"
-      : (appearancePulse?.excited ?? "#eef5ff");
-  const coreTone = coreGlow ?? (appearance === "hostile" ? "red" : "white");
-  const isHostileCore = coreTone === "red";
-  const signatureStroke =
-    coreTone === "red"
-      ? "rgba(255,238,242,0.64)"
-      : whiteGlow
-        ? "rgba(255,255,255,0.86)"
-        : "rgba(224,236,255,0.68)";
-  const signatureAccent =
-    coreTone === "red" ? "rgba(255,56,86,0.48)" : "rgba(195,214,255,0.44)";
-  const pulseStrokeW = burst
-    ? 2.2
-    : isHostileCore
-      ? excited
-        ? 1.1
-        : 0.8
+        ? excited ? appearancePulse.excited : appearancePulse.idle
       : excited
-        ? 1.6
-        : 1.0;
-  const primaryPulseOpacity = burst
-    ? 0.75
-    : excited
-      ? isHostileCore
-        ? 0.34
-        : 0.55
-      : isHostileCore
-        ? 0.16
-        : 0.22;
-  const primaryPulseMobileOpacity = burst
-    ? 0.55
-    : excited
-      ? isHostileCore
-        ? 0.26
-        : 0.38
-      : isHostileCore
-        ? 0.14
-        : 0.22;
-  const secondaryPulseOpacity = burst ? 0.55 : isHostileCore ? 0.24 : 0.38;
-  const secondaryPulseStrokeW = burst ? 1.4 : isHostileCore ? 0.62 : 0.8;
-  const coreOuterOpacity = isHostileCore
-    ? excited
-      ? 0.9
-      : 0.78
-    : whiteGlow
-      ? isMobile
-        ? excited
-          ? 0.62
-          : 0.54
-        : excited
-          ? 0.9
-          : 0.8
-      : excited
-        ? 0.74
-        : 0.64;
-  const whitePresenceFilter = whiteGlow
-    ? isMobile
-      ? "drop-shadow(0 0 2.5px rgba(255,255,255,0.74)) drop-shadow(0 0 8px rgba(202,222,255,0.3))"
-      : "drop-shadow(0 0 4px rgba(255,255,255,1)) drop-shadow(0 0 14px rgba(240,246,255,0.92)) drop-shadow(0 0 30px rgba(195,216,255,0.66))"
-    : undefined;
+        ? ZONE_PULSE_COLOR[zoneKey].excited
+        : ZONE_PULSE_COLOR[zoneKey].idle;
+  const pulseStrokeW = burst ? 2.2 : excited ? 1.6 : 1.0;
+
+  const secondaryPulse = appearance === "spectrum"
+    ? whiteGlow ? "#eef5ff" : "#f97316"
+    : appearancePulse?.excited ?? "#eef5ff";
+  const coreTone = coreGlow ?? "white";
 
   return (
     <svg
@@ -487,17 +251,15 @@ export function LumiiOrb({
       data-lumii-core={coreTone ?? undefined}
       style={{
         overflow: "visible",
-        filter: whitePresenceFilter,
+        filter: whiteGlow
+          ? "drop-shadow(0 0 4px rgba(255,255,255,1)) drop-shadow(0 0 14px rgba(240,246,255,0.92)) drop-shadow(0 0 30px rgba(195,216,255,0.66))"
+          : undefined,
       }}
     >
       <defs>
         {/* Glow filter — blurs then merges over original for a soft halo */}
         <filter id={filterId} x="-150%" y="-150%" width="400%" height="400%">
-          <feGaussianBlur
-            in="SourceGraphic"
-            stdDeviation={isMobile ? 0 : blurSd}
-            result="blur"
-          />
+          <feGaussianBlur in="SourceGraphic" stdDeviation={isMobile ? 0 : blurSd} result="blur" />
           <feMerge>
             <feMergeNode in="blur" />
             <feMergeNode in="SourceGraphic" />
@@ -519,284 +281,164 @@ export function LumiiOrb({
 
       <g
         className={prefersReducedMotion ? undefined : "lumii-orb-hover"}
-        style={
-          {
-            "--lum-hover-dur": excited || speaking ? "3.6s" : "5.4s",
-            "--lum-hover-amp": excited || speaking ? "-1.5px" : "-2.3px",
-          } as React.CSSProperties
-        }
+        style={{
+          '--lum-hover-dur': excited || speaking ? '3.6s' : '5.4s',
+          '--lum-hover-amp': excited || speaking ? '-1.5px' : '-2.3px',
+        } as React.CSSProperties}
       >
+      {coreTone && (
         <g
           aria-hidden="true"
-          data-lumii-signature-halo={coreTone}
-          className={[
-            "lumii-signature-halo",
-            coreTone === "red" ? "lumii-signature-halo--hostile" : "",
-          ]
-            .filter(Boolean)
-            .join(" ")}
-          style={
-            {
-              color: signatureStroke,
-              "--lum-signature-accent": signatureAccent,
-              "--lum-signature-low": coreTone === "red" ? 0.31 : 0.46,
-              "--lum-signature-high": coreTone === "red" ? 0.57 : 0.74,
-            } as React.CSSProperties
-          }
+          style={{
+            filter: coreTone === "red"
+              ? "drop-shadow(0 0 3px rgba(255,238,240,.98)) drop-shadow(0 0 10px rgba(255,38,72,.95)) drop-shadow(0 0 22px rgba(190,0,37,.72))"
+              : undefined,
+          }}
         >
-          <path
-            d="M-27 -4 C-17 -15 4 -18 23 -8 C31 -4 27 7 15 12 C2 17 -18 11 -27 -4Z"
-            fill="none"
-            stroke="var(--lum-signature-accent)"
-            strokeWidth={0.72}
-            strokeLinecap="round"
-            strokeLinejoin="round"
-          />
-          <path
-            d="M-4 -23 C7 -13 11 3 3 24 C-9 12 -12 -7 -4 -23Z"
-            fill="none"
-            stroke="var(--lum-signature-accent)"
-            strokeWidth={0.62}
-            strokeLinecap="round"
-            strokeLinejoin="round"
-          />
-        </g>
-        {coreTone && (
-          <g
-            aria-hidden="true"
-            data-lumii-core-role="identity"
-            style={{
-              filter:
-                coreTone === "red"
-                  ? "drop-shadow(0 0 3px rgba(255,238,240,.98)) drop-shadow(0 0 10px rgba(255,38,72,.95)) drop-shadow(0 0 22px rgba(190,0,37,.72))"
-                  : whiteGlow
-                    ? isMobile
-                      ? "drop-shadow(0 0 2px rgba(255,255,255,.68)) drop-shadow(0 0 5px rgba(202,222,255,.26))"
-                      : "drop-shadow(0 0 3px rgba(255,255,255,.92)) drop-shadow(0 0 11px rgba(202,222,255,.64))"
-                    : "drop-shadow(0 0 2.5px rgba(255,255,255,.82)) drop-shadow(0 0 8px rgba(202,222,255,.48))",
-            }}
-          >
-            <circle
-              cx={0}
-              cy={0}
-              r={
-                whiteGlow && isMobile
-                  ? excited
-                    ? 16.5
-                    : 14
-                  : excited
-                    ? 21
-                    : 18
-              }
-              fill={`url(#${filterId}-${coreTone}-core)`}
-              opacity={coreOuterOpacity}
-              stroke={
-                coreTone === "red"
-                  ? "rgba(255,238,240,0.58)"
-                  : "rgba(248,252,255,0.62)"
-              }
-              strokeWidth={0.72}
-            />
-            <circle
-              cx={0}
-              cy={0}
-              r={
-                whiteGlow && isMobile
-                  ? excited
-                    ? 5.7
-                    : 4.9
-                  : excited
-                    ? 7.3
-                    : 6.4
-              }
-              fill={coreTone === "red" ? "#ff2949" : "#ffffff"}
-              opacity={0.96}
-            />
-            {coreTone === "red" && (
-              <circle
-                cx={0}
-                cy={0}
-                r={excited ? 2.4 : 2}
-                fill="#fffaff"
-                opacity={0.9}
-              />
-            )}
-          </g>
-        )}
-
-        {/* Outer presence pulse ring — CSS on mobile, JS on desktop */}
-        {isMobile ? (
           <circle
             cx={0}
             cy={0}
-            r={burst ? 35 : excited ? 22 : 16}
-            fill="none"
-            stroke={pulseStroke}
-            strokeWidth={pulseStrokeW}
-            opacity={primaryPulseMobileOpacity}
-            className="lumii-pulse-ring"
-            style={
-              {
-                "--lum-pulse-dur": burst ? "0.5s" : excited ? "0.88s" : "2.5s",
-                "--lum-pulse-lo": primaryPulseMobileOpacity,
-              } as React.CSSProperties
-            }
+            r={excited ? 20 : 17}
+            fill={`url(#${filterId}-${coreTone}-core)`}
+            opacity={excited ? 0.9 : 0.78}
           />
-        ) : (
-          <motion.circle
+          <circle
             cx={0}
             cy={0}
-            animate={{
-              r: burst ? [20, 50, 20] : excited ? [14, 30, 14] : [11, 22, 11],
-              opacity: [primaryPulseOpacity, 0, primaryPulseOpacity],
-              stroke: pulseStroke,
-            }}
-            transition={{
-              r: {
-                duration: burst ? 0.5 : excited ? 0.88 : 2.5,
-                repeat: Infinity,
-                ease: "easeOut",
-              },
-              opacity: {
-                duration: burst ? 0.5 : excited ? 0.88 : 2.5,
-                repeat: Infinity,
-                ease: "easeOut",
-              },
-              stroke: { duration: 0.3, ease: "easeInOut" },
-            }}
+            r={excited ? 7 : 6}
+            fill={coreTone === "red" ? "#ff2949" : "#ffffff"}
+            opacity={0.96}
+          />
+        </g>
+      )}
+
+      {/* Outer presence pulse ring — CSS on mobile, JS on desktop */}
+      {isMobile ? (
+        <circle
+          cx={0} cy={0}
+          r={burst ? 35 : excited ? 22 : 16}
+          fill="none"
+          stroke={pulseStroke}
+          strokeWidth={pulseStrokeW}
+          opacity={burst ? 0.55 : excited ? 0.38 : 0.22}
+          className="lumii-pulse-ring"
+          style={{
+            '--lum-pulse-dur': burst ? '0.5s' : excited ? '0.88s' : '2.5s',
+            '--lum-pulse-lo': burst ? '0.75' : excited ? '0.55' : '0.22',
+          } as React.CSSProperties}
+        />
+      ) : (
+        <motion.circle
+          cx={0} cy={0}
+          animate={{
+            r:       burst ? [20, 50, 20] : excited ? [14, 30, 14] : [11, 22, 11],
+            opacity: burst ? [0.75, 0, 0.75] : excited ? [0.55, 0, 0.55] : [0.22, 0, 0.22],
+            stroke: pulseStroke,
+          }}
+          transition={{
+            r:       { duration: burst ? 0.5 : excited ? 0.88 : 2.5, repeat: Infinity, ease: "easeOut" },
+            opacity: { duration: burst ? 0.5 : excited ? 0.88 : 2.5, repeat: Infinity, ease: "easeOut" },
+            stroke:  { duration: 0.3, ease: "easeInOut" },
+          }}
+          fill="none"
+          strokeWidth={pulseStrokeW}
+        />
+      )}
+
+      {/* Second pulse ring — excited or burst, offset phase */}
+      {(excited || burst) && (isMobile ? (
+        <circle
+          cx={0} cy={0}
+          r={burst ? 43 : 26}
+          fill="none"
+          stroke={burst ? burstColor : secondaryPulse}
+          strokeWidth={burst ? 1.4 : 0.8}
+          opacity={burst ? 0.55 : 0.38}
+          className="lumii-pulse-ring"
+          style={{
+            '--lum-pulse-dur': burst ? '0.5s' : '1.3s',
+            '--lum-pulse-delay': burst ? '0.08s' : '0.44s',
+            '--lum-pulse-lo': burst ? '0.55' : '0.38',
+          } as React.CSSProperties}
+        />
+      ) : (
+        <motion.circle
+          cx={0} cy={0}
+          animate={{
+            r: burst ? [28, 58, 28] : [18, 34, 18],
+            opacity: burst ? [0.55, 0, 0.55] : [0.38, 0, 0.38],
+          }}
+          transition={{ duration: burst ? 0.5 : 1.3, repeat: Infinity, ease: "easeOut", delay: burst ? 0.08 : 0.44 }}
+          fill="none"
+          stroke={burst ? burstColor : secondaryPulse}
+          strokeWidth={burst ? 1.4 : 0.8}
+        />
+      ))}
+
+      {/* Burst flash ring — one-shot radial flash on celebration */}
+      <AnimatePresence>
+        {burst && (
+          <motion.circle
+            key="burst-flash"
+            cx={0} cy={0}
+            initial={{ r: 8, opacity: 0.9, strokeWidth: 3 }}
+            animate={{ r: 52, opacity: 0, strokeWidth: 0.5 }}
+            exit={{ opacity: 0 }}
+            transition={{ duration: 0.45, ease: "easeOut" }}
             fill="none"
-            strokeWidth={pulseStrokeW}
+            stroke={burstColor}
           />
         )}
+      </AnimatePresence>
 
-        {/* Second pulse ring — excited or burst, offset phase */}
-        {(excited || burst) &&
-          (isMobile ? (
-            <circle
-              cx={0}
-              cy={0}
-              r={burst ? 43 : 26}
-              fill="none"
-              stroke={burst ? burstColor : secondaryPulse}
-              strokeWidth={secondaryPulseStrokeW}
-              opacity={secondaryPulseOpacity}
-              className="lumii-pulse-ring"
-              style={
-                {
-                  "--lum-pulse-dur": burst ? "0.5s" : "1.3s",
-                  "--lum-pulse-delay": burst ? "0.08s" : "0.44s",
-                  "--lum-pulse-lo": secondaryPulseOpacity,
-                } as React.CSSProperties
-              }
-            />
-          ) : (
-            <motion.circle
-              cx={0}
-              cy={0}
-              animate={{
-                r: burst ? [28, 58, 28] : [18, 34, 18],
-                opacity: [secondaryPulseOpacity, 0, secondaryPulseOpacity],
-              }}
-              transition={{
-                duration: burst ? 0.5 : 1.3,
-                repeat: Infinity,
-                ease: "easeOut",
-                delay: burst ? 0.08 : 0.44,
-              }}
-              fill="none"
-              stroke={burst ? burstColor : secondaryPulse}
-              strokeWidth={secondaryPulseStrokeW}
-            />
-          ))}
-
-        {/* Burst flash ring — one-shot radial flash on celebration */}
-        <AnimatePresence>
-          {burst && (
-            <motion.circle
-              key="burst-flash"
-              cx={0}
-              cy={0}
-              initial={{ r: 8, opacity: 0.9, strokeWidth: 3 }}
-              animate={{ r: 52, opacity: 0, strokeWidth: 0.5 }}
-              exit={{ opacity: 0 }}
-              transition={{ duration: 0.45, ease: "easeOut" }}
-              fill="none"
-              stroke={burstColor}
-            />
-          )}
-        </AnimatePresence>
-
-        {/* Small natural-Affinity motes drift away from Lumii. */}
-        {LUMII_MOTES.map((mote, index) => {
-          const radians = (mote.angle * Math.PI) / 180;
-          const x0 = mote.r0 * Math.cos(radians);
-          const y0 = mote.r0 * Math.sin(radians);
-          const x1 = mote.r1 * Math.cos(radians);
-          const y1 = mote.r1 * Math.sin(radians);
-          const color = LUMII_NODE_COLORS[mote.affinity];
-
-          if (prefersReducedMotion) {
-            return (
-              <circle
-                key={`mote-${index}`}
-                data-lumii-mote={mote.affinity}
-                cx={(x0 + x1) / 2}
-                cy={(y0 + y1) / 2}
-                r={mote.size * 0.72}
-                fill={color}
-                opacity={0.48}
-              />
-            );
-          }
-
-          // Mobile keeps the particles compositor-light: fixed positions with a
-          // CSS opacity/scale pulse instead of twelve JS-driven trajectories.
-          if (isMobile) {
-            return (
-              <g
-                key={`mote-${index}`}
-                data-lumii-mote={mote.affinity}
-                transform={`translate(${(x0 + x1) / 2}, ${(y0 + y1) / 2})`}
-                className="lumii-mote"
-                style={
-                  {
-                    "--lum-delay": `${mote.delay}s`,
-                    "--lum-dur": `${mote.duration}s`,
-                    filter: `drop-shadow(0 0 6px ${color})`,
-                  } as React.CSSProperties
-                }
-              >
-                <circle r={mote.size} fill={color} />
-              </g>
-            );
-          }
-
+      {/* Multicolored ember / spark particles — drift outward from constellation and fade */}
+      {EMBERS.map((e, i) => {
+        const rad = (e.angle * Math.PI) / 180;
+        const x0 = e.r0 * Math.cos(rad);
+        const y0 = e.r0 * Math.sin(rad);
+        const x1 = e.r1 * Math.cos(rad);
+        const y1 = e.r1 * Math.sin(rad);
+        // Mobile: static position + CSS opacity/scale pulse; no JS drift
+        if (isMobile) {
+          const midX = (x0 + x1) / 2;
+          const midY = (y0 + y1) / 2;
           return (
-            <motion.g
-              key={`mote-${index}`}
-              data-lumii-mote={mote.affinity}
-              style={{ filter: `drop-shadow(0 0 6px ${color})` }}
-              initial={{ x: x0, y: y0, opacity: 0.16, scale: 0.7 }}
-              animate={{
-                x: [x0, x1, x1],
-                y: [y0, y1, y1],
-                opacity: [0.16, 0.98, 0.12],
-                scale: [0.7, 1.1, 0.42],
-              }}
-              transition={{
-                duration: mote.duration,
-                delay: mote.delay,
-                repeat: Infinity,
-                repeatDelay: 0.35 + (index % 3) * 0.22,
-                times: [0, 0.55, 1],
-                ease: "easeOut",
-              }}
+            <g
+              key={`ember-${i}`}
+              transform={`translate(${midX}, ${midY})`}
+              className="lumii-ember"
+              style={{ animationDelay: `${e.delay}s`, animationDuration: `${e.dur}s`, filter: `drop-shadow(0 0 3px ${e.col})` }}
             >
-              <circle r={mote.size} fill={color} />
-            </motion.g>
+              <circle r={e.sz} fill={e.col} />
+            </g>
           );
-        })}
+        }
+        return (
+          <motion.g
+            key={`ember-${i}`}
+            style={{ filter: `drop-shadow(0 0 3px ${e.col})` }}
+            initial={{ x: x0, y: y0, opacity: 0, scale: 0.6 }}
+            animate={{
+              x: [x0, x1, x1],
+              y: [y0, y1, y1],
+              opacity: [0, 0.88, 0],
+              scale: [0.6, 1.0, 0.2],
+            }}
+            transition={{
+              duration: e.dur,
+              delay: e.delay,
+              repeat: Infinity,
+              repeatDelay: 0.5 + (i % 3) * 0.3,
+              times: [0, 0.55, 1],
+              ease: "easeOut",
+            }}
+          >
+            <circle r={e.sz} fill={e.col} />
+          </motion.g>
+        );
+      })}
       </g>
+
     </svg>
   );
 }
@@ -820,9 +462,7 @@ function TetherBeam({
   const CROSS = 18;
   const gradDir = isVert ? (isDown ? "to bottom" : "to top") : "to left";
   const dotKeyframe = isVert
-    ? isDown
-      ? [2, LENGTH - 10, 2]
-      : [LENGTH - 10, 2, LENGTH - 10]
+    ? (isDown ? [2, LENGTH - 10, 2] : [LENGTH - 10, 2, LENGTH - 10])
     : [LENGTH - 10, 2, LENGTH - 10];
   const DOT_COLORS = isAction
     ? (["#fbbf24", "#f97316", "#fbbf24"] as const)
@@ -862,60 +502,39 @@ function TetherBeam({
         style={{
           position: "absolute",
           ...(isVert
-            ? {
-                top: 0,
-                bottom: 0,
-                left: "50%",
-                width: 1,
-                transform: "translateX(-50%)",
-              }
-            : {
-                left: 0,
-                right: 0,
-                top: "50%",
-                height: 1,
-                transform: "translateY(-50%)",
-              }),
+            ? { top: 0, bottom: 0, left: "50%", width: 1, transform: "translateX(-50%)" }
+            : { left: 0, right: 0, top: "50%", height: 1, transform: "translateY(-50%)" }),
           background: isAction
             ? `linear-gradient(${gradDir}, rgba(251,191,36,0.6), transparent)`
             : `linear-gradient(${gradDir}, rgba(168,85,247,0.45), transparent)`,
         }}
       />
       {/* Travelling dots — CSS on mobile, JS on desktop */}
-      {DOT_COLORS.map((color, i) =>
+      {DOT_COLORS.map((color, i) => (
         isMobile ? (
           <div
             key={i}
-            className={
-              isVert ? "lumii-tether-dot-vert" : "lumii-tether-dot-horiz"
-            }
-            style={
-              {
-                position: "absolute",
-                width: isAction ? 6 : 5,
-                height: isAction ? 6 : 5,
-                borderRadius: "50%",
-                background: color,
-                boxShadow: `0 0 ${glowSize}px ${color}`,
-                ...(isVert
-                  ? { left: "50%", top: 0, transform: "translateX(-50%)" }
-                  : { top: "50%", left: 0, transform: "translateY(-50%)" }),
-                ["--lum-dur" as string]: `${dotDuration}s`,
-                ["--lum-delay" as string]: `${i * 0.28}s`,
-                ["--lum-tether-len" as string]: `${LENGTH}px`,
-              } as React.CSSProperties
-            }
+            className={isVert ? "lumii-tether-dot-vert" : "lumii-tether-dot-horiz"}
+            style={{
+              position: "absolute",
+              width: isAction ? 6 : 5,
+              height: isAction ? 6 : 5,
+              borderRadius: "50%",
+              background: color,
+              boxShadow: `0 0 ${glowSize}px ${color}`,
+              ...(isVert
+                ? { left: "50%", top: 0, transform: "translateX(-50%)" }
+                : { top: "50%", left: 0, transform: "translateY(-50%)" }),
+              ['--lum-dur' as string]: `${dotDuration}s`,
+              ['--lum-delay' as string]: `${i * 0.28}s`,
+              ['--lum-tether-len' as string]: `${LENGTH}px`,
+            } as React.CSSProperties}
           />
         ) : (
           <motion.div
             key={i}
             animate={isVert ? { y: dotKeyframe } : { x: dotKeyframe }}
-            transition={{
-              duration: dotDuration,
-              repeat: Infinity,
-              delay: i * 0.28,
-              ease: "easeInOut",
-            }}
+            transition={{ duration: dotDuration, repeat: Infinity, delay: i * 0.28, ease: "easeInOut" }}
             style={{
               position: "absolute",
               width: isAction ? 6 : 5,
@@ -928,11 +547,11 @@ function TetherBeam({
                 : { top: "50%", left: 0, transform: "translateY(-50%)" }),
             }}
           />
-        ),
-      )}
+        )
+      ))}
       {/* Pulsing tip indicator — action beats only */}
-      {isAction &&
-        (isMobile ? (
+      {isAction && (
+        isMobile ? (
           <div
             className="lumii-tip-pulse"
             style={{
@@ -941,11 +560,9 @@ function TetherBeam({
               height: 10,
               borderRadius: "50%",
               background: tipColor,
-              ...(isVert && isDown
-                ? { bottom: 0, left: "50%", transform: "translateX(-50%)" }
-                : isVert
-                  ? { top: 0, left: "50%", transform: "translateX(-50%)" }
-                  : { top: "50%", left: 0, transform: "translateY(-50%)" }),
+              ...(isVert && isDown ? { bottom: 0, left: "50%", transform: "translateX(-50%)" }
+                : isVert ? { top: 0, left: "50%", transform: "translateX(-50%)" }
+                : { top: "50%", left: 0, transform: "translateY(-50%)" }),
             }}
           />
         ) : (
@@ -958,14 +575,13 @@ function TetherBeam({
               height: 10,
               borderRadius: "50%",
               background: tipColor,
-              ...(isVert && isDown
-                ? { bottom: 0, left: "50%", transform: "translateX(-50%)" }
-                : isVert
-                  ? { top: 0, left: "50%", transform: "translateX(-50%)" }
-                  : { top: "50%", left: 0, transform: "translateY(-50%)" }),
+              ...(isVert && isDown ? { bottom: 0, left: "50%", transform: "translateX(-50%)" }
+                : isVert ? { top: 0, left: "50%", transform: "translateX(-50%)" }
+                : { top: "50%", left: 0, transform: "translateY(-50%)" }),
             }}
           />
-        ))}
+        )
+      )}
     </div>
   );
 }
@@ -984,58 +600,39 @@ function AttentionArrow({
   const color = isAction ? "#fbbf24" : "#a855f7";
   const dur = isAction ? 0.65 : 1.3;
   const bounceClass =
-    direction === "down"
-      ? "lumii-arrow-bounce-down"
-      : direction === "up"
-        ? "lumii-arrow-bounce-up"
-        : "lumii-arrow-bounce-left";
+    direction === "down" ? "lumii-arrow-bounce-down" :
+    direction === "up"   ? "lumii-arrow-bounce-up" :
+    "lumii-arrow-bounce-left";
   const opacityLo = isAction ? 0.8 : 0.5;
   const opacityHi = isAction ? 1.0 : 0.85;
 
   const Icon =
-    direction === "down"
-      ? ChevronDown
-      : direction === "up"
-        ? ChevronUp
-        : ChevronLeft;
+    direction === "down" ? ChevronDown :
+    direction === "up"   ? ChevronUp   :
+    ChevronLeft;
 
   return (
     <div
       className={isMobile ? bounceClass : ""}
-      style={
-        {
-          color,
-          lineHeight: 0,
-          flexShrink: 0,
-          ...(isMobile
-            ? {
-                ["--lum-dur" as string]: `${dur}s`,
-                ["--lum-opacity-lo" as string]: opacityLo,
-                ["--lum-opacity-hi" as string]: opacityHi,
-              }
-            : {}),
-        } as React.CSSProperties
-      }
+      style={{
+        color,
+        lineHeight: 0,
+        flexShrink: 0,
+        ...(isMobile ? {
+          ['--lum-dur' as string]: `${dur}s`,
+          ['--lum-opacity-lo' as string]: opacityLo,
+          ['--lum-opacity-hi' as string]: opacityHi,
+        } : {}),
+      } as React.CSSProperties}
     >
       {isMobile ? (
         <Icon style={{ width: 18, height: 18 }} />
       ) : (
         <motion.div
           animate={
-            direction === "down"
-              ? {
-                  y: [0, 7, 0],
-                  opacity: isAction ? [0.8, 1, 0.8] : [0.5, 0.85, 0.5],
-                }
-              : direction === "up"
-                ? {
-                    y: [0, -7, 0],
-                    opacity: isAction ? [0.8, 1, 0.8] : [0.5, 0.85, 0.5],
-                  }
-                : {
-                    x: [0, -7, 0],
-                    opacity: isAction ? [0.8, 1, 0.8] : [0.5, 0.85, 0.5],
-                  }
+            direction === "down" ? { y: [0, 7, 0], opacity: isAction ? [0.8, 1, 0.8] : [0.5, 0.85, 0.5] } :
+            direction === "up"   ? { y: [0, -7, 0], opacity: isAction ? [0.8, 1, 0.8] : [0.5, 0.85, 0.5] } :
+            { x: [0, -7, 0], opacity: isAction ? [0.8, 1, 0.8] : [0.5, 0.85, 0.5] }
           }
           transition={{ duration: dur, repeat: Infinity, ease: "easeInOut" }}
           style={{ color, lineHeight: 0, flexShrink: 0 }}
@@ -1059,15 +656,7 @@ interface BubbleProps {
   onClick: () => void;
 }
 
-function LumiiBubble({
-  text,
-  isActionBeat,
-  isLastLine,
-  isFfBeat,
-  phase,
-  objective,
-  onClick,
-}: BubbleProps) {
+function LumiiBubble({ text, isActionBeat, isLastLine, isFfBeat, phase, objective, onClick }: BubbleProps) {
   const showNext = !isActionBeat || !isLastLine;
   const actionPrompt = isLastLine && isActionBeat ? "Go ahead — do it!" : null;
 
@@ -1082,8 +671,7 @@ function LumiiBubble({
       onClick={onClick}
       className="pointer-events-auto text-left max-w-[240px] rounded-2xl border border-white/20 shadow-xl focus:outline-none"
       style={{
-        background:
-          phase === 2 ? "rgba(20, 12, 36, 0.97)" : "rgba(10, 16, 36, 0.97)",
+        background: phase === 2 ? "rgba(20, 12, 36, 0.97)" : "rgba(10, 16, 36, 0.97)",
         padding: "12px 14px 10px",
       }}
     >
@@ -1094,8 +682,7 @@ function LumiiBubble({
             width: 14,
             height: 2,
             borderRadius: 1,
-            background:
-              "linear-gradient(90deg, #f97316, #22c55e, #3b82f6, #a855f7, #e2e8f0)",
+            background: "linear-gradient(90deg, #f97316, #22c55e, #3b82f6, #a855f7, #e2e8f0)",
             opacity: 0.7,
             flexShrink: 0,
           }}
@@ -1122,28 +709,15 @@ function LumiiBubble({
       </div>
 
       {/* Dialogue text */}
-      <p className="text-[13px] text-white/92 leading-relaxed mb-2.5">
-        {renderKeywords(text)}
-      </p>
+      <p className="text-[13px] text-white/92 leading-relaxed mb-2.5">{renderKeywords(text)}</p>
 
       {/* Objective label — shown on last line of beats that carry an objective */}
       {objective && isLastLine && (
         <div
           className="flex items-center gap-1.5 mb-2 px-2 py-1 rounded-lg"
-          style={{
-            background: "rgba(168,85,247,0.1)",
-            border: "1px solid rgba(168,85,247,0.2)",
-          }}
+          style={{ background: "rgba(168,85,247,0.1)", border: "1px solid rgba(168,85,247,0.2)" }}
         >
-          <div
-            style={{
-              width: 4,
-              height: 4,
-              borderRadius: "50%",
-              background: "#a855f7",
-              flexShrink: 0,
-            }}
-          />
+          <div style={{ width: 4, height: 4, borderRadius: "50%", background: "#a855f7", flexShrink: 0 }} />
           <span
             className="text-[9px] uppercase font-semibold"
             style={{ letterSpacing: "0.12em", color: "rgba(168,85,247,0.85)" }}
@@ -1197,7 +771,7 @@ const BEATS: Beat[] = [
     phase: 1,
     lines: [
       "Psst! Over here! ✨ I'm Lumii — a living mote of cosmic energy, and I'm here to guide your civilization through Luminae.",
-      "You are shaping a civilization across the fabric of the cosmos — driving it toward 15 Eminence before your opponent reaches theirs.",
+      `You are shaping a civilization across the fabric of the cosmos — driving it toward ${DEFAULT_VICTORY_REQUIREMENT} Eminence before your opponent reaches theirs.`,
       "Three forces carry you there: affinity currents flowing through the cosmos, relic technologies forged into your civilization, and Luminaries — ancient archetypes waiting to be called forth. Let me show you.",
     ],
     advance: { type: "click" },
@@ -1208,9 +782,9 @@ const BEATS: Beat[] = [
     phase: 1,
     highlightZone: "well",
     lines: [
-      "This flowing band is the Affinity Well — the raw cosmic substrate your civilization draws from each turn.",
+      "This flowing band is the Affinity Well — the raw cosmic substrate your civilization draws from across each century.",
       "Each current is a distinct mode of existence: Flare 🔴, Continuum 🔵, Verdance 🟢, Abyss 🟣, Radiance ⚪ — each a survival philosophy that shapes the cosmos.",
-      "Those are the five currents you can Harness from the Well.",
+      "That shimmering gold current? That's Singularity — the convergence point where all affinities meet. Each century, you Harness currents from the Well.",
     ],
     advance: { type: "click" },
   },
@@ -1221,12 +795,9 @@ const BEATS: Beat[] = [
     highlightZone: "well",
     objective: "Objective: gather affinity",
     lines: [
-      "Your turn! Tap 3 different affinity currents from the Well to draw them into your civilization, then tap Harness to claim them.",
+      "This century is yours. Tap 3 different affinity currents from the Well to draw them into your civilization, then tap Harness to claim them.",
     ],
-    advance: {
-      type: "action",
-      actions: ["harness_three_affinities", "harness_two_affinities"],
-    },
+    advance: { type: "action", actions: ["harness_three_affinities", "harness_two_affinities"] },
   },
   // 3: Second Harness action.
   {
@@ -1237,10 +808,7 @@ const BEATS: Beat[] = [
     lines: [
       "Your civilization deepens its reach. Do it again — draw 3 different currents, or 2 of the same if there are 4 or more of that current available in the Well.",
     ],
-    advance: {
-      type: "action",
-      actions: ["harness_three_affinities", "harness_two_affinities"],
-    },
+    advance: { type: "action", actions: ["harness_three_affinities", "harness_two_affinities"] },
   },
   // 4: Forge introduction and cost explanation.
   {
@@ -1254,15 +822,15 @@ const BEATS: Beat[] = [
     ],
     advance: { type: "click" },
   },
-  // 5 — Artifact anatomy
+  // 5 — Filter controls
   {
-    position: "forge",
+    position: "filters",
     phase: 1,
-    highlightZone: "forge",
+    highlightZone: "filters",
     lines: [
-      "Each Artifact carries three signals: its cost, the permanent Affinity it adds, and any Eminence it awards.",
-      "The Affinity symbol identifies the permanent depth you gain by Forging it. That depth reduces every future cost of the same Affinity automatically.",
-      "Eminence marks progress toward ascension. You do not need any alternate Forge views to read or play this match.",
+      "Above The Forge, three filters control how costs are displayed: Full, Discounted, and Needed.",
+      "Discounted applies your built affinity depth as automatic discounts. Forge two Flare Artifacts and every Flare cost here drops by 2. This is your real cost after civilization depth.",
+      "Needed strips away any cost already covered by your depth — only what you still lack appears. Switch to Needed to instantly spot which Artifacts are within reach this century.",
     ],
     advance: { type: "click" },
   },
@@ -1273,7 +841,7 @@ const BEATS: Beat[] = [
     highlightZone: "forge",
     objective: "Objective: encrypt an Artifact",
     lines: [
-      "Tap any Artifact to examine it. You can Forge it into your civilization now, or Encrypt it — securing it so no rival civilization can claim it.",
+      "Tap any Artifact to examine it. You can Forge it into your civilization now, or Encrypt it — securing it and receiving a Singularity current as the cosmos rewards your foresight.",
       "Encrypt one now. Tap any Artifact in The Forge, press Encrypt, then Confirm.",
     ],
     advance: { type: "action", actions: ["reserve_artifact"] },
@@ -1283,9 +851,9 @@ const BEATS: Beat[] = [
     position: "forge",
     phase: 1,
     lines: [
-      "When an Architect Encrypts an Artifact, the five Affinities converge around it. The resulting current is called Singularity.",
-      "The Artifact waits behind the Singularity cell for you alone. Singularity can cover any one missing Affinity when Forging.",
-      "Every Artifact you Forge adds a permanent bonus to that affinity. These bonuses appear in your civilization and automatically reduce all future costs of that type, every turn.",
+      "Good. That Artifact is secured — no other civilization can claim it. It waits in your Singularity panel until your affinity currents are sufficient to Forge it.",
+      "You also received one Singularity current — the gold affinity. Singularity acts as a wildcard: it substitutes for any affinity when Forging, stretching whatever you hold.",
+      "Every Artifact you Forge adds a permanent bonus to that affinity. These bonuses appear in your civilization and automatically reduce all future costs of that type from then on.",
     ],
     advance: { type: "click" },
   },
@@ -1297,7 +865,7 @@ const BEATS: Beat[] = [
     objective: "Objective: forge an Artifact",
     lines: [
       "Now Forge. Tap any Artifact with green costs — those are within reach right now. Press Forge, then Confirm to claim it permanently.",
-      "After it joins your civilization, its permanent Affinity will reduce matching costs for the rest of the match.",
+      "Try switching to Discounted view to see your depth discounts at work, or Needed to see only what you're still short on. Both help you find a good target fast.",
     ],
     advance: { type: "action", actions: ["forge_artifact"] },
   },
@@ -1308,7 +876,7 @@ const BEATS: Beat[] = [
     highlightZone: "luminaries",
     lines: [
       "Look to the Terminus — those are the Luminaries. Each one stirs when your civilization expresses enough affinity depth of its required types. When it answers, you receive Eminence and a living bonus.",
-      "Eminence measures your civilization's ascension. Reaching 15 begins the final round so every civilization receives the same number of turns.",
+      `Eminence measures your civilization's ascension. Check the Eminence display for your current total. Reach ${DEFAULT_VICTORY_REQUIREMENT} Eminence first and you win.`,
       "Different Luminaries bring different Eminence rewards and effects. Stack multiple Luminaries and compound your ascension — they are the turning points of legend.",
     ],
     advance: { type: "click" },
@@ -1318,7 +886,7 @@ const BEATS: Beat[] = [
     position: "center",
     phase: 1,
     lines: [
-      "I'm going to skip us ahead — several turns of development, so you can witness what a civilization on the edge of legend actually looks like. ⏩",
+      "I'm going to skip us ahead several centuries, so you can witness what a civilization on the edge of legend actually looks like. ⏩",
     ],
     advance: { type: "fast_forward" },
   },
@@ -1327,9 +895,9 @@ const BEATS: Beat[] = [
     position: "center",
     phase: 2,
     lines: [
-      "Here. Several turns forward. Your civilization has taken the Verdance path — life becoming infrastructure, growth woven into every component.",
-      "You carry 5 Verdance depth and 14 Eminence. One more Verdance Artifact will call forth the Verdant Oracle — the archetype of life that has made itself eternal.",
-      "The Verdant Oracle brings 1 Eminence. 14 + 1 = 15. That is the threshold where a civilization crosses from survival into legend. You are one move away.",
+      "Here. Several centuries have passed. Your civilization has taken the Verdance path — life becoming infrastructure, growth woven into every component.",
+      `You carry 5 Verdance depth and ${DEFAULT_VICTORY_REQUIREMENT - 1} Eminence. One more Verdance Artifact will call forth the Verdant Oracle — the archetype of life that has made itself eternal.`,
+      `The Verdant Oracle brings 1 Eminence. ${DEFAULT_VICTORY_REQUIREMENT - 1} + 1 = ${DEFAULT_VICTORY_REQUIREMENT}. That is the threshold where a civilization crosses from survival into legend. You are one move away.`,
     ],
     advance: { type: "click" },
   },
@@ -1341,7 +909,7 @@ const BEATS: Beat[] = [
     objective: "Objective: forge your encrypted Artifact",
     lines: [
       "You have a Verdance Artifact encrypted — it costs Abyss and Radiance currents, and your civilization holds both.",
-      "Tap the Singularity panel, find your encrypted Artifact, then press Forge and Confirm. The Verdant Oracle is waiting — and 15 Eminence is one step away.",
+      `Tap the Singularity panel, find your encrypted Artifact, then press Forge and Confirm. The Verdant Oracle is waiting — and ${DEFAULT_VICTORY_REQUIREMENT} Eminence is one step away.`,
     ],
     advance: { type: "action", actions: ["forge_reserved_artifact"] },
   },
@@ -1351,7 +919,7 @@ const BEATS: Beat[] = [
     phase: 2,
     lines: [
       "🌿 The Verdant Oracle answers. Your civilization, rooted deeply enough in the living path, has called it forth — and crossed into legend.",
-      "Every civilization is different. Different affinities, different relic technologies, different Luminaries, different paths to 15 Eminence.",
+      `Every civilization is different. Different affinities, different relic technologies, different Luminaries, different paths to ${DEFAULT_VICTORY_REQUIREMENT} Eminence.`,
       "Now you know the shape of ascension. Go build yours. ✨",
     ],
     advance: { type: "click" },
@@ -1361,34 +929,32 @@ const BEATS: Beat[] = [
 export const LUMII_BEAT_COUNT = BEATS.length;
 
 export const LUMII_BEAT_GATES: Record<number, string[]> = {
-  0: [],
-  1: [],
-  2: ["harness_three_affinities", "harness_two_affinities"],
-  3: ["harness_three_affinities", "harness_two_affinities"],
-  4: [],
-  5: [],
-  6: ["reserve_artifact"],
-  7: [],
-  8: ["forge_artifact"],
-  9: [],
-  10: [],
+  0:  [],
+  1:  [],
+  2:  ["harness_three_affinities", "harness_two_affinities"],
+  3:  ["harness_three_affinities", "harness_two_affinities"],
+  4:  [],
+  5:  [],
+  6:  ["reserve_artifact"],
+  7:  [],
+  8:  ["forge_artifact"],
+  9:  [],
+  10: ["tutorial_fast_forward"],
   11: [],
   12: ["forge_reserved_artifact"],
   13: [],
 };
 
-export const LUMII_ZONE_HIGHLIGHTS: Partial<
-  Record<number, "well" | "forge" | "filters" | "luminaries">
-> = {
-  1: "well",
-  2: "well",
-  3: "well",
-  4: "forge",
-  5: "filters",
-  6: "forge",
-  7: "forge",
-  8: "forge",
-  9: "luminaries",
+export const LUMII_ZONE_HIGHLIGHTS: Partial<Record<number, "well" | "forge" | "filters" | "luminaries">> = {
+  1:  "well",
+  2:  "well",
+  3:  "well",
+  4:  "forge",
+  5:  "filters",
+  6:  "forge",
+  7:  "forge",
+  8:  "forge",
+  9:  "luminaries",
   12: "forge",
 };
 
@@ -1397,16 +963,16 @@ export const LUMII_ZONE_HIGHLIGHTS: Partial<
 export type LumiiAttentionState = "listening" | "look_here" | "action";
 
 export const LUMII_ATTENTION: Record<number, LumiiAttentionState> = {
-  0: "listening",
-  1: "look_here",
-  2: "action",
-  3: "action",
-  4: "look_here",
-  5: "look_here",
-  6: "action",
-  7: "look_here",
-  8: "action",
-  9: "look_here",
+  0:  "listening",
+  1:  "look_here",
+  2:  "action",
+  3:  "action",
+  4:  "look_here",
+  5:  "look_here",
+  6:  "action",
+  7:  "look_here",
+  8:  "action",
+  9:  "look_here",
   10: "listening",
   11: "listening",
   12: "action",
@@ -1416,11 +982,11 @@ export const LUMII_ATTENTION: Record<number, LumiiAttentionState> = {
 // ─── Nudge messages ───────────────────────────────────────────────────────────
 
 const NUDGE_MESSAGES: Partial<Record<number, string>> = {
-  2: "Tap affinity currents in the Well below to select them, then tap Harness.",
-  3: "Draw more currents from the Affinity Well, then tap Harness.",
-  5: "Read the Artifact's cost, permanent Affinity, and Eminence, then tap Lumii to continue.",
-  6: "Tap any Artifact in The Forge, then press Encrypt and Confirm to hold it.",
-  8: "Tap an Artifact with green costs, then press Forge and Confirm.",
+  2:  "Tap affinity currents in the Well below to select them, then tap Harness.",
+  3:  "Draw more currents from the Affinity Well, then tap Harness.",
+  5:  "Tap Discounted or Needed above The Forge to try the filters, then tap Lumii to continue.",
+  6:  "Tap any Artifact in The Forge, then press Encrypt and Confirm to hold it.",
+  8:  "Tap an Artifact with green costs, then press Forge and Confirm.",
   12: "Open your Singularity panel, choose the encrypted Artifact, then press Forge and Confirm.",
 };
 
@@ -1446,11 +1012,7 @@ interface PositionStyle {
 function getPositionStyle(pos: BeatPosition, vpH: number): PositionStyle {
   switch (pos) {
     case "well":
-      return {
-        fixed: { bottom: 168, left: 14 },
-        layout: "above",
-        tether: "down",
-      };
+      return { fixed: { bottom: 168, left: 14 }, layout: "above", tether: "down" };
     case "forge":
     case "filters":
       return {
@@ -1495,14 +1057,7 @@ function LumiiLayout({
   if (layout === "above") {
     // bubble → orb → tether → arrow (visual top→bottom, orb hovers above target)
     return (
-      <div
-        style={{
-          display: "flex",
-          flexDirection: "column",
-          alignItems: "center",
-          gap: 6,
-        }}
-      >
+      <div style={{ display: "flex", flexDirection: "column", alignItems: "center", gap: 6 }}>
         {bubble}
         {orb}
         {tether}
@@ -1513,14 +1068,7 @@ function LumiiLayout({
   if (layout === "below") {
     // orb → tether → arrow → bubble (visual top→bottom, orb above everything)
     return (
-      <div
-        style={{
-          display: "flex",
-          flexDirection: "column",
-          alignItems: "center",
-          gap: 6,
-        }}
-      >
+      <div style={{ display: "flex", flexDirection: "column", alignItems: "center", gap: 6 }}>
         {orb}
         {tether}
         {arrow}
@@ -1531,14 +1079,7 @@ function LumiiLayout({
   if (layout === "left") {
     // [bubble] [arrow] [tether] [orb] left→right, orb nearest the target element on the right
     return (
-      <div
-        style={{
-          display: "flex",
-          flexDirection: "row-reverse",
-          alignItems: "center",
-          gap: 8,
-        }}
-      >
+      <div style={{ display: "flex", flexDirection: "row-reverse", alignItems: "center", gap: 8 }}>
         {orb}
         {tether}
         {arrow}
@@ -1548,14 +1089,7 @@ function LumiiLayout({
   }
   // right layout: orb on left, bubble extends right
   return (
-    <div
-      style={{
-        display: "flex",
-        flexDirection: "row",
-        alignItems: "center",
-        gap: 8,
-      }}
-    >
+    <div style={{ display: "flex", flexDirection: "row", alignItems: "center", gap: 8 }}>
       {orb}
       {tether}
       {arrow}
@@ -1571,6 +1105,7 @@ interface Props {
   sessionPlayerId: string;
   tutorialStep: number;
   setTutorialStep: (step: number) => void;
+  executeAction: (payload: Record<string, unknown>) => Promise<void>;
   nudgeTick?: number;
   burstIntensity?: number;
 }
@@ -1580,6 +1115,7 @@ export function LumiiTutorial({
   sessionPlayerId,
   tutorialStep,
   setTutorialStep,
+  executeAction,
   nudgeTick = 0,
   burstIntensity = 1.15,
 }: Props) {
@@ -1597,33 +1133,26 @@ export function LumiiTutorial({
   const [burstColor, setBurstColor] = useState<string>("#fbbf24");
   // Intensity for the current burst — sourced from BURST_INTENSITY map so callers
   // reference named event types instead of raw literals.
-  const [currentBurstIntensity, setCurrentBurstIntensity] =
-    useState<number>(burstIntensity);
+  const [currentBurstIntensity, setCurrentBurstIntensity] = useState<number>(burstIntensity);
   // Affinity key for the current burst — drives per-affinity particle palettes when set.
-  const [burstAffinityKey, setBurstAffinityKey] = useState<AffinityKey | null>(
-    null,
-  );
+  const [burstAffinityKey, setBurstAffinityKey] = useState<AffinityKey | null>(null);
   // Nearest constellation node for tether origin alignment
-  const [tetherNodeOffset, setTetherNodeOffset] = useState<{
-    x: number;
-    y: number;
-  }>({ x: 0, y: 0 });
+  const [tetherNodeOffset, setTetherNodeOffset] = useState<{ x: number; y: number }>({ x: 0, y: 0 });
   const prevLogLenRef = useRef(0);
   // Initialized from the current player's claimed count so resumed tutorial sessions
   // don't treat a pre-existing claim as a new one.
   const prevClaimedLumCountRef = useRef(
-    state?.players?.find((p) => p.playerId === sessionPlayerId)
-      ?.claimedLuminaryIds?.length ?? 0,
+    state?.players?.find((p) => p.playerId === sessionPlayerId)?.claimedLuminaryIds?.length ?? 0
   );
   // Track Eminence so a Forge action that grants it can fire the eminence_milestone preset.
   const prevEminenceRef = useRef(
-    state?.players?.find((p) => p.playerId === sessionPlayerId)?.eminence ?? 0,
+    state?.players?.find((p) => p.playerId === sessionPlayerId)?.eminence ?? 0
   );
   const ffTriggeredRef = useRef(false);
   const nudgeTimerRef = useRef<ReturnType<typeof setTimeout> | null>(null);
   const burstTimerRef = useRef<ReturnType<typeof setTimeout> | null>(null);
   const skipConfirmRef = useRef<HTMLElement | null>(null);
-  const completionRef = useRef<HTMLElement | null>(null);
+  const completionRef  = useRef<HTMLElement | null>(null);
 
   const beat = BEATS[tutorialStep] ?? null;
   const currentAttention = LUMII_ATTENTION[tutorialStep] ?? "listening";
@@ -1637,10 +1166,7 @@ export function LumiiTutorial({
 
   // Register the tutorial panel height CSS var so the board content pads itself
   useEffect(() => {
-    document.documentElement.style.setProperty(
-      "--tutorial-panel-height",
-      "0px",
-    );
+    document.documentElement.style.setProperty("--tutorial-panel-height", "0px");
     return () => {
       document.documentElement.style.removeProperty("--tutorial-panel-height");
     };
@@ -1659,7 +1185,7 @@ export function LumiiTutorial({
     setNudgeText(msg);
     if (nudgeTimerRef.current) clearTimeout(nudgeTimerRef.current);
     nudgeTimerRef.current = setTimeout(() => setNudgeText(null), 3200);
-    // eslint-disable-next-line react-hooks/exhaustive-deps
+  // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [nudgeTick]);
 
   const advanceBeat = useCallback(() => {
@@ -1677,28 +1203,17 @@ export function LumiiTutorial({
   // opts.intensity: scale peak from BURST_INTENSITY map (default BURST_INTENSITY_DEFAULT).
   //   Values >= 1.35 also fire the wide-ring shockwave (ring 2).
   // opts.affinityKey: affinity key that drives the per-affinity particle palettes (both rings).
-  const triggerCelebrationBurst = useCallback(
-    (
-      onComplete: () => void,
-      opts?: {
-        duration?: number;
-        color?: string;
-        intensity?: number;
-        affinityKey?: AffinityKey;
-      },
-    ) => {
-      if (burstTimerRef.current) clearTimeout(burstTimerRef.current);
-      setBurstColor(opts?.color ?? "#fbbf24");
-      setCurrentBurstIntensity(opts?.intensity ?? BURST_INTENSITY_DEFAULT);
-      setBurstAffinityKey(opts?.affinityKey ?? null);
-      setBurstActive(true);
-      burstTimerRef.current = setTimeout(() => {
-        setBurstActive(false);
-        onComplete();
-      }, opts?.duration ?? 500);
-    },
-    [],
-  );
+  const triggerCelebrationBurst = useCallback((onComplete: () => void, opts?: { duration?: number; color?: string; intensity?: number; affinityKey?: AffinityKey }) => {
+    if (burstTimerRef.current) clearTimeout(burstTimerRef.current);
+    setBurstColor(opts?.color ?? "#fbbf24");
+    setCurrentBurstIntensity(opts?.intensity ?? BURST_INTENSITY_DEFAULT);
+    setBurstAffinityKey(opts?.affinityKey ?? null);
+    setBurstActive(true);
+    burstTimerRef.current = setTimeout(() => {
+      setBurstActive(false);
+      onComplete();
+    }, opts?.duration ?? 500);
+  }, []);
 
   const handleClick = useCallback(() => {
     if (!beat || showCompletion || isFastForwarding) return;
@@ -1711,7 +1226,7 @@ export function LumiiTutorial({
     } else if (beat.advance.type === "fast_forward") {
       triggerFastForward();
     }
-    // eslint-disable-next-line react-hooks/exhaustive-deps
+  // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [beat, lineIdx, advanceBeat, showCompletion, isFastForwarding]);
 
   // Detect when the required action completes — trigger celebration burst then advance.
@@ -1723,15 +1238,10 @@ export function LumiiTutorial({
     const logLen = state.actionLog.length;
     if (logLen <= prevLogLenRef.current) return;
     prevLogLenRef.current = logLen;
-    const lastAction = state.lastAction as {
-      type?: string;
-      playerId?: string;
-    } | null;
+    const lastAction = state.lastAction as { type?: string; playerId?: string } | null;
     if (!lastAction?.type || lastAction.playerId !== sessionPlayerId) return;
     if (beat.advance.actions.includes(lastAction.type)) {
-      const myPlayer = state.players?.find(
-        (p) => p.playerId === sessionPlayerId,
-      );
+      const myPlayer = state.players?.find((p) => p.playerId === sessionPlayerId);
       const currentClaimedCount = myPlayer?.claimedLuminaryIds?.length ?? 0;
       const prevCount = prevClaimedLumCountRef.current;
       prevClaimedLumCountRef.current = currentClaimedCount;
@@ -1740,9 +1250,7 @@ export function LumiiTutorial({
         // intensity. No single affinityKey applies; summonColor drives the palette for this moment.
         const newLumId = myPlayer?.claimedLuminaryIds?.[0];
         const lumData = (state.luminaries ?? []).find((l) => l.id === newLumId);
-        const color =
-          (lumData as { summonColor?: string } | undefined)?.summonColor ??
-          "#fbbf24";
+        const color = (lumData as { summonColor?: string } | undefined)?.summonColor ?? "#fbbf24";
         triggerCelebrationBurst(advanceBeat, {
           duration: 700,
           color,
@@ -1752,14 +1260,11 @@ export function LumiiTutorial({
         // Standard action beat — use per-action palette color, affinity key, and intensity.
         // Forge actions that also grant Eminence get the elevated
         // eminence_milestone preset (1.6, ring 2); plain forges get card_forged (1.15).
-        const isForgingAction =
-          lastAction.type === "forge_artifact" ||
-          lastAction.type === "forge_reserved_artifact";
+        const isForgingAction = lastAction.type === "forge_artifact" || lastAction.type === "forge_reserved_artifact";
         const currentEminence = myPlayer?.eminence ?? 0;
         const previousEminence = prevEminenceRef.current;
         prevEminenceRef.current = currentEminence;
-        const earnedEminence =
-          isForgingAction && currentEminence > previousEminence;
+        const earnedEminence = isForgingAction && currentEminence > previousEminence;
         triggerCelebrationBurst(advanceBeat, {
           color: BURST_COLOR_BY_ACTION[lastAction.type] ?? "#fbbf24",
           affinityKey: BURST_AFFINITY_KEY_BY_ACTION[lastAction.type],
@@ -1771,28 +1276,25 @@ export function LumiiTutorial({
         });
       }
     }
-    // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [
-    state?.actionLog?.length,
-    beat,
-    sessionPlayerId,
-    advanceBeat,
-    triggerCelebrationBurst,
-  ]);
+  // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [state?.actionLog?.length, beat, sessionPlayerId, advanceBeat, triggerCelebrationBurst]);
 
-  const triggerFastForward = useCallback(() => {
+  const triggerFastForward = useCallback(async () => {
     if (ffTriggeredRef.current) return;
     ffTriggeredRef.current = true;
     setIsFastForwarding(true);
-    setLocation("/tutorial");
-  }, [setLocation]);
+    try {
+      await executeAction({ type: "tutorial_fast_forward" });
+    } catch {
+      ffTriggeredRef.current = false;
+      setIsFastForwarding(false);
+    }
+  }, [executeAction]);
 
   useEffect(() => {
     if (!isFastForwarding) return undefined;
-    const myPlayer = state?.players?.find(
-      (p) => p.playerId === sessionPlayerId,
-    );
-    if ((myPlayer?.eminence ?? 0) >= 13) {
+    const myPlayer = state?.players?.find((p) => p.playerId === sessionPlayerId);
+    if ((myPlayer?.eminence ?? 0) >= DEFAULT_VICTORY_REQUIREMENT - 1) {
       const timer = setTimeout(() => {
         setIsFastForwarding(false);
         ffTriggeredRef.current = false;
@@ -1804,11 +1306,7 @@ export function LumiiTutorial({
   }, [isFastForwarding, state, sessionPlayerId, advanceBeat]);
 
   useEffect(() => {
-    if (
-      state?.status === "finished" &&
-      tutorialStep >= 11 &&
-      tutorialStep < BEATS.length - 1
-    ) {
+    if (state?.status === "finished" && tutorialStep >= 11 && tutorialStep < BEATS.length - 1) {
       const timer = setTimeout(() => {
         if (tutorialStep < BEATS.length - 1) {
           setTutorialStep(BEATS.length - 1);
@@ -1817,7 +1315,7 @@ export function LumiiTutorial({
       return () => clearTimeout(timer);
     }
     return undefined;
-    // eslint-disable-next-line react-hooks/exhaustive-deps
+  // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [state?.status]);
 
   const handleSkip = () => {
@@ -1837,9 +1335,7 @@ export function LumiiTutorial({
 
   // Focus traps for the two user-blocking modals — placed after handler
   // definitions to avoid ReferenceError in the hook's escape callback.
-  useFocusTrap(skipConfirmRef, showSkipConfirm, () =>
-    setShowSkipConfirm(false),
-  );
+  useFocusTrap(skipConfirmRef, showSkipConfirm, () => setShowSkipConfirm(false));
   useFocusTrap(completionRef, showCompletion, handleFinish);
 
   if (tutorialStep < 0) return null;
@@ -1848,15 +1344,9 @@ export function LumiiTutorial({
   const isActionBeat = beat?.advance.type === "action";
   const isFfBeat = beat?.advance.type === "fast_forward";
   const currentPhase: 1 | 2 = beat?.phase ?? 1;
-  const posStyle = beat
-    ? getPositionStyle(beat.position, vpH)
-    : getPositionStyle("center", vpH);
+  const posStyle = beat ? getPositionStyle(beat.position, vpH) : getPositionStyle("center", vpH);
   const tetherEl = posStyle.tether ? (
-    <TetherBeam
-      direction={posStyle.tether}
-      attention={currentAttention}
-      nodeOffset={tetherNodeOffset}
-    />
+    <TetherBeam direction={posStyle.tether} attention={currentAttention} nodeOffset={tetherNodeOffset} />
   ) : undefined;
   const arrowEl = posStyle.tether ? (
     <AttentionArrow direction={posStyle.tether} attention={currentAttention} />
@@ -1867,13 +1357,10 @@ export function LumiiTutorial({
   // look_here = pointing at a zone, player can see it → mild dim
   // action     = player needs to interact → no dim
   const dimOpacity =
-    showCompletion || isFastForwarding
-      ? 0
-      : currentAttention === "listening"
-        ? 0.38
-        : currentAttention === "look_here"
-          ? 0.22
-          : 0;
+    showCompletion || isFastForwarding ? 0 :
+    currentAttention === "listening"  ? 0.38 :
+    currentAttention === "look_here"  ? 0.22 :
+    0;
 
   return (
     <>
@@ -1900,7 +1387,7 @@ export function LumiiTutorial({
           >
             <div
               className="lumii-spinner"
-              style={{ animation: "lumii-spin 1.2s linear infinite" }}
+              style={{ animation: 'lumii-spin 1.2s linear infinite' }}
             >
               <LumiiOrb size={80} excited highlightZone={null} />
             </div>
@@ -1913,9 +1400,7 @@ export function LumiiTutorial({
               <div className="text-lg font-serif font-semibold text-white/90 mb-1">
                 Advancing through time...
               </div>
-              <div className="text-sm text-white/50">
-                Several turns of civilization are passing
-              </div>
+              <div className="text-sm text-white/50">Several centuries of civilization are passing</div>
             </motion.div>
           </motion.div>
         )}
@@ -1931,9 +1416,7 @@ export function LumiiTutorial({
             className="fixed inset-0 z-[8000] flex items-center justify-center bg-black/75 px-5"
           >
             <motion.div
-              ref={(el) => {
-                skipConfirmRef.current = el;
-              }}
+              ref={(el) => { skipConfirmRef.current = el; }}
               role="dialog"
               aria-modal="true"
               aria-labelledby="lumii-skip-heading"
@@ -1942,12 +1425,9 @@ export function LumiiTutorial({
               exit={{ scale: 0.9, y: 12 }}
               className="w-full max-w-sm rounded-2xl border border-white/10 bg-slate-950/98 p-6 shadow-2xl"
             >
-              <h2 id="lumii-skip-heading" className="text-lg font-bold mb-2">
-                Leave the ascension path?
-              </h2>
+              <h2 id="lumii-skip-heading" className="text-lg font-bold mb-2">Leave the ascension path?</h2>
               <p className="text-sm text-muted-foreground mb-5">
-                You'll return to the home screen. You can begin your
-                civilization's journey from there at any time.
+                You'll return to the home screen. You can begin your civilization's journey from there at any time.
               </p>
               <div className="flex gap-3">
                 <button
@@ -1980,9 +1460,7 @@ export function LumiiTutorial({
             className="fixed inset-0 z-[8000] flex items-center justify-center bg-black/82 px-5"
           >
             <motion.div
-              ref={(el) => {
-                completionRef.current = el;
-              }}
+              ref={(el) => { completionRef.current = el; }}
               role="dialog"
               aria-modal="true"
               aria-labelledby="lumii-completion-heading"
@@ -1991,26 +1469,23 @@ export function LumiiTutorial({
               transition={{ type: "spring", stiffness: 280, damping: 22 }}
               className="w-full max-w-sm rounded-2xl border border-white/10 bg-slate-950/98 p-6 shadow-2xl text-center"
             >
-              <div className="flex justify-center mb-4 lumii-modal-bounce">
+              <div
+                className="flex justify-center mb-4 lumii-modal-bounce"
+              >
                 <LumiiOrb size={68} excited highlightZone={null} />
               </div>
-              <h2
-                id="lumii-completion-heading"
-                className="text-xl font-bold font-serif mb-1"
-              >
-                Your civilization is ready.
-              </h2>
+              <h2 id="lumii-completion-heading" className="text-xl font-bold font-serif mb-1">Your civilization is ready.</h2>
               <p className="text-sm text-muted-foreground mb-4">
                 You've seen the full arc of ascension in Luminae.
               </p>
               <ul className="text-left text-sm space-y-2 mb-5">
                 {[
                   "Harnessing affinity currents from the Affinity Well",
-                  "Encrypting Artifacts — securing them and creating Singularity",
+                  "Encrypting Artifacts — securing them and earning Singularity",
                   "Forging relic technologies to build permanent affinity depth",
-                  "Reading Artifact costs, permanent Affinities, and Eminence",
+                  "Using Discounted and Needed filters to find affordable Artifacts",
                   "Calling forth Luminaries by expressing a deep affinity path",
-                  "Reaching 15 Eminence — crossing from survival into legend",
+                  `Reaching ${DEFAULT_VICTORY_REQUIREMENT} Eminence — crossing from survival into legend`,
                 ].map((item) => (
                   <li key={item} className="flex items-start gap-2">
                     <span className="text-emerald-400 shrink-0 mt-0.5">✓</span>
@@ -2051,11 +1526,8 @@ export function LumiiTutorial({
                   // the browser's flex layout to anchor the orb at true centre.
                   // This is more reliable than left:50vw + translateX(-50%) across
                   // mobile webviews, PWAs, and safe-area environments.
-                  ...(posStyle.centered
-                    ? { display: "flex", justifyContent: "center" }
-                    : {}),
-                  transition:
-                    "top 0.35s ease, bottom 0.35s ease, left 0.35s ease, right 0.35s ease",
+                  ...(posStyle.centered ? { display: "flex", justifyContent: "center" } : {}),
+                  transition: "top 0.35s ease, bottom 0.35s ease, left 0.35s ease, right 0.35s ease",
                 }}
               >
                 <motion.div
@@ -2069,14 +1541,7 @@ export function LumiiTutorial({
                     tether={tetherEl}
                     arrow={arrowEl}
                     orb={
-                      <div
-                        style={{
-                          position: "relative",
-                          display: "inline-flex",
-                          alignItems: "center",
-                          justifyContent: "center",
-                        }}
-                      >
+                      <div style={{ position: "relative", display: "inline-flex", alignItems: "center", justifyContent: "center" }}>
                         <AnimatePresence>
                           {burstActive && (
                             <motion.div
@@ -2101,112 +1566,59 @@ export function LumiiTutorial({
                         <AnimatePresence>
                           {burstActive && (
                             <>
-                              {([0, 60, 120, 180, 240, 300] as const).map(
-                                (deg, i) => {
-                                  const rad = (deg * Math.PI) / 180;
-                                  const tx = Math.round(
-                                    Math.cos(rad) * 52 * currentBurstIntensity,
-                                  );
-                                  const ty = Math.round(
-                                    Math.sin(rad) * 52 * currentBurstIntensity,
-                                  );
-                                  const ring1Palette = burstAffinityKey
-                                    ? AFFINITY_BURST_PALETTE[burstAffinityKey]
-                                        .ring1
-                                    : (() => {
-                                        const hex = burstColor.replace("#", "");
-                                        const br = parseInt(
-                                          hex.substring(0, 2),
-                                          16,
-                                        );
-                                        const bg = parseInt(
-                                          hex.substring(2, 4),
-                                          16,
-                                        );
-                                        const bb = parseInt(
-                                          hex.substring(4, 6),
-                                          16,
-                                        );
-                                        const tint = (t: number) =>
-                                          `rgb(${Math.round(br + (255 - br) * t)},${Math.round(bg + (255 - bg) * t)},${Math.round(bb + (255 - bb) * t)})`;
-                                        return [
-                                          tint(0),
-                                          tint(0.3),
-                                          tint(0.55),
-                                          tint(0.15),
-                                          tint(0.7),
-                                          tint(0.45),
-                                        ];
-                                      })();
-                                  const color =
-                                    ring1Palette[i % ring1Palette.length];
-                                  return (
-                                    <React.Fragment
-                                      key={`burst-particle-${deg}`}
-                                    >
-                                      {currentBurstIntensity >= 1.2 && (
-                                        <motion.div
-                                          initial={{
-                                            opacity: 0,
-                                            x: 0,
-                                            y: 0,
-                                            scale: 1,
-                                          }}
-                                          animate={{
-                                            opacity: [0, 0.4, 0],
-                                            scale: [1, 1.3, 0.35],
-                                            x: [0, tx, tx],
-                                            y: [0, ty, ty],
-                                          }}
-                                          exit={{ opacity: 0 }}
-                                          transition={{
-                                            duration: 0.5,
-                                            ease: "easeOut",
-                                            times: [0, 0.4, 1],
-                                          }}
-                                          style={{
-                                            position: "absolute",
-                                            width: 18,
-                                            height: 18,
-                                            borderRadius: "50%",
-                                            background: color,
-                                            pointerEvents: "none",
-                                            zIndex: 1,
-                                          }}
-                                        />
-                                      )}
+                              {([0, 60, 120, 180, 240, 300] as const).map((deg, i) => {
+                                const rad = (deg * Math.PI) / 180;
+                                const tx = Math.round(Math.cos(rad) * 52 * currentBurstIntensity);
+                                const ty = Math.round(Math.sin(rad) * 52 * currentBurstIntensity);
+                                const ring1Palette = burstAffinityKey
+                                  ? AFFINITY_BURST_PALETTE[burstAffinityKey].ring1
+                                  : (() => {
+                                      const hex = burstColor.replace("#", "");
+                                      const br = parseInt(hex.substring(0, 2), 16);
+                                      const bg = parseInt(hex.substring(2, 4), 16);
+                                      const bb = parseInt(hex.substring(4, 6), 16);
+                                      const tint = (t: number) =>
+                                        `rgb(${Math.round(br + (255 - br) * t)},${Math.round(bg + (255 - bg) * t)},${Math.round(bb + (255 - bb) * t)})`;
+                                      return [tint(0), tint(0.3), tint(0.55), tint(0.15), tint(0.7), tint(0.45)];
+                                    })();
+                                const color = ring1Palette[i % ring1Palette.length];
+                                return (
+                                  <React.Fragment key={`burst-particle-${deg}`}>
+                                    {currentBurstIntensity >= 1.2 && (
                                       <motion.div
-                                        initial={{
-                                          opacity: 1,
-                                          x: 0,
-                                          y: 0,
-                                          scale: 1,
-                                        }}
-                                        animate={{
-                                          opacity: 0,
-                                          x: tx,
-                                          y: ty,
-                                          scale: 0.35,
-                                        }}
-                                        exit={{ opacity: 0, scale: 0 }}
-                                        transition={{
-                                          duration: 0.5,
-                                          ease: "easeOut",
-                                        }}
+                                        initial={{ opacity: 0, x: 0, y: 0, scale: 1 }}
+                                        animate={{ opacity: [0, 0.4, 0], scale: [1, 1.3, 0.35], x: [0, tx, tx], y: [0, ty, ty] }}
+                                        exit={{ opacity: 0 }}
+                                        transition={{ duration: 0.5, ease: "easeOut", times: [0, 0.4, 1] }}
                                         style={{
                                           position: "absolute",
-                                          width: 7,
-                                          height: 7,
+                                          width: 18,
+                                          height: 18,
                                           borderRadius: "50%",
                                           background: color,
                                           pointerEvents: "none",
-                                          zIndex: 2,
+                                          zIndex: 1,
                                         }}
                                       />
-                                    </React.Fragment>
-                                  );
-                                },
-                              )}
+                                    )}
+                                    <motion.div
+                                      initial={{ opacity: 1, x: 0, y: 0, scale: 1 }}
+                                      animate={{ opacity: 0, x: tx, y: ty, scale: 0.35 }}
+                                      exit={{ opacity: 0, scale: 0 }}
+                                      transition={{ duration: 0.5, ease: "easeOut" }}
+                                      style={{
+                                        position: "absolute",
+                                        width: 7,
+                                        height: 7,
+                                        borderRadius: "50%",
+                                        background: color,
+                                        pointerEvents: "none",
+                                        zIndex: 2,
+                                      }}
+                                    />
+                                  </React.Fragment>
+                                );
+                              })}
                             </>
                           )}
                         </AnimatePresence>
@@ -2214,112 +1626,64 @@ export function LumiiTutorial({
                         <AnimatePresence>
                           {burstActive && currentBurstIntensity >= 1.35 && (
                             <>
-                              {([36, 108, 180, 252, 324] as const).map(
-                                (deg, i) => {
-                                  const rad = (deg * Math.PI) / 180;
-                                  const radius =
-                                    (88 + (i % 2) * 8) * currentBurstIntensity;
-                                  const tx = Math.round(Math.cos(rad) * radius);
-                                  const ty = Math.round(Math.sin(rad) * radius);
-                                  const ring2Palette = burstAffinityKey
-                                    ? AFFINITY_BURST_PALETTE[burstAffinityKey]
-                                        .ring2
-                                    : ([
-                                        "#f0abfc",
-                                        "#67e8f9",
-                                        "#fde68a",
-                                        "#a5f3fc",
-                                        "#d8b4fe",
-                                      ] as const);
-                                  const color =
-                                    ring2Palette[i % ring2Palette.length];
-                                  const delay = 0.12 + i * 0.006;
-                                  return (
-                                    <React.Fragment
-                                      key={`burst-particle-wide-${deg}`}
-                                    >
-                                      {currentBurstIntensity >= 1.2 && (
-                                        <motion.div
-                                          initial={{
-                                            opacity: 0,
-                                            x: 0,
-                                            y: 0,
-                                            scale: 1,
-                                          }}
-                                          animate={{
-                                            opacity: [0, 0.4, 0],
-                                            scale: [1, 1.3, 0.25],
-                                            x: [0, tx, tx],
-                                            y: [0, ty, ty],
-                                          }}
-                                          exit={{ opacity: 0 }}
-                                          transition={{
-                                            duration: 0.55,
-                                            ease: "easeOut",
-                                            delay,
-                                            times: [0, 0.4, 1],
-                                          }}
-                                          style={{
-                                            position: "absolute",
-                                            width: 16,
-                                            height: 16,
-                                            borderRadius: "50%",
-                                            background: color,
-                                            pointerEvents: "none",
-                                            zIndex: 1,
-                                          }}
-                                        />
-                                      )}
+                              {([36, 108, 180, 252, 324] as const).map((deg, i) => {
+                                const rad = (deg * Math.PI) / 180;
+                                const radius = (88 + (i % 2) * 8) * currentBurstIntensity;
+                                const tx = Math.round(Math.cos(rad) * radius);
+                                const ty = Math.round(Math.sin(rad) * radius);
+                                const ring2Palette = burstAffinityKey
+                                  ? AFFINITY_BURST_PALETTE[burstAffinityKey].ring2
+                                  : (["#f0abfc", "#67e8f9", "#fde68a", "#a5f3fc", "#d8b4fe"] as const);
+                                const color = ring2Palette[i % ring2Palette.length];
+                                const delay = 0.12 + i * 0.006;
+                                return (
+                                  <React.Fragment key={`burst-particle-wide-${deg}`}>
+                                    {currentBurstIntensity >= 1.2 && (
                                       <motion.div
-                                        initial={{
-                                          opacity: 0.9,
-                                          x: 0,
-                                          y: 0,
-                                          scale: 1,
-                                        }}
-                                        animate={{
-                                          opacity: 0,
-                                          x: tx,
-                                          y: ty,
-                                          scale: 0.25,
-                                        }}
-                                        exit={{ opacity: 0, scale: 0 }}
-                                        transition={{
-                                          duration: 0.55,
-                                          ease: "easeOut",
-                                          delay,
-                                        }}
+                                        initial={{ opacity: 0, x: 0, y: 0, scale: 1 }}
+                                        animate={{ opacity: [0, 0.4, 0], scale: [1, 1.3, 0.25], x: [0, tx, tx], y: [0, ty, ty] }}
+                                        exit={{ opacity: 0 }}
+                                        transition={{ duration: 0.55, ease: "easeOut", delay, times: [0, 0.4, 1] }}
                                         style={{
                                           position: "absolute",
-                                          width: 5,
-                                          height: 5,
+                                          width: 16,
+                                          height: 16,
                                           borderRadius: "50%",
                                           background: color,
                                           pointerEvents: "none",
-                                          zIndex: 2,
+                                          zIndex: 1,
                                         }}
                                       />
-                                    </React.Fragment>
-                                  );
-                                },
-                              )}
+                                    )}
+                                    <motion.div
+                                      initial={{ opacity: 0.9, x: 0, y: 0, scale: 1 }}
+                                      animate={{ opacity: 0, x: tx, y: ty, scale: 0.25 }}
+                                      exit={{ opacity: 0, scale: 0 }}
+                                      transition={{ duration: 0.55, ease: "easeOut", delay }}
+                                      style={{
+                                        position: "absolute",
+                                        width: 5,
+                                        height: 5,
+                                        borderRadius: "50%",
+                                        background: color,
+                                        pointerEvents: "none",
+                                        zIndex: 2,
+                                      }}
+                                    />
+                                  </React.Fragment>
+                                );
+                              })}
                             </>
                           )}
                         </AnimatePresence>
                         <div
                           className="lumii-float"
-                          style={
-                            {
-                              position: "relative",
-                              zIndex: 1,
-                              "--lum-float-amp":
-                                currentAttention === "action"
-                                  ? "-13px"
-                                  : "-8px",
-                              "--lum-dur":
-                                currentAttention === "action" ? "1.8s" : "2.8s",
-                            } as React.CSSProperties
-                          }
+                          style={{
+                            position: "relative",
+                            zIndex: 1,
+                            '--lum-float-amp': currentAttention === "action" ? "-13px" : "-8px",
+                            '--lum-dur': currentAttention === "action" ? "1.8s" : "2.8s",
+                          } as React.CSSProperties}
                         >
                           <LumiiOrb
                             size={72}
@@ -2327,16 +1691,13 @@ export function LumiiTutorial({
                             excited={
                               burstActive ||
                               currentAttention === "action" ||
-                              (currentPhase === 2 &&
-                                tutorialStep === BEATS.length - 1)
+                              (currentPhase === 2 && tutorialStep === BEATS.length - 1)
                             }
                             burst={burstActive}
                             burstColor={burstColor}
                             tetheredDirection={posStyle.tether}
                             onNearestNode={setTetherNodeOffset}
-                            highlightZone={
-                              LUMII_ZONE_HIGHLIGHTS[tutorialStep] ?? null
-                            }
+                            highlightZone={LUMII_ZONE_HIGHLIGHTS[tutorialStep] ?? null}
                             beatKey={beat?.position}
                           />
                         </div>
@@ -2376,15 +1737,7 @@ export function LumiiTutorial({
                                   color: "rgba(255,255,255,0.82)",
                                 }}
                               >
-                                <span
-                                  style={{
-                                    color: "#a855f7",
-                                    fontWeight: 700,
-                                    marginRight: 5,
-                                  }}
-                                >
-                                  ✦
-                                </span>
+                                <span style={{ color: "#a855f7", fontWeight: 700, marginRight: 5 }}>✦</span>
                                 {nudgeText}
                               </div>
                             </motion.div>
@@ -2414,167 +1767,36 @@ export function LumiiTutorial({
 
           {/* Phase 2 scene label */}
           <AnimatePresence>
-            {currentPhase === 2 &&
-              !showCompletion &&
-              !isFastForwarding &&
-              tutorialStep >= 11 && (
-                <motion.div
-                  initial={{ opacity: 0, y: -8 }}
-                  animate={{ opacity: 1, y: 0 }}
-                  exit={{ opacity: 0 }}
-                  className="fixed top-3 left-1/2 -translate-x-1/2 z-[500] pointer-events-none"
-                >
-                  <div className="flex items-center gap-1.5 px-3 py-1 rounded-full bg-emerald-950/80 border border-emerald-500/30 text-[11px] text-emerald-300 font-semibold">
-                    <div className="w-1.5 h-1.5 rounded-full bg-emerald-400 animate-pulse" />
-                    Civilization on the Edge of Legend
-                  </div>
-                </motion.div>
-              )}
+            {currentPhase === 2 && !showCompletion && !isFastForwarding && tutorialStep >= 11 && (
+              <motion.div
+                initial={{ opacity: 0, y: -8 }}
+                animate={{ opacity: 1, y: 0 }}
+                exit={{ opacity: 0 }}
+                className="fixed top-3 left-1/2 -translate-x-1/2 z-[500] pointer-events-none"
+              >
+                <div className="flex items-center gap-1.5 px-3 py-1 rounded-full bg-emerald-950/80 border border-emerald-500/30 text-[11px] text-emerald-300 font-semibold">
+                  <div className="w-1.5 h-1.5 rounded-full bg-emerald-400 animate-pulse" />
+                  Civilization on the Edge of Legend
+                </div>
+              </motion.div>
+            )}
           </AnimatePresence>
         </>,
-        document.body,
+        document.body
       )}
     </>
   );
 }
 
-const GUIDED_NATURAL_AFFINITIES = [
-  "flare",
-  "continuum",
-  "verdance",
-  "abyss",
-  "radiance",
-] as const;
-type GuidedNaturalAffinity = (typeof GUIDED_NATURAL_AFFINITIES)[number];
-
-function guidedAffinityLabel(affinity: GuidedNaturalAffinity): string {
-  return affinity.charAt(0).toUpperCase() + affinity.slice(1);
-}
-
-function guidedEffectiveCost(
-  card: GameState["forgeTier1"][number],
-  player: GameState["players"][number],
-  state: GameState,
-) {
-  return Object.fromEntries(GUIDED_NATURAL_AFFINITIES.map((affinity) => {
-    const livingBonuses = state.luminaryAffinities.filter((entry) => (
-      entry.ownerId === player.playerId
-      && entry.activeAffinity === affinity
-      && state.turnCount > entry.summonedAtTurnCount
-    )).length;
-    return [
-      affinity,
-      Math.max(0, (card.cost[affinity] ?? 0) - (player.bonuses[affinity] ?? 0) - livingBonuses),
-    ];
-  })) as Record<(typeof GUIDED_NATURAL_AFFINITIES)[number], number>;
-}
-
-function guidedMissingCost(
-  card: GameState["forgeTier1"][number],
-  player: GameState["players"][number],
-  state: GameState,
-): number {
-  const cost = guidedEffectiveCost(card, player, state);
-  const missing = GUIDED_NATURAL_AFFINITIES.reduce(
-    (total, affinity) => total + Math.max(0, cost[affinity] - (player.affinities[affinity] ?? 0)),
-    0,
-  );
-  return Math.max(0, missing - (player.affinities.singularity ?? 0));
-}
-
-function guidedThreeAffinitySelection(
-  state: GameState,
-  preferred: readonly GuidedNaturalAffinity[] = [],
-): GuidedNaturalAffinity[] {
-  const available = GUIDED_NATURAL_AFFINITIES.filter(
-    (affinity) => (state.affinityWell[affinity] ?? 0) > 0,
-  );
-  const selection: GuidedNaturalAffinity[] = [];
-  for (const affinity of [...preferred, ...available]) {
-    if (available.includes(affinity) && !selection.includes(affinity)) selection.push(affinity);
-    if (selection.length === 3) break;
-  }
-  return selection;
-}
-
-function guidedMoveAdvice(
-  state: GameState,
-  player: GameState["players"][number],
-  milestones: { harness: boolean; encrypt: boolean; forge: boolean; luminary: boolean },
-): string {
-  if (state.status === "finished") {
-    return player.eminence >= state.victoryRequirement
-      ? "The match is complete. Review the civilization you built, then return to the Command Center."
-      : "The match is complete. Start another practice match when you want to try a different path.";
-  }
-  if (state.pendingLuminaryChoice?.playerId === player.playerId) {
-    return "Choose the first highlighted Luminary to set the order of arrival and continue the turn.";
-  }
-  if (state.players[state.currentPlayerIndex]?.playerId !== player.playerId) {
-    return "Wait for Lumii to pass. Your next turn will begin automatically.";
-  }
-
-  const forge = [...state.forgeTier1, ...state.forgeTier2, ...state.forgeTier3];
-  const affordableForge = forge
-    .filter((card) => guidedMissingCost(card, player, state) === 0)
-    .sort((a, b) => b.eminence - a.eminence || a.tier - b.tier)[0];
-  const affordableReserved = player.reservedArtifacts
-    .filter((card) => guidedMissingCost(card, player, state) === 0)
-    .sort((a, b) => b.eminence - a.eminence || a.tier - b.tier)[0];
-
-  if (!milestones.harness) {
-    const different = guidedThreeAffinitySelection(state);
-    if (different.length === 3) {
-      return `Harness 1 ${different.map(guidedAffinityLabel).join(", 1 ")}, then confirm the Harness.`;
-    }
-    const pair = GUIDED_NATURAL_AFFINITIES.find(
-      (affinity) => (state.affinityWell[affinity] ?? 0) >= 4,
-    );
-    if (pair) return `Harness 2 ${guidedAffinityLabel(pair)}, then confirm the Harness.`;
-  }
-
-  if (!milestones.encrypt && player.reservedArtifacts.length < 3 && forge.length > 0) {
-    const target = [...forge].sort((a, b) => (
-      guidedMissingCost(a, player, state) - guidedMissingCost(b, player, state)
-      || b.eminence - a.eminence
-    ))[0];
-    return `Open ${target.name} in the Forge, choose Encrypt, then confirm.`;
-  }
-
-  if (affordableReserved) {
-    return `Open ${affordableReserved.name} in your encrypted Artifacts, choose Forge, then confirm.`;
-  }
-  if (affordableForge) {
-    return `Open ${affordableForge.name} in the Forge, choose Forge, then confirm.`;
-  }
-
-  const target = [...player.reservedArtifacts, ...forge].sort((a, b) => (
-    guidedMissingCost(a, player, state) - guidedMissingCost(b, player, state)
-    || b.eminence - a.eminence
-  ))[0];
-  if (target) {
-    const cost = guidedEffectiveCost(target, player, state);
-    const needed = GUIDED_NATURAL_AFFINITIES
-      .filter((affinity) => cost[affinity] > (player.affinities[affinity] ?? 0))
-      .filter((affinity) => (state.affinityWell[affinity] ?? 0) > 0);
-    const selection = guidedThreeAffinitySelection(state, needed);
-    if (selection.length === 3) {
-      return `Prepare ${target.name}: Harness 1 ${selection.map(guidedAffinityLabel).join(", 1 ")}, then confirm.`;
-    }
-  }
-
-  if (player.reservedArtifacts.length < 3 && forge.length > 0) {
-    return `Open ${forge[0].name} in the Forge, choose Encrypt, then confirm.`;
-  }
-  if (!milestones.luminary) {
-    return "Build toward the closest Luminary by Forging an Artifact that matches one of its required Affinities.";
-  }
-  return "Forge the affordable Artifact worth the most Eminence. The final round begins when someone reaches 15.";
-}
+type GuidedHint = {
+  key: string;
+  text: string;
+};
 
 /**
- * A real match companion, distinct from the scripted tutorial above. It never
- * blocks play and only gives exact move advice when the player asks for Help.
+ * A real match companion, distinct from the scripted fast-forward tutorial
+ * above. It never blocks play: Lumii explains each system after the player
+ * encounters it in a normal game against the passive guided opponent.
  */
 export function LumiiGuidedMatch({
   state,
@@ -2583,100 +1805,89 @@ export function LumiiGuidedMatch({
   state: GameState | null | undefined;
   sessionPlayerId: string;
 }) {
-  const [expanded, setExpanded] = useState(false);
-  const [advice, setAdvice] = useState<string | null>(null);
-  const player = state?.players.find((candidate) => candidate.playerId === sessionPlayerId);
-  const milestones = useMemo(() => {
-    const summaries = state?.actionLog
-      .filter((entry) => entry.playerId === sessionPlayerId)
-      .map((entry) => entry.summary) ?? [];
-    return {
-      harness: summaries.some((summary) => summary.startsWith("Harnessed")),
-      encrypt: summaries.some((summary) => summary.startsWith("Encrypted")),
-      forge: summaries.some((summary) => summary.startsWith("Forged")),
-      luminary: (player?.claimedLuminaryIds.length ?? 0) > 0,
-      ascend: Boolean(state && player && player.eminence >= state.victoryRequirement),
-    };
-  }, [player, sessionPlayerId, state]);
-  const milestoneRows = [
-    ["harness", "Harness Affinities"],
-    ["encrypt", "Encrypt an Artifact"],
-    ["forge", "Forge an Artifact"],
-    ["luminary", "Awaken a Luminary"],
-    ["ascend", "Reach 15 Eminence"],
-  ] as const;
-  const completedCount = milestoneRows.filter(([key]) => milestones[key]).length;
+  const [hint, setHint] = useState<GuidedHint | null>(null);
+  const shownRef = useRef(new Set<string>());
+  const claimedCountRef = useRef<number | null>(null);
 
-  useEffect(() => setAdvice(null), [state?.version]);
+  const showHint = useCallback((key: string, text: string) => {
+    if (shownRef.current.has(key)) return;
+    shownRef.current.add(key);
+    setHint({ key, text });
+  }, []);
 
-  if (!state || !player) return null;
+  useEffect(() => {
+    const timer = setTimeout(() => {
+      showHint(
+        "welcome",
+        "This is a full guided match. I will pass while you learn. Begin with the Affinity Well.",
+      );
+    }, 500);
+    return () => clearTimeout(timer);
+  }, [showHint]);
+
+  useEffect(() => {
+    if (!state || !sessionPlayerId) return;
+    const action = state.lastAction as { type?: string; playerId?: string } | null;
+    if (action?.playerId === sessionPlayerId) {
+      if (action.type === "harness_three_affinities" || action.type === "harness_two_affinities") {
+        showHint(
+          "first-harness",
+          "Good. A Harness takes up to 3 different Affinities, or 2 of the same. The Forge shows what an Artifact still needs.",
+        );
+      } else if (action.type === "reserve_artifact") {
+        showHint(
+          "first-encryption",
+          "Encryption keeps that Artifact from rival civilizations. It waits in the Singularity panel and grants 1 Singularity to cover a missing Affinity.",
+        );
+      } else if (action.type === "forge_artifact" || action.type === "forge_reserved_artifact") {
+        showHint(
+          "first-forge",
+          "A forged Artifact stays with your civilization. Its bonus lowers matching future costs automatically.",
+        );
+      }
+    }
+
+    const player = state.players.find((candidate) => candidate.playerId === sessionPlayerId);
+    const claimedCount = player?.claimedLuminaryIds?.length ?? 0;
+    if (claimedCountRef.current === null) {
+      claimedCountRef.current = claimedCount;
+    } else if (claimedCount > claimedCountRef.current) {
+      claimedCountRef.current = claimedCount;
+      showHint(
+        "first-luminary",
+        "A Luminary has answered your civilization. Its living bonus joins your civilization in the next century.",
+      );
+    }
+  }, [state?.version, state, sessionPlayerId, showHint]);
+
+  if (!hint) return null;
 
   return (
-    <motion.aside
-      initial={{ opacity: 0, y: -8 }}
-      animate={{ opacity: 1, y: 0 }}
-      className="fixed right-3 top-[calc(env(safe-area-inset-top,0px)+4.5rem)] z-[130] w-[min(18rem,calc(100vw-1.5rem))] overflow-hidden rounded-lg border border-indigo-300/25 bg-[#09091c]/95 shadow-2xl shadow-black/50"
-      aria-label="Guided practice milestones"
-    >
-      <div className="flex min-h-11 items-center gap-2 px-2.5 py-2">
-        <LumiiOrb size={32} highlightZone={null} beatKey="guided-practice" />
-        <ListChecks className="h-4 w-4 shrink-0 text-indigo-200/70" />
-        <span className="min-w-0 flex-1 text-xs font-semibold text-white/90">Practice</span>
-        <span className="text-[11px] tabular-nums text-indigo-100/65">{completedCount}/5</span>
+    <AnimatePresence>
+      <motion.div
+        key={hint.key}
+        initial={{ opacity: 0, y: -10, scale: 0.96 }}
+        animate={{ opacity: 1, y: 0, scale: 1 }}
+        exit={{ opacity: 0, y: -8, scale: 0.96 }}
+        transition={{ type: "spring", stiffness: 320, damping: 26 }}
+        className="fixed right-4 top-20 z-[130] flex max-w-[min(21rem,calc(100vw-2rem))] items-start gap-2 rounded-lg border border-indigo-300/30 bg-[#09091c]/95 p-3 shadow-2xl shadow-black/50"
+      >
+        <div className="shrink-0 pt-0.5">
+          <LumiiOrb size={38} speaking highlightZone={null} beatKey={hint.key} />
+        </div>
+        <div className="min-w-0 pr-4">
+          <div className="mb-1 text-[9px] font-bold uppercase text-indigo-200/65">Lumii</div>
+          <p className="text-xs leading-relaxed text-white/90">{hint.text}</p>
+        </div>
         <button
           type="button"
-          onClick={() => setExpanded((open) => !open)}
-          aria-expanded={expanded}
-          aria-label={expanded ? "Collapse practice milestones" : "Expand practice milestones"}
-          className="grid h-8 w-8 shrink-0 place-items-center rounded-md text-white/55 transition-colors hover:bg-white/10 hover:text-white"
+          onClick={() => setHint(null)}
+          aria-label="Dismiss Lumii's guidance"
+          className="absolute right-2 top-2 grid h-6 w-6 place-items-center rounded-md text-white/45 transition-colors hover:bg-white/10 hover:text-white"
         >
-          {expanded ? <ChevronUp className="h-4 w-4" /> : <ChevronDown className="h-4 w-4" />}
+          <X className="h-3.5 w-3.5" />
         </button>
-      </div>
-      <AnimatePresence initial={false}>
-        {expanded && (
-          <motion.div
-            initial={{ height: 0, opacity: 0 }}
-            animate={{ height: "auto", opacity: 1 }}
-            exit={{ height: 0, opacity: 0 }}
-            className="border-t border-white/10"
-          >
-            <div className="space-y-1 px-3 py-2.5">
-              {milestoneRows.map(([key, label]) => (
-                <div key={key} className="flex items-center gap-2 text-[11px] text-white/70">
-                  <span className={`grid h-4 w-4 shrink-0 place-items-center rounded-full border ${milestones[key] ? "border-emerald-300/60 bg-emerald-400/15 text-emerald-200" : "border-white/20 text-transparent"}`}>
-                    <Check className="h-2.5 w-2.5" />
-                  </span>
-                  <span>{label}</span>
-                </div>
-              ))}
-            </div>
-            {advice && (
-              <div className="border-t border-indigo-300/15 bg-indigo-300/[0.05] px-3 py-2.5">
-                <div className="mb-1 text-[9px] font-bold uppercase text-indigo-200/60">Lumii suggests</div>
-                <p className="text-xs leading-relaxed text-white/90">{advice}</p>
-              </div>
-            )}
-            <div className="border-t border-white/10 p-2">
-              <button
-                type="button"
-                onClick={() => {
-                  setAdvice(guidedMoveAdvice(state, player, milestones));
-                  trackFirstPartyEvent({
-                    eventName: "guided_practice_started",
-                    actionId: "help",
-                    outcome: "accepted",
-                  });
-                }}
-                className="flex min-h-10 w-full items-center justify-center gap-2 rounded-md border border-indigo-300/25 bg-indigo-300/10 px-3 text-xs font-semibold text-indigo-50 transition-colors hover:bg-indigo-300/15"
-              >
-                <CircleHelp className="h-4 w-4" />
-                Help with this turn
-              </button>
-            </div>
-          </motion.div>
-        )}
-      </AnimatePresence>
-    </motion.aside>
+      </motion.div>
+    </AnimatePresence>
   );
 }

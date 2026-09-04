@@ -6,7 +6,6 @@ vi.mock('@/lib/audio', () => ({
   gameAudio: {
     playLuminaryEffectBeat: vi.fn(),
     playAssimilationDissolve: vi.fn(),
-    playAssimilationTransit: vi.fn(),
     stopActivationSting: vi.fn(),
   },
 }));

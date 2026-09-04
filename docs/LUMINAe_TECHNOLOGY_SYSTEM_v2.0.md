@@ -10,6 +10,11 @@ repository for design provenance.
 The authoritative runtime registry is `@workspace/game-types`. Artifact IDs,
 costs, bonus Affinities, Eminence, and career counts are preserved.
 
+Authority order is: Lore Bible for ontology, this document for Artifact
+semantics, Blueprint First Pool v2 for exact Project rules, mapping and
+Civilization guides for implementation explanation, and Unified Reference as a
+synchronized compilation.
+
 ## Core Distinction
 
 ```text
@@ -33,6 +38,41 @@ Physical size alone never determines category. A compact stellar Device may be
 a Blueprint, while a large but bounded stellar instrument may be a Tier II
 Artifact. The test is whether the card represents a mastered capability or the
 exceptional synthesis of several capabilities.
+
+## Affinity Commitment And Artifact Signatures
+
+Affinity is finite Domain addressability, not consumable fuel. Harnessing
+stabilizes uncommitted possibilities; the interface permits a civilization to
+hold ten at once. Forging commits the paid possibilities to centuries of
+accelerated research, construction, coordination, and adoption. Once the
+implementation sustains itself, every Affinity actually paid, including a
+Singularity substitution, returns to its matching Well channel. The Artifact's
+permanent bonus represents the expertise, infrastructure, and institutions
+left behind.
+
+Every Artifact class has one universally recognizable **Artifact signature**
+and potentially many local embodiments. First operational mastery produces
+Domain-local **signature interference**, delaying accelerated mastery of that
+same class elsewhere for centuries or beyond the observed epoch. Interference
+does not affect related technologies, `Built On` lineages, or ordinary
+independent discovery. A Forge refill reveals the next reachable possibility;
+it does not assign ownership of an idea.
+
+Use `commit`, `master`, and `implement` for Artifacts. Reserve `manifest` for a
+Blueprint becoming a public Project. Do not use `wake` for signature
+interference in player-facing copy.
+
+## Canonical Artifact Lifecycle
+
+| Lifecycle | Technology state |
+|---|---|
+| **Forge** | Operational mastery and signature interference. |
+| **Encrypt** | Uncommitted pathway isolated for an Architect; no mastery signature. |
+| **Burn** | Unmastered pathway collapsed for the epoch; recurrence may restore it. |
+| **Assimilate** | Final Hunger converts the pathway into Affinity without a normal implementation. |
+| **Damage** | Operation suspended; mastery and interference persist. |
+| **Annihilate** | Implementation or near-complete pathway destroyed; discovery survives and the class remains unavailable this epoch. |
+| **Foundry seal** | Mastery archived, operational bonus removed, active interference unwound, and pathway retained in Cipher storage for re-Forge. |
 
 ## Vocabulary
 
@@ -154,4 +194,3 @@ Tier III artwork depicts the bounded Artifact itself. The displaced v1 Project
 art is preserved in the future Project concept vault and excluded from runtime
 imports. Production uses compact WebPs; source PNGs, concept-vault art,
 Blueprint 3D models, and cinematic audio are loaded only where required.
-

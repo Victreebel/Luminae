@@ -24,13 +24,13 @@ import { mkdirSync } from 'node:fs';
 
 // ── Constants ─────────────────────────────────────────────────────────────────
 
-const BASE = 'http://localhost:80';
+const BASE = process.env.LUMINAE_E2E_BASE_URL ?? 'http://localhost:5191';
 const OUT  = '/tmp/dialog-keyboard-mobile';
 
 // Tutorial localStorage keys (from artifacts/luminae/src/lib/tutorialProgress.ts)
 const TUTORIAL_PROGRESS_KEY     = 'luminae_tutorial_progress';
 const TUTORIAL_PROGRESS_VER_KEY = 'luminae_tutorial_progress_ver';
-const TUTORIAL_SEQUENCE_VERSION = '2';
+const TUTORIAL_SEQUENCE_VERSION = '5';
 
 // Account session key (from artifacts/luminae/src/lib/accountSession.ts)
 const ACCOUNT_SESSION_KEY = 'luminae_account_session';
@@ -174,7 +174,7 @@ test.beforeAll(() => {
 // A. TutorialStartModal — /tutorial
 //
 // The modal only renders when hasMidProgress is true (savedBeat > 0 and
-// version matches TUTORIAL_SEQUENCE_VERSION=2).  Inject the required
+// version matches the current TUTORIAL_SEQUENCE_VERSION). Inject the required
 // localStorage keys before navigating to /tutorial.
 // ════════════════════════════════════════════════════════════════════════════
 
@@ -804,18 +804,23 @@ test.describe('D4. Win overlay — /game/:id — mobile keyboard nav', () => {
       sessionToken,
     });
 
-    // Wait for the win overlay — the WebSocket delivers the finished state.
-    // The win overlay is the only role=dialog with aria-modal=true that
-    // contains a "Back to Home" button; it appears for both winners and losers.
+    // The WebSocket first delivers the static Victory/Defeat cinematic. Advance
+    // that presentation before auditing the interactive results card beneath it.
+    const cinematic = page.getByTestId('victory-cinematic');
+    await expect(cinematic).toBeVisible({ timeout: 12_000 });
+    await cinematic.click({ position: { x: 12, y: 12 } });
+
+    // The results overlay is the only modal dialog containing both the current
+    // "Play Again" and "Home" controls; it appears for winners and losers.
     const dialog = page.locator('[role="dialog"][aria-modal="true"]').filter({
-      has: page.locator('button', { hasText: /back to home/i }),
+      has: page.getByRole('button', { name: /^home$/i }),
     });
     await expect(dialog).toBeVisible({ timeout: 12_000 });
 
-    // The action buttons ("Play Again", "Back to Home") sit inside a motion.div
+    // The action buttons ("Play Again", "Home") sit inside a motion.div
     // with transition delay: 0.9 s.  Wait for both to be fully visible before
     // returning so getFocusables() finds real, interactive elements.
-    await expect(dialog.locator('button', { hasText: /back to home/i })).toBeVisible({ timeout: 6_000 });
+    await expect(dialog.getByRole('button', { name: /^home$/i })).toBeVisible({ timeout: 6_000 });
     await expect(dialog.locator('button', { hasText: /play again/i })).toBeVisible({ timeout: 3_000 });
     return dialog;
   }
@@ -832,53 +837,43 @@ test.describe('D4. Win overlay — /game/:id — mobile keyboard nav', () => {
   });
 
   test('Tab from last focusable wraps to first (focus trap)', async ({ page }) => {
-    // The win overlay contains exactly two action buttons: "Play Again" (first)
-    // and "Back to Home" (last).  Bypass the getFocusables helper and address
-    // them directly so the test does not depend on the filtered-locator chain
+    // Address the primary terminal actions directly so the test does not depend
+    // on the filtered-locator chain
     // that intermittently collapses when the framer-motion entry animation
     // briefly resets after a React reconciliation cycle.
-    await openWinOverlay(page);
-    const backHome = page.locator('[role="dialog"][aria-modal="true"] button', { hasText: /back to home/i });
-    await backHome.focus();
+    const dialog = await openWinOverlay(page);
+    const home = dialog.getByRole('button', { name: /^home$/i });
+    await home.focus();
     await page.waitForTimeout(80);
     await page.keyboard.press('Tab');
     await page.waitForTimeout(80);
     // Focus must remain inside the dialog (trap wrapped to first button).
-    const focusedInsideDialog = await page.evaluate(() => {
-      const dlg = document.querySelector('[role="dialog"][aria-modal="true"]');
-      return dlg ? dlg.contains(document.activeElement) : false;
-    });
+    const focusedInsideDialog = await dialog.evaluate((element) => element.contains(document.activeElement));
     expect(focusedInsideDialog, 'Tab from last element should keep focus inside the dialog').toBe(true);
     await page.screenshot({ path: `${OUT}/D4b-win-overlay-tab-trap.png` });
   });
 
   test('Shift+Tab from first focusable wraps to last (focus trap)', async ({ page }) => {
-    await openWinOverlay(page);
-    const playAgain = page.locator('[role="dialog"][aria-modal="true"] button', { hasText: /play again/i });
+    const dialog = await openWinOverlay(page);
+    const playAgain = dialog.getByRole('button', { name: /^play again$/i });
     await playAgain.focus();
     await page.waitForTimeout(80);
     await page.keyboard.press('Shift+Tab');
     await page.waitForTimeout(80);
     // Focus must remain inside the dialog (trap wrapped to last button).
-    const focusedInsideDialog = await page.evaluate(() => {
-      const dlg = document.querySelector('[role="dialog"][aria-modal="true"]');
-      return dlg ? dlg.contains(document.activeElement) : false;
-    });
+    const focusedInsideDialog = await dialog.evaluate((element) => element.contains(document.activeElement));
     expect(focusedInsideDialog, 'Shift+Tab from first element should keep focus inside the dialog').toBe(true);
   });
 
   test('Arrow keys do not move focus outside the dialog', async ({ page }) => {
-    await openWinOverlay(page);
-    const playAgain = page.locator('[role="dialog"][aria-modal="true"] button', { hasText: /play again/i });
+    const dialog = await openWinOverlay(page);
+    const playAgain = dialog.getByRole('button', { name: /^play again$/i });
     await playAgain.focus();
     await page.waitForTimeout(80);
     for (const key of ['ArrowDown', 'ArrowUp', 'ArrowLeft', 'ArrowRight'] as const) {
       await page.keyboard.press(key);
       await page.waitForTimeout(50);
-      const focusedInside = await page.evaluate(() => {
-        const dlg = document.querySelector('[role="dialog"][aria-modal="true"]');
-        return dlg ? dlg.contains(document.activeElement) : false;
-      });
+      const focusedInside = await dialog.evaluate((element) => element.contains(document.activeElement));
       expect(focusedInside, `Arrow key ${key} must not move focus outside the dialog`).toBe(true);
     }
     await page.screenshot({ path: `${OUT}/D4c-win-overlay-arrow-keys.png` });

@@ -18,6 +18,7 @@ type AntimatterBlueprintCardProps = {
   matchedSockets?: number;
   assigned?: boolean;
   covenantBroken?: boolean;
+  knownComponentIds?: readonly string[];
 };
 
 const components = [
@@ -77,7 +78,8 @@ const components = [
       "Before it fires, it asks what will happen three steps later. Industrial triggers and irreversible ignitions wait on its judgment: not the operator's desire, but a formal account of consequences.",
     artifactForm: "Control Instrument / Protocol Object",
     blueprintRole: "Safe trigger sequencing",
-    blueprintFamilies: "Mantle-to-Orbit Foundry; Causality Audit Court precursor",
+    blueprintFamilies:
+      "Mantle-to-Orbit Foundry; Causality Audit Court precursor",
     civilizationLane: "Experimental causal engineer civilization",
     engineeringScale: "Planetary",
     hotspot: { left: "31%", top: "51%" },
@@ -106,14 +108,28 @@ const components = [
   },
 ] as const satisfies readonly HorizontalBlueprintComponentRecord[];
 
+const definition = {
+  name: "Antimatter Detonator",
+  publicEffect:
+    "Uniformly mark a face-up Tier II Artifact. A legal Forge or Encrypt Annihilates it before payment; gain 2 Eminence and become Spent.",
+  presentation: { scaleLabel: "Stellar", serialCode: "BP-AD-01" },
+  components: [
+    { artifactId: "t1r01", stage: "Reaction Core", function: "Supplies the controlled reaction mass and the first ignition event inside the containment field." },
+    { artifactId: "t1p04", stage: "Containment Cage", function: "Suspends matter and antimatter across a governed magnetic boundary until firing is authorized." },
+    { artifactId: "t1r04", stage: "Governed Trigger", function: "Orders the ignition sequence and prevents the reaction from beginning without a valid command." },
+    { artifactId: "t2o01", stage: "Annihilation Sink", function: "Draws the annihilation boundary away from the civilization and absorbs the reaction horizon." },
+  ],
+} as const;
+
 export function AntimatterBlueprintCard({
   state = "assembling",
   matchedSockets = 3,
   covenantBroken = false,
+  knownComponentIds,
 }: AntimatterBlueprintCardProps) {
   return (
     <HorizontalBlueprintCard
-      blueprintId="bp_antimatter_detonator"
+      definition={definition}
       state={state}
       matchedComponents={matchedSockets}
       artwork={antimatterDetonatorDevice}
@@ -122,13 +138,18 @@ export function AntimatterBlueprintCard({
       publicStateLabel="Armed"
       publicLabel="Public Device"
       components={components}
+      knownComponentIds={knownComponentIds}
       testId="antimatter-blueprint-card"
       componentPanelTestId="antimatter-component-panel"
       tone="catastrophe"
-      secondaryRule={covenantBroken ? {
-        label: "Broken Covenant",
-        text: "Annihilate 2 of the Forger's Tier I Artifacts as well.",
-      } : null}
+      secondaryRule={
+        covenantBroken
+          ? {
+              label: "Broken Covenant",
+              text: "Annihilate 2 of the Forger's Tier I Artifacts as well.",
+            }
+          : null
+      }
     />
   );
 }

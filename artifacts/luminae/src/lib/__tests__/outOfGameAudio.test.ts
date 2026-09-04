@@ -1,32 +1,17 @@
 import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
 import { OutOfGameAudio } from "../outOfGameAudio";
-import {
-  LUMII_AFFINITY_NODE_COUNT,
-  LUMII_NATURAL_AFFINITIES,
-  LUMII_SIGNAL_NOTES,
-} from "../lumiiIdentity";
 
 class FakeAudioParam {
   value = 1;
   cancelScheduledValues() {}
-  exponentialRampToValueAtTime(value: number) {
-    this.value = value;
-  }
-  linearRampToValueAtTime(value: number) {
-    this.value = value;
-  }
-  setValueAtTime(value: number) {
-    this.value = value;
-  }
-  setTargetAtTime(value: number) {
-    this.value = value;
-  }
+  exponentialRampToValueAtTime(value: number) { this.value = value; }
+  linearRampToValueAtTime(value: number) { this.value = value; }
+  setValueAtTime(value: number) { this.value = value; }
+  setTargetAtTime(value: number) { this.value = value; }
 }
 
 class FakeAudioNode extends EventTarget {
-  connect() {
-    return this;
-  }
+  connect() { return this; }
   disconnect() {}
 }
 
@@ -67,27 +52,15 @@ class FakeAudioContext {
   sampleRate = 100;
   state = "running";
 
-  createBiquadFilter() {
-    return new FakeFilter();
-  }
+  createBiquadFilter() { return new FakeFilter(); }
   createBuffer(_channels: number, length: number) {
     return { getChannelData: () => new Float32Array(length) };
   }
-  createBufferSource() {
-    return new FakeSource();
-  }
-  createDynamicsCompressor() {
-    return new FakeCompressor();
-  }
-  createGain() {
-    return new FakeGain();
-  }
-  createOscillator() {
-    return new FakeOscillator();
-  }
-  resume() {
-    return Promise.resolve();
-  }
+  createBufferSource() { return new FakeSource(); }
+  createDynamicsCompressor() { return new FakeCompressor(); }
+  createGain() { return new FakeGain(); }
+  createOscillator() { return new FakeOscillator(); }
+  resume() { return Promise.resolve(); }
 }
 
 describe("OutOfGameAudio", () => {
@@ -101,7 +74,6 @@ describe("OutOfGameAudio", () => {
   });
 
   afterEach(() => {
-    vi.unstubAllGlobals();
     vi.useRealTimers();
   });
 
@@ -135,12 +107,6 @@ describe("OutOfGameAudio", () => {
       "threshold-expand",
       "cipher-surge",
       "cipher-collapse",
-      "cipher-dismiss",
-      "architect-cipher-pressure",
-      "architect-cipher-fracture",
-      "architect-cipher-release",
-      "vault-doors-open",
-      "vault-doors-halt",
       "covenant-break",
       "board-entry",
       "vault-release",
@@ -148,76 +114,10 @@ describe("OutOfGameAudio", () => {
     ] as const) {
       expect(audio.playLumiiCinematic(cue)).toBe(true);
     }
-    expect(audio.getActiveResourceCounts().buses).toBe(13);
+    expect(audio.getActiveResourceCounts().buses).toBe(7);
 
     vi.advanceTimersByTime(2_200);
-    expect(audio.getActiveResourceCounts().buses).toBe(2);
-    vi.advanceTimersByTime(1_400);
-    expect(audio.getActiveResourceCounts().buses).toBe(1);
-    vi.advanceTimersByTime(1_800);
     expect(audio.getActiveResourceCounts().buses).toBe(0);
-  });
-
-  it("preloads the recorded door halt when the Vault begins opening", async () => {
-    const decodeAudioData = vi.fn().mockResolvedValue({ duration: 0.65 });
-    class FakeDecodedAudioContext extends FakeAudioContext {
-      decodeAudioData = decodeAudioData;
-    }
-    Object.defineProperty(window, "AudioContext", {
-      configurable: true,
-      value: FakeDecodedAudioContext,
-    });
-    const fetchAudio = vi.fn().mockResolvedValue({
-      ok: true,
-      arrayBuffer: () => Promise.resolve(new ArrayBuffer(8)),
-    });
-    vi.stubGlobal("fetch", fetchAudio);
-    const audio = new OutOfGameAudio();
-
-    expect(audio.playLumiiCinematic("vault-doors-open")).toBe(true);
-    await vi.waitFor(() => expect(decodeAudioData).toHaveBeenCalledOnce());
-    expect(String(fetchAudio.mock.calls[0]?.[0])).toContain(
-      "Vault%20Doors%20Halt.wav",
-    );
-
-    expect(audio.playLumiiCinematic("vault-doors-halt")).toBe(true);
-    await Promise.resolve();
-    expect(fetchAudio).toHaveBeenCalledOnce();
-  });
-
-  it("preloads the glass break before the permanent Cipher rupture", async () => {
-    const decodeAudioData = vi.fn().mockResolvedValue({ duration: 1.1 });
-    class FakeDecodedAudioContext extends FakeAudioContext {
-      decodeAudioData = decodeAudioData;
-    }
-    Object.defineProperty(window, "AudioContext", {
-      configurable: true,
-      value: FakeDecodedAudioContext,
-    });
-    const fetchAudio = vi.fn().mockResolvedValue({
-      ok: true,
-      arrayBuffer: () => Promise.resolve(new ArrayBuffer(8)),
-    });
-    vi.stubGlobal("fetch", fetchAudio);
-    const audio = new OutOfGameAudio();
-
-    expect(audio.playLumiiCinematic("architect-cipher-pressure")).toBe(true);
-    await vi.waitFor(() => expect(decodeAudioData).toHaveBeenCalledOnce());
-    expect(String(fetchAudio.mock.calls[0]?.[0])).toContain(
-      "Glass%20Shatter.mp3",
-    );
-
-    expect(audio.playLumiiCinematic("architect-cipher-fracture")).toBe(true);
-    await Promise.resolve();
-    expect(fetchAudio).toHaveBeenCalledOnce();
-  });
-
-  it("derives every Lumii signal from the five-node identity", () => {
-    expect(LUMII_NATURAL_AFFINITIES).toHaveLength(5);
-    expect(LUMII_AFFINITY_NODE_COUNT).toBe(5);
-    for (const notes of Object.values(LUMII_SIGNAL_NOTES)) {
-      expect(notes).toHaveLength(LUMII_AFFINITY_NODE_COUNT);
-    }
   });
 
   it("reads the current mute preference before every cue", () => {

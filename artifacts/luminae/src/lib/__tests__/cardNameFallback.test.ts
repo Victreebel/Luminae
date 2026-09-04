@@ -1,7 +1,11 @@
 import { describe, expect, it } from "vitest";
-import { CARD_LORE } from "../../../../api-server/src/lib/cardLore";
+import {
+  ARTIFACT_DEPICTION_SCALE_BY_ID,
+  TIER_THREE_ARTIFACT_CANON,
+} from "@workspace/game-types";
+import { CARD_LORE, getArtifactDepictionScale } from "../../../../api-server/src/lib/cardLore";
 import { CARD_NAME_FALLBACK } from "../cardNameFallback";
-import { TUTORIAL_CARDS } from "../tutorialCards";
+import { TUTORIAL_CARDS } from "../tutorialData";
 
 describe("CARD_NAME_FALLBACK", () => {
   it("matches every name in the authoritative server lore catalog", () => {
@@ -21,7 +25,7 @@ describe("CARD_NAME_FALLBACK", () => {
     expect(ids.filter((id) => id.startsWith("t3"))).toHaveLength(20);
   });
 
-  it("keeps every Tier III Artifact at galactic scale", () => {
+  it("keeps Tier III engineering reach distinct from bounded artwork scale", () => {
     const tierThreeLore = Object.entries(CARD_LORE)
       .filter(([id]) => id.startsWith("t3"))
       .map(([, lore]) => lore);
@@ -29,6 +33,56 @@ describe("CARD_NAME_FALLBACK", () => {
     expect(tierThreeLore).toHaveLength(20);
     expect(tierThreeLore.every((lore) => lore.engineeringScale === "Galactic"))
       .toBe(true);
+    expect(tierThreeLore.every((lore) => (
+      getArtifactDepictionScale(lore) === "macro" ||
+      getArtifactDepictionScale(lore) === "tabletop" ||
+      getArtifactDepictionScale(lore) === "room" ||
+      getArtifactDepictionScale(lore) === "installation"
+    )))
+      .toBe(true);
+    expect(Object.keys(TIER_THREE_ARTIFACT_CANON)).toHaveLength(20);
+  });
+
+  it("keeps every Artifact ready for Civilization scene deployment metadata", () => {
+    const missing = Object.entries(CARD_LORE).flatMap(([id, lore]) => {
+      const missingFields = [
+        ["artifactForm", lore.artifactForm],
+        ["blueprintRole", lore.blueprintRole],
+        ["blueprintFamilies", lore.blueprintFamilies],
+        ["civLane", lore.civLane],
+        ["engineeringScale", lore.engineeringScale],
+        ["depictionScale", getArtifactDepictionScale(lore)],
+      ]
+        .filter(([, value]) => typeof value !== "string" || value.trim().length === 0)
+        .map(([field]) => field);
+
+      return missingFields.length > 0 ? [{ id, missingFields }] : [];
+    });
+
+    expect(missing).toEqual([]);
+  });
+
+  it("uses explicit Artifact depiction scale independent of tier", () => {
+    expect(Object.keys(ARTIFACT_DEPICTION_SCALE_BY_ID)).toHaveLength(90);
+    expect(getArtifactDepictionScale(CARD_LORE.t1r02!)).toBe("macro");
+    expect(getArtifactDepictionScale(CARD_LORE.t1s02!)).toBe("room");
+    expect(getArtifactDepictionScale(CARD_LORE.t2p06!)).toBe("tabletop");
+    expect(getArtifactDepictionScale(CARD_LORE.t3s01!)).toBe("room");
+  });
+
+  it("keeps Artifact engineering scale aligned to tier", () => {
+    const misaligned = Object.entries(CARD_LORE).flatMap(([id, lore]) => {
+      const expected = id.startsWith("t3")
+        ? "Galactic"
+        : id.startsWith("t2")
+          ? "Star-system"
+          : "Planetary";
+      return lore.engineeringScale === expected
+        ? []
+        : [{ id, expected, actual: lore.engineeringScale }];
+    });
+
+    expect(misaligned).toEqual([]);
   });
 
   it("keeps player-facing Artifact lore concise", () => {

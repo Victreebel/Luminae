@@ -9,7 +9,6 @@ import type { MarkerType } from './game-luminary-effects';
 import type { CostMode, SelectedCard } from './game-types';
 import { ForgeCardSlot } from './game-board-forge-card-slot';
 import { ForgeDeckPile } from './game-board-forge-deck';
-import type { MoldCastCue } from './game-mold-casting';
 
 type MotionAnimate = React.ComponentProps<typeof motion.div>['animate'];
 
@@ -63,7 +62,7 @@ export interface BoardForgeProps {
   plannedCardId: string | null;
   plannedCardLabel: string;
   plannedDeckTier: number | null;
-  refillingSlots: Map<string, MoldCastCue>;
+  refillingSlots: Set<string>;
   revealBlueprintText: boolean;
   selectedCard: SelectedCard | null;
   setCostMode: React.Dispatch<React.SetStateAction<CostMode>>;
@@ -277,7 +276,7 @@ function ForgeCostControls({
       } : undefined}
     >
       <span className="text-[9px] font-bold uppercase tracking-widest shrink-0" style={{ color: 'rgba(255,255,255,0.25)' }}>Cost View</span>
-      <div className="flex items-center bg-secondary/50 rounded-full border border-border/30 p-0.5 gap-0.5" role="group" aria-label="Cost view">
+      <div className="flex items-center bg-secondary/50 rounded-full border border-border/30 p-0.5 gap-0.5">
         {([
           { mode: 'printed' as CostMode, label: 'Full', title: 'Show original printed cost' },
           { mode: 'after_bonuses' as CostMode, label: 'Discounted', title: 'Cost after your permanent bonuses' },
@@ -289,9 +288,8 @@ function ForgeCostControls({
               key={mode}
               type="button"
               title={title}
-              aria-pressed={costMode === mode}
               onClick={() => setCostMode(mode)}
-              className={`min-w-11 text-[9px] font-semibold px-2 py-0.5 rounded-full transition-all leading-none ${costMode === mode ? 'bg-primary text-primary-foreground shadow-sm' : 'text-muted-foreground hover:text-foreground'}`}
+              className={`text-[9px] font-semibold px-2 py-0.5 rounded-full transition-all leading-none ${costMode === mode ? 'bg-primary text-primary-foreground shadow-sm' : 'text-muted-foreground hover:text-foreground'}`}
               style={isTutorialFilterHighlight ? {
                 boxShadow: '0 0 0 1.5px rgba(168,85,247,0.8), 0 0 8px 2px rgba(168,85,247,0.4)',
                 color: costMode === mode ? undefined : 'rgba(200,170,255,0.9)',
@@ -315,7 +313,7 @@ function ForgeCostControls({
         title={isLandscapeCockpit ? 'Landscape cockpit uses compact Forge view' : forgeCompact ? 'Switch to full Forge view' : 'Switch to compact view'}
         aria-label={forgeCompact ? 'Switch to full Forge view' : 'Switch to compact Forge view'}
         aria-pressed={forgeCompact}
-        disabled={isLandscapeCockpit}
+        aria-disabled={isLandscapeCockpit}
       >
         <LayoutGrid className="h-3 w-3 shrink-0" />
         <span className="text-[9px] font-bold uppercase tracking-wide leading-none">Compact</span>

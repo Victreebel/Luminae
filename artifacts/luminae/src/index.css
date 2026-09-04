@@ -841,9 +841,6 @@ button,
   min-height: 296px;
   overflow: hidden;
   background:
-    radial-gradient(circle, rgba(255, 255, 255, 0.5) 0 0.7px, transparent 1.35px) 7% 13% / 86px 61px repeat,
-    radial-gradient(circle, rgba(182, 211, 255, 0.34) 0 0.85px, transparent 1.55px) 41% 29% / 142px 98px repeat,
-    radial-gradient(circle, rgba(255, 216, 154, 0.24) 0 0.75px, transparent 1.5px) 68% 72% / 178px 127px repeat,
     radial-gradient(ellipse 68% 80% at 50% -18%, rgba(123, 96, 189, 0.18), transparent 64%),
     radial-gradient(ellipse 54% 76% at 50% 112%, rgba(217, 172, 86, 0.1), transparent 68%),
     linear-gradient(180deg, rgba(4, 5, 12, 0.99), rgba(5, 7, 14, 0.99) 60%, rgba(2, 3, 8, 1));
@@ -871,25 +868,21 @@ button,
   position: absolute;
   inset: 0;
   background:
-    radial-gradient(circle, rgba(255, 255, 255, 0.95) 0 0.72px, transparent 1.45px) 11% 17% / 73px 53px repeat,
-    radial-gradient(circle, rgba(189, 218, 255, 0.72) 0 0.8px, transparent 1.55px) 37% 43% / 121px 89px repeat,
-    radial-gradient(circle, rgba(255, 226, 176, 0.52) 0 0.68px, transparent 1.4px) 78% 28% / 169px 119px repeat,
-    radial-gradient(circle, rgba(255, 255, 255, 0.38) 0 0.5px, transparent 1.25px) 3% 64% / 47px 37px repeat,
     radial-gradient(ellipse 36% 54% at 50% 48%, rgba(0, 0, 0, 0.58), transparent 78%),
     linear-gradient(180deg, rgba(0, 2, 5, 0.42), rgba(0, 1, 3, 0.8)),
     radial-gradient(circle at 14% 34%, rgba(255, 255, 255, 0.16) 0 1px, transparent 1.5px),
     radial-gradient(circle at 76% 20%, rgba(255, 255, 255, 0.12) 0 1px, transparent 1.5px),
     radial-gradient(circle at 88% 62%, rgba(255, 255, 255, 0.1) 0 1px, transparent 1.5px),
     var(--terminus-starfield-image) center 18% / cover no-repeat;
-  filter: grayscale(0.72) saturate(0.42) brightness(0.54) contrast(1.26);
-  opacity: 0.84;
+  filter: grayscale(0.88) saturate(0.28) brightness(0.42) contrast(1.32);
+  opacity: 0.76;
   pointer-events: none;
   z-index: 0;
 }
 
 .board-terminus-stars {
   z-index: 1;
-  opacity: 0.58;
+  opacity: 0.44;
   mix-blend-mode: screen;
 }
 
@@ -1097,7 +1090,7 @@ button,
   position: relative;
   isolation: isolate;
   display: grid;
-  grid-template-rows: 17px minmax(0, 1fr);
+  grid-template-rows: 17px 25px minmax(16px, 1fr);
   align-items: center;
   justify-items: center;
   width: 100%;
@@ -1181,15 +1174,6 @@ button,
   height: 14px;
 }
 
-.opponent-affinity-cell__count-row {
-  display: inline-flex;
-  min-width: 0;
-  align-items: center;
-  justify-content: center;
-  gap: 3px;
-  align-self: center;
-}
-
 .opponent-affinity-cell__count {
   align-self: center;
   color: #f7f2e8;
@@ -1204,43 +1188,13 @@ button,
     0 1px 2px #000;
 }
 
-.opponent-affinity-cell__permanent {
-  display: inline-flex;
-  flex: 0 0 auto;
-  align-items: center;
-  justify-content: center;
-  min-width: 18px;
-  padding: 2px 4px;
-  border: 1px solid color-mix(in srgb, var(--opponent-affinity-glow) 50%, transparent);
-  border-radius: 4px;
-  background: color-mix(in srgb, var(--opponent-affinity-color) 16%, rgba(0, 0, 0, 0.28));
-  color: var(--opponent-affinity-glow);
-  font-size: 9px;
-  font-weight: 900;
-  font-variant-numeric: tabular-nums;
-  letter-spacing: 0;
-  line-height: 1;
-  box-shadow: 0 0 7px color-mix(in srgb, var(--opponent-affinity-color) 34%, transparent);
-  text-shadow: 0 0 5px color-mix(in srgb, var(--opponent-affinity-color) 44%, transparent);
-}
-
 .opponent-affinity-cell[data-has-content="false"] .opponent-affinity-cell__count {
   color: color-mix(in srgb, var(--opponent-affinity-color) 38%, #333941);
   text-shadow: none;
 }
 
-.opponent-affinity-cell[data-has-content="false"] .opponent-affinity-cell__permanent {
-  border-color: color-mix(in srgb, var(--opponent-affinity-color) 18%, transparent);
-  color: color-mix(in srgb, var(--opponent-affinity-color) 42%, #333941);
-  background: transparent;
-  box-shadow: none;
-  text-shadow: none;
-}
-
 .opponent-affinity-cell__modifiers {
-  position: absolute;
-  right: 4px;
-  bottom: 4px;
+  align-self: end;
   display: flex;
   flex-direction: column;
   align-items: center;
@@ -1265,10 +1219,12 @@ button,
   text-shadow: 0 0 5px color-mix(in srgb, var(--opponent-affinity-color) 46%, transparent);
 }
 
+.opponent-affinity-cell__bonus {
+  color: #b8c9ff;
+}
+
 .opponent-affinity-cell__encrypted {
-  position: absolute;
-  right: 4px;
-  bottom: 4px;
+  align-self: end;
   font-size: 7px;
 }
 
@@ -1768,35 +1724,6 @@ button,
     0 1px 2px #000;
 }
 
-.affinity-well-symbol__terminal {
-  position: absolute;
-  z-index: 1;
-  bottom: 3px;
-  width: 6px;
-  height: 1px;
-  background: rgba(116, 132, 165, 0.28);
-  pointer-events: none;
-  transition: background-color 180ms ease, box-shadow 180ms ease;
-}
-
-.affinity-well-symbol__terminal--start {
-  left: 6px;
-  transform: rotate(-10deg);
-  transform-origin: right center;
-}
-
-.affinity-well-symbol__terminal--end {
-  right: 6px;
-  transform: rotate(10deg);
-  transform-origin: left center;
-}
-
-.affinity-well-symbol[data-has-progress="true"] .affinity-well-symbol__terminal--start,
-.affinity-well-symbol[data-progress-complete="true"] .affinity-well-symbol__terminal--end {
-  background: currentColor;
-  box-shadow: 0 0 5px color-mix(in srgb, currentColor 62%, transparent);
-}
-
 .affinity-well-symbol__keystone {
   position: absolute;
   z-index: 2;
@@ -1844,19 +1771,6 @@ button,
   bottom: 1px;
   width: 2px;
   height: 2px;
-}
-
-.affinity-well-symbol--compact .affinity-well-symbol__terminal {
-  bottom: 2px;
-  width: 3px;
-}
-
-.affinity-well-symbol--compact .affinity-well-symbol__terminal--start {
-  left: 3px;
-}
-
-.affinity-well-symbol--compact .affinity-well-symbol__terminal--end {
-  right: 3px;
 }
 
 .affinity-well-player {
@@ -2148,6 +2062,7 @@ button,
 }
 
 .board-aux-module {
+  position: relative;
   min-width: 0;
   min-height: 0;
   overflow: hidden;
@@ -2157,6 +2072,14 @@ button,
   border-radius: 8px;
   background:
     linear-gradient(180deg, rgba(8, 10, 22, 0.86), rgba(4, 5, 14, 0.94));
+}
+
+.board-aux-module--civ-recent {
+  border-color: rgba(223, 184, 107, 0.54);
+  box-shadow:
+    inset 0 0 0 1px rgba(255, 230, 170, 0.08),
+    0 0 30px rgba(223, 184, 107, 0.26);
+  animation: board-aux-civ-register-glow 2.2s ease-in-out infinite;
 }
 
 .board-aux-module-header {
@@ -2182,6 +2105,25 @@ button,
   white-space: nowrap;
 }
 
+.board-aux-civ-header-title {
+  display: inline-flex;
+  min-width: 0;
+  align-items: center;
+  gap: 0.42rem;
+}
+
+.board-aux-civ-header-pulse {
+  border: 1px solid color-mix(in srgb, var(--civ-recent-tone, #82ddff) 58%, transparent);
+  border-radius: 999px;
+  background: color-mix(in srgb, var(--civ-recent-tone, #82ddff) 16%, transparent);
+  box-shadow: 0 0 14px color-mix(in srgb, var(--civ-recent-tone, #82ddff) 28%, transparent);
+  color: rgba(255, 255, 255, 0.86);
+  font-size: 7px;
+  letter-spacing: 0.12em;
+  line-height: 1;
+  padding: 0.2rem 0.34rem;
+}
+
 .board-aux-module-body {
   flex: 1 1 auto;
   min-height: 0;
@@ -2197,12 +2139,535 @@ button,
 }
 
 .board-aux-civ-scene {
+  position: relative;
   min-height: 0;
   flex: 1 1 auto;
+  overflow: hidden;
+}
+
+.board-aux-module--civ-recent .board-aux-civ-scene::after {
+  pointer-events: none;
+  position: absolute;
+  inset: 0;
+  z-index: 13;
+  border: 1px solid color-mix(in srgb, var(--civ-recent-tone, #82ddff) 58%, transparent);
+  box-shadow:
+    inset 0 0 0 1px rgba(255, 255, 255, 0.08),
+    inset 0 0 36px color-mix(in srgb, var(--civ-recent-tone, #82ddff) 18%, transparent);
+  content: "";
+}
+
+.board-aux-civ-scene-registration-sweep {
+  pointer-events: none;
+  position: absolute;
+  inset: 0;
+  z-index: 12;
+  background:
+    linear-gradient(
+      112deg,
+      transparent 0%,
+      transparent 32%,
+      color-mix(in srgb, var(--civ-recent-tone, #82ddff) 26%, transparent) 45%,
+      rgba(255, 255, 255, 0.24) 50%,
+      color-mix(in srgb, var(--civ-recent-tone, #82ddff) 18%, transparent) 56%,
+      transparent 70%,
+      transparent 100%
+    ),
+    radial-gradient(
+      ellipse at 52% 54%,
+      color-mix(in srgb, var(--civ-recent-tone, #82ddff) 18%, transparent) 0%,
+      transparent 54%
+    );
+  mix-blend-mode: screen;
+  opacity: 0;
+  transform: translateX(-34%);
+  animation: board-aux-civ-scene-sweep 7.6s ease-out both;
+}
+
+.board-aux-civ-registration {
+  pointer-events: none;
+  position: relative;
+  z-index: 8;
+  display: grid;
+  grid-template-columns: 1.58rem minmax(0, 1fr);
+  align-items: center;
+  gap: 0.44rem;
+  min-width: 0;
+  margin: 0.42rem 0.55rem 0.46rem;
+  padding: 0.52rem 0.62rem;
+  border: 1px solid rgba(223, 184, 107, 0.62);
+  border-radius: 7px;
+  background:
+    linear-gradient(120deg, rgba(5, 9, 20, 0.94), rgba(12, 18, 34, 0.84)),
+    radial-gradient(circle at 12% 50%, rgba(255, 255, 255, 0.15), transparent 44%);
+  backdrop-filter: blur(12px);
+  animation: board-aux-civ-registration 5.8s ease-out both;
+}
+
+.board-aux-civ-registration::before {
+  pointer-events: none;
+  position: absolute;
+  inset: 0;
+  border-radius: inherit;
+  background:
+    linear-gradient(90deg, color-mix(in srgb, var(--civ-recent-tone, #82ddff) 54%, transparent), transparent 36%),
+    linear-gradient(180deg, rgba(255, 255, 255, 0.12), transparent 24%);
+  content: "";
+  mask-image: linear-gradient(#000, #000), linear-gradient(#000, #000);
+  mask-position: top left, top left;
+  mask-repeat: no-repeat;
+  mask-size: 100% 1px, 1px 100%;
+  opacity: 0.86;
+}
+
+.board-aux-civ-registration::after {
+  pointer-events: none;
+  position: absolute;
+  inset: 0;
+  border-radius: inherit;
+  background:
+    linear-gradient(104deg, transparent 0 54%, color-mix(in srgb, var(--civ-recent-tone, #82ddff) 13%, transparent) 58%, transparent 66%),
+    radial-gradient(ellipse at 18% 50%, color-mix(in srgb, var(--civ-recent-tone, #82ddff) 15%, transparent), transparent 48%);
+  content: "";
+  mix-blend-mode: screen;
+  opacity: 0.66;
+}
+
+.board-aux-civ-registration__beacon {
+  position: relative;
+  z-index: 1;
+  display: block;
+  width: 1.42rem;
+  height: 1.95rem;
+}
+
+.board-aux-civ-registration__beacon-head {
+  position: absolute;
+  left: 50%;
+  top: 0;
+  width: 1.08rem;
+  height: 1.08rem;
+  transform: translateX(-50%);
+  border: 1px solid color-mix(in srgb, var(--civ-recent-tone, #82ddff) 82%, transparent);
+  border-radius: 9999px;
+  background:
+    radial-gradient(circle, rgba(255,255,255,0.88) 0 18%, color-mix(in srgb, var(--civ-recent-tone, #82ddff) 42%, rgba(5,9,20,0.88)) 46%, rgba(5,9,20,0.92) 72%);
+  box-shadow:
+    inset 0 0 0 1px rgba(255,255,255,0.08),
+    0 0 14px color-mix(in srgb, var(--civ-recent-tone, #82ddff) 58%, transparent);
+}
+
+.board-aux-civ-registration__beacon-stem {
+  position: absolute;
+  left: 50%;
+  bottom: 0.32rem;
+  width: 1px;
+  height: 1.04rem;
+  transform: translateX(-50%);
+  background: linear-gradient(180deg, color-mix(in srgb, var(--civ-recent-tone, #82ddff) 86%, transparent), transparent);
+}
+
+.board-aux-civ-registration__beacon-foot {
+  position: absolute;
+  left: 50%;
+  bottom: 0;
+  width: 1.42rem;
+  height: 0.42rem;
+  transform: translateX(-50%);
+  border: 1px solid color-mix(in srgb, var(--civ-recent-tone, #82ddff) 58%, transparent);
+  border-radius: 9999px;
+  background: radial-gradient(ellipse at center, color-mix(in srgb, var(--civ-recent-tone, #82ddff) 20%, transparent), transparent 70%);
+}
+
+.board-aux-civ-registration__copy {
+  position: relative;
+  z-index: 1;
+  display: grid;
+  min-width: 0;
+  gap: 0.14rem;
+}
+
+.board-aux-civ-registration__meta,
+.board-civ-trace-notice__meta {
+  display: flex;
+  min-width: 0;
+  align-items: center;
+  gap: 0.38rem;
+}
+
+.board-aux-civ-registration__kicker {
+  display: block;
+  flex: 1 1 auto;
+  min-width: 0;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+  font-size: 8.5px;
+  font-weight: 900;
+  letter-spacing: 0.14em;
+  line-height: 1;
+  text-transform: uppercase;
+  text-shadow: 0 0 12px currentColor;
+}
+
+.board-aux-civ-registration__badge,
+.board-civ-trace-notice__badge {
+  flex: 0 0 auto;
+  border: 1px solid color-mix(in srgb, var(--civ-recent-tone, #82ddff) 46%, transparent);
+  border-radius: 999px;
+  background: color-mix(in srgb, var(--civ-recent-tone, #82ddff) 13%, transparent);
+  box-shadow: 0 0 12px color-mix(in srgb, var(--civ-recent-tone, #82ddff) 18%, transparent);
+  color: color-mix(in srgb, var(--civ-recent-tone, #82ddff) 64%, white);
+  font-size: 7px;
+  font-weight: 900;
+  letter-spacing: 0.12em;
+  line-height: 1;
+  padding: 0.18rem 0.3rem;
+  text-transform: uppercase;
+}
+
+.board-aux-civ-registration[data-impact-kind="blueprint"] .board-aux-civ-registration__badge,
+.board-civ-trace-notice[data-impact-kind="blueprint"] .board-civ-trace-notice__badge {
+  border-radius: 3px;
+}
+
+.board-aux-civ-registration[data-impact-kind="luminary"] .board-aux-civ-registration__badge,
+.board-civ-trace-notice[data-impact-kind="luminary"] .board-civ-trace-notice__badge {
+  border-radius: 999px;
+  text-shadow: 0 0 10px currentColor;
+}
+
+.board-aux-civ-registration[data-impact-kind="protocol"] .board-aux-civ-registration__badge,
+.board-civ-trace-notice[data-impact-kind="protocol"] .board-civ-trace-notice__badge {
+  border-style: dashed;
+}
+
+.board-aux-civ-registration[data-impact-kind="chronicle"] .board-aux-civ-registration__badge,
+.board-civ-trace-notice[data-impact-kind="chronicle"] .board-civ-trace-notice__badge {
+  border-radius: 3px;
+  letter-spacing: 0.09em;
+}
+
+.board-aux-civ-registration__title {
+  min-width: 0;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+  color: rgba(255, 255, 255, 0.94);
+  font-size: 10.5px;
+  font-weight: 800;
+  letter-spacing: 0.05em;
+  line-height: 1.1;
+  text-transform: uppercase;
+}
+
+.board-aux-civ-registration__visible-as {
+  min-width: 0;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+  color: rgba(255, 255, 255, 0.56);
+  font-size: 8.4px;
+  font-weight: 600;
+  letter-spacing: 0.02em;
+  line-height: 1.1;
+}
+
+.board-civ-trace-notice {
+  pointer-events: auto;
+  position: absolute;
+  left: 50%;
+  bottom: calc(58px + max(env(safe-area-inset-bottom, 0px), 8px));
+  z-index: 32;
+  display: grid;
+  grid-template-columns: 4.7rem minmax(0, 1fr) auto;
+  align-items: center;
+  gap: 0.58rem;
+  width: min(520px, calc(100vw - 24px));
+  min-height: 68px;
+  padding: 0.58rem 0.7rem;
+  border: 1px solid color-mix(in srgb, var(--civ-recent-tone, #82ddff) 58%, transparent);
+  border-radius: 8px;
+  background:
+    linear-gradient(115deg, rgba(5, 9, 20, 0.96), rgba(10, 17, 32, 0.9)),
+    radial-gradient(circle at 10% 50%, color-mix(in srgb, var(--civ-recent-tone, #82ddff) 18%, transparent), transparent 42%);
+  box-shadow:
+    0 18px 42px rgba(0, 0, 0, 0.52),
+    0 0 24px color-mix(in srgb, var(--civ-recent-tone, #82ddff) 25%, transparent),
+    inset 0 0 0 1px rgba(255, 255, 255, 0.05);
+  color: rgba(255, 255, 255, 0.94);
+  text-align: left;
+  backdrop-filter: blur(14px);
+  transform: translateX(-50%);
+  animation: board-civ-trace-notice-in 520ms cubic-bezier(0.2, 0.9, 0.22, 1) both;
+}
+
+.board-civ-trace-notice::before {
+  pointer-events: none;
+  position: absolute;
+  inset: 0;
+  border-radius: inherit;
+  background:
+    linear-gradient(90deg, color-mix(in srgb, var(--civ-recent-tone, #82ddff) 62%, transparent), transparent 42%),
+    linear-gradient(180deg, rgba(255, 255, 255, 0.16), transparent 30%);
+  content: "";
+  mask-image: linear-gradient(#000, #000), linear-gradient(#000, #000);
+  mask-position: top left, top left;
+  mask-repeat: no-repeat;
+  mask-size: 100% 1px, 1px 100%;
+  opacity: 0.88;
+}
+
+.board-civ-trace-notice::after {
+  pointer-events: none;
+  position: absolute;
+  inset: 0;
+  border-radius: inherit;
+  background:
+    linear-gradient(108deg, transparent 0 54%, color-mix(in srgb, var(--civ-recent-tone, #82ddff) 14%, transparent) 59%, transparent 68%),
+    radial-gradient(ellipse at 14% 48%, color-mix(in srgb, var(--civ-recent-tone, #82ddff) 16%, transparent), transparent 46%);
+  content: "";
+  mix-blend-mode: screen;
+  opacity: 0.7;
+}
+
+.board-civ-trace-notice__thumbnail {
+  position: relative;
+  z-index: 1;
+  display: block;
+  width: 4.65rem;
+  height: 3.05rem;
+  overflow: hidden;
+  border: 1px solid color-mix(in srgb, var(--civ-recent-tone, #82ddff) 42%, transparent);
+  border-radius: 5px;
+  background:
+    radial-gradient(circle at 50% 48%, color-mix(in srgb, var(--civ-recent-tone, #82ddff) 24%, transparent), transparent 58%),
+    rgba(2, 6, 15, 0.88);
+  box-shadow:
+    inset 0 0 0 1px rgba(255, 255, 255, 0.06),
+    0 0 18px color-mix(in srgb, var(--civ-recent-tone, #82ddff) 22%, transparent);
+}
+
+.board-civ-trace-notice__thumbnail::after {
+  content: '';
+  pointer-events: none;
+  position: absolute;
+  inset: 0;
+  border: 1px solid rgba(255, 255, 255, 0.08);
+  background:
+    linear-gradient(90deg, transparent, rgba(255, 255, 255, 0.12), transparent),
+    radial-gradient(circle at 72% 28%, rgba(255, 255, 255, 0.16), transparent 22%);
+  mix-blend-mode: screen;
+  opacity: 0.62;
+}
+
+.board-civ-trace-notice__thumbnail-scene {
+  position: absolute;
+  inset: 0;
+}
+
+.board-civ-trace-notice__beacon {
+  position: absolute;
+  left: 50%;
+  top: 50%;
+  display: block;
+  width: 1.48rem;
+  height: 2.02rem;
+  opacity: 0.92;
+  transform: translate(-50%, -50%);
+}
+
+.board-civ-trace-notice__copy {
+  position: relative;
+  z-index: 1;
+  display: grid;
+  min-width: 0;
+  gap: 0.15rem;
+}
+
+.board-civ-trace-notice__kicker {
+  display: block;
+  flex: 1 1 auto;
+  min-width: 0;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+  color: color-mix(in srgb, var(--civ-recent-tone, #82ddff) 86%, white);
+  font-size: 8.5px;
+  font-weight: 900;
+  letter-spacing: 0.15em;
+  line-height: 1;
+  text-transform: uppercase;
+  text-shadow: 0 0 12px currentColor;
+}
+
+.board-civ-trace-notice__title {
+  min-width: 0;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+  color: rgba(255, 255, 255, 0.96);
+  font-size: 11px;
+  font-weight: 850;
+  letter-spacing: 0.055em;
+  line-height: 1.08;
+  text-transform: uppercase;
+}
+
+.board-civ-trace-notice__visible-as {
+  min-width: 0;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+  color: rgba(255, 255, 255, 0.58);
+  font-size: 8.7px;
+  font-weight: 650;
+  letter-spacing: 0.015em;
+  line-height: 1.1;
+}
+
+.board-civ-trace-notice__action {
+  position: relative;
+  z-index: 1;
+  border: 1px solid color-mix(in srgb, var(--civ-recent-tone, #82ddff) 44%, transparent);
+  border-radius: 999px;
+  background: color-mix(in srgb, var(--civ-recent-tone, #82ddff) 12%, transparent);
+  color: color-mix(in srgb, var(--civ-recent-tone, #82ddff) 72%, white);
+  font-size: 8px;
+  font-weight: 900;
+  letter-spacing: 0.14em;
+  line-height: 1;
+  padding: 0.32rem 0.46rem;
+  text-transform: uppercase;
+  white-space: nowrap;
+}
+
+.board-civ-trace-notice:hover,
+.board-civ-trace-notice:focus-visible {
+  border-color: color-mix(in srgb, var(--civ-recent-tone, #82ddff) 78%, transparent);
+  box-shadow:
+    0 18px 42px rgba(0, 0, 0, 0.54),
+    0 0 34px color-mix(in srgb, var(--civ-recent-tone, #82ddff) 36%, transparent),
+    inset 0 0 0 1px rgba(255, 255, 255, 0.08);
+  outline: none;
+}
+
+@media (max-width: 520px) {
+  .board-civ-trace-notice {
+    bottom: calc(54px + max(env(safe-area-inset-bottom, 0px), 6px));
+    grid-template-columns: 3.45rem minmax(0, 1fr) auto;
+    gap: 0.5rem;
+    min-height: 62px;
+    padding: 0.52rem 0.56rem;
+  }
+
+  .board-civ-trace-notice__thumbnail {
+    width: 3.42rem;
+    height: 2.5rem;
+  }
+
+  .board-civ-trace-notice__beacon {
+    width: 1.18rem;
+    height: 1.72rem;
+  }
+
+  .board-civ-trace-notice__action {
+    align-self: center;
+    font-size: 7px;
+    letter-spacing: 0.11em;
+    padding: 0.28rem 0.38rem;
+  }
+}
+
+.board-aux-civ-impact-ledger {
+  display: grid;
+  flex: 0 0 auto;
+  gap: 2px;
+  padding: 0.42rem 0.5rem 0.46rem;
+  border-top: 1px solid rgba(255, 255, 255, 0.075);
+  background:
+    linear-gradient(180deg, rgba(255, 255, 255, 0.018), transparent),
+    rgba(2, 4, 12, 0.38);
+}
+
+.board-aux-civ-impact-row {
+  --impact-tone: rgba(168, 197, 255, 0.58);
+  display: grid;
+  grid-template-columns: 7px minmax(0, 1fr);
+  min-width: 0;
+  align-items: center;
+  gap: 0.38rem;
+  padding: 0.24rem 0.32rem;
+  border: 1px solid rgba(255, 255, 255, 0.055);
+  background: rgba(255, 255, 255, 0.025);
+}
+
+.board-aux-civ-impact-row[data-recent="true"] {
+  border-color: color-mix(in srgb, var(--impact-tone) 54%, transparent);
+  background: color-mix(in srgb, var(--impact-tone) 11%, rgba(255,255,255,0.025));
+  box-shadow: inset 0 0 18px color-mix(in srgb, var(--impact-tone) 10%, transparent);
+}
+
+.board-aux-civ-impact-row__marker {
+  width: 6px;
+  height: 6px;
+  border: 1px solid color-mix(in srgb, var(--impact-tone) 78%, transparent);
+  background: color-mix(in srgb, var(--impact-tone) 32%, transparent);
+  box-shadow: 0 0 9px color-mix(in srgb, var(--impact-tone) 34%, transparent);
+}
+
+.board-aux-civ-impact-row[data-impact-kind="blueprint"] .board-aux-civ-impact-row__marker {
+  transform: rotate(45deg);
+}
+
+.board-aux-civ-impact-row[data-impact-kind="luminary"] .board-aux-civ-impact-row__marker {
+  border-radius: 999px;
+}
+
+.board-aux-civ-impact-row[data-impact-kind="protocol"] .board-aux-civ-impact-row__marker {
+  border-style: dashed;
+  background: transparent;
+}
+
+.board-aux-civ-impact-row[data-impact-kind="chronicle"] .board-aux-civ-impact-row__marker {
+  width: 7px;
+  height: 5px;
+  border-radius: 2px;
+}
+
+.board-aux-civ-impact-row__copy {
+  display: grid;
+  min-width: 0;
+  gap: 0.08rem;
+}
+
+.board-aux-civ-impact-row__copy span {
+  min-width: 0;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.board-aux-civ-impact-row__copy span:first-child {
+  color: rgba(255, 255, 255, 0.84);
+  font-size: 8.5px;
+  font-weight: 800;
+  letter-spacing: 0.04em;
+  line-height: 1.05;
+}
+
+.board-aux-civ-impact-row__copy span:last-child {
+  color: rgba(255, 255, 255, 0.42);
+  font-size: 7.5px;
+  font-weight: 700;
+  letter-spacing: 0.07em;
+  line-height: 1.05;
+  text-transform: uppercase;
 }
 
 .board-aux-civ-footer {
   display: flex;
+  align-items: center;
   justify-content: space-between;
   gap: 0.75rem;
   padding: 0.5rem 0.65rem;
@@ -2210,6 +2675,116 @@ button,
   color: rgba(255, 255, 255, 0.48);
   font-size: 10px;
   font-weight: 700;
+}
+
+.board-aux-civ-footer__status {
+  margin-left: auto;
+}
+
+.board-aux-civ-footer__action {
+  flex: 0 0 auto;
+  border: 1px solid color-mix(in srgb, var(--civ-recent-tone, #82ddff) 42%, transparent);
+  border-radius: 999px;
+  background: color-mix(in srgb, var(--civ-recent-tone, #82ddff) 10%, transparent);
+  color: color-mix(in srgb, var(--civ-recent-tone, #82ddff) 72%, white);
+  font-size: 8px;
+  font-weight: 900;
+  letter-spacing: 0.13em;
+  line-height: 1;
+  padding: 0.25rem 0.42rem;
+  text-transform: uppercase;
+  white-space: nowrap;
+}
+
+.board-aux-civ-footer__action:hover,
+.board-aux-civ-footer__action:focus-visible {
+  border-color: color-mix(in srgb, var(--civ-recent-tone, #82ddff) 68%, white);
+  background: color-mix(in srgb, var(--civ-recent-tone, #82ddff) 18%, transparent);
+  box-shadow: 0 0 14px color-mix(in srgb, var(--civ-recent-tone, #82ddff) 22%, transparent);
+  outline: none;
+}
+
+.board-aux-module--civ-recent .board-aux-civ-footer {
+  background:
+    linear-gradient(90deg, rgba(223, 184, 107, 0.13), rgba(130, 221, 255, 0.06));
+  color: rgba(255, 235, 190, 0.78);
+}
+
+@keyframes board-aux-civ-register-glow {
+  0%, 100% {
+    box-shadow:
+      inset 0 0 0 1px rgba(255, 230, 170, 0.08),
+      0 0 22px rgba(223, 184, 107, 0.18);
+  }
+  50% {
+    box-shadow:
+      inset 0 0 0 1px rgba(255, 230, 170, 0.16),
+      0 0 34px rgba(223, 184, 107, 0.34);
+  }
+}
+
+@keyframes board-aux-civ-registration {
+  0% {
+    opacity: 0;
+    transform: translateY(-8px) scale(0.98);
+  }
+  11%, 84% {
+    opacity: 1;
+    transform: translateY(0) scale(1);
+  }
+  100% {
+    opacity: 0;
+    transform: translateY(-5px) scale(0.99);
+  }
+}
+
+@keyframes board-civ-trace-notice-in {
+  0% {
+    opacity: 0;
+    transform: translate(-50%, 12px) scale(0.976);
+  }
+  60% {
+    opacity: 1;
+    transform: translate(-50%, -2px) scale(1.005);
+  }
+  100% {
+    opacity: 1;
+    transform: translate(-50%, 0) scale(1);
+  }
+}
+
+@keyframes board-aux-civ-scene-sweep {
+  0% {
+    opacity: 0;
+    transform: translateX(-46%);
+  }
+  9% {
+    opacity: 0.82;
+  }
+  42% {
+    opacity: 0.52;
+    transform: translateX(24%);
+  }
+  70% {
+    opacity: 0.28;
+    transform: translateX(42%);
+  }
+  100% {
+    opacity: 0;
+    transform: translateX(46%);
+  }
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .board-civ-trace-notice {
+    animation: none;
+  }
+
+  .board-aux-civ-scene-registration-sweep {
+    animation: none;
+    opacity: 0.42;
+    transform: none;
+  }
 }
 
 .eminence-progress--hud {
@@ -2728,486 +3303,6 @@ button,
   .affinity-well-status {
     grid-area: status;
     justify-self: end;
-  }
-}
-
-/* The shortest phone landscape uses two Forge rows (controls + tiers) and a
-   horizontal split inside each Well channel. This preserves every card and a
-   44px target for both token actions without letting either surface scroll. */
-@media (max-height: 520px) and (orientation: landscape) {
-  .game-shell[data-board-presentation][data-board-viewport="phone-landscape"][data-board-density="cockpit"][data-board-layout][data-forge-density][data-side-affinity-well="true"]
-    > .affinity-well-panel[data-shared-affinity-well] {
-    --well-action-zone-h: 44px;
-    --well-take2-h: 44px;
-    grid-template-rows: 44px minmax(0, 1fr) 44px !important;
-    padding: 0 !important;
-  }
-
-  .game-shell[data-board-presentation][data-board-viewport="phone-landscape"][data-board-density="cockpit"][data-board-layout][data-forge-density][data-side-affinity-well="true"]
-    > .affinity-well-panel[data-shared-affinity-well] .affinity-well-header {
-    grid-template-rows: 44px !important;
-    height: 44px !important;
-    min-height: 44px !important;
-    max-height: 44px !important;
-    padding: 0 4px !important;
-  }
-
-  .game-shell[data-board-presentation][data-board-viewport="phone-landscape"][data-board-density="cockpit"][data-board-layout][data-forge-density][data-side-affinity-well="true"]
-    > .affinity-well-panel[data-shared-affinity-well] .affinity-well-dock-toggle,
-  .game-shell[data-board-presentation][data-board-viewport="phone-landscape"][data-board-density="cockpit"][data-board-layout][data-forge-density][data-side-affinity-well="true"]
-    > .affinity-well-panel[data-shared-affinity-well] .affinity-well-eminence {
-    width: 44px !important;
-    min-width: 44px !important;
-    height: 44px !important;
-    min-height: 44px !important;
-  }
-
-  .game-shell[data-board-presentation][data-board-viewport="phone-landscape"][data-board-density="cockpit"][data-board-layout][data-forge-density][data-side-affinity-well="true"]
-    > .affinity-well-panel[data-shared-affinity-well] .affinity-well-cells [data-well-carousel] > div {
-    display: grid !important;
-    grid-template-columns: repeat(3, minmax(0, 1fr)) !important;
-    grid-template-rows: repeat(2, minmax(0, 1fr)) !important;
-    gap: 2px !important;
-    padding: 1px !important;
-  }
-
-  .game-shell[data-board-presentation][data-board-viewport="phone-landscape"][data-board-density="cockpit"][data-board-layout][data-forge-density][data-side-affinity-well="true"]
-    > .affinity-well-panel[data-shared-affinity-well] .affinity-well-cell {
-    position: relative !important;
-    display: grid !important;
-    grid-template-columns: minmax(44px, 1fr) 44px !important;
-    grid-template-rows: minmax(44px, 1fr) !important;
-    width: 100% !important;
-    height: 100% !important;
-    min-width: 0 !important;
-    min-height: 0 !important;
-    gap: 0 !important;
-  }
-
-  .game-shell[data-board-presentation][data-board-viewport="phone-landscape"][data-board-density="cockpit"][data-board-layout][data-forge-density][data-side-affinity-well="true"]
-    > .affinity-well-panel[data-shared-affinity-well] .affinity-well-cell[data-affinity] .affinity-well-cell-button,
-  .game-shell[data-board-presentation][data-board-viewport="phone-landscape"][data-board-density="cockpit"][data-board-layout][data-forge-density][data-side-affinity-well="true"]
-    > .affinity-well-panel[data-shared-affinity-well] .affinity-well-cell[data-affinity="singularity"] .affinity-well-cell-button {
-    width: 100% !important;
-    height: 100% !important;
-    min-width: 44px !important;
-    min-height: 44px !important;
-    max-height: none !important;
-    flex: none !important;
-    border-radius: 7px 0 0 7px !important;
-  }
-
-  .game-shell[data-board-presentation][data-board-viewport="phone-landscape"][data-board-density="cockpit"][data-board-layout][data-forge-density][data-side-affinity-well="true"]
-    > .affinity-well-panel[data-shared-affinity-well] .affinity-well-cell .affinity-well-cell-button[data-well-cell-style="instrument"] {
-    grid-template-rows: 28px 16px 8px !important;
-    row-gap: 1px !important;
-  }
-
-  .game-shell[data-board-presentation][data-board-viewport="phone-landscape"][data-board-density="cockpit"][data-board-layout][data-forge-density][data-side-affinity-well="true"]
-    > .affinity-well-panel[data-shared-affinity-well] .affinity-well-take2 {
-    position: static !important;
-    inset: auto !important;
-    width: 44px !important;
-    min-width: 44px !important;
-    height: 100% !important;
-    min-height: 44px !important;
-    max-height: none !important;
-    margin: 0 !important;
-    padding: 0 !important;
-    border-radius: 0 7px 7px 0 !important;
-    font-size: 9px !important;
-  }
-
-  .game-shell[data-board-presentation][data-board-viewport="phone-landscape"][data-board-density="cockpit"][data-board-layout][data-forge-density][data-side-affinity-well="true"]
-    > .affinity-well-panel[data-shared-affinity-well] .affinity-well-action-zone {
-    height: 44px !important;
-    min-height: 44px !important;
-    max-height: 44px !important;
-  }
-}
-
-/* Artifact manifestation: the mold stays fixed while pale astral alloy rises,
-   cools into the authoritative Artifact, and its gameplay marks are struck in.
-   This layer intentionally uses only opacity and transforms so a mass refill
-   remains inexpensive on mobile GPUs. */
-.artifact-mold-cast {
-  --mold-cast-delay: 0ms;
-  --mold-cast-duration: 680ms;
-  position: absolute;
-  inset: 0;
-  z-index: 36;
-  overflow: hidden;
-  border-radius: inherit;
-  pointer-events: none;
-  isolation: isolate;
-  contain: paint;
-  animation: artifact-mold-cast-shell var(--mold-cast-duration) cubic-bezier(0.2, 0.72, 0.18, 1) var(--mold-cast-delay) both;
-}
-
-.artifact-mold-cast > span {
-  position: absolute;
-  display: block;
-  pointer-events: none;
-}
-
-/* The foundry's generic direct-child rule appears later in this stylesheet.
-   Keep the casting layer pinned to the cavity instead of letting it collapse
-   into a zero-height grid child in compact Forge layouts. */
-.forge-foundry-mold > .artifact-mold-cast {
-  position: absolute;
-  z-index: 36;
-}
-
-.artifact-mold-cast__cavity {
-  inset: 0;
-  z-index: 1;
-  background: #020609;
-  animation: artifact-mold-cast-cavity var(--mold-cast-duration) ease-out var(--mold-cast-delay) both;
-}
-
-.artifact-mold-cast__alloy {
-  left: -7%;
-  right: -7%;
-  bottom: -5%;
-  height: 112%;
-  z-index: 2;
-  overflow: hidden;
-  transform-origin: 50% 100%;
-  background:
-    linear-gradient(180deg, rgba(255,244,198,0.72) 0 1px, rgba(191,232,238,0.28) 2px, transparent 7px),
-    radial-gradient(ellipse at 36% 18%, rgba(244,252,255,0.52) 0 4%, transparent 17%),
-    radial-gradient(ellipse at 70% 42%, rgba(150,218,231,0.42) 0 4%, transparent 19%),
-    linear-gradient(104deg, #27353d 0%, #849d9e 21%, #3f6872 43%, #b8a46f 60%, #344850 81%, #789292 100%);
-  border-top: 1px solid rgba(255,241,190,0.78);
-  box-shadow:
-    inset 0 2px 0 rgba(209,244,248,0.22),
-    0 -2px 5px rgba(172,225,234,0.18);
-  animation: artifact-mold-cast-alloy var(--mold-cast-duration) cubic-bezier(0.24, 0.76, 0.18, 1) var(--mold-cast-delay) both;
-}
-
-.artifact-mold-cast__alloy-flow {
-  position: absolute;
-  display: block;
-  inset: -18% -24%;
-  background:
-    repeating-radial-gradient(ellipse at 50% 115%, transparent 0 11%, rgba(231,249,250,0.13) 12% 13%, transparent 15% 22%),
-    linear-gradient(90deg, transparent 0 18%, rgba(244,251,248,0.24) 31%, transparent 46% 64%, rgba(189,231,235,0.2) 76%, transparent 92%);
-  animation: artifact-mold-cast-flow var(--mold-cast-duration) ease-in-out var(--mold-cast-delay) both;
-}
-
-.artifact-mold-cast__cooling {
-  inset: 0;
-  z-index: 3;
-  background:
-    linear-gradient(118deg, rgba(5,13,18,0.94), rgba(55,91,101,0.76) 32%, rgba(155,150,112,0.5) 52%, rgba(11,27,34,0.9));
-  transform-origin: 50% 100%;
-  animation: artifact-mold-cast-cooling var(--mold-cast-duration) ease-out var(--mold-cast-delay) both;
-}
-
-.artifact-mold-cast__sheen {
-  top: -12%;
-  bottom: -12%;
-  left: -32%;
-  width: 16%;
-  z-index: 4;
-  opacity: 0;
-  transform: skewX(-11deg);
-  background: rgba(230,248,250,0.38);
-  animation: artifact-mold-cast-sheen var(--mold-cast-duration) ease-in-out var(--mold-cast-delay) both;
-}
-
-.artifact-mold-cast__inscription {
-  z-index: 5;
-  width: 18%;
-  aspect-ratio: 1;
-  border: 1px solid rgba(255,239,178,0.88);
-  opacity: 0;
-  transform: scale(1.85);
-  box-shadow: 0 0 0 1px rgba(152,209,226,0.32);
-  animation: artifact-mold-cast-inscription var(--mold-cast-duration) ease-out var(--mold-cast-delay) both;
-}
-
-.artifact-mold-cast__inscription--eminence {
-  top: 5%;
-  left: 5%;
-  clip-path: polygon(50% 0, 92% 26%, 82% 82%, 50% 100%, 18% 82%, 8% 26%);
-}
-
-.artifact-mold-cast__inscription--affinity {
-  top: 5%;
-  right: 5%;
-  border-radius: 50%;
-  animation-delay: calc(var(--mold-cast-delay) + 34ms);
-}
-
-.artifact-mold-cast__inscription--cost {
-  right: 8%;
-  bottom: 7%;
-  width: 28%;
-  aspect-ratio: 2 / 1;
-  border-radius: 3px;
-  animation-delay: calc(var(--mold-cast-delay) + 68ms);
-}
-
-.artifact-mold-cast--compact .artifact-mold-cast__inscription {
-  border-width: 1px;
-}
-
-.artifact-mold-cast--compact {
-  inset: 2px;
-  border-radius: 6px;
-}
-
-@keyframes artifact-mold-cast-shell {
-  0%, 16% { box-shadow: inset 0 0 20px rgba(0,0,0,0.94); }
-  48% { box-shadow: inset 0 0 17px rgba(226,248,255,0.72), 0 0 7px rgba(196,230,235,0.34); }
-  76% { box-shadow: inset 0 0 7px rgba(255,231,161,0.28), 0 0 4px rgba(255,231,161,0.2); }
-  100% { box-shadow: none; }
-}
-
-@keyframes artifact-mold-cast-cavity {
-  0%, 30% { opacity: 1; }
-  64% { opacity: 0.88; }
-  86%, 100% { opacity: 0; }
-}
-
-@keyframes artifact-mold-cast-alloy {
-  0% { opacity: 0.92; transform: scaleY(0.04); }
-  16% { opacity: 1; transform: scaleY(0.19); }
-  46% { opacity: 1; transform: scaleY(1); }
-  64% { opacity: 0.92; transform: scaleY(1); }
-  88%, 100% { opacity: 0; transform: scaleY(1); }
-}
-
-@keyframes artifact-mold-cast-flow {
-  0% { opacity: 0.3; transform: translate3d(-8%, 8%, 0) scale(1.08); }
-  42% { opacity: 0.9; transform: translate3d(8%, -4%, 0) scale(1); }
-  72% { opacity: 0.34; transform: translate3d(-2%, -9%, 0) scale(1.04); }
-  100% { opacity: 0; transform: translate3d(4%, -12%, 0) scale(1.04); }
-}
-
-@keyframes artifact-mold-cast-cooling {
-  0%, 42% { opacity: 0; transform: scaleY(0.12); }
-  55% { opacity: 0.72; transform: scaleY(1); }
-  69% { opacity: 0.42; transform: scaleY(1); }
-  88%, 100% { opacity: 0; transform: scaleY(1); }
-}
-
-@keyframes artifact-mold-cast-sheen {
-  0%, 47% { opacity: 0; transform: translate3d(0, 0, 0) skewX(-11deg); }
-  58% { opacity: 0.72; }
-  78% { opacity: 0; transform: translate3d(520%, 0, 0) skewX(-11deg); }
-  100% { opacity: 0; transform: translate3d(520%, 0, 0) skewX(-11deg); }
-}
-
-@keyframes artifact-mold-cast-inscription {
-  0%, 68% { opacity: 0; transform: scale(1.85); }
-  76% { opacity: 0.94; transform: scale(0.88); }
-  84% { opacity: 0.46; transform: scale(1); }
-  100% { opacity: 0; transform: scale(1.1); }
-}
-
-@media (prefers-reduced-motion: reduce) {
-  .artifact-mold-cast,
-  .artifact-mold-cast > span {
-    animation-duration: 240ms !important;
-    animation-delay: 0ms !important;
-  }
-
-  .artifact-mold-cast__alloy-flow,
-  .artifact-mold-cast__sheen,
-  .artifact-mold-cast__inscription {
-    display: none;
-  }
-}
-
-.tutorial-completion-layout {
-  gap: 1.25rem;
-  padding-block: 4rem;
-}
-
-@media (max-height: 620px) {
-  .tutorial-completion-layout {
-    gap: 0.75rem;
-    padding-block: 1rem;
-  }
-}
-
-@media (max-width: 680px) and (max-height: 520px) and (orientation: landscape) {
-  .game-shell[data-board-presentation][data-board-viewport="phone-landscape"][data-board-density="cockpit"][data-board-layout][data-forge-density][data-side-affinity-well="true"]
-    > .game-main[data-active-tab="board"] .board-forge.board-forge--compact {
-    grid-template-columns: minmax(0, 1fr) !important;
-    grid-template-rows: 44px minmax(0, 1fr) !important;
-  }
-
-  .game-shell[data-board-presentation][data-board-viewport="phone-landscape"][data-board-density="cockpit"][data-board-layout][data-forge-density][data-side-affinity-well="true"]
-    > .game-main[data-active-tab="board"] .board-forge--compact .board-forge-controls {
-    grid-row: 1 !important;
-    width: 100% !important;
-    min-width: 0 !important;
-  }
-
-  .game-shell[data-board-presentation][data-board-viewport="phone-landscape"][data-board-density="cockpit"][data-board-layout][data-forge-density][data-side-affinity-well="true"]
-    > .game-main[data-active-tab="board"] .board-forge--compact [data-forge-tiers="true"] {
-    grid-row: 2 !important;
-    align-self: stretch !important;
-    width: 100% !important;
-    min-width: 0 !important;
-    height: 100% !important;
-    padding-inline: 2px !important;
-  }
-
-  .game-shell[data-board-presentation][data-board-viewport="phone-landscape"][data-board-density="cockpit"][data-board-layout][data-forge-density][data-side-affinity-well="true"]
-    > .game-main[data-active-tab="board"] .board-forge--compact .board-forge-shelf {
-    grid-template-columns: 40px minmax(0, 1fr) !important;
-    gap: 2px !important;
-    padding: 2px !important;
-  }
-
-  .game-shell[data-board-presentation][data-board-viewport="phone-landscape"][data-board-density="cockpit"][data-board-layout][data-forge-density][data-side-affinity-well="true"]
-    > .game-main[data-active-tab="board"] .board-forge--compact .board-forge-tier-name {
-    display: none !important;
-  }
-
-  .game-shell[data-board-presentation][data-board-viewport="phone-landscape"][data-board-density="cockpit"][data-board-layout][data-forge-density][data-side-affinity-well="true"]
-    > .game-main[data-active-tab="board"] .board-forge--compact .board-forge-shelf-content {
-    grid-template-columns: minmax(0, 1fr) 44px !important;
-    gap: 2px !important;
-  }
-
-  .game-shell[data-board-presentation][data-board-viewport="phone-landscape"][data-board-density="cockpit"][data-board-layout][data-forge-density][data-side-affinity-well="true"]
-    > .game-main[data-active-tab="board"] .board-forge--compact .board-forge-card-row {
-    gap: 1px !important;
-  }
-
-  .game-shell[data-board-presentation][data-board-viewport="phone-landscape"][data-board-density="cockpit"][data-board-layout][data-forge-density][data-side-affinity-well="true"]
-    > .game-main[data-active-tab="board"] .board-forge--compact .board-forge-archive-rail {
-    width: 44px !important;
-    min-width: 44px !important;
-  }
-}
-
-/* In constrained landscape, the Forge owns the first board viewport. Secondary
-   board information remains directly below it instead of forcing smaller cards. */
-@media (max-height: 520px) and (orientation: landscape) {
-  .game-shell[data-board-viewport="phone-landscape"][data-board-density="cockpit"][data-side-affinity-well="true"]
-    > .game-main[data-active-tab="board"] {
-    padding: 4px !important;
-    overflow-x: hidden !important;
-    overflow-y: auto !important;
-  }
-
-  .game-shell[data-board-viewport="phone-landscape"][data-board-density="cockpit"][data-side-affinity-well="true"]
-    > .game-main[data-active-tab="board"] .board-tab-main {
-    display: flex !important;
-    flex-direction: column !important;
-    width: 100% !important;
-    height: auto !important;
-    min-height: 0 !important;
-    gap: 0 !important;
-    padding: 0 !important;
-  }
-
-  .game-shell[data-board-viewport="phone-landscape"][data-board-density="cockpit"][data-side-affinity-well="true"]
-    > .game-main[data-active-tab="board"] .board-forge.board-forge--compact {
-    flex: 0 0 calc(100dvh - 54px) !important;
-    width: 100% !important;
-    height: calc(100dvh - 54px) !important;
-    min-height: calc(100dvh - 54px) !important;
-    margin: 0 !important;
-    grid-template-rows: 30px 44px minmax(0, 1fr) !important;
-  }
-
-  .game-shell[data-board-viewport="phone-landscape"][data-board-density="cockpit"][data-side-affinity-well="true"]
-    > .game-main[data-active-tab="board"] .board-forge--compact .board-forge-header {
-    height: 30px !important;
-    min-height: 30px !important;
-    padding: 2px 7px !important;
-  }
-
-  .game-shell[data-board-viewport="phone-landscape"][data-board-density="cockpit"][data-side-affinity-well="true"]
-    > .game-main[data-active-tab="board"] .board-forge--compact .board-forge-controls {
-    height: 44px !important;
-    min-height: 44px !important;
-    padding: 1px 7px !important;
-  }
-
-  .game-shell[data-board-viewport="phone-landscape"][data-board-density="cockpit"][data-side-affinity-well="true"]
-    > .game-main[data-active-tab="board"] .board-forge--compact .board-forge-controls button {
-    min-height: 40px !important;
-  }
-
-  .game-shell[data-board-viewport="phone-landscape"][data-board-density="cockpit"][data-side-affinity-well="true"]
-    > .game-main[data-active-tab="board"] .board-forge--compact [data-forge-tiers="true"] {
-    display: grid !important;
-    grid-template-columns: minmax(0, 1fr) !important;
-    grid-template-rows: repeat(3, minmax(0, 1fr)) !important;
-    width: 100% !important;
-    height: 100% !important;
-    min-height: 0 !important;
-    gap: 3px !important;
-    padding: 3px 4px !important;
-    overflow: hidden !important;
-  }
-
-  .game-shell[data-board-viewport="phone-landscape"][data-board-density="cockpit"][data-side-affinity-well="true"]
-    > .game-main[data-active-tab="board"] .board-forge--compact .board-forge-shelf {
-    display: grid !important;
-    grid-template-columns: clamp(48px, 9vw, 72px) minmax(0, 1fr) !important;
-    grid-template-rows: minmax(0, 1fr) !important;
-    width: 100% !important;
-    height: 100% !important;
-    min-height: 0 !important;
-    gap: 3px !important;
-    padding: 2px 4px !important;
-  }
-
-  .game-shell[data-board-viewport="phone-landscape"][data-board-density="cockpit"][data-side-affinity-well="true"]
-    > .game-main[data-active-tab="board"] .board-forge--compact .board-forge-tier-header,
-  .game-shell[data-board-viewport="phone-landscape"][data-board-density="cockpit"][data-side-affinity-well="true"]
-    > .game-main[data-active-tab="board"] .board-forge--compact .board-forge-shelf-content,
-  .game-shell[data-board-viewport="phone-landscape"][data-board-density="cockpit"][data-side-affinity-well="true"]
-    > .game-main[data-active-tab="board"] .board-forge--compact .board-forge-card-row,
-  .game-shell[data-board-viewport="phone-landscape"][data-board-density="cockpit"][data-side-affinity-well="true"]
-    > .game-main[data-active-tab="board"] .board-forge--compact .board-forge-archive-rail {
-    height: 100% !important;
-    min-height: 0 !important;
-  }
-
-  .game-shell[data-board-viewport="phone-landscape"][data-board-density="cockpit"][data-side-affinity-well="true"]
-    > .game-main[data-active-tab="board"] .board-forge--compact .board-forge-shelf-content {
-    display: grid !important;
-    grid-template-columns: minmax(0, 4fr) minmax(0, 1fr) !important;
-    width: 100% !important;
-    min-width: 0 !important;
-    gap: 3px !important;
-  }
-
-  .game-shell[data-board-viewport="phone-landscape"][data-board-density="cockpit"][data-side-affinity-well="true"]
-    > .game-main[data-active-tab="board"] .board-forge--compact .board-forge-card-row {
-    display: grid !important;
-    grid-template-columns: repeat(4, minmax(0, 1fr)) !important;
-    width: 100% !important;
-    min-width: 0 !important;
-    gap: 3px !important;
-    padding: 0 !important;
-  }
-
-  .game-shell[data-board-viewport="phone-landscape"][data-board-density="cockpit"][data-side-affinity-well="true"]
-    > .game-main[data-active-tab="board"] .board-forge--compact .forge-foundry-mold,
-  .game-shell[data-board-viewport="phone-landscape"][data-board-density="cockpit"][data-side-affinity-well="true"]
-    > .game-main[data-active-tab="board"] .board-forge--compact .board-forge-compact-chip,
-  .game-shell[data-board-viewport="phone-landscape"][data-board-density="cockpit"][data-side-affinity-well="true"]
-    > .game-main[data-active-tab="board"] .board-forge--compact .board-forge-compact-deck,
-  .game-shell[data-board-viewport="phone-landscape"][data-board-density="cockpit"][data-side-affinity-well="true"]
-    > .game-main[data-active-tab="board"] .board-forge--compact .board-forge-compact-deck > div:first-child {
-    justify-self: center !important;
-    width: auto !important;
-    max-width: 100% !important;
-    height: 100% !important;
-    min-width: 0 !important;
-    min-height: 0 !important;
-    aspect-ratio: 0.7 !important;
   }
 }
 
@@ -7424,11 +7519,11 @@ button,
   animation-fill-mode: backwards;
 }
 
-/* Ambient Lumii motes use a static position and opacity/scale pulse on mobile. */
-@keyframes lumii-mote {
-  0%   { opacity: 0.16; scale: 0.7; }
-  55%  { opacity: 0.98; scale: 1.1; }
-  100% { opacity: 0.12; scale: 0.42; }
+/* Ember particle opacity + scale pulse (position is static on mobile)        */
+@keyframes lumii-ember {
+  0%   { opacity: 0;   scale: 0.6; }
+  55%  { opacity: 0.88; scale: 1.0; }
+  100% { opacity: 0;   scale: 0.2; }
 }
 /* Tether travelling dot — vertical (down/up)                                */
 @keyframes lumii-tether-dot-vert {
@@ -7479,38 +7574,12 @@ button,
   0%, 100% { transform: translateY(0); }
   50%       { transform: translateY(var(--lum-hover-amp, -2px)); }
 }
-/* Node-free Lumii signature halo: a faint living lens around the identity core. */
-@keyframes lumii-signature-halo-breathe {
-  0%, 100% { opacity: var(--lum-signature-low, 0.46); transform: scale(0.985) rotate(-2.4deg) skewX(-1.4deg); }
-  50%      { opacity: var(--lum-signature-high, 0.74); transform: scale(1.028) rotate(1.5deg) skewX(1deg); }
-}
 
 /* ── CSS animation classes (duration/delay set inline via style props) ───── */
-.lumii-mote {
-  animation: lumii-mote var(--lum-dur, 2s) ease-out infinite;
+.lumii-ember {
+  animation: lumii-ember var(--lum-dur, 2s) ease-out infinite;
   animation-delay: var(--lum-delay, 0s);
   animation-fill-mode: backwards;
-}
-.lumii-orb-hover {
-  animation: lumii-orb-hover var(--lum-hover-dur, 5.4s) ease-in-out infinite;
-  transform-box: fill-box;
-  transform-origin: center;
-  will-change: transform;
-}
-.lumii-signature-halo {
-  animation: lumii-signature-halo-breathe 6.2s ease-in-out infinite;
-  filter:
-    drop-shadow(0 0 2.5px currentColor)
-    drop-shadow(0 0 8px color-mix(in srgb, currentColor 42%, transparent));
-  transform-box: fill-box;
-  transform-origin: center;
-  will-change: transform, opacity;
-}
-.lumii-signature-halo--hostile {
-  animation-duration: 3.7s;
-  filter:
-    drop-shadow(0 0 2px currentColor)
-    drop-shadow(0 0 6px color-mix(in srgb, currentColor 34%, transparent));
 }
 .lumii-tether-dot-vert {
   animation: lumii-tether-dot-vert var(--lum-dur, 0.85s) ease-in-out infinite;
@@ -7539,6 +7608,12 @@ button,
 }
 .lumii-float {
   animation: lumii-float var(--lum-dur, 2.8s) ease-in-out infinite;
+}
+.lumii-orb-hover {
+  animation: lumii-orb-hover var(--lum-hover-dur, 5.4s) ease-in-out infinite;
+  transform-box: fill-box;
+  transform-origin: center;
+  will-change: transform;
 }
 
 /* ── TutorialDirector mobile CSS keyframes ─────────────────────────────────── */
@@ -7821,16 +7896,6 @@ button,
 
   .tutorial-gameplay[data-tutorial-gameplay="true"] .tutorial-affinity-panel .tutorial-affinity-well > div:last-child button {
     height: 28px !important;
-  }
-
-  .tutorial-gameplay[data-tutorial-gameplay="true"] .tutorial-lumii:not([data-floating-dialogue="true"]) {
-    left: 14px !important;
-    top: 50% !important;
-  }
-
-  .tutorial-gameplay[data-tutorial-gameplay="true"] .tutorial-lumii[data-guidance-sheet-open="true"] {
-    left: 88% !important;
-    top: 18% !important;
   }
 
   .tutorial-gameplay[data-tutorial-gameplay="true"] .tutorial-lumii:not([data-floating-dialogue="true"]) > div {
@@ -8198,16 +8263,6 @@ button,
     height: 28px !important;
   }
 
-  .tutorial-gameplay[data-tutorial-gameplay="true"] .tutorial-lumii:not([data-floating-dialogue="true"]) {
-    left: 13px !important;
-    top: 50% !important;
-  }
-
-  .tutorial-gameplay[data-tutorial-gameplay="true"] .tutorial-lumii[data-guidance-sheet-open="true"] {
-    left: 88% !important;
-    top: 18% !important;
-  }
-
   .tutorial-gameplay[data-tutorial-gameplay="true"] .tutorial-lumii:not([data-floating-dialogue="true"]) > div {
     transform: translate(-50%, -50%) scale(0.62) !important;
   }
@@ -8381,7 +8436,6 @@ button,
     bottom: calc(var(--tutorial-landscape-well-h) + 4px) !important;
     left: 8px !important;
   }
-
 }
 
 /* Hint text twinkle */
@@ -11841,10 +11895,6 @@ button,
   border-top: 1px solid rgba(255, 255, 255, 0.06);
 }
 
-.affinity-well-reservoir.affinity-well-singularity-details {
-  border-top: 0 !important;
-}
-
 .affinity-well-meter {
   min-height: var(--well-pip-size, 4px);
 }
@@ -12074,12 +12124,6 @@ button,
 
 .affinity-well-singularity-footer {
   overflow: visible !important;
-}
-
-.affinity-well-cell[data-affinity-origin="convergence"] {
-  box-shadow:
-    inset 1px 0 rgba(225, 218, 255, 0.44),
-    inset 5px 0 9px rgba(200, 176, 255, 0.08);
 }
 
 .affinity-well-cipher-landing {
@@ -12389,9 +12433,6 @@ button,
   border: 0 !important;
   border-radius: 0 !important;
   background:
-    radial-gradient(circle, rgba(255, 255, 255, 0.58) 0 0.65px, transparent 1.35px) 9% 18% / 72px 51px repeat,
-    radial-gradient(circle, rgba(176, 211, 255, 0.38) 0 0.85px, transparent 1.55px) 42% 31% / 124px 86px repeat,
-    radial-gradient(circle, rgba(255, 220, 164, 0.26) 0 0.72px, transparent 1.45px) 71% 76% / 168px 122px repeat,
     radial-gradient(ellipse 72% 94% at 50% 112%, rgba(22, 55, 67, 0.12), transparent 58%),
     linear-gradient(180deg, rgba(2, 6, 9, 0.88), rgba(0, 2, 4, 0.98)) !important;
   box-shadow:
@@ -12414,16 +12455,12 @@ button,
 }
 
 .game-shell[data-board-presentation="celestial"] .board-terminus-space {
-  opacity: 0.88 !important;
+  opacity: 0.78 !important;
   background:
-    radial-gradient(circle, rgba(255, 255, 255, 0.98) 0 0.68px, transparent 1.42px) 13% 21% / 67px 49px repeat,
-    radial-gradient(circle, rgba(181, 214, 255, 0.78) 0 0.78px, transparent 1.55px) 39% 46% / 111px 83px repeat,
-    radial-gradient(circle, rgba(255, 228, 184, 0.58) 0 0.64px, transparent 1.38px) 79% 33% / 151px 113px repeat,
-    radial-gradient(circle, rgba(255, 255, 255, 0.4) 0 0.48px, transparent 1.18px) 5% 69% / 43px 35px repeat,
     radial-gradient(ellipse 38% 62% at 50% 50%, rgba(0, 0, 0, 0.66), transparent 82%),
-    linear-gradient(180deg, rgba(0, 3, 7, 0.22), rgba(0, 1, 3, 0.66)),
+    linear-gradient(180deg, rgba(0, 3, 7, 0.38), rgba(0, 1, 3, 0.82)),
     var(--terminus-starfield-image) center 18% / cover no-repeat !important;
-  filter: grayscale(0.72) saturate(0.42) brightness(0.56) contrast(1.28);
+  filter: grayscale(0.92) saturate(0.22) brightness(0.4) contrast(1.38);
   transform: scale(1.035);
 }
 
@@ -13505,40 +13542,8 @@ button,
 }
 
 .game-shell[data-board-presentation="celestial"] > .game-bottom-nav button {
-  min-width: 0;
   border-radius: 0 !important;
   color: #87949a;
-}
-
-.game-bottom-nav-label {
-  display: block;
-  max-width: 100%;
-  min-width: 0;
-  line-height: 1;
-}
-
-.game-bottom-nav-label-full,
-.game-bottom-nav-label-short {
-  display: block;
-  max-width: 100%;
-  min-width: 0;
-  overflow: hidden;
-  text-overflow: ellipsis;
-  white-space: nowrap;
-}
-
-.game-bottom-nav-label-short {
-  display: none;
-}
-
-@media (max-width: 680px), (max-height: 520px) and (orientation: landscape) {
-  .game-bottom-nav-label-full {
-    display: none;
-  }
-
-  .game-bottom-nav-label-short {
-    display: block;
-  }
 }
 
 .game-shell[data-board-presentation="celestial"] > .game-bottom-nav button[aria-current="page"],
@@ -13941,18 +13946,6 @@ button,
   }
 }
 
-@media (max-width: 639px) {
-  .oom-shell:not([data-home-mode="home"]) .oom-home-hero {
-    display: none;
-  }
-
-  .oom-shell:not([data-home-mode="home"]) .oom-frame > .grid {
-    min-height: 0;
-    align-items: start;
-    gap: 0;
-  }
-}
-
 /* Canonical Affinity Well: one horizontal vessel rail at every density. */
 .game-shell[data-board-presentation="celestial"][data-celestial-affinity][data-board-density][data-forge-density] > .affinity-well-panel {
   grid-template-rows: 76px 174px 44px !important;
@@ -14192,7 +14185,7 @@ button,
   font-family: inherit !important;
 }
 
-.game-shell[data-board-presentation="celestial"][data-celestial-affinity] .affinity-well-reservoir:not(.affinity-well-singularity-details) {
+.game-shell[data-board-presentation="celestial"][data-celestial-affinity] .affinity-well-reservoir {
   border-top: 1px solid rgba(255, 255, 255, 0.06) !important;
 }
 
@@ -14225,7 +14218,7 @@ button,
   background: rgba(3, 2, 12, 0.94) !important;
 }
 
-/* Phone compression: expose five natural Affinities and Singularity before rail overflow. */
+/* Phone compression: expose all six affinities before allowing rail overflow. */
 @media (max-width: 680px) {
   .game-shell[data-board-presentation="celestial"][data-celestial-affinity][data-board-density]:has(> .affinity-well-panel[data-well-layout="stable"]) {
     grid-template-rows: 48px minmax(0, 1fr) 230px 58px !important;
@@ -14979,12 +14972,12 @@ button,
   }
 }
 
-/* Opponent comparison is a fixed two-line instrument: identity, then
-   forged/held affinity data. It must never grow the header. */
+/* Opponent comparison is a fixed three-line instrument: identity, forged
+   affinity bonuses, then held affinities. It must never grow the header. */
 .game-shell > .game-header .opponent-chip-shell--detailed {
   width: 104px;
-  height: 39px;
-  max-height: 39px;
+  height: 46px;
+  max-height: 46px;
   justify-content: center;
 }
 
@@ -14995,7 +14988,7 @@ button,
 
 .game-shell > .game-header .opponent-chip-details {
   width: 100%;
-  height: 10px;
+  height: 17px;
   margin: 1px 0 0;
   padding: 0 3px;
   gap: 1px;
@@ -15009,31 +15002,14 @@ button,
   grid-template-columns: repeat(5, minmax(0, 1fr));
   align-items: center;
   width: 100%;
-  height: 10px;
+  height: 8px;
   gap: 1px;
 }
 
 .game-shell > .game-header .opponent-chip-detail-row > span {
-  display: inline-flex;
-  align-items: baseline;
-  justify-content: center;
-  gap: 1px;
   min-width: 0 !important;
-  font-size: 6.5px !important;
-  line-height: 10px !important;
-}
-
-.game-shell > .game-header .opponent-chip-detail-row > span b,
-.game-shell > .game-header .opponent-chip-detail-row > span i,
-.game-shell > .game-header .opponent-chip-detail-row > span em {
-  min-width: 0;
-  font: inherit;
-  font-style: normal;
-  line-height: inherit;
-}
-
-.game-shell > .game-header .opponent-chip-detail-row > span i {
-  opacity: 0.44;
+  font-size: 7px !important;
+  line-height: 8px !important;
 }
 
 /* The phone header remains one bounded row with three equal opponent columns. */
@@ -15064,8 +15040,8 @@ button,
     width: 0 !important;
     min-width: 0 !important;
     max-width: 84px !important;
-    height: 37px !important;
-    max-height: 37px !important;
+    height: 44px !important;
+    max-height: 44px !important;
     justify-content: center !important;
   }
 
@@ -15107,7 +15083,7 @@ button,
   .game-shell > .game-header .opponent-chip-details {
     display: flex !important;
     width: 100% !important;
-    height: 10px !important;
+    height: 17px !important;
     margin: 1px 0 0 !important;
     padding: 0 3px !important;
     gap: 1px !important;
@@ -15121,18 +15097,14 @@ button,
     grid-template-columns: repeat(5, minmax(0, 1fr)) !important;
     align-items: center !important;
     width: 100% !important;
-    height: 10px !important;
+    height: 8px !important;
     gap: 1px !important;
   }
 
   .game-shell > .game-header .opponent-chip-detail-row > span {
-    display: inline-flex !important;
-    align-items: baseline !important;
-    justify-content: center !important;
-    gap: 1px !important;
     min-width: 0 !important;
-    font-size: 6px !important;
-    line-height: 10px !important;
+    font-size: 7px !important;
+    line-height: 8px !important;
   }
 
   .game-shell > .game-header > button,
@@ -16552,15 +16524,10 @@ button,
   border-radius: 8px !important;
 }
 
-.game-shell[data-board-presentation="celestial"] .board-opponents-body > div > .opponent-card-shell--details-open {
-  padding-bottom: 4px !important;
-}
-
 .game-shell[data-board-presentation="celestial"] .opponent-card-header {
   display: grid;
-  grid-template-columns: minmax(0, 1fr) auto;
-  align-items: center;
-  gap: 10px;
+  grid-template-columns: minmax(0, 1fr);
+  gap: 6px;
   margin-bottom: 0;
 }
 
@@ -16587,12 +16554,12 @@ button,
 
 .game-shell[data-board-presentation="celestial"] .opponent-card-metrics {
   display: grid;
-  grid-template-columns: auto auto 28px;
+  grid-template-columns: minmax(0, 1fr) auto 28px;
   min-width: 0;
   align-items: center;
-  gap: 8px;
-  padding-top: 0;
-  border-top: 0;
+  gap: 7px;
+  padding-top: 5px;
+  border-top: 1px solid rgba(122, 145, 158, 0.16);
 }
 
 .game-shell[data-board-presentation="celestial"] .opponent-stat-strip {
@@ -16600,7 +16567,7 @@ button,
   min-width: 0;
   align-items: center;
   justify-content: space-between;
-  gap: 7px;
+  gap: 8px;
 }
 
 .game-shell[data-board-presentation="celestial"] .opponent-stat-chip {
@@ -16658,10 +16625,6 @@ button,
 @media (max-width: 360px) {
   .game-shell[data-board-presentation="celestial"] .opponent-card-identity__civ {
     display: none;
-  }
-
-  .game-shell[data-board-presentation="celestial"] .opponent-card-header {
-    gap: 6px;
   }
 
   .game-shell[data-board-presentation="celestial"] .opponent-card-metrics {
@@ -17118,7 +17081,7 @@ button,
   }
 
   .game-shell[data-board-viewport="phone-landscape"][data-board-density="cockpit"] > .affinity-well-panel[data-shared-affinity-well] {
-    --well-action-zone-h: 46px;
+    --well-action-zone-h: 42px;
     --well-cell-pad: 2px;
     --well-cell-stack-gap: 1px;
     --well-icon-size: 22px;
@@ -17127,10 +17090,10 @@ button,
     --well-sub-label-size: 4.5px;
     --well-pip-size: 3px;
     --well-pip-gap: 1px;
-    --well-take2-h: 44px;
+    --well-take2-h: 16px;
     grid-area: well !important;
     display: grid !important;
-    grid-template-rows: 38px minmax(0, 1fr) 46px !important;
+    grid-template-rows: 38px minmax(0, 1fr) 42px !important;
     width: 100% !important;
     height: 100% !important;
     min-width: 0 !important;
@@ -17177,8 +17140,8 @@ button,
 
   .game-shell[data-board-viewport="phone-landscape"][data-board-density="cockpit"] > .affinity-well-panel[data-shared-affinity-well] .affinity-well-cells [data-well-carousel] > div {
     display: grid !important;
-    grid-template-columns: repeat(3, minmax(0, 1fr)) !important;
-    grid-template-rows: repeat(2, minmax(0, 1fr)) !important;
+    grid-template-columns: repeat(2, minmax(0, 1fr)) !important;
+    grid-template-rows: repeat(3, minmax(0, 1fr)) !important;
     width: 100% !important;
     height: 100% !important;
     min-width: 0 !important;
@@ -17198,31 +17161,31 @@ button,
 
   .game-shell[data-board-viewport="phone-landscape"][data-board-density="cockpit"] > .affinity-well-panel[data-shared-affinity-well] .affinity-well-cell[data-affinity] .affinity-well-cell-button {
     width: 100% !important;
-    height: calc(100% - 45px) !important;
+    height: calc(100% - 17px) !important;
     min-height: 0 !important;
     max-height: none !important;
     flex: 1 1 auto !important;
   }
 
   .game-shell[data-board-viewport="phone-landscape"][data-board-density="cockpit"] > .affinity-well-panel[data-shared-affinity-well] .affinity-well-cell[data-affinity="singularity"] .affinity-well-cell-button {
-    height: calc(100% - 45px) !important;
-    flex-basis: auto !important;
+    height: 100% !important;
+    flex-basis: 100% !important;
   }
 
   .game-shell[data-board-viewport="phone-landscape"][data-board-density="cockpit"] > .affinity-well-panel[data-shared-affinity-well] .affinity-well-take2 {
     position: static !important;
     width: 100% !important;
-    height: 44px !important;
-    min-height: 44px !important;
+    height: 16px !important;
+    min-height: 16px !important;
     padding: 0 !important;
     font-size: 7px !important;
   }
 
   .game-shell[data-board-viewport="phone-landscape"][data-board-density="cockpit"] > .affinity-well-panel[data-shared-affinity-well] .affinity-well-action-zone {
     width: 100% !important;
-    height: 46px !important;
-    min-height: 46px !important;
-    max-height: 46px !important;
+    height: 42px !important;
+    min-height: 42px !important;
+    max-height: 42px !important;
     margin-top: 0 !important;
     overflow-x: auto !important;
     overflow-y: hidden !important;
@@ -17455,19 +17418,11 @@ button,
    cockpit's Forge ownership at higher specificity so those legacy dimensions
    cannot reopen the collapsed Terminus or enlarge the compact shelves. */
 @media (max-height: 520px) and (orientation: landscape) {
-  .game-shell[data-board-presentation][data-board-viewport="phone-landscape"][data-board-density="cockpit"][data-board-layout][data-forge-density][data-side-affinity-well="true"] > .game-main[data-active-tab="board"] {
-    padding: 4px !important;
-    overflow-x: hidden !important;
-    overflow-y: auto !important;
-  }
-
   .game-shell[data-board-presentation][data-board-viewport="phone-landscape"][data-board-density="cockpit"][data-board-layout][data-forge-density] > .game-main[data-active-tab="board"] .board-tab-main {
     display: flex !important;
     flex: 0 0 auto !important;
     height: auto !important;
     min-height: 0 !important;
-    gap: 0 !important;
-    padding: 0 !important;
     overflow: visible !important;
   }
 
@@ -17489,35 +17444,29 @@ button,
   }
 
   .game-shell[data-board-presentation][data-board-viewport="phone-landscape"][data-board-density="cockpit"][data-board-layout][data-forge-density] .board-forge.board-forge--compact {
-    flex: 0 0 calc(100dvh - 54px) !important;
-    height: calc(100dvh - 54px) !important;
-    min-height: calc(100dvh - 54px) !important;
-    grid-template-rows: 30px 44px minmax(0, 1fr) !important;
+    height: 270px !important;
+    min-height: 270px !important;
+    grid-template-rows: 28px 20px 222px !important;
     overflow: hidden !important;
   }
 
   .game-shell[data-board-presentation][data-board-viewport="phone-landscape"][data-board-density="cockpit"][data-board-layout][data-forge-density] .board-forge--compact .board-forge-header {
-    height: 30px !important;
-    min-height: 30px !important;
-    max-height: 30px !important;
-    padding: 2px 7px !important;
+    min-height: 28px !important;
+    padding: 2px 8px !important;
   }
 
   .game-shell[data-board-presentation][data-board-viewport="phone-landscape"][data-board-density="cockpit"][data-board-layout][data-forge-density] .board-forge--compact .board-forge-controls {
-    height: 44px !important;
-    min-height: 44px !important;
-    max-height: 44px !important;
+    min-height: 20px !important;
     padding: 1px 7px !important;
   }
 
   .game-shell[data-board-presentation][data-board-viewport="phone-landscape"][data-board-density="cockpit"][data-board-layout][data-forge-density] .board-forge--compact [data-forge-tiers="true"] {
     display: grid !important;
     grid-template-columns: minmax(0, 1fr) !important;
-    grid-template-rows: repeat(3, minmax(0, 1fr)) !important;
+    grid-template-rows: repeat(3, 70px) !important;
     width: 100% !important;
-    height: 100% !important;
-    min-height: 0 !important;
-    max-height: none !important;
+    height: 222px !important;
+    max-height: 222px !important;
     gap: 3px !important;
     padding: 3px 4px !important;
     overflow: hidden !important;
@@ -17525,11 +17474,11 @@ button,
 
   .game-shell[data-board-presentation][data-board-viewport="phone-landscape"][data-board-density="cockpit"][data-board-layout][data-forge-density] .board-forge--compact .board-forge-shelf {
     display: grid !important;
-    grid-template-columns: clamp(48px, 9vw, 72px) minmax(0, 1fr) !important;
-    grid-template-rows: minmax(0, 1fr) !important;
+    grid-template-columns: 72px minmax(0, 1fr) !important;
+    grid-template-rows: 66px !important;
     width: 100% !important;
-    height: 100% !important;
-    min-height: 0 !important;
+    height: 70px !important;
+    min-height: 70px !important;
     gap: 3px !important;
     padding: 2px 4px !important;
     overflow: hidden !important;
@@ -17541,9 +17490,9 @@ button,
     grid-template-rows: auto auto !important;
     align-content: center !important;
     justify-items: start !important;
-    width: 100% !important;
-    height: 100% !important;
-    min-height: 0 !important;
+    width: 72px !important;
+    height: 66px !important;
+    min-height: 66px !important;
     margin: 0 !important;
     padding: 3px !important;
     gap: 3px !important;
@@ -17568,21 +17517,20 @@ button,
 
   .game-shell[data-board-presentation][data-board-viewport="phone-landscape"][data-board-density="cockpit"][data-board-layout][data-forge-density] .board-forge--compact .board-forge-shelf-content {
     display: grid !important;
-    grid-template-columns: minmax(0, 4fr) minmax(0, 1fr) !important;
+    grid-template-columns: minmax(0, 1fr) 35px !important;
     width: 100% !important;
-    height: 100% !important;
+    height: 66px !important;
     min-width: 0 !important;
-    min-height: 0 !important;
     gap: 3px !important;
   }
 
   .game-shell[data-board-presentation][data-board-viewport="phone-landscape"][data-board-density="cockpit"][data-board-layout][data-forge-density] .board-forge--compact .board-forge-card-row {
     display: grid !important;
-    grid-template-columns: repeat(4, minmax(0, 1fr)) !important;
-    grid-template-rows: minmax(0, 1fr) !important;
+    grid-template-columns: repeat(4, 46px) !important;
+    grid-template-rows: 66px !important;
     width: 100% !important;
-    height: 100% !important;
-    min-height: 0 !important;
+    height: 66px !important;
+    min-height: 66px !important;
     align-items: center !important;
     justify-content: space-around !important;
     gap: 2px !important;
@@ -17592,34 +17540,20 @@ button,
   }
 
   .game-shell[data-board-presentation][data-board-viewport="phone-landscape"][data-board-density="cockpit"][data-board-layout][data-forge-density] .board-forge--compact .board-forge-compact-chip {
-    justify-self: center !important;
-    width: auto !important;
-    max-width: 100% !important;
-    height: 100% !important;
-    min-width: 0 !important;
-    min-height: 0 !important;
+    width: 46px !important;
+    height: 66px !important;
+    min-width: 46px !important;
+    min-height: 66px !important;
     aspect-ratio: 0.7 !important;
   }
 
-  .game-shell[data-board-presentation][data-board-viewport="phone-landscape"][data-board-density="cockpit"][data-board-layout][data-forge-density] .board-forge--compact .board-forge-archive-rail {
-    display: flex !important;
-    align-items: stretch !important;
-    justify-content: center !important;
-    width: 100% !important;
-    height: 100% !important;
-    min-width: 0 !important;
-    min-height: 0 !important;
-  }
-
+  .game-shell[data-board-presentation][data-board-viewport="phone-landscape"][data-board-density="cockpit"][data-board-layout][data-forge-density] .board-forge--compact .board-forge-archive-rail,
   .game-shell[data-board-presentation][data-board-viewport="phone-landscape"][data-board-density="cockpit"][data-board-layout][data-forge-density] .board-forge--compact .board-forge-compact-deck,
   .game-shell[data-board-presentation][data-board-viewport="phone-landscape"][data-board-density="cockpit"][data-board-layout][data-forge-density] .board-forge--compact .board-forge-compact-deck > div:first-child {
-    justify-self: center !important;
-    width: auto !important;
-    max-width: 100% !important;
-    height: 100% !important;
-    min-width: 0 !important;
-    min-height: 0 !important;
-    aspect-ratio: 0.7 !important;
+    width: 35px !important;
+    height: 66px !important;
+    min-width: 35px !important;
+    min-height: 66px !important;
   }
 
   .game-shell[data-board-presentation][data-board-viewport="phone-landscape"][data-board-density="cockpit"][data-board-layout][data-forge-density="full"] .board-forge:not(.board-forge--compact) {
@@ -17953,21 +17887,6 @@ button,
   }
 }
 
-@media (pointer: coarse) {
-  .oom-icon-button,
-  .oom-segmented > button,
-  .affinity-well-dock-toggle,
-  .game-bottom-nav button {
-    min-width: 44px !important;
-    min-height: 44px !important;
-  }
-
-  .affinity-well-take2,
-  .board-forge-controls button {
-    min-height: 44px;
-  }
-}
-
 /* Account store previews: deliberately static and inexpensive to render. */
 .store-item-preview {
   position: relative;
@@ -18024,6 +17943,121 @@ button,
   background:
     radial-gradient(circle at 50% 44%, rgba(48, 126, 198, 0.24), transparent 30%),
     linear-gradient(135deg, #080a10 0%, #16120a 48%, #080b13 100%);
+}
+
+.store-preview--first-resonance {
+  background:
+    radial-gradient(circle at 50% 48%, rgba(228, 246, 255, 0.2), transparent 18%),
+    radial-gradient(ellipse at 50% 52%, rgba(89, 126, 190, 0.2), transparent 46%),
+    linear-gradient(150deg, #03050b 0%, #0a101d 54%, #05040c 100%);
+}
+
+.store-preview-first-resonance {
+  position: absolute;
+  z-index: 2;
+  left: 50%;
+  top: 48%;
+  width: 156px;
+  height: 104px;
+  transform: translate(-50%, -50%);
+}
+
+.store-preview-first-resonance__core,
+.store-preview-first-resonance__ring,
+.store-preview-first-resonance__wave {
+  position: absolute;
+  left: 50%;
+  top: 50%;
+  transform: translate(-50%, -50%);
+}
+
+.store-preview-first-resonance__core {
+  width: 18px;
+  height: 18px;
+  border: 1px solid rgba(255, 255, 255, 0.94);
+  transform: translate(-50%, -50%) rotate(45deg);
+  background: rgba(224, 244, 255, 0.28);
+  box-shadow: 0 0 9px rgba(223, 246, 255, 0.9), 0 0 28px rgba(111, 175, 255, 0.42);
+}
+
+.store-preview-first-resonance__ring {
+  border: 1px solid rgba(213, 240, 255, 0.5);
+  border-radius: 50%;
+}
+
+.store-preview-first-resonance__ring--one {
+  width: 52px;
+  height: 52px;
+}
+
+.store-preview-first-resonance__ring--two {
+  width: 88px;
+  height: 88px;
+  border-color: rgba(139, 191, 255, 0.25);
+}
+
+.store-preview-first-resonance__wave {
+  width: 140px;
+  height: 1px;
+  background: linear-gradient(90deg, transparent, rgba(202, 234, 255, 0.75), transparent);
+  transform-origin: center;
+}
+
+.store-preview-first-resonance__wave--two { transform: translate(-50%, -50%) rotate(60deg); }
+.store-preview-first-resonance__wave--three { transform: translate(-50%, -50%) rotate(120deg); }
+
+.store-preview-first-resonance[data-playing="true"] .store-preview-first-resonance__ring--one {
+  animation: store-first-resonance-pulse 1.6s ease-in-out infinite;
+}
+
+.store-preview-first-resonance[data-playing="true"] .store-preview-first-resonance__ring--two {
+  animation: store-first-resonance-pulse 1.6s 0.22s ease-in-out infinite;
+}
+
+.store-preview-audio-button {
+  position: absolute;
+  z-index: 6;
+  left: 50%;
+  bottom: 10px;
+  display: grid;
+  width: 32px;
+  height: 32px;
+  place-items: center;
+  transform: translateX(-50%);
+  border: 1px solid rgba(214, 240, 255, 0.4);
+  border-radius: 50%;
+  color: rgba(238, 249, 255, 0.92);
+  background: rgba(4, 8, 17, 0.86);
+  box-shadow: 0 0 16px rgba(104, 171, 255, 0.2);
+  transition: border-color 160ms ease, background-color 160ms ease, transform 160ms ease;
+}
+
+.store-preview-audio-button:hover {
+  transform: translateX(-50%) scale(1.06);
+  border-color: rgba(231, 248, 255, 0.76);
+  background: rgba(11, 20, 35, 0.94);
+}
+
+.store-preview-audio-button:focus-visible {
+  outline: 2px solid rgba(191, 229, 255, 0.9);
+  outline-offset: 2px;
+}
+
+.store-preview-audio-button svg {
+  width: 15px;
+  height: 15px;
+}
+
+@keyframes store-first-resonance-pulse {
+  0%, 100% { opacity: 0.35; transform: translate(-50%, -50%) scale(0.94); }
+  50% { opacity: 0.9; transform: translate(-50%, -50%) scale(1.06); }
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .store-preview-first-resonance[data-playing="true"] .store-preview-first-resonance__ring {
+    animation: none;
+    opacity: 0.7;
+  }
 }
 
 .store-preview-card-back {
@@ -18148,6 +18182,66 @@ button,
 .store-preview-decryption-key__cipher i:nth-child(2) { transform: translate(-50%, -50%) rotate(60deg); }
 .store-preview-decryption-key__cipher i:nth-child(3) { transform: translate(-50%, -50%) rotate(120deg); }
 
+.store-preview-vault-seal {
+  position: absolute;
+  z-index: 2;
+  left: 50%;
+  top: 52%;
+  width: 118px;
+  height: 118px;
+  transform: translate(-50%, -50%);
+  color: rgba(235, 248, 255, 0.9);
+}
+
+.store-preview-vault-seal > svg {
+  position: absolute;
+  left: 50%;
+  top: 50%;
+  width: 36px;
+  height: 36px;
+  transform: translate(-50%, -50%);
+  stroke-width: 1.15;
+  filter: drop-shadow(0 0 7px rgba(196, 234, 255, 0.45));
+}
+
+.store-preview-vault-seal__ring {
+  position: absolute;
+  inset: 8px;
+  border: 1px solid rgba(220, 238, 255, 0.58);
+  border-radius: 50%;
+  background:
+    radial-gradient(circle, rgba(225, 245, 255, 0.12) 0 18%, transparent 20%),
+    conic-gradient(from 22deg, transparent 0 9%, rgba(228, 248, 255, 0.62) 10% 11%, transparent 12% 26%, rgba(145, 203, 255, 0.5) 27% 28%, transparent 29% 100%);
+  box-shadow:
+    inset 0 0 24px rgba(109, 186, 245, 0.1),
+    0 0 22px rgba(142, 210, 255, 0.2);
+}
+
+.store-preview-vault-seal__aperture {
+  position: absolute;
+  left: 50%;
+  top: 50%;
+  width: 72px;
+  height: 72px;
+  transform: translate(-50%, -50%);
+  border: 1px solid rgba(255, 255, 255, 0.2);
+  border-radius: 50%;
+}
+
+.store-preview-vault-seal__aperture i {
+  position: absolute;
+  left: 50%;
+  top: 50%;
+  width: 68px;
+  height: 1px;
+  transform-origin: center;
+  background: linear-gradient(90deg, transparent, rgba(232, 249, 255, 0.8), transparent);
+}
+
+.store-preview-vault-seal__aperture i:nth-child(1) { transform: translate(-50%, -50%); }
+.store-preview-vault-seal__aperture i:nth-child(2) { transform: translate(-50%, -50%) rotate(60deg); }
+.store-preview-vault-seal__aperture i:nth-child(3) { transform: translate(-50%, -50%) rotate(120deg); }
+
 .store-preview-observatory {
   position: absolute;
   z-index: 2;
@@ -18204,258 +18298,6 @@ button,
   border-radius: 50% 50% 3px 3px;
   background: linear-gradient(180deg, #182333, #070a12);
   box-shadow: 0 8px 16px rgba(0, 0, 0, 0.5);
-}
-
-.lume-icon {
-  position: relative;
-  display: inline-grid;
-  place-items: center;
-  width: 1em;
-  height: 1em;
-  flex: 0 0 auto;
-  color: #fff3c8;
-  isolation: isolate;
-}
-
-.lume-icon__aura,
-.lume-icon__core,
-.lume-icon__crescent,
-.lume-icon__spark {
-  position: absolute;
-  pointer-events: none;
-}
-
-.lume-icon__aura {
-  inset: 9%;
-  border-radius: 50%;
-  background:
-    radial-gradient(circle at 50% 50%, rgba(255, 250, 219, 0.9), rgba(246, 201, 102, 0.26) 42%, transparent 70%);
-  filter: blur(1px);
-  opacity: 0.92;
-}
-
-.lume-icon__core {
-  inset: 18%;
-  border-radius: 50%;
-  background:
-    radial-gradient(circle at 36% 28%, #ffffff 0 13%, #fff1b7 30%, #f1b95d 58%, #3b6a78 100%);
-  box-shadow:
-    inset -0.08em -0.08em 0.12em rgba(21, 51, 67, 0.36),
-    0 0 0.18em rgba(255, 231, 156, 0.72),
-    0 0 0.45em rgba(102, 214, 235, 0.28);
-}
-
-.lume-icon__crescent {
-  right: 19%;
-  top: 17%;
-  width: 42%;
-  height: 66%;
-  border-right: 0.12em solid rgba(255, 255, 255, 0.88);
-  border-radius: 50%;
-  transform: rotate(16deg);
-  filter: drop-shadow(0 0 0.1em rgba(255, 250, 220, 0.9));
-}
-
-.lume-icon__spark {
-  left: 35%;
-  top: 28%;
-  width: 0.16em;
-  height: 0.16em;
-  border-radius: 50%;
-  background: #ffffff;
-  box-shadow:
-    0 0 0.18em rgba(255, 255, 255, 0.96),
-    0.18em 0.2em 0 -0.04em rgba(151, 230, 238, 0.72);
-}
-
-.lume-icon--gain .lume-icon__aura {
-  animation: lumeGainPulse 1.05s ease-out both;
-}
-
-.lume-icon--gain .lume-icon__spark {
-  animation: lumeSparkDrift 1.05s ease-out both;
-}
-
-.lume-icon--spend .lume-icon__core {
-  animation: lumeSpendThin 0.95s ease-out both;
-}
-
-.lume-balance-card {
-  position: relative;
-  overflow: hidden;
-  isolation: isolate;
-}
-
-.lume-balance-card__icon {
-  position: relative;
-  box-shadow:
-    inset 0 0 18px rgba(255, 226, 144, 0.08),
-    0 0 22px rgba(113, 204, 220, 0.1);
-}
-
-.lume-balance-burst {
-  position: absolute;
-  z-index: 3;
-  right: 100px;
-  top: 50%;
-  width: 92px;
-  height: 62px;
-  transform: translateY(-50%);
-  pointer-events: none;
-}
-
-.lume-balance-burst__orb {
-  position: absolute;
-  left: 50%;
-  top: 50%;
-  width: 26px;
-  height: 26px;
-  transform: translate(-50%, -50%);
-  opacity: 0;
-  animation: lumeOrbArrival 1.25s ease-out both;
-}
-
-.lume-balance-burst__amount {
-  position: absolute;
-  left: 50%;
-  bottom: 0;
-  transform: translateX(-50%);
-  color: rgba(255, 246, 213, 0.94);
-  font-family: var(--app-font-serif);
-  font-size: 13px;
-  font-weight: 800;
-  text-shadow:
-    0 0 8px rgba(255, 220, 126, 0.62),
-    0 1px 2px rgba(0, 0, 0, 0.62);
-  opacity: 0;
-  animation: lumeAmountFloat 1.2s ease-out both;
-}
-
-.lume-balance-burst__mote {
-  position: absolute;
-  width: 5px;
-  height: 5px;
-  border-radius: 50%;
-  background: rgba(255, 247, 218, 0.95);
-  box-shadow:
-    0 0 8px rgba(255, 229, 154, 0.86),
-    0 0 14px rgba(107, 214, 232, 0.26);
-  opacity: 0;
-}
-
-.lume-balance-burst__mote--one {
-  left: 14px;
-  top: 12px;
-  animation: lumeMoteGainOne 1.1s ease-out both;
-}
-
-.lume-balance-burst__mote--two {
-  left: 16px;
-  bottom: 18px;
-  animation: lumeMoteGainTwo 1.1s 0.04s ease-out both;
-}
-
-.lume-balance-burst__mote--three {
-  right: 12px;
-  top: 18px;
-  animation: lumeMoteGainThree 1.1s 0.08s ease-out both;
-}
-
-.lume-balance-burst--spend .lume-balance-burst__mote--one {
-  animation: lumeMoteSpendOne 1.05s ease-out both;
-}
-
-.lume-balance-burst--spend .lume-balance-burst__mote--two {
-  animation: lumeMoteSpendTwo 1.05s 0.04s ease-out both;
-}
-
-.lume-balance-burst--spend .lume-balance-burst__mote--three {
-  animation: lumeMoteSpendThree 1.05s 0.08s ease-out both;
-}
-
-.lume-balance-burst--spend .lume-balance-burst__amount {
-  color: rgba(188, 232, 238, 0.9);
-  text-shadow:
-    0 0 8px rgba(113, 210, 225, 0.42),
-    0 1px 2px rgba(0, 0, 0, 0.62);
-}
-
-@keyframes lumeGainPulse {
-  0% { transform: scale(0.58); opacity: 0; }
-  42% { transform: scale(1.26); opacity: 1; }
-  100% { transform: scale(1); opacity: 0.9; }
-}
-
-@keyframes lumeSparkDrift {
-  0% { transform: translate(-0.1em, 0.18em); opacity: 0; }
-  45% { transform: translate(0.08em, -0.04em); opacity: 1; }
-  100% { transform: translate(0, 0); opacity: 1; }
-}
-
-@keyframes lumeSpendThin {
-  0% { transform: scale(1); opacity: 1; }
-  48% { transform: scaleX(0.58) scaleY(1.04); opacity: 0.96; }
-  100% { transform: scale(1); opacity: 1; }
-}
-
-@keyframes lumeOrbArrival {
-  0% { transform: translate(-50%, -50%) scale(0.42); opacity: 0; }
-  42% { transform: translate(-50%, -58%) scale(1.12); opacity: 1; }
-  100% { transform: translate(-50%, -50%) scale(0.82); opacity: 0; }
-}
-
-@keyframes lumeAmountFloat {
-  0% { transform: translate(-50%, 5px); opacity: 0; }
-  22% { opacity: 1; }
-  100% { transform: translate(-50%, -10px); opacity: 0; }
-}
-
-@keyframes lumeMoteGainOne {
-  0% { transform: translate(-18px, 18px) scale(0.5); opacity: 0; }
-  24% { opacity: 1; }
-  100% { transform: translate(30px, 15px) scale(0.25); opacity: 0; }
-}
-
-@keyframes lumeMoteGainTwo {
-  0% { transform: translate(-10px, -18px) scale(0.5); opacity: 0; }
-  24% { opacity: 1; }
-  100% { transform: translate(31px, -5px) scale(0.25); opacity: 0; }
-}
-
-@keyframes lumeMoteGainThree {
-  0% { transform: translate(18px, -4px) scale(0.5); opacity: 0; }
-  24% { opacity: 1; }
-  100% { transform: translate(-28px, 8px) scale(0.25); opacity: 0; }
-}
-
-@keyframes lumeMoteSpendOne {
-  0% { transform: translate(26px, 16px) scale(0.35); opacity: 0; }
-  18% { opacity: 0.95; }
-  100% { transform: translate(-36px, -16px) scale(0.2); opacity: 0; }
-}
-
-@keyframes lumeMoteSpendTwo {
-  0% { transform: translate(28px, -2px) scale(0.35); opacity: 0; }
-  18% { opacity: 0.95; }
-  100% { transform: translate(-42px, 14px) scale(0.2); opacity: 0; }
-}
-
-@keyframes lumeMoteSpendThree {
-  0% { transform: translate(20px, -14px) scale(0.35); opacity: 0; }
-  18% { opacity: 0.95; }
-  100% { transform: translate(-34px, 2px) scale(0.2); opacity: 0; }
-}
-
-@media (prefers-reduced-motion: reduce) {
-  .lume-icon--gain .lume-icon__aura,
-  .lume-icon--gain .lume-icon__spark,
-  .lume-icon--spend .lume-icon__core,
-  .lume-balance-burst__orb,
-  .lume-balance-burst__amount,
-  .lume-balance-burst__mote {
-    animation-duration: 0.01ms !important;
-    animation-iteration-count: 1 !important;
-  }
 }
 
 /* Account cosmetic: a low-cost observatory silhouette and slow aurora pass.
@@ -18995,6 +18837,128 @@ button,
   background: linear-gradient(90deg, transparent, rgba(143, 158, 211, 0.23) 16%, rgba(143, 158, 211, 0.23) 84%, transparent);
 }
 
+@media (max-width: 1023px) and (max-height: 700px) {
+  .oom-home-main {
+    padding-block: 8px;
+  }
+
+  .oom-home-layout {
+    gap: 8px;
+  }
+
+  .oom-home-hero {
+    padding-block: 0;
+  }
+
+  .oom-home-hero > .oom-kicker {
+    display: none;
+  }
+
+  .oom-home-main .oom-wordmark--hero {
+    min-height: 44px;
+    padding-block: 0;
+  }
+
+  .oom-home-main .oom-wordmark--hero .oom-wordmark__text {
+    font-size: 28px;
+    letter-spacing: 0.1em;
+  }
+
+  .oom-home-main .oom-hero-motto {
+    margin-top: 0;
+    font-size: 9px;
+    line-height: 1.2;
+    letter-spacing: 0.18em;
+  }
+
+  .oom-home-main .oom-home-teaching {
+    margin-top: 3px;
+    flex-direction: row;
+    justify-content: center;
+    gap: 12px;
+    font-size: 11px;
+    line-height: 1.2;
+  }
+
+  .oom-home-main .oom-home-teaching p {
+    flex-wrap: nowrap;
+  }
+
+  .oom-home-main .oom-home-teaching p > span:first-child,
+  .oom-home-main .oom-eminence-teaching-line > span:last-child {
+    display: none;
+  }
+
+  .oom-home-main .oom-home-affinity-icon {
+    width: 14px;
+    height: 14px;
+  }
+
+  .oom-home-main .oom-home-teaching p:nth-child(2) > span:last-child {
+    height: 27px;
+    transform: scale(0.84);
+    transform-origin: center;
+  }
+
+  .oom-home-main .oom-eminence-teaching-line > span:nth-child(2) {
+    margin-inline: 0;
+    transform: scale(0.78);
+  }
+
+  .oom-home-command-panel {
+    padding: 10px;
+  }
+
+  .oom-home-command-panel .oom-action-primary,
+  .oom-home-command-panel .oom-action-secondary {
+    min-height: 42px;
+    font-size: 13px;
+  }
+
+  .oom-home-command-content > :not([hidden]) ~ :not([hidden]) {
+    margin-top: 6px;
+  }
+
+  .oom-home-primary-actions {
+    grid-template-columns: repeat(2, minmax(0, 1fr));
+    gap: 6px;
+  }
+
+  .oom-home-tutorial-action,
+  .oom-home-account-action {
+    min-height: 38px;
+    padding-block: 4px;
+  }
+
+  .oom-home-tutorial-action > span:first-child {
+    width: 30px;
+    height: 30px;
+  }
+
+  .oom-home-action-detail {
+    display: none;
+  }
+
+  .oom-home-command-panel .oom-divider {
+    opacity: 0.72;
+  }
+
+  .oom-home-command-panel .oom-section-heading h2 {
+    font-size: 16px;
+  }
+
+  .oom-home-command-panel .oom-kicker {
+    font-size: 8px;
+  }
+
+  .oom-home-policies {
+    margin-top: 4px;
+    gap-inline: 8px;
+    font-size: 9px;
+    line-height: 1.1;
+  }
+}
+
 @media (max-width: 720px) {
   .oom-topbar__inner {
     width: min(100% - 20px, 1180px);
@@ -19062,17 +19026,6 @@ button,
 }
 
 @media (max-width: 380px) {
-  .oom-section-heading {
-    flex-direction: column;
-    align-items: flex-start;
-    gap: 4px;
-  }
-
-  .oom-section-heading__detail {
-    max-width: 100%;
-    line-height: 1.35;
-  }
-
   .oom-wordmark--hero .oom-wordmark__text {
     font-size: 36px;
     letter-spacing: 0.1em;
@@ -19117,444 +19070,5 @@ button,
   .oom-action-primary,
   .oom-action-secondary {
     transition: none;
-  }
-}
-
-/* -------------------------------------------------------------------------
-   Release layout contract
-
-   Compact means the complete twelve-card Forge is visible without scrolling.
-   The Forge precedes lower-priority Terminus and opponent decoration, while
-   the Affinity Well remains a first-class dock or side instrument.
-   ------------------------------------------------------------------------- */
-
-@media (max-width: 600px) and (orientation: portrait) {
-  .game-shell[data-board-presentation][data-board-viewport="phone-portrait"][data-forge-density="compact"] {
-    display: grid !important;
-    grid-template-columns: minmax(0, 1fr) !important;
-    grid-template-rows: 48px minmax(0, 1fr) auto 58px !important;
-    grid-template-areas: "header" "main" "well" "nav" !important;
-    width: 100% !important;
-    height: 100dvh !important;
-    max-width: none !important;
-    gap: 0 !important;
-    padding: 0 !important;
-    overflow: hidden !important;
-  }
-
-  .game-shell[data-board-viewport="phone-portrait"] > .game-header {
-    grid-area: header !important;
-    width: 100% !important;
-    height: 48px !important;
-    min-height: 48px !important;
-  }
-
-  .game-shell[data-board-viewport="phone-portrait"] > .game-main[data-active-tab="board"] {
-    grid-area: main !important;
-    display: block !important;
-    width: 100% !important;
-    min-width: 0 !important;
-    min-height: 0 !important;
-    padding: 0 !important;
-    overflow-x: hidden !important;
-    overflow-y: auto !important;
-    overscroll-behavior-y: contain;
-  }
-
-  .game-shell[data-board-viewport="phone-portrait"] > .game-main[data-active-tab="board"] .board-tab-main {
-    display: flex !important;
-    flex-direction: column !important;
-    gap: 0 !important;
-    min-height: 0 !important;
-    padding: 0 !important;
-  }
-
-  .game-shell[data-board-viewport="phone-portrait"] > .game-main[data-active-tab="board"] .board-forge {
-    order: 1 !important;
-  }
-
-  .game-shell[data-board-viewport="phone-portrait"] > .game-main[data-active-tab="board"] .board-terminus {
-    order: 2 !important;
-  }
-
-  .game-shell[data-board-viewport="phone-portrait"] > .game-main[data-active-tab="board"] .board-opponents {
-    order: 3 !important;
-  }
-
-  .game-shell[data-board-viewport="phone-portrait"] > .affinity-well-panel[data-shared-affinity-well] {
-    grid-area: well !important;
-    position: relative !important;
-    inset: auto !important;
-    width: 100% !important;
-    min-width: 0 !important;
-    max-height: min(48dvh, 330px) !important;
-    overflow: hidden !important;
-  }
-
-  .game-shell[data-board-viewport="phone-portrait"][data-board-density][data-board-layout]
-    > .affinity-well-panel[data-shared-affinity-well][data-well-expanded="false"] {
-    display: grid !important;
-    grid-template-rows: 52px 0 0 !important;
-    height: 52px !important;
-    min-height: 52px !important;
-    max-height: 52px !important;
-  }
-
-  .game-shell[data-board-viewport="phone-portrait"][data-board-density][data-board-layout]
-    > .affinity-well-panel[data-shared-affinity-well][data-well-expanded="false"] .affinity-well-header {
-    width: 100% !important;
-    height: 52px !important;
-    min-height: 52px !important;
-    padding: 5px 9px !important;
-  }
-
-  .game-shell[data-board-viewport="phone-portrait"][data-board-density][data-board-layout]
-    > .affinity-well-panel[data-shared-affinity-well][data-well-expanded="false"] .affinity-well-cells,
-  .game-shell[data-board-viewport="phone-portrait"][data-board-density][data-board-layout]
-    > .affinity-well-panel[data-shared-affinity-well][data-well-expanded="false"] .affinity-well-action-zone {
-    display: none !important;
-  }
-
-  .game-shell[data-board-viewport="phone-portrait"] > .game-bottom-nav {
-    grid-area: nav !important;
-    width: 100% !important;
-    min-height: 58px !important;
-  }
-
-  .game-shell[data-board-viewport="phone-portrait"] .board-forge.board-forge--compact {
-    --forge-chip-w: 100%;
-    --forge-chip-h: auto;
-    display: grid !important;
-    grid-template-rows: 40px 48px auto !important;
-    width: 100% !important;
-    height: auto !important;
-    min-height: 0 !important;
-    overflow: hidden !important;
-  }
-
-  .game-shell[data-board-viewport="phone-portrait"] .board-forge--compact .board-forge-header {
-    height: 40px !important;
-    min-height: 40px !important;
-    padding: 4px 9px !important;
-  }
-
-  .game-shell[data-board-viewport="phone-portrait"] .board-forge--compact .board-forge-controls {
-    display: flex !important;
-    width: 100% !important;
-    height: 48px !important;
-    min-height: 48px !important;
-    gap: 3px !important;
-    padding: 2px 5px !important;
-    overflow-x: auto !important;
-    overflow-y: hidden !important;
-  }
-
-  .game-shell[data-board-viewport="phone-portrait"] .board-forge--compact .board-forge-controls button {
-    min-height: 44px !important;
-  }
-
-  .game-shell[data-board-viewport="phone-portrait"] .board-forge--compact [data-forge-tiers="true"] {
-    display: grid !important;
-    grid-template-columns: minmax(0, 1fr) !important;
-    grid-template-rows: repeat(3, max-content) !important;
-    width: 100% !important;
-    height: auto !important;
-    min-height: 0 !important;
-    gap: 2px !important;
-    padding: 2px 4px 4px !important;
-    overflow: hidden !important;
-  }
-
-  .game-shell[data-board-viewport="phone-portrait"] .board-forge--compact .board-forge-shelf {
-    display: grid !important;
-    grid-template-columns: minmax(0, 1fr) !important;
-    grid-template-rows: 14px auto !important;
-    width: 100% !important;
-    height: auto !important;
-    min-height: 0 !important;
-    gap: 1px !important;
-    padding: 1px 2px !important;
-    overflow: hidden !important;
-  }
-
-  .game-shell[data-board-viewport="phone-portrait"] .board-forge--compact .board-forge-tier-header {
-    display: flex !important;
-    width: 100% !important;
-    height: 14px !important;
-    min-height: 14px !important;
-    margin: 0 !important;
-    padding: 0 2px !important;
-  }
-
-  .game-shell[data-board-viewport="phone-portrait"] .board-forge--compact .board-forge-shelf-content {
-    display: grid !important;
-    grid-template-columns: minmax(0, 4fr) minmax(0, 1fr) !important;
-    width: 100% !important;
-    min-width: 0 !important;
-    gap: 3px !important;
-  }
-
-  .game-shell[data-board-viewport="phone-portrait"] .board-forge--compact .board-forge-card-row {
-    display: grid !important;
-    grid-template-columns: repeat(4, minmax(0, 1fr)) !important;
-    width: 100% !important;
-    height: auto !important;
-    min-width: 0 !important;
-    min-height: 0 !important;
-    gap: 3px !important;
-    padding: 0 !important;
-    margin: 0 !important;
-    overflow: hidden !important;
-  }
-
-  .game-shell[data-board-viewport="phone-portrait"] .board-forge--compact .forge-foundry-mold,
-  .game-shell[data-board-viewport="phone-portrait"] .board-forge--compact .board-forge-compact-chip,
-  .game-shell[data-board-viewport="phone-portrait"] .board-forge--compact .board-forge-archive-rail,
-  .game-shell[data-board-viewport="phone-portrait"] .board-forge--compact .board-forge-compact-deck,
-  .game-shell[data-board-viewport="phone-portrait"] .board-forge--compact .board-forge-compact-deck > div:first-child {
-    width: 100% !important;
-    height: auto !important;
-    min-width: 0 !important;
-    min-height: 0 !important;
-    aspect-ratio: 0.7 !important;
-  }
-}
-
-@media (max-width: 360px) and (orientation: portrait) {
-  .game-shell[data-board-viewport="phone-portrait"] .board-forge-controls > span:first-child {
-    display: none !important;
-  }
-}
-
-@media (max-height: 520px) and (orientation: landscape) {
-  .game-shell[data-board-presentation][data-board-viewport="phone-landscape"][data-board-density="cockpit"][data-side-affinity-well="true"] {
-    grid-template-columns: minmax(0, 1fr) clamp(270px, 34vw, 304px) !important;
-  }
-
-  .game-shell[data-board-viewport="phone-landscape"][data-board-density="cockpit"] > .game-main[data-active-tab="board"] .board-tab-main {
-    display: flex !important;
-    flex-direction: column !important;
-    height: auto !important;
-    padding: 0 !important;
-  }
-
-  .game-shell[data-board-viewport="phone-landscape"][data-board-density="cockpit"] .board-forge {
-    order: 1 !important;
-  }
-
-  .game-shell[data-board-viewport="phone-landscape"][data-board-density="cockpit"] .board-terminus {
-    order: 2 !important;
-    height: 40px !important;
-    min-height: 40px !important;
-  }
-
-  .game-shell[data-board-viewport="phone-landscape"][data-board-density="cockpit"] .board-forge.board-forge--compact {
-    height: 304px !important;
-    min-height: 304px !important;
-    grid-template-rows: 44px 44px 216px !important;
-  }
-
-  .game-shell[data-board-viewport="phone-landscape"][data-board-density="cockpit"] .board-forge--compact .board-forge-header,
-  .game-shell[data-board-viewport="phone-landscape"][data-board-density="cockpit"] .board-forge--compact .board-forge-controls {
-    height: 44px !important;
-    min-height: 44px !important;
-    padding: 2px 7px !important;
-  }
-
-  .game-shell[data-board-viewport="phone-landscape"][data-board-density="cockpit"] .board-forge--compact .board-forge-controls button {
-    min-height: 40px !important;
-  }
-
-  .game-shell[data-board-viewport="phone-landscape"][data-board-density="cockpit"] .board-forge--compact .board-forge-card-row {
-    grid-template-columns: repeat(4, 46px) !important;
-  }
-
-  .game-shell[data-board-viewport="phone-landscape"][data-board-density="cockpit"] .board-forge--compact .board-forge-shelf-content {
-    grid-template-columns: minmax(0, 1fr) 46px !important;
-  }
-
-  .game-shell[data-board-viewport="phone-landscape"][data-board-density="cockpit"] .board-forge--compact .forge-foundry-mold,
-  .game-shell[data-board-viewport="phone-landscape"][data-board-density="cockpit"] .board-forge--compact .board-forge-compact-chip,
-  .game-shell[data-board-viewport="phone-landscape"][data-board-density="cockpit"] .board-forge--compact .board-forge-archive-rail,
-  .game-shell[data-board-viewport="phone-landscape"][data-board-density="cockpit"] .board-forge--compact .board-forge-compact-deck,
-  .game-shell[data-board-viewport="phone-landscape"][data-board-density="cockpit"] .board-forge--compact .board-forge-compact-deck > div:first-child {
-    width: 46px !important;
-    height: 66px !important;
-    min-width: 46px !important;
-    min-height: 66px !important;
-    aspect-ratio: 0.7 !important;
-  }
-
-  .game-shell[data-board-viewport="phone-landscape"][data-board-density="cockpit"] > .affinity-well-panel .affinity-well-cells [data-well-carousel] > div {
-    grid-template-columns: repeat(3, minmax(0, 1fr)) !important;
-    grid-template-rows: repeat(2, minmax(0, 1fr)) !important;
-  }
-
-  .game-shell[data-board-viewport="phone-landscape"][data-board-density="cockpit"] > .affinity-well-panel .affinity-well-cell[data-affinity] .affinity-well-cell-button {
-    height: calc(100% - 45px) !important;
-    min-height: 44px !important;
-  }
-
-  .game-shell[data-board-viewport="phone-landscape"][data-board-density="cockpit"] > .affinity-well-panel .affinity-well-cell[data-affinity="singularity"] .affinity-well-cell-button {
-    height: 100% !important;
-  }
-
-  .game-shell[data-board-viewport="phone-landscape"][data-board-density="cockpit"] > .affinity-well-panel .affinity-well-take2 {
-    height: 44px !important;
-    min-height: 44px !important;
-    font-size: 9px !important;
-  }
-}
-
-@media (min-width: 681px) and (min-height: 521px) and (orientation: landscape) {
-  .game-shell[data-board-presentation][data-side-affinity-well="true"][data-board-layout="base"] {
-    display: grid !important;
-    grid-template-columns: minmax(0, 1fr) clamp(270px, 28vw, 330px) !important;
-    grid-template-rows: 56px minmax(0, 1fr) 56px !important;
-    grid-template-areas: "header header" "main well" "nav nav" !important;
-    width: min(100%, 1320px) !important;
-    max-width: 1320px !important;
-    height: 100dvh !important;
-    margin: 0 auto !important;
-    gap: 6px !important;
-    padding: 0 6px 6px !important;
-  }
-
-  .game-shell[data-side-affinity-well="true"] > .game-header { grid-area: header !important; }
-  .game-shell[data-side-affinity-well="true"] > .game-main { grid-area: main !important; }
-  .game-shell[data-side-affinity-well="true"] > .affinity-well-panel { grid-area: well !important; }
-  .game-shell[data-side-affinity-well="true"] > .game-bottom-nav { grid-area: nav !important; }
-
-  .game-shell[data-side-affinity-well="true"] > .game-main[data-active-tab="board"] .board-tab-main {
-    display: flex !important;
-    flex-direction: column !important;
-  }
-
-  .game-shell[data-side-affinity-well="true"] > .game-main[data-active-tab="board"] .board-forge { order: 1 !important; }
-  .game-shell[data-side-affinity-well="true"] > .game-main[data-active-tab="board"] .board-terminus { order: 2 !important; }
-}
-
-@media (min-width: 1600px) and (min-height: 900px) and (orientation: landscape) {
-  .game-shell[data-board-presentation][data-side-affinity-well="true"][data-board-layout="left-civ"] {
-    grid-template-columns: 280px minmax(0, 920px) 280px !important;
-    grid-template-rows: 56px minmax(0, 1fr) 56px !important;
-    grid-template-areas: ". header ." "leftaux main well" ". nav ." !important;
-    width: 1520px !important;
-    max-width: 1520px !important;
-    column-gap: 12px !important;
-  }
-
-  .game-shell[data-board-layout="left-civ"] > .affinity-well-panel {
-    grid-area: well !important;
-    height: 100% !important;
-    max-height: none !important;
-  }
-}
-
-@media (max-width: 680px) and (orientation: portrait) {
-  .game-shell[data-board-viewport="phone-portrait"][data-board-density][data-board-layout]
-    > .affinity-well-panel[data-shared-affinity-well][data-well-expanded="true"] {
-    --well-take2-h: 44px;
-  }
-
-  .game-shell[data-board-viewport="phone-portrait"][data-board-density][data-board-layout]
-    > .affinity-well-panel[data-shared-affinity-well][data-well-expanded="true"] .affinity-well-dock-toggle,
-  .game-shell[data-board-viewport="phone-portrait"][data-board-density][data-board-layout]
-    > .affinity-well-panel[data-shared-affinity-well][data-well-expanded="true"] .affinity-well-eminence {
-    width: 44px !important;
-    min-width: 44px !important;
-    height: 44px !important;
-    min-height: 44px !important;
-  }
-
-  .game-shell[data-board-viewport="phone-portrait"][data-board-density][data-board-layout]
-    > .affinity-well-panel[data-shared-affinity-well][data-well-expanded="true"] .affinity-well-cell {
-    height: 118px !important;
-  }
-
-  .game-shell[data-board-viewport="phone-portrait"][data-board-density][data-board-layout]
-    > .affinity-well-panel[data-shared-affinity-well][data-well-expanded="true"]
-    .affinity-well-cell[data-affinity] .affinity-well-cell-button,
-  .game-shell[data-board-viewport="phone-portrait"][data-board-density][data-board-layout]
-    > .affinity-well-panel[data-shared-affinity-well][data-well-expanded="true"]
-    .affinity-well-cell[data-affinity="singularity"] .affinity-well-cell-button[data-well-cell-style="instrument"] {
-    height: 74px !important;
-    min-height: 74px !important;
-    max-height: 74px !important;
-    flex: 0 0 74px !important;
-    padding-bottom: 3px !important;
-  }
-
-  .game-shell[data-board-viewport="phone-portrait"][data-board-density][data-board-layout]
-    > .affinity-well-panel[data-shared-affinity-well][data-well-expanded="true"]
-    .affinity-well-cell .affinity-well-cell-button[data-well-cell-style="instrument"] {
-    grid-template-rows: 30px 17px 8px !important;
-    row-gap: 1px !important;
-  }
-
-  .game-shell[data-board-viewport="phone-portrait"][data-board-density][data-board-layout]
-    > .affinity-well-panel[data-shared-affinity-well][data-well-expanded="true"] .affinity-well-take2 {
-    position: static !important;
-    inset: auto !important;
-    width: 100% !important;
-    min-width: 0 !important;
-    height: 44px !important;
-    min-height: 44px !important;
-    max-height: 44px !important;
-    margin: 0 !important;
-    padding: 0 !important;
-    border-radius: 0 0 7px 7px !important;
-  }
-}
-
-/* Phone interaction targets stay at least 44px without changing card geometry. */
-@media (max-width: 680px) {
-  .game-shell > .game-header > button,
-  .game-shell > .game-header > [data-radix-menu-root] {
-    flex-basis: 44px !important;
-    width: 44px !important;
-    min-width: 44px !important;
-  }
-
-  .game-shell > .game-header .opponent-chip-shell,
-  .game-shell > .game-header .opponent-chip-shell:not(.opponent-chip-shell--detailed),
-  .game-shell > .game-header [data-opponent-chip],
-  .game-shell > .game-header .opponent-chip-shell:not(.opponent-chip-shell--detailed) [data-opponent-chip] {
-    height: 44px !important;
-    min-height: 44px !important;
-    max-height: 44px !important;
-  }
-
-  .game-shell[data-board-presentation="celestial"] .board-opponents-toggle {
-    min-height: 44px !important;
-  }
-}
-
-@media (max-height: 520px) and (orientation: landscape) {
-  .game-shell > .game-header .opponent-chip-shell,
-  .game-shell > .game-header .opponent-chip-shell:not(.opponent-chip-shell--detailed),
-  .game-shell > .game-header [data-opponent-chip],
-  .game-shell > .game-header .opponent-chip-shell:not(.opponent-chip-shell--detailed) [data-opponent-chip] {
-    height: 44px !important;
-    min-height: 44px !important;
-    max-height: 44px !important;
-  }
-
-  .game-shell .board-forge [role="group"][aria-label="Cost view"] button,
-  .game-shell .board-forge [data-testid="forge-density-toggle"],
-  .game-shell[data-board-presentation="celestial"] .board-opponents-toggle {
-    height: 44px !important;
-    min-height: 44px !important;
-  }
-
-  .game-shell > .game-bottom-nav {
-    height: 44px !important;
-    min-height: 44px !important;
-    grid-template-rows: 44px !important;
-  }
-
-  .game-shell > .game-bottom-nav button {
-    height: 44px !important;
-    min-height: 44px !important;
   }
 }

@@ -17,9 +17,9 @@
  *
  * ## Source of truth derivation
  *
- * Required slot names are parsed from luminaryAssets.tsx. The manifest-backed
- * asset directory is fixed, with legacy glob-path parsing retained for older
- * source fixtures.
+ * The slot names (panel | entity) and the asset base directory are
+ * parsed from luminaryAssets.tsx at runtime — not hardcoded — so the script
+ * stays in sync if the source file changes its glob path or adds new slots.
  *
  * Run directly:
  *   pnpm --filter @workspace/scripts run lint:luminary-files
@@ -42,7 +42,9 @@ const ASSETS_TSX = resolve(
 
 /**
  * The root directory that contains per-Luminary asset subdirectories.
- * Source assets live in the directory consumed by luminaryArtManifest.ts.
+ * Derived from the import.meta.glob pattern in luminaryAssets.tsx.
+ * Default matches: `../assets/luminaries/**\/*.{webp,png,jpg}`
+ * relative to luminaryAssets.tsx → artifacts/luminae/src/assets/luminaries/
  */
 const DEFAULT_LUMINARIES_DIR = resolve(
   SCRIPTS_DIR,
@@ -143,8 +145,8 @@ export function parseSlotNames(source: string): string[] {
 }
 
 /**
- * Resolve the asset base directory used by luminaryAssets.tsx. Current builds
- * use LUMINARY_RUNTIME_ART; the glob parser remains for older source fixtures.
+ * Parse the asset base directory from the import.meta.glob pattern in
+ * luminaryAssets.tsx. Returns the resolved absolute path.
  *
  * Expected source shape:
  *   import.meta.glob<...>('../assets/luminaries/**\/*.{webp,png,jpg}', ...)
@@ -155,10 +157,6 @@ export function parseLuminariesDir(
   source: string,
   tsxFilePath: string,
 ): string {
-  if (source.includes('LUMINARY_RUNTIME_ART')) {
-    return DEFAULT_LUMINARIES_DIR;
-  }
-
   const globMatch = source.match(/import\.meta\.glob[^(]*\(\s*['"]([^'"]+)['"]/);
   if (!globMatch) {
     console.warn(

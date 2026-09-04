@@ -8,8 +8,10 @@ import friendsRouter from "./friends";
 import challengesRouter from "./challenges";
 import storeRouter from "./store";
 import blueprintsRouter from "./blueprints";
-import campaignRouter from "./campaign";
-import balanceLabRouter from "./balanceLab";
+import chroniclesRouter from "./chronicles";
+import moderationRouter from "./moderation";
+import telemetryRouter from "./telemetry";
+import uxReviewRouter from "./uxReview";
 
 const router: IRouter = Router();
 
@@ -20,8 +22,10 @@ router.use(friendsRouter);
 router.use(challengesRouter);
 router.use(storeRouter);
 router.use(blueprintsRouter);
-router.use(campaignRouter);
-router.use(balanceLabRouter);
+router.use(chroniclesRouter);
+router.use(moderationRouter);
+router.use(telemetryRouter);
+router.use(uxReviewRouter);
 router.use(roomsRouter);
 router.use(gameRouter);
 

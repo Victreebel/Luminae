@@ -2,6 +2,7 @@ import { Router, type IRouter } from "express";
 import { eq, and, isNull, ne } from "drizzle-orm";
 import { z } from "zod";
 import { db, roomsTable, playersTable, gameStatesTable } from "@workspace/db";
+import { DEFAULT_VICTORY_REQUIREMENT } from "@workspace/game-types";
 import {
   CreateRoomBody,
   JoinRoomBody,
@@ -29,27 +30,12 @@ import {
   BlueprintRoomAccessError,
   resolveBlueprintSetupsForMatch,
 } from "../lib/blueprintLoadouts";
-import { readAccountCivilizationIdentity } from "../lib/accountIdentity";
-import { authorizePlayerRejoin } from "../lib/rejoinAuthorization";
-import { requireUuidParam } from "../lib/routeParams";
-import {
-  addBalanceLabMemoryAiPlayer,
-  applyBalanceLabRoomRuleset,
-  getBalanceLabMemoryPlayerBySession,
-  getBalanceLabMemoryRoom,
-  getBalanceLabMemoryRoomByInvite,
-  getBalanceLabRoomRuleset,
-  isBalanceLabRoom,
-  startBalanceLabMemoryRoom,
-  type BalanceLabMemoryPlayer,
-  type BalanceLabMemoryRoom,
-} from "../lib/balanceLabRooms";
+import { resolveLuminaryArrivalSoundsForPlayers } from "../lib/accountCosmetics";
 
 const router: IRouter = Router();
-router.param("roomId", requireUuidParam);
 
 function generateInviteCode(): string {
-  return randomBytes(5).toString("hex").toUpperCase();
+  return randomBytes(4).toString("hex").toUpperCase();
 }
 
 function generateSessionToken(): string {
@@ -59,10 +45,7 @@ function generateSessionToken(): string {
 type DbPlayer = typeof playersTable.$inferSelect;
 type DbRoom = typeof roomsTable.$inferSelect;
 
-type SerializablePlayer = DbPlayer | BalanceLabMemoryPlayer;
-type SerializableRoom = DbRoom | BalanceLabMemoryRoom;
-
-function serializePlayer(p: SerializablePlayer) {
+function serializePlayer(p: DbPlayer) {
   return {
     id: p.id,
     name: p.name,
@@ -75,7 +58,7 @@ function serializePlayer(p: SerializablePlayer) {
   };
 }
 
-function serializeRoomBase(room: SerializableRoom) {
+function serializeRoomBase(room: DbRoom) {
   return {
     id: room.id,
     inviteCode: room.inviteCode,
@@ -139,34 +122,20 @@ async function ensureUniquePlayerAvatars(players: DbPlayer[]): Promise<DbPlayer[
 }
 
 const MAX_ACTIVE_GAMES = 5;
-const GameSessionToken = z.string().regex(/^[a-f0-9]{64}$/);
-const PlayerName = z
-  .string()
-  .trim()
-  .min(1)
-  .max(50)
-  .refine((value) => !/[\u0000-\u001f\u007f]/.test(value), "Player name contains unsupported characters");
 
 const UpdateRoomSettingsBody = z.object({
-  sessionToken: GameSessionToken,
+  sessionToken: z.string(),
   cinematicMode: z.union([z.literal("standard"), z.literal("epic")]).optional(),
+  gameMode: z.union([z.literal("standard"), z.literal("custom")]).optional(),
   blueprintPolicy: z.union([z.literal("none"), z.literal("owned")]).optional(),
-}).strict();
+});
 
-const PublicCreateRoomBody = CreateRoomBody.omit({
-  gameMode: true,
-  scenarioId: true,
-  blueprintPolicy: true,
-}).extend({
-  hostName: PlayerName,
-  maxPlayers: z.number().int().min(2).max(4),
-  victoryRequirement: z.union([z.literal(15), z.literal(20), z.literal(25)]).default(20),
-  cinematicMode: z.union([z.literal("standard"), z.literal("epic")]).default("standard"),
-  turnTimerSeconds: z.union([z.literal(30), z.literal(60), z.literal(90)]).nullable().optional(),
-  avatarId: z.string().min(1).max(64).nullable().optional(),
+const PublicCreateRoomBody = CreateRoomBody.extend({
+  victoryRequirement: z.union([z.literal(15), z.literal(20), z.literal(25)])
+    .default(DEFAULT_VICTORY_REQUIREMENT),
   gameMode: z.union([z.literal("standard"), z.literal("custom")]).default("standard"),
   blueprintPolicy: z.union([z.literal("none"), z.literal("owned")]).optional(),
-}).strict().superRefine((value, context) => {
+}).superRefine((value, context) => {
   const policy = value.blueprintPolicy ?? (value.gameMode === "custom" ? "owned" : "none");
   if (value.gameMode === "standard" && policy !== "none") {
     context.addIssue({
@@ -175,36 +144,22 @@ const PublicCreateRoomBody = CreateRoomBody.omit({
       message: "Standard rooms cannot enable Blueprints",
     });
   }
+  if (
+    value.gameMode === "standard" &&
+    value.victoryRequirement !== DEFAULT_VICTORY_REQUIREMENT
+  ) {
+    context.addIssue({
+      code: z.ZodIssueCode.custom,
+      path: ["victoryRequirement"],
+      message: `Standard rooms require ${DEFAULT_VICTORY_REQUIREMENT} Eminence; use a custom room for a shorter match`,
+    });
+  }
 });
 
-const JoinRoomRequestBody = JoinRoomBody.extend({
-  playerName: PlayerName,
-  avatarId: z.string().min(1).max(64).nullable().optional(),
-}).strict();
-
-const RejoinRoomRequestBody = RejoinRoomBody.extend({
-  playerName: PlayerName,
-  sessionToken: GameSessionToken.optional(),
-}).strict();
-
-const AddAiPlayerRequestBody = AddAiPlayerBody.extend({
-  sessionToken: GameSessionToken,
-}).strict();
-
-const StartGameRequestBody = StartGameBody.extend({
-  sessionToken: GameSessionToken,
-}).strict();
-
-const KickPlayerRequestBody = KickPlayerBody.extend({
-  sessionToken: GameSessionToken,
-}).strict();
-
-const RematchBody = StartGameRequestBody.extend({
+const RematchBody = StartGameBody.extend({
   action: z.enum(["join", "decline", "withdraw"]).optional(),
   sameBoard: z.boolean().optional(),
-}).strict();
-
-const QuitRoomBody = z.object({ sessionToken: GameSessionToken }).strict();
+});
 
 async function countActiveGames(accountId: string): Promise<number> {
   const rows = await db
@@ -298,7 +253,7 @@ router.post("/rooms", optionalAccountAuth, async (req, res): Promise<void> => {
     .set({ hostPlayerId: player.id })
     .where(eq(roomsTable.id, room.id));
 
-  req.log.info({ roomId: room.id }, "Room created");
+  req.log.info({ roomId: room.id, inviteCode }, "Room created");
 
   const serialized = serializePlayer(player);
 
@@ -317,17 +272,6 @@ router.get("/rooms/:inviteCode", async (req, res): Promise<void> => {
   const rawCode = Array.isArray(req.params.inviteCode)
     ? req.params.inviteCode[0]
     : req.params.inviteCode;
-  const normalizedCode = rawCode.trim().toUpperCase();
-
-  const memoryRoom = getBalanceLabMemoryRoom(rawCode) ??
-    getBalanceLabMemoryRoomByInvite(rawCode);
-  if (memoryRoom) {
-    res.json({
-      ...serializeRoomBase(memoryRoom),
-      players: memoryRoom.players.map(serializePlayer),
-    });
-    return;
-  }
 
   // Accept either an invite code OR a room UUID so the lobby can look up the
   // room even if the client only has the roomId from the URL (e.g. a stale
@@ -336,10 +280,6 @@ router.get("/rooms/:inviteCode", async (req, res): Promise<void> => {
     /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i.test(
       rawCode,
     );
-  if (!isUuid && !/^(?:[A-F0-9]{8}|[A-F0-9]{10})$/.test(normalizedCode)) {
-    res.status(400).json({ error: "Invalid invite code" });
-    return;
-  }
 
   const [room] = await db
     .select()
@@ -347,7 +287,7 @@ router.get("/rooms/:inviteCode", async (req, res): Promise<void> => {
     .where(
       isUuid
         ? eq(roomsTable.id, rawCode)
-        : eq(roomsTable.inviteCode, normalizedCode),
+        : eq(roomsTable.inviteCode, rawCode.toUpperCase()),
     )
     .limit(1);
 
@@ -374,7 +314,7 @@ router.post("/rooms/:roomId/join", optionalAccountAuth, async (req, res): Promis
     ? req.params.roomId[0]
     : req.params.roomId;
 
-  const parsed = JoinRoomRequestBody.safeParse(req.body);
+  const parsed = JoinRoomBody.safeParse(req.body);
   if (!parsed.success) {
     res.status(400).json({ error: parsed.error.message });
     return;
@@ -418,8 +358,7 @@ router.post("/rooms/:roomId/join", optionalAccountAuth, async (req, res): Promis
     return;
   }
 
-  const balanceLabRoom = isBalanceLabRoom(room.id);
-  if (req.account && !balanceLabRoom) {
+  if (req.account) {
     const active = await countActiveGames(req.account.id);
     if (active >= MAX_ACTIVE_GAMES) {
       res.status(409).json({ error: `You already have ${MAX_ACTIVE_GAMES} active games. Finish or leave one before joining a new one.` });
@@ -435,7 +374,7 @@ router.post("/rooms/:roomId/join", optionalAccountAuth, async (req, res): Promis
     .insert(playersTable)
     .values({
       roomId: room.id,
-      accountId: balanceLabRoom ? null : req.account?.id ?? null,
+      accountId: req.account?.id ?? null,
       name: playerName,
       sessionToken,
       isHost: false,
@@ -465,20 +404,20 @@ router.post("/rooms/:roomId/join", optionalAccountAuth, async (req, res): Promis
   });
 });
 
-// POST /api/rooms/:roomId/rejoin — rotate an existing player's game token.
-// Account players prove ownership with their account session; guests must
-// still possess the current game session token.
-router.post("/rooms/:roomId/rejoin", optionalAccountAuth, async (req, res): Promise<void> => {
+// POST /api/rooms/:roomId/rejoin — reclaim an existing player slot by name.
+// Works for any room status (lobby OR playing), so a player who lost their
+// session token can get back into a game in progress. Returns a fresh token.
+router.post("/rooms/:roomId/rejoin", async (req, res): Promise<void> => {
   const rawId = Array.isArray(req.params.roomId)
     ? req.params.roomId[0]
     : req.params.roomId;
 
-  const parsed = RejoinRoomRequestBody.safeParse(req.body);
+  const parsed = RejoinRoomBody.safeParse(req.body);
   if (!parsed.success) {
     res.status(400).json({ error: parsed.error.message });
     return;
   }
-  const { playerName, sessionToken } = parsed.data;
+  const { playerName } = parsed.data;
 
   const [room] = await db
     .select()
@@ -508,34 +447,13 @@ router.post("/rooms/:roomId/rejoin", optionalAccountAuth, async (req, res): Prom
     return;
   }
 
-  const authorization = authorizePlayerRejoin({
-    targetAccountId: target.accountId,
-    targetSessionToken: target.sessionToken,
-    requesterAccountId: req.account?.id ?? null,
-    providedSessionToken: sessionToken,
-  });
-  if (!authorization.allowed) {
-    res.status(authorization.status).json({ error: authorization.error });
-    return;
-  }
-
-  // Issue a new session token and atomically invalidate the prior one.
+  // Issue a new session token (invalidates the old one if it still existed).
   const newToken = generateSessionToken();
   const [updated] = await db
     .update(playersTable)
     .set({ sessionToken: newToken, isConnected: false })
-    .where(
-      and(
-        eq(playersTable.id, target.id),
-        eq(playersTable.sessionToken, target.sessionToken),
-      ),
-    )
+    .where(eq(playersTable.id, target.id))
     .returning();
-
-  if (!updated) {
-    res.status(409).json({ error: "This player session changed; try again" });
-    return;
-  }
 
   const refreshed = players.map((p) => (p.id === updated.id ? updated : p));
 
@@ -555,7 +473,7 @@ router.post("/rooms/:roomId/ai-players", async (req, res): Promise<void> => {
     ? req.params.roomId[0]
     : req.params.roomId;
 
-  const parsed = AddAiPlayerRequestBody.safeParse(req.body);
+  const parsed = AddAiPlayerBody.safeParse(req.body);
   if (!parsed.success) {
     res.status(400).json({ error: parsed.error.message });
     return;
@@ -568,42 +486,6 @@ router.post("/rooms/:roomId/ai-players", async (req, res): Promise<void> => {
     return;
   }
   const validatedDifficulty = difficultyResult.data;
-
-  const memoryRoom = getBalanceLabMemoryRoom(rawId);
-  if (memoryRoom) {
-    if (memoryRoom.status !== "lobby") {
-      res.status(400).json({ error: "Game already started" });
-      return;
-    }
-    const host = getBalanceLabMemoryPlayerBySession(rawId, sessionToken);
-    if (!host?.isHost) {
-      res.status(403).json({ error: "Only the host can add AI players" });
-      return;
-    }
-    if (memoryRoom.players.length >= memoryRoom.maxPlayers) {
-      res.status(400).json({ error: "Room is full" });
-      return;
-    }
-
-    const isGuidedLumii = validatedDifficulty === "passive";
-    const aiName = isGuidedLumii
-      ? "Lumii"
-      : pickAiName(memoryRoom.players.map((player) => player.name));
-    const aiAvatarId = isGuidedLumii
-      ? GUIDED_LUMII_AVATAR_ID
-      : pickAiAvatar(memoryRoom.players
-          .map((player) => player.avatarId)
-          .filter((avatarId): avatarId is string => !!avatarId));
-    const aiPlayer = addBalanceLabMemoryAiPlayer(rawId, {
-      name: aiName,
-      avatarId: aiAvatarId,
-      difficulty: validatedDifficulty,
-    });
-    const serialized = serializePlayer(aiPlayer);
-    broadcastToRoom(rawId, { type: "player_joined", player: serialized });
-    res.json(serialized);
-    return;
-  }
 
   const [room] = await db
     .select()
@@ -723,14 +605,65 @@ router.patch("/rooms/:roomId/settings", async (req, res): Promise<void> => {
     return;
   }
 
+  const modeSettingsTouched =
+    parsed.data.gameMode !== undefined || parsed.data.blueprintPolicy !== undefined;
+  const nextGameMode = parsed.data.gameMode ?? room.gameMode;
+  if (modeSettingsTouched && nextGameMode !== "standard" && nextGameMode !== "custom") {
+    res.status(400).json({ error: "Only standard and Blueprint Custom lobby settings can be changed here" });
+    return;
+  }
+
+  const nextBlueprintPolicy = modeSettingsTouched
+    ? nextGameMode === "custom"
+      ? parsed.data.blueprintPolicy ?? (room.blueprintPolicy !== "none" ? room.blueprintPolicy : "owned")
+      : "none"
+    : room.blueprintPolicy;
+
+  if (modeSettingsTouched && nextBlueprintPolicy !== "none") {
+    if (!host.accountId) {
+      res.status(401).json({ error: "A cleared account is required for Blueprint rooms" });
+      return;
+    }
+
+    await ensureAccountProgressBackfilled(host.accountId);
+    if (!(await accountHasBlueprintClearance(host.accountId))) {
+      res.status(403).json({ error: "Clear the Blueprint Vault before enabling Blueprints" });
+      return;
+    }
+
+    const roomPlayers = await db
+      .select({
+        accountId: playersTable.accountId,
+        isAi: playersTable.isAi,
+      })
+      .from(playersTable)
+      .where(eq(playersTable.roomId, rawId));
+
+    const humanAccountIds = roomPlayers
+      .filter((player) => !player.isAi)
+      .map((player) => player.accountId);
+
+    if (humanAccountIds.some((accountId) => !accountId)) {
+      res.status(403).json({ error: "Every player must use a cleared account before Blueprints can be enabled" });
+      return;
+    }
+
+    for (const accountId of humanAccountIds) {
+      if (!accountId) continue;
+      await ensureAccountProgressBackfilled(accountId);
+      if (!(await accountHasBlueprintClearance(accountId))) {
+        res.status(403).json({ error: "Every player must clear the Blueprint Vault before Blueprints can be enabled" });
+        return;
+      }
+    }
+  }
+
   const [updatedRoom] = await db
     .update(roomsTable)
     .set({
       cinematicMode: parsed.data.cinematicMode ?? room.cinematicMode,
-      blueprintPolicy:
-        room.gameMode === "custom"
-          ? parsed.data.blueprintPolicy ?? room.blueprintPolicy
-          : "none",
+      gameMode: nextGameMode,
+      blueprintPolicy: nextBlueprintPolicy,
       updatedAt: new Date(),
     })
     .where(eq(roomsTable.id, rawId))
@@ -759,85 +692,9 @@ router.post("/rooms/:roomId/start", async (req, res): Promise<void> => {
     ? req.params.roomId[0]
     : req.params.roomId;
 
-  const parsed = StartGameRequestBody.safeParse(req.body);
+  const parsed = StartGameBody.safeParse(req.body);
   if (!parsed.success) {
     res.status(400).json({ error: parsed.error.message });
-    return;
-  }
-
-  const memoryRoom = getBalanceLabMemoryRoom(rawId);
-  if (memoryRoom) {
-    const host = getBalanceLabMemoryPlayerBySession(
-      rawId,
-      parsed.data.sessionToken,
-    );
-    if (!host?.isHost) {
-      res.status(403).json({ error: "Only the host can start the game" });
-      return;
-    }
-    if (memoryRoom.status !== "lobby") {
-      res.status(400).json({ error: "Game already started" });
-      return;
-    }
-    if (memoryRoom.players.length < 2) {
-      res.status(400).json({ error: "Need at least 2 players to start" });
-      return;
-    }
-
-    const balanceRuleset = getBalanceLabRoomRuleset(rawId);
-    if (!balanceRuleset) {
-      res.status(409).json({ error: "Balance laboratory ruleset is unavailable" });
-      return;
-    }
-    const gameData = initializeGame(
-      memoryRoom.players.map((player) => ({ id: player.id, name: player.name })),
-      memoryRoom.players.length,
-      memoryRoom.victoryRequirement,
-      memoryRoom.cinematicMode,
-      {
-        applyTurnOrderCompensation: balanceRuleset.luminaryBaseEminence !== "none",
-        balanceRuleset,
-      },
-    );
-    applyBalanceLabRoomRuleset(rawId, gameData);
-    gameData.turnTimerSeconds = null;
-    updateTurnDeadline(gameData);
-    if (!startBalanceLabMemoryRoom(rawId, gameData)) {
-      res.status(409).json({ error: "Balance room could not be started" });
-      return;
-    }
-
-    const connectedIds = getConnectedPlayerIds(rawId);
-    for (const player of memoryRoom.players) {
-      if (player.isAi) connectedIds.add(player.id);
-    }
-    const avatarMap = new Map<string, string | null>(
-      memoryRoom.players.map((player) => [player.id, player.avatarId]),
-    );
-    const aiMap = new Map(
-      memoryRoom.players.map((player) => [player.id, {
-        isAi: player.isAi,
-        aiDifficulty: player.aiDifficulty,
-      }]),
-    );
-    const formatted = formatGameState(
-      rawId,
-      "playing",
-      gameData,
-      connectedIds,
-      avatarMap,
-      aiMap,
-      null,
-    );
-    for (const player of memoryRoom.players) {
-      if (player.isAi) continue;
-      sendToPlayer(rawId, player.id, {
-        type: "game_started",
-        state: filterStateForPlayer(formatted, player.id),
-      });
-    }
-    res.json(filterStateForPlayer(formatted, host.id));
-    void runAiTurnsIfNeeded(rawId);
     return;
   }
 
@@ -893,28 +750,19 @@ router.post("/rooms/:roomId/start", async (req, res): Promise<void> => {
     res.status(403).json({ error: error.message });
     return;
   }
+  const luminaryArrivalSounds = await resolveLuminaryArrivalSoundsForPlayers(players);
 
-  const civilizationIdentities = Object.fromEntries(await Promise.all(
-    players.map(async (player) => [
-      player.id,
-      player.accountId ? await readAccountCivilizationIdentity(player.accountId) : null,
-    ] as const),
-  ));
-
-  const balanceRuleset = getBalanceLabRoomRuleset(rawId);
   const gameData = initializeGame(
-    players.map((p) => ({ id: p.id, name: p.name })),
+    players.map((p) => ({
+      id: p.id,
+      name: p.name,
+      luminaryArrivalSound: luminaryArrivalSounds[p.id],
+    })),
     players.length,
     room.victoryRequirement,
     room.cinematicMode === "epic" ? "epic" : "standard",
-    {
-      blueprintSetups,
-      civilizationIdentities,
-      applyTurnOrderCompensation: balanceRuleset?.luminaryBaseEminence !== "none",
-      balanceRuleset: balanceRuleset ?? undefined,
-    },
+    { blueprintSetups },
   );
-  applyBalanceLabRoomRuleset(rawId, gameData);
   gameData.turnTimerSeconds = room.turnTimerSeconds ?? null;
   updateTurnDeadline(gameData);
 
@@ -1116,7 +964,7 @@ router.delete(
       ? req.params.playerId[0]
       : req.params.playerId;
 
-    const parsed = KickPlayerRequestBody.safeParse(req.body);
+    const parsed = KickPlayerBody.safeParse(req.body);
     if (!parsed.success) {
       res.status(400).json({ error: parsed.error.message });
       return;
@@ -1166,12 +1014,11 @@ router.post("/rooms/:roomId/quit", optionalAccountAuth, async (req, res): Promis
     ? req.params.roomId[0]
     : req.params.roomId;
 
-  const parsed = QuitRoomBody.safeParse(req.body);
-  if (!parsed.success) {
-    res.status(400).json({ error: "A valid sessionToken is required" });
+  const { sessionToken } = req.body as { sessionToken?: string };
+  if (!sessionToken) {
+    res.status(400).json({ error: "sessionToken is required" });
     return;
   }
-  const { sessionToken } = parsed.data;
 
   const [room] = await db
     .select()

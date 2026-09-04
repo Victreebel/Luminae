@@ -417,7 +417,7 @@ When a single action qualifies a player for multiple Luminaries, the canonical o
 - **Eminence**: Stored as `eminence: N`. Claimer gains N Eminence immediately.
 
 ### Win Attribution
-- `winTriggerLuminaryId` is set to the Luminary that pushed the player to ≥15 Eminence
+- `winTriggerLuminaryId` is set to the Luminary that pushed the player to the configured victory requirement
 - If a player wins via Luminary claim, the win cinematic names the triggering Luminary
 
 ---

@@ -13,33 +13,46 @@ export interface BoardLayoutPolicy {
 
 const CIVILIZATION_PREVIEW_MIN_WIDTH = 1600;
 const CIVILIZATION_PREVIEW_MIN_HEIGHT = 900;
+const VERTICAL_BOARD_ONLY = true;
 
 function createPolicy(
   viewportClass: BoardViewportClass,
   density: BoardDensityMode,
   layout: BoardLayoutMode = 'base',
-  options: { sideAffinityWell?: boolean; forceCompactForge?: boolean } = {},
 ): BoardLayoutPolicy {
   return {
     layout,
     density,
     viewportClass,
-    sideAffinityWell: options.sideAffinityWell ?? false,
-    forceCompactForge: options.forceCompactForge ?? false,
+    sideAffinityWell: false,
+    forceCompactForge: false,
   };
+}
+
+function getVerticalViewportClass(width: number, height: number): BoardViewportClass {
+  const shortestSide = Math.min(width, height);
+  const longestSide = Math.max(width, height);
+
+  if (shortestSide <= 600) return 'phone-portrait';
+  if (longestSide >= 1200) return 'desktop';
+  return 'tablet';
 }
 
 export function getBoardLayoutPolicyForViewport(width: number, height: number): BoardLayoutPolicy {
   const safeWidth = Math.max(0, width);
   const safeHeight = Math.max(0, height);
 
+  if (VERTICAL_BOARD_ONLY) {
+    return createPolicy(getVerticalViewportClass(safeWidth, safeHeight), 'stacked');
+  }
+
   const landscape = safeWidth > safeHeight;
   const phonePortrait = !landscape && safeWidth <= 600;
-  const phoneLandscape = landscape && (safeWidth <= 940 || safeHeight <= 600);
+  const phoneLandscape = landscape && (safeWidth <= 940 || safeHeight <= 520);
   const desktopLandscape = landscape && safeWidth >= 1200 && safeHeight >= 720;
 
   if (phonePortrait) {
-    return createPolicy('phone-portrait', 'stacked', 'base', { forceCompactForge: true });
+    return createPolicy('phone-portrait', 'stacked');
   }
 
   if (phoneLandscape) {
@@ -49,10 +62,7 @@ export function getBoardLayoutPolicyForViewport(width: number, height: number): 
         : safeWidth >= 940 && safeHeight >= 540
           ? 'efficient'
           : 'stacked';
-    return createPolicy('phone-landscape', density, 'base', {
-      sideAffinityWell: true,
-      forceCompactForge: true,
-    });
+    return createPolicy('phone-landscape', density);
   }
 
   if (desktopLandscape) {
@@ -66,14 +76,11 @@ export function getBoardLayoutPolicyForViewport(width: number, height: number): 
         ? 'left-civ'
         : 'base';
 
-    return createPolicy('desktop', density, layout, { sideAffinityWell: true });
+    return createPolicy('desktop', density, layout);
   }
 
   if (landscape) {
-    return createPolicy('tablet', 'efficient', 'base', {
-      sideAffinityWell: true,
-      forceCompactForge: safeHeight < 700,
-    });
+    return createPolicy('tablet', 'efficient');
   }
 
   return createPolicy('tablet', 'stacked');

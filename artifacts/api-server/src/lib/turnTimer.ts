@@ -14,7 +14,6 @@ import { getConnectedPlayerIds, sendToPlayer, filterStateForPlayer } from "./web
 import { withRoomLock } from "./roomLock";
 import { logger } from "./logger";
 import { completeFinishedGame } from "./finishedGame";
-import { applyBalanceLabRoomRuleset } from "./balanceLabRooms";
 import { updateTurnDeadline } from "./turnDeadline";
 
 export { updateTurnDeadline } from "./turnDeadline";
@@ -66,7 +65,6 @@ async function expireTurn(roomId: string, expectedVersion: number): Promise<void
       if (!gs) return;
 
       const state = normalizeState(gs.state);
-      applyBalanceLabRoomRuleset(roomId, state);
       // Bail if state moved on (someone already acted)
       if (state.version !== expectedVersion) return;
       if (state.phase === "finished") return;

@@ -94,12 +94,11 @@ console.log('\n── parseIllustratedIds ────────────�
 console.log('\n── parseSlotNames ───────────────────────────────────────────────');
 
 {
-  const source = `function _getLuminaryImage(id: string, slot: 'panel' | 'entity' | 'aura'): string | null {`;
+  const source = `function _getLuminaryImage(id: string, slot: 'panel' | 'entity' | 'background'): string | null {`;
   const slots = parseSlotNames(source);
-  assert(slots.length === 2, `keeps 2 required slots — got ${slots.length}`);
+  assert(slots.length === 2, `parses 2 required slots — got ${slots.length}`);
   assert(slots[0] === 'panel', `first slot is panel — got ${slots[0]}`);
   assert(slots[1] === 'entity', `second slot is entity — got ${slots[1]}`);
-  assert(!slots.includes('aura'), 'filters optional aura slot');
 }
 
 {
@@ -107,7 +106,7 @@ console.log('\n── parseSlotNames ──────────────�
   const slots = parseSlotNames('// no function here');
   assert(
     slots.length === 2,
-    `falls back to 2 canonical required slots — got ${slots.length}`,
+    `falls back to canonical 2 slots — got ${slots.length}`,
   );
   assert(slots.includes('panel'), 'fallback includes panel');
   assert(slots.includes('entity'), 'fallback includes entity');
@@ -116,12 +115,6 @@ console.log('\n── parseSlotNames ──────────────�
 // ── Unit tests: parseLuminariesDir ────────────────────────────────────────────
 
 console.log('\n── parseLuminariesDir ───────────────────────────────────────────');
-
-{
-  const source = `import { LUMINARY_RUNTIME_ART } from './luminaryArtManifest';`;
-  const dir = parseLuminariesDir(source, ASSETS_TSX);
-  assert(dir.endsWith('luminaries'), `resolves manifest assets directory — got ${dir}`);
-}
 
 {
   const source = `const _luminaryImageModules = import.meta.glob<{ default: string }>(
@@ -150,9 +143,9 @@ console.log('\n── checkLuminaryFiles ─────────────
 }
 
 {
-  // ID that does not exist on disk -> both required slots are missing.
+  // ID that does not exist on disk → both required slots reported as missing
   const { missing } = checkLuminaryFiles(['lum_does_not_exist_xyz']);
-  assert(missing.length === 2, `nonexistent ID -> 2 required slots missing - got ${missing.length}`);
+  assert(missing.length === 2, `nonexistent ID → 2 missing (all required slots) — got ${missing.length}`);
   assert(missing[0].slot === 'panel', `first missing slot is panel — got ${missing[0].slot}`);
   assert(missing[1].slot === 'entity', `second missing slot is entity — got ${missing[1].slot}`);
   assert(missing[0].checked.length === 3, 'checks 3 extensions per slot');
@@ -189,7 +182,7 @@ const luminariesDir = parseLuminariesDir(assetsSrc, ASSETS_TSX);
 
 assert(
   allSlots.length === 2 && allSlots.includes('panel') && allSlots.includes('entity'),
-  `live slot list contains the two required slots - got [${allSlots.join(', ')}]`,
+  `live slot list includes exactly panel and entity — got [${allSlots.join(', ')}]`,
 );
 
 const { missing } = checkLuminaryFiles(illustratedIds, allSlots, luminariesDir);

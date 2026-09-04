@@ -20,28 +20,35 @@ import {
   apiQuitRoom,
   apiGetMyStats,
   apiGetBlueprintVault,
-  apiGetArchitectRecord,
-  apiCreateOrResumeQualifyingMatch,
+  apiGetChronicleProgress,
+  apiStartRecurrenceChronicle,
+  apiStartTriangulationChronicle,
+  apiStartTraceChronicle,
   apiUseBlueprintDecryptionKey,
   apiAcknowledgeBlueprintVaultReveal,
   apiStartBlueprintChallenge,
   apiUpdateBlueprintVaultThreshold,
   apiUpdateBlueprintLoadout,
-  apiUpdateCivilizationIdentity,
-  BlueprintThresholdRequestError,
   type ActiveGame,
-  type ArchitectRecordState,
   type BlueprintVaultState,
-  type BlueprintVaultThresholdAction,
   type PlayerStats,
   type StoreItem,
 } from "@/lib/accountSession";
 import type {
   BlueprintId,
   BlueprintLoadout,
-  CivilizationIdentitySelection,
+  LumiiThresholdApproach,
+  LumiiThresholdDialogueChoiceId,
+  CampaignProgressProjection,
+  NativeLumePackOffer,
+  NativeStoreProvider,
 } from "@workspace/game-types";
+import {
+  hasNativeBilling,
+  loadNativeLumeOffers,
+} from "@/lib/nativeBilling";
 import { saveSession } from "@/lib/session";
+import { gameAudio } from "@/lib/audio";
 import { FriendsPanel } from "@/components/FriendsPanel";
 import { ChallengeInbox } from "@/components/ChallengeInbox";
 import { getGameState } from "@workspace/api-client-react";
@@ -75,6 +82,8 @@ import {
   Eye,
   Layers3,
   KeyRound,
+  LockKeyhole,
+  Trash2,
 } from "lucide-react";
 import {
   apiGetPreferences,
@@ -89,10 +98,6 @@ import {
 } from "@/lib/cinematicPrefs";
 import { useToast } from "@/hooks/use-toast";
 import { getAvatarForPlayer } from "@/lib/avatars";
-import {
-  reconciledThresholdDialoguePath,
-  thresholdActionWasApplied,
-} from "@/lib/blueprintThresholdReconciliation";
 import {
   getArchivePresentation,
   setArchivePresentation,
@@ -112,49 +117,6 @@ const BLUEPRINT_STORE_PREVIEWS: Partial<Record<NonNullable<StoreItem["presentati
   asymmetric: asymmetricDetonatorPreview,
   lattice: latticeDetonatorPreview,
 };
-
-const THRESHOLD_RETRY_DELAY_MS = 180;
-const LUME_CURRENCY_NAME = "Lume";
-
-function formatLume(amount: number | null | undefined): string {
-  return `${amount ?? 0} ${LUME_CURRENCY_NAME}`;
-}
-
-function LumeIcon({
-  className = "",
-  state = "idle",
-}: {
-  className?: string;
-  state?: "idle" | "gain" | "spend";
-}) {
-  return (
-    <span className={`lume-icon lume-icon--${state} ${className}`} aria-hidden="true">
-      <span className="lume-icon__aura" />
-      <span className="lume-icon__core" />
-      <span className="lume-icon__crescent" />
-      <span className="lume-icon__spark" />
-    </span>
-  );
-}
-
-function LumeAmount({
-  amount,
-  className = "",
-}: {
-  amount: number | null | undefined;
-  className?: string;
-}) {
-  return (
-    <span className={`inline-flex items-center gap-1.5 ${className}`}>
-      <LumeIcon className="text-[16px]" />
-      <span>{formatLume(amount)}</span>
-    </span>
-  );
-}
-
-function waitForThresholdRetry(): Promise<void> {
-  return new Promise((resolve) => window.setTimeout(resolve, THRESHOLD_RETRY_DELAY_MS));
-}
 
 function formatRelative(dateStr: string): string {
   const diff = Date.now() - new Date(dateStr).getTime();
@@ -348,6 +310,67 @@ function StatsBar({ stats, isLoading }: { stats: PlayerStats | null; isLoading: 
   );
 }
 
+function FirstResonancePreview() {
+  const [playing, setPlaying] = useState(false);
+  const playingRef = useRef(false);
+  const timerRef = useRef<ReturnType<typeof setTimeout> | null>(null);
+
+  const stop = () => {
+    if (timerRef.current) clearTimeout(timerRef.current);
+    timerRef.current = null;
+    playingRef.current = false;
+    setPlaying(false);
+    gameAudio.stopArrivalCutscene();
+  };
+
+  const togglePreview = () => {
+    if (playingRef.current) {
+      stop();
+      return;
+    }
+    gameAudio.stopArrivalCutscene();
+    if (gameAudio.isMuted()) gameAudio.setMuted(false);
+    gameAudio.playArrivalCutscene('radiant', 'first_resonance');
+    playingRef.current = true;
+    setPlaying(true);
+    timerRef.current = setTimeout(() => {
+      timerRef.current = null;
+      playingRef.current = false;
+      setPlaying(false);
+    }, 10_800);
+  };
+
+  useEffect(() => () => {
+    if (timerRef.current) clearTimeout(timerRef.current);
+    if (playingRef.current) gameAudio.stopArrivalCutscene();
+  }, []);
+
+  return (
+    <>
+      <div className="store-preview-first-resonance" data-playing={playing ? "true" : "false"} aria-hidden="true">
+        <span className="store-preview-first-resonance__core" />
+        <span className="store-preview-first-resonance__ring store-preview-first-resonance__ring--one" />
+        <span className="store-preview-first-resonance__ring store-preview-first-resonance__ring--two" />
+        <span className="store-preview-first-resonance__wave store-preview-first-resonance__wave--one" />
+        <span className="store-preview-first-resonance__wave store-preview-first-resonance__wave--two" />
+        <span className="store-preview-first-resonance__wave store-preview-first-resonance__wave--three" />
+      </div>
+      <button
+        type="button"
+        className="store-preview-audio-button"
+        onClick={(event) => {
+          event.stopPropagation();
+          togglePreview();
+        }}
+        aria-label={playing ? "Stop First Resonance preview" : "Play First Resonance preview"}
+        title={playing ? "Stop preview" : "Preview sound"}
+      >
+        {playing ? <VolumeX /> : <Volume2 />}
+      </button>
+    </>
+  );
+}
+
 function StoreItemPreview({ item }: { item: StoreItem }) {
   const blueprintPreview = item.presentationVariant
     ? BLUEPRINT_STORE_PREVIEWS[item.presentationVariant]
@@ -355,7 +378,9 @@ function StoreItemPreview({ item }: { item: StoreItem }) {
   return (
     <div className={`store-item-preview ${item.previewClass}`} aria-label={`${item.name} preview`}>
       <div className="store-preview-starfield" aria-hidden="true" />
-      {blueprintPreview ? (
+      {item.previewKind === "luminary_arrival_sound" ? (
+        <FirstResonancePreview />
+      ) : blueprintPreview ? (
         <img
           className="store-preview-blueprint-device"
           src={blueprintPreview}
@@ -363,17 +388,23 @@ function StoreItemPreview({ item }: { item: StoreItem }) {
           loading="lazy"
           decoding="async"
         />
-      ) : item.kind === "consumable" ? (
+      ) : item.previewKind === "consumable" ? (
         <div className="store-preview-decryption-key" aria-hidden="true">
           <span className="store-preview-decryption-key__halo" />
           <KeyRound />
           <span className="store-preview-decryption-key__cipher"><i /><i /><i /></span>
         </div>
-      ) : item.kind === "card_back" ? (
+      ) : item.previewKind === "card_back" ? (
         <div className="store-preview-card-back" aria-hidden="true">
           <span className="store-preview-card-frame" />
           <span className="store-preview-card-core" />
           <span className="store-preview-card-mark">L</span>
+        </div>
+      ) : item.previewKind === "vault_seal" ? (
+        <div className="store-preview-vault-seal" aria-hidden="true">
+          <span className="store-preview-vault-seal__ring" />
+          <span className="store-preview-vault-seal__aperture"><i /><i /><i /></span>
+          <LockKeyhole />
         </div>
       ) : (
         <div className="store-preview-observatory" aria-hidden="true">
@@ -397,9 +428,11 @@ export function StoreTab() {
     loadError,
     refreshStore,
     testPurchase,
-    unlockWithStarlight,
+    unlockWithLume,
     equipCosmetic,
     claimDailyReward,
+    buyNativeLume,
+    restoreNativeLume,
   } = useCosmetics();
   const [pendingOperation, setPendingOperation] = useState<{
     itemId: string;
@@ -407,24 +440,65 @@ export function StoreTab() {
   } | null>(null);
   const [purchaseConfirmation, setPurchaseConfirmation] = useState<{
     item: StoreItem;
-    method: "starlight" | "checkout";
+    method: "lume" | "checkout";
   } | null>(null);
   const [isClaiming, setIsClaiming] = useState(false);
-  const [lumeAnimation, setLumeAnimation] = useState<{
-    id: number;
-    type: "gain" | "spend";
-    amount: number;
-  } | null>(null);
+  const [nativeOffers, setNativeOffers] = useState<NativeLumePackOffer[]>([]);
+  const [nativeProvider, setNativeProvider] = useState<NativeStoreProvider | null>(null);
+  const [pendingPack, setPendingPack] = useState<string | null>(null);
+  const nativeRestoreStarted = useRef(false);
 
   useEffect(() => {
     void refreshStore();
   }, [refreshStore]);
 
   useEffect(() => {
-    if (!lumeAnimation) return;
-    const timer = window.setTimeout(() => setLumeAnimation(null), 1400);
-    return () => window.clearTimeout(timer);
-  }, [lumeAnimation]);
+    if (!store || !hasNativeBilling()) {
+      setNativeOffers([]);
+      setNativeProvider(null);
+      return;
+    }
+    let active = true;
+    void loadNativeLumeOffers(store.lumePacks).then((result) => {
+      if (!active) return;
+      setNativeProvider(result.provider);
+      setNativeOffers(result.offers);
+      if (!nativeRestoreStarted.current) {
+        nativeRestoreStarted.current = true;
+        void restoreNativeLume().catch(() => undefined);
+      }
+    }).catch(() => {
+      if (!active) return;
+      setNativeProvider(null);
+      setNativeOffers([]);
+    });
+    return () => { active = false; };
+  }, [restoreNativeLume, store?.lumePacks]);
+
+  const handleNativePackPurchase = async (offer: NativeLumePackOffer) => {
+    if (pendingPack) return;
+    setPendingPack(offer.packId);
+    try {
+      const result = await buyNativeLume(offer);
+      await refreshStore();
+      toast({
+        title: result.status === "pending" ? "Purchase pending" : `+${result.lumeAmount} Lume`,
+        description: result.status === "pending"
+          ? "Your storefront is still processing payment. Lume will appear after confirmation."
+          : result.status === "settlement_pending"
+            ? "Your Lume is available. Store confirmation will retry automatically."
+            : `Your spendable balance is now ${result.lumeBalance} Lume.`,
+      });
+    } catch (error: unknown) {
+      toast({
+        variant: "destructive",
+        title: "Could not complete Lume purchase",
+        description: error instanceof Error ? error.message : "Please try again.",
+      });
+    } finally {
+      setPendingPack(null);
+    }
+  };
 
   const handlePurchase = async (item: StoreItem) => {
     if (pendingOperation) return;
@@ -455,31 +529,24 @@ export function StoreTab() {
     }
   };
 
-  const handleStarlightUnlock = async (item: StoreItem) => {
-    if (pendingOperation || item.starlightPrice === null) return;
+  const handleLumeUnlock = async (item: StoreItem) => {
+    if (pendingOperation || item.lumePrice === null) return;
     setPendingOperation({ itemId: item.id, type: "unlock" });
     try {
-      const result = await unlockWithStarlight(item.id);
+      const result = await unlockWithLume(item.id);
       setPurchaseConfirmation(null);
       toast({
         title: result.alreadyOwned
           ? "Already in your collection"
           : item.kind === "consumable"
             ? "Contraband acquired"
-            : `Unlocked with ${LUME_CURRENCY_NAME}`,
+            : "Unlocked with Lume",
         description: result.alreadyOwned
           ? `${item.name} remains bound to this account.`
           : item.kind === "consumable"
-            ? `${item.name} is ready to spend. Your balance is now ${formatLume(result.cosmeticBalance)}.`
-            : `${item.name} is permanently yours. Your balance is now ${formatLume(result.cosmeticBalance)}.`,
+            ? `${item.name} is ready to spend. Your balance is now ${result.lumeBalance} Lume.`
+            : `${item.name} is permanently yours. Your balance is now ${result.lumeBalance} Lume.`,
       });
-      if (!result.alreadyOwned) {
-        setLumeAnimation({
-          id: Date.now(),
-          type: "spend",
-          amount: item.starlightPrice,
-        });
-      }
     } catch (error: unknown) {
       toast({
         variant: "destructive",
@@ -493,8 +560,8 @@ export function StoreTab() {
 
   const handleConfirmedPurchase = () => {
     if (!purchaseConfirmation || pendingOperation) return;
-    if (purchaseConfirmation.method === "starlight") {
-      void handleStarlightUnlock(purchaseConfirmation.item);
+    if (purchaseConfirmation.method === "lume") {
+      void handleLumeUnlock(purchaseConfirmation.item);
       return;
     }
     void handlePurchase(purchaseConfirmation.item);
@@ -531,22 +598,15 @@ export function StoreTab() {
     try {
       const result = await claimDailyReward();
       toast({
-        title: result.alreadyClaimed ? `Today's ${LUME_CURRENCY_NAME} is secured` : `+${formatLume(result.rewardAmount)}`,
+        title: result.alreadyClaimed ? "Today's Lume is secured" : `+${result.rewardAmount} Lume`,
         description: result.alreadyClaimed
           ? "Return tomorrow for the next cosmetic reward."
           : `Daily streak: ${result.dailyClaimStreak} day${result.dailyClaimStreak === 1 ? "" : "s"}.`,
       });
-      if (!result.alreadyClaimed && result.rewardAmount > 0) {
-        setLumeAnimation({
-          id: Date.now(),
-          type: "gain",
-          amount: result.rewardAmount,
-        });
-      }
     } catch (error: unknown) {
       toast({
         variant: "destructive",
-        title: `Could not claim ${LUME_CURRENCY_NAME}`,
+        title: "Could not claim Lume",
         description: error instanceof Error ? error.message : "Please try again.",
       });
     } finally {
@@ -580,18 +640,18 @@ export function StoreTab() {
 
   return (
     <motion.div initial={{ opacity: 0, y: 8 }} animate={{ opacity: 1, y: 0 }} className="space-y-4">
-      <section className="lume-balance-card rounded-lg border border-primary/25 bg-card/70 p-4">
+      <section className="rounded-lg border border-primary/25 bg-card/70 p-4">
         <div className="flex items-center gap-3">
-          <span className="lume-balance-card__icon h-11 w-11 rounded-md border border-primary/30 bg-primary/10 flex items-center justify-center shrink-0">
-            <LumeIcon className="text-[28px]" state={lumeAnimation?.type === "gain" ? "gain" : lumeAnimation?.type === "spend" ? "spend" : "idle"} />
+          <span className="h-11 w-11 rounded-md border border-primary/30 bg-primary/10 flex items-center justify-center shrink-0">
+            <Gem className="h-5 w-5 text-primary" />
           </span>
           <div className="min-w-0 flex-1">
-            <p className="text-xs uppercase text-muted-foreground">{LUME_CURRENCY_NAME} balance</p>
-            <p className="text-xl font-serif font-bold">{formatLume(store.engagement.cosmeticBalance)}</p>
+            <p className="text-xs uppercase text-muted-foreground">Spendable Lume</p>
+            <p className="text-xl font-serif font-bold">{store.engagement.lumeBalance} Lume</p>
             <p className="text-xs text-muted-foreground">
               {store.engagement.dailyClaimStreak > 0
                 ? `Day ${store.engagement.dailyClaimStreak} of your current collection streak`
-                : `Claim today's ${LUME_CURRENCY_NAME} to begin your collection streak`}
+                : "Claim today's Lume to begin your collection streak"}
             </p>
           </div>
           <Button
@@ -607,28 +667,45 @@ export function StoreTab() {
             {store.engagement.canClaimDaily ? "Claim" : "Claimed"}
           </Button>
         </div>
-        {lumeAnimation && (
-          <div
-            key={lumeAnimation.id}
-            className={`lume-balance-burst lume-balance-burst--${lumeAnimation.type}`}
-            aria-hidden="true"
-          >
-            <span className="lume-balance-burst__mote lume-balance-burst__mote--one" />
-            <span className="lume-balance-burst__mote lume-balance-burst__mote--two" />
-            <span className="lume-balance-burst__mote lume-balance-burst__mote--three" />
-            <span className="lume-balance-burst__orb">
-              <LumeIcon className="text-[26px]" state={lumeAnimation.type} />
-            </span>
-            <span className="lume-balance-burst__amount">
-              {lumeAnimation.type === "gain" ? "+" : "-"}{lumeAnimation.amount}
-            </span>
-          </div>
-        )}
       </section>
+
+      {nativeOffers.length > 0 && (
+        <section className="rounded-lg border border-primary/20 bg-card/55 p-4" aria-label="Buy Lume">
+          <div className="mb-3 flex items-center justify-between gap-3">
+            <div>
+              <h2 className="font-serif text-base font-bold">Lume Reserves</h2>
+              <p className="text-xs text-muted-foreground">
+                Prices are supplied by {nativeProvider === "samsung_iap" ? "Galaxy Store" : "Google Play"}.
+              </p>
+            </div>
+            <ShieldCheck className="h-4 w-4 text-primary" />
+          </div>
+          <div className="grid grid-cols-3 gap-2">
+            {nativeOffers.map((offer) => (
+              <Button
+                key={offer.packId}
+                type="button"
+                variant="secondary"
+                className="h-auto min-h-16 flex-col rounded-md px-2 py-2"
+                disabled={pendingPack !== null}
+                onClick={() => void handleNativePackPurchase(offer)}
+              >
+                {pendingPack === offer.packId ? (
+                  <Loader2 className="mb-1 h-4 w-4 animate-spin" />
+                ) : (
+                  <Gem className="mb-1 h-4 w-4 text-primary" />
+                )}
+                <span className="text-xs font-bold">{offer.lumeAmount} Lume</span>
+                <span className="text-[10px] text-muted-foreground">{offer.localizedPrice}</span>
+              </Button>
+            ))}
+          </div>
+        </section>
+      )}
 
       <div className="flex items-end justify-between gap-4 px-1">
         <div>
-          <h2 className="font-serif text-lg font-bold">{LUME_CURRENCY_NAME} Exchange</h2>
+          <h2 className="font-serif text-lg font-bold">Lume Exchange</h2>
           <p className="text-xs text-muted-foreground">Cosmetics, recovered forms, and rare single-use goods.</p>
         </div>
         <span className="inline-flex items-center gap-1 text-[10px] uppercase text-muted-foreground border border-border/50 rounded-full px-2 py-1 shrink-0">
@@ -647,10 +724,18 @@ export function StoreTab() {
               equipped.itemId === item.id,
           );
           const isPending = pendingOperation?.itemId === item.id;
-          const canAfford = item.starlightPrice !== null &&
-            store.engagement.cosmeticBalance >= item.starlightPrice;
+          const canAfford = item.lumePrice !== null &&
+            store.engagement.lumeBalance >= item.lumePrice;
           const isConsumable = item.kind === "consumable";
-          const KindIcon = isConsumable ? KeyRound : item.kind === "card_back" ? Palette : Orbit;
+          const KindIcon = isConsumable
+            ? KeyRound
+            : item.kind === "luminary_arrival_sound"
+              ? Volume2
+            : item.kind === "card_back"
+              ? Palette
+              : item.kind === "vault_seal"
+                ? LockKeyhole
+                : Orbit;
           const VisibilityIcon = isConsumable ? KeyRound : item.visibility === "all_participants" ? Users : Eye;
           const visibilityLabel = isConsumable
             ? "Single use · account inventory"
@@ -716,32 +801,32 @@ export function StoreTab() {
                     </Button>
                   ) : (
                     <>
-                      {item.starlightPrice !== null && (
+                      {item.lumePrice !== null && (
                         <Button
                           type="button"
                           size="sm"
                           variant={canAfford ? "default" : "secondary"}
                           className="w-full rounded-md gap-1.5"
                           data-oom-sound="primary"
-                          onClick={() => setPurchaseConfirmation({ item, method: "starlight" })}
+                          onClick={() => setPurchaseConfirmation({ item, method: "lume" })}
                           disabled={!canAfford || pendingOperation !== null}
-                          title={canAfford ? undefined : `Requires ${formatLume(item.starlightPrice)}`}
+                          title={canAfford ? undefined : `Requires ${item.lumePrice} Lume`}
                         >
                           {isPending && pendingOperation?.type === "unlock" ? (
                             <Loader2 className="h-3.5 w-3.5 animate-spin" />
                           ) : (
-                            <LumeIcon className="text-[14px]" />
+                            <Gem className="h-3.5 w-3.5" />
                           )}
                           {canAfford
-                            ? `${isConsumable ? "Acquire" : "Unlock"} · ${formatLume(item.starlightPrice)}`
-                            : `${formatLume(item.starlightPrice)} needed`}
+                            ? `${isConsumable ? "Acquire" : "Unlock"} · ${item.lumePrice} Lume`
+                            : `${item.lumePrice} Lume needed`}
                         </Button>
                       )}
                       {store.testCheckoutEnabled && (
                         <Button
                           type="button"
                           size="sm"
-                          variant={item.starlightPrice === null ? "default" : "secondary"}
+                          variant={item.lumePrice === null ? "default" : "secondary"}
                           className="w-full rounded-md gap-1.5"
                           data-oom-sound="primary"
                           onClick={() => setPurchaseConfirmation({ item, method: "checkout" })}
@@ -755,7 +840,7 @@ export function StoreTab() {
                           {item.priceLabel}
                         </Button>
                       )}
-                      {item.starlightPrice === null && !store.testCheckoutEnabled && (
+                      {item.lumePrice === null && !store.testCheckoutEnabled && (
                         <div className="flex h-9 items-center justify-center gap-1.5 rounded-md border border-border/55 bg-background/35 px-3 text-xs font-semibold text-muted-foreground">
                           <Trophy className="h-3.5 w-3.5" />
                           {item.priceLabel}
@@ -811,16 +896,16 @@ export function StoreTab() {
                     <div className="flex items-center justify-between gap-4">
                       <span className="text-muted-foreground">Cost</span>
                       <span className="font-semibold">
-                        {purchaseConfirmation.method === "starlight"
-                          ? <LumeAmount amount={purchaseConfirmation.item.starlightPrice} />
+                        {purchaseConfirmation.method === "lume"
+                          ? `${purchaseConfirmation.item.lumePrice} Lume`
                           : purchaseConfirmation.item.priceLabel}
                       </span>
                     </div>
-                    {purchaseConfirmation.method === "starlight" && purchaseConfirmation.item.starlightPrice !== null && (
+                    {purchaseConfirmation.method === "lume" && purchaseConfirmation.item.lumePrice !== null && (
                       <div className="mt-2 flex items-center justify-between gap-4">
                         <span className="text-muted-foreground">Balance after purchase</span>
                         <span className="font-semibold">
-                          <LumeAmount amount={Math.max(0, store.engagement.cosmeticBalance - purchaseConfirmation.item.starlightPrice)} />
+                          {Math.max(0, store.engagement.lumeBalance - purchaseConfirmation.item.lumePrice)} Lume
                         </span>
                       </div>
                     )}
@@ -863,12 +948,12 @@ export function StoreTab() {
                   >
                     {pendingOperation !== null ? (
                       <Loader2 className="h-4 w-4 animate-spin" />
-                    ) : purchaseConfirmation.method === "starlight" ? (
-                      <LumeIcon className="text-[16px]" state="spend" />
+                    ) : purchaseConfirmation.method === "lume" ? (
+                      <Gem className="h-4 w-4" />
                     ) : (
                       <ShoppingBag className="h-4 w-4" />
                     )}
-                    {purchaseConfirmation.method === "starlight" && purchaseConfirmation.item.kind !== "consumable"
+                    {purchaseConfirmation.method === "lume" && purchaseConfirmation.item.kind !== "consumable"
                       ? "Confirm unlock"
                       : "Confirm purchase"}
                   </Button>
@@ -1125,6 +1210,14 @@ function SettingsTab({ accountId, token }: { accountId: string; token: string | 
       </div>
 
       <div className="oom-panel oom-panel--quiet p-5">
+        <h3 className="text-sm font-semibold">Account and policies</h3>
+        <div className="mt-3 flex flex-wrap gap-3 text-xs text-muted-foreground">
+          <a href="/legal/privacy">Privacy</a><a href="/legal/terms">Terms</a><a href="/legal/conduct">Conduct</a><a href="/legal/refunds">Refunds</a>
+        </div>
+        <a href="/legal/delete-account" className="mt-4 inline-flex items-center gap-2 text-sm font-semibold text-destructive"><Trash2 className="h-4 w-4" /> Delete account</a>
+      </div>
+
+      <div className="oom-panel oom-panel--quiet p-5">
         <h3 className="text-sm font-semibold mb-1">Audio &amp; animations</h3>
         <p className="text-xs text-muted-foreground mb-4">
           These settings sync across devices when you're signed in.
@@ -1223,7 +1316,7 @@ function SettingsTab({ accountId, token }: { accountId: string; token: string | 
 type DashboardTab = "games" | "archive" | "store" | "settings";
 
 const ARCHIVE_ROUTE = "/dashboard/archive";
-const ARCHIVE_SECTIONS = new Set<ArchiveSection>(["artifacts", "luminaries", "matches", "vault"]);
+const ARCHIVE_SECTIONS = new Set<ArchiveSection>(["civilization", "artifacts", "luminaries", "matches", "chronicles", "vault"]);
 
 function archiveSectionFromLocation(location: string): ArchiveSection | null {
   const path = location.split("?", 1)[0];
@@ -1249,28 +1342,16 @@ function DashboardContent() {
   const [isLoadingGames, setIsLoadingGames] = useState(true);
   const [stats, setStats] = useState<PlayerStats | null>(null);
   const [isLoadingStats, setIsLoadingStats] = useState(true);
-  const [blueprintVaultState, setBlueprintVault] = useState<BlueprintVaultState | null>(null);
-  const [blueprintVaultOwnerId, setBlueprintVaultOwnerId] = useState<string | null>(null);
-  const [architectRecordState, setArchitectRecordState] = useState<ArchitectRecordState | null>(null);
-  const [architectRecordOwnerId, setArchitectRecordOwnerId] = useState<string | null>(null);
+  const [blueprintVault, setBlueprintVault] = useState<BlueprintVaultState | null>(null);
+  const [campaignProgress, setCampaignProgress] = useState<CampaignProgressProjection | null>(null);
+  const [isChroniclePending, setIsChroniclePending] = useState(false);
   const [isVaultLoading, setIsVaultLoading] = useState(false);
   const [isVaultPending, setIsVaultPending] = useState(false);
   const preparedBlueprintRoomIdRef = useRef<string | null>(null);
-  const preparedBlueprintRoomOwnerRef = useRef<string | null>(null);
   const [quittingId, setQuittingId] = useState<string | null>(null);
   const [resumingId, setResumingId] = useState<string | null>(null);
   const [friendsOpen, setFriendsOpen] = useState(false);
   const [accountMenuOpen, setAccountMenuOpen] = useState(false);
-  const accountId = account?.id ?? null;
-  const accountIdRef = useRef(accountId);
-  accountIdRef.current = accountId;
-  const blueprintVault = blueprintVaultOwnerId === accountId ? blueprintVaultState : null;
-  const architectRecord = architectRecordOwnerId === accountId ? architectRecordState : null;
-
-  useEffect(() => {
-    preparedBlueprintRoomIdRef.current = null;
-    preparedBlueprintRoomOwnerRef.current = null;
-  }, [accountId]);
 
   const fetchGames = async () => {
     if (!token) return;
@@ -1298,13 +1379,6 @@ function DashboardContent() {
     }
   };
 
-  const handleUpdateCivilizationIdentity = async (selection: CivilizationIdentitySelection) => {
-    if (!token) throw new Error("Sign in to confirm an identity");
-    await apiUpdateCivilizationIdentity(token, selection);
-    await Promise.all([refreshAccount(), fetchStats()]);
-    toast({ title: "Identity confirmed", description: "Your public civilization designation has been updated." });
-  };
-
   useEffect(() => {
     void fetchGames();
     void fetchStats();
@@ -1316,20 +1390,12 @@ function DashboardContent() {
   }, [location]);
 
   useEffect(() => {
-    if (!token || !accountId || activeTab !== "archive" || archiveSection !== "vault") return;
+    if (!token || activeTab !== "archive" || archiveSection !== "vault") return;
     let cancelled = false;
     setIsVaultLoading(true);
-    void Promise.all([
-      apiGetBlueprintVault(token),
-      apiGetArchitectRecord(token).catch(() => null),
-    ])
-      .then(([vault, record]) => {
-        if (!cancelled) {
-          setBlueprintVault(vault);
-          setBlueprintVaultOwnerId(accountId);
-          setArchitectRecordState(record);
-          setArchitectRecordOwnerId(accountId);
-        }
+    void apiGetBlueprintVault(token)
+      .then((vault) => {
+        if (!cancelled) setBlueprintVault(vault);
       })
       .catch(() => {
         if (!cancelled) {
@@ -1342,7 +1408,20 @@ function DashboardContent() {
     return () => {
       cancelled = true;
     };
-  }, [accountId, activeTab, archiveSection, toast, token]);
+  }, [activeTab, archiveSection, toast, token]);
+
+  useEffect(() => {
+    if (!token || activeTab !== "archive" || archiveSection !== "chronicles") return;
+    let cancelled = false;
+    void apiGetChronicleProgress(token)
+      .then((progress) => {
+        if (!cancelled) setCampaignProgress(progress);
+      })
+      .catch(() => {
+        if (!cancelled) toast({ variant: "destructive", title: "Chronicle record unavailable" });
+      });
+    return () => { cancelled = true; };
+  }, [activeTab, archiveSection, toast, token]);
 
   const handleTabChange = (tab: DashboardTab) => {
     setActiveTab(tab);
@@ -1357,25 +1436,90 @@ function DashboardContent() {
     setLocation(section ? `${ARCHIVE_ROUTE}/${section}` : ARCHIVE_ROUTE);
   };
 
+  const handleStartTraceChronicle = async () => {
+    if (!token || !account || isChroniclePending) return;
+    setIsChroniclePending(true);
+    try {
+      const chronicle = await apiStartTraceChronicle(token);
+      saveSession({
+        roomId: chronicle.roomId,
+        inviteCode: chronicle.inviteCode,
+        playerId: chronicle.playerId,
+        sessionToken: chronicle.sessionToken,
+        playerName: account.username,
+        isHost: true,
+        isGuidedMatch: true,
+      });
+      setLocation(`/game/${chronicle.roomId}`);
+    } catch (error) {
+      toast({
+        variant: "destructive",
+        title: "The Trace did not open",
+        description: error instanceof Error ? error.message : "Chronicle start unavailable",
+      });
+    } finally {
+      setIsChroniclePending(false);
+    }
+  };
+
+  const handleStartRecurrenceChronicle = async () => {
+    if (!token || !account || isChroniclePending) return;
+    setIsChroniclePending(true);
+    try {
+      const chronicle = await apiStartRecurrenceChronicle(token);
+      saveSession({
+        roomId: chronicle.roomId,
+        inviteCode: chronicle.inviteCode,
+        playerId: chronicle.playerId,
+        sessionToken: chronicle.sessionToken,
+        playerName: account.username,
+        isHost: true,
+        isGuidedMatch: true,
+      });
+      setLocation(`/game/${chronicle.roomId}`);
+    } catch (error) {
+      toast({
+        variant: "destructive",
+        title: "The Recurrence did not open",
+        description: error instanceof Error ? error.message : "Chronicle start unavailable",
+      });
+    } finally {
+      setIsChroniclePending(false);
+    }
+  };
+
+  const handleStartTriangulationChronicle = async () => {
+    if (!token || !account || isChroniclePending) return;
+    setIsChroniclePending(true);
+    try {
+      const chronicle = await apiStartTriangulationChronicle(token);
+      saveSession({
+        roomId: chronicle.roomId,
+        inviteCode: chronicle.inviteCode,
+        playerId: chronicle.playerId,
+        sessionToken: chronicle.sessionToken,
+        playerName: account.username,
+        isHost: true,
+        isGuidedMatch: true,
+      });
+      setLocation(`/game/${chronicle.roomId}`);
+    } catch (error) {
+      toast({
+        variant: "destructive",
+        title: "The Triangulation did not open",
+        description: error instanceof Error ? error.message : "Chronicle start unavailable",
+      });
+    } finally {
+      setIsChroniclePending(false);
+    }
+  };
+
   const prepareBlueprintChallenge = async () => {
     if (!token || !account) throw new Error("Sign in to confront Lumii.");
-    const requestAccountId = account.id;
-    if (
-      preparedBlueprintRoomIdRef.current &&
-      preparedBlueprintRoomOwnerRef.current === requestAccountId
-    ) return preparedBlueprintRoomIdRef.current;
+    if (preparedBlueprintRoomIdRef.current) return preparedBlueprintRoomIdRef.current;
     setIsVaultPending(true);
     try {
-      let challenge: Awaited<ReturnType<typeof apiStartBlueprintChallenge>>;
-      try {
-        challenge = await apiStartBlueprintChallenge(token);
-      } catch {
-        await waitForThresholdRetry();
-        challenge = await apiStartBlueprintChallenge(token);
-      }
-      if (accountIdRef.current !== requestAccountId) {
-        throw new Error("The signed-in account changed while the forecast was opening.");
-      }
+      const challenge = await apiStartBlueprintChallenge(token);
       saveSession({
         roomId: challenge.roomId,
         inviteCode: challenge.inviteCode,
@@ -1385,7 +1529,6 @@ function DashboardContent() {
         isHost: true,
       });
       preparedBlueprintRoomIdRef.current = challenge.roomId;
-      preparedBlueprintRoomOwnerRef.current = requestAccountId;
       setBlueprintVault((current) => current ? {
         ...current,
         clearance: {
@@ -1395,6 +1538,7 @@ function DashboardContent() {
           cipherDeactivated: true,
           thresholdApproach: challenge.lumiiThresholdApproach,
           thresholdDialogueResolution: "continued",
+          thresholdRuptured: true,
           covenantBroken: true,
         },
       } : current);
@@ -1412,61 +1556,28 @@ function DashboardContent() {
     }
   };
 
-  const startQualifyingMatch = async () => {
-    if (!token) return;
-    setIsVaultPending(true);
-    try {
-      const match = await apiCreateOrResumeQualifyingMatch(token);
-      saveSession({
-        roomId: match.roomId,
-        inviteCode: match.inviteCode,
-        playerId: match.playerId,
-        sessionToken: match.sessionToken,
-        playerName: match.playerName,
-        isHost: true,
-      });
-      setLocation(`/game/${match.roomId}`);
-    } catch (error) {
-      toast({
-        variant: "destructive",
-        title: "Qualifying match unavailable",
-        description: error instanceof Error ? error.message : "Try again from the Vault.",
-      });
-    } finally {
-      setIsVaultPending(false);
-    }
-  };
-
   const handleResumeBlueprintChallenge = async () => {
     const roomId = await prepareBlueprintChallenge();
     setLocation(`/game/${roomId}`);
   };
 
   const handleEnterPreparedBlueprintChallenge = () => {
-    const preparedRoomId = preparedBlueprintRoomOwnerRef.current === accountId
-      ? preparedBlueprintRoomIdRef.current
-      : null;
-    const roomId = preparedRoomId ?? blueprintVault?.clearance.challengeRoomId;
+    const roomId = preparedBlueprintRoomIdRef.current ?? blueprintVault?.clearance.challengeRoomId;
     if (!roomId) return;
     setLocation(`/game/${roomId}`);
   };
 
-  const updateBlueprintThreshold = async (action: BlueprintVaultThresholdAction) => {
+  const updateBlueprintThreshold = async (
+    action:
+      | { action: "deactivate_cipher" }
+      | { action: "choose_approach"; approach: LumiiThresholdApproach }
+      | { action: "record_dialogue_path"; path: LumiiThresholdDialogueChoiceId[] }
+      | { action: "resolve_dialogue"; resolution: "left" },
+  ) => {
     if (!token) throw new Error("Sign in to approach the Vault.");
-    const requestAccountId = accountId;
     setIsVaultPending(true);
     try {
-      let result: Awaited<ReturnType<typeof apiUpdateBlueprintVaultThreshold>>;
-      try {
-        result = await apiUpdateBlueprintVaultThreshold(token, action);
-      } catch (firstError) {
-        const shouldRetry = !(firstError instanceof BlueprintThresholdRequestError) || firstError.status >= 500;
-        if (!shouldRetry) throw firstError;
-        await waitForThresholdRetry();
-        result = await apiUpdateBlueprintVaultThreshold(token, action);
-      }
-      if (accountIdRef.current !== requestAccountId) return;
-      setBlueprintVaultOwnerId(requestAccountId);
+      const result = await apiUpdateBlueprintVaultThreshold(token, action);
       setBlueprintVault((current) => current ? {
         ...current,
         clearance: {
@@ -1479,27 +1590,6 @@ function DashboardContent() {
           decryptionKeyBypassActive: result.decryptionKeyBypassActive,
         },
       } : current);
-      return result.thresholdDialoguePath;
-    } catch (error) {
-      if (accountIdRef.current !== requestAccountId) return;
-      try {
-        const refreshedVault = await apiGetBlueprintVault(token);
-        if (accountIdRef.current !== requestAccountId) return;
-        setBlueprintVault(refreshedVault);
-        setBlueprintVaultOwnerId(requestAccountId);
-        if (refreshedVault.clearance.challengeRoomId) {
-          preparedBlueprintRoomIdRef.current = refreshedVault.clearance.challengeRoomId;
-          preparedBlueprintRoomOwnerRef.current = requestAccountId;
-        }
-        if (action.action === "record_dialogue_path") {
-          const reconciledPath = reconciledThresholdDialoguePath(action, refreshedVault);
-          if (reconciledPath) return reconciledPath;
-        }
-        if (thresholdActionWasApplied(action, refreshedVault)) return;
-      } catch {
-        // Preserve the original Threshold error when reconciliation is unavailable.
-      }
-      throw error;
     } finally {
       setIsVaultPending(false);
     }
@@ -1512,7 +1602,6 @@ function DashboardContent() {
       await apiUseBlueprintDecryptionKey(token);
       const refreshedVault = await apiGetBlueprintVault(token);
       setBlueprintVault(refreshedVault);
-      setBlueprintVaultOwnerId(accountId);
       await refreshStore().catch(() => undefined);
       toast({
         title: "Decryption key consumed",
@@ -1552,7 +1641,7 @@ function DashboardContent() {
         ...current,
         loadouts: current.loadouts.map((loadout) => loadout.mode === mode ? updated : loadout),
       } : current);
-      toast({ title: `${mode === "campaign" ? "Vault" : "Custom"} loadout updated` });
+      toast({ title: `${mode === "campaign" ? "Campaign" : "Custom"} loadout updated` });
     } catch (error) {
       toast({
         variant: "destructive",
@@ -1683,9 +1772,6 @@ function DashboardContent() {
               <div className="border-b border-border/35 px-3 py-2.5">
                 <p className="oom-kicker">Signed in</p>
                 <p className="truncate text-sm font-semibold">{account.username}</p>
-                {account.civilizationIdentity?.displayName && (
-                  <p className="mt-0.5 truncate text-[10px] text-primary/75">{account.civilizationIdentity.displayName}</p>
-                )}
               </div>
               <button
                 type="button"
@@ -1725,12 +1811,6 @@ function DashboardContent() {
                   {games.length > 0 ? "Continue your journey," : "Welcome to Luminae,"}{" "}
                   <span className="text-primary">{account.username}</span>
                 </h1>
-                {account.civilizationIdentity?.displayName && (
-                  <div className="mt-1 flex flex-wrap items-center gap-x-2 gap-y-0.5 text-[10px] font-semibold uppercase text-primary/75">
-                    <span>{account.civilizationIdentity.displayName}</span>
-                    {account.civilizationIdentity.projectEpithet && <span>{account.civilizationIdentity.projectEpithet}</span>}
-                  </div>
-                )}
                 <p className="mt-1.5 max-w-xl text-sm leading-relaxed text-muted-foreground">
                   {isLoadingStats
                     ? "Loading your profile..."
@@ -1847,31 +1927,28 @@ function DashboardContent() {
           </div>
         ) : activeTab === "archive" ? (
           <AccountArchive
-            key={account.id}
             stats={stats}
             isLoading={isLoadingStats}
             page={archiveSection}
             onNavigate={handleArchiveNavigate}
             blueprintVault={blueprintVault}
-            architectRecord={architectRecord}
+            campaignProgress={campaignProgress}
+            isChroniclePending={isChroniclePending}
+            onStartTraceChronicle={() => void handleStartTraceChronicle()}
+            onStartRecurrenceChronicle={() => void handleStartRecurrenceChronicle()}
+            onStartTriangulationChronicle={() => void handleStartTriangulationChronicle()}
             isVaultLoading={isVaultLoading}
             isVaultPending={isVaultPending}
             onResumeBlueprintChallenge={handleResumeBlueprintChallenge}
-            onDeactivateBlueprintCipher={async () => { await updateBlueprintThreshold({ action: "deactivate_cipher" }); }}
-            onChooseBlueprintThresholdApproach={async (approach) => {
-              await updateBlueprintThreshold({ action: "choose_approach", approach });
-            }}
+            onDeactivateBlueprintCipher={() => updateBlueprintThreshold({ action: "deactivate_cipher" })}
+            onChooseBlueprintThresholdApproach={(approach) => updateBlueprintThreshold({ action: "choose_approach", approach })}
             onRecordBlueprintThresholdDialogue={(path) => updateBlueprintThreshold({ action: "record_dialogue_path", path })}
-            onResolveBlueprintThresholdDialogue={async () => {
-              await updateBlueprintThreshold({ action: "resolve_dialogue", resolution: "left" });
-            }}
+            onResolveBlueprintThresholdDialogue={() => updateBlueprintThreshold({ action: "resolve_dialogue", resolution: "left" })}
             onUseBlueprintDecryptionKey={handleUseBlueprintDecryptionKey}
             onPrepareBlueprintChallenge={async () => { await prepareBlueprintChallenge(); }}
-            onStartQualifyingMatch={startQualifyingMatch}
             onEnterPreparedBlueprintChallenge={handleEnterPreparedBlueprintChallenge}
             onAcknowledgeVaultReveal={handleAcknowledgeVaultReveal}
             onUpdateBlueprintLoadout={(mode, slots) => void handleUpdateBlueprintLoadout(mode, slots)}
-            onUpdateCivilizationIdentity={handleUpdateCivilizationIdentity}
           />
         ) : activeTab === "store" ? (
           <StoreTab />

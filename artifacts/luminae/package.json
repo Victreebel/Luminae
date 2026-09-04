@@ -1,6 +1,6 @@
 {
   "name": "@workspace/luminae",
-  "version": "0.0.0",
+  "version": "0.1.0-early-access",
   "private": true,
   "type": "module",
   "scripts": {
@@ -12,10 +12,12 @@
     "test:watch": "vitest --config vitest.config.ts",
     "verify:coordination": "vitest run --config vitest.config.ts src/hooks/__tests__/use-authoritative-state-ingress.test.ts src/hooks/__tests__/use-luminary-presentation-engine.test.ts src/lib/__tests__/luminarySequenceController.test.ts src/lib/__tests__/luminarySequenceGate.test.ts src/__tests__/dev-luminary-sequence-panel.test.tsx src/lib/__tests__/artifactBrands.test.ts src/__tests__/branding-keyword-overlay.test.tsx src/components/__tests__/LuminaryActivationCinematic.sequence.test.tsx && tsc -p tsconfig.json --noEmit",
     "verify:production-budgets": "node ./verify-production-budgets.mjs",
+    "native:sync": "pnpm run build && cap sync android",
     "lint": "eslint src --ext .ts,.tsx"
   },
   "devDependencies": {
-    "@eslint/js": "^9.39.4",
+    "@capacitor/cli": "^8.5.0",
+    "@eslint/js": "^10.0.1",
     "@hookform/resolvers": "^3.10.0",
     "@radix-ui/react-accordion": "^1.2.4",
     "@radix-ui/react-alert-dialog": "^1.1.7",
@@ -96,6 +98,8 @@
     "zod": "catalog:"
   },
   "dependencies": {
+    "@capacitor/android": "^8.5.0",
+    "@capacitor/core": "^8.5.0",
     "three": "^0.185.1"
   }
 }

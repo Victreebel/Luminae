@@ -376,8 +376,8 @@ export function ArrivalBrandStrike({
         return (
           <React.Fragment key={i}>
             {/* ── Lightning beam: cosmic space above → card center ── */}
-            {/* Beam tip reaches card at exactly 420ms (= 0.70 × 600ms), matching  */}
-            {/* the absolute amplitude peak in Spellbound.wav.                     */}
+            {/* Beam tip reaches card at 420ms (= 0.70 x 600ms), matching the */}
+            {/* impact peak of the procedural brand-strike cue.              */}
             <motion.div
               style={{
                 position: 'fixed',
@@ -499,7 +499,7 @@ export function ArrivalBrandStrike({
 // strike lands. Flickers like residual discharge energy, then the persistent
 // CardKeywordOverlay keeps the keyword brand alive until the card leaves.
 // `delay` is the ms elapsed from when fireBrandStrikes was called until the
-// beam hit this card (= lead + i*90 + 420ms — the Spellbound.wav impact peak).
+// beam hit this card (= lead + i*90 + 420ms, the procedural cue's impact peak).
 export function BrandStrikeAura({
   type,
   delay,
@@ -1130,7 +1130,7 @@ export function BurnBadgeOverlay({
 // Multi-card burns: stagger individual BurnFlash calls 80–120 ms apart in the
 // procedure; all cards still visibly register with the Burn Pile.
 
-// Burn timing constants (seconds) — synced to Burn.mp3 audible duration (~2.0 s).
+// Burn timing constants (seconds), synced to the procedural burn cue (~2.0 s).
 export const BURN_START_S = 0.30;  // when the flame front begins rising
 export const BURN_DUR_S   = 1.40;  // upward travel duration (300 → 1700 ms)
 

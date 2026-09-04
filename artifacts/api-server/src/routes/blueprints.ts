@@ -8,6 +8,7 @@ import {
   accountBlueprintLoadoutsTable,
   accountBlueprintStatsTable,
   accountBlueprintUnlocksTable,
+  accountChronicleUnlocksTable,
   accountEntitlementsTable,
   db,
   gameStatesTable,
@@ -18,32 +19,34 @@ import {
   BLUEPRINT_CLEARANCE_REQUIRED_WINS,
   BLUEPRINT_DEFINITIONS,
   BLUEPRINT_IDS,
-  canonicalizeLumiiThresholdDialoguePath,
+  DEFAULT_VICTORY_REQUIREMENT,
+  OUTER_VAULT_BLUEPRINT_IDS,
+  CHRONICLE_DEFINITIONS,
+  CHRONICLE_IDS,
   GAME_MODES,
   LUMII_THRESHOLD_DIALOGUE_CHOICE_IDS,
-  LUMII_THRESHOLD_MAX_DIALOGUE_PATH,
   type BlueprintId,
+  type ChronicleId,
   type GameMode,
   type LumiiThresholdApproach,
 } from "@workspace/game-types";
 import { accountAuth } from "../lib/accountAuth";
+import { getEquippedLuminaryArrivalSound } from "../lib/accountCosmetics";
 import { BLACK_MARKET_DECRYPTION_KEY_ITEM_ID } from "../lib/storeCatalog";
 import { ensureAccountProgressBackfilled } from "../lib/accountProgress";
+import { readCampaignProgress } from "../lib/campaignChronicles";
 import { runAiTurnsIfNeeded } from "../lib/aiTurnRunner";
 import { GUIDED_LUMII_AVATAR_ID, pickUniqueAvatar } from "../lib/avatarAssignment";
 import { completeFinishedGame } from "../lib/finishedGame";
-import { readAccountCivilizationIdentity } from "../lib/accountIdentity";
 import {
   formatGameState,
   initializeGame,
   normalizeState,
   parseAiDifficulty,
-  refreshTurnStartTechnologyOpportunity,
   type GameStateData,
 } from "../lib/gameEngine";
 import { withRoomLock } from "../lib/roomLock";
 import { clearTurnTimer } from "../lib/turnTimer";
-import { logger } from "../lib/logger";
 import {
   decideBlueprintThresholdAction,
   decideLumiiDialogueLeave,
@@ -67,27 +70,31 @@ const SLOT_COUNT = 2;
 const COMPETITIVE_BLUEPRINTS_ENABLED =
   process.env.BLUEPRINT_COMPETITIVE_ENABLED === "true";
 
+function isChronicleId(value: string): value is ChronicleId {
+  return (CHRONICLE_IDS as readonly string[]).includes(value);
+}
+
 const LoadoutBody = z.object({
   slots: z
     .array(z.enum(BLUEPRINT_IDS).nullable())
     .max(SLOT_COUNT)
     .transform((slots) => [slots[0] ?? null, slots[1] ?? null]),
-}).strict();
-const WithdrawalBody = z.object({ roomId: z.string().uuid() }).strict();
+});
+const WithdrawalBody = z.object({ roomId: z.string().uuid() });
 const ThresholdBody = z.discriminatedUnion("action", [
-  z.object({ action: z.literal("deactivate_cipher") }).strict(),
+  z.object({ action: z.literal("deactivate_cipher") }),
   z.object({
     action: z.literal("choose_approach"),
     approach: z.enum(["kinship", "inquiry", "dominion"]),
-  }).strict(),
+  }),
   z.object({
     action: z.literal("record_dialogue_path"),
-    path: z.array(z.enum(LUMII_THRESHOLD_DIALOGUE_CHOICE_IDS)).max(LUMII_THRESHOLD_MAX_DIALOGUE_PATH),
-  }).strict(),
+    path: z.array(z.enum(LUMII_THRESHOLD_DIALOGUE_CHOICE_IDS)).max(3),
+  }),
   z.object({
     action: z.literal("resolve_dialogue"),
     resolution: z.literal("left"),
-  }).strict(),
+  }),
 ]);
 
 class ChallengeAlreadyStartedError extends Error {}
@@ -112,11 +119,8 @@ function normalizeThresholdApproach(value: unknown): LumiiThresholdApproach | nu
 function thresholdDialogueState(clearance: BlueprintClearanceRow | undefined) {
   const thresholdApproach = normalizeThresholdApproach(clearance?.thresholdApproach);
   const storedPath = normalizeLumiiThresholdDialoguePath(clearance?.thresholdDialoguePath);
-  const canonicalPath = thresholdApproach
-    ? canonicalizeLumiiThresholdDialoguePath(thresholdApproach, storedPath)
-    : [];
-  const thresholdDialoguePath = thresholdApproach && isLumiiThresholdDialoguePathPrefix(thresholdApproach, canonicalPath)
-    ? canonicalPath
+  const thresholdDialoguePath = thresholdApproach && isLumiiThresholdDialoguePathPrefix(thresholdApproach, storedPath)
+    ? storedPath
     : [];
   return {
     thresholdApproach,
@@ -153,7 +157,7 @@ function hasCipherOpenForThreshold(clearance: BlueprintClearanceRow | undefined)
 
 function publicClearanceStatus(clearance: BlueprintClearanceRow | undefined) {
   if (clearance?.status === "cleared" || clearance?.status === "challenge_active") return clearance.status;
-  if (hasVaultThresholdAccess(clearance)) return "challenge_ready";
+  if (clearance?.status === "challenge_ready" && hasVaultThresholdAccess(clearance)) return "challenge_ready";
   return "classified" as const;
 }
 
@@ -161,8 +165,11 @@ function publicCipherDeactivated(clearance: BlueprintClearanceRow | undefined): 
   return Boolean(clearance?.cipherDeactivatedAt && clearance.qualifyingWins >= BLUEPRINT_CLEARANCE_REQUIRED_WINS);
 }
 
-function publicCovenantBroken(clearance: BlueprintClearanceRow | undefined): boolean {
-  return Boolean(clearance?.covenantBrokenAt && hasVaultThresholdAccess(clearance));
+function publicThresholdRuptured(clearance: BlueprintClearanceRow | undefined): boolean {
+  return Boolean(
+    (clearance?.thresholdRupturedAt ?? clearance?.covenantBrokenAt) &&
+    hasVaultThresholdAccess(clearance),
+  );
 }
 
 async function clearDecryptionKeyBypassAfterExit(accountId: string): Promise<void> {
@@ -188,7 +195,7 @@ async function clearDecryptionKeyBypassAfterExit(accountId: string): Promise<voi
 }
 
 function generateInviteCode(): string {
-  return randomBytes(5).toString("hex").toUpperCase();
+  return randomBytes(4).toString("hex").toUpperCase();
 }
 
 function generateSessionToken(): string {
@@ -223,7 +230,7 @@ function prependUnique(collection: string[], cardIds: readonly string[]): void {
 
 /**
  * Lumii receives a disclosed scenario advantage: three secured Antimatter
- * components, five starting Affinity, and curated paths into all three opening Projects.
+ * components, five starting Affinity, and a curated path through the Forge.
  * The components remain real cards and every Forge still follows normal rules.
  */
 function configureClearanceScenario(
@@ -232,8 +239,8 @@ function configureClearanceScenario(
   thresholdApproach: LumiiThresholdApproach,
 ): void {
   const securedAntimatterComponents = ["t1r01", "t1p04", "t1r04"];
-  const faceUpTier1 = ["t1r07", "t1s02", "t1o05", "t1p05"];
-  const queuedTier1 = ["t1s03", "t1r08"];
+  const faceUpTier1 = ["t1r07", "t1s02", "t1s01", "t1o01"];
+  const queuedTier1 = ["t1o05", "t1p06"];
   const faceUpTier2 = ["t2o01"];
   const curatedIds = [
     ...securedAntimatterComponents,
@@ -261,14 +268,7 @@ function configureClearanceScenario(
     singularity: 0,
   };
   state.brokenCovenantDeclared = true;
-  state.covenantStateByPlayerId = Object.fromEntries(
-    state.players.map((player) => [
-      player.playerId,
-      player.playerId === lumiiPlayerId ? "intact" : "broken",
-    ]),
-  );
   state.lumiiThresholdApproach = thresholdApproach;
-  refreshTurnStartTechnologyOpportunity(state);
 
   if (state.initialBoard) {
     state.initialBoard = {
@@ -323,13 +323,14 @@ async function getActiveChallenge(accountId: string) {
     ? clearance.thresholdApproach
     : "inquiry";
   if (
-    clearance.covenantBrokenAt == null ||
+    (clearance.thresholdRupturedAt ?? clearance.covenantBrokenAt) == null ||
     !hasCipherOpenForThreshold(clearance) ||
     clearance.thresholdApproach == null ||
     clearance.thresholdDialogueResolution !== "continued"
   ) {
     const now = new Date();
     const patch: Partial<typeof accountBlueprintClearanceTable.$inferInsert> = {
+      thresholdRupturedAt: clearance.thresholdRupturedAt ?? clearance.covenantBrokenAt ?? now,
       covenantBrokenAt: clearance.covenantBrokenAt ?? now,
       thresholdApproach: clearance.thresholdApproach ?? legacyApproach,
       thresholdDialogueResolution: "continued",
@@ -356,7 +357,7 @@ router.get("/blueprints/vault", accountAuth, async (req: Request, res): Promise<
   const account = req.account!;
   await ensureAccountProgressBackfilled(account.id);
 
-  const [clearanceRows, unlockRows, loadoutRows, statsRows, keyRows] = await Promise.all([
+  const [clearanceRows, unlockRows, loadoutRows, statsRows, keyRows, chronicleRows, campaignProgress] = await Promise.all([
     db
       .select()
       .from(accountBlueprintClearanceTable)
@@ -385,6 +386,11 @@ router.get("/blueprints/vault", accountAuth, async (req: Request, res): Promise<
         ),
       )
       .limit(1),
+    db
+      .select()
+      .from(accountChronicleUnlocksTable)
+      .where(eq(accountChronicleUnlocksTable.accountId, account.id)),
+    readCampaignProgress(account.id),
   ]);
 
   const clearance = clearanceRows[0];
@@ -402,17 +408,36 @@ router.get("/blueprints/vault", accountAuth, async (req: Request, res): Promise<
       return row && isBlueprintId(row.blueprintId) ? row.blueprintId : null;
     }),
   }));
+  const chronicleUnlockMap = new Map(
+    chronicleRows
+      .filter((row) => isChronicleId(row.chronicleId))
+      .map((row) => [row.chronicleId, row]),
+  );
+  const chronicles = CHRONICLE_IDS.map((chronicleId) => {
+    const definition = CHRONICLE_DEFINITIONS[chronicleId];
+    const unlock = chronicleUnlockMap.get(chronicleId);
+    return {
+      id: chronicleId,
+      title: definition.title,
+      chapterLabel: definition.chapterLabel,
+      summary: definition.summary,
+      status: unlock ? "recovered" as const : "sealed" as const,
+      unlockedAt: unlock?.unlockedAt.toISOString() ?? null,
+      relatedBlueprintIds: [...definition.relatedBlueprintIds],
+    };
+  });
 
   res.json({
     clearance: {
-      qualifyingWins: Math.min(clearance?.qualifyingWins ?? 0, BLUEPRINT_CLEARANCE_REQUIRED_WINS),
+      qualifyingWins: clearance?.qualifyingWins ?? 0,
       requiredWins: BLUEPRINT_CLEARANCE_REQUIRED_WINS,
       status: publicClearanceStatus(clearance),
       challengeRoomId: clearance?.challengeRoomId ?? null,
       warningSeen: clearance?.warningSeenAt !== null && clearance?.warningSeenAt !== undefined,
       cipherDeactivated: publicCipherDeactivated(clearance),
       ...dialogueState,
-      covenantBroken: publicCovenantBroken(clearance),
+      thresholdRuptured: publicThresholdRuptured(clearance),
+      covenantBroken: publicThresholdRuptured(clearance),
       decryptionKeyBypassActive: clearance?.decryptionKeyBypassActiveAt != null,
       revealPending: cleared && clearance?.completedAt != null && clearance?.vaultRevealSeenAt == null,
     },
@@ -424,20 +449,22 @@ router.get("/blueprints/vault", accountAuth, async (req: Request, res): Promise<
       ? unlockedIds.map((blueprintId) => BLUEPRINT_DEFINITIONS[blueprintId])
       : [],
     corruptedRecordCount: cleared
-      ? Math.max(0, BLUEPRINT_IDS.length - unlockedIds.length)
+      ? OUTER_VAULT_BLUEPRINT_IDS.filter((blueprintId) => !unlockedIds.includes(blueprintId)).length
       : null,
     campaignNodes: cleared && unlockedIds.includes("bp_antimatter_detonator")
       ? [{
           id: "campaign_antimatter_first_charge",
           blueprintId: "bp_antimatter_detonator",
           title: "The First Charge",
-          status: "future",
+          status: "pending_release",
         }]
       : [],
+    campaignProgress,
     loadouts: cleared ? loadouts : [],
     mastery: cleared
       ? statsRows.filter((row) => isBlueprintId(row.blueprintId))
       : [],
+    chronicles: cleared ? chronicles : [],
   });
 });
 
@@ -541,9 +568,13 @@ router.post(
       return;
     }
 
-    try {
     const account = req.account!;
     await ensureAccountProgressBackfilled(account.id);
+    const campaignProgress = await readCampaignProgress(account.id);
+    if (!campaignProgress.thresholdAvailable) {
+      res.status(403).json({ error: "Complete the three opening Chronicles before approaching the Threshold" });
+      return;
+    }
     const readClearance = async () => {
       const [row] = await db
         .select()
@@ -570,9 +601,7 @@ router.post(
         res.status(409).json({ error: "Choose how you will approach Lumii first" });
         return;
       }
-      const storedPath = normalizeLumiiThresholdDialoguePath(clearance.thresholdDialoguePath);
-      const currentPath = canonicalizeLumiiThresholdDialoguePath(currentApproach, storedPath);
-      const canonicalRequestedPath = canonicalizeLumiiThresholdDialoguePath(currentApproach, requestedPath);
+      const currentPath = normalizeLumiiThresholdDialoguePath(clearance.thresholdDialoguePath);
       const decision = decideLumiiDialoguePathUpdate(
         {
           approach: currentApproach,
@@ -592,18 +621,15 @@ router.post(
           .where(
             and(
               eq(accountBlueprintClearanceTable.accountId, account.id),
-              thresholdDialoguePathMatches(storedPath),
+              thresholdDialoguePathMatches(currentPath),
               isNull(accountBlueprintClearanceTable.thresholdDialogueResolution),
             ),
           )
           .returning({ accountId: accountBlueprintClearanceTable.accountId });
         clearance = await readClearance();
-        const persistedPath = canonicalizeLumiiThresholdDialoguePath(
-          currentApproach,
-          normalizeLumiiThresholdDialoguePath(clearance?.thresholdDialoguePath),
-        );
-        const isIdempotentRepeat = persistedPath.length === canonicalRequestedPath.length &&
-          persistedPath.every((entry, index) => entry === canonicalRequestedPath[index]);
+        const persistedPath = normalizeLumiiThresholdDialoguePath(clearance?.thresholdDialoguePath);
+        const isIdempotentRepeat = persistedPath.length === requestedPath.length &&
+          persistedPath.every((entry, index) => entry === requestedPath[index]);
         if (!updated && !isIdempotentRepeat) {
           res.status(409).json({ error: "Another response has already been remembered" });
           return;
@@ -693,22 +719,6 @@ router.post(
       return;
     }
     res.json(thresholdResult(clearance));
-    } catch (error) {
-      logger.error(
-        {
-          err: error,
-          accountId: req.account?.id,
-          action: parsed.data.action,
-        },
-        "Vault threshold persistence failed",
-      );
-      if (!res.headersSent) {
-        res.status(503).json({
-          error: "Response not saved. Your place is preserved. Try again.",
-          code: "THRESHOLD_PERSISTENCE_UNAVAILABLE",
-        });
-      }
-    }
   },
 );
 
@@ -750,8 +760,14 @@ router.post(
         resumed: true,
         scenarioId: CLEARANCE_SCENARIO_ID,
         campaignAssistance:
-          "Lumii begins with one current in each of the five natural Affinities, three sealed protocols, and a curated Forge path.",
+          "Lumii begins with five Affinity, three sealed protocols, and a curated Forge path.",
       });
+      return;
+    }
+
+    const campaignProgress = await readCampaignProgress(account.id);
+    if (!campaignProgress.thresholdAvailable) {
+      res.status(403).json({ error: "Complete the three opening Chronicles before confronting Lumii" });
       return;
     }
 
@@ -795,10 +811,7 @@ router.post(
       res.status(409).json({ error: "Choose how you will approach Lumii first" });
       return;
     }
-    const thresholdDialoguePath = canonicalizeLumiiThresholdDialoguePath(
-      thresholdApproach,
-      normalizeLumiiThresholdDialoguePath(clearance.thresholdDialoguePath),
-    );
+    const thresholdDialoguePath = normalizeLumiiThresholdDialoguePath(clearance.thresholdDialoguePath);
     const thresholdDialogueResolution = normalizeLumiiThresholdDialogueResolution(
       clearance.thresholdDialogueResolution,
     );
@@ -809,8 +822,8 @@ router.post(
       res.status(409).json({ error: "Finish your exchange with Lumii first" });
       return;
     }
+    const luminaryArrivalSound = await getEquippedLuminaryArrivalSound(account.id);
 
-    const playerIdentity = await readAccountCivilizationIdentity(account.id);
     try {
       const challenge = await db.transaction(async (tx) => {
         const inviteCode = generateInviteCode();
@@ -823,7 +836,7 @@ router.post(
             inviteCode,
             status: "playing",
             maxPlayers: 2,
-            victoryRequirement: 15,
+            victoryRequirement: DEFAULT_VICTORY_REQUIREMENT,
             cinematicMode: "epic",
             gameMode: "campaign",
             scenarioId: CLEARANCE_SCENARIO_ID,
@@ -869,7 +882,11 @@ router.post(
 
         const state = initializeGame(
           [
-            { id: player.id, name: player.name },
+            {
+              id: player.id,
+              name: player.name,
+              luminaryArrivalSound,
+            },
             { id: lumii.id, name: lumii.name },
           ],
           2,
@@ -878,17 +895,12 @@ router.post(
           {
             blueprintSetups: {
               [lumii.id]: {
-                blueprintIds: [
-                  "bp_antimatter_detonator",
-                  "bp_mantle_to_orbit_foundry",
-                  "bp_ascension_registry",
-                ],
+                blueprintIds: [...OUTER_VAULT_BLUEPRINT_IDS],
                 presentationVariants: {
                   bp_antimatter_detonator: "armored",
                 },
               },
             },
-            civilizationIdentities: { [player.id]: playerIdentity },
           },
         );
         state.turnTimerSeconds = null;
@@ -910,6 +922,7 @@ router.post(
             cipherDeactivatedAt: clearance.cipherDeactivatedAt,
             thresholdApproach,
             thresholdDialogueResolution: "continued",
+            thresholdRupturedAt: clearance.thresholdRupturedAt ?? clearance.covenantBrokenAt ?? new Date(),
             covenantBrokenAt: clearance.covenantBrokenAt ?? new Date(),
             updatedAt: new Date(),
           })
@@ -936,7 +949,7 @@ router.post(
         scenarioId: CLEARANCE_SCENARIO_ID,
         lumiiThresholdApproach: thresholdApproach,
         campaignAssistance:
-          "Lumii begins with one current in each of the five natural Affinities, three sealed protocols, and a curated Forge path.",
+          "Lumii begins with five Affinity, three sealed protocols, and a curated Forge path.",
       });
       void runAiTurnsIfNeeded(challenge.roomId);
     } catch (error) {
@@ -951,7 +964,7 @@ router.post(
         resumed: true,
         scenarioId: CLEARANCE_SCENARIO_ID,
         campaignAssistance:
-          "Lumii begins with one current in each of the five natural Affinities, three sealed protocols, and a curated Forge path.",
+          "Lumii begins with five Affinity, three sealed protocols, and a curated Forge path.",
       });
     }
   },

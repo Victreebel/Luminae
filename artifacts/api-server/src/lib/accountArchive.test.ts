@@ -1,5 +1,4 @@
 import { describe, expect, it } from "vitest";
-import { BLUEPRINT_CLEARANCE_REQUIRED_WINS } from "@workspace/game-types";
 import { buildAccountArchive } from "./accountArchive";
 
 function hardAiOpponents(count = 3) {
@@ -45,7 +44,7 @@ describe("account Archive", () => {
     ]);
     expect(archive.luminaries.encountered.map((luminary) => luminary.id)).toEqual(["lum_tide"]);
     expect(archive.luminaries.encountered[0]?.allianceCount).toBe(1);
-    expect(archive.identity).toMatchObject({
+    expect(archive.identity).toEqual({
       totalForges: 1,
       totalAlliances: 1,
       signatureArtifactId: "t1r01",
@@ -65,6 +64,16 @@ describe("account Archive", () => {
             playerId: "player-one",
             forgedArtifactIds: [],
             artifactForgeCounts: { t1r01: 2, t2p02: 1 },
+            civilization: {
+              version: 1,
+              artifacts: {
+                t1e01: {
+                  artifactId: "t1e01",
+                  masteryCount: 1,
+                  implementationState: "annihilated",
+                },
+              },
+            },
             luminaries: ["lum_tide"],
             luminaryAllianceCounts: { lum_tide: 1 },
           }],
@@ -88,13 +97,14 @@ describe("account Archive", () => {
 
     expect(archive.artifacts.discovered.map((artifact) => [artifact.id, artifact.forgeCount])).toEqual([
       ["t1r01", 3],
+      ["t1e01", 0],
       ["t2p02", 1],
     ]);
     expect(archive.luminaries.encountered.map((luminary) => [luminary.id, luminary.allianceCount])).toEqual([
       ["lum_tide", 2],
       ["lum_void", 1],
     ]);
-    expect(archive.identity).toMatchObject({
+    expect(archive.identity).toEqual({
       totalForges: 4,
       totalAlliances: 3,
       signatureArtifactId: "t1r01",
@@ -122,8 +132,8 @@ describe("account Archive", () => {
     expect(archive.identity.closestLuminaryId).toBeNull();
   });
 
-  it("requires three wins against exactly three hard AI opponents", () => {
-    const qualifying = Array.from({ length: BLUEPRINT_CLEARANCE_REQUIRED_WINS }, () => ({
+  it("requires five wins against exactly three hard AI opponents", () => {
+    const qualifying = Array.from({ length: 5 }, () => ({
       playerId: "player-one",
       finished: true,
       opponents: hardAiOpponents(),
@@ -151,8 +161,8 @@ describe("account Archive", () => {
     const archive = buildAccountArchive([...qualifying, ...nonQualifying]);
 
     expect(archive.vault).toEqual({
-      qualifyingWins: BLUEPRINT_CLEARANCE_REQUIRED_WINS,
-      requiredWins: BLUEPRINT_CLEARANCE_REQUIRED_WINS,
+      qualifyingWins: 5,
+      requiredWins: 5,
       status: "challenge_ready",
       challengeRoomId: null,
       unlocked: false,

@@ -1,7 +1,6 @@
 import type { AffinityCounts } from '@workspace/api-client-react';
-import { computeKardashevType, type KardashevType } from '@workspace/game-types';
 
-export type KardashevTier = KardashevType;
+export type KardashevTier = 0 | 1 | 2 | 3;
 
 export interface AffinityPalette {
   primary: string;
@@ -85,14 +84,25 @@ export function getKardashevTier(
   forgedArtifacts: ReadonlyArray<CardRef>,
   discountedForgeIds: ReadonlyArray<string> = [],
 ): KardashevTier {
+  if (!forgedArtifacts || forgedArtifacts.length === 0) return 0;
+
   const discountedSet = new Set(discountedForgeIds);
-  const bonusFundedForgeIds = forgedArtifacts
-    .filter((card) => wasDiscountedAtForge(card, discountedSet))
-    .map((card) => card.id);
-  return computeKardashevType(
-    forgedArtifacts.map((card) => card.id),
-    bonusFundedForgeIds,
-  );
+
+  const tier1 = forgedArtifacts.filter((artifact) => artifact.tier === 1);
+  const tier2 = forgedArtifacts.filter((artifact) => artifact.tier === 2);
+  const tier3 = forgedArtifacts.filter((artifact) => artifact.tier === 3);
+
+  // Type III: a Tier 3 card fully on discounts
+  if (tier3.some((c) => wasDiscountedAtForge(c, discountedSet))) return 3;
+
+  // Type II: any Tier 3 card, OR a Tier 2 card fully on discounts
+  if (tier3.length > 0 || tier2.some((c) => wasDiscountedAtForge(c, discountedSet))) return 2;
+
+  // Type I: any Tier 2 card, OR a Tier 1 card fully on discounts
+  if (tier2.length > 0 || tier1.some((c) => wasDiscountedAtForge(c, discountedSet))) return 1;
+
+  // Still on the ground: only Tier 1 Artifacts forged by spending Affinities.
+  return 0;
 }
 
 // ── Civilization name ────────────────────────────────────────────────────────

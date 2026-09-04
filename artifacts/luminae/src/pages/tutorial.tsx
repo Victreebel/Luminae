@@ -1,22 +1,20 @@
-import { useEffect, useState } from "react";
+import { useState } from "react";
 import { useEscapeToClose } from "@/hooks/use-escape-to-close";
 import { useLocation } from "wouter";
 import { motion } from "framer-motion";
 import { consumePendingStartBeat } from "@/lib/tutorialStartBeat";
-import { loadTutorialProgress, loadTutorialProgressId, clearTutorialProgress, hasTutorialBeenCompleted } from "@/lib/tutorialProgress";
+import { loadTutorialProgress, loadTutorialProgressId, clearTutorialProgress } from "@/lib/tutorialProgress";
 import { TutorialDirector } from "@/components/tutorial/TutorialDirector";
 import { TutorialStartModal } from "@/components/tutorial/TutorialStartModal";
-import { TUTORIAL_BEATS, resolveTutorialBeatIndex } from "@/lib/tutorialData";
+import { TUTORIAL_BEATS, BEAT_INDEX } from "@/lib/tutorialData";
 import { useAccount } from "@/contexts/AccountContext";
 import { AccountLoadingScreen } from "@/components/AccountLoadingScreen";
-import { beginTutorialTelemetry, trackFirstPartyEvent } from "@/lib/firstPartyTelemetry";
 
 type Phase = "prompt" | "playing";
 
 export default function Tutorial() {
   const [, navigate] = useLocation();
   const { isLoading } = useAccount();
-  const tutorialCompleted = hasTutorialBeenCompleted();
 
   // Consume any programmatically-set beat (e.g. from a deep-link or dev tool).
   // This runs once per mount; if set it skips the resume prompt entirely.
@@ -37,8 +35,10 @@ export default function Tutorial() {
     const rawIdx = loadTutorialProgress();
     if (rawIdx === null) return null;
     const savedId = loadTutorialProgressId();
-    const migratedIndex = resolveTutorialBeatIndex(savedId);
-    if (migratedIndex != null) return migratedIndex;
+    if (savedId) {
+      const currentIdx = BEAT_INDEX[savedId];
+      if (currentIdx != null) return currentIdx;
+    }
     return rawIdx;
   })();
   const hasMidProgress =
@@ -51,27 +51,17 @@ export default function Tutorial() {
   // Otherwise, start playing from beat 0 immediately.
   const effectivePending = urlBeat ?? (pendingBeat != null ? pendingBeat : null);
   const [phase, setPhase] = useState<Phase>(
-    effectivePending != null || (!hasMidProgress && !tutorialCompleted) ? "playing" : "prompt"
+    effectivePending != null || !hasMidProgress ? "playing" : "prompt"
   );
   const [startBeat, setStartBeat] = useState<number | undefined>(
     effectivePending ?? undefined
   );
 
-  useEffect(() => {
-    beginTutorialTelemetry();
-    trackFirstPartyEvent(
-      { eventName: hasMidProgress ? "tutorial_resumed" : "tutorial_started" },
-      `tutorial-entry:${hasMidProgress ? "resume" : "start"}`,
-    );
-  }, [hasMidProgress]);
-
   function handleChoice(choice: "begin" | "resume" | "start-over" | "cancel") {
     if (choice === "resume") {
-      trackFirstPartyEvent({ eventName: "tutorial_resumed", outcome: "resume" });
       setStartBeat(savedBeat!);
       setPhase("playing");
     } else if (choice === "start-over") {
-      trackFirstPartyEvent({ eventName: "tutorial_restarted", outcome: "start_over" });
       clearTutorialProgress();
       setStartBeat(0);   // explicit 0 bypasses the hasTutorialSeen() → shatter fallback
       setPhase("playing");
@@ -81,17 +71,6 @@ export default function Tutorial() {
     } else {
       navigate("/");
     }
-  }
-
-  function handleChapterSelect(beat: number) {
-    clearTutorialProgress();
-    setStartBeat(beat);
-    setPhase("playing");
-  }
-
-  function handleReplay() {
-    setStartBeat(undefined);
-    setPhase("prompt");
   }
 
   useEscapeToClose([
@@ -106,9 +85,7 @@ export default function Tutorial() {
         hasProgress={hasMidProgress}
         savedBeat={savedBeat ?? undefined}
         totalBeats={TUTORIAL_BEATS.length}
-        completed={tutorialCompleted}
         onChoice={handleChoice}
-        onSelectChapter={handleChapterSelect}
       />
     );
   }
@@ -120,7 +97,7 @@ export default function Tutorial() {
       transition={{ duration: 0.5, ease: "easeOut" }}
       style={{ height: "100%", display: "contents" }}
     >
-      <TutorialDirector startBeat={startBeat} onReplay={handleReplay} />
+      <TutorialDirector startBeat={startBeat} />
     </motion.div>
   );
 }

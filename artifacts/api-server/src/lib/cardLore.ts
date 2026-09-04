@@ -1,12 +1,16 @@
 // ─── Luminae Card Lore ──────────────────────────────────────────────────────
 // Tier I/II canon originates in LUMINAe_ARTIFACT_REPLACEMENT_TABLE_v0.4_UTILITY_FIRST_LORE.md.
-// The hierarchy and Tier III canon are defined in LUMINAe_TECHNOLOGY_SYSTEM_v2.0.md.
-// Keep source and design canon synchronized.
+// Technology v2 owns lineage, depiction-scale metadata, and bounded Tier III canon.
 //
 // artPrompt variety slots: see docs/card_art_variety_matrix.md
 // Format: [Scale/Shot] — [Background] — [Subject] — [Palette] — [Exclusions]
 
-import { ARTIFACT_CATALOG, ARTIFACT_DEFINITIONS, type ArtifactId } from "@workspace/game-types";
+import {
+  ARTIFACT_DEPICTION_SCALE_BY_ID,
+  TIER_THREE_ARTIFACT_CANON,
+  type ArtifactId,
+  type TierThreeArtifactCanon,
+} from '@workspace/game-types';
 
 export interface CardLore {
   name: string;
@@ -16,7 +20,64 @@ export interface CardLore {
   blueprintFamilies?: string;
   civLane?: string;
   engineeringScale?: "Planetary" | "Star-system" | "Galactic";
+  depictionScale?:
+    | "macro"
+    | "tabletop"
+    | "room"
+    | "installation"
+    | "planetary"
+    | "stellar"
+    | "galactic";
   artPrompt?: string;
+}
+
+export type ArtifactDepictionScale = NonNullable<CardLore["depictionScale"]>;
+
+export interface PublicCardLore {
+  name: string;
+  flavor: string;
+  artifactForm?: string;
+  practicalCapability?: string;
+  civLane?: string;
+  engineeringScale?: "Planetary" | "Star-system" | "Galactic";
+  depictionScale: ArtifactDepictionScale;
+  artPrompt?: string;
+}
+
+export function getArtifactDepictionScale(lore: CardLore): ArtifactDepictionScale {
+  if (lore.depictionScale) return lore.depictionScale;
+
+  const prompt = lore.artPrompt?.toLowerCase() ?? "";
+  const form = lore.artifactForm?.toLowerCase() ?? "";
+
+  if (/galactic-scale|galactic industrial scene|galactic network|galactic region|galactic civic|galactic-arm|wide galactic|deep galactic|interstellar necrobiome|many star systems|several star systems|across systems|spiral arm/.test(prompt)) {
+    return "galactic";
+  }
+  if (/stellar-scale|star-system|system-scale|heliosphere|several stars|around a star|around different stars/.test(prompt)) {
+    return "stellar";
+  }
+  if (/extreme macro|macro close-up|macro cross-section|grain-|marble-sized|thumbnail-sized/.test(prompt)) {
+    return "macro";
+  }
+  if (/room-scale|space large enough to walk through|wall-mounted|console-sized/.test(prompt)) {
+    return "room";
+  }
+  if (/tabletop|handheld|palm-sized|finger-length|fingertip-sized|coin-sized|matchbox-sized|forearm-sized|hand-sized/.test(prompt)) {
+    return "tabletop";
+  }
+  if (/installation-scale|facility-scale|building-scale|warehouse|tower|facade/.test(prompt)) {
+    return "installation";
+  }
+  if (/galaxy-wide|galaxy|interstellar/.test(prompt)) {
+    return "galactic";
+  }
+  if (/planetary-scale|planet-wide|planet surface|horizon|world-scale/.test(prompt)) {
+    return "planetary";
+  }
+  if (/galactic/.test(form) || lore.engineeringScale === "Galactic") return "galactic";
+  if (/stellar|star-system|heliosphere/.test(form) || lore.engineeringScale === "Star-system") return "stellar";
+  if (/planetary|world/.test(form) || lore.engineeringScale === "Planetary") return "planetary";
+  return "tabletop";
 }
 
 export const CARD_LORE: Record<string, CardLore> = {
@@ -609,50 +670,310 @@ export const CARD_LORE: Record<string, CardLore> = {
     artPrompt: "Tabletop eye-level view, nebula field background — distant stellar cloud, no planets or moons. A radiation treaty prism in white-gold housing: its faces are tuned to specific habitat-tolerance wavelengths, each face catching a different treaty-band of stellar light. The nebula behind provides soft stellar context without dominating. Handheld scale. Palette: white-gold prism, multi-band stellar light refraction, soft nebula field. No text, no labels." },
 };
 
-// Tier III artwork depicts bounded galactic-keystone instruments. Their eventual
-// Manifested Projects remain campaign-gated and live outside the production catalog.
-const TIER_THREE_V2_ART_PROMPTS: Partial<Record<ArtifactId, string>> = {
-  t3r01: "A bounded dark-metal interpreter frames alien stellar ignition signals beside one star; red-gold translation arcs, one inspectable operational instrument, no network or text.",
-  t3r02: "A compact refractory recovery machine safely separates useful elements from dead-system debris; dark metal, restrained red heat, visible sealed output canisters, no megastructure or text.",
-  t3r03: "Nested red phase rings and a sapphire timing core regulate one relativistic stellar event; precise bounded hardware near a star, no galactic array or text.",
-  t3r04: "A compact black-and-gold forge heart turns stellar feedstock into several distinct habitat-compatible test forms; bounded machinery, no production network or text.",
-  t3s01: "A compact sapphire route-solving instrument models one safe path through a dark void inside transparent containment; dishes and calibration arms, no gate network or text.",
-  t3s02: "Two divergent civic records enter a bounded reconciliation machine and emerge as one auditable result without erasing either source; sapphire and gold, no institution or text.",
-  t3s03: "A black-and-gold antenna instrument decodes one faint signal from a ruined world into a central crystal archive; bounded hardware, no archive network or text.",
-  t3s04: "Unequal sapphire chronology rings align around one white ordering axis inside a compact governor; inspectable relativistic timing hardware, no accord network or text.",
-  t3e01: "Two incompatible living samples are joined by a contained graft on a compact transit spine; green biological glass, precise clamps, no world-spanning roots or text.",
-  t3e02: "A black-and-green genome engine tests one small stellar habitat bud beside a star; bounded biological machinery, no stellar overgrowth or text.",
-  t3e03: "A compact containment instrument compares a fossil sample against layered living defenses and a healthy culture; green-black hardware, no interstellar biome or text.",
-  t3e04: "Two incompatible biochemistries meet across one gold living translation membrane in a sealed instrument; teal and violet samples, no galactic network or text.",
-  t3o01: "A compact refuge biosphere sleeps inside concentric abyssal insulation embedded in cold planetary rock; matte-black pressure shell, restrained green life, no constellation or text.",
-  t3o02: "Physical, ecological, and civic sensor streams converge into a compact near-black prediction core showing one branching collapse model; no containment network or text.",
-  t3o03: "A pale living symbiont routes one authenticated signal through a matte-black relay without outward emission; compact covert hardware, no signal network or text.",
-  t3o04: "Four compact interferometer arms measure a central near-black null sample with reciprocal pale-cyan light; bounded observatory instrument, no aperture or text.",
-  t3p01: "Distinct non-humanoid signal vessels feed a compact white-gold consent verifier while every input remains separate; bounded instrument, no civic network or text.",
-  t3p02: "A complex relic component sits in a compact provenance machine encircled by transparent witness nodes and one unexplained gap; no public foundry or text.",
-  t3p03: "Several independent logic cores of unlike geometry exchange proofs through a compact white-gold substrate without merging; no stellar computation network or text.",
-  t3p04: "Optical, chemical, vibration, magnetic, and living sensors seal testimony about one damaged habitat fragment into a white-gold evidence crystal; no constellation or text.",
-};
+// Tier 3 represents complete Type III public works rather than component-sized
+// objects. Blueprints remain distinct as secret syntheses of forged Artifacts.
+Object.assign(CARD_LORE, {
+  // ── Tier 3 ─ Flare ─────────────────────────────────────────────────────
+  t3r01: {
+    name: "Ignition Reliquary",
+    flavor:
+      "Across the galaxy, this network preserves how every tended star first ignited. Dead suns sometimes answer before the relighting begins.",
+    artifactForm: "Galactic Energy Network / Archive",
+    blueprintRole: "stellar ignition continuity",
+    blueprintFamilies: "Stellar Nursery Rite; Galactic Relic Forge",
+    civLane: "stellar lineage civilization",
+    engineeringScale: "Galactic",
+    artPrompt:
+      "Galactic-scale panoramic view along a spiral arm. Thousands of dark reliquary foundries encircle stars of different ages, linked by restrained red-gold ignition channels; one dim star is being carefully restarted from a preserved stellar pattern. Palette: near-black infrastructure, red-gold controlled plasma, varied natural starlight. Show a distributed galactic work, not a key or handheld object. No text.",
+  } as CardLore,
 
-for (const artifact of ARTIFACT_CATALOG) {
-  const existing = CARD_LORE[artifact.id] ?? {
-    name: artifact.name,
-    flavor: artifact.flavor,
-  };
-  CARD_LORE[artifact.id] = {
-    ...existing,
-    name: artifact.name,
-    flavor: artifact.flavor,
-    artifactForm: artifact.forms.join(" / "),
-    blueprintRole: artifact.blueprintRole,
-    blueprintFamilies: artifact.blueprintFamilies,
-    engineeringScale: artifact.engineeringScale,
-    artPrompt: TIER_THREE_V2_ART_PROMPTS[artifact.id] ?? existing.artPrompt,
-  };
+  t3r02: {
+    name: "Extinction Furnace",
+    flavor:
+      "The Furnace dismantles dying stars and ruined megastructures, returning their matter to the galaxy. Every use is witnessed; not every witness returns.",
+    artifactForm: "Galactic Disassembly Megastructure / Power Infrastructure",
+    blueprintRole: "terminal-system disassembly",
+    blueprintFamilies: "Causality Audit Court; Black-Map Pilgrimage Engine",
+    civLane: "catastrophe-governance civilization",
+    engineeringScale: "Galactic",
+    artPrompt:
+      "Galactic industrial scene around a dying red star. Vast black furnace arcs and red-gold extraction channels dismantle a derelict megastructure into ordered matter streams while distant white witness stations remain visibly connected. Palette: black refractory machinery, deep red stellar fire, white-gold oversight lights. Physically immense and governed, not a token or seal. No text.",
+  } as CardLore,
+
+  t3r03: {
+    name: "Chronoflare Array",
+    flavor:
+      "The Array times stellar flares across the galaxy so distant systems receive power together. Its countdown begins at different numbers everywhere.",
+    artifactForm: "Galactic Energy Array / Chronology Infrastructure",
+    blueprintRole: "synchronized galactic power",
+    blueprintFamilies: "Causality Audit Court; Matrioshka Chorus precursor",
+    civLane: "relativistic energy civilization",
+    engineeringScale: "Galactic",
+    artPrompt:
+      "Wide galactic-arm view of many stars held in a synchronized energy array. Red-orange flares ignite in a deliberate sequence across deep space while sapphire timing fronts connect them along curved relativistic routes. Palette: stellar red-orange, sapphire chronology light, dark cosmic structure. Show coordinated infrastructure across many systems, not a lens. No text.",
+  } as CardLore,
+
+  t3r04: {
+    name: "Star-River Crucible",
+    flavor:
+      "A river of stellar matter flows through galactic foundries and emerges as habitats, engines, and young worlds. Some arrive already inhabited.",
+    artifactForm: "Galactic Fabrication Infrastructure / Biotech Interface",
+    blueprintRole: "living megastructure fabrication",
+    blueprintFamilies: "Star-River Migration Lattice; Galactic Relic Forge",
+    civLane: "living industrial expansion civilization",
+    engineeringScale: "Galactic",
+    artPrompt:
+      "Galactic-scale industrial river crossing several star systems. Streams of red-gold stellar feedstock pass through enormous dark crucible stations and emerge as luminous habitat rings and green living world-shells. Palette: red-gold matter streams, dark industrial frames, restrained green biological light, natural stars. Show the whole interstellar production chain, not one propulsion core. No text.",
+  } as CardLore,
+
+  // ── Tier 3 ─ Continuum ─────────────────────────────────────────────────
+  t3s01: {
+    name: "Wormgate Spine",
+    flavor:
+      "A chain of wormgates forms the galaxy's great road. When one gate fails, the Spine quietly remembers another route.",
+    artifactForm: "Galactic Transit Megastructure / Control Network",
+    blueprintRole: "galactic transit continuity",
+    blueprintFamilies: "Black-Map Pilgrimage Engine; Extragalactic Gatework",
+    civLane: "interstellar transit civilization",
+    engineeringScale: "Galactic",
+    artPrompt:
+      "Deep galactic perspective along a chain of monumental sapphire-dark wormgates curving through a spiral arm, each gate linked by luminous route filaments and surrounded by distinct inhabited systems. Palette: deep sapphire, pale transit light, varied stellar colors, dark structure. Show the complete backbone, not a compass. No text.",
+  } as CardLore,
+
+  t3s02: {
+    name: "Recursive Commonwealth",
+    flavor:
+      "Separated societies let their laws diverge, then use the Commonwealth to reconcile. Sometimes it preserves a decision no society recalls making.",
+    artifactForm:
+      "Distributed Civic Continuity Network / Protocol Infrastructure",
+    blueprintRole: "distributed civic reconciliation",
+    blueprintFamilies: "Causality Audit Court; Galactic Concordance",
+    civLane: "plural continuity civilization",
+    engineeringScale: "Galactic",
+    artPrompt:
+      "Galactic network of several visibly different inhabited systems connected by branching sapphire civic routes that separate, evolve distinct geometric patterns, and rejoin at transparent reconciliation stations. Palette: sapphire continuity light, white witness structures, varied habitat colors. Show a distributed institution, not a key or throne. No text.",
+  } as CardLore,
+
+  t3s03: {
+    name: "Extinction Archive",
+    flavor:
+      "The Archive keeps the voices, jokes, failures, and unfinished warnings of extinct peoples. A few records are still receiving replies.",
+    artifactForm: "Galactic Archive Network / Civic Signal",
+    blueprintRole: "extinct-civilization memory",
+    blueprintFamilies: "Spiral-Arm Archive; Galactic Concordance",
+    civLane: "galactic archivist civilization",
+    engineeringScale: "Galactic",
+    artPrompt:
+      "Galactic archive network spanning several silent star systems. Monumental sapphire-black archive stations orbit dead worlds and exchange pale-gold ancestral signals across the darkness, with no central capital. Palette: deep sapphire, aged dark metal, pale-gold memory light, cold dead stars. Show the complete distributed archive, not a key or shard. No readable text.",
+  } as CardLore,
+
+  t3s04: {
+    name: "Chronology Accord",
+    flavor:
+      "The Accord lets worlds with different clocks share one history. It contains dates that every participant insists came first.",
+    artifactForm: "Galactic Chronology Infrastructure / Civic Protocol",
+    blueprintRole: "galactic chronology governance",
+    blueprintFamilies: "Causality Audit Court; Spiral-Arm Archive",
+    civLane: "chronology-governing civilization",
+    engineeringScale: "Galactic",
+    artPrompt:
+      "Wide view of many star systems connected by a galactic chronology accord. Monumental sapphire-white calibration stations anchor distinct local clock fields while transparent time-route bands reconcile them without forcing one uniform ring. Palette: sapphire, white-gold calibration light, varied stellar context. Show galaxy-wide infrastructure, not a governor device. No text.",
+  } as CardLore,
+
+  // ── Tier 3 ─ Verdance ──────────────────────────────────────────────────
+  t3e01: {
+    name: "Worldroot Lattice",
+    flavor:
+      "Living roots carry nutrients, defenses, and dormant life between worlds without making them alike. Some routes grow toward uncharted planets.",
+    artifactForm: "Galactic Biosphere Network / Transit Ecology",
+    blueprintRole: "biosphere propagation",
+    blueprintFamilies: "Spiral Ecology Mesh; Star-River Migration Lattice",
+    civLane: "interstellar symbiotic civilization",
+    engineeringScale: "Galactic",
+    artPrompt:
+      "Galactic-scale view of many distinct living worlds connected by enormous but delicate green-gold worldroot corridors, each route changing structure at a planet's ecological boundary. Palette: varied biosphere greens and blues, gold nutrient light, dark space. Show a routed network of worlds, not a handheld root key. No text.",
+  } as CardLore,
+
+  t3e02: {
+    name: "Stellar Overgrowth",
+    flavor:
+      "Vast living structures surround stars, turning light into habitats and new ecologies. No two grow the same, even from identical seeds.",
+    artifactForm: "Living Stellar Infrastructure / Power Ecology",
+    blueprintRole: "star-integrated ecology",
+    blueprintFamilies: "Spiral Ecology Mesh; Stellar Nursery Rite",
+    civLane: "stellar ecology civilization",
+    engineeringScale: "Galactic",
+    artPrompt:
+      "Several stars across a galactic region wrapped in different forms of immense living infrastructure: leaflike collectors, branching habitat reefs, and translucent green-gold orbital tissues, never a uniform shell. Palette: natural stellar fire, deep green living structures, gold energy veins, black space. Show a galactic ecology of stars, not a code plate. No text.",
+  } as CardLore,
+
+  t3e03: {
+    name: "Interstellar Necrobiome",
+    flavor:
+      "The Necrobiome turns dead worlds and ruined habitats into safe soil for new life. It remembers what consumed them.",
+    artifactForm: "Galactic Recovery Ecology / Archive",
+    blueprintRole: "dead-system reclamation",
+    blueprintFamilies: "Spiral Ecology Mesh; Spiral-Arm Archive",
+    civLane: "ancestral recycler civilization",
+    engineeringScale: "Galactic",
+    artPrompt:
+      "Interstellar necrobiome spanning a field of dead habitats and dim stars. Vast dark-green mycelial and rootlike structures break derelict megastructures into luminous nutrient streams that feed new pale biosphere seeds in the distance. Palette: deep green, bone-white ruins, pale new-life light, dark space. Show ecological recovery across systems. No text.",
+  } as CardLore,
+
+  t3e04: {
+    name: "Biosphere Concordance",
+    flavor:
+      "The Concordance lets alien ecologies exchange food, air, and microbes without one consuming the others. Contact leaves both sides changed.",
+    artifactForm: "Galactic Ecology Coordination Network / Biotech Protocol",
+    blueprintRole: "ecological coexistence",
+    blueprintFamilies: "Galactic Concordance; Spiral Ecology Mesh",
+    civLane: "plural biosphere civilization",
+    engineeringScale: "Galactic",
+    artPrompt:
+      "Wide galactic scene of radically different biosphere habitats linked by large living exchange stations. At each boundary, green-gold biological corridors visibly transform their cell and atmosphere patterns before reaching the next ecology. Palette: diverse natural habitat colors, green-gold interfaces, white verification light. Show a full compatibility network, not a seed or seal. No text.",
+  } as CardLore,
+
+  // ── Tier 3 ─ Abyss ─────────────────────────────────────────────────────
+  t3o01: {
+    name: "Cryptobiotic Constellation",
+    flavor:
+      "Hidden refuge worlds sleep across the galaxy, each able to wake the others after catastrophe. Maps show only lifeless stone.",
+    artifactForm: "Galactic Concealment Network / Biosphere Reserve",
+    blueprintRole: "hidden biosphere preservation",
+    blueprintFamilies: "Spiral Ecology Mesh; Dark-Sector Observatory",
+    civLane: "buried survival civilization",
+    engineeringScale: "Galactic",
+    artPrompt:
+      "Dark galactic region containing several apparently lifeless worlds, with subtle cutaway glimpses of dormant green biospheres and near-black preservation infrastructure beneath their crusts; faint hidden links form a constellation only at oblique light. Palette: near-black, cold stone, restrained deep green life, faint blue link light. Show many concealed refuge worlds, not a seal. No text.",
+  } as CardLore,
+
+  t3o02: {
+    name: "Collapse Mandala",
+    flavor:
+      "The Mandala surrounds black holes, dying worlds, and spreading collapses with observation and containment. Its innermost ring is always empty.",
+    artifactForm: "Galactic Containment Network / Observatory",
+    blueprintRole: "collapse containment",
+    blueprintFamilies: "Singularity Containment Mandala; Causality Audit Court",
+    civLane: "collapse-auditing civilization",
+    engineeringScale: "Galactic",
+    artPrompt:
+      "Monumental dark containment mandala surrounding a gravitational collapse zone, with multiple concentric infrastructure rings extending into neighboring systems through evacuation and observation corridors. Restrained white and violet status lights reveal ordered control against near-black space. Show a distributed galactic containment work, not a mirror. No text.",
+  } as CardLore,
+
+  t3o03: {
+    name: "Ordered Silence",
+    flavor:
+      "Buried relays and false constellations let threatened worlds speak without being found. Some decoys have begun sending real messages.",
+    artifactForm: "Galactic Concealment Infrastructure / Signal Protocol",
+    blueprintRole: "galactic signal discipline",
+    blueprintFamilies: "Dark-Sector Observatory; Black-Map Pilgrimage Engine",
+    civLane: "silent survival civilization",
+    engineeringScale: "Galactic",
+    artPrompt:
+      "Wide dark-space view of a protected galactic corridor where luminous signals bend into buried black relay stations while bright decoy constellations broadcast elsewhere. The inhabited route is visible only through subtle pale-blue internal traces. Palette: near-black, pale blue hidden signals, distant false white lights. Show infrastructure across systems, not an archive shard. No text.",
+  } as CardLore,
+
+  t3o04: {
+    name: "Dark-Sector Aperture",
+    flavor:
+      "This vast boundary lets the galaxy observe a forbidden dark sector without opening passage. Every instrument faces both ways.",
+    artifactForm: "Galactic Observatory Megastructure / Boundary Interface",
+    blueprintRole: "forbidden-sector observation",
+    blueprintFamilies: "Dark-Sector Observatory; Black-Map Pilgrimage Engine",
+    civLane: "hidden observer civilization",
+    engineeringScale: "Galactic",
+    artPrompt:
+      "Galactic-scale view of an enormous black observatory aperture spanning the boundary of a dark sector, its opening filled with subtle forbidden-physics distortion and its outer edge lined by pale reciprocal sensor arrays. Palette: near-black structure, void distortion, pale observation light, distant galaxy context. Show the complete boundary work. No text.",
+  } as CardLore,
+
+  // ── Tier 3 ─ Radiance ──────────────────────────────────────────────────
+  t3p01: {
+    name: "Galactic Concordance",
+    flavor:
+      "Courts and enforcement stations bind many species without a galactic capital. The Concordance has no throne, though someone keeps building one.",
+    artifactForm: "Galactic Civic Institution / Enforcement Network",
+    blueprintRole: "multi-species legitimacy",
+    blueprintFamilies: "Causality Audit Court; Biosphere Concordance",
+    civLane: "plural civic civilization",
+    engineeringScale: "Galactic",
+    artPrompt:
+      "Galactic civic network linking many visibly different inhabited systems to distributed white-gold concordance stations, with no central throne or capital. Transparent verification routes and restrained defense structures are shared among species. Palette: white-gold civic light, diverse habitat colors, dark space. Show an institution made physical across systems. No text.",
+  } as CardLore,
+
+  t3p02: {
+    name: "Relic Forge Commons",
+    flavor:
+      "Shared foundries build civilization-changing works in full public view. One production line appears on no approved plan.",
+    artifactForm: "Galactic Fabrication Network / Civic Infrastructure",
+    blueprintRole: "accountable relic manufacture",
+    blueprintFamilies: "Galactic Relic Forge; Matrioshka Chorus precursor",
+    civLane: "public maker civilization",
+    engineeringScale: "Galactic",
+    artPrompt:
+      "A chain of immense white-gold and dark-metal foundries distributed across several star systems, all manufacturing different megastructure components under transparent observation fields. Public witness stations and visible material routes connect every stage. Palette: white-gold, dark industrial metal, varied controlled energy colors. Show the full commons, not a maker-seal. No text.",
+  } as CardLore,
+
+  t3p03: {
+    name: "Matrioshka Chorus",
+    flavor:
+      "Thousands of star-sized minds solve problems together without becoming one mind. Between calculations, the Chorus dreams in disagreement.",
+    artifactForm: "Galactic Computation Network / Civic Protocol",
+    blueprintRole: "plural galactic computation",
+    blueprintFamilies: "Matrioshka Mind; Causality Audit Court",
+    civLane: "accountable computation civilization",
+    engineeringScale: "Galactic",
+    artPrompt:
+      "Galactic region filled with several distinct Matrioshka computation systems around different stars, each using different shell geometry and exchanging white-gold logic beams while radiating visible amber waste heat. Palette: white-gold computation light, amber thermal traces, natural stars, dark structure. Show a federation of stellar minds, not a wafer. No text.",
+  } as CardLore,
+
+  t3p04: {
+    name: "Witness Constellation",
+    flavor:
+      "Independent stations preserve evidence of erased histories and broken rights. No ruler knows where every witness is.",
+    artifactForm: "Galactic Verification Network / Civic Observatory",
+    blueprintRole: "public rights verification",
+    blueprintFamilies: "Spiral-Arm Archive; Causality Audit Court",
+    civLane: "multi-species witness civilization",
+    engineeringScale: "Galactic",
+    artPrompt:
+      "Wide view of independent white-gold witness observatories distributed among many inhabited systems, each preserving a distinct species-light spectrum and cross-verifying records through a constellation of thin luminous paths. No central station dominates. Palette: white-gold, subtle varied life-signature colors, deep space. Show the full verification network, not a prism. No text.",
+  } as CardLore,
+});
+
+const tierThreeCanonById: Partial<Record<ArtifactId, TierThreeArtifactCanon>> =
+  TIER_THREE_ARTIFACT_CANON;
+
+for (const [id, lore] of Object.entries(CARD_LORE)) {
+  const artifactId = id as ArtifactId;
+  lore.depictionScale = ARTIFACT_DEPICTION_SCALE_BY_ID[artifactId];
+
+  const canon = tierThreeCanonById[artifactId];
+  if (!canon) continue;
+  lore.name = canon.name;
+  lore.flavor = `${canon.practicalCapability} ${canon.mystery}`;
+  lore.artifactForm = canon.forms.join(' / ');
+  lore.blueprintRole = canon.blueprintRole;
+  lore.blueprintFamilies = canon.blueprintFamilies;
 }
 
 export function getCardLore(id: string): CardLore {
-  const artifact = ARTIFACT_DEFINITIONS[id as ArtifactId];
-  if (!artifact) return { name: "Unnamed Artifact", flavor: "" };
-  return CARD_LORE[id] ?? { name: artifact.name, flavor: artifact.flavor };
+  return CARD_LORE[id] ?? { name: "Unnamed Artifact", flavor: "" };
+}
+
+export function getPublicCardLoreCatalog(): Record<string, PublicCardLore> {
+  return Object.fromEntries(
+    Object.entries(CARD_LORE).map(([id, lore]) => [
+      id,
+      {
+        name: lore.name,
+        flavor: lore.flavor,
+        ...(lore.artifactForm !== undefined && { artifactForm: lore.artifactForm }),
+        ...(lore.blueprintRole !== undefined && { practicalCapability: lore.blueprintRole }),
+        ...(lore.civLane !== undefined && { civLane: lore.civLane }),
+        ...(lore.engineeringScale !== undefined && { engineeringScale: lore.engineeringScale }),
+        depictionScale: getArtifactDepictionScale(lore),
+        ...(lore.artPrompt !== undefined && { artPrompt: lore.artPrompt }),
+      },
+    ]),
+  );
 }

@@ -9,13 +9,50 @@
  * Each section is independently collapsible.
  */
 import { useState, type Dispatch, type CSSProperties } from "react";
-import { TUTORIAL_BEATS, BEAT_INDEX, usesTutorialCinematicPhase } from "@/lib/tutorialData";
-import { getTutorialCameraFocus } from "@/lib/tutorialCamera";
+import { TUTORIAL_BEATS, BEAT_INDEX } from "@/lib/tutorialData";
 import type { TutState, TAction } from "@/lib/tutorialReducer";
 import { clearTutorialProgress, clearIntroSeen } from "@/lib/tutorialProgress";
 
+// ─── cameraFocus mirror (must stay in sync with GameplayPhase) ────────────────
+function deriveCameraFocus(
+  beatId: string,
+  subStep: number,
+): "overview" | "well" | "storage" | "forge" | "tier1" | "cinematic" {
+  if (beatId === "b6b_root_lattice" || beatId === "b7_artifact_cost" || beatId === "b7b_cost_bridge")
+    return "tier1";
+  if (beatId === "b8_first_harness") return "well";
+  if (beatId === "b11_forge_reserved" && subStep === 0) return "tier1";
+  if (beatId === "b12_tier2" && subStep === 1) return "well";
+  if (beatId === "b16_final_forge" && subStep === 0) return "well";
+  if (beatId === "b9b_forge_complete" || beatId === "b9c_transition" || beatId === "b14_win_condition")
+    return "storage";
+  if (beatId === "b10_reserve" || beatId === "b10b_reserve_granted") return "forge";
+  return "overview";
+}
+
+// ─── Known bug annotations keyed by beat id ──────────────────────────────────
+const BEAT_BUGS: Record<string, string[]> = {
+  "b9b_forge_complete":   ["BUG-01: camera='storage' has no scroll handler → scrolls to board top", "BUG-11: isForgeHighlighted persists after forge"],
+  "b9c_transition":       ["BUG-01: camera='storage' has no scroll handler → scrolls to board top"],
+  "b10_reserve":          ["BUG-08: no Artifact highlighted at subStep=0 — 'reserve this one' has no visual referent"],
+  "b10b_reserve_granted": ["BUG-05: PlayerHand highlighted but off-screen (camera=forge shows board top)"],
+  "b11_forge_reserved":   ["BUG-06: camera=tier1 shows two ghost slots at subStep=0; PlayerHand off-screen"],
+  "b12_tier2":            ["BUG-03 P1 SOFT-LOCK: view='needed' arrives from b11; subStep=0 requires re-clicking already-active Needed tab"],
+  "b14_win_condition":    ["BUG-01: camera='storage' scrolls to top (Eminence ok — pinned panel — but storage section missed)"],
+};
+
+// ─── Soft-lock runtime detection ─────────────────────────────────────────────
+function detectRuntimeWarnings(s: TutState, beatId: string): string[] {
+  const warns: string[] = [];
+  if (beatId === "b12_tier2" && s.subStep === 0 && s.view === "needed")
+    warns.push("LIVE SOFT-LOCK: view is already 'needed' — player cannot advance without re-clicking active tab");
+  if ((beatId === "b9b_forge_complete" || beatId === "b9c_transition") && s.forged.length === 0)
+    warns.push("No forged Artifacts: PlayerStorage not rendered (hidden by conditional)");
+  return warns;
+}
+
 // ─── Section IDs ─────────────────────────────────────────────────────────────
-type SectionId = "beat" | "dialogue" | "camera" | "anim" | "state" | "storage";
+type SectionId = "beat" | "dialogue" | "camera" | "anim" | "state" | "bugs" | "storage";
 
 const DEFAULT_OPEN: Record<SectionId, boolean> = {
   beat:    true,
@@ -23,6 +60,7 @@ const DEFAULT_OPEN: Record<SectionId, boolean> = {
   camera:  true,
   anim:    true,
   state:   false,
+  bugs:    true,
   storage: true,
 };
 
@@ -148,12 +186,10 @@ export function TutorialDebugOverlay({ s }: { s: TutState; dispatch: Dispatch<TA
 
   const beatId = beat.id;
   const subStep = s.subStep;
-  const isCinematic = usesTutorialCinematicPhase(s.beat);
-  const cameraFocus = isCinematic ? "cinematic" : getTutorialCameraFocus({
-    beatId,
-    isActionInstructionVisible: s.dlgLine >= beat.dialogue.length - 1,
-    finalDeliveryComplete: s.finalDeliveryComplete,
-  });
+  const isCinematic = s.beat <= 9;
+
+  const cameraFocus = isCinematic ? "cinematic" : deriveCameraFocus(beatId, subStep);
+  const cameraWarn = cameraFocus === "storage";
 
   const completionStr =
     beat.completion.type === "action"   ? `action → ${beat.completion.action}` :
@@ -195,6 +231,10 @@ export function TutorialDebugOverlay({ s }: { s: TutState; dispatch: Dispatch<TA
   const heldAffinityStr = Object.entries(s.affinities).filter(([, v]) => v > 0).map(([k, v]) => `${k}:${v}`).join(" ") || "none";
   const bonusStr   = Object.entries(s.bonuses).filter(([, v]) => v > 0).map(([k, v]) => `${k}:${v}`).join(" ") || "none";
   const wellSelStr = Object.entries(s.wellSel).filter(([, v]) => (v ?? 0) > 0).map(([k, v]) => `${k}:${v}`).join(" ") || "none";
+
+  const knownBugs   = BEAT_BUGS[beatId] ?? [];
+  const runtimeWarns = detectRuntimeWarnings(s, beatId);
+  const hasBugs = knownBugs.length > 0 || runtimeWarns.length > 0;
 
   function toggleSection(id: SectionId) {
     setSections(prev => ({ ...prev, [id]: !prev[id] }));
@@ -301,8 +341,18 @@ export function TutorialDebugOverlay({ s }: { s: TutState; dispatch: Dispatch<TA
           </Section>
 
           {/* ── CAMERA / LUMII ────────────────────────────────────────────── */}
-          <Section id="camera" title="CAMERA / LUMII">
-            <Row label="cameraFocus"     value={cameraFocus} />
+          <Section
+            id="camera"
+            title="CAMERA / LUMII"
+            badge={cameraWarn ? "⚠ storage bug" : undefined}
+            warnBadge
+          >
+            <Row label="cameraFocus"     value={cameraFocus} warn={cameraWarn} />
+            {cameraWarn && (
+              <div style={{ ...C.warn, fontSize: 10, paddingLeft: 4 }}>
+                BUG-01: no scroll handler for 'storage' — scrolls to board top
+              </div>
+            )}
             <Row label="lumiiZone"       value={beat.lumiiZone} />
             <Row label="highlightZone"   value={beat.highlightZone ?? "none"} dim={!beat.highlightZone} />
             <Row label="foregroundCard"  value={beat.foregroundCardId ?? "none"} dim={!beat.foregroundCardId} />
@@ -325,6 +375,23 @@ export function TutorialDebugOverlay({ s }: { s: TutState; dispatch: Dispatch<TA
             <Row label="eminence" value={String(s.eminence)} dim={s.eminence === 0} />
             <Row label="wellSel"  value={wellSelStr} dim />
           </Section>
+
+          {/* ── KNOWN BUGS ────────────────────────────────────────────────── */}
+          {hasBugs && (
+            <Section
+              id="bugs"
+              title="KNOWN BUGS"
+              badge={`${knownBugs.length + runtimeWarns.length}`}
+              warnBadge
+            >
+              {knownBugs.map(bug => (
+                <div key={bug} style={{ ...C.warn, fontSize: 10, lineHeight: 1.5 }}>⚠ {bug}</div>
+              ))}
+              {runtimeWarns.map(w => (
+                <div key={w} style={{ color: "#fbbf24", fontSize: 10, lineHeight: 1.5, wordBreak: "break-all" }}>🔴 {w}</div>
+              ))}
+            </Section>
+          )}
 
           {/* ── LOCALSTORAGE ──────────────────────────────────────────────── */}
           <Section id="storage" title="LOCALSTORAGE">

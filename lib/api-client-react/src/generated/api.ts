@@ -17,13 +17,12 @@ import type {
 } from "@tanstack/react-query";
 
 import type {
+  AccountDeletionResult,
   AccountWithToken,
-  AcknowledgeArchitectRecordPresentation200,
   AcknowledgeBlueprintVaultReveal200,
   ActionRequest,
   ActiveGamesResponse,
   AddAiPlayerBody,
-  ArchitectRecordState,
   BlueprintChallengeSession,
   BlueprintDecryptionKeyUseResult,
   BlueprintLoadout,
@@ -31,18 +30,17 @@ import type {
   BlueprintVaultResponse,
   BlueprintVaultThresholdBody,
   BlueprintVaultThresholdResult,
+  CampaignProgressProjection,
   CardLoreCatalog,
   ChallengeAcceptedResponse,
   ChallengeActionBody,
   ChallengeCreatedResponse,
   ChallengesResponse,
-  CivilizationIdentitySelection,
-  CivilizationIdentityUpdateResponse,
   CosmeticLoadoutBody,
   CosmeticLoadoutResponse,
   CreateChallengeBody,
   CreateRoomBody,
-  FirstPartyEventBody,
+  DeleteAccountBody,
   FriendRequestActionBody,
   FriendRequestsResponse,
   FriendsListResponse,
@@ -53,11 +51,18 @@ import type {
   HostActionBody,
   JoinRoomBody,
   LoginBody,
-  OnboardingClaimBody,
+  ModerationBlockBody,
+  ModerationBlockResult,
+  ModerationReportBody,
+  ModerationReportResult,
+  NativePurchaseBody,
+  NativePurchaseReconciliationResult,
+  NativePurchaseResult,
+  OperationsHealthResult,
   PlayerStatsResponse,
-  QualifyingMatchSession,
   QuitRoomBody,
-  RecordFirstPartyEvent202,
+  ReconcileNativePurchaseBody,
+  RecurrenceChronicleSession,
   RegisterBody,
   RejoinRoomBody,
   RematchBody,
@@ -66,6 +71,11 @@ import type {
   RoomPlayer,
   RoomWithPlayer,
   SendFriendRequestBody,
+  StoreResponse,
+  TelemetryAcceptedResult,
+  TelemetryBatch,
+  TraceChronicleSession,
+  TriangulationChronicleSession,
   WithdrawBlueprintClearanceChallenge200,
   WithdrawBlueprintClearanceChallengeBody,
 } from "./api.schemas";
@@ -492,7 +502,7 @@ export const useJoinRoom = <
 };
 
 /**
- * @summary Securely rotate an existing player's game session
+ * @summary Reclaim an existing player slot in a room (works in any status)
  */
 export const getRejoinRoomUrl = (roomId: string) => {
   return `/api/rooms/${roomId}/rejoin`;
@@ -556,7 +566,7 @@ export type RejoinRoomMutationBody = BodyType<RejoinRoomBody>;
 export type RejoinRoomMutationError = ErrorType<void>;
 
 /**
- * @summary Securely rotate an existing player's game session
+ * @summary Reclaim an existing player slot in a room (works in any status)
  */
 export const useRejoinRoom = <
   TError = ErrorType<void>,
@@ -1525,45 +1535,42 @@ export function useGetMe<
 }
 
 /**
- * @summary Confirm the account's earned public civilization identity
+ * @summary Schedule authenticated account deletion after a seven-day safety period
  */
-export const getUpdateCivilizationIdentityUrl = () => {
-  return `/api/auth/me/civilization-identity`;
+export const getDeleteMyAccountUrl = () => {
+  return `/api/auth/me`;
 };
 
-export const updateCivilizationIdentity = async (
-  civilizationIdentitySelection: CivilizationIdentitySelection,
+export const deleteMyAccount = async (
+  deleteAccountBody: DeleteAccountBody,
   options?: RequestInit,
-): Promise<CivilizationIdentityUpdateResponse> => {
-  return customFetch<CivilizationIdentityUpdateResponse>(
-    getUpdateCivilizationIdentityUrl(),
-    {
-      ...options,
-      method: "PUT",
-      headers: { "Content-Type": "application/json", ...options?.headers },
-      body: JSON.stringify(civilizationIdentitySelection),
-    },
-  );
+): Promise<AccountDeletionResult> => {
+  return customFetch<AccountDeletionResult>(getDeleteMyAccountUrl(), {
+    ...options,
+    method: "DELETE",
+    headers: { "Content-Type": "application/json", ...options?.headers },
+    body: JSON.stringify(deleteAccountBody),
+  });
 };
 
-export const getUpdateCivilizationIdentityMutationOptions = <
+export const getDeleteMyAccountMutationOptions = <
   TError = ErrorType<void>,
   TContext = unknown,
 >(options?: {
   mutation?: UseMutationOptions<
-    Awaited<ReturnType<typeof updateCivilizationIdentity>>,
+    Awaited<ReturnType<typeof deleteMyAccount>>,
     TError,
-    { data: BodyType<CivilizationIdentitySelection> },
+    { data: BodyType<DeleteAccountBody> },
     TContext
   >;
   request?: SecondParameter<typeof customFetch>;
 }): UseMutationOptions<
-  Awaited<ReturnType<typeof updateCivilizationIdentity>>,
+  Awaited<ReturnType<typeof deleteMyAccount>>,
   TError,
-  { data: BodyType<CivilizationIdentitySelection> },
+  { data: BodyType<DeleteAccountBody> },
   TContext
 > => {
-  const mutationKey = ["updateCivilizationIdentity"];
+  const mutationKey = ["deleteMyAccount"];
   const { mutation: mutationOptions, request: requestOptions } = options
     ? options.mutation &&
       "mutationKey" in options.mutation &&
@@ -1573,114 +1580,105 @@ export const getUpdateCivilizationIdentityMutationOptions = <
     : { mutation: { mutationKey }, request: undefined };
 
   const mutationFn: MutationFunction<
-    Awaited<ReturnType<typeof updateCivilizationIdentity>>,
-    { data: BodyType<CivilizationIdentitySelection> }
+    Awaited<ReturnType<typeof deleteMyAccount>>,
+    { data: BodyType<DeleteAccountBody> }
   > = (props) => {
     const { data } = props ?? {};
 
-    return updateCivilizationIdentity(data, requestOptions);
+    return deleteMyAccount(data, requestOptions);
   };
 
   return { mutationFn, ...mutationOptions };
 };
 
-export type UpdateCivilizationIdentityMutationResult = NonNullable<
-  Awaited<ReturnType<typeof updateCivilizationIdentity>>
+export type DeleteMyAccountMutationResult = NonNullable<
+  Awaited<ReturnType<typeof deleteMyAccount>>
 >;
-export type UpdateCivilizationIdentityMutationBody =
-  BodyType<CivilizationIdentitySelection>;
-export type UpdateCivilizationIdentityMutationError = ErrorType<void>;
+export type DeleteMyAccountMutationBody = BodyType<DeleteAccountBody>;
+export type DeleteMyAccountMutationError = ErrorType<void>;
 
 /**
- * @summary Confirm the account's earned public civilization identity
+ * @summary Schedule authenticated account deletion after a seven-day safety period
  */
-export const useUpdateCivilizationIdentity = <
+export const useDeleteMyAccount = <
   TError = ErrorType<void>,
   TContext = unknown,
 >(options?: {
   mutation?: UseMutationOptions<
-    Awaited<ReturnType<typeof updateCivilizationIdentity>>,
+    Awaited<ReturnType<typeof deleteMyAccount>>,
     TError,
-    { data: BodyType<CivilizationIdentitySelection> },
+    { data: BodyType<DeleteAccountBody> },
     TContext
   >;
   request?: SecondParameter<typeof customFetch>;
 }): UseMutationResult<
-  Awaited<ReturnType<typeof updateCivilizationIdentity>>,
+  Awaited<ReturnType<typeof deleteMyAccount>>,
   TError,
-  { data: BodyType<CivilizationIdentitySelection> },
+  { data: BodyType<DeleteAccountBody> },
   TContext
 > => {
-  return useMutation(getUpdateCivilizationIdentityMutationOptions(options));
+  return useMutation(getDeleteMyAccountMutationOptions(options));
 };
 
 /**
- * @summary Fetch the account's redacted Architect Record
+ * @summary Get the account-visible store, Lume packs, ownership, and balance
  */
-export const getGetArchitectRecordUrl = () => {
-  return `/api/campaigns/architect-record`;
+export const getGetStoreUrl = () => {
+  return `/api/store`;
 };
 
-export const getArchitectRecord = async (
+export const getStore = async (
   options?: RequestInit,
-): Promise<ArchitectRecordState> => {
-  return customFetch<ArchitectRecordState>(getGetArchitectRecordUrl(), {
+): Promise<StoreResponse> => {
+  return customFetch<StoreResponse>(getGetStoreUrl(), {
     ...options,
     method: "GET",
   });
 };
 
-export const getGetArchitectRecordQueryKey = () => {
-  return [`/api/campaigns/architect-record`] as const;
+export const getGetStoreQueryKey = () => {
+  return [`/api/store`] as const;
 };
 
-export const getGetArchitectRecordQueryOptions = <
-  TData = Awaited<ReturnType<typeof getArchitectRecord>>,
+export const getGetStoreQueryOptions = <
+  TData = Awaited<ReturnType<typeof getStore>>,
   TError = ErrorType<unknown>,
 >(options?: {
-  query?: UseQueryOptions<
-    Awaited<ReturnType<typeof getArchitectRecord>>,
-    TError,
-    TData
-  >;
+  query?: UseQueryOptions<Awaited<ReturnType<typeof getStore>>, TError, TData>;
   request?: SecondParameter<typeof customFetch>;
 }) => {
   const { query: queryOptions, request: requestOptions } = options ?? {};
 
-  const queryKey = queryOptions?.queryKey ?? getGetArchitectRecordQueryKey();
+  const queryKey = queryOptions?.queryKey ?? getGetStoreQueryKey();
 
-  const queryFn: QueryFunction<
-    Awaited<ReturnType<typeof getArchitectRecord>>
-  > = ({ signal }) => getArchitectRecord({ signal, ...requestOptions });
+  const queryFn: QueryFunction<Awaited<ReturnType<typeof getStore>>> = ({
+    signal,
+  }) => getStore({ signal, ...requestOptions });
 
   return { queryKey, queryFn, ...queryOptions } as UseQueryOptions<
-    Awaited<ReturnType<typeof getArchitectRecord>>,
+    Awaited<ReturnType<typeof getStore>>,
     TError,
     TData
   > & { queryKey: QueryKey };
 };
 
-export type GetArchitectRecordQueryResult = NonNullable<
-  Awaited<ReturnType<typeof getArchitectRecord>>
+export type GetStoreQueryResult = NonNullable<
+  Awaited<ReturnType<typeof getStore>>
 >;
-export type GetArchitectRecordQueryError = ErrorType<unknown>;
+export type GetStoreQueryError = ErrorType<unknown>;
 
 /**
- * @summary Fetch the account's redacted Architect Record
+ * @summary Get the account-visible store, Lume packs, ownership, and balance
  */
 
-export function useGetArchitectRecord<
-  TData = Awaited<ReturnType<typeof getArchitectRecord>>,
+export function useGetStore<
+  TData = Awaited<ReturnType<typeof getStore>>,
   TError = ErrorType<unknown>,
 >(options?: {
-  query?: UseQueryOptions<
-    Awaited<ReturnType<typeof getArchitectRecord>>,
-    TError,
-    TData
-  >;
+  query?: UseQueryOptions<Awaited<ReturnType<typeof getStore>>, TError, TData>;
   request?: SecondParameter<typeof customFetch>;
 }): UseQueryResult<TData, TError> & { queryKey: QueryKey } {
-  const queryOptions = getGetArchitectRecordQueryOptions(options);
+  const queryOptions = getGetStoreQueryOptions(options);
 
   const query = useQuery(queryOptions) as UseQueryResult<TData, TError> & {
     queryKey: QueryKey;
@@ -1690,45 +1688,131 @@ export function useGetArchitectRecord<
 }
 
 /**
- * @summary Idempotently claim a completed first-contact tutorial
+ * @summary Verify a Google Play or Samsung IAP purchase before crediting Lume
  */
-export const getClaimArchitectRecordOnboardingUrl = () => {
-  return `/api/campaigns/architect-record/onboarding-claim`;
+export const getVerifyNativeLumePurchaseUrl = () => {
+  return `/api/store/lume/purchases/verify`;
 };
 
-export const claimArchitectRecordOnboarding = async (
-  onboardingClaimBody: OnboardingClaimBody,
+export const verifyNativeLumePurchase = async (
+  nativePurchaseBody: NativePurchaseBody,
   options?: RequestInit,
-): Promise<ArchitectRecordState> => {
-  return customFetch<ArchitectRecordState>(
-    getClaimArchitectRecordOnboardingUrl(),
+): Promise<NativePurchaseResult> => {
+  return customFetch<NativePurchaseResult>(getVerifyNativeLumePurchaseUrl(), {
+    ...options,
+    method: "POST",
+    headers: { "Content-Type": "application/json", ...options?.headers },
+    body: JSON.stringify(nativePurchaseBody),
+  });
+};
+
+export const getVerifyNativeLumePurchaseMutationOptions = <
+  TError = ErrorType<void>,
+  TContext = unknown,
+>(options?: {
+  mutation?: UseMutationOptions<
+    Awaited<ReturnType<typeof verifyNativeLumePurchase>>,
+    TError,
+    { data: BodyType<NativePurchaseBody> },
+    TContext
+  >;
+  request?: SecondParameter<typeof customFetch>;
+}): UseMutationOptions<
+  Awaited<ReturnType<typeof verifyNativeLumePurchase>>,
+  TError,
+  { data: BodyType<NativePurchaseBody> },
+  TContext
+> => {
+  const mutationKey = ["verifyNativeLumePurchase"];
+  const { mutation: mutationOptions, request: requestOptions } = options
+    ? options.mutation &&
+      "mutationKey" in options.mutation &&
+      options.mutation.mutationKey
+      ? options
+      : { ...options, mutation: { ...options.mutation, mutationKey } }
+    : { mutation: { mutationKey }, request: undefined };
+
+  const mutationFn: MutationFunction<
+    Awaited<ReturnType<typeof verifyNativeLumePurchase>>,
+    { data: BodyType<NativePurchaseBody> }
+  > = (props) => {
+    const { data } = props ?? {};
+
+    return verifyNativeLumePurchase(data, requestOptions);
+  };
+
+  return { mutationFn, ...mutationOptions };
+};
+
+export type VerifyNativeLumePurchaseMutationResult = NonNullable<
+  Awaited<ReturnType<typeof verifyNativeLumePurchase>>
+>;
+export type VerifyNativeLumePurchaseMutationBody = BodyType<NativePurchaseBody>;
+export type VerifyNativeLumePurchaseMutationError = ErrorType<void>;
+
+/**
+ * @summary Verify a Google Play or Samsung IAP purchase before crediting Lume
+ */
+export const useVerifyNativeLumePurchase = <
+  TError = ErrorType<void>,
+  TContext = unknown,
+>(options?: {
+  mutation?: UseMutationOptions<
+    Awaited<ReturnType<typeof verifyNativeLumePurchase>>,
+    TError,
+    { data: BodyType<NativePurchaseBody> },
+    TContext
+  >;
+  request?: SecondParameter<typeof customFetch>;
+}): UseMutationResult<
+  Awaited<ReturnType<typeof verifyNativeLumePurchase>>,
+  TError,
+  { data: BodyType<NativePurchaseBody> },
+  TContext
+> => {
+  return useMutation(getVerifyNativeLumePurchaseMutationOptions(options));
+};
+
+/**
+ * @summary Reconcile a provider purchase, settlement, cancellation, or refund
+ */
+export const getReconcileNativeLumePurchaseUrl = () => {
+  return `/api/store/lume/purchases/reconcile`;
+};
+
+export const reconcileNativeLumePurchase = async (
+  reconcileNativePurchaseBody: ReconcileNativePurchaseBody,
+  options?: RequestInit,
+): Promise<NativePurchaseReconciliationResult> => {
+  return customFetch<NativePurchaseReconciliationResult>(
+    getReconcileNativeLumePurchaseUrl(),
     {
       ...options,
       method: "POST",
       headers: { "Content-Type": "application/json", ...options?.headers },
-      body: JSON.stringify(onboardingClaimBody),
+      body: JSON.stringify(reconcileNativePurchaseBody),
     },
   );
 };
 
-export const getClaimArchitectRecordOnboardingMutationOptions = <
-  TError = ErrorType<unknown>,
+export const getReconcileNativeLumePurchaseMutationOptions = <
+  TError = ErrorType<void>,
   TContext = unknown,
 >(options?: {
   mutation?: UseMutationOptions<
-    Awaited<ReturnType<typeof claimArchitectRecordOnboarding>>,
+    Awaited<ReturnType<typeof reconcileNativeLumePurchase>>,
     TError,
-    { data: BodyType<OnboardingClaimBody> },
+    { data: BodyType<ReconcileNativePurchaseBody> },
     TContext
   >;
   request?: SecondParameter<typeof customFetch>;
 }): UseMutationOptions<
-  Awaited<ReturnType<typeof claimArchitectRecordOnboarding>>,
+  Awaited<ReturnType<typeof reconcileNativeLumePurchase>>,
   TError,
-  { data: BodyType<OnboardingClaimBody> },
+  { data: BodyType<ReconcileNativePurchaseBody> },
   TContext
 > => {
-  const mutationKey = ["claimArchitectRecordOnboarding"];
+  const mutationKey = ["reconcileNativeLumePurchase"];
   const { mutation: mutationOptions, request: requestOptions } = options
     ? options.mutation &&
       "mutationKey" in options.mutation &&
@@ -1738,263 +1822,84 @@ export const getClaimArchitectRecordOnboardingMutationOptions = <
     : { mutation: { mutationKey }, request: undefined };
 
   const mutationFn: MutationFunction<
-    Awaited<ReturnType<typeof claimArchitectRecordOnboarding>>,
-    { data: BodyType<OnboardingClaimBody> }
+    Awaited<ReturnType<typeof reconcileNativeLumePurchase>>,
+    { data: BodyType<ReconcileNativePurchaseBody> }
   > = (props) => {
     const { data } = props ?? {};
 
-    return claimArchitectRecordOnboarding(data, requestOptions);
+    return reconcileNativeLumePurchase(data, requestOptions);
   };
 
   return { mutationFn, ...mutationOptions };
 };
 
-export type ClaimArchitectRecordOnboardingMutationResult = NonNullable<
-  Awaited<ReturnType<typeof claimArchitectRecordOnboarding>>
+export type ReconcileNativeLumePurchaseMutationResult = NonNullable<
+  Awaited<ReturnType<typeof reconcileNativeLumePurchase>>
 >;
-export type ClaimArchitectRecordOnboardingMutationBody =
-  BodyType<OnboardingClaimBody>;
-export type ClaimArchitectRecordOnboardingMutationError = ErrorType<unknown>;
+export type ReconcileNativeLumePurchaseMutationBody =
+  BodyType<ReconcileNativePurchaseBody>;
+export type ReconcileNativeLumePurchaseMutationError = ErrorType<void>;
 
 /**
- * @summary Idempotently claim a completed first-contact tutorial
+ * @summary Reconcile a provider purchase, settlement, cancellation, or refund
  */
-export const useClaimArchitectRecordOnboarding = <
-  TError = ErrorType<unknown>,
+export const useReconcileNativeLumePurchase = <
+  TError = ErrorType<void>,
   TContext = unknown,
 >(options?: {
   mutation?: UseMutationOptions<
-    Awaited<ReturnType<typeof claimArchitectRecordOnboarding>>,
+    Awaited<ReturnType<typeof reconcileNativeLumePurchase>>,
     TError,
-    { data: BodyType<OnboardingClaimBody> },
+    { data: BodyType<ReconcileNativePurchaseBody> },
     TContext
   >;
   request?: SecondParameter<typeof customFetch>;
 }): UseMutationResult<
-  Awaited<ReturnType<typeof claimArchitectRecordOnboarding>>,
+  Awaited<ReturnType<typeof reconcileNativeLumePurchase>>,
   TError,
-  { data: BodyType<OnboardingClaimBody> },
+  { data: BodyType<ReconcileNativePurchaseBody> },
   TContext
 > => {
-  return useMutation(getClaimArchitectRecordOnboardingMutationOptions(options));
+  return useMutation(getReconcileNativeLumePurchaseMutationOptions(options));
 };
 
 /**
- * @summary Idempotently acknowledge a saved Architect Record presentation
+ * @summary Block or unblock an account represented by a player in a shared room
  */
-export const getAcknowledgeArchitectRecordPresentationUrl = (
-  presentationId: string,
-) => {
-  return `/api/campaigns/architect-record/presentations/${presentationId}/acknowledge`;
+export const getSetPlayerBlockedUrl = () => {
+  return `/api/moderation/block`;
 };
 
-export const acknowledgeArchitectRecordPresentation = async (
-  presentationId: string,
+export const setPlayerBlocked = async (
+  moderationBlockBody: ModerationBlockBody,
   options?: RequestInit,
-): Promise<AcknowledgeArchitectRecordPresentation200> => {
-  return customFetch<AcknowledgeArchitectRecordPresentation200>(
-    getAcknowledgeArchitectRecordPresentationUrl(presentationId),
-    {
-      ...options,
-      method: "POST",
-    },
-  );
-};
-
-export const getAcknowledgeArchitectRecordPresentationMutationOptions = <
-  TError = ErrorType<unknown>,
-  TContext = unknown,
->(options?: {
-  mutation?: UseMutationOptions<
-    Awaited<ReturnType<typeof acknowledgeArchitectRecordPresentation>>,
-    TError,
-    { presentationId: string },
-    TContext
-  >;
-  request?: SecondParameter<typeof customFetch>;
-}): UseMutationOptions<
-  Awaited<ReturnType<typeof acknowledgeArchitectRecordPresentation>>,
-  TError,
-  { presentationId: string },
-  TContext
-> => {
-  const mutationKey = ["acknowledgeArchitectRecordPresentation"];
-  const { mutation: mutationOptions, request: requestOptions } = options
-    ? options.mutation &&
-      "mutationKey" in options.mutation &&
-      options.mutation.mutationKey
-      ? options
-      : { ...options, mutation: { ...options.mutation, mutationKey } }
-    : { mutation: { mutationKey }, request: undefined };
-
-  const mutationFn: MutationFunction<
-    Awaited<ReturnType<typeof acknowledgeArchitectRecordPresentation>>,
-    { presentationId: string }
-  > = (props) => {
-    const { presentationId } = props ?? {};
-
-    return acknowledgeArchitectRecordPresentation(
-      presentationId,
-      requestOptions,
-    );
-  };
-
-  return { mutationFn, ...mutationOptions };
-};
-
-export type AcknowledgeArchitectRecordPresentationMutationResult = NonNullable<
-  Awaited<ReturnType<typeof acknowledgeArchitectRecordPresentation>>
->;
-
-export type AcknowledgeArchitectRecordPresentationMutationError =
-  ErrorType<unknown>;
-
-/**
- * @summary Idempotently acknowledge a saved Architect Record presentation
- */
-export const useAcknowledgeArchitectRecordPresentation = <
-  TError = ErrorType<unknown>,
-  TContext = unknown,
->(options?: {
-  mutation?: UseMutationOptions<
-    Awaited<ReturnType<typeof acknowledgeArchitectRecordPresentation>>,
-    TError,
-    { presentationId: string },
-    TContext
-  >;
-  request?: SecondParameter<typeof customFetch>;
-}): UseMutationResult<
-  Awaited<ReturnType<typeof acknowledgeArchitectRecordPresentation>>,
-  TError,
-  { presentationId: string },
-  TContext
-> => {
-  return useMutation(
-    getAcknowledgeArchitectRecordPresentationMutationOptions(options),
-  );
-};
-
-/**
- * @summary Create or resume a standard 15-Eminence match against three Hard AIs
- */
-export const getCreateOrResumeQualifyingMatchUrl = () => {
-  return `/api/campaigns/architect-record/qualifying-match`;
-};
-
-export const createOrResumeQualifyingMatch = async (
-  options?: RequestInit,
-): Promise<QualifyingMatchSession> => {
-  return customFetch<QualifyingMatchSession>(
-    getCreateOrResumeQualifyingMatchUrl(),
-    {
-      ...options,
-      method: "POST",
-    },
-  );
-};
-
-export const getCreateOrResumeQualifyingMatchMutationOptions = <
-  TError = ErrorType<unknown>,
-  TContext = unknown,
->(options?: {
-  mutation?: UseMutationOptions<
-    Awaited<ReturnType<typeof createOrResumeQualifyingMatch>>,
-    TError,
-    void,
-    TContext
-  >;
-  request?: SecondParameter<typeof customFetch>;
-}): UseMutationOptions<
-  Awaited<ReturnType<typeof createOrResumeQualifyingMatch>>,
-  TError,
-  void,
-  TContext
-> => {
-  const mutationKey = ["createOrResumeQualifyingMatch"];
-  const { mutation: mutationOptions, request: requestOptions } = options
-    ? options.mutation &&
-      "mutationKey" in options.mutation &&
-      options.mutation.mutationKey
-      ? options
-      : { ...options, mutation: { ...options.mutation, mutationKey } }
-    : { mutation: { mutationKey }, request: undefined };
-
-  const mutationFn: MutationFunction<
-    Awaited<ReturnType<typeof createOrResumeQualifyingMatch>>,
-    void
-  > = () => {
-    return createOrResumeQualifyingMatch(requestOptions);
-  };
-
-  return { mutationFn, ...mutationOptions };
-};
-
-export type CreateOrResumeQualifyingMatchMutationResult = NonNullable<
-  Awaited<ReturnType<typeof createOrResumeQualifyingMatch>>
->;
-
-export type CreateOrResumeQualifyingMatchMutationError = ErrorType<unknown>;
-
-/**
- * @summary Create or resume a standard 15-Eminence match against three Hard AIs
- */
-export const useCreateOrResumeQualifyingMatch = <
-  TError = ErrorType<unknown>,
-  TContext = unknown,
->(options?: {
-  mutation?: UseMutationOptions<
-    Awaited<ReturnType<typeof createOrResumeQualifyingMatch>>,
-    TError,
-    void,
-    TContext
-  >;
-  request?: SecondParameter<typeof customFetch>;
-}): UseMutationResult<
-  Awaited<ReturnType<typeof createOrResumeQualifyingMatch>>,
-  TError,
-  void,
-  TContext
-> => {
-  return useMutation(getCreateOrResumeQualifyingMatchMutationOptions(options));
-};
-
-/**
- * @summary Accept an allowlisted event with fixed, non-personal dimensions
- */
-export const getRecordFirstPartyEventUrl = () => {
-  return `/api/events/first-party`;
-};
-
-export const recordFirstPartyEvent = async (
-  firstPartyEventBody: FirstPartyEventBody,
-  options?: RequestInit,
-): Promise<RecordFirstPartyEvent202> => {
-  return customFetch<RecordFirstPartyEvent202>(getRecordFirstPartyEventUrl(), {
+): Promise<ModerationBlockResult> => {
+  return customFetch<ModerationBlockResult>(getSetPlayerBlockedUrl(), {
     ...options,
     method: "POST",
     headers: { "Content-Type": "application/json", ...options?.headers },
-    body: JSON.stringify(firstPartyEventBody),
+    body: JSON.stringify(moderationBlockBody),
   });
 };
 
-export const getRecordFirstPartyEventMutationOptions = <
-  TError = ErrorType<unknown>,
+export const getSetPlayerBlockedMutationOptions = <
+  TError = ErrorType<void>,
   TContext = unknown,
 >(options?: {
   mutation?: UseMutationOptions<
-    Awaited<ReturnType<typeof recordFirstPartyEvent>>,
+    Awaited<ReturnType<typeof setPlayerBlocked>>,
     TError,
-    { data: BodyType<FirstPartyEventBody> },
+    { data: BodyType<ModerationBlockBody> },
     TContext
   >;
   request?: SecondParameter<typeof customFetch>;
 }): UseMutationOptions<
-  Awaited<ReturnType<typeof recordFirstPartyEvent>>,
+  Awaited<ReturnType<typeof setPlayerBlocked>>,
   TError,
-  { data: BodyType<FirstPartyEventBody> },
+  { data: BodyType<ModerationBlockBody> },
   TContext
 > => {
-  const mutationKey = ["recordFirstPartyEvent"];
+  const mutationKey = ["setPlayerBlocked"];
   const { mutation: mutationOptions, request: requestOptions } = options
     ? options.mutation &&
       "mutationKey" in options.mutation &&
@@ -2004,45 +1909,292 @@ export const getRecordFirstPartyEventMutationOptions = <
     : { mutation: { mutationKey }, request: undefined };
 
   const mutationFn: MutationFunction<
-    Awaited<ReturnType<typeof recordFirstPartyEvent>>,
-    { data: BodyType<FirstPartyEventBody> }
+    Awaited<ReturnType<typeof setPlayerBlocked>>,
+    { data: BodyType<ModerationBlockBody> }
   > = (props) => {
     const { data } = props ?? {};
 
-    return recordFirstPartyEvent(data, requestOptions);
+    return setPlayerBlocked(data, requestOptions);
   };
 
   return { mutationFn, ...mutationOptions };
 };
 
-export type RecordFirstPartyEventMutationResult = NonNullable<
-  Awaited<ReturnType<typeof recordFirstPartyEvent>>
+export type SetPlayerBlockedMutationResult = NonNullable<
+  Awaited<ReturnType<typeof setPlayerBlocked>>
 >;
-export type RecordFirstPartyEventMutationBody = BodyType<FirstPartyEventBody>;
-export type RecordFirstPartyEventMutationError = ErrorType<unknown>;
+export type SetPlayerBlockedMutationBody = BodyType<ModerationBlockBody>;
+export type SetPlayerBlockedMutationError = ErrorType<void>;
 
 /**
- * @summary Accept an allowlisted event with fixed, non-personal dimensions
+ * @summary Block or unblock an account represented by a player in a shared room
  */
-export const useRecordFirstPartyEvent = <
-  TError = ErrorType<unknown>,
+export const useSetPlayerBlocked = <
+  TError = ErrorType<void>,
   TContext = unknown,
 >(options?: {
   mutation?: UseMutationOptions<
-    Awaited<ReturnType<typeof recordFirstPartyEvent>>,
+    Awaited<ReturnType<typeof setPlayerBlocked>>,
     TError,
-    { data: BodyType<FirstPartyEventBody> },
+    { data: BodyType<ModerationBlockBody> },
     TContext
   >;
   request?: SecondParameter<typeof customFetch>;
 }): UseMutationResult<
-  Awaited<ReturnType<typeof recordFirstPartyEvent>>,
+  Awaited<ReturnType<typeof setPlayerBlocked>>,
   TError,
-  { data: BodyType<FirstPartyEventBody> },
+  { data: BodyType<ModerationBlockBody> },
   TContext
 > => {
-  return useMutation(getRecordFirstPartyEventMutationOptions(options));
+  return useMutation(getSetPlayerBlockedMutationOptions(options));
 };
+
+/**
+ * @summary Create an auditable moderation report for a player in a shared room
+ */
+export const getReportPlayerUrl = () => {
+  return `/api/moderation/report`;
+};
+
+export const reportPlayer = async (
+  moderationReportBody: ModerationReportBody,
+  options?: RequestInit,
+): Promise<ModerationReportResult> => {
+  return customFetch<ModerationReportResult>(getReportPlayerUrl(), {
+    ...options,
+    method: "POST",
+    headers: { "Content-Type": "application/json", ...options?.headers },
+    body: JSON.stringify(moderationReportBody),
+  });
+};
+
+export const getReportPlayerMutationOptions = <
+  TError = ErrorType<void>,
+  TContext = unknown,
+>(options?: {
+  mutation?: UseMutationOptions<
+    Awaited<ReturnType<typeof reportPlayer>>,
+    TError,
+    { data: BodyType<ModerationReportBody> },
+    TContext
+  >;
+  request?: SecondParameter<typeof customFetch>;
+}): UseMutationOptions<
+  Awaited<ReturnType<typeof reportPlayer>>,
+  TError,
+  { data: BodyType<ModerationReportBody> },
+  TContext
+> => {
+  const mutationKey = ["reportPlayer"];
+  const { mutation: mutationOptions, request: requestOptions } = options
+    ? options.mutation &&
+      "mutationKey" in options.mutation &&
+      options.mutation.mutationKey
+      ? options
+      : { ...options, mutation: { ...options.mutation, mutationKey } }
+    : { mutation: { mutationKey }, request: undefined };
+
+  const mutationFn: MutationFunction<
+    Awaited<ReturnType<typeof reportPlayer>>,
+    { data: BodyType<ModerationReportBody> }
+  > = (props) => {
+    const { data } = props ?? {};
+
+    return reportPlayer(data, requestOptions);
+  };
+
+  return { mutationFn, ...mutationOptions };
+};
+
+export type ReportPlayerMutationResult = NonNullable<
+  Awaited<ReturnType<typeof reportPlayer>>
+>;
+export type ReportPlayerMutationBody = BodyType<ModerationReportBody>;
+export type ReportPlayerMutationError = ErrorType<void>;
+
+/**
+ * @summary Create an auditable moderation report for a player in a shared room
+ */
+export const useReportPlayer = <
+  TError = ErrorType<void>,
+  TContext = unknown,
+>(options?: {
+  mutation?: UseMutationOptions<
+    Awaited<ReturnType<typeof reportPlayer>>,
+    TError,
+    { data: BodyType<ModerationReportBody> },
+    TContext
+  >;
+  request?: SecondParameter<typeof customFetch>;
+}): UseMutationResult<
+  Awaited<ReturnType<typeof reportPlayer>>,
+  TError,
+  { data: BodyType<ModerationReportBody> },
+  TContext
+> => {
+  return useMutation(getReportPlayerMutationOptions(options));
+};
+
+/**
+ * @summary Submit a bounded batch of first-party reliability and progression events
+ */
+export const getSubmitTelemetryEventsUrl = () => {
+  return `/api/telemetry/events`;
+};
+
+export const submitTelemetryEvents = async (
+  telemetryBatch: TelemetryBatch,
+  options?: RequestInit,
+): Promise<TelemetryAcceptedResult> => {
+  return customFetch<TelemetryAcceptedResult>(getSubmitTelemetryEventsUrl(), {
+    ...options,
+    method: "POST",
+    headers: { "Content-Type": "application/json", ...options?.headers },
+    body: JSON.stringify(telemetryBatch),
+  });
+};
+
+export const getSubmitTelemetryEventsMutationOptions = <
+  TError = ErrorType<void>,
+  TContext = unknown,
+>(options?: {
+  mutation?: UseMutationOptions<
+    Awaited<ReturnType<typeof submitTelemetryEvents>>,
+    TError,
+    { data: BodyType<TelemetryBatch> },
+    TContext
+  >;
+  request?: SecondParameter<typeof customFetch>;
+}): UseMutationOptions<
+  Awaited<ReturnType<typeof submitTelemetryEvents>>,
+  TError,
+  { data: BodyType<TelemetryBatch> },
+  TContext
+> => {
+  const mutationKey = ["submitTelemetryEvents"];
+  const { mutation: mutationOptions, request: requestOptions } = options
+    ? options.mutation &&
+      "mutationKey" in options.mutation &&
+      options.mutation.mutationKey
+      ? options
+      : { ...options, mutation: { ...options.mutation, mutationKey } }
+    : { mutation: { mutationKey }, request: undefined };
+
+  const mutationFn: MutationFunction<
+    Awaited<ReturnType<typeof submitTelemetryEvents>>,
+    { data: BodyType<TelemetryBatch> }
+  > = (props) => {
+    const { data } = props ?? {};
+
+    return submitTelemetryEvents(data, requestOptions);
+  };
+
+  return { mutationFn, ...mutationOptions };
+};
+
+export type SubmitTelemetryEventsMutationResult = NonNullable<
+  Awaited<ReturnType<typeof submitTelemetryEvents>>
+>;
+export type SubmitTelemetryEventsMutationBody = BodyType<TelemetryBatch>;
+export type SubmitTelemetryEventsMutationError = ErrorType<void>;
+
+/**
+ * @summary Submit a bounded batch of first-party reliability and progression events
+ */
+export const useSubmitTelemetryEvents = <
+  TError = ErrorType<void>,
+  TContext = unknown,
+>(options?: {
+  mutation?: UseMutationOptions<
+    Awaited<ReturnType<typeof submitTelemetryEvents>>,
+    TError,
+    { data: BodyType<TelemetryBatch> },
+    TContext
+  >;
+  request?: SecondParameter<typeof customFetch>;
+}): UseMutationResult<
+  Awaited<ReturnType<typeof submitTelemetryEvents>>,
+  TError,
+  { data: BodyType<TelemetryBatch> },
+  TContext
+> => {
+  return useMutation(getSubmitTelemetryEventsMutationOptions(options));
+};
+
+/**
+ * @summary Check database and WebSocket health for production monitoring
+ */
+export const getGetOperationsHealthUrl = () => {
+  return `/api/ops/health`;
+};
+
+export const getOperationsHealth = async (
+  options?: RequestInit,
+): Promise<OperationsHealthResult> => {
+  return customFetch<OperationsHealthResult>(getGetOperationsHealthUrl(), {
+    ...options,
+    method: "GET",
+  });
+};
+
+export const getGetOperationsHealthQueryKey = () => {
+  return [`/api/ops/health`] as const;
+};
+
+export const getGetOperationsHealthQueryOptions = <
+  TData = Awaited<ReturnType<typeof getOperationsHealth>>,
+  TError = ErrorType<void>,
+>(options?: {
+  query?: UseQueryOptions<
+    Awaited<ReturnType<typeof getOperationsHealth>>,
+    TError,
+    TData
+  >;
+  request?: SecondParameter<typeof customFetch>;
+}) => {
+  const { query: queryOptions, request: requestOptions } = options ?? {};
+
+  const queryKey = queryOptions?.queryKey ?? getGetOperationsHealthQueryKey();
+
+  const queryFn: QueryFunction<
+    Awaited<ReturnType<typeof getOperationsHealth>>
+  > = ({ signal }) => getOperationsHealth({ signal, ...requestOptions });
+
+  return { queryKey, queryFn, ...queryOptions } as UseQueryOptions<
+    Awaited<ReturnType<typeof getOperationsHealth>>,
+    TError,
+    TData
+  > & { queryKey: QueryKey };
+};
+
+export type GetOperationsHealthQueryResult = NonNullable<
+  Awaited<ReturnType<typeof getOperationsHealth>>
+>;
+export type GetOperationsHealthQueryError = ErrorType<void>;
+
+/**
+ * @summary Check database and WebSocket health for production monitoring
+ */
+
+export function useGetOperationsHealth<
+  TData = Awaited<ReturnType<typeof getOperationsHealth>>,
+  TError = ErrorType<void>,
+>(options?: {
+  query?: UseQueryOptions<
+    Awaited<ReturnType<typeof getOperationsHealth>>,
+    TError,
+    TData
+  >;
+  request?: SecondParameter<typeof customFetch>;
+}): UseQueryResult<TData, TError> & { queryKey: QueryKey } {
+  const queryOptions = getGetOperationsHealthQueryOptions(options);
+
+  const query = useQuery(queryOptions) as UseQueryResult<TData, TError> & {
+    queryKey: QueryKey;
+  };
+
+  return { ...query, queryKey: queryOptions.queryKey };
+}
 
 /**
  * @summary Get owner-private Blueprint clearance, ownership, loadouts, and mastery
@@ -2556,6 +2708,335 @@ export const useAcknowledgeBlueprintVaultReveal = <
   return useMutation(
     getAcknowledgeBlueprintVaultRevealMutationOptions(options),
   );
+};
+
+/**
+ * @summary Read account-private Chronicle campaign progress
+ */
+export const getGetChronicleCampaignProgressUrl = () => {
+  return `/api/chronicles/progress`;
+};
+
+export const getChronicleCampaignProgress = async (
+  options?: RequestInit,
+): Promise<CampaignProgressProjection> => {
+  return customFetch<CampaignProgressProjection>(
+    getGetChronicleCampaignProgressUrl(),
+    {
+      ...options,
+      method: "GET",
+    },
+  );
+};
+
+export const getGetChronicleCampaignProgressQueryKey = () => {
+  return [`/api/chronicles/progress`] as const;
+};
+
+export const getGetChronicleCampaignProgressQueryOptions = <
+  TData = Awaited<ReturnType<typeof getChronicleCampaignProgress>>,
+  TError = ErrorType<unknown>,
+>(options?: {
+  query?: UseQueryOptions<
+    Awaited<ReturnType<typeof getChronicleCampaignProgress>>,
+    TError,
+    TData
+  >;
+  request?: SecondParameter<typeof customFetch>;
+}) => {
+  const { query: queryOptions, request: requestOptions } = options ?? {};
+
+  const queryKey =
+    queryOptions?.queryKey ?? getGetChronicleCampaignProgressQueryKey();
+
+  const queryFn: QueryFunction<
+    Awaited<ReturnType<typeof getChronicleCampaignProgress>>
+  > = ({ signal }) =>
+    getChronicleCampaignProgress({ signal, ...requestOptions });
+
+  return { queryKey, queryFn, ...queryOptions } as UseQueryOptions<
+    Awaited<ReturnType<typeof getChronicleCampaignProgress>>,
+    TError,
+    TData
+  > & { queryKey: QueryKey };
+};
+
+export type GetChronicleCampaignProgressQueryResult = NonNullable<
+  Awaited<ReturnType<typeof getChronicleCampaignProgress>>
+>;
+export type GetChronicleCampaignProgressQueryError = ErrorType<unknown>;
+
+/**
+ * @summary Read account-private Chronicle campaign progress
+ */
+
+export function useGetChronicleCampaignProgress<
+  TData = Awaited<ReturnType<typeof getChronicleCampaignProgress>>,
+  TError = ErrorType<unknown>,
+>(options?: {
+  query?: UseQueryOptions<
+    Awaited<ReturnType<typeof getChronicleCampaignProgress>>,
+    TError,
+    TData
+  >;
+  request?: SecondParameter<typeof customFetch>;
+}): UseQueryResult<TData, TError> & { queryKey: QueryKey } {
+  const queryOptions = getGetChronicleCampaignProgressQueryOptions(options);
+
+  const query = useQuery(queryOptions) as UseQueryResult<TData, TError> & {
+    queryKey: QueryKey;
+  };
+
+  return { ...query, queryKey: queryOptions.queryKey };
+}
+
+/**
+ * @summary Idempotently start or resume The Trace
+ */
+export const getStartTraceChronicleUrl = () => {
+  return `/api/chronicles/trace/start`;
+};
+
+export const startTraceChronicle = async (
+  options?: RequestInit,
+): Promise<TraceChronicleSession> => {
+  return customFetch<TraceChronicleSession>(getStartTraceChronicleUrl(), {
+    ...options,
+    method: "POST",
+  });
+};
+
+export const getStartTraceChronicleMutationOptions = <
+  TError = ErrorType<unknown>,
+  TContext = unknown,
+>(options?: {
+  mutation?: UseMutationOptions<
+    Awaited<ReturnType<typeof startTraceChronicle>>,
+    TError,
+    void,
+    TContext
+  >;
+  request?: SecondParameter<typeof customFetch>;
+}): UseMutationOptions<
+  Awaited<ReturnType<typeof startTraceChronicle>>,
+  TError,
+  void,
+  TContext
+> => {
+  const mutationKey = ["startTraceChronicle"];
+  const { mutation: mutationOptions, request: requestOptions } = options
+    ? options.mutation &&
+      "mutationKey" in options.mutation &&
+      options.mutation.mutationKey
+      ? options
+      : { ...options, mutation: { ...options.mutation, mutationKey } }
+    : { mutation: { mutationKey }, request: undefined };
+
+  const mutationFn: MutationFunction<
+    Awaited<ReturnType<typeof startTraceChronicle>>,
+    void
+  > = () => {
+    return startTraceChronicle(requestOptions);
+  };
+
+  return { mutationFn, ...mutationOptions };
+};
+
+export type StartTraceChronicleMutationResult = NonNullable<
+  Awaited<ReturnType<typeof startTraceChronicle>>
+>;
+
+export type StartTraceChronicleMutationError = ErrorType<unknown>;
+
+/**
+ * @summary Idempotently start or resume The Trace
+ */
+export const useStartTraceChronicle = <
+  TError = ErrorType<unknown>,
+  TContext = unknown,
+>(options?: {
+  mutation?: UseMutationOptions<
+    Awaited<ReturnType<typeof startTraceChronicle>>,
+    TError,
+    void,
+    TContext
+  >;
+  request?: SecondParameter<typeof customFetch>;
+}): UseMutationResult<
+  Awaited<ReturnType<typeof startTraceChronicle>>,
+  TError,
+  void,
+  TContext
+> => {
+  return useMutation(getStartTraceChronicleMutationOptions(options));
+};
+
+/**
+ * @summary Idempotently start or resume The Recurrence
+ */
+export const getStartRecurrenceChronicleUrl = () => {
+  return `/api/chronicles/recurrence/start`;
+};
+
+export const startRecurrenceChronicle = async (
+  options?: RequestInit,
+): Promise<RecurrenceChronicleSession> => {
+  return customFetch<RecurrenceChronicleSession>(
+    getStartRecurrenceChronicleUrl(),
+    {
+      ...options,
+      method: "POST",
+    },
+  );
+};
+
+export const getStartRecurrenceChronicleMutationOptions = <
+  TError = ErrorType<unknown>,
+  TContext = unknown,
+>(options?: {
+  mutation?: UseMutationOptions<
+    Awaited<ReturnType<typeof startRecurrenceChronicle>>,
+    TError,
+    void,
+    TContext
+  >;
+  request?: SecondParameter<typeof customFetch>;
+}): UseMutationOptions<
+  Awaited<ReturnType<typeof startRecurrenceChronicle>>,
+  TError,
+  void,
+  TContext
+> => {
+  const mutationKey = ["startRecurrenceChronicle"];
+  const { mutation: mutationOptions, request: requestOptions } = options
+    ? options.mutation &&
+      "mutationKey" in options.mutation &&
+      options.mutation.mutationKey
+      ? options
+      : { ...options, mutation: { ...options.mutation, mutationKey } }
+    : { mutation: { mutationKey }, request: undefined };
+
+  const mutationFn: MutationFunction<
+    Awaited<ReturnType<typeof startRecurrenceChronicle>>,
+    void
+  > = () => {
+    return startRecurrenceChronicle(requestOptions);
+  };
+
+  return { mutationFn, ...mutationOptions };
+};
+
+export type StartRecurrenceChronicleMutationResult = NonNullable<
+  Awaited<ReturnType<typeof startRecurrenceChronicle>>
+>;
+
+export type StartRecurrenceChronicleMutationError = ErrorType<unknown>;
+
+/**
+ * @summary Idempotently start or resume The Recurrence
+ */
+export const useStartRecurrenceChronicle = <
+  TError = ErrorType<unknown>,
+  TContext = unknown,
+>(options?: {
+  mutation?: UseMutationOptions<
+    Awaited<ReturnType<typeof startRecurrenceChronicle>>,
+    TError,
+    void,
+    TContext
+  >;
+  request?: SecondParameter<typeof customFetch>;
+}): UseMutationResult<
+  Awaited<ReturnType<typeof startRecurrenceChronicle>>,
+  TError,
+  void,
+  TContext
+> => {
+  return useMutation(getStartRecurrenceChronicleMutationOptions(options));
+};
+
+/**
+ * @summary Idempotently start or resume The Triangulation
+ */
+export const getStartTriangulationChronicleUrl = () => {
+  return `/api/chronicles/triangulation/start`;
+};
+
+export const startTriangulationChronicle = async (
+  options?: RequestInit,
+): Promise<TriangulationChronicleSession> => {
+  return customFetch<TriangulationChronicleSession>(
+    getStartTriangulationChronicleUrl(),
+    {
+      ...options,
+      method: "POST",
+    },
+  );
+};
+
+export const getStartTriangulationChronicleMutationOptions = <
+  TError = ErrorType<unknown>,
+  TContext = unknown,
+>(options?: {
+  mutation?: UseMutationOptions<
+    Awaited<ReturnType<typeof startTriangulationChronicle>>,
+    TError,
+    void,
+    TContext
+  >;
+  request?: SecondParameter<typeof customFetch>;
+}): UseMutationOptions<
+  Awaited<ReturnType<typeof startTriangulationChronicle>>,
+  TError,
+  void,
+  TContext
+> => {
+  const mutationKey = ["startTriangulationChronicle"];
+  const { mutation: mutationOptions, request: requestOptions } = options
+    ? options.mutation &&
+      "mutationKey" in options.mutation &&
+      options.mutation.mutationKey
+      ? options
+      : { ...options, mutation: { ...options.mutation, mutationKey } }
+    : { mutation: { mutationKey }, request: undefined };
+
+  const mutationFn: MutationFunction<
+    Awaited<ReturnType<typeof startTriangulationChronicle>>,
+    void
+  > = () => {
+    return startTriangulationChronicle(requestOptions);
+  };
+
+  return { mutationFn, ...mutationOptions };
+};
+
+export type StartTriangulationChronicleMutationResult = NonNullable<
+  Awaited<ReturnType<typeof startTriangulationChronicle>>
+>;
+
+export type StartTriangulationChronicleMutationError = ErrorType<unknown>;
+
+/**
+ * @summary Idempotently start or resume The Triangulation
+ */
+export const useStartTriangulationChronicle = <
+  TError = ErrorType<unknown>,
+  TContext = unknown,
+>(options?: {
+  mutation?: UseMutationOptions<
+    Awaited<ReturnType<typeof startTriangulationChronicle>>,
+    TError,
+    void,
+    TContext
+  >;
+  request?: SecondParameter<typeof customFetch>;
+}): UseMutationResult<
+  Awaited<ReturnType<typeof startTriangulationChronicle>>,
+  TError,
+  void,
+  TContext
+> => {
+  return useMutation(getStartTriangulationChronicleMutationOptions(options));
 };
 
 /**

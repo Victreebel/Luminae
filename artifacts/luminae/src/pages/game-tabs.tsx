@@ -1,6 +1,6 @@
 import React from 'react';
 import { motion, AnimatePresence } from 'framer-motion';
-import { Check, ChevronDown, ChevronUp, Eye, Hammer, Pencil, SendHorizontal, X } from 'lucide-react';
+import { Ban, Check, ChevronDown, ChevronUp, Eye, Flag, Hammer, Pencil, SendHorizontal, VolumeX, X } from 'lucide-react';
 import type {
   AffinityCounts,
   ArtifactCard,
@@ -16,7 +16,7 @@ import { getDefaultCivName, getSavedAvatarId } from '@/lib/avatars';
 import { getDominantAffinityPalette, type AffinityPalette, type KardashevTier } from '@/lib/kardashev';
 import { getLuminaryVisuals, LuminaryPanelArt } from '@/lib/luminaryAssets';
 import type { ChatMessage } from '@/hooks/use-game-websocket';
-import { KardashevScene } from '@/components/KardashevScene';
+import { CivilizationScenePanel } from '@/components/CivilizationScenePanel';
 import { AFFINITIES } from './game-constants';
 import { ArtifactCardView, CardBack, EminenceBadge, EminenceDiamond, EminenceProgress, ForgedCardWithTooltip, AffinityToken, PendingActionOverlay } from './game-card';
 import { PlayerAvatar } from './game-player';
@@ -26,9 +26,10 @@ import { getArtifactBrandTypes } from '@/lib/artifactBrands';
 import { getLuminaryEminenceTitle } from './game-luminary';
 import type { CostMode, SelectedCard } from './game-types';
 import {
-  CIVILIZATION_TRAIT_LABELS,
   type CivilizationProfile,
 } from '@/lib/civilizationProfile';
+import type { CivilizationDeploymentSite } from '@/lib/civilizationDeploymentSites';
+import { getFoundryStoredIds } from './game-planning';
 
 const BlueprintGamePanel = React.lazy(async () => {
   const module = await import('@/components/blueprints/BlueprintGamePanel');
@@ -119,69 +120,6 @@ export function OpponentStatStrip({
   );
 }
 
-function CivilizationSignatureStrip({
-  profile,
-  forgedArtifacts,
-  onOpenArtifact,
-}: {
-  profile: CivilizationProfile;
-  forgedArtifacts: readonly ArtifactCard[];
-  onOpenArtifact: (card: ArtifactCard) => void;
-}) {
-  if (profile.landmarks.length === 0) return null;
-
-  return (
-    <section className="space-y-2" aria-label="Civilization infrastructure">
-      <div className="flex items-center justify-between gap-3">
-        <span className="text-[10px] font-semibold uppercase text-muted-foreground">
-          Artifact infrastructure
-        </span>
-        <span className="text-[10px] tabular-nums text-muted-foreground/70">
-          {profile.dominantTraits.length} signatures
-        </span>
-      </div>
-      <div className="grid grid-cols-2 gap-1.5 sm:grid-cols-3">
-        {profile.landmarks.slice(0, 6).map((landmark) => {
-          const card = forgedArtifacts.find(({ id }) => id === landmark.artifactId);
-          const affinity = AFFINITY_META[landmark.affinity];
-          return (
-            <button
-              key={landmark.artifactId}
-              type="button"
-              disabled={!card}
-              onClick={() => {
-                if (card) onOpenArtifact(card);
-              }}
-              className="min-w-0 border border-white/8 bg-white/[0.025] px-2 py-1.5 text-left transition-colors hover:border-white/18 hover:bg-white/[0.055] disabled:pointer-events-none"
-              title={`${landmark.artifactName} · ${CIVILIZATION_TRAIT_LABELS[landmark.trait]}`}
-              aria-label={`Inspect ${landmark.artifactName}, ${CIVILIZATION_TRAIT_LABELS[landmark.trait]}`}
-            >
-              <span className="flex min-w-0 items-center gap-1.5">
-                <span
-                  className="h-2 w-2 shrink-0 rounded-full"
-                  style={{
-                    backgroundColor: affinity.hex,
-                    boxShadow: `0 0 7px ${affinity.glowHex}`,
-                  }}
-                  aria-hidden="true"
-                />
-                <span className="min-w-0">
-                  <span className="block truncate text-[10px] font-semibold text-foreground/90">
-                    {CIVILIZATION_TRAIT_LABELS[landmark.trait]}
-                  </span>
-                  <span className="block truncate text-[9px] text-muted-foreground">
-                    {landmark.artifactName}
-                  </span>
-                </span>
-              </span>
-            </button>
-          );
-        })}
-      </div>
-    </section>
-  );
-}
-
 export interface HandTabScope {
   activationGateActive: boolean;
   activationQueue: readonly unknown[];
@@ -190,16 +128,18 @@ export interface HandTabScope {
   civEditValue: string;
   civLabel: string;
   civilizationProfile: CivilizationProfile;
+  civilizationDeploymentSites: readonly CivilizationDeploymentSite[];
+  civilizationScanRequested?: boolean;
   computeCosts: (card: ArtifactCard, mode: CostMode) => Partial<Record<AffinityKey, number>> | undefined;
   costMode: CostMode;
   expandedLumEffects: Set<string>;
   forgedView: 'cards' | 'timeline';
+  hintsEnabled: boolean;
   handleCancelPlan: () => void | Promise<void>;
   handleCardTap: (card: ArtifactCard, fromReserve: boolean) => void;
-  executeBlueprintAction: (payload: { type: 'recover_foundry_component'; cardId: string }) => void;
+  handleFoundryRecovery: (artifactId: string) => void;
   isEditingCivName: boolean;
   isMyTurn: boolean;
-  isMyTurnForCoreAction: boolean;
   kardashevPalette: AffinityPalette;
   kardashevProgressFraction: number;
   kardashevTier: KardashevTier;
@@ -208,6 +148,8 @@ export interface HandTabScope {
   myReservedCount: number;
   newlyMarkedCardIds: Set<string>;
   openForgedCardSheet: (card: ArtifactCard) => void;
+  recentCivilizationSiteIds: readonly string[];
+  acknowledgeRecentCivilizationSites: (siteIds: readonly string[]) => void;
   pendingGameOver: boolean;
   plannedCardId: string | null;
   plannedCardLabel: string;
@@ -238,6 +180,9 @@ export interface LogTabScope {
   chatMessages: ChatMessage[];
   expandedOpponents: Set<string>;
   handleSendChat: (event?: React.FormEvent | React.MouseEvent | React.KeyboardEvent) => void;
+  handleBlockChatPlayer: (message: ChatMessage) => void;
+  handleMuteChatPlayer: (message: ChatMessage) => void;
+  handleReportChatPlayer: (message: ChatMessage) => void;
   openForgedCardSheet: (card: ArtifactCard) => void;
   opponentData: Record<string, OpponentSummary>;
   session: GameTabSession;
@@ -256,17 +201,19 @@ export function HandTab({ scope }: { scope: HandTabScope }) {
     cardDetailDiscovered,
     civEditValue,
     civLabel,
+    civilizationDeploymentSites,
+    civilizationScanRequested = false,
     civilizationProfile,
     computeCosts,
     costMode,
     expandedLumEffects,
     forgedView,
+    hintsEnabled,
     handleCancelPlan,
     handleCardTap,
-    executeBlueprintAction,
+    handleFoundryRecovery,
     isEditingCivName,
     isMyTurn,
-    isMyTurnForCoreAction,
     kardashevPalette,
     kardashevProgressFraction,
     kardashevTier,
@@ -274,6 +221,8 @@ export function HandTab({ scope }: { scope: HandTabScope }) {
     me,
     myReservedCount,
     openForgedCardSheet,
+    recentCivilizationSiteIds,
+    acknowledgeRecentCivilizationSites,
     pendingGameOver,
     plannedCardId,
     plannedCardLabel,
@@ -296,6 +245,17 @@ export function HandTab({ scope }: { scope: HandTabScope }) {
     suppressedMarkerIds,
     victoryRequirement,
   } = scope;
+  const foundryStoredIds = me ? getFoundryStoredIds(me) : [];
+  const foundryStoredIdSet = new Set(foundryStoredIds);
+  const ordinaryEncryptedArtifacts = me?.reservedArtifacts.filter(
+    (artifact) => !foundryStoredIdSet.has(artifact.id),
+  ) ?? [];
+  const foundryStoredArtifacts = me?.reservedArtifacts.filter(
+    (artifact) => foundryStoredIdSet.has(artifact.id),
+  ) ?? [];
+  const foundryRecovering = me?.manifestedBlueprintDevices?.some(
+    (device) => device.blueprintId === 'bp_mantle_to_orbit_foundry' && device.state === 'recovering',
+  ) === true;
 
   const luminaryAllianceBonuses: Partial<Record<AffinityKey, number>> = {};
   for (const alliance of state.luminaryAffinities ?? []) {
@@ -318,11 +278,43 @@ export function HandTab({ scope }: { scope: HandTabScope }) {
       };
     })
     .filter(({ total }) => total > 0);
+  const myForgedArtifacts = React.useMemo(() => me?.forgedArtifacts ?? [], [me?.forgedArtifacts]);
+  const fallbackMaturityLabel = kardashevTier >= 3
+    ? 'Galactic'
+    : kardashevTier >= 2
+      ? 'Stellar'
+      : kardashevTier >= 1
+        ? 'Planetary'
+        : 'Emergent';
+  const maturityLabel = me?.civilization?.scale.historicalMaturity
+    ? `${me.civilization.scale.historicalMaturity.charAt(0).toUpperCase()}${me.civilization.scale.historicalMaturity.slice(1)}`
+    : fallbackMaturityLabel;
+  const reach = me?.civilization?.scale.currentReach;
+  const reachCondition = me?.civilization?.scale.currentReachCondition;
+  const reachLabel = reach
+    ? `${reach.charAt(0).toUpperCase()}${reach.slice(1)}${reachCondition && reachCondition !== 'intact' ? ` / ${reachCondition}` : ''}`
+    : 'Unknown';
+  const stabilityBand = me?.civilization?.stability.band;
+  const stabilityLabel = stabilityBand
+    ? `${stabilityBand.charAt(0).toUpperCase()}${stabilityBand.slice(1)}`
+    : 'Unrecorded';
+  const showReach = reach !== me?.civilization?.scale.historicalMaturity ||
+    (reachCondition !== undefined && reachCondition !== 'intact');
+  const civilizationTraceCount = civilizationDeploymentSites.length;
+  const civilizationEvents = me?.civilization?.events ?? [];
+  const recentCivilizationTraceCount = recentCivilizationSiteIds.length;
+  const recentCivilizationTrace = civilizationDeploymentSites.find((site) => recentCivilizationSiteIds.includes(site.id));
+  const recentCivilizationTraceLabel = recentCivilizationTrace?.title
+    ?? (recentCivilizationTraceCount > 0 ? `${recentCivilizationTraceCount} new trace${recentCivilizationTraceCount === 1 ? '' : 's'}` : null);
+  const activeCivilizationConditions = React.useMemo(() => [...new Set(
+    (me?.civilization?.activeConditions ?? []).flatMap((condition) => (
+      condition.coreType ? [condition.coreType] : []
+    )),
+  )], [me?.civilization?.activeConditions]);
 
   return (
-    <div className="flex flex-col gap-5 p-4 pb-6">
-      {/* Kardashev Observatory Scene */}
-      <KardashevScene
+    <div data-game-hand-tab="true" className="flex flex-col gap-5 p-4 pb-6">
+      <CivilizationScenePanel
         tier={kardashevTier}
         palette={kardashevPalette}
         profile={civilizationProfile}
@@ -332,21 +324,56 @@ export function HandTab({ scope }: { scope: HandTabScope }) {
           activationQueue.length > 0 ||
           (state.status === 'finished' && (pendingGameOver || showCinematic || showWinOverlay))
         }
-      />
-      <CivilizationSignatureStrip
-        profile={civilizationProfile}
-        forgedArtifacts={me?.forgedArtifacts ?? []}
+        defaultScanActive={civilizationScanRequested || recentCivilizationSiteIds.length > 0}
+        deploymentSites={civilizationDeploymentSites}
+        forgedArtifacts={myForgedArtifacts}
+        guidanceEnabled={hintsEnabled}
+        stabilityBand={stabilityBand}
+        activeConditions={activeCivilizationConditions}
+        externalRecentSiteIds={recentCivilizationSiteIds}
+        onRecentSiteIdsSeen={acknowledgeRecentCivilizationSites}
         onOpenArtifact={openForgedCardSheet}
       />
 
       {/* Eminence + name */}
-      <div className={`rounded-2xl border p-4 bg-card/90 flex items-center justify-between ${isMyTurn ? 'border-primary/60 shadow-[0_0_20px_rgba(var(--primary),0.2)]' : 'border-border'}`}>
-        <div className="flex-1 min-w-0 mr-3">
+      <section
+        className="relative overflow-hidden rounded-[8px] border p-3 shadow-[inset_0_0_0_1px_rgba(255,255,255,0.035)] sm:p-4"
+        data-testid="civilization-command-card"
+        data-civilization-recent={recentCivilizationTraceCount > 0 ? 'true' : undefined}
+        style={{
+          borderColor: recentCivilizationTraceCount > 0
+            ? `${kardashevPalette.primary}73`
+            : isMyTurn
+              ? `${kardashevPalette.primary}66`
+              : 'rgba(255,255,255,0.1)',
+          background: `linear-gradient(135deg, rgba(5,9,20,0.94), ${kardashevPalette.primary}12 54%, rgba(3,7,17,0.9))`,
+          boxShadow: recentCivilizationTraceCount > 0
+            ? `inset 0 0 0 1px rgba(255,255,255,0.035), 0 0 28px ${kardashevPalette.primary}1F`
+            : isMyTurn
+              ? `inset 0 0 0 1px rgba(255,255,255,0.035), 0 0 22px ${kardashevPalette.primary}18`
+              : 'inset 0 0 0 1px rgba(255,255,255,0.035)',
+        }}
+      >
+        <div
+          className="pointer-events-none absolute inset-x-0 top-0 h-px"
+          style={{ background: `linear-gradient(90deg, transparent, ${kardashevPalette.primary}99, transparent)` }}
+          aria-hidden="true"
+        />
+        <div
+          className="pointer-events-none absolute inset-y-3 left-0 w-px"
+          style={{ background: `linear-gradient(180deg, transparent, ${kardashevPalette.primary}80, transparent)` }}
+          aria-hidden="true"
+        />
+        <div className="flex flex-col gap-4 sm:flex-row sm:items-center sm:justify-between">
+          <div className="min-w-0 flex-1">
+            <p className="mb-1 text-[10px] font-black uppercase tracking-[0.22em] text-primary/58">
+              Civilization Record
+            </p>
           {isEditingCivName ? (
             <div className="flex items-center gap-1.5">
               <input
                 autoFocus
-                className="bg-transparent border-b border-primary/60 text-base font-bold text-white focus:outline-none w-full min-w-0 placeholder:text-white/30"
+                className="w-full min-w-0 border-b border-primary/60 bg-transparent text-lg font-semibold text-white placeholder:text-white/30 focus:outline-none"
                 value={civEditValue}
                 onChange={(e) => setCivEditValue(e.target.value)}
                 onKeyDown={(e) => {
@@ -395,15 +422,106 @@ export function HandTab({ scope }: { scope: HandTabScope }) {
               }}
               title="Rename your civilization"
             >
-              <span className="text-base font-bold text-white truncate border-b border-transparent group-hover:border-white/30 transition-colors">
+              <span className="truncate border-b border-transparent text-lg font-semibold text-white transition-colors group-hover:border-white/30">
                 {civLabel}
               </span>
               <Pencil className="h-3 w-3 shrink-0 text-white/30 group-hover:text-white/60 transition-colors" />
             </button>
           )}
+            <div className="mt-3 flex flex-wrap items-center gap-2">
+              {[
+                ['Maturity', maturityLabel],
+                ...(showReach ? [['Reach', reachLabel] as const] : []),
+                ['Stability', stabilityLabel],
+                ['Artifacts', myForgedArtifacts.length],
+                ['Traces', civilizationTraceCount],
+                ['Events', civilizationEvents.length],
+              ].map(([label, value]) => (
+                <span
+                  key={label}
+                  className="inline-flex min-h-7 items-center gap-1.5 border border-white/10 bg-white/[0.035] px-2.5 py-1 text-[10px] font-black uppercase tracking-widest text-white/58 shadow-[inset_0_0_0_1px_rgba(255,255,255,0.025)]"
+                  data-civilization-record-metric={label}
+                >
+                  <span className="text-white/34">{label}</span>
+                  <span className="text-white/86">{value}</span>
+                </span>
+              ))}
+              {recentCivilizationTraceCount > 0 && (
+                <span
+                  className="inline-flex min-h-7 items-center gap-1.5 border px-2.5 py-1 text-[10px] font-black uppercase tracking-widest"
+                  style={{
+                    borderColor: `${kardashevPalette.primary}73`,
+                    background: `${kardashevPalette.primary}1A`,
+                    color: kardashevPalette.accent,
+                    boxShadow: `0 0 18px ${kardashevPalette.primary}1F`,
+                  }}
+                >
+                  New Trace
+                  <span className="text-white/86">{recentCivilizationTraceCount}</span>
+                </span>
+              )}
+            </div>
+            {recentCivilizationTraceLabel && (
+              <div
+                className="mt-3 rounded-[6px] border px-3 py-2 text-[10px] font-semibold uppercase tracking-[0.16em]"
+                data-testid="civilization-command-new-trace"
+                aria-live="polite"
+                style={{
+                  borderColor: `${kardashevPalette.primary}59`,
+                  background: `${kardashevPalette.primary}12`,
+                  color: kardashevPalette.accent,
+                  boxShadow: `0 0 22px ${kardashevPalette.primary}18`,
+                }}
+              >
+                <span className="block text-[8px] font-black text-white/38">Recently registered</span>
+                <span className="mt-0.5 block truncate text-white/86">{recentCivilizationTraceLabel}</span>
+                <span className="mt-1 block text-[8px] font-black" style={{ color: `${kardashevPalette.accent}BF` }}>
+                  Scan view is focusing this change
+                </span>
+              </div>
+            )}
         </div>
-        <EminenceProgress value={me?.eminence ?? 0} target={victoryRequirement} variant="monument" />
-      </div>
+          <div className="shrink-0 self-stretch border-t border-white/8 pt-3 sm:border-l sm:border-t-0 sm:pl-4 sm:pt-0">
+            <EminenceProgress value={me?.eminence ?? 0} target={victoryRequirement} variant="monument" />
+          </div>
+        </div>
+      </section>
+
+      {civilizationEvents.length > 0 && (
+        <section className="px-1" aria-labelledby="civilization-events-heading">
+          <div className="mb-2 flex items-center justify-between gap-3">
+            <h2
+              id="civilization-events-heading"
+              className="text-[10px] font-semibold uppercase text-muted-foreground"
+            >
+              Recent Consequences
+            </h2>
+            <span className="text-[9px] font-black uppercase tracking-widest text-white/32">
+              Causal Record
+            </span>
+          </div>
+          <ol className="divide-y divide-white/8 border-y border-white/8">
+            {civilizationEvents.slice(-3).reverse().map((event) => (
+              <li key={event.eventId} className="flex items-start gap-3 py-2.5">
+                <span
+                  className="mt-1.5 h-1.5 w-1.5 shrink-0 rotate-45 border border-primary/65 bg-primary/18"
+                  aria-hidden="true"
+                />
+                <div className="min-w-0 flex-1">
+                  <p className="text-xs font-semibold leading-snug text-white/82">
+                    {event.summary}
+                  </p>
+                  <p className="mt-1 text-[9px] font-black uppercase tracking-widest text-white/34">
+                    {event.sourceType}
+                    {event.pressureTags.length > 0 ? ` / ${event.pressureTags.join(' + ')}` : ''}
+                    {event.turnCount !== null ? ` / Turn ${event.turnCount}` : ''}
+                  </p>
+                </div>
+              </li>
+            ))}
+          </ol>
+        </section>
+      )}
 
       {/* Civilization-wide permanent Affinity ledger */}
       <section className="px-1" aria-labelledby="permanent-affinities-heading">
@@ -445,34 +563,27 @@ export function HandTab({ scope }: { scope: HandTabScope }) {
 
       {(
         (me?.blueprintPrivateStates?.length ?? 0) > 0 ||
-        safePlayers.some((player) => (
-          player.manifestedBlueprintProjects?.length ??
-          player.manifestedBlueprintDevices?.length ??
-          0
-        ) > 0) ||
+        safePlayers.some((player) => (player.manifestedBlueprintDevices?.length ?? 0) > 0) ||
         (state.scenarioProtocols?.length ?? 0) > 0
       ) && (
-        <React.Suspense
-          fallback={<div className="h-24 animate-pulse border border-white/8 bg-white/[0.025]" aria-label="Loading Blueprint systems" />}
-        >
-          <BlueprintGamePanel
-            me={me}
-            players={safePlayers}
-            scenarioProtocols={state.scenarioProtocols ?? []}
-            loreCatalog={loreCatalog}
-            onOpenArtifact={openForgedCardSheet}
-            canUseCoreAction={isMyTurnForCoreAction}
-            onRecoverFoundryComponent={(cardId) => executeBlueprintAction({
-              type: 'recover_foundry_component',
-              cardId,
-            })}
-          />
-        </React.Suspense>
+        <div data-blueprint-game-panel="true">
+          <React.Suspense
+            fallback={<div className="h-24 animate-pulse border border-white/8 bg-white/[0.025]" aria-label="Loading Blueprint systems" />}
+          >
+            <BlueprintGamePanel
+              me={me}
+              players={safePlayers}
+              scenarioProtocols={state.scenarioProtocols}
+              loreCatalog={loreCatalog}
+              onOpenArtifact={openForgedCardSheet}
+            />
+          </React.Suspense>
+        </div>
       )}
 
       {/* Reserved Cards */}
-      {myReservedCount > 0 && (
-        <div>
+      {ordinaryEncryptedArtifacts.length > 0 && (
+        <div data-encrypted-artifacts-group="true">
           <p className="compact-section-label flex items-center gap-1.5 text-[10px] font-semibold uppercase tracking-widest text-muted-foreground mb-2 px-1">
             <span className="compact-section-glyph h-3.5 w-3.5 inline-flex items-center justify-center shrink-0 opacity-75" aria-hidden="true">
               <CipherSigil affinityHex="#e2e8f0" id={9101} />
@@ -481,7 +592,7 @@ export function HandTab({ scope }: { scope: HandTabScope }) {
             <span className="compact-section-count">({myReservedCount}/3)</span>
           </p>
           <div className="flex gap-3 overflow-x-auto pb-1 no-scrollbar">
-	            {me?.reservedArtifacts.map((c) => {
+	            {ordinaryEncryptedArtifacts.map((c) => {
 		              const isPendingPlan = plannedCardId === c.id;
 		              const cardTapTitle = isPendingPlan ? `Click to cancel ${plannedCardLabel.toLowerCase()}` : c.name;
 	              const lore = loreCatalog?.[c.id];
@@ -489,20 +600,14 @@ export function HandTab({ scope }: { scope: HandTabScope }) {
 	              return (
 	                <div key={c.id} data-reserved-card-id={c.id} className="relative shrink-0 flex flex-col items-center gap-1" style={{ maxWidth: 90 }} title={cardTapTitle}>
                   <div className="relative">
-                    <button
-                      type="button"
-                      aria-label={`Open encrypted Artifact ${c.name}`}
-                      className="block rounded-xl border-0 bg-transparent p-0 text-left focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-amber-300/80"
-                      onClick={() => handleCardTap(c, true)}
-                    >
-                      <ArtifactCardView
-                        card={c}
-                        tier={c.tier}
-                        tapped={selectedCard?.card.id === c.id}
-                        effectiveCosts={computeCosts(c, costMode)}
-                        hideStrike={costMode === 'needed_now'}
-                      />
-                    </button>
+                    <ArtifactCardView
+                      card={c}
+                      tier={c.tier}
+                      onTap={() => handleCardTap(c, true)}
+                      tapped={selectedCard?.card.id === c.id}
+                      effectiveCosts={computeCosts(c, costMode)}
+                      hideStrike={costMode === 'needed_now'}
+                    />
 		                    {isPendingPlan && (
                           <PendingActionOverlay
                             label={plannedCardLabel}
@@ -535,6 +640,63 @@ export function HandTab({ scope }: { scope: HandTabScope }) {
                       </p>
                     )}
                   </div>
+                </div>
+              );
+            })}
+          </div>
+        </div>
+      )}
+
+      {foundryStoredArtifacts.length > 0 && (
+        <div data-foundry-components-group="true">
+          <p className="compact-section-label mb-2 flex items-center gap-1.5 px-1 text-[10px] font-semibold uppercase tracking-widest text-amber-200/75">
+            <span className="compact-section-glyph inline-flex h-3.5 w-3.5 shrink-0 items-center justify-center opacity-80" aria-hidden="true">
+              <CipherSigil affinityHex="#f6c66b" id={9102} />
+            </span>
+            <span className="compact-label-text">Foundry Components</span>
+            <span className="compact-section-count">({foundryStoredArtifacts.length})</span>
+          </p>
+          <div className="flex gap-3 overflow-x-auto pb-1 no-scrollbar">
+            {foundryStoredArtifacts.map((card) => {
+              const lore = loreCatalog?.[card.id];
+              const loreTag = lore?.artifactForm?.split('/')?.[0]?.trim() ?? lore?.civLane?.split('/')?.[0]?.trim();
+              return (
+                <div
+                  key={card.id}
+                  data-foundry-component-id={card.id}
+                  className="relative flex shrink-0 flex-col items-center gap-1"
+                  style={{ maxWidth: 90 }}
+                >
+                  <div className="relative">
+                    <ArtifactCardView
+                      card={card}
+                      tier={card.tier}
+                      onTap={() => handleCardTap(card, true)}
+                      tapped={selectedCard?.card.id === card.id}
+                      effectiveCosts={computeCosts(card, costMode)}
+                      hideStrike={costMode === 'needed_now'}
+                    />
+                    <span className="pointer-events-none absolute left-1 top-1 border border-amber-200/35 bg-black/82 px-1 py-0.5 text-[7px] font-black uppercase text-amber-100">
+                      Foundry
+                    </span>
+                  </div>
+                  {foundryRecovering ? (
+                    <button
+                      type="button"
+                      disabled={!isMyTurn}
+                      onClick={() => handleFoundryRecovery(card.id)}
+                      className="flex min-h-7 w-full items-center justify-center gap-1 border border-amber-200/30 bg-amber-950/25 px-1.5 text-[8px] font-black uppercase text-amber-100 enabled:hover:bg-amber-300/15 disabled:opacity-45"
+                    >
+                      <Hammer className="h-3 w-3" aria-hidden="true" /> Recover
+                    </button>
+                  ) : (
+                    <span className="text-center text-[8px] font-semibold uppercase text-white/45">Paid re-Forge</span>
+                  )}
+                  {loreTag && (
+                    <p className="w-full truncate text-center text-[8px] font-semibold uppercase tracking-wider text-amber-200/45">
+                      {loreTag}
+                    </p>
+                  )}
                 </div>
               );
             })}
@@ -594,13 +756,7 @@ export function HandTab({ scope }: { scope: HandTabScope }) {
                     : [];
                   const bonusMeta = AFFINITY_META[c.bonusAffinity as AffinityKey];
                   return (
-                    <button
-                      key={c.id}
-                      type="button"
-                      className="flex w-full items-center gap-2.5 rounded px-1 py-2 text-left transition-colors hover:bg-white/5 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-amber-300/80"
-                      onClick={() => openForgedCardSheet(c)}
-                      aria-label={`View forged Artifact ${c.name}`}
-                    >
+                    <div key={c.id} className="flex items-center gap-2.5 py-2 cursor-pointer rounded hover:bg-white/5 px-1 -mx-1 transition-colors" onClick={() => openForgedCardSheet(c)}>
                       <span className="text-[10px] text-muted-foreground w-4 text-right shrink-0 tabular-nums">{idx + 1}</span>
                       <div className="flex-1 min-w-0">
                         <p className="text-[11px] font-semibold text-foreground leading-tight truncate">{c.name}</p>
@@ -619,7 +775,7 @@ export function HandTab({ scope }: { scope: HandTabScope }) {
                         <AffinityToken color={c.bonusAffinity as AffinityKey} size={9} />
                         <span className="text-[9px] font-semibold" style={{ color: bonusMeta?.glowHex ?? '#fff' }}>+1</span>
                       </div>
-                    </button>
+                    </div>
                   );
                 })}
               </div>
@@ -783,6 +939,9 @@ export function LogTab({ scope }: { scope: LogTabScope }) {
     chatMessages,
     expandedOpponents,
     handleSendChat,
+    handleBlockChatPlayer,
+    handleMuteChatPlayer,
+    handleReportChatPlayer,
     openForgedCardSheet,
     opponentData,
     session,
@@ -1110,6 +1269,13 @@ export function LogTab({ scope }: { scope: LogTabScope }) {
                       <span className={`font-semibold ${isMe ? 'text-primary' : 'text-foreground'}`}>{msg.playerName}</span>
                       <span className="text-foreground/80 ml-1 break-words">{msg.text}</span>
                     </div>
+                    {!isMe && (
+                      <div className="flex shrink-0 items-center gap-0.5">
+                        <button type="button" onClick={() => handleMuteChatPlayer(msg)} className="grid h-7 w-7 place-items-center text-muted-foreground hover:text-foreground" title="Mute player" aria-label={`Mute ${msg.playerName}`}><VolumeX className="h-3.5 w-3.5" /></button>
+                        <button type="button" onClick={() => handleBlockChatPlayer(msg)} className="grid h-7 w-7 place-items-center text-muted-foreground hover:text-foreground" title="Block player" aria-label={`Block ${msg.playerName}`}><Ban className="h-3.5 w-3.5" /></button>
+                        <button type="button" onClick={() => handleReportChatPlayer(msg)} className="grid h-7 w-7 place-items-center text-muted-foreground hover:text-destructive" title="Report message" aria-label={`Report ${msg.playerName}`}><Flag className="h-3.5 w-3.5" /></button>
+                      </div>
+                    )}
                   </div>
                 );
               })

@@ -1,5 +1,5 @@
 import { Router, type IRouter, type Response } from "express";
-import { and, eq, gte, isNotNull, isNull, ne, or, sql } from "drizzle-orm";
+import { and, eq, isNotNull, isNull, ne, or } from "drizzle-orm";
 import { randomUUID } from "node:crypto";
 import { z } from "zod";
 import { db } from "@workspace/db";
@@ -18,7 +18,14 @@ import {
   isBlackMarketDecryptionKey,
   isBlueprintPresentationItem,
 } from "../lib/storeCatalog";
-import { getDailyStarlightReward, isTestCheckoutEnabled } from "../lib/storeRules";
+import { getDailyLumeReward, isTestCheckoutEnabled } from "../lib/storeRules";
+import { applyLumeTransaction, InsufficientLumeError } from "../lib/lumeLedger";
+import { LUME_PACKS } from "../lib/lumePackCatalog";
+import {
+  NativePurchaseError,
+  reconcileNativePurchase,
+  submitNativeLumePurchase,
+} from "../lib/nativePurchases";
 import {
   equippedItemsByKind,
   getEquippedCosmeticItems,
@@ -26,22 +33,39 @@ import {
 } from "../lib/accountCosmetics";
 import { ensureAccountProgressBackfilled } from "../lib/accountProgress";
 import type { Request } from "express";
+import { rateLimit } from "../lib/httpSecurity";
 
 const router: IRouter = Router();
 
 const PurchaseBody = z.object({
-  itemId: z.string().min(1).max(96),
-}).strict();
+  itemId: z.string().min(1),
+});
+
+const NativePurchaseBody = z.object({
+  provider: z.enum(["google_play", "samsung_iap"]),
+  packId: z.enum(["lume_100", "lume_300", "lume_700"]),
+  productId: z.string().min(1).max(200),
+  purchaseToken: z.string().min(8).max(4096),
+});
+
+const ReconcilePurchaseBody = z.object({
+  provider: z.enum(["google_play", "samsung_iap"]),
+  purchaseToken: z.string().min(8).max(4096),
+});
 
 const EquipBody = z.object({
-  slot: z.enum(["card_back", "civilization_ambience", "blueprint_presentation"]),
-  scopeKey: z.string().min(1).max(96).default("global"),
-  itemId: z.string().min(1).max(96).nullable(),
-}).strict();
+  slot: z.enum([
+    "card_back",
+    "civilization_ambience",
+    "luminary_arrival_sound",
+    "blueprint_presentation",
+    "vault_seal",
+  ]),
+  scopeKey: z.string().min(1).default("global"),
+  itemId: z.string().min(1).nullable(),
+});
 
 const TEST_CHECKOUT_ENABLED = isTestCheckoutEnabled(process.env.NODE_ENV);
-
-class InsufficientStarlightError extends Error {}
 
 function todayKey(): string {
   return new Date().toISOString().slice(0, 10);
@@ -152,8 +176,14 @@ router.get("/store", accountAuth, async (req: Request, res): Promise<void> => {
     equippedItemIds,
     equippedItems,
     testCheckoutEnabled: TEST_CHECKOUT_ENABLED,
+    lumePacks: LUME_PACKS,
     engagement: {
-      cosmeticBalance: engagement.cosmeticBalance,
+      lumeBalance: engagement.lumeBalance,
+      lifetimeEarnedLume: engagement.lifetimeEarnedLume,
+      lifetimePurchasedLume: engagement.lifetimePurchasedLume,
+      lifetimeGrantedLume: engagement.lifetimeGrantedLume,
+      lifetimeSpentLume: engagement.lifetimeSpentLume,
+      lifetimeRefundedLume: engagement.lifetimeRefundedLume,
       dailyClaimStreak: engagement.dailyClaimStreak,
       lastDailyClaimDate: engagement.lastDailyClaimDate,
       canClaimDaily: engagement.lastDailyClaimDate !== todayKey(),
@@ -161,6 +191,58 @@ router.get("/store", accountAuth, async (req: Request, res): Promise<void> => {
     },
   });
 });
+
+router.post(
+  "/store/lume/purchases/verify",
+  accountAuth,
+  rateLimit({ scope: "native-purchase", max: 12, windowMs: 60_000 }),
+  async (req: Request, res): Promise<void> => {
+  const parsed = NativePurchaseBody.safeParse(req.body);
+  if (!parsed.success) {
+    res.status(400).json({ error: "Invalid native purchase proof" });
+    return;
+  }
+  try {
+    const result = await submitNativeLumePurchase({
+      accountId: req.account!.id,
+      ...parsed.data,
+    });
+    res.status(result.status === "pending" ? 202 : 200).json(result);
+  } catch (error) {
+    if (error instanceof NativePurchaseError) {
+      res.status(error.statusCode).json({ error: error.message });
+      return;
+    }
+    throw error;
+  }
+  },
+);
+
+router.post(
+  "/store/lume/purchases/reconcile",
+  rateLimit({ scope: "purchase-reconcile", max: 120, windowMs: 60_000 }),
+  async (req: Request, res): Promise<void> => {
+  const secret = process.env.LUMINAE_PURCHASE_RECONCILIATION_SECRET;
+  if (!secret || req.headers.authorization !== `Bearer ${secret}`) {
+    res.status(401).json({ error: "Purchase reconciliation authorization required" });
+    return;
+  }
+  const parsed = ReconcilePurchaseBody.safeParse(req.body);
+  if (!parsed.success) {
+    res.status(400).json({ error: "Invalid reconciliation request" });
+    return;
+  }
+  try {
+    res.json(await reconcileNativePurchase(parsed.data.provider, parsed.data.purchaseToken));
+  } catch (error) {
+    if (error instanceof NativePurchaseError) {
+      res.status(error.statusCode).json({ error: error.message });
+      return;
+    }
+    throw error;
+  }
+  },
+);
 
 router.post("/store/purchases/test", accountAuth, async (req: Request, res): Promise<void> => {
   if (!TEST_CHECKOUT_ENABLED) {
@@ -251,7 +333,7 @@ router.post("/store/purchases/test", accountAuth, async (req: Request, res): Pro
   res.status(201).json({ ok: true, itemId: item.id, alreadyOwned: false, receiptId: entitlement.receiptId });
 });
 
-router.post("/store/unlocks/starlight", accountAuth, async (req: Request, res): Promise<void> => {
+router.post("/store/unlocks/lume", accountAuth, async (req: Request, res): Promise<void> => {
   const parsed = PurchaseBody.safeParse(req.body);
   if (!parsed.success) {
     res.status(400).json({ error: "Invalid unlock request" });
@@ -266,8 +348,8 @@ router.post("/store/unlocks/starlight", accountAuth, async (req: Request, res): 
   }
   if (await rejectClassifiedBlueprintCosmetic(account.id, item, res)) return;
   if (await rejectUnavailableDecryptionKey(account.id, item, res)) return;
-  const starlightPrice = item.starlightPrice;
-  if (starlightPrice === null) {
+  const lumePrice = item.lumePrice;
+  if (lumePrice === null) {
     res.status(400).json({ error: "This item cannot be acquired with Lume" });
     return;
   }
@@ -296,22 +378,22 @@ router.post("/store/unlocks/starlight", accountAuth, async (req: Request, res): 
         return {
           alreadyOwned: true,
           receiptId: existing.receiptId,
-          cosmeticBalance: engagement.cosmeticBalance,
+          lumeBalance: engagement.lumeBalance,
         };
       }
 
-      const receiptId = `starlight_${account.id}_${item.id}_${randomUUID()}`;
+      const receiptId = `lume_${account.id}_${item.id}_${randomUUID()}`;
       let entitlement;
 
       if (existing) {
         const [restored] = await tx
           .update(accountEntitlementsTable)
           .set({
-            source: "starlight_purchase",
+            source: "lume_purchase",
             receiptId,
             grantedAt: new Date(),
             revokedAt: null,
-            metadata: { catalogVersion: 1, nonGameplay: item.kind !== "consumable", starlightPrice },
+            metadata: { catalogVersion: 1, nonGameplay: item.kind !== "consumable", lumePrice },
           })
           .where(
             and(
@@ -327,9 +409,9 @@ router.post("/store/unlocks/starlight", accountAuth, async (req: Request, res): 
           .values({
             accountId: account.id,
             itemId: item.id,
-            source: "starlight_purchase",
+            source: "lume_purchase",
             receiptId,
-            metadata: { catalogVersion: 1, nonGameplay: item.kind !== "consumable", starlightPrice },
+            metadata: { catalogVersion: 1, nonGameplay: item.kind !== "consumable", lumePrice },
           })
           .onConflictDoNothing({
             target: [accountEntitlementsTable.accountId, accountEntitlementsTable.itemId],
@@ -357,30 +439,24 @@ router.post("/store/unlocks/starlight", accountAuth, async (req: Request, res): 
         return {
           alreadyOwned: true,
           receiptId: concurrent.receiptId,
-          cosmeticBalance: engagement.cosmeticBalance,
+          lumeBalance: engagement.lumeBalance,
         };
       }
 
-      const [charged] = await tx
-        .update(accountEngagementTable)
-        .set({
-          cosmeticBalance: sql`${accountEngagementTable.cosmeticBalance} - ${starlightPrice}`,
-          updatedAt: new Date(),
-        })
-        .where(
-          and(
-            eq(accountEngagementTable.accountId, account.id),
-            gte(accountEngagementTable.cosmeticBalance, starlightPrice),
-          ),
-        )
-        .returning();
-
-      if (!charged) throw new InsufficientStarlightError();
+      const charged = await applyLumeTransaction(tx, {
+        accountId: account.id,
+        amount: -lumePrice,
+        source: "store_item_unlock",
+        category: "spent",
+        idempotencyKey: `store-spend:${receiptId}`,
+        externalReference: receiptId,
+        metadata: { catalogVersion: 1, itemId: item.id, lumePrice },
+      });
 
       return {
         alreadyOwned: false,
         receiptId: entitlement.receiptId,
-        cosmeticBalance: charged.cosmeticBalance,
+        lumeBalance: charged.balance,
       };
     });
 
@@ -390,7 +466,7 @@ router.post("/store/unlocks/starlight", accountAuth, async (req: Request, res): 
       ...result,
     });
   } catch (error) {
-    if (error instanceof InsufficientStarlightError) {
+    if (error instanceof InsufficientLumeError) {
       res.status(409).json({ error: "Not enough Lume" });
       return;
     }
@@ -480,7 +556,7 @@ router.post("/store/engagement/daily-claim", accountAuth, async (req: Request, r
       ok: true,
       alreadyClaimed: true,
       rewardAmount: 0,
-      cosmeticBalance: engagement.cosmeticBalance,
+      lumeBalance: engagement.lumeBalance,
       dailyClaimStreak: engagement.dailyClaimStreak,
       lastDailyClaimDate: engagement.lastDailyClaimDate,
     });
@@ -490,33 +566,44 @@ router.post("/store/engagement/daily-claim", accountAuth, async (req: Request, r
   const nextStreak = engagement.lastDailyClaimDate === yesterdayKey()
     ? engagement.dailyClaimStreak + 1
     : 1;
-  const rewardAmount = getDailyStarlightReward(nextStreak);
-  const [updated] = await db
-    .update(accountEngagementTable)
-    .set({
-      cosmeticBalance: sql`${accountEngagementTable.cosmeticBalance} + ${rewardAmount}`,
-      dailyClaimStreak: nextStreak,
-      lastDailyClaimDate: today,
-      updatedAt: new Date(),
-    })
-    .where(
-      and(
-        eq(accountEngagementTable.accountId, account.id),
-        or(
-          isNull(accountEngagementTable.lastDailyClaimDate),
-          ne(accountEngagementTable.lastDailyClaimDate, today),
+  const rewardAmount = getDailyLumeReward(nextStreak);
+  const claimed = await db.transaction(async (tx) => {
+    const [updated] = await tx
+      .update(accountEngagementTable)
+      .set({
+        dailyClaimStreak: nextStreak,
+        lastDailyClaimDate: today,
+        updatedAt: new Date(),
+      })
+      .where(
+        and(
+          eq(accountEngagementTable.accountId, account.id),
+          or(
+            isNull(accountEngagementTable.lastDailyClaimDate),
+            ne(accountEngagementTable.lastDailyClaimDate, today),
+          ),
         ),
-      ),
-    )
-    .returning();
+      )
+      .returning();
+    if (!updated) return null;
+    const lume = await applyLumeTransaction(tx, {
+      accountId: account.id,
+      amount: rewardAmount,
+      source: "daily_grant",
+      category: "granted",
+      idempotencyKey: `daily-grant:${account.id}:${today}`,
+      metadata: { streak: nextStreak },
+    });
+    return { updated, balance: lume.balance };
+  });
 
-  if (!updated) {
+  if (!claimed) {
     const current = await getOrCreateEngagement(account.id);
     res.json({
       ok: true,
       alreadyClaimed: true,
       rewardAmount: 0,
-      cosmeticBalance: current.cosmeticBalance,
+      lumeBalance: current.lumeBalance,
       dailyClaimStreak: current.dailyClaimStreak,
       lastDailyClaimDate: current.lastDailyClaimDate,
     });
@@ -527,9 +614,9 @@ router.post("/store/engagement/daily-claim", accountAuth, async (req: Request, r
     ok: true,
     alreadyClaimed: false,
     rewardAmount,
-    cosmeticBalance: updated.cosmeticBalance,
-    dailyClaimStreak: updated.dailyClaimStreak,
-    lastDailyClaimDate: updated.lastDailyClaimDate,
+    lumeBalance: claimed.balance,
+    dailyClaimStreak: claimed.updated.dailyClaimStreak,
+    lastDailyClaimDate: claimed.updated.lastDailyClaimDate,
   });
 });
 

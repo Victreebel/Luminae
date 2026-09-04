@@ -83,13 +83,6 @@ export interface ActivationDirectorRouterProps {
   ironHarbingerSlots: IronHarbingerResetSlot[];
   ironHarbingerActions: IronHarbingerResetActions;
 
-  phoenixRefillSlots: string[];
-  onRevealPhoenixRefills: (
-    slotKeys: string[],
-    staggerMs: number,
-    immediate: boolean,
-  ) => void;
-
   assimilationSlot: AssimilationVisualSlot | null;
   assimilationActions: AssimilationDirectorActions;
 
@@ -317,14 +310,10 @@ const DIRECTOR_REGISTRY: readonly DirectorEntry[] = [
       activationTimelineRate,
       queuePosition,
       queueTotal,
-      phoenixRefillSlots,
-      onRevealPhoenixRefills,
       onCinematicComplete,
     }) => (
       <PhoenixArchiveReturnDirector
         cardIds={evt.targetCardIds ?? []}
-        refillSlotKeys={evt.targetSlotIds ?? phoenixRefillSlots}
-        onRevealRefills={onRevealPhoenixRefills}
         reducedMotion={abridgedAnims}
         playbackMode={playbackMode}
         timelinePlaybackRate={activationTimelineRate}

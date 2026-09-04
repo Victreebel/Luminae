@@ -1,9 +1,5 @@
 # LUMINAe_ARTIFACT_REPLACEMENT_TABLE_v0.4_UTILITY_FIRST_LORE.md
 
-> **Partially superseded:** Tier I and II remain historical input to the shared
-> registry. All Tier III names, lore, forms, lineage, and art are replaced by
-> `LUMINAe_TECHNOLOGY_SYSTEM_v2.0.md`.
-
 ## Status
 
 **Historical exact replacement table. Superseded for technology hierarchy and

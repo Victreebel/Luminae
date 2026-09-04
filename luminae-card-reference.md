@@ -1,6 +1,6 @@
 # Luminae — Complete Card Reference
 
-> **Engine-building race to 15 Eminence.** Collect colored Affinities, forge Artifacts for permanent bonuses, and summon Luminaries. First player to 15 Eminence wins; ties break on fewest forged Artifacts.
+> **Engine-building race to 20 Eminence.** Collect colored Affinities, forge Artifacts for permanent bonuses, and summon Luminaries. The standard target is 20 Eminence; custom games may use the shorter 15-Eminence format. The final round completes so every player receives equal turns, then highest Eminence wins; ties break on fewest forged Artifacts.
 
 ---
 

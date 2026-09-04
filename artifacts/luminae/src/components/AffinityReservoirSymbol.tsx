@@ -35,8 +35,6 @@ export function AffinityReservoirSymbol({
     <span
       className={`affinity-well-symbol ${compact ? 'affinity-well-symbol--compact' : ''} ${className}`.trim()}
       data-capacity-state={capacityState}
-      data-has-progress={!hasValue || safeValue > 0 ? 'true' : 'false'}
-      data-progress-complete={!hasValue || safeValue >= capacity ? 'true' : 'false'}
       title={title}
       {...(hasValue
         ? { role: 'img', 'aria-label': ariaLabel ?? `${safeValue} affinities held` }
@@ -48,8 +46,6 @@ export function AffinityReservoirSymbol({
     >
       <span className="affinity-well-symbol__rim" aria-hidden="true" />
       {hasValue && <span className="affinity-well-symbol__count">{safeValue}</span>}
-      <span className="affinity-well-symbol__terminal affinity-well-symbol__terminal--start" aria-hidden="true" />
-      <span className="affinity-well-symbol__terminal affinity-well-symbol__terminal--end" aria-hidden="true" />
       <span className="affinity-well-symbol__keystone" aria-hidden="true" />
     </span>
   );

@@ -1,16 +1,66 @@
 # LUMINAe Unified Lore & Artifact Reference (Copy/Paste)
 
-This is a single consolidated reference that includes the main canonical lore, artifact/technology doctrine, and current audit mappings.
+This is a single consolidated reference that includes the main canonical lore,
+Artifact/technology doctrine, Project rules, and current implementation
+mappings.
+
+## Canon Synchronization
+
+Use this precedence when sections overlap:
+
+1. Lore Bible for ontology.
+2. Technology System v2 for Artifact semantics.
+3. Blueprint First Pool v2 for exact Project rules.
+4. Concordance, Mechanic-to-Lore Mapping, and Civilization Guide for
+   reconciliation and player explanation.
+5. This Unified Reference as the synchronized compilation.
+
+Affinity is finite Domain addressability, not fuel. Harnessing stabilizes
+uncommitted possibilities, subject to the ten-Affinity holding limit. Forging
+commits paid Affinity to accelerated research, construction, coordination, and
+adoption. Once the implementation sustains itself, all paid Affinity returns to
+the matching Well channels; the permanent bonus is the expertise,
+infrastructure, and institutions that remain.
+
+Artifact classes have universal recognizable signatures and locally different
+embodiments. First mastery causes Domain-local **signature interference** for
+that same class only, delaying accelerated mastery elsewhere for centuries or
+the observed epoch. It does not suppress related technologies or lineages.
+Refill exposes the next reachable possibility and does not assign intellectual
+ownership.
+
+| Lifecycle | Canonical state |
+|---|---|
+| **Forge** | Operational mastery and signature interference. |
+| **Encrypt** | Uncommitted pathway isolated for an Architect; no mastery signature. |
+| **Burn** | Unmastered pathway collapsed for the epoch; recurrence may restore it. |
+| **Assimilate** | Final Hunger consumes the pathway into Affinity without a normal implementation. |
+| **Damage** | Operation suspended while mastery and interference persist. |
+| **Annihilate** | Implementation or near-complete pathway destroyed; discovery survives and the class remains unavailable this epoch. |
+| **Foundry seal** | Mastery archived, bonus removed, active interference unwound, and pathway held in Cipher storage for re-Forge. |
+
+Foundry-bound components share the Encrypted interface but do not consume its
+ordinary three-card capacity and grant no Singularity. Intact Covenant uses
+ordinary paid re-Forge and leaves the Foundry Spent. Broken Covenant requires
+free `foundry_recovery`; paid re-Forge is unavailable until all three components
+are operational and the Foundry returns to Ready with zero sustainable uses.
+
+Use `Artifact signature` and `signature interference`, never player-facing
+`wake`. Use `commit`, `master`, and `implement` for Artifacts; reserve
+`manifest` for Blueprints and Projects. This synchronization block controls any
+less-specific phrasing repeated in the embedded source snapshots below.
 
 Source documents included below in full:
 - `LUMINAe_LORE_BIBLE_v1.0.md`
 - `LUMINAe_TECHNOLOGY_SYSTEM_v2.0.md`
+- `LUMINAe_BLUEPRINT_FIRST_POOL_SPEC_v2.0.md`
 - `LUMINAe_LORE_CONCORDANCE_LEDGER_v1.0.md`
 - `LUMINAe_TECHNOLOGY_LINEAGE_MATRIX_v2.0.md`
 - `LUMINAe_ARTIFACT_REPLACEMENT_TABLE_v0.4_UTILITY_FIRST_LORE.md`
 - `LUMINAe_ARTIFACT_AUDIT_v1.0.md`
 - `LUMINAe_ARTIFACT_BALANCE_BASELINE_v1.0.md`
 - `LUMINAe_MECHANIC_TO_LORE_MAPPING_v1.0.md`
+- `LUMINAe_CIVILIZATION_SYSTEM_GUIDE_v1.0.md`
 
 ---
 
@@ -828,7 +878,7 @@ preserved. Migration must never fabricate Chronicles.
 | Three-card Encrypt cap | Retain provisionally | Treat as bounded private intervention bandwidth; reassess with Focus. |
 | Immediate Luminary alliance | Retain | Balance-tested alternative failed; standard play compresses consent. |
 | Starting-player compensation | Redesign when implemented | Use interface-only initiative adjustment, excluded from historical Eminence. |
-| 15-Eminence closing epoch | Retain provisionally | Historical closure threshold, not a cosmic constant; reassess only through a separate balance program. |
+| 20-Eminence standard closing epoch | Adopt | Twenty is the standard match target; fifteen remains an explicit shorter custom format. The threshold is historical closure, not a cosmic constant. |
 | Kardashev triggers | Remove from match progression | Replace with Operational Reach; store literal Type separately. |
 | Built On / Leads Toward | Retain and expose | Use in details, authored objectives, and autonomous priorities without changing standard costs yet. |
 
@@ -838,7 +888,8 @@ preserved. Migration must never fabricate Chronicles.
   testing preserved completion and game length but exceeded the four-point seat
   spread gate. Immediate claims remain the baseline.
 - **Cumulative 5/4/1 Kardashev candidate: rejected as shipped progression.** It
-  reached the former Type III display for only about 36–45% of 15-Eminence
+  reached the former Type III display for only about 36–45% of winners under
+  the historical 15-Eminence baseline
   winners and also used the wrong ontology. Operational Reach requires fresh
   calibration.
 - **Focus: pending.** Test against current portable Singularity for completion,
@@ -1334,20 +1385,21 @@ baselines. The large former advantage for later array seats is gone.
 
 ### 15 Eminence
 
-- Quicker standard format.
+- Shorter custom format.
 - Primarily a Tier I and Tier II race.
 - Winners average about one Tier III Artifact.
 
 ### 20 Eminence
 
+- Standard match format.
 - Adds approximately 4.5 turns in two-player, 6.9 in three-player, and 10.5 in
   four-player matches.
 - Approximately doubles the winner's Tier III participation.
 - Better represents the complete three-tier civilization arc.
 
-The setup interface should describe 15 as the quicker standard format and 20 as
-the strategic format with more room for Tier III. Neither is inherently the
-"correct" competitive target until human pacing tests are complete.
+The setup interface should present 20 as the standard format and expose 15 only
+as a shorter custom format. Twenty gives the three-tier civilization arc more
+room to become visible; fifteen remains available for deliberately quicker play.
 
 ## Affinity Watch List
 
@@ -1380,7 +1432,7 @@ position. Artifact costs, bonuses, and rewards remain unchanged.
 ## Current Decision
 
 1. Keep the current Artifact costs, bonuses, and Eminence values.
-2. Preserve 15 and 20 as distinct match-length choices.
+2. Use 20 as the standard target and preserve 15 as the shorter custom choice.
 3. Preserve the ordinary-match turn-order compensation unless human telemetry
    shows a materially different seat pattern.
 4. Collect human match telemetry before changing individual Artifacts.

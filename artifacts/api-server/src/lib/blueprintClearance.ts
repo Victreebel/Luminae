@@ -6,9 +6,8 @@ import type {
   LumiiThresholdApproach,
 } from "@workspace/game-types";
 import {
-  canonicalizeLumiiThresholdDialoguePath,
   LUMII_THRESHOLD_DIALOGUE_CHOICE_IDS,
-  resolveLumiiThresholdDialogueProgress,
+  LUMII_THRESHOLD_DIALOGUE_PATHS,
 } from "@workspace/game-types";
 
 export type BlueprintThresholdAction =
@@ -32,6 +31,7 @@ export function freshLumiiEncounterMemory() {
     thresholdApproach: null,
     thresholdDialoguePath: [] as LumiiThresholdDialogueChoiceId[],
     thresholdDialogueResolution: null,
+    thresholdRupturedAt: null,
     covenantBrokenAt: null,
   };
 }
@@ -99,15 +99,16 @@ export function isLumiiThresholdDialoguePathPrefix(
   approach: LumiiThresholdApproach,
   path: readonly LumiiThresholdDialogueChoiceId[],
 ): boolean {
-  return resolveLumiiThresholdDialogueProgress(approach, path).valid;
+  return LUMII_THRESHOLD_DIALOGUE_PATHS[approach].some(
+    (completePath) => path.length <= completePath.length && path.every((entry, index) => entry === completePath[index]),
+  );
 }
 
 export function isCompleteLumiiThresholdDialoguePath(
   approach: LumiiThresholdApproach,
   path: readonly LumiiThresholdDialogueChoiceId[],
 ): boolean {
-  const progress = resolveLumiiThresholdDialogueProgress(approach, path);
-  return progress.valid && progress.challengeReady;
+  return LUMII_THRESHOLD_DIALOGUE_PATHS[approach].some((completePath) => pathsEqual(path, completePath));
 }
 
 export type LumiiDialoguePathDecision =
@@ -122,31 +123,18 @@ export function decideLumiiDialoguePathUpdate(
   },
   nextPath: readonly LumiiThresholdDialogueChoiceId[],
 ): LumiiDialoguePathDecision {
-  const currentPath = canonicalizeLumiiThresholdDialoguePath(state.approach, state.path);
-  const requestedPath = canonicalizeLumiiThresholdDialoguePath(state.approach, nextPath);
-  if (pathsEqual(currentPath, requestedPath)) return { ok: true, writePath: null };
+  if (pathsEqual(state.path, nextPath)) return { ok: true, writePath: null };
   if (state.resolution !== null) {
     return { ok: false, status: 409, error: "This threshold exchange has already ended" };
   }
-  const extendsCurrentPath = currentPath.every(
-    (entry, index) => entry === requestedPath[index],
-  );
-  const advancesOneCanonicalBeat = requestedPath.length === currentPath.length + 1;
-  const priorSubmittedPath = canonicalizeLumiiThresholdDialoguePath(
-    state.approach,
-    nextPath.slice(0, -1),
-  );
-  const advancesOneLegacyBeat = !pathsEqual(nextPath, requestedPath) &&
-    pathsEqual(currentPath, priorSubmittedPath) &&
-    requestedPath.length > currentPath.length;
   if (
-    !extendsCurrentPath ||
-    (!advancesOneCanonicalBeat && !advancesOneLegacyBeat) ||
-    !isLumiiThresholdDialoguePathPrefix(state.approach, requestedPath)
+    nextPath.length !== state.path.length + 1 ||
+    !state.path.every((entry, index) => entry === nextPath[index]) ||
+    !isLumiiThresholdDialoguePathPrefix(state.approach, nextPath)
   ) {
     return { ok: false, status: 409, error: "That response does not follow this exchange" };
   }
-  return { ok: true, writePath: requestedPath };
+  return { ok: true, writePath: [...nextPath] };
 }
 
 export type LumiiDialogueLeaveDecision =
@@ -171,14 +159,11 @@ export interface BlueprintClearanceParticipant {
 export function isQualifyingBlueprintVictory(input: {
   gameMode: GameMode;
   blueprintPolicy: BlueprintPolicy;
-  victoryRequirement: number;
-  turnTimerSeconds: number | null;
   playerId: string;
   winnerId: string | null;
   participants: readonly BlueprintClearanceParticipant[];
 }): boolean {
   if (input.gameMode !== "standard" || input.blueprintPolicy !== "none") return false;
-  if (input.victoryRequirement !== 15 || input.turnTimerSeconds !== null) return false;
   if (input.winnerId !== input.playerId || input.participants.length !== 4) return false;
   const player = input.participants.find((participant) => participant.id === input.playerId);
   if (!player || player.isAi) return false;

@@ -28,6 +28,8 @@ export interface CipherApertureProps {
   onComplete?: () => void;
   /** Keeps the release local to the source instead of staging at viewport center. */
   skipForefront?: boolean;
+  /** Lets tutorial and cinematic shells place the effect above their own chrome. */
+  overlayZIndex?: number;
 }
 
 type Phase = "release" | "conceal" | "lock" | "transfer" | "arrive";
@@ -80,6 +82,7 @@ export function CipherApertureAnimation({
   ownerName,
   onComplete,
   skipForefront,
+  overlayZIndex = 70,
 }: CipherApertureProps) {
   const [phase, setPhase] = useState<Phase>("release");
   const [arrivalLabelFading, setArrivalLabelFading] = useState(false);
@@ -192,7 +195,11 @@ export function CipherApertureAnimation({
         };
 
   return (
-    <div className="pointer-events-none fixed inset-0 z-[70]">
+    <div
+      data-testid="cipher-aperture-animation"
+      className="pointer-events-none fixed inset-0"
+      style={{ zIndex: overlayZIndex }}
+    >
       <motion.div
         className="absolute inset-0 bg-black"
         initial={{ opacity: 0 }}
@@ -212,6 +219,7 @@ export function CipherApertureAnimation({
       )}
 
       <motion.div
+        data-testid="cipher-aperture-plate"
         style={{
           position: "fixed",
           left: plateLeft,
@@ -266,7 +274,15 @@ export function CipherApertureAnimation({
               boxShadow: { duration: 0.18 },
           }}
         >
-            {cardFace}
+            <div
+              className="absolute inset-0"
+              style={{
+                "--card-w": `${plateW}px`,
+                "--card-h": `${plateH}px`,
+              } as React.CSSProperties}
+            >
+              {cardFace}
+            </div>
 
             <motion.div
               className="absolute inset-0"
@@ -530,9 +546,11 @@ function CipherCircuitConvergence({
 
   return (
     <svg
+      data-testid="cipher-circuit-convergence"
       viewBox="0 0 96 140"
       preserveAspectRatio="none"
       className="absolute inset-0 h-full w-full overflow-visible"
+      shapeRendering="geometricPrecision"
       aria-hidden="true"
     >
       <defs>
@@ -567,13 +585,14 @@ function CipherCircuitConvergence({
               d={path.d}
               pathLength={1}
         fill="none"
-              stroke="rgba(226,240,255,0.5)"
-              strokeWidth="0.65"
+              stroke="rgba(232,244,255,0.9)"
+              strokeWidth="1.15"
               strokeLinecap="round"
               strokeLinejoin="round"
+              vectorEffect="non-scaling-stroke"
               filter={`url(#${whiteGlowId})`}
               initial={{ pathLength: 0, opacity: 0 }}
-              animate={{ pathLength: 1, opacity: locked ? 0 : [0, 0.7, 0.34] }}
+              animate={{ pathLength: 1, opacity: locked ? 0 : [0, 1, 0.72] }}
               transition={{
                 pathLength: { delay, duration, ease: "easeInOut" },
                 opacity: locked
@@ -586,10 +605,11 @@ function CipherCircuitConvergence({
               pathLength={1}
           fill="none"
               stroke={CIPHER_WHITE}
-              strokeWidth="1.55"
+              strokeWidth="2.1"
           strokeLinecap="round"
               strokeLinejoin="round"
-              strokeDasharray="0.075 0.925"
+              strokeDasharray="0.12 0.88"
+              vectorEffect="non-scaling-stroke"
               filter={`url(#${whiteGlowId})`}
               initial={{ strokeDashoffset: 1, opacity: 0 }}
           animate={{

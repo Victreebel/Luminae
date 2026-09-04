@@ -68,6 +68,9 @@ const releaseJavaScript = files
 if (/\/(?:dev\/|dev-)(?:card|anim|antimatter|blueprint|font)/i.test(releaseJavaScript)) {
   errors.push("a development route remains reachable from release JavaScript");
 }
+if (/release-journey|ux-review|DevUxReviewBridge/i.test(releaseJavaScript)) {
+  errors.push("the UX review console or capture bridge remains in release JavaScript");
+}
 
 console.log(`Production assets: ${format(totalBytes)} / ${format(limits.total)}`);
 console.log(`Entry JavaScript: ${format(mainJavaScriptGzip)} gzip / ${format(limits.mainJavaScriptGzip)}`);

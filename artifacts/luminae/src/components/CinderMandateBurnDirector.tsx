@@ -40,7 +40,6 @@ import {
 } from '@/lib/luminaryPresentationPacing';
 import { gameAudio } from '@/lib/audio';
 import { playLuminaryEffectPhaseSound } from '@/lib/luminaryEffectSound';
-import { MOLD_CAST_DURATION_MS } from '@/pages/game-mold-casting';
 
 // ─── Timing constants ─────────────────────────────────────────────────────────
 
@@ -229,9 +228,7 @@ export function CinderMandateBurnDirector({
     const burnFlashMs = timelinePlaybackRate > 1
       ? paced(BURN_FLASH_TOTAL_MS)
       : BURN_FLASH_TOTAL_MS;
-    const aftermathMs = reducedMotion
-      ? 180
-      : paced(MOLD_CAST_DURATION_MS + 140);
+    const aftermathMs = paced(260);
     const totalMs =
       announceLeadMs + cameraSettleMs + shudderMs + burnFlashMs + aftermathMs;
     actionsRef.current.setAnimEndTime(totalMs);

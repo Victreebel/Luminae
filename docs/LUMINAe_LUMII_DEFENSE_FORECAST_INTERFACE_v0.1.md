@@ -123,7 +123,7 @@ It may derive from:
 - public anonymous Protocol manifestations
 - Luminary summons
 - Tier III or 3+ Eminence forges
-- the 12/15 and 14/15 thresholds
+- the 17/20 and 19/20 thresholds (or the equivalent target-relative values in configured custom games)
 
 It should support readable emotional states:
 
@@ -340,4 +340,3 @@ Needs polish:
 4. Make the preview route demonstrate the docked in-game composition.
 5. Verify mobile and desktop clipping, overlap, and board visibility.
 6. Tune audio and reduced-motion variants after the layout is stable.
-

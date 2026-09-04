@@ -13,31 +13,15 @@ import { accountAuth } from "../lib/accountAuth";
 import { broadcastToRoom, sendToPlayer } from "../lib/websocket";
 import { randomBytes } from "crypto";
 import { z } from "zod";
+import { DEFAULT_VICTORY_REQUIREMENT } from "@workspace/game-types";
 import { pickUniqueAvatar } from "../lib/avatarAssignment";
-import { requireUuidParam } from "../lib/routeParams";
 
 const router: IRouter = Router();
-router.param("roomId", requireUuidParam);
-router.param("id", requireUuidParam);
 
 const CHALLENGE_EXPIRY_MINUTES = 30;
-const GameSessionToken = z.string().regex(/^[a-f0-9]{64}$/);
-const AccountUsername = z.string().trim().min(2).max(32).regex(/^[a-zA-Z0-9_-]+$/);
-const CreateChallengeBody = z.object({
-  challengedUsername: AccountUsername,
-  maxPlayers: z.number().int().min(2).max(4).optional().default(2),
-  victoryRequirement: z.union([z.literal(15), z.literal(20), z.literal(25)]).optional().default(20),
-  cinematicMode: z.union([z.literal("standard"), z.literal("epic")]).optional().default("standard"),
-  turnTimerSeconds: z.union([z.literal(30), z.literal(60), z.literal(90)]).nullable().optional(),
-}).strict();
-const InviteFriendBody = z.object({
-  sessionToken: GameSessionToken,
-  friendUsername: AccountUsername,
-}).strict();
-const ChallengeActionBody = z.object({ action: z.enum(["accept", "decline"]) }).strict();
 
 function generateInviteCode(): string {
-  return randomBytes(5).toString("hex").toUpperCase();
+  return randomBytes(4).toString("hex").toUpperCase();
 }
 
 function generateSessionToken(): string {
@@ -80,7 +64,15 @@ async function notifyChallengedPlayer(
 router.post("/challenges", accountAuth, async (req: Request, res): Promise<void> => {
   const account = req.account!;
 
-  const parsed = CreateChallengeBody.safeParse(req.body);
+  const parsed = z.object({
+    challengedUsername: z.string(),
+    maxPlayers: z.number().int().min(2).max(4).optional().default(2),
+    victoryRequirement: z.union([z.literal(15), z.literal(20), z.literal(25)])
+      .optional()
+      .default(DEFAULT_VICTORY_REQUIREMENT),
+    cinematicMode: z.union([z.literal("standard"), z.literal("epic")]).optional().default("standard"),
+    turnTimerSeconds: z.number().int().nullable().optional(),
+  }).safeParse(req.body);
 
   if (!parsed.success) {
     res.status(400).json({ error: "challengedUsername is required" });
@@ -154,6 +146,7 @@ router.post("/challenges", accountAuth, async (req: Request, res): Promise<void>
       maxPlayers,
       victoryRequirement,
       cinematicMode,
+      gameMode: victoryRequirement === DEFAULT_VICTORY_REQUIREMENT ? "standard" : "custom",
       status: "lobby",
       turnTimerSeconds: turnTimerSeconds ?? null,
     })
@@ -223,7 +216,10 @@ router.post("/rooms/:roomId/invite-friend", accountAuth, async (req: Request, re
   const account = req.account!;
   const { roomId } = req.params as { roomId: string };
 
-  const parsed = InviteFriendBody.safeParse(req.body);
+  const parsed = z.object({
+    sessionToken: z.string(),
+    friendUsername: z.string(),
+  }).safeParse(req.body);
 
   if (!parsed.success) {
     res.status(400).json({ error: "sessionToken and friendUsername are required" });
@@ -403,7 +399,7 @@ router.patch("/challenges/:id", accountAuth, async (req: Request, res): Promise<
   const account = req.account!;
   const { id } = req.params as { id: string };
 
-  const parsed = ChallengeActionBody.safeParse(req.body);
+  const parsed = z.object({ action: z.enum(["accept", "decline"]) }).safeParse(req.body);
   if (!parsed.success) {
     res.status(400).json({ error: "action must be 'accept' or 'decline'" });
     return;

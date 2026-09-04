@@ -1,4 +1,6 @@
 import { useEffect, useRef, useState, useCallback } from 'react';
+import { gameWebSocketUrl } from '@/lib/network';
+import { recordTelemetry } from '@/lib/telemetry';
 
 export interface RematchVoteUpdate {
   active: boolean;
@@ -11,6 +13,7 @@ export interface RematchVoteUpdate {
 }
 
 export interface ChatMessage {
+  messageId?: string;
   playerId: string;
   playerName: string;
   text: string;
@@ -32,17 +35,8 @@ type WebSocketHookParams = {
   onRematchCancelled?: () => void;
   onRematchDeclined?: (sessionStats: RematchVoteUpdate['sessionStats']) => void;
   onChatMessage?: (msg: ChatMessage) => void;
+  onChatRejected?: (reason: string) => void;
 };
-
-const LUMINAE_WEBSOCKET_PROTOCOL = 'luminae-v1';
-
-function websocketSessionProtocol(sessionToken: string): string {
-  return `luminae-session-${sessionToken}`;
-}
-
-export function shouldReconnectWebSocket(closeCode: number): boolean {
-  return closeCode !== 1000 && closeCode !== 1008;
-}
 
 export function useGameWebsocket({
   roomId,
@@ -59,6 +53,7 @@ export function useGameWebsocket({
   onRematchCancelled,
   onRematchDeclined,
   onChatMessage,
+  onChatRejected,
 }: WebSocketHookParams) {
   const [isConnected, setIsConnected] = useState(false);
   const [isReconnecting, setIsReconnecting] = useState(false);
@@ -81,6 +76,7 @@ export function useGameWebsocket({
   const onRematchCancelledRef = useRef(onRematchCancelled);
   const onRematchDeclinedRef = useRef(onRematchDeclined);
   const onChatMessageRef = useRef(onChatMessage);
+  const onChatRejectedRef = useRef(onChatRejected);
 
   useEffect(() => {
     onStateUpdateRef.current = onStateUpdate;
@@ -95,22 +91,16 @@ export function useGameWebsocket({
     onRematchCancelledRef.current = onRematchCancelled;
     onRematchDeclinedRef.current = onRematchDeclined;
     onChatMessageRef.current = onChatMessage;
+    onChatRejectedRef.current = onChatRejected;
   });
 
   const connect = useCallback(() => {
     if (!sessionToken) return;
-    if (
-      wsRef.current?.readyState === WebSocket.OPEN
-      || wsRef.current?.readyState === WebSocket.CONNECTING
-    ) return;
+    if (wsRef.current?.readyState === WebSocket.OPEN) return;
 
-    const protocol = window.location.protocol === 'https:' ? 'wss:' : 'ws:';
-    const wsUrl = `${protocol}//${window.location.host}/ws?roomId=${encodeURIComponent(roomId)}`;
+    const wsUrl = gameWebSocketUrl(roomId, sessionToken);
     
-    const ws = new WebSocket(wsUrl, [
-      LUMINAE_WEBSOCKET_PROTOCOL,
-      websocketSessionProtocol(sessionToken),
-    ]);
+    const ws = new WebSocket(wsUrl);
     wsRef.current = ws;
 
     ws.onopen = () => {
@@ -125,6 +115,7 @@ export function useGameWebsocket({
       hasEverConnectedRef.current = true;
       // Keep the fast reconnect delay for all subsequent drops, not just the first.
       reconnectDelayRef.current = 400;
+      if (hasEverConnectedRef.current) recordTelemetry('ws_reconnect', { roomId });
       // Keep the connection alive through Replit's proxy by sending a ping
       // every 5 s.  Combined with the server's 5 s protocol-level PING the
       // max idle gap on the wire is ≤5 s — well below any typical proxy
@@ -189,11 +180,15 @@ export function useGameWebsocket({
             break;
           case 'chat_message':
             onChatMessageRef.current?.({
+              messageId: data.messageId,
               playerId: data.playerId,
               playerName: data.playerName,
               text: data.text,
               timestamp: data.timestamp,
             });
+            break;
+          case 'chat_rejected':
+            onChatRejectedRef.current?.(data.reason ?? 'Message could not be sent.');
             break;
         }
       } catch (err) {
@@ -205,14 +200,6 @@ export function useGameWebsocket({
       setIsConnected(false);
       wsRef.current = null;
 
-      if (!shouldReconnectWebSocket(event.code)) {
-        setIsReconnecting(false);
-        console.warn(
-          `[luminae] game WebSocket closed permanently (code=${event.code}, wasClean=${event.wasClean})`,
-        );
-        return;
-      }
-
       // Emit a warning so Playwright / DevTools can detect the drop
       // immediately — before the reconnect attempt opens a new socket.
       // This handler only fires for unexpected closes; intentional cleanup
@@ -221,6 +208,7 @@ export function useGameWebsocket({
       console.warn(
         `[luminae] game WebSocket closed unexpectedly (code=${event.code}, wasClean=${event.wasClean}) — reconnecting`,
       );
+      recordTelemetry('ws_disconnect', { roomId, code: event.code, wasClean: event.wasClean });
 
       // Only show the reconnecting banner for unexpected drops, not the
       // initial connection attempt (hasEverConnectedRef guards this).

@@ -13,6 +13,12 @@ rules, persistence, balance, tutorial behavior, or shipped account state.
 Singularity remains provisional pending the planned Focus comparison; the
 ordinary Forge and Well loop is settled below.
 
+For cross-system interpretation, authority descends from this Bible for
+ontology, `LUMINAe_TECHNOLOGY_SYSTEM_v2.0.md` for Artifact semantics, and
+`LUMINAe_BLUEPRINT_FIRST_POOL_SPEC_v2.0.md` for exact Project rules. Mapping,
+Civilization-guide, tutorial, and Unified Reference copy must explain those
+authorities without silently changing them.
+
 Doctrine uses three status labels:
 
 - **Canon**: settled fictional fact.
@@ -293,6 +299,11 @@ An Artifact proves that a civilization has openly mastered and operationally
 implemented a bounded capability. The underlying discovery can remain in its
 history even if a particular implementation is later lost.
 
+The recognizable **Artifact signature** belongs to the capability class, while
+its physical, biological, civic, or informational embodiment is local. The
+same Artifact may therefore look and operate differently across civilizations
+without ceasing to be the same translated class.
+
 ### The Forge
 
 **Interface.** The Forge is the cohort's rendered comparative possibility
@@ -308,23 +319,38 @@ would. Rivals remain capable of developing analogous capabilities later,
 normally beyond the observation epoch.
 
 A claimed card leaves because its bounded first-mastery acceleration window has
-closed and the cohort's technological context has changed. Refill represents
-the next consequential opportunity becoming legible. Removal never erases the
-underlying discovery from another civilization's future. The degree to which
-lineage constrains standard Forge choices remains a mechanical question.
+closed and the cohort's technological context has changed. Affinity is finite
+Domain addressability, not fuel. Harnessing stabilizes uncommitted
+possibilities, with ten as the interface holding limit. Forging commits the
+paid alignments to accelerated research, construction, governance, and
+adoption. Once the implementation is self-sustaining, those alignments return
+to the Well. What remains is durable expertise, infrastructure, and
+institutions, represented by the Artifact's permanent Affinity bonus.
+
+First operational mastery leaves a Domain-local Artifact signature. Its
+**signature interference** closes the same class's accelerated first-mastery
+window for nearby cohort civilizations, often for centuries or beyond the
+observed epoch. Interference affects that Artifact class only: it does not
+suppress related technologies, its lineage, or ordinary independent discovery.
+Refill reveals the next reachable possibility; it does not confer intellectual
+ownership on the civilization that Forged first.
 
 ### Implementation Loss
 
 **Canon.** Discovery, implementation, and opportunity are distinct:
 
-- **Damage** temporarily disables an operational implementation until its
-  stated repair condition is met.
-- **Annihilate** permanently destroys a specific operational or nearly
-  operational implementation but never erases the underlying discovery.
-- **Burn** closes an unmastered acceleration pathway during the current epoch;
-  it does not destroy a civilization's existing implementation.
-- **Nullify** suppresses the projected consequence or synthesis value of an
-  opportunity without erasing the capability itself.
+| Lifecycle | Historical meaning |
+|---|---|
+| **Forge** | A civilization reaches operational mastery; the class creates signature interference in the Domain. |
+| **Encrypt** | An uncommitted pathway is isolated for an Architect; no mastery signature is created. |
+| **Burn** | An unmastered pathway collapses for the observed epoch; recurrence may restore it. |
+| **Assimilate** | The Final Hunger consumes the pathway into Affinity without creating a normal civilizational implementation. |
+| **Damage** | Operation is suspended while mastery and signature interference persist. |
+| **Annihilate** | An implementation or nearly complete pathway is destroyed; discovery and history survive, while the class remains unavailable for the epoch. |
+| **Foundry seal** | Controlled decommissioning archives mastery, removes operational bonuses, unwinds active interference, and holds the pathway in Cipher storage for re-Forge. |
+
+**Nullify** remains separate: it suppresses projected historical consequence or
+synthesis value without erasing the practical capability.
 
 LUMINAe may render these events symbolically. Their historical effects follow
 the definitions above even when the presentation uses fire, void, or other

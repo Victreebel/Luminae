@@ -1,8 +1,8 @@
 # LUMINAe Technology System v1.0
 
-> **Superseded:** `LUMINAe_TECHNOLOGY_SYSTEM_v2.0.md` is canonical. This file
-> is retained only as design history; in particular, its Tier III
-> megastructures are now future Manifested Project concepts.
+> **Superseded historical design.** Technology System v2.0 is authoritative.
+> Retain this file for provenance only; do not use its Tier III or Artifact
+> ontology to author runtime, tutorial, or Civilization behavior.
 
 ## Status
 

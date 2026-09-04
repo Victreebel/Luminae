@@ -144,22 +144,20 @@ export function OpponentChip({
           className="opponent-chip-details"
           style={{
             display: 'flex',
-            flexDirection: 'row',
+            flexDirection: 'column',
           }}
         >
-          <div className="opponent-chip-detail-row" data-opponent-stat-row="summary">
+          {/* Row 1: artifact counts per affinity */}
+          <div className="opponent-chip-detail-row" data-opponent-stat-row="artifacts">
             {NON_FLUX_KEYS.map(key => {
               const meta = AFFINITY_META[key];
-              const artifactVal = artifactTotals?.[key] ?? 0;
-              const affinityVal = affinityTotals[key] ?? 0;
-              const active = artifactVal > 0 || affinityVal > 0;
+              const val = artifactTotals?.[key] ?? 0;
               return (
                 <span
                   key={key}
-                  title={`${meta.name}: ${artifactVal} artifacts / ${affinityVal} affinity tokens`}
-                  aria-label={`${meta.name}: ${artifactVal} artifacts, ${affinityVal} affinity tokens`}
+                  title={`${meta.name} artifacts: ${val}`}
                   style={{
-                    color: active ? meta.hex : 'rgba(255,255,255,0.15)',
+                    color: val > 0 ? meta.hex : 'rgba(255,255,255,0.15)',
                     fontSize: 9,
                     fontWeight: 700,
                     lineHeight: 1,
@@ -168,9 +166,32 @@ export function OpponentChip({
                     fontVariantNumeric: 'tabular-nums',
                   }}
                 >
-                  <b>{artifactVal}</b>
-                  <i aria-hidden="true">/</i>
-                  <em>{affinityVal}</em>
+                  {val}
+                </span>
+              );
+            })}
+          </div>
+
+          {/* Row 2: affinity token counts */}
+          <div className="opponent-chip-detail-row" data-opponent-stat-row="affinities">
+            {NON_FLUX_KEYS.map(key => {
+              const meta = AFFINITY_META[key];
+              const val = affinityTotals[key] ?? 0;
+              return (
+                <span
+                  key={key}
+                  title={`${meta.name} affinity tokens: ${val}`}
+                  style={{
+                    color: val > 0 ? meta.hex : 'rgba(255,255,255,0.15)',
+                    fontSize: 9,
+                    fontWeight: 700,
+                    lineHeight: 1,
+                    minWidth: 9,
+                    textAlign: 'center',
+                    fontVariantNumeric: 'tabular-nums',
+                  }}
+                >
+                  {val}
                 </span>
               );
             })}

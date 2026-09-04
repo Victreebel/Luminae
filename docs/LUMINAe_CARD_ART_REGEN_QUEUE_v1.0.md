@@ -1,16 +1,11 @@
 # LUMINAe Card Art Regeneration Queue v1.0
 
-> **Superseded for Tier III:** Technology System v2 replaces all twenty Tier
-> III artworks. This queue remains a record of the prior art pass.
-
 ## Status
 
-**Complete — all 34 approved replacements were installed on 2026-08-13.**
+**Canonical visual follow-up for the optimized technology system.**
 
-The runtime assets now use the same visual contract as the retained card set:
-cinematic painterly-photoreal science fiction, a near-black field, controlled
-Affinity light, a legible primary silhouette, and no baked-in card UI. Tier III
-art depicts complete galactic public works rather than isolated devices.
+Runtime art remains usable while these assets are regenerated, but the dev
+card browser should treat every entry below as provisional.
 
 ## Priority 1: Renamed Tier I Components
 
@@ -19,8 +14,8 @@ art depicts complete galactic public works rather than isolated devices.
 | t1s02 | Mantlelift Driver Coil | One room-scale induction coil segment accelerating a sealed feedstock capsule; no complete launch tower |
 | t1o05 | Blackglass Forge Die | One inspectable vacuum-stable blackglass forming die; no seal or redaction glyph |
 
-These assets now depict their canonical component-scale concepts and are used
-by the Foundry blueprint as well as the Forge.
+These two assets should be regenerated before the Foundry card is considered
+visually final because the current component art depicts their former concepts.
 
 ## Priority 2: Overscaled Tier I and II Art
 
@@ -71,6 +66,5 @@ depicted a local key, seal, lens, or wafer instead of the complete achievement.
 
 The exact `artPrompt` in `artifacts/api-server/src/lib/cardLore.ts` controls each
 regeneration. Art must contain no title, cost, frame, UI, readable label, or
-baked-in card text. Regenerated assets were reviewed both at source size and at
-the runtime card size of 384 × 549. The dev card browser reads the runtime WebP
-manifest so it cannot silently present stale PNG masters during future reviews.
+baked-in card text. Regenerated masters should be visually reviewed at card
+size before replacing runtime assets.

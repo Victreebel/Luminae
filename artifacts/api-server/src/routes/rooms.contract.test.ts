@@ -1,5 +1,5 @@
 import { describe, expect, it } from "vitest";
-import { CreateRoomBody } from "@workspace/api-zod";
+import { CreateChallengeBody, CreateRoomBody } from "@workspace/api-zod";
 
 describe("room creation contract", () => {
   const room = {
@@ -16,7 +16,25 @@ describe("room creation contract", () => {
     },
   );
 
+  it("defaults new room requests to 20 Eminence", () => {
+    expect(CreateRoomBody.parse(room).victoryRequirement).toBe(20);
+  });
+
   it("rejects unsupported victory requirements", () => {
     expect(CreateRoomBody.safeParse({ ...room, victoryRequirement: 30 }).success).toBe(false);
+  });
+});
+
+describe("challenge creation contract", () => {
+  it("defaults direct challenges to 20 Eminence", () => {
+    expect(CreateChallengeBody.parse({ challengedUsername: "Aurin" }).victoryRequirement)
+      .toBe(20);
+  });
+
+  it("retains 15 Eminence as an explicit configured challenge target", () => {
+    expect(CreateChallengeBody.parse({
+      challengedUsername: "Aurin",
+      victoryRequirement: 15,
+    }).victoryRequirement).toBe(15);
   });
 });

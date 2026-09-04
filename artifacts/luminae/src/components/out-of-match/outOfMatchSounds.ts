@@ -64,7 +64,7 @@ export function resolveOutOfMatchSound(target: EventTarget | null): OutOfGameSou
     .toLowerCase();
 
   if (/\b(close|back|cancel|leave|sign out|decline|dismiss)\b/.test(label)) return "close";
-  if (/\b(store|shop|starlight|lume|purchase)\b/.test(label)) return "store";
+  if (/\b(store|shop|lume|purchase)\b/.test(label)) return "store";
   if (/\b(settings|preferences|sound|audio|animations|hints|appearance)\b/.test(label)) return "settings";
   if (/\b(archive|artifacts|luminaries|match record|recorded knowledge)\b/.test(label)) return "archive";
   if (control.hasAttribute("aria-haspopup")) {

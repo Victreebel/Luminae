@@ -31,7 +31,10 @@ const RULES: Rule[] = [
   { pattern: /\bGEM_KEYS\b/, replacement: 'use AFFINITY_KEYS' },
   { pattern: /\bCrystalCounts\b/, replacement: 'use AffinityCounts' },
   { pattern: /\bCardMarker(?:Type)?\b/, replacement: 'use ArtifactMarker or ArtifactMarkerType' },
-  { pattern: /['"](?:ruby|pearl|emerald|sapphire|onyx|flux)['"]/, replacement: 'use canonical Affinity IDs' },
+  // Flux is now the canonical Flare + Continuum Civilization dyad. Keep the
+  // property/key checks below for legacy Affinity-count usage, but do not reject
+  // the dyad's string ID wherever it is stored or asserted.
+  { pattern: /['"](?:ruby|pearl|emerald|sapphire|onyx)['"]/, replacement: 'use canonical Affinity IDs' },
   { pattern: /\.(?:ruby|pearl|emerald|sapphire|onyx|flux)\b/, replacement: 'use canonical Affinity IDs' },
   { pattern: /\b(?:ruby|pearl|emerald|sapphire|onyx|flux)\s*:/, replacement: 'use canonical Affinity IDs' },
   { pattern: /\b(?:take_three_crystals|take_two_crystals|purchase_card|purchase_reserved|reserve_card)\b/, replacement: 'use canonical Luminae action discriminants' },

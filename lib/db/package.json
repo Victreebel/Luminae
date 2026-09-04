@@ -8,9 +8,11 @@
     "./schema": "./src/schema/index.ts"
   },
   "scripts": {
-    "migrate": "node --env-file=../../.env --import tsx ./src/migrate.ts",
     "push": "drizzle-kit push --config ./drizzle.config.ts",
-    "push-force": "drizzle-kit push --force --config ./drizzle.config.ts"
+    "push-force": "drizzle-kit push --force --config ./drizzle.config.ts",
+    "validate:civilization-records-migration": "node ./scripts/validate-civilization-records-migration.mjs",
+    "validate:chronicle-campaign-migration": "node ./scripts/validate-chronicle-campaign-migration.mjs",
+    "validate:release-migrations": "node ./scripts/validate-release-migrations.mjs"
   },
   "dependencies": {
     "drizzle-orm": "catalog:",
@@ -21,7 +23,6 @@
   "devDependencies": {
     "@types/node": "catalog:",
     "@types/pg": "^8.18.0",
-    "drizzle-kit": "^0.31.9",
-    "tsx": "catalog:"
+    "drizzle-kit": "^0.31.9"
   }
 }

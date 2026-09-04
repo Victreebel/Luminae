@@ -2,19 +2,17 @@ import { useRef } from "react";
 import { motion, AnimatePresence } from "framer-motion";
 import { BookOpen, Play, RotateCcw, X } from "lucide-react";
 import { useFocusTrap } from "@/hooks/use-focus-trap";
-import { BEAT_INDEX, getTutorialChapter, TUTORIAL_CHAPTERS } from "@/lib/tutorialData";
+import { getTutorialChapter } from "@/lib/tutorialData";
 import { OutOfMatchSectionHeading } from "@/components/out-of-match/OutOfMatchChrome";
 
 interface Props {
   hasProgress: boolean;
   savedBeat?: number;
   totalBeats?: number;
-  completed?: boolean;
   onChoice: (choice: "begin" | "resume" | "start-over" | "cancel") => void;
-  onSelectChapter?: (beat: number) => void;
 }
 
-export function TutorialStartModal({ hasProgress, savedBeat, totalBeats, completed = false, onChoice, onSelectChapter }: Props) {
+export function TutorialStartModal({ hasProgress, savedBeat, totalBeats, onChoice }: Props) {
   const modalRef = useRef<HTMLElement | null>(null);
   useFocusTrap(modalRef, true, () => onChoice("cancel"));
 
@@ -62,15 +60,13 @@ export function TutorialStartModal({ hasProgress, savedBeat, totalBeats, complet
             </span>
             <OutOfMatchSectionHeading
               eyebrow="Guided Match"
-              title={completed ? "Replay Tutorial" : hasProgress ? "Continue Tutorial" : "Learn Luminae"}
+              title={hasProgress ? "Continue Tutorial" : "Learn Luminae"}
               titleId="tutorial-start-title"
             />
           </div>
 
           <p className="mb-1 text-sm leading-relaxed text-muted-foreground">
-            {completed
-              ? "Choose a chapter to revisit, or continue a replay already in progress."
-              : hasProgress
+            {hasProgress
               ? "Resume your current lesson, or restart from the beginning."
               : "Practice the four core actions on a playable board with Lumii."}
           </p>
@@ -82,32 +78,7 @@ export function TutorialStartModal({ hasProgress, savedBeat, totalBeats, complet
           {!stepDisplay && <div className="mb-6" />}
 
           <div className="flex flex-col gap-3">
-            {completed ? (
-              <>
-                {hasProgress && (
-                  <button
-                    onClick={() => onChoice("resume")}
-                    className="oom-action-primary h-12"
-                  >
-                    <Play className="h-4 w-4 fill-current" />
-                    Resume Replay
-                  </button>
-                )}
-                <div className="grid grid-cols-2 gap-2" aria-label="Tutorial chapters">
-                  {TUTORIAL_CHAPTERS.map((tutorialChapter, index) => (
-                    <button
-                      key={tutorialChapter.id}
-                      type="button"
-                      onClick={() => onSelectChapter?.(BEAT_INDEX[tutorialChapter.startBeatId] ?? 0)}
-                      className="rounded-md border border-white/10 bg-white/[0.035] px-3 py-3 text-left transition-colors hover:border-[#e5c56f]/35 hover:bg-[#e5c56f]/[0.07]"
-                    >
-                      <span className="block text-[10px] font-bold uppercase text-[#e5c56f]/70">Chapter {index + 1}</span>
-                      <span className="mt-1 block text-xs font-semibold text-foreground">{tutorialChapter.label}</span>
-                    </button>
-                  ))}
-                </div>
-              </>
-            ) : hasProgress ? (
+            {hasProgress ? (
               <>
                 <button
                   onClick={() => onChoice("resume")}

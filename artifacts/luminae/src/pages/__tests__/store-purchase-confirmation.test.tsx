@@ -4,11 +4,23 @@ import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
 
 const storeMocks = vi.hoisted(() => ({
   testPurchase: vi.fn(),
-  unlockWithStarlight: vi.fn(),
+  unlockWithLume: vi.fn(),
   equipCosmetic: vi.fn(),
   claimDailyReward: vi.fn(),
   refreshStore: vi.fn(),
   toast: vi.fn(),
+  playArrivalCutscene: vi.fn(),
+  stopArrivalCutscene: vi.fn(),
+  setMuted: vi.fn(),
+}));
+
+vi.mock("@/lib/audio", () => ({
+  gameAudio: {
+    isMuted: () => false,
+    playArrivalCutscene: storeMocks.playArrivalCutscene,
+    stopArrivalCutscene: storeMocks.stopArrivalCutscene,
+    setMuted: storeMocks.setMuted,
+  },
 }));
 
 vi.mock("@/contexts/CosmeticsContext", () => ({
@@ -23,10 +35,11 @@ vi.mock("@/contexts/CosmeticsContext", () => ({
           rarity: "rare",
           visibility: "player_only",
           priceLabel: "Test Purchase",
-          starlightPrice: 40,
+          lumePrice: 40,
           shortDescription: "A forged-gold deck skin.",
           description: "Changes Archive card backs on your screen only.",
           previewClass: "store-preview--astral-foundry",
+          previewKind: "card_back",
         },
         {
           id: "cosmetic.ambience.test",
@@ -36,10 +49,25 @@ vi.mock("@/contexts/CosmeticsContext", () => ({
           rarity: "mythic",
           visibility: "player_only",
           priceLabel: "Test Purchase",
-          starlightPrice: null,
+          lumePrice: null,
           shortDescription: "A premium civilization backdrop.",
           description: "Adds ambience on your screen only.",
           previewClass: "store-preview--void-radiance",
+          previewKind: "civilization_ambience",
+        },
+        {
+          id: "cosmetic.luminaryArrivalSound.firstResonance.v1",
+          name: "First Resonance",
+          kind: "luminary_arrival_sound",
+          scopeKey: "global",
+          rarity: "mythic",
+          visibility: "all_participants",
+          priceLabel: "80 Lume",
+          lumePrice: 80,
+          shortDescription: "The original celestial score for Luminary arrivals.",
+          description: "Every participant hears it when you summon a Luminary.",
+          previewClass: "store-preview--first-resonance",
+          previewKind: "luminary_arrival_sound",
         },
         {
           id: "consumable.vault.blackMarketDecryptionKey.v1",
@@ -49,17 +77,23 @@ vi.mock("@/contexts/CosmeticsContext", () => ({
           rarity: "mythic",
           visibility: "player_only",
           priceLabel: "Test Purchase",
-          starlightPrice: 100,
+          lumePrice: 100,
           shortDescription: "A single-use Vault bypass.",
-          description: "Consumed on use; leaving or losing restores the three-win requirement.",
+          description: "Consumed on use; leaving or losing restores the five-win requirement.",
           previewClass: "store-preview--black-market-key",
+          previewKind: "consumable",
         },
       ],
       ownedItemIds: [],
       equippedItems: [],
       testCheckoutEnabled: true,
       engagement: {
-        cosmeticBalance: 100,
+        lumeBalance: 100,
+        lifetimeEarnedLume: 0,
+        lifetimePurchasedLume: 0,
+        lifetimeGrantedLume: 100,
+        lifetimeSpentLume: 0,
+        lifetimeRefundedLume: 0,
         dailyClaimStreak: 0,
         lastDailyClaimDate: null,
         canClaimDaily: false,
@@ -86,13 +120,16 @@ describe("Store purchase confirmation", () => {
       alreadyOwned: false,
       receiptId: "receipt_checkout",
     });
-    storeMocks.unlockWithStarlight.mockReset().mockResolvedValue({
+    storeMocks.unlockWithLume.mockReset().mockResolvedValue({
       ok: true,
       itemId: "cosmetic.cardBack.test",
       alreadyOwned: false,
-      receiptId: "receipt_starlight",
-      cosmeticBalance: 60,
+      receiptId: "receipt_lume",
+      lumeBalance: 60,
     });
+    storeMocks.playArrivalCutscene.mockReset();
+    storeMocks.stopArrivalCutscene.mockReset();
+    storeMocks.setMuted.mockReset();
   });
 
   afterEach(cleanup);
@@ -102,15 +139,27 @@ describe("Store purchase confirmation", () => {
 
     fireEvent.click(screen.getByRole("button", { name: "Unlock · 40 Lume" }));
 
-    expect(storeMocks.unlockWithStarlight).not.toHaveBeenCalled();
+    expect(storeMocks.unlockWithLume).not.toHaveBeenCalled();
     expect(screen.getByRole("alertdialog")).toHaveTextContent("Confirm purchase");
     expect(screen.getByRole("alertdialog")).toHaveTextContent("Balance after purchase");
     expect(screen.getByRole("alertdialog")).toHaveTextContent("60 Lume");
 
     fireEvent.click(screen.getByRole("button", { name: "Confirm unlock" }));
     await waitFor(() => {
-      expect(storeMocks.unlockWithStarlight).toHaveBeenCalledWith("cosmetic.cardBack.test");
+      expect(storeMocks.unlockWithLume).toHaveBeenCalledWith("cosmetic.cardBack.test");
     });
+  });
+
+  it("previews First Resonance with the equipped public arrival cue", () => {
+    render(<StoreTab />);
+
+    const play = screen.getByRole("button", { name: "Play First Resonance preview" });
+    fireEvent.click(play);
+
+    expect(storeMocks.stopArrivalCutscene).toHaveBeenCalledTimes(1);
+    expect(storeMocks.playArrivalCutscene).toHaveBeenCalledWith("radiant", "first_resonance");
+    fireEvent.click(screen.getByRole("button", { name: "Stop First Resonance preview" }));
+    expect(storeMocks.stopArrivalCutscene).toHaveBeenCalledTimes(2);
   });
 
   it("does not start checkout until the player confirms", async () => {
@@ -139,7 +188,7 @@ describe("Store purchase confirmation", () => {
 
     fireEvent.click(screen.getByRole("button", { name: "Confirm purchase" }));
     await waitFor(() => {
-      expect(storeMocks.unlockWithStarlight).toHaveBeenCalledWith(
+      expect(storeMocks.unlockWithLume).toHaveBeenCalledWith(
         "consumable.vault.blackMarketDecryptionKey.v1",
       );
     });

@@ -1,23 +1,10 @@
 import { cleanup, fireEvent, render, screen } from "@testing-library/react";
 import { afterEach, describe, expect, it, vi } from "vitest";
-import {
-  ARTIFACT_DEFINITIONS,
-  BLUEPRINT_CLEARANCE_REQUIRED_WINS,
-  BLUEPRINT_DEFINITIONS,
-  type ArtifactId,
-} from "@workspace/game-types";
-import type { ArchitectRecordState, BlueprintVaultState, PlayerStats } from "@/lib/accountSession";
+import { BLUEPRINT_DEFINITIONS, buildCampaignProgressProjection } from "@workspace/game-types";
+import type { BlueprintVaultState, PlayerStats } from "@/lib/accountSession";
 import { AccountArchive } from "./AccountArchive";
 
 afterEach(cleanup);
-
-function artifactRecord(id: ArtifactId, forgeCount: number) {
-  return {
-    ...ARTIFACT_DEFINITIONS[id],
-    forgeCount,
-    blueprintEligibility: [],
-  };
-}
 
 const baseStats: PlayerStats = {
   gamesPlayed: 2,
@@ -25,6 +12,7 @@ const baseStats: PlayerStats = {
   losses: 1,
   ties: 0,
   avgEminence: 8,
+  totalLume: 0,
   recentGames: [],
   archive: {
     artifacts: {
@@ -39,35 +27,10 @@ const baseStats: PlayerStats = {
       totalAlliances: 0,
       signatureArtifactId: null,
       closestLuminaryId: null,
-      selected: {
-        lineage: null,
-        affinity: null,
-        signatureArtifactId: null,
-        signatureLuminaryId: null,
-        signatureBlueprintId: null,
-        displayName: null,
-        scaleType: 0,
-        scaleLabel: "Pre-Type I",
-        projectEpithet: null,
-      },
-      suggested: {
-        lineage: null,
-        affinity: null,
-        signatureArtifactId: null,
-        signatureLuminaryId: null,
-        signatureBlueprintId: null,
-      },
-      options: {
-        lineages: [],
-        affinities: [],
-        artifactIds: [],
-        luminaryIds: [],
-        blueprintIds: [],
-      },
     },
     vault: {
       qualifyingWins: 2,
-      requiredWins: BLUEPRINT_CLEARANCE_REQUIRED_WINS,
+      requiredWins: 5,
       unlocked: false,
       status: "classified",
       challengeRoomId: null,
@@ -75,12 +38,132 @@ const baseStats: PlayerStats = {
   },
 };
 
+const pendingCampaignProgress = buildCampaignProgressProjection({
+  releasedChronicleIds: [],
+  primaryOutcomes: [],
+  rehearsals: [],
+  calibrationInsightChronicleIds: [],
+});
+
 describe("Account Archive", () => {
-  it("presents four large Archive destinations with record counts", () => {
+  it("summarizes recorded civilizations and labels unavailable legacy history truthfully", () => {
+    const withCivilizationRecords: PlayerStats = {
+      ...baseStats,
+      totalLume: 6,
+      recentGames: [
+        {
+          roomId: "recorded-room",
+          inviteCode: "RECORDED",
+          finishedAt: "2026-08-23T12:00:00.000Z",
+          result: "win",
+          eminenceEarned: 15,
+          totalPlayers: 2,
+          civilizationRecord: {
+            version: 1,
+            evidence: "recorded",
+            historicalContext: "historical",
+            historicalMaturity: "stellar",
+            currentReach: "planetary",
+            currentReachCondition: "degraded",
+            stabilityBand: "strained",
+            stabilityScore: 58,
+            affinityForm: "dyad",
+            dominantAffinity: "continuum",
+            dominantDyad: "flux",
+            masteredArtifactCount: 8,
+            operationalArtifactCount: 7,
+            damagedArtifactCount: 1,
+            annihilatedArtifactCount: 0,
+            manifestedProjectCount: 1,
+            civilizationEventCount: 2,
+            outcome: {
+              policyId: "civilization-outcome-v1",
+              evidence: "recorded",
+              category: "enduring",
+              qualityScore: 68,
+              continuity: 74,
+              agency: 75,
+              achievement: 62,
+              stability: 58,
+              adversityIntensity: 10,
+              recoveryCredit: 2,
+              primaryFactors: {
+                continuity: [{ direction: "support", points: 8, label: "Viable settled worlds preserve multiple futures" }],
+                agency: [],
+                achievement: [],
+                stability: [{ direction: "pressure", points: 7, label: "Infrastructure remains strained" }],
+              },
+              explanation: ["Historical outcome: enduring."],
+            },
+            lume: {
+              policyId: "civilization-lume-v1",
+              status: "awarded",
+              amount: 6,
+              qualityScore: 68,
+              recoveryCredit: 2,
+              explanation: ["6 Lume awarded."],
+            },
+            unavailableFields: [],
+          },
+        },
+        {
+          roomId: "legacy-room",
+          inviteCode: "LEGACY",
+          finishedAt: "2026-08-22T12:00:00.000Z",
+          result: "loss",
+          eminenceEarned: 9,
+          totalPlayers: 2,
+          civilizationRecord: {
+            version: 1,
+            evidence: "legacy_unavailable",
+            historicalContext: "unknown",
+            historicalMaturity: null,
+            currentReach: null,
+            currentReachCondition: null,
+            stabilityBand: null,
+            stabilityScore: null,
+            affinityForm: null,
+            dominantAffinity: null,
+            dominantDyad: null,
+            masteredArtifactCount: null,
+            operationalArtifactCount: null,
+            damagedArtifactCount: null,
+            annihilatedArtifactCount: null,
+            manifestedProjectCount: 0,
+            civilizationEventCount: null,
+            outcome: null,
+            lume: {
+              policyId: "civilization-lume-v1",
+              status: "unavailable",
+              amount: 0,
+              qualityScore: null,
+              recoveryCredit: 0,
+              explanation: ["No recorded Civilization state exists."],
+            },
+            unavailableFields: ["civilizationState"],
+          },
+        },
+      ],
+    };
+
+    render(<AccountArchive stats={withCivilizationRecords} isLoading={false} page="matches" />);
+
+    expect(screen.getByText("2 players / stellar / strained")).toBeInTheDocument();
+    expect(screen.getByText("2 players / civilization unrecorded")).toBeInTheDocument();
+    expect(screen.getByText(/Enduring/)).toBeInTheDocument();
+    expect(screen.getByText("+6")).toBeInTheDocument();
+    expect(screen.getByText("Achievement")).toBeInTheDocument();
+    expect(screen.getByText("Historical outcome: enduring.")).toBeInTheDocument();
+    expect(screen.getByText(/Viable settled worlds preserve multiple futures/)).toBeInTheDocument();
+    expect(screen.getByText("2 matches recorded / 6 Lume")).toBeInTheDocument();
+  });
+
+  it("presents the Archive destinations and permanent Civilization reference", () => {
     const onNavigate = vi.fn();
     render(<AccountArchive stats={baseStats} isLoading={false} onNavigate={onNavigate} />);
 
     expect(screen.getByRole("button", { name: "Match Record" })).toBeInTheDocument();
+    expect(screen.getByRole("button", { name: "Civilization Field Guide" })).toBeInTheDocument();
     expect(screen.getByRole("button", { name: "Artifacts" })).toBeInTheDocument();
     expect(screen.getByRole("button", { name: "Luminaries" })).toBeInTheDocument();
     expect(screen.getByRole("button", { name: "Top Secret Vault" })).toBeInTheDocument();
@@ -94,6 +177,23 @@ describe("Account Archive", () => {
     expect(onNavigate).toHaveBeenCalledWith("artifacts");
   });
 
+  it("explains Civilization causality and Blueprint manifestation without replaying onboarding", () => {
+    render(<AccountArchive stats={baseStats} isLoading={false} page="civilization" />);
+
+    expect(screen.getByText("Technology becomes history")).toBeInTheDocument();
+    expect(screen.getByText("The Well is not fuel")).toBeInTheDocument();
+    expect(screen.getByText("Artifacts become capability")).toBeInTheDocument();
+    expect(screen.getByText("One class, local embodiments")).toBeInTheDocument();
+    expect(screen.getByText("Discovery, pathway, and operation differ")).toBeInTheDocument();
+    expect(screen.getByText("A seal archives mastery")).toBeInTheDocument();
+    expect(screen.getByText("Stability is resilience")).toBeInTheDocument();
+    expect(screen.getByText("Chronicles test what exists")).toBeInTheDocument();
+    expect(screen.getByText("Blueprints manifest Projects")).toBeInTheDocument();
+    expect(screen.getByText(/Lume reflects historical quality/)).toBeInTheDocument();
+    expect(screen.getByText(/every paid Affinity returns/)).toBeInTheDocument();
+    expect(screen.getByText(/do not consume the ordinary three-card Encryption capacity/)).toBeInTheDocument();
+  });
+
   it("renders the animated Vault page with the live requirement progress", () => {
     render(<AccountArchive stats={baseStats} isLoading={false} page="vault" />);
 
@@ -101,44 +201,9 @@ describe("Account Archive", () => {
     expect(document.querySelector(".account-archive__page-header")).not.toBeInTheDocument();
     expect(document.querySelectorAll(".account-archive__redaction")).toHaveLength(1);
     expect(document.querySelector(".account-vault__cipher-sigil")).toBeInTheDocument();
-    expect(screen.getByText(`2 / ${BLUEPRINT_CLEARANCE_REQUIRED_WINS}`)).toBeInTheDocument();
-    expect(screen.getByText(new RegExp(`Win ${BLUEPRINT_CLEARANCE_REQUIRED_WINS} qualifying Core Game matches`)))
-      .toBeInTheDocument();
+    expect(screen.getByText("2 / 5")).toBeInTheDocument();
+    expect(screen.getByText(/Win five standard matches/)).toBeInTheDocument();
     expect(screen.getByText("ACCESS DENIED")).toBeInTheDocument();
-  });
-
-  it("preserves earlier signals inside the sealed Vault record", () => {
-    const signal = {
-      id: "clearance_signal_1",
-      kind: "clearance_signal" as const,
-      ordinal: 1,
-      title: "Signal 1 of 3",
-      lines: ["That frequency again.", "It recognized the shape of your civilization."],
-      acknowledgedAt: "2026-08-13T12:00:00.000Z",
-    };
-    const architectRecord: ArchitectRecordState = {
-      campaignId: "architect_record",
-      tutorialCompleted: true,
-      firstContactStance: "curious",
-      nodes: [],
-      presentations: [signal],
-      pendingPresentations: [],
-      vaultShortcutVisible: false,
-    };
-
-    render(
-      <AccountArchive
-        stats={baseStats}
-        isLoading={false}
-        page="vault"
-        architectRecord={architectRecord}
-      />,
-    );
-
-    expect(screen.getByText("Recorded signals")).toBeInTheDocument();
-    expect(screen.getByText("Signal 1 of 3")).toBeInTheDocument();
-    expect(screen.getByText("Recorded")).toBeInTheDocument();
-    expect(screen.queryByText("The First Charge")).not.toBeInTheDocument();
   });
 
   it("reveals the Blueprint Vault name only after clearance", () => {
@@ -147,8 +212,8 @@ describe("Account Archive", () => {
       archive: {
         ...baseStats.archive!,
         vault: {
-          qualifyingWins: BLUEPRINT_CLEARANCE_REQUIRED_WINS,
-          requiredWins: BLUEPRINT_CLEARANCE_REQUIRED_WINS,
+          qualifyingWins: 5,
+          requiredWins: 5,
           unlocked: true,
           status: "cleared",
           challengeRoomId: null,
@@ -162,14 +227,14 @@ describe("Account Archive", () => {
     expect(screen.getByTestId("vault-status")).toHaveTextContent("VAULT OPEN");
   });
 
-  it("shows The First Charge as an inert future transmission after clearance", () => {
-    const clearedStats: PlayerStats = {
+  it("presents the opened Vault as a paused post-Lumii story hub", () => {
+    const unlocked: PlayerStats = {
       ...baseStats,
       archive: {
         ...baseStats.archive!,
         vault: {
-          qualifyingWins: BLUEPRINT_CLEARANCE_REQUIRED_WINS,
-          requiredWins: BLUEPRINT_CLEARANCE_REQUIRED_WINS,
+          qualifyingWins: 5,
+          requiredWins: 5,
           unlocked: true,
           status: "cleared",
           challengeRoomId: null,
@@ -178,15 +243,16 @@ describe("Account Archive", () => {
     };
     const vaultState: BlueprintVaultState = {
       clearance: {
-        qualifyingWins: BLUEPRINT_CLEARANCE_REQUIRED_WINS,
-        requiredWins: BLUEPRINT_CLEARANCE_REQUIRED_WINS,
+        qualifyingWins: 5,
+        requiredWins: 5,
         status: "cleared",
         challengeRoomId: null,
         warningSeen: true,
         cipherDeactivated: true,
         thresholdApproach: "inquiry",
-        thresholdDialoguePath: [],
+        thresholdDialoguePath: ["inquiry-answer"],
         thresholdDialogueResolution: "continued",
+        thresholdRuptured: true,
         covenantBroken: true,
         decryptionKeyBypassActive: false,
         revealPending: false,
@@ -195,32 +261,57 @@ describe("Account Archive", () => {
       slotCount: 2,
       competitiveEnabled: false,
       unlockedBlueprintIds: ["bp_antimatter_detonator"],
-      blueprints: [],
-      corruptedRecordCount: 0,
+      blueprints: [BLUEPRINT_DEFINITIONS.bp_antimatter_detonator],
+      corruptedRecordCount: 2,
       campaignNodes: [{
         id: "campaign_antimatter_first_charge",
         blueprintId: "bp_antimatter_detonator",
         title: "The First Charge",
-        status: "future",
+        status: "pending_release",
       }],
-      loadouts: [],
+      campaignProgress: pendingCampaignProgress,
+      loadouts: [
+        { mode: "campaign", slots: ["bp_antimatter_detonator", null] },
+        { mode: "custom", slots: [null, null] },
+        { mode: "competitive", slots: [null, null] },
+      ],
       mastery: [],
     };
+    const updateLoadout = vi.fn();
 
     render(
       <AccountArchive
-        stats={clearedStats}
+        stats={unlocked}
         isLoading={false}
         page="vault"
         blueprintVault={vaultState}
+        onUpdateBlueprintLoadout={updateLoadout}
       />,
     );
 
-    const futureTitle = screen.getByText("The First Charge");
-    const futureNode = futureTitle.closest(".account-vault__campaign-node");
-    expect(futureNode).not.toBeNull();
-    expect(futureNode?.querySelector("button, a, svg")).toBeNull();
-    expect(futureNode).toHaveTextContent("content not yet available");
+    expect(screen.getAllByText("OUTER VAULT ACCESS").length).toBeGreaterThan(0);
+    expect(document.querySelector(".account-vault__breach")).toBeInTheDocument();
+    expect(document.querySelector(".account-vault__reveal")).not.toBeInTheDocument();
+    expect(document.querySelector(".account-vault__cipher-conduits")).not.toBeInTheDocument();
+    expect(document.querySelector(".account-vault__cipher-sigil")).not.toBeInTheDocument();
+    expect(screen.getByText("First record recovered")).toBeInTheDocument();
+    expect(screen.getAllByText("Antimatter Detonator").length).toBeGreaterThan(0);
+    expect(screen.getByText("Sealed Campaign Records")).toBeInTheDocument();
+    expect(screen.getByText("Progression pauses here while future campaigns remain under lock.")).toBeInTheDocument();
+    expect(screen.getByText("The First Charge")).toBeInTheDocument();
+    expect(screen.getByText("Campaign record pending")).toBeInTheDocument();
+    expect(screen.queryByText("Campaign Node // Available")).not.toBeInTheDocument();
+
+    const recoveredTab = screen.getByRole("button", { name: "Recovered" });
+    const sealedTab = screen.getByRole("button", { name: "Sealed Records" });
+    expect(recoveredTab).toHaveAttribute("aria-pressed", "true");
+    expect(document.querySelector('[aria-label="Recovered Blueprint"]')).toHaveAttribute("data-mobile-active", "true");
+    fireEvent.click(sealedTab);
+    expect(sealedTab).toHaveAttribute("aria-pressed", "true");
+    expect(document.querySelector('[aria-label="Sealed Campaign Records"]')).toHaveAttribute("data-mobile-active", "true");
+
+    fireEvent.click(screen.getByRole("button", { name: /Slot 2\s*Unassigned\s*Select recovered Blueprint/i }));
+    expect(updateLoadout).toHaveBeenCalledWith("campaign", [null, "bp_antimatter_detonator"]);
   });
 
   it("distinguishes a ready Supreme Cipher from the inert first seal", () => {
@@ -229,8 +320,8 @@ describe("Account Archive", () => {
       archive: {
         ...baseStats.archive!,
         vault: {
-          qualifyingWins: BLUEPRINT_CLEARANCE_REQUIRED_WINS,
-          requiredWins: BLUEPRINT_CLEARANCE_REQUIRED_WINS,
+          qualifyingWins: 5,
+          requiredWins: 5,
           unlocked: false,
           status: "challenge_ready",
           challengeRoomId: null,
@@ -239,8 +330,8 @@ describe("Account Archive", () => {
     };
     const vaultState: BlueprintVaultState = {
       clearance: {
-        qualifyingWins: BLUEPRINT_CLEARANCE_REQUIRED_WINS,
-        requiredWins: BLUEPRINT_CLEARANCE_REQUIRED_WINS,
+        qualifyingWins: 5,
+        requiredWins: 5,
         status: "challenge_ready",
         challengeRoomId: null,
         warningSeen: false,
@@ -248,6 +339,7 @@ describe("Account Archive", () => {
         thresholdApproach: null,
         thresholdDialoguePath: [],
         thresholdDialogueResolution: null,
+        thresholdRuptured: false,
         covenantBroken: false,
         decryptionKeyBypassActive: false,
         revealPending: false,
@@ -259,6 +351,7 @@ describe("Account Archive", () => {
       blueprints: [],
       corruptedRecordCount: null,
       campaignNodes: [],
+      campaignProgress: pendingCampaignProgress,
       loadouts: [],
       mastery: [],
     };
@@ -267,10 +360,7 @@ describe("Account Archive", () => {
     );
 
     expect(screen.getByTestId("vault-status")).toHaveTextContent("SUPREME CIPHER READY");
-    expect(screen.getByRole("button", { name: "Attempt Vault access" }))
-      .toHaveTextContent("SUPREME CIPHER");
-    expect(screen.getByRole("button", { name: "Attempt Vault access" }))
-      .toHaveAttribute("data-cipher-dismissal", "permanent");
+    expect(screen.getByRole("button", { name: "Attempt Blueprint Vault access" })).toHaveTextContent("SUPREME CIPHER");
 
     rerender(
       <AccountArchive
@@ -283,16 +373,15 @@ describe("Account Archive", () => {
         }}
       />,
     );
-    expect(screen.getByTestId("vault-status")).toHaveTextContent("CIPHER DISMISSED");
-    expect(screen.getByRole("button", { name: "Attempt Vault access" })).toHaveTextContent("THRESHOLD ARRESTED");
-    expect(screen.getByRole("button", { name: "Attempt Vault access" })).toHaveAttribute("data-cipher-state", "hidden");
+    expect(screen.getByTestId("vault-status")).toHaveTextContent("CIPHER DEACTIVATED");
+    expect(screen.getByRole("button", { name: "Attempt Blueprint Vault access" })).toHaveTextContent("THRESHOLD ARRESTED");
   });
 
   it("does not treat stale decryption-key residue as a permanent inert Cipher", () => {
     const staleVault: BlueprintVaultState = {
       clearance: {
         qualifyingWins: 2,
-        requiredWins: BLUEPRINT_CLEARANCE_REQUIRED_WINS,
+        requiredWins: 5,
         status: "challenge_ready",
         challengeRoomId: null,
         warningSeen: false,
@@ -300,6 +389,7 @@ describe("Account Archive", () => {
         thresholdApproach: null,
         thresholdDialoguePath: [],
         thresholdDialogueResolution: null,
+        thresholdRuptured: false,
         covenantBroken: false,
         decryptionKeyBypassActive: false,
         revealPending: false,
@@ -311,6 +401,7 @@ describe("Account Archive", () => {
       blueprints: [],
       corruptedRecordCount: null,
       campaignNodes: [],
+      campaignProgress: pendingCampaignProgress,
       loadouts: [],
       mastery: [],
     };
@@ -327,7 +418,7 @@ describe("Account Archive", () => {
     const classifiedVault: BlueprintVaultState = {
       clearance: {
         qualifyingWins: 2,
-        requiredWins: BLUEPRINT_CLEARANCE_REQUIRED_WINS,
+        requiredWins: 5,
         status: "classified",
         challengeRoomId: null,
         warningSeen: false,
@@ -335,6 +426,7 @@ describe("Account Archive", () => {
         thresholdApproach: null,
         thresholdDialoguePath: [],
         thresholdDialogueResolution: null,
+        thresholdRuptured: false,
         covenantBroken: false,
         decryptionKeyBypassActive: false,
         revealPending: false,
@@ -346,6 +438,7 @@ describe("Account Archive", () => {
       blueprints: [],
       corruptedRecordCount: null,
       campaignNodes: [],
+      campaignProgress: pendingCampaignProgress,
       loadouts: [],
       mastery: [],
     };
@@ -379,98 +472,9 @@ describe("Account Archive", () => {
       />,
     );
     expect(screen.getByTestId("vault-status")).toHaveTextContent("BLACK MARKET BYPASS");
-    expect(screen.getByRole("button", { name: "Attempt Vault access" }))
-      .toHaveTextContent("TEMPORARY OVERRIDE");
-    expect(screen.getByRole("button", { name: "Attempt Vault access" }))
-      .toHaveAttribute("data-cipher-dismissal", "temporary");
-    expect(screen.getAllByText(
-      new RegExp(`Leaving or losing restores the ${BLUEPRINT_CLEARANCE_REQUIRED_WINS}-win condition`, "i"),
-    )).toHaveLength(2);
+    expect(screen.getByRole("button", { name: "Attempt Blueprint Vault access" })).toHaveTextContent("TEMPORARY OVERRIDE");
+    expect(screen.getAllByText(/Leaving or losing restores the five-win condition/i)).toHaveLength(2);
     expect(screen.queryByRole("button", { name: /Spend Decryption Key/i })).not.toBeInTheDocument();
-  });
-
-  it("turns the cleared Vault into a selectable archive of every discovered Blueprint", async () => {
-    const onUpdateLoadout = vi.fn();
-    const clearedStats: PlayerStats = {
-      ...baseStats,
-      archive: {
-        ...baseStats.archive!,
-        vault: {
-          qualifyingWins: BLUEPRINT_CLEARANCE_REQUIRED_WINS,
-          requiredWins: BLUEPRINT_CLEARANCE_REQUIRED_WINS,
-          unlocked: true,
-          status: "cleared",
-          challengeRoomId: null,
-        },
-      },
-    };
-    const discoveredIds = [
-      "bp_antimatter_detonator",
-      "bp_mantle_to_orbit_foundry",
-      "bp_worldshield_covenant",
-    ] as const;
-    const vaultState: BlueprintVaultState = {
-      clearance: {
-        qualifyingWins: BLUEPRINT_CLEARANCE_REQUIRED_WINS,
-        requiredWins: BLUEPRINT_CLEARANCE_REQUIRED_WINS,
-        status: "cleared",
-        challengeRoomId: null,
-        warningSeen: true,
-        cipherDeactivated: true,
-        thresholdApproach: "inquiry",
-        thresholdDialoguePath: ["inquiry-answer"],
-        thresholdDialogueResolution: "continued",
-        covenantBroken: true,
-        decryptionKeyBypassActive: false,
-        revealPending: false,
-      },
-      decryptionKeyAvailable: false,
-      slotCount: 2,
-      competitiveEnabled: false,
-      unlockedBlueprintIds: [...discoveredIds],
-      blueprints: discoveredIds.map((id) => BLUEPRINT_DEFINITIONS[id]),
-      corruptedRecordCount: 0,
-      campaignNodes: [],
-      loadouts: [
-        { mode: "campaign", slots: ["bp_antimatter_detonator", "bp_mantle_to_orbit_foundry"] },
-        { mode: "custom", slots: ["bp_worldshield_covenant", null] },
-        { mode: "competitive", slots: [null, null] },
-      ],
-      mastery: [{
-        blueprintId: "bp_worldshield_covenant",
-        manifestations: 3,
-        triggers: 2,
-        armedMatchFinishes: 1,
-      }],
-    };
-
-    render(
-      <AccountArchive
-        stats={clearedStats}
-        isLoading={false}
-        page="vault"
-        blueprintVault={vaultState}
-        onUpdateBlueprintLoadout={onUpdateLoadout}
-      />,
-    );
-
-    expect(screen.queryByRole("button", { name: "Open cosmic technology vault" })).not.toBeInTheDocument();
-    expect(screen.getByRole("tab", { name: /Antimatter Detonator/ })).toHaveAttribute("aria-selected", "true");
-    expect(screen.getByRole("tab", { name: /Mantle-to-Orbit Foundry/ })).toBeInTheDocument();
-    expect(screen.getByRole("tab", { name: /Worldshield Covenant/ })).toBeInTheDocument();
-
-    fireEvent.click(screen.getByRole("tab", { name: /Worldshield Covenant/ }));
-
-    expect(screen.getByRole("tab", { name: /Worldshield Covenant/ })).toHaveAttribute("aria-selected", "true");
-    expect(await screen.findByTestId("worldshield-blueprint-card")).toBeInTheDocument();
-    expect(screen.getByLabelText("Worldshield Covenant mastery")).toHaveTextContent("Manifested3Triggered2Armed Finishes1");
-    expect(screen.getByText("Mantle-to-Orbit Foundry", { selector: ".account-vault__slots strong" })).toBeInTheDocument();
-
-    fireEvent.click(screen.getByText("Mantle-to-Orbit Foundry", { selector: ".account-vault__slots strong" }));
-    expect(onUpdateLoadout).toHaveBeenCalledWith("campaign", [
-      "bp_antimatter_detonator",
-      "bp_worldshield_covenant",
-    ]);
   });
 
   it("turns repeated play into a Civilization Imprint", () => {
@@ -481,9 +485,13 @@ describe("Account Archive", () => {
         artifacts: {
           ...baseStats.archive!.artifacts,
           discovered: [{
-            ...artifactRecord("t2o01", 4),
+            id: "alpha",
             name: "Alpha Engine",
             flavor: "A recurring choice.",
+            tier: 2,
+            bonusAffinity: "abyss",
+            eminence: 2,
+            forgeCount: 4,
           }],
           discoveredByTier: { 1: 0, 2: 1, 3: 0 },
         },
@@ -505,30 +513,8 @@ describe("Account Archive", () => {
         identity: {
           totalForges: 4,
           totalAlliances: 3,
-          signatureArtifactId: "t2o01",
+          signatureArtifactId: "alpha",
           closestLuminaryId: "lum_tide",
-          selected: {
-            ...baseStats.archive!.identity.selected,
-            lineage: "boundary_science",
-            affinity: "abyss",
-            signatureArtifactId: "t2o01",
-            signatureLuminaryId: "lum_tide",
-            displayName: "The Veiled Horizon",
-          },
-          suggested: {
-            lineage: "boundary_science",
-            affinity: null,
-            signatureArtifactId: "t2o01",
-            signatureLuminaryId: "lum_tide",
-            signatureBlueprintId: null,
-          },
-          options: {
-            lineages: ["boundary_science"],
-            affinities: ["abyss"],
-            artifactIds: ["t2o01"],
-            luminaryIds: ["lum_tide"],
-            blueprintIds: [],
-          },
         },
       },
     };
@@ -536,13 +522,9 @@ describe("Account Archive", () => {
     render(<AccountArchive stats={withIdentity} isLoading={false} />);
 
     expect(screen.getByRole("region", { name: "Civilization Imprint" })).toBeInTheDocument();
-    expect(screen.getByText("Alpha Engine", {
-      selector: ".account-archive__identity-record strong",
-    })).toBeInTheDocument();
+    expect(screen.getByText("Alpha Engine")).toBeInTheDocument();
     expect(screen.getByText("Forged 4 times")).toBeInTheDocument();
-    expect(screen.getByText("The Tide Architect", {
-      selector: ".account-archive__identity-record strong",
-    })).toBeInTheDocument();
+    expect(screen.getByText("The Tide Architect")).toBeInTheDocument();
     expect(screen.getByText("Allied 3 times")).toBeInTheDocument();
   });
 
@@ -554,15 +536,15 @@ describe("Account Archive", () => {
         artifacts: {
           ...baseStats.archive!.artifacts,
           discovered: [
-            { ...artifactRecord("t1r01", 4), name: "Zeta Engine", flavor: "Late record" },
-            { ...artifactRecord("t2o01", 1), name: "Alpha Engine", flavor: "Early record" },
+            { id: "zeta", name: "Zeta Engine", flavor: "Late record", tier: 1, bonusAffinity: "flare", eminence: 0, forgeCount: 4 },
+            { id: "alpha", name: "Alpha Engine", flavor: "Early record", tier: 2, bonusAffinity: "abyss", eminence: 2, forgeCount: 1 },
           ],
           discoveredByTier: { 1: 1, 2: 1, 3: 0 },
         },
         identity: {
           ...baseStats.archive!.identity,
           totalForges: 5,
-          signatureArtifactId: "t1r01",
+          signatureArtifactId: "zeta",
         },
       },
     };

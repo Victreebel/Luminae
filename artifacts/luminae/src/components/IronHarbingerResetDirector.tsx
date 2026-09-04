@@ -18,7 +18,6 @@ import {
 } from '@/lib/luminaryPresentationPacing';
 import { gameAudio } from '@/lib/audio';
 import { playLuminaryEffectPhaseSound } from '@/lib/luminaryEffectSound';
-import { MOLD_CAST_DURATION_MS } from '@/pages/game-mold-casting';
 
 type Tier = 1 | 2 | 3;
 
@@ -32,6 +31,7 @@ const IMPACT_HOLD_MS = 100;
 const RETURN_FLIGHT_MS = 850;
 const RETURN_STAGGER_MS = 90;
 const SHUFFLE_MS = 750;
+const DEAL_FLIGHT_MS = 800;
 const DEAL_STAGGER_MS = 90;
 const AFTERMATH_MS = 200;
 
@@ -62,10 +62,11 @@ export interface IronHarbingerResetActions {
   ) => void;
   setAnimEndTime: (durationMs: number) => void;
   onLiftSlots: (slotKeys: string[]) => void;
-  onCastSlots: (slotKeys: string[], staggerMs: number) => void;
+  onRevealSlot: (slotKey: string) => void;
   onFinish: (slotKeys: string[]) => void;
   playShuffle: () => void;
   playArchiveImpact: (index: number) => void;
+  playDeal: (index: number) => void;
 }
 
 interface IronHarbingerResetDirectorProps {
@@ -269,6 +270,7 @@ export function IronHarbingerResetDirector({
       timelinePlaybackRate,
     );
     const shuffleMs = paced(SHUFFLE_MS);
+    const dealFlightMs = paced(DEAL_FLIGHT_MS);
     const dealStaggerMs = boundedLuminaryStagger(
       slots.length,
       DEAL_STAGGER_MS,
@@ -640,45 +642,95 @@ export function IronHarbingerResetDirector({
       wait: (durationMs: number) => Promise<void>,
       signal: AbortSignal,
     ) => {
+      const durationMs = dealFlightMs;
       const staggerMs = dealStaggerMs;
       const sortedSlots = [...slots].sort((a, b) => (
         b.tier - a.tier || a.slotIndex - b.slotIndex
       ));
-      const castableSlots = sortedSlots.filter((slot) => {
+
+      sortedSlots.forEach((slot, index) => {
+        const archive = archiveVisualsRef.current.get(slot.tier);
         const destinationElement = document.querySelector<HTMLElement>(
           `[data-slot-key="${slot.slotKey}"]`,
         );
-        return Boolean(
-          destinationElement && rowForTier(stateRef.current, slot.tier)[slot.slotIndex],
-        );
-      });
+        const destinationRect = destinationElement?.getBoundingClientRect();
+        const nextCard = rowForTier(stateRef.current, slot.tier)[slot.slotIndex];
+        if (!archive || !destinationRect || !nextCard) {
+          actionsRef.current.onRevealSlot(slot.slotKey);
+          return;
+        }
 
-      if (castableSlots.length > 0) {
-        actionsRef.current.onCastSlots(
-          castableSlots.map(slot => slot.slotKey),
-          staggerMs,
+        const element = makeFallbackArtifact(
+          nextCard.id,
+          slot.tier,
+          destinationRect,
         );
-      }
-
-      castableSlots.forEach((slot, index) => {
-        const archive = archiveVisualsRef.current.get(slot.tier);
+        const source = centerOf(archive.rect);
+        const destination = centerOf(destinationRect);
+        const startX = source.x - destinationRect.width / 2;
+        const startY = source.y - destinationRect.height / 2;
+        const dx = destination.x - source.x;
+        const dy = destination.y - source.y;
+        const arcY = Math.min(-34, dy * 0.34 - 46 - (index % 4) * 7);
         const delayMs = index * staggerMs;
 
+        Object.assign(element.style, {
+          left: `${startX}px`,
+          top: `${startY}px`,
+          opacity: '0',
+          transformOrigin: '50% 50%',
+          pointerEvents: 'none',
+          zIndex: '9055',
+          willChange: 'transform, opacity, filter',
+        });
+        document.body.appendChild(element);
+
         rememberTimer(() => {
-          if (signal.aborted || !archive) return;
+          if (signal.aborted) return;
           const latest = archiveVisualsRef.current.get(slot.tier);
           if (latest) updateArchiveCount(
             slot.tier,
             Math.max(latest.finalCount, latest.displayCount - 1),
           );
+          if (index % 4 === 0) actionsRef.current.playDeal(index);
         }, delayMs);
+
+        trackAnimation(animate(
+          element,
+          {
+            x: [0, dx * 0.5, dx],
+            y: [0, arcY, dy],
+            opacity: [0, 1, 1, 0],
+            scale: [0.24, 0.92, 1, 1],
+            rotateY: [88, 32, 0],
+            rotateZ: [0, index % 2 === 0 ? -2 : 2, 0],
+            filter: [
+              'brightness(1.75)',
+              'brightness(1.18)',
+              'brightness(1)',
+            ],
+          },
+          {
+            duration: (reducedMotion ? Math.min(220, durationMs) : durationMs) / 1000,
+            delay: delayMs / 1000,
+            ease: [0.22, 0.72, 0.18, 1],
+          },
+        ));
+
+        rememberTimer(() => {
+          if (signal.aborted) return;
+          actionsRef.current.onRevealSlot(slot.slotKey);
+          element.remove();
+          dealVisualsRef.current = dealVisualsRef.current.filter(
+            visual => visual !== element,
+          );
+        }, delayMs + durationMs - 60);
       });
 
-      const durationMs = reducedMotion ? 240 : MOLD_CAST_DURATION_MS;
       const totalMs =
         durationMs +
-        Math.max(0, castableSlots.length - 1) * staggerMs +
-        210;
+        Math.max(0, sortedSlots.length - 1) * staggerMs +
+        120;
       await wait(totalMs);
 
       archiveVisualsRef.current.forEach((visual) => {
@@ -703,8 +755,7 @@ export function IronHarbingerResetDirector({
       returnFlightMs + Math.max(0, slots.length - 1) * returnStaggerMs + 90;
     const shuffleEstimate = shuffleMs + paced(80);
     const dealEstimate =
-      (reducedMotion ? 240 : MOLD_CAST_DURATION_MS) +
-      Math.max(0, slots.length - 1) * dealStaggerMs + 210;
+      dealFlightMs + Math.max(0, slots.length - 1) * dealStaggerMs + 120;
     const totalEstimate =
       announceMs + cameraSettleMs + impactEstimate + returnEstimate +
       shuffleEstimate + dealEstimate + aftermathMs + paced(250);

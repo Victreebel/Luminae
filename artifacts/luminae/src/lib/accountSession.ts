@@ -7,21 +7,25 @@ import type {
   BlueprintLoadout,
   BlueprintVaultState,
   BlueprintVaultThresholdResult,
-  ArchitectRecordState,
+  CampaignProgressProjection,
   CosmeticLoadoutItem,
-  CivilizationIdentitySelection,
-  CivilizationIdentitySummary,
   PlayerStats,
   EquippableStoreItemKind,
   StoreState,
+  LumePackId,
+  NativeLumePurchaseResult,
+  NativeStoreProvider,
   LumiiThresholdDialogueChoiceId,
   LumiiThresholdApproach,
-  FirstContactStance,
-  QualifyingMatchSession,
+  RecurrenceChronicleSession,
+  TraceChronicleSession,
+  TriangulationChronicleSession,
 } from "@workspace/game-types";
+import { apiUrl } from "@/lib/network";
 
 export type {
   AccountArchiveArtifact,
+  AccountArchiveChronicle,
   AccountArchiveLuminary,
   AccountArchiveSummary,
   BlueprintChallengeSession,
@@ -32,9 +36,6 @@ export type {
   EquippableStoreItemKind,
   StoreItemKind,
   StoreState,
-  ArchitectRecordState,
-  FirstContactStance,
-  QualifyingMatchSession,
 } from "@workspace/game-types";
 
 export interface AccountInfo {
@@ -44,7 +45,6 @@ export interface AccountInfo {
   createdAt?: string;
   clearance?: BlueprintClearanceSummary;
   cosmeticLoadout?: CosmeticLoadoutItem[];
-  civilizationIdentity?: CivilizationIdentitySummary;
 }
 
 export interface AccountSession {
@@ -53,15 +53,15 @@ export interface AccountSession {
   expiresAt: string;
 }
 
-export const ACCOUNT_SESSION_STORAGE_KEY = "luminae_account_session";
+const ACCOUNT_SESSION_KEY = "luminae_account_session";
 
 export function getAccountSession(): AccountSession | null {
   try {
-    const data = localStorage.getItem(ACCOUNT_SESSION_STORAGE_KEY);
+    const data = localStorage.getItem(ACCOUNT_SESSION_KEY);
     if (!data) return null;
     const session: AccountSession = JSON.parse(data);
     if (new Date(session.expiresAt) <= new Date()) {
-      localStorage.removeItem(ACCOUNT_SESSION_STORAGE_KEY);
+      localStorage.removeItem(ACCOUNT_SESSION_KEY);
       return null;
     }
     return session;
@@ -71,22 +71,15 @@ export function getAccountSession(): AccountSession | null {
 }
 
 export function saveAccountSession(session: AccountSession): void {
-  localStorage.setItem(ACCOUNT_SESSION_STORAGE_KEY, JSON.stringify(session));
+  localStorage.setItem(ACCOUNT_SESSION_KEY, JSON.stringify(session));
 }
 
 export function clearAccountSession(): void {
-  localStorage.removeItem(ACCOUNT_SESSION_STORAGE_KEY);
+  localStorage.removeItem(ACCOUNT_SESSION_KEY);
 }
 
 export function getAccountToken(): string | null {
   return getAccountSession()?.token ?? null;
-}
-
-const BASE_URL = import.meta.env.BASE_URL ?? "/";
-
-function apiUrl(path: string): string {
-  const base = BASE_URL.replace(/\/$/, "");
-  return `${base}/api${path}`;
 }
 
 export async function apiRegister(data: {
@@ -129,10 +122,49 @@ export async function apiLogout(token: string): Promise<void> {
   });
 }
 
+export async function apiSetPlayerBlocked(input: {
+  token: string;
+  roomId: string;
+  playerId: string;
+  blocked: boolean;
+}): Promise<void> {
+  const res = await fetch(apiUrl("/moderation/block"), {
+    method: "POST",
+    headers: { Authorization: `Bearer ${input.token}`, "Content-Type": "application/json" },
+    body: JSON.stringify(input),
+  });
+  if (!res.ok) throw new Error((await res.json().catch(() => null))?.error ?? "Could not update block");
+}
+
+export async function apiReportPlayer(input: {
+  token: string;
+  roomId: string;
+  playerId: string;
+  evidenceText?: string;
+  evidenceTimestamp?: string;
+  category?: "harassment" | "hate" | "threat" | "privacy" | "spam" | "other";
+}): Promise<void> {
+  const res = await fetch(apiUrl("/moderation/report"), {
+    method: "POST",
+    headers: { Authorization: `Bearer ${input.token}`, "Content-Type": "application/json" },
+    body: JSON.stringify({ ...input, category: input.category ?? "other" }),
+  });
+  if (!res.ok) throw new Error((await res.json().catch(() => null))?.error ?? "Could not submit report");
+}
+
+export async function apiRequestAccountDeletion(token: string, password: string): Promise<{ executeAfter: string }> {
+  const res = await fetch(apiUrl("/auth/me"), {
+    method: "DELETE",
+    headers: { Authorization: `Bearer ${token}`, "Content-Type": "application/json" },
+    body: JSON.stringify({ password }),
+  });
+  if (!res.ok) throw new Error((await res.json().catch(() => null))?.error ?? "Could not schedule account deletion");
+  return res.json();
+}
+
 export interface AccountMe extends AccountInfo {
   clearance: BlueprintClearanceSummary;
   cosmeticLoadout: CosmeticLoadoutItem[];
-  civilizationIdentity: CivilizationIdentitySummary;
   activeRooms: Array<{
     roomId: string;
     inviteCode: string;
@@ -290,23 +322,6 @@ export async function apiGetMyStats(token: string): Promise<PlayerStats> {
   return res.json();
 }
 
-export async function apiUpdateCivilizationIdentity(
-  token: string,
-  selection: CivilizationIdentitySelection,
-): Promise<CivilizationIdentitySummary> {
-  const res = await fetch(apiUrl("/auth/me/civilization-identity"), {
-    method: "PUT",
-    headers: { "Content-Type": "application/json", Authorization: `Bearer ${token}` },
-    body: JSON.stringify(selection),
-  });
-  if (!res.ok) {
-    const error = await res.json().catch(() => ({ error: "Identity update failed" }));
-    throw new Error(error.error ?? "Identity update failed");
-  }
-  const data = await res.json();
-  return data.civilizationIdentity;
-}
-
 export interface TestPurchaseResult {
   ok: boolean;
   itemId: string;
@@ -318,13 +333,34 @@ export interface DailyClaimResult {
   ok: boolean;
   alreadyClaimed: boolean;
   rewardAmount: number;
-  cosmeticBalance: number;
+  lumeBalance: number;
   dailyClaimStreak: number;
   lastDailyClaimDate: string | null;
 }
 
-export interface StarlightUnlockResult extends TestPurchaseResult {
-  cosmeticBalance: number;
+export interface LumeUnlockResult extends TestPurchaseResult {
+  lumeBalance: number;
+}
+
+export async function apiVerifyNativeLumePurchase(
+  token: string,
+  input: {
+    provider: NativeStoreProvider;
+    packId: LumePackId;
+    productId: string;
+    purchaseToken: string;
+  },
+): Promise<NativeLumePurchaseResult> {
+  const res = await fetch(apiUrl("/store/lume/purchases/verify"), {
+    method: "POST",
+    headers: { "Content-Type": "application/json", Authorization: `Bearer ${token}` },
+    body: JSON.stringify(input),
+  });
+  if (!res.ok) {
+    const err = await res.json().catch(() => ({ error: "Purchase verification failed" }));
+    throw new Error(err.error ?? "Purchase verification failed");
+  }
+  return res.json();
 }
 
 export interface EquipCosmeticResult {
@@ -354,8 +390,8 @@ export async function apiTestPurchase(token: string, itemId: string): Promise<Te
   return res.json();
 }
 
-export async function apiUnlockWithStarlight(token: string, itemId: string): Promise<StarlightUnlockResult> {
-  const res = await fetch(apiUrl("/store/unlocks/starlight"), {
+export async function apiUnlockWithLume(token: string, itemId: string): Promise<LumeUnlockResult> {
+  const res = await fetch(apiUrl("/store/unlocks/lume"), {
     method: "POST",
     headers: { "Content-Type": "application/json", Authorization: `Bearer ${token}` },
     body: JSON.stringify({ itemId }),
@@ -393,48 +429,54 @@ export async function apiGetBlueprintVault(token: string): Promise<BlueprintVaul
   return res.json();
 }
 
-export async function apiGetArchitectRecord(token: string): Promise<ArchitectRecordState> {
-  const res = await fetch(apiUrl("/campaigns/architect-record"), {
+export async function apiGetChronicleProgress(
+  token: string,
+): Promise<CampaignProgressProjection> {
+  const res = await fetch(apiUrl("/chronicles/progress"), {
     headers: { Authorization: `Bearer ${token}` },
   });
-  if (!res.ok) throw new Error("Failed to read the Architect Record");
+  if (!res.ok) throw new Error("Chronicle record unavailable");
   return res.json();
 }
 
-export async function apiClaimArchitectRecordOnboarding(
+export async function apiStartTraceChronicle(
   token: string,
-  claim: { claimId: string; stance: FirstContactStance | null },
-): Promise<ArchitectRecordState> {
-  const res = await fetch(apiUrl("/campaigns/architect-record/onboarding-claim"), {
-    method: "POST",
-    headers: { "Content-Type": "application/json", Authorization: `Bearer ${token}` },
-    body: JSON.stringify(claim),
-  });
-  if (!res.ok) throw new Error("Tutorial completion could not be claimed yet");
-  return res.json();
-}
-
-export async function apiAcknowledgeArchitectRecordPresentation(
-  token: string,
-  presentationId: string,
-): Promise<void> {
-  const res = await fetch(apiUrl(`/campaigns/architect-record/presentations/${encodeURIComponent(presentationId)}/acknowledge`), {
-    method: "POST",
-    headers: { Authorization: `Bearer ${token}` },
-  });
-  if (!res.ok) throw new Error("Presentation acknowledgement failed");
-}
-
-export async function apiCreateOrResumeQualifyingMatch(
-  token: string,
-): Promise<QualifyingMatchSession> {
-  const res = await fetch(apiUrl("/campaigns/architect-record/qualifying-match"), {
+): Promise<TraceChronicleSession> {
+  const res = await fetch(apiUrl("/chronicles/trace/start"), {
     method: "POST",
     headers: { Authorization: `Bearer ${token}` },
   });
   if (!res.ok) {
-    const error = await res.json().catch(() => ({ error: "Qualifying match unavailable" }));
-    throw new Error(error.error ?? "Qualifying match unavailable");
+    const error = await res.json().catch(() => ({ error: "The Trace is unavailable" }));
+    throw new Error(error.error ?? "The Trace is unavailable");
+  }
+  return res.json();
+}
+
+export async function apiStartRecurrenceChronicle(
+  token: string,
+): Promise<RecurrenceChronicleSession> {
+  const res = await fetch(apiUrl("/chronicles/recurrence/start"), {
+    method: "POST",
+    headers: { Authorization: `Bearer ${token}` },
+  });
+  if (!res.ok) {
+    const error = await res.json().catch(() => ({ error: "The Recurrence is unavailable" }));
+    throw new Error(error.error ?? "The Recurrence is unavailable");
+  }
+  return res.json();
+}
+
+export async function apiStartTriangulationChronicle(
+  token: string,
+): Promise<TriangulationChronicleSession> {
+  const res = await fetch(apiUrl("/chronicles/triangulation/start"), {
+    method: "POST",
+    headers: { Authorization: `Bearer ${token}` },
+  });
+  if (!res.ok) {
+    const error = await res.json().catch(() => ({ error: "The Triangulation is unavailable" }));
+    throw new Error(error.error ?? "The Triangulation is unavailable");
   }
   return res.json();
 }
@@ -467,25 +509,13 @@ export async function apiStartBlueprintChallenge(
   return res.json();
 }
 
-export type BlueprintVaultThresholdAction =
-  | { action: "deactivate_cipher" }
-  | { action: "choose_approach"; approach: LumiiThresholdApproach }
-  | { action: "record_dialogue_path"; path: LumiiThresholdDialogueChoiceId[] }
-  | { action: "resolve_dialogue"; resolution: "left" };
-
-export class BlueprintThresholdRequestError extends Error {
-  readonly status: number;
-
-  constructor(status: number, message: string) {
-    super(message);
-    this.name = "BlueprintThresholdRequestError";
-    this.status = status;
-  }
-}
-
 export async function apiUpdateBlueprintVaultThreshold(
   token: string,
-  action: BlueprintVaultThresholdAction,
+  action:
+    | { action: "deactivate_cipher" }
+    | { action: "choose_approach"; approach: LumiiThresholdApproach }
+    | { action: "record_dialogue_path"; path: LumiiThresholdDialogueChoiceId[] }
+    | { action: "resolve_dialogue"; resolution: "left" },
 ): Promise<BlueprintVaultThresholdResult> {
   const res = await fetch(apiUrl("/blueprints/vault/threshold"), {
     method: "POST",
@@ -494,10 +524,7 @@ export async function apiUpdateBlueprintVaultThreshold(
   });
   if (!res.ok) {
     const error = await res.json().catch(() => ({ error: "Threshold update unavailable" }));
-    throw new BlueprintThresholdRequestError(
-      res.status,
-      error.error ?? "Threshold update unavailable",
-    );
+    throw new Error(error.error ?? "Threshold update unavailable");
   }
   return res.json();
 }
@@ -572,6 +599,39 @@ export async function apiInviteFriendToRoom(
   if (!res.ok) {
     const err = await res.json().catch(() => ({ error: "Failed to invite friend" }));
     throw new Error(err.error ?? "Failed to invite friend");
+  }
+  return res.json();
+}
+
+export interface LobbyRoomSettingsUpdate {
+  sessionToken: string;
+  gameMode?: "standard" | "custom";
+  blueprintPolicy?: "none" | "owned";
+}
+
+export async function apiUpdateRoomSettings(
+  roomId: string,
+  data: LobbyRoomSettingsUpdate,
+): Promise<{
+  id: string;
+  inviteCode: string;
+  status: string;
+  maxPlayers: number;
+  victoryRequirement: number;
+  cinematicMode: string;
+  turnTimerSeconds: number | null;
+  gameMode: string;
+  scenarioId: string | null;
+  blueprintPolicy: string;
+}> {
+  const res = await fetch(apiUrl(`/rooms/${roomId}/settings`), {
+    method: "PATCH",
+    headers: { "Content-Type": "application/json" },
+    body: JSON.stringify(data),
+  });
+  if (!res.ok) {
+    const err = await res.json().catch(() => ({ error: "Could not update room settings" }));
+    throw new Error(err.error ?? "Could not update room settings");
   }
   return res.json();
 }

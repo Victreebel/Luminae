@@ -2,6 +2,7 @@ import React, { useState, useRef, useEffect } from 'react';
 import { motion, AnimatePresence } from 'framer-motion';
 import { Clock, X } from 'lucide-react';
 import type { ArtifactCard, AffinityCounts } from '@workspace/api-client-react';
+import { DEFAULT_VICTORY_REQUIREMENT } from '@workspace/game-types';
 import { AFFINITY_META, type AffinityKey } from '@/lib/affinityMeta';
 import { AffinityEmblem } from '@/components/AffinityEmblem';
 import { EminenceSigil } from '@/components/EminenceSigil';
@@ -57,7 +58,7 @@ export function EminenceBadge({
 
 export function EminenceProgress({
   value,
-  target = 15,
+  target = DEFAULT_VICTORY_REQUIREMENT,
   variant = 'hud',
   sigilTarget,
   impactKey,
@@ -443,17 +444,12 @@ export function ForgedCardWithTooltip({ card, tier, onOpenSheet }: { card: Artif
     ? AFFINITIES.filter(c => c !== 'singularity' && (bonuses[c as keyof AffinityCounts] ?? 0) > 0)
     : [];
   return (
-    <button
-      type="button"
-      aria-label={`View forged Artifact ${card.name}`}
-      className="relative cursor-pointer rounded-xl border-0 bg-transparent p-0 text-left focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-amber-300/80"
-      onClick={onOpenSheet}
+    <div
+      className="relative"
       onMouseEnter={() => setShow(true)}
       onMouseLeave={() => setShow(false)}
-      onFocus={() => setShow(true)}
-      onBlur={() => setShow(false)}
     >
-      <ArtifactCardView card={card} tier={tier} />
+      <ArtifactCardView card={card} tier={tier} onTap={onOpenSheet} />
       <AnimatePresence>
         {show && (
           <motion.div
@@ -487,7 +483,7 @@ export function ForgedCardWithTooltip({ card, tier, onOpenSheet }: { card: Artif
           </motion.div>
         )}
       </AnimatePresence>
-    </button>
+    </div>
   );
 }
 

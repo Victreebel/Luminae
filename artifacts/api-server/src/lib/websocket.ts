@@ -6,21 +6,17 @@ import { playersTable } from "@workspace/db";
 import type { Player } from "@workspace/db";
 import { eq } from "drizzle-orm";
 import { logger } from "./logger";
+import { randomUUID } from "node:crypto";
 import {
-  getBalanceLabMemoryPlayerBySession,
-  getBalanceLabMemoryRoom,
-  setBalanceLabMemoryPlayerConnected,
-  type BalanceLabMemoryPlayer,
-} from "./balanceLabRooms";
-import { isRuntimeOriginAllowed } from "./originPolicy";
-import {
-  LUMINAE_WEBSOCKET_PROTOCOL,
-  sessionTokenFromProtocolHeader,
-} from "./websocketSecurity";
+  blockedRecipientAccountIds,
+  filterChatText,
+  recordModerationEvent,
+} from "./chatModeration";
 export { filterStateForPlayer } from "./stateProjection";
 
 // roomId → Map<playerId, ws>
-const connections = new Map<string, Map<string, WebSocket>>();
+interface RoomConnection { ws: WebSocket; accountId: string | null }
+const connections = new Map<string, Map<string, RoomConnection>>();
 
 export function getConnectedPlayerIds(roomId: string): Set<string> {
   const room = connections.get(roomId);
@@ -32,7 +28,8 @@ export function broadcastToRoom(roomId: string, payload: unknown): void {
   const room = connections.get(roomId);
   if (!room) return;
   const msg = JSON.stringify(payload);
-  for (const [, ws] of room) {
+  for (const [, connection] of room) {
+    const ws = connection.ws;
     if (ws.readyState === WebSocket.OPEN) {
       ws.send(msg);
     }
@@ -42,24 +39,38 @@ export function broadcastToRoom(roomId: string, payload: unknown): void {
 export function sendToPlayer(roomId: string, playerId: string, payload: unknown): void {
   const room = connections.get(roomId);
   if (!room) return;
-  const ws = room.get(playerId);
-  if (ws && ws.readyState === WebSocket.OPEN) {
-    ws.send(JSON.stringify(payload));
+  const connection = room.get(playerId);
+  if (connection?.ws.readyState === WebSocket.OPEN) {
+    connection.ws.send(JSON.stringify(payload));
   }
 }
 
-export function setupWebSocket(server: Server): WebSocketServer {
-  const wss = new WebSocketServer({
-    server,
-    path: "/ws",
-    maxPayload: 16 * 1024,
-    perMessageDeflate: false,
-    handleProtocols(protocols) {
-      return protocols.has(LUMINAE_WEBSOCKET_PROTOCOL)
-        ? LUMINAE_WEBSOCKET_PROTOCOL
-        : false;
-    },
-  });
+async function broadcastChatToRoom(
+  roomId: string,
+  payload: unknown,
+  senderAccountId: string,
+): Promise<void> {
+  const room = connections.get(roomId);
+  if (!room) return;
+  const recipientAccountIds = [...new Set(
+    [...room.values()].flatMap((connection) => connection.accountId ? [connection.accountId] : []),
+  )];
+  const blockedRecipients = await blockedRecipientAccountIds(senderAccountId, recipientAccountIds);
+  const serialized = JSON.stringify(payload);
+  for (const connection of room.values()) {
+    if (connection.accountId && blockedRecipients.has(connection.accountId)) continue;
+    if (connection.ws.readyState === WebSocket.OPEN) connection.ws.send(serialized);
+  }
+}
+
+export function getWebSocketMetrics(): { rooms: number; connections: number } {
+  let count = 0;
+  for (const room of connections.values()) count += room.size;
+  return { rooms: connections.size, connections: count };
+}
+
+export function setupWebSocket(server: Server): void {
+  const wss = new WebSocketServer({ server, path: "/ws" });
 
   wss.on("connection", (ws: WebSocket, req: IncomingMessage) => {
     handleConnection(ws, req).catch((err) => {
@@ -73,21 +84,13 @@ export function setupWebSocket(server: Server): WebSocketServer {
   });
 
   logger.info("WebSocket server initialized at /ws");
-  return wss;
 }
 
 async function handleConnection(ws: WebSocket, req: IncomingMessage): Promise<void> {
-  const origin = typeof req.headers.origin === "string" ? req.headers.origin : undefined;
-  if (!isRuntimeOriginAllowed(origin)) {
-    ws.close(1008, "Origin not allowed");
-    return;
-  }
-
   const urlStr = req.url ?? "";
   const url = new URL(urlStr, "http://localhost");
   const roomId = url.searchParams.get("roomId");
-  const sessionToken = sessionTokenFromProtocolHeader(req.headers["sec-websocket-protocol"])
-    ?? url.searchParams.get("sessionToken");
+  const sessionToken = url.searchParams.get("sessionToken");
 
   if (!roomId || !sessionToken) {
     ws.close(1008, "Missing roomId or sessionToken");
@@ -95,24 +98,19 @@ async function handleConnection(ws: WebSocket, req: IncomingMessage): Promise<vo
   }
 
   // Authenticate
-  let player: Player | BalanceLabMemoryPlayer | undefined;
+  let player: Player | undefined;
 
-  const memoryRoom = getBalanceLabMemoryRoom(roomId);
-  if (memoryRoom) {
-    player = getBalanceLabMemoryPlayerBySession(roomId, sessionToken) ?? undefined;
-  } else {
-    try {
-      const rows = await db
-        .select()
-        .from(playersTable)
-        .where(eq(playersTable.sessionToken, sessionToken))
-        .limit(1);
-      player = rows[0];
-    } catch (err) {
-      logger.error({ err, roomId }, "DB error during WebSocket auth");
-      ws.close(1011, "Internal server error");
-      return;
-    }
+  try {
+    const rows = await db
+      .select()
+      .from(playersTable)
+      .where(eq(playersTable.sessionToken, sessionToken))
+      .limit(1);
+    player = rows[0];
+  } catch (err) {
+    logger.error({ err, roomId }, "DB error during WebSocket auth");
+    ws.close(1011, "Internal server error");
+    return;
   }
 
   if (!player || player.roomId !== roomId) {
@@ -127,25 +125,16 @@ async function handleConnection(ws: WebSocket, req: IncomingMessage): Promise<vo
   if (!connections.has(roomId)) {
     connections.set(roomId, new Map());
   }
-  const roomConnections = connections.get(roomId)!;
-  const previousConnection = roomConnections.get(playerId);
-  roomConnections.set(playerId, ws);
-  if (previousConnection && previousConnection !== ws) {
-    previousConnection.close(1000, "Reconnected elsewhere");
-  }
+  connections.get(roomId)!.set(playerId, { ws, accountId: player.accountId ?? null });
 
-  if (memoryRoom) {
-    setBalanceLabMemoryPlayerConnected(roomId, playerId, true);
-  } else {
-    // Mark connected in DB — non-fatal if this fails
-    try {
-      await db
-        .update(playersTable)
-        .set({ isConnected: true })
-        .where(eq(playersTable.id, playerId));
-    } catch (err) {
-      logger.warn({ err, roomId, playerId }, "Failed to mark player connected in DB");
-    }
+  // Mark connected in DB — non-fatal if this fails
+  try {
+    await db
+      .update(playersTable)
+      .set({ isConnected: true })
+      .where(eq(playersTable.id, playerId));
+  } catch (err) {
+    logger.warn({ err, roomId, playerId }, "Failed to mark player connected in DB");
   }
 
   logger.info({ roomId, playerId }, "Player connected via WebSocket");
@@ -176,34 +165,39 @@ async function handleConnection(ws: WebSocket, req: IncomingMessage): Promise<vo
     playerName,
   });
 
-  let messageWindowStartedAt = Date.now();
-  let messagesInWindow = 0;
+  const recentChatTimes: number[] = [];
   ws.on("message", (raw) => {
-    const now = Date.now();
-    if (now - messageWindowStartedAt >= 10_000) {
-      messageWindowStartedAt = now;
-      messagesInWindow = 0;
-    }
-    messagesInWindow += 1;
-    if (messagesInWindow > 30) {
-      ws.close(1008, "Message rate exceeded");
-      return;
-    }
-
     try {
       const msg = JSON.parse(raw.toString()) as { type: string; text?: string };
       if (msg.type === "ping") {
         ws.send(JSON.stringify({ type: "pong" }));
       } else if (msg.type === "chat_message") {
-        const text = (msg.text ?? "").trim().slice(0, 200);
-        if (text) {
-          broadcastToRoom(roomId, {
+        const now = Date.now();
+        while (recentChatTimes[0] && recentChatTimes[0] < now - 10_000) recentChatTimes.shift();
+        if (!player.accountId) {
+          ws.send(JSON.stringify({ type: "chat_rejected", reason: "Sign in to use private-room chat." }));
+          void recordModerationEvent({ accountId: null, roomId, playerId, eventType: "chat_rejected" });
+          return;
+        }
+        if (recentChatTimes.length >= 5 || (recentChatTimes.at(-1) ?? 0) > now - 750) {
+          ws.send(JSON.stringify({ type: "chat_rejected", reason: "Please wait before sending another message." }));
+          void recordModerationEvent({ accountId: player.accountId, roomId, playerId, eventType: "chat_rate_limited" });
+          return;
+        }
+        recentChatTimes.push(now);
+        const filtered = filterChatText(msg.text ?? "");
+        if (filtered.text) {
+          if (filtered.filtered) {
+            void recordModerationEvent({ accountId: player.accountId, roomId, playerId, eventType: "chat_filtered" });
+          }
+          void broadcastChatToRoom(roomId, {
             type: "chat_message",
+            messageId: randomUUID(),
             playerId,
             playerName,
-            text,
-            timestamp: Date.now(),
-          });
+            text: filtered.text,
+            timestamp: now,
+          }, player.accountId);
         }
       }
     } catch {
@@ -229,7 +223,7 @@ async function handleClose(ws: WebSocket, roomId: string, playerId: string, play
   // Only clean up if this socket is still the registered connection for this player.
   // A newer reconnect may have already replaced it — in that case, leave the new
   // connection intact and skip the disconnect logic entirely.
-  if (room.get(playerId) !== ws) return;
+  if (room.get(playerId)?.ws !== ws) return;
   room.delete(playerId);
   if (room.size === 0) connections.delete(roomId);
 
@@ -244,17 +238,13 @@ async function handleClose(ws: WebSocket, roomId: string, playerId: string, play
   const freshRoom = connections.get(roomId);
   if (freshRoom?.has(playerId)) return;
 
-  if (getBalanceLabMemoryRoom(roomId)) {
-    setBalanceLabMemoryPlayerConnected(roomId, playerId, false);
-  } else {
-    try {
-      await db
-        .update(playersTable)
-        .set({ isConnected: false })
-        .where(eq(playersTable.id, playerId));
-    } catch (err) {
-      logger.warn({ err, roomId, playerId }, "Failed to mark player disconnected in DB");
-    }
+  try {
+    await db
+      .update(playersTable)
+      .set({ isConnected: false })
+      .where(eq(playersTable.id, playerId));
+  } catch (err) {
+    logger.warn({ err, roomId, playerId }, "Failed to mark player disconnected in DB");
   }
 
   logger.info({ roomId, playerId }, "Player disconnected");

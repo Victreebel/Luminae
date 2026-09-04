@@ -1,0 +1,195 @@
+name: Release Gates
+
+on:
+  pull_request:
+  push:
+    branches: [main, "codex/**"]
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+env:
+  CI: "true"
+  NODE_ENV: test
+  LUMINAE_RELEASE_VERSION: 0.1.0-early-access
+  LUMINAE_BUILD_LABEL: ci-${{ github.run_number }}
+  LUMINAE_BUILD_STAMP: ${{ github.sha }}
+  VITE_LUMINAE_API_ORIGIN: https://api.ci.invalid
+  VITE_LUMINAE_OPERATOR_NAME: LUMINAe CI
+  VITE_LUMINAE_SUPPORT_EMAIL: support@ci.example
+  LUMINAE_ANDROID_VERSION_CODE: ${{ github.run_number }}
+
+jobs:
+  web-api-and-data:
+    name: Web, API, data, and release policy
+    runs-on: ubuntu-latest
+    timeout-minutes: 30
+    services:
+      postgres:
+        image: postgres:16
+        env:
+          POSTGRES_USER: luminae
+          POSTGRES_PASSWORD: luminae
+          POSTGRES_DB: luminae_release_test
+        ports:
+          - 5432:5432
+        options: >-
+          --health-cmd "pg_isready -U luminae"
+          --health-interval 5s
+          --health-timeout 5s
+          --health-retries 10
+    env:
+      DATABASE_URL: postgresql://luminae:luminae@localhost:5432/luminae_release_test
+    steps:
+      - uses: actions/checkout@v4
+      - uses: pnpm/action-setup@v4
+        with:
+          run_install: false
+      - uses: actions/setup-node@v4
+        with:
+          node-version: "24"
+          cache: pnpm
+      - run: pnpm install --frozen-lockfile
+      - name: Static checks
+        run: pnpm -r --if-present run typecheck
+      - name: Canonical terminology and presentation registries
+        run: |
+          pnpm run lint:version-stamps
+          pnpm run lint:terminology
+          pnpm run lint:summon-colors
+          pnpm run lint:luminary-files
+          pnpm run test:summon-colors
+          pnpm run test:luminary-files
+          pnpm run verify:coordination
+      - name: Unit and integration tests
+        run: |
+          pnpm --filter @workspace/api-server test
+          pnpm --filter @workspace/luminae test
+      - name: Rollback-only migration validation
+        run: |
+          pnpm --filter @workspace/db validate:civilization-records-migration
+          pnpm --filter @workspace/db validate:chronicle-campaign-migration
+          pnpm --filter @workspace/db validate:release-migrations
+      - name: Production build and performance budgets
+        env:
+          NODE_ENV: production
+        run: pnpm run build:web
+      - name: Verify sealed Blueprint identities stay out of eager delivery
+        run: pnpm run verify:blueprint-secrecy
+      - name: Install browser for presentation checks
+        run: pnpm --filter @workspace/scripts exec playwright install --with-deps chromium
+      - name: Verify launch surfaces on desktop and Android portrait
+        run: pnpm run test:prepublication-surfaces
+      - name: Refresh asset provenance evidence
+        run: pnpm run audit:assets
+      - name: Upload asset provenance inventory
+        uses: actions/upload-artifact@v4
+        with:
+          name: asset-provenance-${{ github.sha }}
+          path: docs/LUMINAe_ASSET_PROVENANCE_INVENTORY_v1.0.csv
+      - name: Ensure checks did not rewrite tracked sources
+        run: git diff --exit-code
+
+  live-game-presentation:
+    name: Live game presentation and connection stability
+    runs-on: ubuntu-latest
+    timeout-minutes: 25
+    services:
+      postgres:
+        image: postgres:16
+        env:
+          POSTGRES_USER: luminae
+          POSTGRES_PASSWORD: luminae
+          POSTGRES_DB: luminae_live_test
+        ports:
+          - 5432:5432
+        options: >-
+          --health-cmd "pg_isready -U luminae"
+          --health-interval 5s
+          --health-timeout 5s
+          --health-retries 10
+    env:
+      DATABASE_URL: postgresql://luminae:luminae@localhost:5432/luminae_live_test
+      LUMINAE_E2E_BASE_URL: http://127.0.0.1:5191
+    steps:
+      - uses: actions/checkout@v4
+      - uses: pnpm/action-setup@v4
+        with:
+          run_install: false
+      - uses: actions/setup-node@v4
+        with:
+          node-version: "24"
+          cache: pnpm
+      - run: pnpm install --frozen-lockfile
+      - name: Install Chromium
+        run: pnpm --filter @workspace/scripts exec playwright install --with-deps chromium
+      - name: Initialize ephemeral live-game schema
+        run: pnpm --filter @workspace/db push-force
+      - name: Build API
+        run: pnpm --filter @workspace/api-server run build
+      - name: Run live-room presentation suites
+        shell: bash
+        run: |
+          set -euo pipefail
+          PORT=8080 pnpm --filter @workspace/api-server run start >/tmp/luminae-api.log 2>&1 &
+          api_pid=$!
+          PORT=5191 pnpm --filter @workspace/luminae run dev -- --host 127.0.0.1 --strictPort >/tmp/luminae-web.log 2>&1 &
+          web_pid=$!
+          cleanup() {
+            kill "$api_pid" "$web_pid" 2>/dev/null || true
+          }
+          trap cleanup EXIT
+
+          for attempt in {1..60}; do
+            if curl --fail --silent http://127.0.0.1:5191/api/healthz >/dev/null; then
+              break
+            fi
+            if ! kill -0 "$api_pid" 2>/dev/null || ! kill -0 "$web_pid" 2>/dev/null; then
+              cat /tmp/luminae-api.log /tmp/luminae-web.log
+              exit 1
+            fi
+            sleep 1
+          done
+          curl --fail --silent http://127.0.0.1:5191/api/healthz >/dev/null
+
+          pnpm --filter @workspace/scripts run test:dialog-keyboard
+          pnpm --filter @workspace/scripts run test:overlays
+          pnpm --filter @workspace/scripts run test:ws-keepalive
+      - name: Upload live-game browser artifacts on failure
+        if: failure()
+        uses: actions/upload-artifact@v4
+        with:
+          name: live-game-browser-failure-${{ github.sha }}
+          path: |
+            scripts/test-results
+            /tmp/luminae-api.log
+            /tmp/luminae-web.log
+          if-no-files-found: ignore
+      - name: Ensure checks did not rewrite tracked sources
+        run: git diff --exit-code
+
+  android-shells:
+    name: Android Play and Galaxy shells
+    runs-on: ubuntu-latest
+    timeout-minutes: 30
+    steps:
+      - uses: actions/checkout@v4
+      - uses: pnpm/action-setup@v4
+        with:
+          run_install: false
+      - uses: actions/setup-node@v4
+        with:
+          node-version: "24"
+          cache: pnpm
+      - uses: actions/setup-java@v4
+        with:
+          distribution: temurin
+          java-version: "21"
+      - run: pnpm install --frozen-lockfile
+      - name: Sync production web assets into Capacitor
+        run: pnpm run android:sync
+      - name: Compile both billing flavors
+        run: artifacts/luminae/android/gradlew -p artifacts/luminae/android assemblePlayDebug assembleGalaxyDebug
+      - name: Ensure native checks did not rewrite tracked sources
+        run: git diff --exit-code

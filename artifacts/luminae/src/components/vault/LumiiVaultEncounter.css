@@ -7,33 +7,22 @@
   -webkit-tap-highlight-color: transparent;
 }
 
-.vault-threshold:disabled {
-  opacity: 1;
-}
-.vault-threshold[data-interactive="true"] {
-  cursor: pointer;
-}
+.vault-threshold:disabled { opacity: 1; }
+.vault-threshold[data-interactive="true"] { cursor: pointer; }
 .vault-threshold__focus {
   position: absolute;
   z-index: 10;
   inset: 2%;
   border: 1px solid transparent;
   border-radius: 50%;
-  transition:
-    border-color 180ms ease,
-    box-shadow 180ms ease;
+  transition: border-color 180ms ease, box-shadow 180ms ease;
 }
 .vault-threshold[data-interactive="true"]:hover .vault-threshold__focus,
-.vault-threshold[data-interactive="true"]:focus-visible
-  .vault-threshold__focus {
+.vault-threshold[data-interactive="true"]:focus-visible .vault-threshold__focus {
   border-color: rgba(236, 219, 164, 0.58);
-  box-shadow:
-    inset 0 0 32px rgba(231, 208, 128, 0.08),
-    0 0 24px rgba(231, 208, 128, 0.14);
+  box-shadow: inset 0 0 32px rgba(231, 208, 128, 0.08), 0 0 24px rgba(231, 208, 128, 0.14);
 }
-.vault-threshold:focus-visible {
-  outline: 0;
-}
+.vault-threshold:focus-visible { outline: 0; }
 
 .vault-threshold__cipher-half {
   transition:
@@ -41,59 +30,33 @@
     filter 500ms ease,
     transform 900ms cubic-bezier(0.25, 0.8, 0.2, 1);
 }
-.vault-threshold .account-vault__cipher-conduits,
-.vault-threshold .account-vault__scan,
-.vault-threshold .account-vault__seal {
-  transform-origin: 50% 50%;
-  transition:
-    opacity 420ms ease,
-    filter 420ms ease,
-    transform 500ms cubic-bezier(0.2, 0.72, 0.18, 1);
-}
-.vault-threshold__cipher-half--left {
-  clip-path: inset(0 49.6% 0 0);
-}
-.vault-threshold__cipher-half--right {
-  clip-path: inset(0 0 0 49.6%);
-}
-.vault-threshold__cipher-half--inert {
-  opacity: 0;
-}
-.vault-threshold[data-cipher-state="surging"]
-  .vault-threshold__cipher-half--energized {
+.vault-threshold__cipher-half--left { clip-path: inset(0 49.6% 0 0); }
+.vault-threshold__cipher-half--right { clip-path: inset(0 0 0 49.6%); }
+.vault-threshold__cipher-half--inert { opacity: 0; }
+.vault-threshold[data-cipher-state="surging"] .vault-threshold__cipher-half--energized {
   opacity: 1;
   transform: scale(1.08);
   animation: lumii-cipher-surge 600ms ease-in-out both;
 }
-.vault-threshold[data-cipher-state="surging"] .account-vault__cipher-conduits {
-  opacity: 1;
-}
-.vault-threshold[data-cipher-state="collapsing"]
-  .vault-threshold__cipher-half--energized {
+.vault-threshold[data-cipher-state="surging"] .account-vault__cipher-conduits { opacity: 1; }
+.vault-threshold[data-cipher-state="collapsing"] .vault-threshold__cipher-half--energized {
   opacity: 0;
   transform: scale(0.08);
-  transition-duration: 360ms;
+  transition-duration: 240ms;
 }
-.vault-threshold[data-cipher-state="collapsing"]
-  .vault-threshold__cipher-half--inert,
-.vault-threshold[data-cipher-state="inert"]
-  .vault-threshold__cipher-half--inert {
+.vault-threshold[data-cipher-state="collapsing"] .vault-threshold__cipher-half--inert,
+.vault-threshold[data-cipher-state="inert"] .vault-threshold__cipher-half--inert {
   opacity: 0.26;
   filter: grayscale(1) brightness(0.34);
   animation: none;
 }
-.vault-threshold[data-cipher-state="inert"]
-  .vault-threshold__cipher-half--energized,
-.vault-threshold[data-cipher-state="hidden"] .vault-threshold__cipher-half {
-  opacity: 0;
-}
+.vault-threshold[data-cipher-state="inert"] .vault-threshold__cipher-half--energized,
+.vault-threshold[data-cipher-state="hidden"] .vault-threshold__cipher-half { opacity: 0; }
 .vault-threshold[data-cipher-state="inert"] .account-vault__cipher-conduits {
   opacity: 0.035;
   filter: grayscale(1) brightness(0.34);
 }
-.vault-threshold[data-cipher-state="inert"] .account-vault__cipher-conduits i {
-  animation: none;
-}
+.vault-threshold[data-cipher-state="inert"] .account-vault__cipher-conduits i { animation: none; }
 .vault-threshold[data-cipher-state="inert"] .account-vault__scan {
   opacity: 0.08;
   background: #5c6670;
@@ -103,30 +66,7 @@
 .vault-threshold[data-cipher-state="inert"] .account-vault__seal {
   border-color: #414950;
   color: #59636c;
-  box-shadow:
-    0 0 0 5px #11171c,
-    inset 0 0 12px rgba(0, 0, 0, 0.72);
-}
-.vault-threshold[data-cipher-state="dismissing"] .vault-threshold__cipher-half {
-  opacity: 0;
-  filter: grayscale(1) brightness(0.46);
-  transition-duration: 500ms;
-}
-.vault-threshold[data-cipher-state="dismissing"]
-  .vault-threshold__cipher-half--left {
-  transform: translateX(-42%) scale(0.58);
-}
-.vault-threshold[data-cipher-state="dismissing"]
-  .vault-threshold__cipher-half--right {
-  transform: translateX(42%) scale(0.58);
-}
-.vault-threshold[data-cipher-state="dismissing"]
-  .account-vault__cipher-conduits,
-.vault-threshold[data-cipher-state="dismissing"] .account-vault__scan,
-.vault-threshold[data-cipher-state="dismissing"] .account-vault__seal {
-  opacity: 0;
-  filter: grayscale(1) brightness(0.4);
-  transform: scale(0.42);
+  box-shadow: 0 0 0 5px #11171c, inset 0 0 12px rgba(0, 0, 0, 0.72);
 }
 
 .vault-threshold[data-vault-state="arrested"] .account-vault__interior,
@@ -137,59 +77,35 @@
 }
 .vault-threshold[data-vault-state="arrested"] .account-vault__stars,
 .vault-threshold[data-vault-state="hostile"] .account-vault__stars,
-.vault-threshold[data-vault-state="open"] .account-vault__stars {
-  opacity: 0.5;
-}
+.vault-threshold[data-vault-state="open"] .account-vault__stars { opacity: 0.5; }
 .vault-threshold[data-vault-state="arrested"] .account-vault__door-half--left,
-.vault-threshold[data-vault-state="hostile"] .account-vault__door-half--left {
-  transform: translateX(-38%);
-}
+.vault-threshold[data-vault-state="hostile"] .account-vault__door-half--left { transform: translateX(-38%); }
 .vault-threshold[data-vault-state="arrested"] .account-vault__door-half--right,
-.vault-threshold[data-vault-state="hostile"] .account-vault__door-half--right {
-  transform: translateX(38%) scaleX(-1);
-}
+.vault-threshold[data-vault-state="hostile"] .account-vault__door-half--right { transform: translateX(38%) scaleX(-1); }
 .vault-threshold[data-vault-state="arrested"] .account-vault__scan,
-.vault-threshold[data-vault-state="hostile"] .account-vault__scan {
-  opacity: 0.24;
-  animation: none;
-}
+.vault-threshold[data-vault-state="hostile"] .account-vault__scan { opacity: 0.24; animation: none; }
 .vault-threshold[data-vault-state="arrested"] .account-vault__cipher-conduits,
-.vault-threshold[data-vault-state="hostile"] .account-vault__cipher-conduits {
-  opacity: 0.35;
-}
+.vault-threshold[data-vault-state="hostile"] .account-vault__cipher-conduits { opacity: 0.35; }
 .vault-threshold[data-vault-state="arrested"] .vault-threshold__cipher-half,
-.vault-threshold[data-vault-state="hostile"] .vault-threshold__cipher-half {
-  opacity: 0.48;
-}
-.vault-threshold[data-vault-state="arrested"]
-  .vault-threshold__cipher-half--left,
-.vault-threshold[data-vault-state="hostile"]
-  .vault-threshold__cipher-half--left {
+.vault-threshold[data-vault-state="hostile"] .vault-threshold__cipher-half { opacity: 0.48; }
+.vault-threshold[data-vault-state="arrested"] .vault-threshold__cipher-half--left,
+.vault-threshold[data-vault-state="hostile"] .vault-threshold__cipher-half--left {
   transform: translateX(-24%) scale(0.92);
 }
-.vault-threshold[data-vault-state="arrested"]
-  .vault-threshold__cipher-half--right,
-.vault-threshold[data-vault-state="hostile"]
-  .vault-threshold__cipher-half--right {
+.vault-threshold[data-vault-state="arrested"] .vault-threshold__cipher-half--right,
+.vault-threshold[data-vault-state="hostile"] .vault-threshold__cipher-half--right {
   transform: translateX(24%) scale(0.92);
 }
 .vault-threshold[data-vault-state="hostile"] .account-vault__door {
   border-color: rgba(221, 44, 78, 0.72);
-  box-shadow:
-    0 0 0 7px #1b111b,
-    0 0 0 9px #08050b,
-    0 0 40px rgba(225, 29, 72, 0.36);
+  box-shadow: 0 0 0 7px #1b111b, 0 0 0 9px #08050b, 0 0 40px rgba(225, 29, 72, 0.36);
 }
 .vault-threshold[data-vault-state="hostile"] .account-vault__seal {
   border-color: rgba(255, 75, 105, 0.8);
   color: #ff657e;
-  box-shadow:
-    0 0 0 5px #23101b,
-    0 0 34px rgba(225, 29, 72, 0.5);
+  box-shadow: 0 0 0 5px #23101b, 0 0 34px rgba(225, 29, 72, 0.5);
 }
-.vault-threshold[data-vault-state="hostile"] .account-vault__cipher-sigil {
-  filter: none;
-}
+.vault-threshold[data-vault-state="hostile"] .account-vault__cipher-sigil { filter: none; }
 .vault-threshold[data-vault-state="open"] .account-vault__door-half--left {
   opacity: 0;
   transform: translateX(-108%);
@@ -198,9 +114,7 @@
   opacity: 0;
   transform: translateX(108%) scaleX(-1);
 }
-.vault-threshold[data-vault-state="open"] .account-vault__cipher-conduits {
-  opacity: 0;
-}
+.vault-threshold[data-vault-state="open"] .account-vault__cipher-conduits { opacity: 0; }
 .vault-threshold[data-vault-state="open"] .vault-threshold__cipher-half--left {
   opacity: 0;
   transform: translateX(-86%) scale(0.82);
@@ -209,415 +123,30 @@
   opacity: 0;
   transform: translateX(86%) scale(0.82);
 }
-.vault-threshold[data-vault-state="open"] .account-vault__scan {
-  opacity: 0;
-  animation: none;
-}
-.vault-threshold[data-vault-state="open"] .account-vault__clamps {
-  opacity: 0.16;
-}
-.vault-threshold[data-cipher-state="inert"][data-vault-state="arrested"]
-  .vault-threshold__cipher-half--energized,
-.vault-threshold[data-cipher-state="inert"][data-vault-state="hostile"]
-  .vault-threshold__cipher-half--energized {
-  opacity: 0;
-}
-.vault-threshold[data-cipher-state="inert"][data-vault-state="arrested"]
-  .vault-threshold__cipher-half--inert,
-.vault-threshold[data-cipher-state="inert"][data-vault-state="hostile"]
-  .vault-threshold__cipher-half--inert {
+.vault-threshold[data-vault-state="open"] .account-vault__scan { opacity: 0; animation: none; }
+.vault-threshold[data-vault-state="open"] .account-vault__clamps { opacity: 0.16; }
+.vault-threshold[data-cipher-state="inert"][data-vault-state="arrested"] .vault-threshold__cipher-half--energized,
+.vault-threshold[data-cipher-state="inert"][data-vault-state="hostile"] .vault-threshold__cipher-half--energized { opacity: 0; }
+.vault-threshold[data-cipher-state="inert"][data-vault-state="arrested"] .vault-threshold__cipher-half--inert,
+.vault-threshold[data-cipher-state="inert"][data-vault-state="hostile"] .vault-threshold__cipher-half--inert {
   opacity: 0.22;
   filter: grayscale(1) brightness(0.34);
   animation: none;
 }
-.vault-threshold[data-cipher-state="inert"][data-vault-state="arrested"]
-  .account-vault__scan,
-.vault-threshold[data-cipher-state="inert"][data-vault-state="hostile"]
-  .account-vault__scan {
+.vault-threshold[data-cipher-state="inert"][data-vault-state="arrested"] .account-vault__scan,
+.vault-threshold[data-cipher-state="inert"][data-vault-state="hostile"] .account-vault__scan {
   opacity: 0.06;
   background: #5c6670;
   box-shadow: none;
 }
-.vault-threshold[data-cipher-state="inert"][data-vault-state="arrested"]
-  .account-vault__seal,
-.vault-threshold[data-cipher-state="inert"][data-vault-state="hostile"]
-  .account-vault__seal {
+.vault-threshold[data-cipher-state="inert"][data-vault-state="arrested"] .account-vault__seal,
+.vault-threshold[data-cipher-state="inert"][data-vault-state="hostile"] .account-vault__seal {
   border-color: #414950;
   color: #59636c;
-  box-shadow:
-    0 0 0 5px #11171c,
-    inset 0 0 12px rgba(0, 0, 0, 0.72);
-}
-.vault-threshold[data-cipher-state="hidden"] .vault-threshold__cipher-half,
-.vault-threshold[data-cipher-state="hidden"] .account-vault__cipher-conduits,
-.vault-threshold[data-cipher-state="hidden"] .account-vault__scan,
-.vault-threshold[data-cipher-state="hidden"] .account-vault__seal {
-  opacity: 0;
-  animation: none;
-}
-.vault-threshold[data-cipher-state="hidden"]
-  .vault-threshold__cipher-half--left {
-  transform: translateX(-42%) scale(0.58);
-}
-.vault-threshold[data-cipher-state="hidden"]
-  .vault-threshold__cipher-half--right {
-  transform: translateX(42%) scale(0.58);
-}
-.vault-threshold[data-cipher-state="hidden"] .account-vault__cipher-conduits,
-.vault-threshold[data-cipher-state="hidden"] .account-vault__scan,
-.vault-threshold[data-cipher-state="hidden"] .account-vault__seal {
-  transform: scale(0.42);
-}
-
-.vault-threshold__architect-rupture {
-  position: absolute;
-  z-index: 9;
-  inset: 19%;
-  overflow: visible;
-  border-radius: 50%;
-  opacity: 0;
-  pointer-events: none;
-}
-.vault-threshold__architect-rupture::before,
-.vault-threshold__architect-rupture::after {
-  position: absolute;
-  border-radius: 50%;
-  content: "";
-  opacity: 0;
-}
-.vault-threshold__architect-rupture::before {
-  inset: 22%;
-  border: 1px solid rgba(209, 229, 234, 0.58);
-  background: radial-gradient(
-    circle,
-    rgba(0, 0, 0, 0.78) 0 32%,
-    rgba(10, 17, 22, 0.38) 48%,
-    transparent 72%
-  );
-  box-shadow:
-    0 0 14px rgba(215, 238, 244, 0.24),
-    inset 0 0 30px rgba(0, 0, 0, 0.86);
-}
-.vault-threshold__architect-rupture::after {
-  inset: 10%;
-  background: radial-gradient(
-    circle,
-    rgba(255, 255, 255, 0.98) 0 3%,
-    rgba(220, 242, 247, 0.46) 8%,
-    rgba(128, 157, 166, 0.14) 25%,
-    transparent 52%
-  );
-  filter: blur(0.4px);
-}
-.vault-threshold__architect-rupture i {
-  position: absolute;
-  top: var(--rupture-y);
-  left: var(--rupture-x);
-  width: var(--rupture-length);
-  height: 2px;
-  transform: rotate(var(--rupture-angle)) scaleX(0);
-  transform-origin: 0 50%;
-  background: linear-gradient(
-    180deg,
-    rgba(205, 224, 229, 0.34) 0 18%,
-    rgba(27, 37, 41, 0.64) 28% 68%,
-    rgba(126, 151, 157, 0.25) 80% 100%
-  );
-  clip-path: polygon(
-    0 42%,
-    18% 5%,
-    36% 72%,
-    53% 14%,
-    72% 84%,
-    100% 38%,
-    100% 65%,
-    73% 100%,
-    54% 45%,
-    36% 100%,
-    17% 28%,
-    0 72%
-  );
-  box-shadow:
-    0 0 1px rgba(0, 0, 0, 0.52),
-    0 0 2px rgba(175, 202, 208, 0.12);
-  opacity: 0;
-}
-
-.vault-threshold__architect-shards {
-  position: absolute;
-  z-index: 10;
-  inset: 0;
-  overflow: visible;
-  pointer-events: none;
-}
-.vault-threshold__architect-shard {
-  position: absolute;
-  inset: 24%;
-  opacity: 0;
-  transform-origin: 50% 50%;
-  will-change: transform, opacity, filter;
-}
-.vault-threshold__architect-shard svg {
-  width: 100%;
-  height: 100%;
-}
-.vault-threshold__architect-shard:nth-child(1) {
-  clip-path: polygon(0 0, 32% 0, 39% 29%, 20% 44%, 0 32%);
-}
-.vault-threshold__architect-shard:nth-child(2) {
-  clip-path: polygon(28% 0, 56% 0, 58% 33%, 39% 47%, 38% 29%);
-}
-.vault-threshold__architect-shard:nth-child(3) {
-  clip-path: polygon(52% 0, 100% 0, 100% 30%, 72% 42%, 57% 33%);
-}
-.vault-threshold__architect-shard:nth-child(4) {
-  clip-path: polygon(72% 35%, 100% 25%, 100% 67%, 72% 63%, 54% 50%);
-}
-.vault-threshold__architect-shard:nth-child(5) {
-  clip-path: polygon(70% 61%, 100% 63%, 100% 100%, 62% 100%, 55% 76%);
-}
-.vault-threshold__architect-shard:nth-child(6) {
-  clip-path: polygon(36% 69%, 56% 75%, 66% 100%, 30% 100%, 26% 82%);
-}
-.vault-threshold__architect-shard:nth-child(7) {
-  clip-path: polygon(0 65%, 28% 58%, 38% 70%, 30% 100%, 0 100%);
-}
-.vault-threshold__architect-shard:nth-child(8) {
-  clip-path: polygon(0 28%, 22% 38%, 31% 51%, 25% 68%, 0 72%);
-}
-.vault-threshold__architect-shard:nth-child(9) {
-  clip-path: polygon(20% 40%, 39% 29%, 58% 33%, 72% 42%, 55% 52%, 31% 52%);
-}
-.vault-threshold__architect-shard:nth-child(10) {
-  clip-path: polygon(25% 52%, 55% 50%, 72% 63%, 55% 76%, 36% 69%, 28% 60%);
-}
-
-.vault-threshold[data-cipher-dismissal="permanent"][data-cipher-state="collapsing"]
-  .account-vault__cipher-conduits
-  i:nth-child(1),
-.vault-threshold[data-cipher-dismissal="permanent"][data-cipher-state="collapsing"]
-  .account-vault__cipher-conduits
-  i:nth-child(4) {
-  --conduit-break-angle: 9deg;
-}
-.vault-threshold[data-cipher-dismissal="permanent"][data-cipher-state="collapsing"]
-  .account-vault__cipher-conduits
-  i:nth-child(2),
-.vault-threshold[data-cipher-dismissal="permanent"][data-cipher-state="collapsing"]
-  .account-vault__cipher-conduits
-  i:nth-child(5) {
-  --conduit-break-angle: -7deg;
-}
-.vault-threshold[data-cipher-dismissal="permanent"][data-cipher-state="collapsing"]
-  .account-vault__cipher-conduits
-  i:nth-child(3),
-.vault-threshold[data-cipher-dismissal="permanent"][data-cipher-state="collapsing"]
-  .account-vault__cipher-conduits
-  i:nth-child(6) {
-  --conduit-break-angle: 5deg;
-}
-.vault-threshold[data-cipher-state="hidden"]
-  .vault-threshold__architect-rupture {
-  opacity: 0;
-  animation: none;
-}
-
-/* Cinematic Cipher states use one complete glyph. The clipped door halves remain
-   available for the static Vault machine, but never define a dismissal. */
-.vault-threshold .vault-threshold__cipher-whole {
-  opacity: 0;
-  animation: none;
-  transition: none;
-}
-.vault-threshold[data-cipher-state="surging"] .vault-threshold__cipher-half,
-.vault-threshold[data-cipher-state="collapsing"] .vault-threshold__cipher-half,
-.vault-threshold[data-cipher-state="inert"] .vault-threshold__cipher-half,
-.vault-threshold[data-cipher-state="dismissing"] .vault-threshold__cipher-half,
-.vault-threshold[data-cipher-state="restoring"] .vault-threshold__cipher-half {
-  opacity: 0;
-  animation: none;
-}
-.vault-threshold[data-cipher-state="surging"]
-  .vault-threshold__cipher-whole--energized {
-  opacity: 1;
-  animation: lumii-cipher-surge 600ms ease-in-out both;
-}
-
-.vault-threshold[data-cipher-dismissal="temporary"][data-cipher-state="collapsing"]
-  .vault-threshold__cipher-whole--energized {
-  opacity: 1;
-  animation: lumii-key-cipher-power-down 360ms ease-out both;
-}
-.vault-threshold[data-cipher-dismissal="temporary"][data-cipher-state="collapsing"]
-  .vault-threshold__cipher-whole--inert {
-  animation: lumii-key-cipher-residue-in 360ms ease-out both;
-}
-.vault-threshold[data-cipher-dismissal="temporary"][data-cipher-state="inert"]
-  .vault-threshold__cipher-whole--inert {
-  opacity: 0.3;
-  filter: grayscale(1) saturate(0) brightness(0.42)
-    drop-shadow(0 0 3px rgba(183, 207, 216, 0.12));
-}
-.vault-threshold[data-cipher-dismissal="temporary"][data-cipher-state="dismissing"]
-  .vault-threshold__cipher-whole--inert {
-  opacity: 0.3;
-  animation: lumii-key-cipher-phase-out 500ms steps(1, end) both;
-}
-.vault-threshold[data-cipher-dismissal="temporary"][data-cipher-state="dismissing"]
-  .vault-threshold__cipher-whole--inert::after {
-  position: absolute;
-  inset: 0;
-  background: linear-gradient(
-    180deg,
-    transparent 0 43%,
-    rgba(210, 235, 241, 0.5) 48% 51%,
-    transparent 56% 100%
-  );
-  content: "";
-  mix-blend-mode: screen;
-  animation: lumii-key-cipher-interference 500ms linear both;
-}
-.vault-threshold[data-cipher-state="restoring"]
-  .vault-threshold__cipher-whole--energized {
-  animation: lumii-key-cipher-restore 700ms cubic-bezier(0.18, 0.72, 0.2, 1)
-    both;
-}
-.vault-threshold[data-cipher-state="restoring"] .account-vault__cipher-conduits,
-.vault-threshold[data-cipher-state="restoring"] .account-vault__scan,
-.vault-threshold[data-cipher-state="restoring"] .account-vault__seal {
-  animation: lumii-key-cipher-support-restore 620ms ease-out both;
-}
-
-.vault-threshold[data-cipher-dismissal="permanent"][data-cipher-state="surging"]
-  .vault-threshold__cipher-whole--energized {
-  animation: lumii-architect-cipher-overload 1400ms ease-in-out both;
-}
-.vault-threshold[data-cipher-dismissal="permanent"][data-cipher-state="surging"]
-  .vault-threshold__cipher-half,
-.vault-threshold[data-cipher-dismissal="permanent"][data-cipher-state="collapsing"]
-  .vault-threshold__cipher-half {
-  opacity: 0;
-  animation: none;
-}
-.vault-threshold[data-cipher-dismissal="permanent"][data-cipher-state="surging"]
-  .account-vault__cipher-conduits {
-  animation: lumii-architect-authority-conduits 1400ms ease-in-out both;
-}
-.vault-threshold[data-cipher-dismissal="permanent"][data-cipher-state="surging"]
-  .account-vault__scan,
-.vault-threshold[data-cipher-dismissal="permanent"][data-cipher-state="surging"]
-  .account-vault__seal {
-  animation: lumii-architect-authority-lock 1400ms ease-in-out both;
-}
-.vault-threshold[data-cipher-dismissal="permanent"][data-cipher-state="collapsing"]
-  .vault-threshold__cipher-whole--energized {
-  opacity: 1;
-  animation: lumii-architect-cipher-resist 2600ms
-    cubic-bezier(0.18, 0.66, 0.15, 1) both;
-}
-.vault-threshold[data-cipher-dismissal="permanent"][data-cipher-state="collapsing"]
-  .vault-threshold__cipher-whole--energized
-  [data-cipher-line] {
-  animation: lumii-architect-line-resist 2600ms ease-in-out both;
-}
-.vault-threshold[data-cipher-dismissal="permanent"][data-cipher-state="collapsing"]
-  .vault-threshold__cipher-whole--energized
-  [data-cipher-part^="core"] {
-  animation: lumii-architect-core-resist 2600ms ease-in-out both;
-}
-.vault-threshold[data-cipher-dismissal="permanent"][data-cipher-state="collapsing"]
-  .vault-threshold__cipher-whole--energized
-  [data-cipher-part="aura"] {
-  animation: lumii-architect-aura-resist 2600ms ease-in-out both;
-}
-.vault-threshold[data-cipher-dismissal="permanent"][data-cipher-state="collapsing"]
-  .vault-threshold__cipher-whole--energized
-  [data-cipher-node] {
-  animation: lumii-architect-node-resist 2600ms ease-in-out both;
-}
-.vault-threshold[data-cipher-dismissal="permanent"][data-cipher-state="collapsing"]
-  .account-vault__cipher-conduits
-  i {
-  animation: lumii-architect-conduit-resist 2600ms ease-in-out both;
-}
-.vault-threshold[data-cipher-dismissal="permanent"][data-cipher-state="collapsing"]
-  .account-vault__scan {
-  animation: lumii-architect-scan-resist 2600ms ease-in-out both;
-}
-.vault-threshold[data-cipher-dismissal="permanent"][data-cipher-state="collapsing"]
-  .account-vault__seal {
-  animation: lumii-architect-seal-resist 2600ms ease-in-out both;
-}
-.vault-threshold[data-cipher-dismissal="permanent"][data-cipher-state="collapsing"]
-  .vault-threshold__architect-rupture {
-  opacity: 1;
-}
-.vault-threshold[data-cipher-dismissal="permanent"][data-cipher-state="collapsing"]
-  .vault-threshold__architect-rupture::before {
-  animation: lumii-architect-pressure-ring 2600ms ease-in-out both;
-}
-.vault-threshold[data-cipher-dismissal="permanent"][data-cipher-state="collapsing"]
-  .vault-threshold__architect-rupture::after {
-  animation: lumii-architect-shatter-flash 2600ms ease-out both;
-}
-.vault-threshold[data-cipher-dismissal="permanent"][data-cipher-state="collapsing"]
-  .vault-threshold__architect-rupture
-  i {
-  animation: lumii-architect-crack-spread 2080ms linear var(--rupture-delay)
-    both;
-}
-.vault-threshold[data-cipher-dismissal="permanent"][data-cipher-state="collapsing"]
-  .vault-threshold__architect-shard {
-  animation: lumii-architect-shard-burst 2600ms cubic-bezier(0.16, 0.7, 0.15, 1)
-    both;
-}
-.vault-threshold[data-cipher-dismissal="permanent"][data-cipher-state="inert"]
-  .vault-threshold__cipher-whole,
-.vault-threshold[data-cipher-dismissal="permanent"][data-cipher-state="dismissing"]
-  .vault-threshold__cipher-whole,
-.vault-threshold[data-cipher-state="hidden"] .vault-threshold__cipher-whole {
-  opacity: 0;
-  animation: none;
-}
-.vault-threshold[data-cipher-dismissal="permanent"][data-cipher-state="inert"]
-  .account-vault__cipher-conduits,
-.vault-threshold[data-cipher-dismissal="permanent"][data-cipher-state="inert"]
-  .account-vault__scan,
-.vault-threshold[data-cipher-dismissal="permanent"][data-cipher-state="inert"]
-  .account-vault__seal,
-.vault-threshold[data-cipher-dismissal="permanent"][data-cipher-state="dismissing"]
-  .account-vault__cipher-conduits,
-.vault-threshold[data-cipher-dismissal="permanent"][data-cipher-state="dismissing"]
-  .account-vault__scan,
-.vault-threshold[data-cipher-dismissal="permanent"][data-cipher-state="dismissing"]
-  .account-vault__seal {
-  opacity: 0;
-  animation: none;
-}
-.vault-threshold[data-cipher-dismissal="permanent"][data-cipher-state="inert"]
-  .vault-threshold__architect-rupture,
-.vault-threshold[data-cipher-dismissal="permanent"][data-cipher-state="dismissing"]
-  .vault-threshold__architect-rupture {
-  opacity: 0;
-}
-.vault-threshold[data-cipher-dismissal="permanent"][data-cipher-state="inert"]
-  .vault-threshold__architect-shard {
-  opacity: 0.76;
-  filter: grayscale(0.7) brightness(1.02)
-    drop-shadow(0 2px 3px rgba(0, 0, 0, 0.72));
-  transform: translate(var(--shard-x), var(--shard-y))
-    rotate(var(--shard-rotate)) scale(0.82);
-}
-.vault-threshold[data-cipher-dismissal="permanent"][data-cipher-state="dismissing"]
-  .vault-threshold__architect-shard {
-  animation: lumii-architect-shard-release 1100ms ease-in both;
+  box-shadow: 0 0 0 5px #11171c, inset 0 0 12px rgba(0, 0, 0, 0.72);
 }
 
 .lumii-vault-encounter {
-  --lumii-camera-step-1: 1.035;
-  --lumii-camera-step-2: 1.072;
-  --lumii-camera-step-3: 1.105;
-  --lumii-camera-final: 1.14;
   position: fixed;
   z-index: 400;
   overflow: hidden;
@@ -632,40 +161,12 @@
   z-index: -1;
   inset: 0;
   background:
-    radial-gradient(
-      circle at 50% 47%,
-      rgba(117, 157, 181, 0.12),
-      transparent 36%
-    ),
+    radial-gradient(circle at 50% 47%, rgba(117, 157, 181, 0.12), transparent 36%),
     linear-gradient(180deg, rgba(2, 4, 9, 0.25), rgba(2, 4, 9, 0.88));
-}
-.lumii-vault-encounter[data-cipher-dismissal="permanent"][data-phase="cipher-surge"]
-  .lumii-vault-encounter__shade {
-  animation: lumii-architect-ambient-pressure 1400ms ease-in both;
-}
-.lumii-vault-encounter[data-cipher-dismissal="permanent"][data-phase="cipher-collapse"]
-  .lumii-vault-encounter__shade {
-  animation: lumii-architect-ambient-violation 2600ms ease-in both;
-}
-.lumii-vault-encounter[data-cipher-dismissal="permanent"][data-phase="cipher-inert"]
-  .lumii-vault-encounter__shade,
-.lumii-vault-encounter[data-cipher-dismissal="permanent"][data-phase="cipher-dismiss"]
-  .lumii-vault-encounter__shade {
-  background:
-    radial-gradient(
-      circle at 50% 47%,
-      rgba(73, 92, 99, 0.045),
-      transparent 24%
-    ),
-    linear-gradient(180deg, rgba(0, 1, 3, 0.7), rgba(0, 1, 3, 0.96));
 }
 .lumii-vault-encounter[data-hostile="true"] .lumii-vault-encounter__shade {
   background:
-    radial-gradient(
-      circle at 50% 47%,
-      rgba(124, 58, 237, 0.14),
-      transparent 27%
-    ),
+    radial-gradient(circle at 50% 47%, rgba(124, 58, 237, 0.14), transparent 27%),
     radial-gradient(circle at 50% 47%, rgba(225, 29, 72, 0.1), transparent 46%),
     linear-gradient(180deg, rgba(6, 2, 9, 0.36), rgba(3, 2, 8, 0.92));
 }
@@ -676,13 +177,6 @@
   left: clamp(18px, 4vw, 52px);
   display: grid;
   gap: 3px;
-}
-.lumii-vault-encounter[data-phase="expanding"] .lumii-vault-encounter__header {
-  animation: lumii-threshold-header-arrive 650ms ease-out both;
-}
-.lumii-vault-encounter[data-phase="closing"] .lumii-vault-encounter__header {
-  opacity: 0;
-  transition: opacity 180ms ease;
 }
 .lumii-vault-encounter__header span {
   color: #d7bd78;
@@ -702,35 +196,11 @@
   display: grid;
   place-items: center;
 }
-.lumii-vault-encounter__threshold-motion {
-  width: min(70vh, 72vw, 720px);
-  aspect-ratio: 1;
-  transform-origin: 50% 50%;
-}
-.lumii-vault-encounter__threshold-motion.is-measuring {
-  visibility: hidden;
-}
 .lumii-vault-encounter__threshold {
-  width: 100%;
-  height: 100%;
+  width: min(70vh, 72vw, 720px);
   max-width: none;
   margin: 0;
-  box-shadow:
-    inset 0 0 100px rgba(0, 0, 0, 0.86),
-    0 0 80px rgba(100, 151, 179, 0.1);
-  transform-origin: 50% 50%;
-  will-change: transform;
-}
-.lumii-vault-encounter[data-threshold-camera="advancing"]
-  .lumii-vault-encounter__threshold {
-  animation: lumii-threshold-camera-approach
-    var(--lumii-door-open-duration, 3200ms) linear both;
-}
-.lumii-vault-encounter[data-threshold-camera="halted"]
-  .lumii-vault-encounter__threshold,
-.lumii-vault-encounter[data-threshold-camera="settled"]
-  .lumii-vault-encounter__threshold {
-  transform: translate3d(0.34%, -0.18%, 0) scale(var(--lumii-camera-final));
+  box-shadow: inset 0 0 100px rgba(0, 0, 0, 0.86), 0 0 80px rgba(100, 151, 179, 0.1);
 }
 .lumii-vault-encounter__lumii-anchor,
 .lumii-vault-encounter__firewall-anchor {
@@ -740,97 +210,31 @@
   transform: translate(-50%, -50%);
   pointer-events: none;
 }
-.lumii-vault-encounter__lumii-anchor {
-  z-index: 8;
-}
+.lumii-vault-encounter__lumii-anchor { z-index: 8; }
 .lumii-vault-encounter__lumii {
   position: relative;
   display: grid;
   place-items: center;
-  isolation: isolate;
   filter: drop-shadow(0 22px 36px rgba(0, 0, 0, 0.66));
 }
-.lumii-vault-encounter__lumii-float {
-  position: relative;
-  z-index: 2;
-  display: grid;
-  place-items: center;
-  animation: lumii-threshold-float 5.8s ease-in-out infinite;
-}
-.lumii-vault-encounter[data-phase="decision"]
-  .lumii-vault-encounter__lumii-float {
-  animation-play-state: paused;
-}
-.lumii-vault-encounter__combative-flare {
+.lumii-vault-encounter[data-phase="hostile"] .lumii-vault-encounter__lumii::before,
+.lumii-vault-encounter[data-phase="hostile"] .lumii-vault-encounter__lumii::after {
   position: absolute;
-  z-index: 1;
-  inset: -36%;
-  border-radius: 50%;
-  background:
-    radial-gradient(circle, rgba(255, 255, 255, 0.74) 0 6%, transparent 14%),
-    radial-gradient(
-      circle,
-      rgba(255, 57, 86, 0.58) 0 19%,
-      rgba(255, 57, 86, 0.2) 34%,
-      transparent 58%
-    ),
-    conic-gradient(
-      from 16deg,
-      transparent 0 7%,
-      rgba(255, 72, 103, 0.42) 9%,
-      transparent 13% 28%,
-      rgba(174, 74, 255, 0.22) 32%,
-      transparent 36% 55%,
-      rgba(255, 72, 103, 0.34) 59%,
-      transparent 64% 100%
-    );
-  opacity: 0;
-  pointer-events: none;
-  transform: scale(0.44) rotate(-18deg);
-  mix-blend-mode: screen;
-}
-.lumii-vault-encounter__lumii[data-combative-shift="true"]
-  .lumii-vault-encounter__combative-flare {
-  animation: lumii-combative-flare 1.38s cubic-bezier(0.14, 0.68, 0.16, 1) both;
-}
-.lumii-vault-encounter[data-phase="hostile"]
-  .lumii-vault-encounter__lumii::before,
-.lumii-vault-encounter[data-phase="hostile"]
-  .lumii-vault-encounter__lumii::after {
-  position: absolute;
-  z-index: 1;
-  width: 74%;
+  width: 58%;
   aspect-ratio: 1;
-  border: 1.4px solid rgba(255, 72, 103, 0.82);
+  border: 1px solid rgba(255, 72, 103, 0.72);
   border-radius: 50%;
-  box-shadow:
-    0 0 28px rgba(225, 29, 72, 0.46),
-    inset 0 0 22px rgba(124, 58, 237, 0.22);
+  box-shadow: 0 0 20px rgba(225, 29, 72, 0.34), inset 0 0 18px rgba(124, 58, 237, 0.18);
   content: "";
   opacity: 0;
   pointer-events: none;
-  transform: scale(0.28);
-  animation: lumii-hostile-core-wave 1.52s cubic-bezier(0.14, 0.68, 0.16, 1)
-    both;
+  animation: lumii-hostile-core-wave 1.45s cubic-bezier(0.18, 0.68, 0.2, 1) both;
 }
-.lumii-vault-encounter[data-phase="hostile"]
-  .lumii-vault-encounter__lumii::after {
-  width: 92%;
-  border-color: rgba(248, 251, 255, 0.68);
-  box-shadow:
-    0 0 18px rgba(255, 255, 255, 0.32),
-    0 0 34px rgba(225, 29, 72, 0.24);
-  animation-delay: 115ms;
+.lumii-vault-encounter[data-phase="hostile"] .lumii-vault-encounter__lumii::after {
+  animation-delay: 180ms;
 }
 .lumii-vault-encounter__firewall-anchor {
   z-index: 7;
-}
-.lumii-vault-encounter__firewall-camera {
-  transform-origin: 50% 50%;
-}
-.lumii-vault-encounter[data-threshold-camera="settled"]
-  .lumii-vault-encounter__firewall-camera {
-  transform: scale(var(--lumii-camera-final));
 }
 .lumii-vault-encounter__firewall {
   position: relative;
@@ -839,81 +243,33 @@
   opacity: 0.72;
 }
 .lumii-vault-encounter__firewall i {
-  --firewall-angle: 0deg;
-  --firewall-deploy-delay: 300ms;
-  --firewall-idle-delay: 0ms;
-  --firewall-node-color: #f5fdff;
+  --firewall-index: 0;
   position: absolute;
   top: 50%;
   left: 50%;
   width: 48%;
   height: 1px;
-  transform: rotate(var(--firewall-angle)) scaleX(1);
+  transform: rotate(calc(var(--firewall-index) * 60deg));
   transform-origin: 0 50%;
-  background: linear-gradient(
-    90deg,
-    rgba(246, 252, 255, 0.9),
-    rgba(118, 214, 233, 0.46) 52%,
-    transparent
-  );
+  background: linear-gradient(90deg, rgba(246, 252, 255, 0.9), rgba(118, 214, 233, 0.46) 52%, transparent);
   box-shadow: 0 0 7px rgba(191, 239, 250, 0.35);
   animation: lumii-firewall-restraint 3.6s ease-in-out infinite;
-  animation-delay: var(--firewall-idle-delay);
-}
-.lumii-vault-encounter__firewall[data-phase="approach"] i {
-  animation: lumii-firewall-deploy 300ms cubic-bezier(0.18, 0.76, 0.2, 1) both;
-  animation-delay: var(--firewall-deploy-delay);
+  animation-delay: calc(var(--firewall-index) * -340ms);
 }
 .lumii-vault-encounter__firewall i::after {
   position: absolute;
   top: -2px;
-  right: -2px;
+  right: 7%;
   width: 5px;
   height: 5px;
   border: 1px solid rgba(228, 250, 255, 0.72);
-  background: var(--firewall-node-color);
-  box-shadow: 0 0 5px
-    color-mix(in srgb, var(--firewall-node-color) 64%, transparent);
+  background: #081019;
   content: "";
-  opacity: 0.62;
   transform: rotate(45deg);
 }
-.lumii-vault-encounter__firewall[data-phase="approach"] i::after {
-  background: #f5fdff;
-  box-shadow:
-    0 0 6px #e9fbff,
-    0 0 14px rgba(123, 220, 239, 0.88);
-  opacity: 1;
-}
 .lumii-vault-encounter__firewall[data-hostile="true"] i {
-  background: linear-gradient(
-    90deg,
-    rgba(247, 250, 255, 0.94),
-    rgba(205, 48, 94, 0.62) 48%,
-    rgba(116, 57, 210, 0.08)
-  );
+  background: linear-gradient(90deg, rgba(247, 250, 255, 0.94), rgba(205, 48, 94, 0.62) 48%, rgba(116, 57, 210, 0.08));
   box-shadow: 0 0 8px rgba(228, 46, 88, 0.38);
-  animation: lumii-firewall-hostile-lock 680ms cubic-bezier(0.14, 0.76, 0.18, 1)
-    both;
-}
-.lumii-vault-encounter__firewall[data-hostile="true"] i::after {
-  background: #f8fbff;
-  box-shadow:
-    0 0 6px rgba(248, 251, 255, 0.9),
-    0 0 14px rgba(228, 46, 88, 0.72);
-  opacity: 0.9;
-}
-.lumii-vault-encounter[data-phase="opening"] .account-vault__door-half {
-  transition-duration: var(--lumii-door-open-duration, 3200ms);
-  transition-timing-function: cubic-bezier(0.18, 0.7, 0.16, 1);
-}
-.lumii-vault-encounter[data-phase="approach"][data-firewall-ready="true"]
-  .account-vault__door {
-  animation: lumii-threshold-door-halt 420ms cubic-bezier(0.18, 0.76, 0.2, 1)
-    both;
-}
-.lumii-vault-encounter[data-phase="closing"] .lumii-vault-encounter__copy {
-  opacity: 0;
 }
 .lumii-vault-encounter__copy {
   position: absolute;
@@ -938,9 +294,7 @@
   font-weight: 900;
   text-transform: uppercase;
 }
-.lumii-vault-encounter[data-hostile="true"] .lumii-vault-encounter__copy span {
-  color: #ff6c84;
-}
+.lumii-vault-encounter[data-hostile="true"] .lumii-vault-encounter__copy span { color: #ff6c84; }
 .lumii-vault-encounter__copy blockquote {
   max-width: 680px;
   margin: 0;
@@ -949,83 +303,13 @@
   font-size: clamp(20px, 2.4vw, 30px);
   font-style: italic;
   line-height: 1.34;
-  text-shadow:
-    0 2px 18px #000,
-    0 0 24px rgba(201, 222, 237, 0.18);
+  text-shadow: 0 2px 18px #000, 0 0 24px rgba(201, 222, 237, 0.18);
 }
 .lumii-vault-encounter__sentence-reveal {
-  position: relative;
-  width: min(680px, 100%);
   min-height: 1.45em;
 }
-.lumii-vault-encounter__sentence-reveal[data-can-advance="true"] {
-  display: grid;
-  width: fit-content;
-  max-width: 100%;
-  grid-template-columns: minmax(0, auto) 28px;
-  align-items: center;
-  gap: 12px;
-  padding: 2px 4px 3px 10px;
-  cursor: pointer;
-  transition: opacity 160ms ease;
-}
-.lumii-vault-encounter__sentence-reveal[data-can-advance="true"]:hover {
-  opacity: 0.9;
-}
-.lumii-vault-encounter__sentence-reveal[data-can-advance="true"]:focus-visible {
-  outline: 0;
-  box-shadow: 0 1px 0 rgba(229, 247, 251, 0.58);
-}
-.lumii-vault-encounter__sentence-advance {
-  display: grid;
-  width: 28px;
-  height: 28px;
-  place-items: center;
-  border: 1px solid rgba(226, 241, 246, 0.28);
-  border-radius: 50%;
-  color: #edfaff !important;
-  animation: lumii-threshold-advance-pulse 2.2s ease-in-out infinite;
-}
-.lumii-vault-encounter__sentence-advance svg {
-  width: 14px;
-  height: 14px;
-}
-.lumii-vault-encounter__sentence-final {
-  display: grid;
-  width: 100%;
-  justify-items: center;
-}
-.lumii-vault-encounter__copy blockquote em {
-  display: block;
-  font: inherit;
-}
-.lumii-vault-encounter__copy blockquote em + em {
-  margin-top: 3px;
-}
-.lumii-vault-encounter__cinematic-advance {
-  display: grid;
-  width: 42px;
-  height: 42px;
-  place-items: center;
-  margin-top: 6px;
-  border: 1px solid rgba(226, 241, 246, 0.38);
-  border-radius: 50%;
-  background: rgba(8, 15, 22, 0.72);
-  color: #edfaff;
-  box-shadow: 0 0 18px rgba(166, 229, 242, 0.12);
-  cursor: pointer;
-  animation: lumii-threshold-advance-pulse 2.2s ease-in-out infinite;
-}
-.lumii-vault-encounter__cinematic-advance:hover,
-.lumii-vault-encounter__cinematic-advance:focus-visible {
-  border-color: rgba(239, 252, 255, 0.82);
-  background: rgba(18, 35, 46, 0.9);
-  outline: 0;
-}
-.lumii-vault-encounter__cinematic-advance svg {
-  width: 18px;
-  height: 18px;
-}
+.lumii-vault-encounter__copy blockquote em { display: block; font: inherit; }
+.lumii-vault-encounter__copy blockquote em + em { margin-top: 3px; }
 .lumii-vault-encounter__choices {
   display: grid;
   grid-template-columns: minmax(0, 1.3fr) minmax(0, 0.9fr);
@@ -1033,16 +317,9 @@
   width: min(620px, 100%);
   margin-top: 3px;
 }
-.lumii-vault-encounter__choices.single {
-  grid-template-columns: minmax(180px, 320px);
-  justify-content: center;
-}
-.lumii-vault-encounter__choices.is-routes {
-  grid-template-columns: repeat(2, minmax(0, 1fr));
-}
-.lumii-vault-encounter__choices.single-plus-leave {
-  grid-template-columns: repeat(2, minmax(0, 1fr));
-}
+.lumii-vault-encounter__choices.single { grid-template-columns: minmax(180px, 320px); justify-content: center; }
+.lumii-vault-encounter__choices.is-routes { grid-template-columns: repeat(2, minmax(0, 1fr)); }
+.lumii-vault-encounter__choices.single-plus-leave { grid-template-columns: repeat(2, minmax(0, 1fr)); }
 .lumii-vault-encounter__choices button,
 .lumii-vault-encounter__reward > button {
   display: inline-flex;
@@ -1059,14 +336,9 @@
   font-size: 10px;
   font-weight: 900;
   text-transform: uppercase;
-  transition:
-    background 160ms ease,
-    border-color 160ms ease,
-    transform 160ms ease;
+  transition: background 160ms ease, border-color 160ms ease, transform 160ms ease;
 }
-.lumii-vault-encounter__choices button {
-  width: 100%;
-}
+.lumii-vault-encounter__choices button { width: 100%; }
 .lumii-vault-encounter__choices button:hover,
 .lumii-vault-encounter__choices button:focus-visible,
 .lumii-vault-encounter__reward > button:hover,
@@ -1081,44 +353,10 @@
   background: rgba(10, 16, 23, 0.72);
   color: #b7c1cc;
 }
-.lumii-vault-encounter__choices button.is-commitment {
-  display: grid;
-  min-height: 62px;
-  grid-template-columns: minmax(0, 1fr) auto;
-  justify-content: stretch;
-  text-align: left;
-}
-.lumii-vault-encounter__commitment-copy {
-  display: grid;
-  min-width: 0;
-  gap: 5px;
-  line-height: 1.25;
-}
-.lumii-vault-encounter__commitment-copy small {
-  display: flex;
-  align-items: center;
-  gap: 5px;
-  color: rgba(241, 178, 129, 0.8);
-  font-size: 8px;
-  font-weight: 800;
-  line-height: 1.25;
-  text-transform: uppercase;
-}
-.lumii-vault-encounter__commitment-copy small svg {
-  width: 11px;
-  height: 11px;
-}
 .lumii-vault-encounter__choices button svg,
-.lumii-vault-encounter__reward > button svg {
-  width: 16px;
-  height: 16px;
-  flex: none;
-}
+.lumii-vault-encounter__reward > button svg { width: 16px; height: 16px; flex: none; }
 .lumii-vault-encounter__choices button:disabled,
-.lumii-vault-encounter__reward > button:disabled {
-  cursor: wait;
-  opacity: 0.58;
-}
+.lumii-vault-encounter__reward > button:disabled { cursor: wait; opacity: 0.58; }
 .lumii-vault-encounter__briefing {
   position: relative;
   overflow: hidden;
@@ -1126,74 +364,37 @@
   padding: 16px 18px;
   border-top: 1px solid rgba(255, 68, 102, 0.52);
   border-bottom: 1px solid rgba(124, 58, 237, 0.32);
-  background: linear-gradient(
-    90deg,
-    transparent,
-    rgba(52, 7, 24, 0.88),
-    transparent
-  );
+  background: linear-gradient(90deg, transparent, rgba(52, 7, 24, 0.88), transparent);
 }
 .lumii-vault-encounter__briefing::after {
   position: absolute;
   inset: 0 auto 0 -22%;
   width: 18%;
-  background: linear-gradient(
-    90deg,
-    transparent,
-    rgba(255, 104, 130, 0.16),
-    transparent
-  );
+  background: linear-gradient(90deg, transparent, rgba(255, 104, 130, 0.16), transparent);
   content: "";
   pointer-events: none;
   transform: skewX(-14deg) translateX(0);
   animation: lumii-briefing-scan 1.6s ease-out both;
 }
-.lumii-vault-encounter__briefing > span {
-  display: inline-flex;
-  align-items: center;
-  gap: 7px;
-}
-.lumii-vault-encounter__briefing > span svg {
-  width: 15px;
-  height: 15px;
-}
+.lumii-vault-encounter__briefing > span { display: inline-flex; align-items: center; gap: 7px; }
+.lumii-vault-encounter__briefing > span svg { width: 15px; height: 15px; }
 .lumii-vault-encounter__briefing > b {
   color: rgba(228, 218, 238, 0.7);
   font-family: var(--font-mono, monospace);
   font-size: 8px;
 }
-.lumii-vault-encounter__briefing strong {
-  font-family: var(--font-serif, serif);
-  font-size: 19px;
-  font-weight: 500;
-}
-.lumii-vault-encounter__briefing small {
-  color: rgba(221, 226, 234, 0.62);
-  font-size: 10px;
-}
-.lumii-vault-encounter__spinner {
-  width: 17px;
-  height: 17px;
-  animation: lumii-vault-spin 0.9s linear infinite;
-}
-.lumii-vault-encounter__error {
-  margin: 0;
-  color: #ff9aab;
-  font-size: 11px;
-}
+.lumii-vault-encounter__briefing strong { font-family: var(--font-serif, serif); font-size: 19px; font-weight: 500; }
+.lumii-vault-encounter__briefing small { color: rgba(221, 226, 234, 0.62); font-size: 10px; }
+.lumii-vault-encounter__spinner { width: 17px; height: 17px; animation: lumii-vault-spin 0.9s linear infinite; }
+.lumii-vault-encounter__error { margin: 0; color: #ff9aab; font-size: 11px; }
 .lumii-vault-encounter__reward {
-  width: min(920px, 100%);
+  width: min(760px, 100%);
   max-height: 100%;
   overflow: auto;
-  display: grid;
-  justify-items: stretch;
-  gap: 10px;
-  padding: 8px;
-  border: 1px solid rgba(218, 190, 111, 0.32);
+  padding: 12px;
+  border: 1px solid rgba(218, 190, 111, 0.34);
   border-radius: 6px;
-  background:
-    linear-gradient(180deg, rgba(3, 7, 12, 0.82), rgba(3, 7, 12, 0.94)),
-    radial-gradient(circle at 50% 0%, rgba(218, 190, 111, 0.12), transparent 44%);
+  background: rgba(3, 7, 12, 0.9);
   box-shadow: 0 24px 80px rgba(0, 0, 0, 0.7);
 }
 .lumii-vault-encounter__reward h2 {
@@ -1202,186 +403,25 @@
   font-size: clamp(25px, 4vw, 38px);
   font-weight: 500;
 }
-.lumii-vault-encounter__reward-terminal {
-  position: relative;
-  isolation: isolate;
-  overflow: hidden;
-  display: grid;
-  width: 100%;
-  justify-items: stretch;
-  gap: 7px;
-  padding: 10px;
-  border: 1px solid rgba(218, 190, 111, 0.38);
-  border-radius: 5px;
-  background:
-    linear-gradient(180deg, rgba(7, 11, 16, 0.95), rgba(1, 5, 9, 0.98)),
-    radial-gradient(circle at 50% 8%, rgba(255, 220, 128, 0.12), transparent 42%);
-  box-shadow:
-    inset 0 0 0 1px rgba(255, 255, 255, 0.035),
-    0 0 42px rgba(218, 190, 111, 0.12);
-}
-.lumii-vault-encounter__reward-terminal::before {
-  content: "";
-  position: absolute;
-  inset: 0;
-  z-index: -1;
-  opacity: 0.38;
-  background:
-    repeating-linear-gradient(
-      0deg,
-      rgba(255, 255, 255, 0.055) 0 1px,
-      transparent 1px 9px
-    ),
-    linear-gradient(90deg, transparent, rgba(255, 220, 128, 0.1), transparent);
-  transform: translateY(-14%);
-  animation: lumii-terminal-scan 3.8s linear infinite;
-}
-.lumii-vault-encounter__terminal-header {
-  display: flex;
-  align-items: center;
-  justify-content: space-between;
-  gap: 10px;
-  color: rgba(245, 231, 190, 0.72);
-  font-size: 9px;
-  font-weight: 900;
-  letter-spacing: 0.24em;
-  text-transform: uppercase;
-}
-.lumii-vault-encounter__terminal-header b {
-  color: rgba(255, 247, 218, 0.94);
-  font: inherit;
-  letter-spacing: 0.16em;
-}
-.lumii-vault-encounter__terminal-grid {
-  position: absolute;
-  inset: 42px 10px 10px;
-  z-index: -1;
-  opacity: 0.24;
-  background-image:
-    linear-gradient(rgba(218, 190, 111, 0.18) 1px, transparent 1px),
-    linear-gradient(90deg, rgba(218, 190, 111, 0.14) 1px, transparent 1px);
-  background-size: 22px 22px;
-  mask-image: radial-gradient(circle at 50% 38%, #000 0 42%, transparent 74%);
-}
-.lumii-vault-encounter__terminal-unlock {
-  position: absolute;
-  inset: 43px 10px auto;
-  height: 2px;
-  transform-origin: left center;
-  background: linear-gradient(
-    90deg,
-    transparent,
-    rgba(255, 245, 198, 0.95),
-    rgba(255, 88, 74, 0.42),
-    transparent
-  );
-  box-shadow: 0 0 28px rgba(255, 220, 128, 0.7);
-}
-.lumii-vault-encounter__terminal-record {
-  display: grid;
-  width: 100%;
-  justify-items: center;
-  gap: 5px;
-  min-height: 0;
-}
-.lumii-vault-encounter__terminal-record > span {
-  color: rgba(245, 231, 190, 0.72);
-  font-size: 10px;
-  font-weight: 900;
-  letter-spacing: 0.22em;
-  text-transform: uppercase;
-}
-.lumii-vault-encounter__terminal-card-bay {
-  position: relative;
-  width: min(100%, 760px);
-  overflow: hidden;
-  display: grid;
-  justify-self: center;
-  place-items: center;
-  border: 1px solid rgba(255, 255, 255, 0.06);
-  border-radius: 4px;
-  background: rgba(0, 0, 0, 0.22);
-  box-shadow: inset 0 0 30px rgba(0, 0, 0, 0.45);
-}
-.lumii-vault-encounter__terminal-card-bay::before,
-.lumii-vault-encounter__terminal-card-bay::after {
-  content: "";
-  position: absolute;
-  inset: 0;
-  z-index: 3;
-  pointer-events: none;
-}
-.lumii-vault-encounter__terminal-card-bay::before {
-  opacity: 0.48;
-  background:
-    repeating-linear-gradient(
-      0deg,
-      rgba(255, 226, 151, 0.14) 0 1px,
-      transparent 1px 10px
-    ),
-    linear-gradient(
-      90deg,
-      transparent,
-      rgba(255, 241, 193, 0.22),
-      transparent
-    );
-  transform: translateX(-62%);
-  animation: lumii-terminal-card-scan 1.65s ease-in-out both;
-}
-.lumii-vault-encounter__terminal-card-bay::after {
-  opacity: 0.44;
-  background:
-    radial-gradient(circle at 50% 48%, transparent 0 38%, rgba(4, 7, 11, 0.52) 66%),
-    rgba(2, 5, 9, 0.3);
-  transition: opacity 360ms ease;
-}
-.lumii-vault-encounter__reward-terminal[data-unlocked="true"]
-  .lumii-vault-encounter__terminal-card-bay {
-  border-color: rgba(255, 222, 147, 0.2);
-  box-shadow:
-    inset 0 0 30px rgba(0, 0, 0, 0.42),
-    0 0 30px rgba(218, 190, 111, 0.12);
-}
-.lumii-vault-encounter__reward-terminal[data-unlocked="true"]
-  .lumii-vault-encounter__terminal-card-bay::before {
-  opacity: 0.14;
-  animation: lumii-terminal-card-idle-scan 5.8s linear infinite;
-}
-.lumii-vault-encounter__reward-terminal[data-unlocked="true"]
-  .lumii-vault-encounter__terminal-card-bay::after {
-  opacity: 0;
-}
-.lumii-vault-encounter__terminal-card-bay .horizontal-blueprint-card {
-  width: 100%;
-}
 .lumii-vault-encounter__reward-dialogue {
   display: grid;
   gap: 5px;
   max-width: 660px;
-  justify-self: center;
   color: rgba(236, 239, 245, 0.78);
   font-family: var(--font-serif, serif);
   font-size: 13px;
   font-style: italic;
   line-height: 1.4;
 }
-.lumii-vault-encounter__reward-dialogue p {
-  margin: 0;
-}
-.lumii-vault-encounter__reward-dialogue span {
-  margin-right: 5px;
-  font-style: normal;
-}
+.lumii-vault-encounter__reward-dialogue p { margin: 0; }
+.lumii-vault-encounter__reward-dialogue span { margin-right: 5px; font-style: normal; }
 .lumii-vault-encounter__reward-lumii {
   display: flex;
   align-items: baseline;
   gap: 5px;
   min-height: 20px;
 }
-.lumii-vault-encounter__reward-lumii > span {
-  flex: none;
-  margin-right: 0;
-}
+.lumii-vault-encounter__reward-lumii > span { flex: none; margin-right: 0; }
 .lumii-vault-encounter__reward-lumii .lumii-vault-encounter__sentence-reveal {
   min-height: 0;
   color: inherit;
@@ -1389,40 +429,11 @@
   line-height: inherit;
   text-shadow: none;
 }
-.lumii-vault-encounter__reward > button {
-  justify-self: center;
-  min-width: 210px;
+.lumii-vault-encounter__reward [data-testid="antimatter-blueprint-card"] {
+  max-height: min(48dvh, 430px);
+  overflow: auto;
 }
-
-@keyframes lumii-terminal-scan {
-  0% {
-    transform: translateY(-14%);
-  }
-  100% {
-    transform: translateY(14%);
-  }
-}
-@keyframes lumii-terminal-card-scan {
-  0% {
-    opacity: 0;
-    transform: translateX(-62%);
-  }
-  18% {
-    opacity: 0.62;
-  }
-  100% {
-    opacity: 0.12;
-    transform: translateX(62%);
-  }
-}
-@keyframes lumii-terminal-card-idle-scan {
-  0% {
-    transform: translateX(-72%);
-  }
-  100% {
-    transform: translateX(72%);
-  }
-}
+.lumii-vault-encounter__reward > button { min-width: 210px; }
 
 .lumii-vault-encounter[data-phase="reward"] .lumii-vault-encounter__header,
 .lumii-vault-encounter[data-phase="reward"] .lumii-vault-encounter__stage {
@@ -1433,7 +444,7 @@
   top: 14px;
   bottom: 14px;
   display: grid;
-  width: min(1000px, calc(100vw - 28px));
+  width: min(780px, calc(100vw - 28px));
   min-height: 0;
   align-items: center;
 }
@@ -1441,227 +452,49 @@
 .lumii-encounter-hud {
   position: fixed;
   z-index: 86;
-  top: max(8px, calc(env(safe-area-inset-top) + 8px));
+  top: max(66px, calc(env(safe-area-inset-top) + 58px));
   right: clamp(10px, 2vw, 24px);
-  width: min(460px, calc(100vw - 20px));
+  width: min(390px, calc(100vw - 20px));
   pointer-events: none;
 }
 .lumii-encounter-hud__bar {
-  position: relative;
   display: grid;
-  grid-template-columns: minmax(168px, 0.9fr) minmax(154px, 1fr) auto;
-  min-height: 58px;
+  grid-template-columns: 64px minmax(82px, 1fr) minmax(90px, 0.9fr) 38px;
+  min-height: 62px;
   align-items: center;
-  gap: 9px;
-  padding: 7px 10px 7px 12px;
-  overflow: hidden;
+  gap: 8px;
+  padding: 5px 7px 5px 3px;
   border: 1px solid rgba(225, 29, 72, 0.38);
   border-radius: 6px;
-  background:
-    radial-gradient(
-      circle at 18% 50%,
-      rgba(225, 29, 72, 0.12),
-      transparent 42%
-    ),
-    rgba(7, 5, 14, 0.9);
-  box-shadow:
-    0 12px 38px rgba(0, 0, 0, 0.42),
-    inset 0 0 24px rgba(124, 58, 237, 0.08);
+  background: rgba(7, 5, 14, 0.88);
+  box-shadow: 0 12px 38px rgba(0, 0, 0, 0.42), inset 0 0 24px rgba(124, 58, 237, 0.08);
   pointer-events: auto;
 }
-.lumii-encounter-hud__bar::before {
-  content: "";
-  position: absolute;
-  inset: -45% -24%;
-  z-index: 0;
-  background:
-    linear-gradient(
-      108deg,
-      transparent 18%,
-      rgba(225, 29, 72, 0.05) 30%,
-      rgba(248, 113, 113, 0.15) 42%,
-      rgba(124, 58, 237, 0.07) 52%,
-      transparent 64%
-    ),
-    radial-gradient(
-      ellipse at 72% 50%,
-      rgba(225, 29, 72, 0.14),
-      transparent 46%
-    );
-  opacity: 0.82;
-  transform: translateX(-18%);
-  animation: lumii-forecast-crimson-current 5.8s ease-in-out infinite;
-  pointer-events: none;
+.lumii-encounter-hud__orb { display: grid; width: 64px; height: 54px; place-items: center; overflow: visible; }
+.lumii-encounter-hud__orb svg {
+  filter: drop-shadow(0 0 3px rgba(255, 70, 104, 0.88)) drop-shadow(0 0 8px rgba(124, 58, 237, 0.64));
 }
-.lumii-encounter-hud__bar > * {
-  position: relative;
-  z-index: 1;
-}
-.lumii-encounter-hud__identity {
-  display: flex;
-  min-width: 0;
-  align-items: center;
-  box-sizing: border-box;
-  gap: 7px;
-  padding-left: 8px;
-}
-.lumii-encounter-hud__identity-copy {
-  display: grid;
-  min-width: 0;
-  gap: 5px;
-  margin-left: 6px;
-}
-.lumii-encounter-hud__identity-copy small {
+.lumii-encounter-hud__identity { display: grid; min-width: 0; }
+.lumii-encounter-hud__identity small {
   color: #ff667f;
   font-family: var(--font-mono, monospace);
   font-size: 7px;
   font-weight: 900;
   text-transform: uppercase;
 }
-.lumii-encounter-hud__name-pill {
-  position: relative;
-  display: inline-grid;
-  width: fit-content;
-  max-width: 100%;
-  min-height: 24px;
-  place-items: center;
-  padding: 2px 12px 3px;
-  border: 1px solid rgba(255, 255, 255, 0.14);
-  border-radius: 999px;
-  background: linear-gradient(
-    180deg,
-    rgba(255, 255, 255, 0.1),
-    rgba(255, 255, 255, 0.035)
-  );
-  color: #f4f0ff;
-  font-family: var(--font-serif, serif);
-  font-size: 17px;
-  font-weight: 500;
-  line-height: 1;
-  overflow: hidden;
-  text-overflow: ellipsis;
-  text-shadow: 0 0 12px rgba(225, 29, 72, 0.42);
-  white-space: nowrap;
-  isolation: isolate;
-}
-.lumii-encounter-hud__name-pill::after {
-  content: "";
-  position: absolute;
-  inset: -40% -18%;
-  z-index: -1;
-  background:
-    radial-gradient(
-      circle at 50% 50%,
-      rgba(255, 238, 240, 0.95),
-      rgba(255, 56, 86, 0.42) 28%,
-      transparent 58%
-    ),
-    linear-gradient(90deg, transparent, rgba(255, 56, 86, 0.52), transparent);
-  opacity: 0;
-  transform: scaleX(0.25) scaleY(0.72);
-  pointer-events: none;
-}
-.lumii-encounter-hud[data-lumii-absorbing="true"]
-  .lumii-encounter-hud__name-pill {
-  animation: lumii-hud-name-absorb 780ms cubic-bezier(0.16, 1, 0.3, 1);
-}
-.lumii-encounter-hud[data-lumii-absorbing="true"]
-  .lumii-encounter-hud__name-pill::after {
-  animation: lumii-hud-name-absorb-current 780ms cubic-bezier(0.16, 1, 0.3, 1);
-}
-.lumii-encounter-hud__entity {
-  display: grid;
-  flex: 0 0 auto;
-  width: 46px;
-  height: 38px;
-  place-items: center;
-  overflow: visible;
-  pointer-events: none;
-  transform: translate(-8px, -7px);
-}
-.lumii-encounter-hud__entity svg {
-  filter: drop-shadow(0 0 3px rgba(255, 70, 104, 0.78))
-    drop-shadow(0 0 8px rgba(124, 58, 237, 0.48));
-}
-.lumii-encounter-hud[data-lumii-absorbing="true"]
-  .lumii-encounter-hud__entity
-  svg {
-  animation: lumii-hud-avatar-absorb-react 780ms cubic-bezier(0.16, 1, 0.3, 1);
-}
-.lumii-encounter-hud[data-lumii-turn="true"] .lumii-encounter-hud__entity svg {
-  filter: drop-shadow(0 0 4px rgba(255, 86, 120, 0.95))
-    drop-shadow(0 0 12px rgba(225, 29, 72, 0.56))
-    drop-shadow(0 0 18px rgba(124, 58, 237, 0.38));
-}
-.lumii-encounter-hud__pressure {
-  display: grid;
-  gap: 5px;
-}
-.lumii-encounter-hud__pressure-row {
-  display: flex;
-  min-width: 0;
-  align-items: flex-start;
-  justify-content: space-between;
-  gap: 8px;
-  font-family: var(--font-mono, monospace);
-  font-size: 10px;
-}
-.lumii-encounter-hud__pressure-copy {
-  display: grid;
-  min-width: 0;
-  gap: 2px;
-  overflow: hidden;
-}
-.lumii-encounter-hud__pressure > span i {
-  color: #f0d8df;
-  font-style: normal;
-  font-weight: 900;
-}
-.lumii-encounter-hud__pressure > span b {
-  color: rgba(255, 255, 255, 0.28);
-}
+.lumii-encounter-hud__identity strong { font-family: var(--font-serif, serif); font-size: 19px; font-weight: 500; }
+.lumii-encounter-hud__pressure { display: grid; gap: 5px; }
+.lumii-encounter-hud__pressure > span { display: flex; justify-content: flex-end; gap: 5px; font-family: var(--font-mono, monospace); font-size: 10px; }
+.lumii-encounter-hud__pressure > span i { color: #f0d8df; font-style: normal; font-weight: 900; }
+.lumii-encounter-hud__pressure > span b { color: rgba(255, 255, 255, 0.28); }
 .lumii-encounter-hud__pressure-label {
-  overflow: hidden;
   color: rgba(248, 251, 255, 0.72);
   font-weight: 900;
   letter-spacing: 0;
-  text-overflow: ellipsis;
   text-transform: uppercase;
   white-space: nowrap;
 }
-.lumii-encounter-hud__score {
-  overflow: hidden;
-  color: rgba(248, 251, 255, 0.5);
-  font-size: 9px;
-  font-weight: 800;
-  letter-spacing: 0;
-  text-overflow: ellipsis;
-  white-space: nowrap;
-}
-.lumii-encounter-hud__turn-status {
-  min-width: 0;
-  overflow: hidden;
-  color: rgba(255, 255, 255, 0.56);
-  font-size: 9px;
-  font-weight: 900;
-  letter-spacing: 0;
-  text-align: right;
-  text-overflow: ellipsis;
-  text-transform: uppercase;
-  white-space: nowrap;
-}
-.lumii-encounter-hud__turn-status[data-turn="lumii"] {
-  color: #ff9aac;
-  text-shadow: 0 0 10px rgba(225, 29, 72, 0.64);
-}
-.lumii-encounter-hud__turn-status[data-turn="you"] {
-  color: #f8fbff;
-}
-.lumii-encounter-hud__pressure > div {
-  height: 3px;
-  overflow: hidden;
-  background: rgba(255, 255, 255, 0.1);
-}
+.lumii-encounter-hud__pressure > div { height: 3px; overflow: hidden; background: rgba(255, 255, 255, 0.1); }
 .lumii-encounter-hud__pressure > div i {
   display: block;
   width: 100%;
@@ -1670,14 +503,7 @@
   background: linear-gradient(90deg, #7c3aed, #e11d48, #f8fbff);
   transition: transform 800ms ease;
 }
-.lumii-encounter-hud__actions {
-  display: flex;
-  min-width: max-content;
-  align-items: center;
-  justify-content: flex-end;
-  gap: 6px;
-}
-.lumii-encounter-hud__actions button {
+.lumii-encounter-hud__bar > button {
   display: grid;
   width: 36px;
   height: 36px;
@@ -1687,14 +513,8 @@
   background: rgba(255, 255, 255, 0.05);
   color: #ccd3df;
 }
-.lumii-encounter-hud__actions button:hover {
-  border-color: rgba(255, 103, 129, 0.55);
-  color: #ff8aa0;
-}
-.lumii-encounter-hud__actions button svg {
-  width: 17px;
-  height: 17px;
-}
+.lumii-encounter-hud__bar > button:hover { border-color: rgba(255, 103, 129, 0.55); color: #ff8aa0; }
+.lumii-encounter-hud__bar > button svg { width: 17px; height: 17px; }
 .lumii-encounter-hud__message {
   margin: 5px 0 0;
   padding: 10px 13px;
@@ -1710,794 +530,46 @@
   pointer-events: none;
 }
 
-@keyframes lumii-vault-spin {
-  to {
-    transform: rotate(360deg);
-  }
-}
+@keyframes lumii-vault-spin { to { transform: rotate(360deg); } }
 @keyframes lumii-cipher-surge {
-  0% {
-    opacity: 0.72;
-    transform: scale(0.98);
-  }
-  52% {
-    opacity: 1;
-    transform: scale(1.1);
-  }
-  100% {
-    opacity: 1;
-    transform: scale(1.04);
-  }
-}
-@keyframes lumii-key-cipher-power-down {
-  0% {
-    opacity: 1;
-    filter: grayscale(0) brightness(1.18);
-    transform: scale(1.04);
-  }
-  22% {
-    opacity: 0.46;
-  }
-  34% {
-    opacity: 0.94;
-    filter: grayscale(0.45) brightness(0.92);
-  }
-  58% {
-    opacity: 0.38;
-  }
-  72% {
-    opacity: 0.74;
-    filter: grayscale(0.9) brightness(0.56);
-  }
-  100% {
-    opacity: 0;
-    filter: grayscale(1) brightness(0.34);
-    transform: scale(1);
-  }
-}
-@keyframes lumii-key-cipher-residue-in {
-  0%,
-  42% {
-    opacity: 0;
-  }
-  72% {
-    opacity: 0.38;
-  }
-  100% {
-    opacity: 0.3;
-    filter: grayscale(1) saturate(0) brightness(0.42)
-      drop-shadow(0 0 3px rgba(183, 207, 216, 0.12));
-  }
-}
-@keyframes lumii-key-cipher-phase-out {
-  0% {
-    opacity: 0.3;
-    filter: grayscale(1) saturate(0) brightness(0.42);
-    transform: translateX(0) scale(1);
-  }
-  18% {
-    opacity: 0.48;
-    transform: translateX(-0.7%) scale(1);
-  }
-  32% {
-    opacity: 0.12;
-    transform: translateX(0.5%) scale(0.998);
-  }
-  46% {
-    opacity: 0.4;
-    transform: translateX(-0.35%) scale(0.995);
-  }
-  64% {
-    opacity: 0.08;
-  }
-  76% {
-    opacity: 0.24;
-  }
-  100% {
-    opacity: 0;
-    filter: grayscale(1) saturate(0) brightness(0.18) blur(0.7px);
-    transform: translateX(0) scale(0.985);
-  }
-}
-@keyframes lumii-key-cipher-interference {
-  0% {
-    opacity: 0;
-    transform: translateY(-58%);
-  }
-  16% {
-    opacity: 0.72;
-  }
-  84% {
-    opacity: 0.32;
-  }
-  100% {
-    opacity: 0;
-    transform: translateY(58%);
-  }
-}
-@keyframes lumii-key-cipher-restore {
-  0%,
-  12% {
-    opacity: 0;
-    filter: grayscale(1) brightness(0.28);
-    transform: scale(0.985);
-  }
-  28% {
-    opacity: 0.26;
-  }
-  42% {
-    opacity: 0.08;
-  }
-  58% {
-    opacity: 0.54;
-    filter: grayscale(0.65) brightness(0.72);
-  }
-  72% {
-    opacity: 0.3;
-  }
-  100% {
-    opacity: 0.84;
-    filter: grayscale(0) brightness(1);
-    transform: scale(1);
-  }
-}
-@keyframes lumii-key-cipher-support-restore {
-  0%,
-  24% {
-    opacity: 0;
-    filter: grayscale(1) brightness(0.34);
-  }
-  100% {
-    opacity: 1;
-    filter: none;
-    transform: none;
-  }
-}
-@keyframes lumii-architect-cipher-resist {
-  0% {
-    opacity: 1;
-    filter: brightness(1.35) drop-shadow(0 0 5px rgba(211, 234, 240, 0.32));
-    transform: scale(1.045);
-  }
-  30% {
-    opacity: 0.92;
-    filter: brightness(1.24) drop-shadow(0 0 4px rgba(196, 221, 228, 0.26));
-    transform: scale(1.032);
-  }
-  54% {
-    opacity: 0.82;
-    filter: grayscale(0.22) brightness(1.08)
-      drop-shadow(0 0 3px rgba(174, 201, 208, 0.2));
-    transform: scale(1.018);
-  }
-  68% {
-    opacity: 0.76;
-    filter: grayscale(0.38) brightness(0.98);
-    transform: translate(-0.12%, 0.06%) scale(1.01);
-  }
-  72% {
-    transform: translate(0.14%, -0.08%) scale(1.01);
-  }
-  76% {
-    transform: translate(-0.18%, 0.08%) scale(1.012);
-  }
-  80% {
-    opacity: 1;
-    filter: brightness(1.28) drop-shadow(0 0 5px rgba(202, 225, 231, 0.34));
-    transform: scale(1.018);
-  }
-  82% {
-    opacity: 1;
-    filter: brightness(2.4) drop-shadow(0 0 10px rgba(229, 243, 247, 0.62));
-    transform: scale(1.03);
-  }
-  83%,
-  100% {
-    opacity: 0;
-    filter: brightness(0.6);
-    transform: scale(1.03);
-  }
-}
-@keyframes lumii-architect-line-resist {
-  0% {
-    opacity: 0.96;
-    filter: brightness(1.2);
-    stroke-dasharray: 1 0;
-    stroke-dashoffset: 0;
-  }
-  42% {
-    opacity: 0.82;
-    filter: brightness(1.05);
-    stroke-dasharray: 1 0;
-  }
-  58% {
-    opacity: 0.72;
-    stroke-dasharray: 1 0;
-  }
-  76% {
-    opacity: 0.64;
-    filter: brightness(0.86);
-    stroke-dasharray: 1 0;
-  }
-  82% {
-    opacity: 0.92;
-    filter: brightness(2.2);
-  }
-  83%,
-  100% {
-    opacity: 0;
-  }
-}
-@keyframes lumii-architect-core-resist {
-  0% {
-    opacity: 0.88;
-    filter: brightness(1.2);
-  }
-  32% {
-    opacity: 0.64;
-    filter: brightness(1.12);
-  }
-  68% {
-    opacity: 0.3;
-    filter: brightness(1.18);
-  }
-  80% {
-    opacity: 0.16;
-    filter: brightness(1.25);
-  }
-  82% {
-    opacity: 0.48;
-    filter: brightness(2.5);
-  }
-  83%,
-  100% {
-    opacity: 0;
-  }
-}
-@keyframes lumii-architect-aura-resist {
-  0% {
-    opacity: 0.13;
-  }
-  60% {
-    opacity: 0.06;
-  }
-  80% {
-    opacity: 0.16;
-  }
-  82% {
-    opacity: 0.52;
-  }
-  83%,
-  100% {
-    opacity: 0;
-  }
-}
-@keyframes lumii-architect-node-resist {
-  0% {
-    opacity: 0.9;
-    filter: brightness(1.2);
-  }
-  38% {
-    opacity: 0.62;
-    filter: brightness(1);
-  }
-  62% {
-    opacity: 0.32;
-    filter: brightness(0.82);
-  }
-  78% {
-    opacity: 0.12;
-    filter: brightness(0.7);
-  }
-  82% {
-    opacity: 1;
-    filter: brightness(2.5);
-  }
-  83%,
-  100% {
-    opacity: 0;
-  }
-}
-@keyframes lumii-architect-authority-conduits {
-  0% {
-    opacity: 0.9;
-    filter: brightness(1.25);
-  }
-  48% {
-    opacity: 0.7;
-    filter: brightness(1.15);
-  }
-  78% {
-    opacity: 0.56;
-    filter: grayscale(0.2) brightness(1.08);
-  }
-  100% {
-    opacity: 0.5;
-    filter: grayscale(0.32) brightness(1.02);
-  }
-}
-@keyframes lumii-architect-authority-lock {
-  0% {
-    opacity: 1;
-    filter: brightness(1);
-    transform: scale(1);
-  }
-  70% {
-    opacity: 0.86;
-    filter: grayscale(0.18) brightness(0.9);
-    transform: scale(0.98);
-  }
-  100% {
-    opacity: 0.76;
-    filter: grayscale(0.35) brightness(0.8);
-    transform: scale(0.96);
-  }
-}
-@keyframes lumii-architect-conduit-resist {
-  0% {
-    opacity: 0.5;
-    filter: grayscale(0.32) brightness(1.02);
-    transform: rotate(var(--conduit-angle)) scaleX(1);
-  }
-  55% {
-    opacity: 0.34;
-    filter: grayscale(0.55) brightness(0.8);
-    transform: rotate(var(--conduit-angle)) scaleX(0.82);
-  }
-  74% {
-    opacity: 0.22;
-    filter: grayscale(0.72) brightness(0.65);
-    transform: rotate(var(--conduit-angle)) scaleX(0.62);
-  }
-  82% {
-    opacity: 0.76;
-    filter: brightness(1.8);
-    transform: rotate(var(--conduit-angle)) scaleX(0.88);
-  }
-  84%,
-  100% {
-    opacity: 0;
-    transform: rotate(
-        calc(var(--conduit-angle) + var(--conduit-break-angle, 7deg))
-      )
-      translateX(34%) scaleX(0.08);
-  }
-}
-@keyframes lumii-architect-scan-resist {
-  0% {
-    opacity: 0.68;
-    filter: grayscale(0.32) brightness(0.92);
-    transform: scaleX(1);
-  }
-  72% {
-    opacity: 0.2;
-    filter: grayscale(0.7) brightness(0.62);
-    transform: scaleX(0.42);
-  }
-  82% {
-    opacity: 0.82;
-    filter: brightness(1.9);
-    transform: scaleX(1.8);
-  }
-  84%,
-  100% {
-    opacity: 0;
-    transform: scaleX(9) scaleY(0.08);
-  }
-}
-@keyframes lumii-architect-seal-resist {
-  0% {
-    opacity: 0.76;
-    filter: grayscale(0.35) brightness(0.8);
-    transform: scale(0.96);
-  }
-  74% {
-    opacity: 0.38;
-    filter: grayscale(0.8) brightness(0.54);
-    transform: scale(0.88);
-  }
-  82% {
-    opacity: 0.86;
-    filter: brightness(2);
-    transform: scale(0.82);
-  }
-  84%,
-  100% {
-    opacity: 0;
-    transform: scale(0.28);
-  }
-}
-@keyframes lumii-architect-pressure-ring {
-  0% {
-    opacity: 0;
-    transform: scale(1.55);
-  }
-  24% {
-    opacity: 0.2;
-    transform: scale(1.18);
-  }
-  64% {
-    opacity: 0.5;
-    transform: scale(0.76);
-  }
-  80% {
-    opacity: 0.76;
-    transform: scale(0.56);
-  }
-  83%,
-  100% {
-    opacity: 0;
-    transform: scale(0.5);
-  }
-}
-@keyframes lumii-architect-shatter-flash {
-  0%,
-  80% {
-    opacity: 0;
-    transform: scale(0.34);
-  }
-  82% {
-    opacity: 0.48;
-    transform: scale(0.72);
-  }
-  85% {
-    opacity: 0.16;
-    transform: scale(1.08);
-  }
-  100% {
-    opacity: 0;
-    transform: scale(1.2);
-  }
-}
-@keyframes lumii-architect-crack-spread {
-  0%,
-  12% {
-    opacity: 0;
-    transform: rotate(var(--rupture-angle)) scaleX(0);
-  }
-  46% {
-    opacity: 0.56;
-    transform: rotate(var(--rupture-angle)) scaleX(0.48);
-  }
-  76%,
-  82% {
-    opacity: 0.78;
-    filter: brightness(1);
-    transform: rotate(var(--rupture-angle)) scaleX(1);
-  }
-  84% {
-    opacity: 0.58;
-    filter: brightness(1.55);
-  }
-  88%,
-  100% {
-    opacity: 0;
-    transform: rotate(var(--rupture-angle)) scaleX(1);
-  }
-}
-@keyframes lumii-architect-shard-burst {
-  0%,
-  81% {
-    opacity: 0;
-    filter: brightness(1.8) drop-shadow(0 0 5px rgba(214, 233, 238, 0.42));
-    transform: translate(0, 0) rotate(0) scale(1.03);
-  }
-  82% {
-    opacity: 0.94;
-    filter: brightness(2.25) drop-shadow(0 0 8px rgba(231, 244, 247, 0.68));
-    transform: translate(0, 0) rotate(0) scale(1.03);
-  }
-  88% {
-    opacity: 0.86;
-    filter: grayscale(0.38) brightness(1.24);
-  }
-  100% {
-    opacity: 0.76;
-    filter: grayscale(0.7) brightness(1.02)
-      drop-shadow(0 2px 3px rgba(0, 0, 0, 0.72));
-    transform: translate(var(--shard-x), var(--shard-y))
-      rotate(var(--shard-rotate)) scale(0.82);
-  }
-}
-@keyframes lumii-architect-shard-release {
-  0% {
-    opacity: 0.76;
-    filter: grayscale(0.7) brightness(1.02)
-      drop-shadow(0 2px 3px rgba(0, 0, 0, 0.72));
-    transform: translate(var(--shard-x), var(--shard-y))
-      rotate(var(--shard-rotate)) scale(0.82);
-  }
-  42% {
-    opacity: 0.44;
-    filter: grayscale(0.92) brightness(0.58) blur(0.3px);
-  }
-  100% {
-    opacity: 0;
-    filter: grayscale(1) brightness(0.3) blur(1.4px);
-    transform: translate(var(--shard-release-x), var(--shard-release-y))
-      rotate(calc(var(--shard-rotate) + 14deg)) scale(0.58);
-  }
-}
-@keyframes lumii-architect-ambient-pressure {
-  0% {
-    box-shadow: inset 0 0 0 100vmax rgba(0, 0, 0, 0);
-    filter: saturate(1) brightness(1);
-  }
-  100% {
-    box-shadow: inset 0 0 0 100vmax rgba(0, 0, 0, 0.26);
-    filter: saturate(0.78) brightness(0.86);
-  }
-}
-@keyframes lumii-architect-ambient-violation {
-  0% {
-    box-shadow: inset 0 0 0 100vmax rgba(0, 0, 0, 0.26);
-    filter: saturate(0.78) brightness(0.86);
-  }
-  76% {
-    box-shadow: inset 0 0 0 100vmax rgba(0, 0, 0, 0.48);
-    filter: saturate(0.42) brightness(0.66);
-  }
-  82% {
-    box-shadow: inset 0 0 0 100vmax rgba(204, 225, 230, 0.07);
-    filter: saturate(0.18) brightness(0.92);
-  }
-  86%,
-  100% {
-    box-shadow: inset 0 0 0 100vmax rgba(0, 0, 0, 0.6);
-    filter: saturate(0.28) brightness(0.58);
-  }
-}
-@keyframes lumii-threshold-camera-approach {
-  0% {
-    transform: translate3d(0, 0, 0) scale(1);
-  }
-  24% {
-    transform: translate3d(-0.18%, 0.34%, 0) scale(var(--lumii-camera-step-1));
-  }
-  49% {
-    transform: translate3d(0.2%, -0.1%, 0) scale(var(--lumii-camera-step-2));
-  }
-  74% {
-    transform: translate3d(-0.12%, 0.24%, 0) scale(var(--lumii-camera-step-3));
-  }
-  100% {
-    transform: translate3d(0.34%, -0.18%, 0) scale(var(--lumii-camera-final));
-  }
-}
-@keyframes lumii-architect-cipher-overload {
-  0% {
-    opacity: 0.84;
-    filter: brightness(1.08) drop-shadow(0 0 5px rgba(213, 238, 244, 0.28));
-    transform: scale(1);
-  }
-  38% {
-    opacity: 0.96;
-    filter: brightness(1.46) drop-shadow(0 0 7px rgba(220, 242, 247, 0.42));
-    transform: scale(1.025);
-  }
-  72% {
-    opacity: 0.9;
-    filter: grayscale(0.08) brightness(1.2)
-      drop-shadow(0 0 5px rgba(201, 226, 232, 0.3));
-    transform: scale(1.016);
-  }
-  100% {
-    opacity: 0.86;
-    filter: grayscale(0.18) brightness(1.35)
-      drop-shadow(0 0 6px rgba(213, 236, 242, 0.36));
-    transform: scale(1.045);
-  }
+  0% { opacity: 0.72; transform: scale(0.98); }
+  52% { opacity: 1; transform: scale(1.1); }
+  100% { opacity: 1; transform: scale(1.04); }
 }
 @keyframes lumii-firewall-restraint {
-  0%,
-  100% {
-    opacity: 0.36;
-  }
-  50% {
-    opacity: 0.9;
-  }
-}
-@keyframes lumii-firewall-deploy {
-  0% {
-    opacity: 0;
-    transform: rotate(var(--firewall-angle)) scaleX(0);
-  }
-  14% {
-    opacity: 1;
-  }
-  82% {
-    opacity: 1;
-  }
-  100% {
-    opacity: 0.7;
-    transform: rotate(var(--firewall-angle)) scaleX(1);
-  }
-}
-@keyframes lumii-firewall-hostile-lock {
-  0% {
-    opacity: 0.72;
-    transform: rotate(var(--firewall-angle)) scaleX(1);
-  }
-  34% {
-    opacity: 1;
-    transform: rotate(var(--firewall-angle)) scaleX(0.93);
-  }
-  100% {
-    opacity: 0.92;
-    transform: rotate(var(--firewall-angle)) scaleX(1.04);
-  }
-}
-@keyframes lumii-threshold-door-halt {
-  0% {
-    border-color: #5d6872;
-  }
-  38% {
-    border-color: rgba(225, 249, 255, 0.92);
-    box-shadow:
-      0 0 0 7px #161d24,
-      0 0 0 9px #080b0f,
-      0 0 34px rgba(163, 232, 246, 0.46);
-  }
-  100% {
-    border-color: #697985;
-  }
-}
-@keyframes lumii-threshold-float {
-  0%,
-  100% {
-    transform: translateY(3px);
-  }
-  50% {
-    transform: translateY(-3px);
-  }
-}
-@keyframes lumii-threshold-advance-pulse {
-  0%,
-  100% {
-    opacity: 0.68;
-    box-shadow: 0 0 12px rgba(166, 229, 242, 0.08);
-  }
-  50% {
-    opacity: 1;
-    box-shadow: 0 0 24px rgba(166, 229, 242, 0.22);
-  }
-}
-@keyframes lumii-threshold-header-arrive {
-  0%,
-  48% {
-    opacity: 0;
-    transform: translateY(-5px);
-  }
-  100% {
-    opacity: 1;
-    transform: translateY(0);
-  }
+  0%, 100% { opacity: 0.36; }
+  50% { opacity: 0.9; }
 }
 @keyframes lumii-hostile-core-wave {
-  0% {
-    opacity: 0;
-    transform: scale(0.22) rotate(-10deg);
-    filter: brightness(1.7);
-  }
-  12% {
-    opacity: 1;
-    transform: scale(0.42) rotate(5deg);
-    filter: brightness(2.15);
-  }
-  38% {
-    opacity: 0.82;
-    transform: scale(1.08) rotate(17deg);
-    filter: brightness(1.25);
-  }
-  100% {
-    opacity: 0;
-    transform: scale(2.18) rotate(42deg);
-    filter: brightness(0.9);
-  }
-}
-@keyframes lumii-combative-flare {
-  0% {
-    opacity: 0;
-    transform: scale(0.34) rotate(-24deg);
-    filter: saturate(0.4) brightness(1.9);
-  }
-  10% {
-    opacity: 0.86;
-    transform: scale(0.62) rotate(-8deg);
-    filter: saturate(0.7) brightness(2.35);
-  }
-  34% {
-    opacity: 0.96;
-    transform: scale(1.02) rotate(16deg);
-    filter: saturate(1.55) brightness(1.26);
-  }
-  68% {
-    opacity: 0.28;
-    transform: scale(1.22) rotate(34deg);
-    filter: saturate(1.35) brightness(0.95);
-  }
-  100% {
-    opacity: 0;
-    transform: scale(1.34) rotate(48deg);
-    filter: saturate(1.1) brightness(0.85);
-  }
+  0% { opacity: 0; transform: scale(0.36); }
+  24% { opacity: 0.88; }
+  100% { opacity: 0; transform: scale(1.82); }
 }
 @keyframes lumii-briefing-scan {
-  0% {
-    opacity: 0;
-    transform: skewX(-14deg) translateX(0);
-  }
-  18% {
-    opacity: 1;
-  }
-  100% {
-    opacity: 0;
-    transform: skewX(-14deg) translateX(720%);
-  }
+  0% { opacity: 0; transform: skewX(-14deg) translateX(0); }
+  18% { opacity: 1; }
+  100% { opacity: 0; transform: skewX(-14deg) translateX(720%); }
 }
 
 @media (max-width: 640px) {
-  .lumii-vault-encounter {
-    --lumii-camera-step-1: 1.022;
-    --lumii-camera-step-2: 1.045;
-    --lumii-camera-step-3: 1.066;
-    --lumii-camera-final: 1.085;
-  }
-  .lumii-vault-encounter__stage {
-    inset: 60px 0 245px;
-  }
-  .lumii-vault-encounter__threshold-motion {
-    width: min(92vw, 51vh);
-  }
-  .lumii-vault-encounter__lumii-anchor {
-    transform: translate(-50%, -50%) scale(0.78);
-  }
-  .lumii-vault-encounter__copy {
-    bottom: max(12px, env(safe-area-inset-bottom));
-    min-height: 218px;
-  }
-  .lumii-vault-encounter__copy blockquote {
-    font-size: 19px;
-  }
+  .lumii-vault-encounter__stage { inset: 60px 0 245px; }
+  .lumii-vault-encounter__threshold { width: min(92vw, 51vh); }
+  .lumii-vault-encounter__lumii-anchor { transform: translate(-50%, -50%) scale(0.78); }
+  .lumii-vault-encounter__copy { bottom: max(12px, env(safe-area-inset-bottom)); min-height: 218px; }
+  .lumii-vault-encounter__copy blockquote { font-size: 19px; }
   .lumii-vault-encounter__choices,
   .lumii-vault-encounter__choices.is-routes,
-  .lumii-vault-encounter__choices.single-plus-leave {
-    grid-template-columns: 1fr;
-  }
-  .lumii-vault-encounter__choices button {
-    min-height: 44px;
-  }
-  .lumii-encounter-hud {
-    top: max(6px, calc(env(safe-area-inset-top) + 6px));
-    right: 6px;
-    width: calc(100vw - 12px);
-  }
-  .lumii-encounter-hud__bar {
-    grid-template-columns: minmax(124px, 0.85fr) minmax(92px, 1fr) auto;
-    gap: 5px;
-    padding: 7px 8px 7px 12px;
-  }
-  .lumii-encounter-hud__name-pill {
-    min-height: 22px;
-    padding-inline: 9px;
-    font-size: 15px;
-  }
-  .lumii-encounter-hud__entity {
-    width: 38px;
-    height: 34px;
-  }
-  .lumii-encounter-hud__actions {
-    gap: 4px;
-  }
-  .lumii-encounter-hud__actions button {
-    width: 34px;
-    height: 34px;
-  }
+  .lumii-vault-encounter__choices.single-plus-leave { grid-template-columns: 1fr; }
+  .lumii-vault-encounter__choices button { min-height: 44px; }
+  .lumii-encounter-hud { top: max(62px, calc(env(safe-area-inset-top) + 56px)); right: 6px; width: calc(100vw - 12px); }
+  .lumii-encounter-hud__bar { grid-template-columns: 60px minmax(68px, 1fr) 84px 36px; gap: 5px; }
+  .lumii-encounter-hud__orb { width: 60px; }
+  .lumii-encounter-hud__identity strong { font-size: 16px; }
 }
 
 .lumii-encounter-hud.is-docked {
   position: relative;
-  z-index: 30;
+  z-index: 19;
   top: auto;
   right: auto;
   width: 100%;
@@ -2514,51 +586,14 @@
   border-right: 0;
   border-left: 0;
   border-radius: 0;
-  background:
-    radial-gradient(
-      circle at 16% 50%,
-      rgba(225, 29, 72, 0.15),
-      transparent 42%
-    ),
-    rgba(7, 5, 14, 0.76);
-  box-shadow:
-    inset 0 0 30px rgba(124, 58, 237, 0.1),
-    inset 0 -1px 0 rgba(255, 255, 255, 0.04);
+  background: rgba(7, 5, 14, 0.72);
+  box-shadow: inset 0 0 30px rgba(124, 58, 237, 0.1), inset 0 -1px 0 rgba(255, 255, 255, 0.04);
 }
 .lumii-encounter-hud.is-docked .lumii-encounter-hud__message {
   position: absolute;
   top: calc(100% + 5px);
   right: clamp(10px, 2vw, 24px);
   width: min(440px, calc(100vw - 20px));
-}
-
-.game-shell[data-lumii-forecast-active="true"]
-  > .lumii-encounter-hud.is-docked {
-  grid-area: lumii-forecast !important;
-}
-
-.game-shell[data-lumii-forecast-active="true"]
-  > .game-bottom-nav
-  button[data-disabled="true"] {
-  cursor: not-allowed;
-  color: rgba(135, 148, 154, 0.38) !important;
-  opacity: 0.62;
-}
-
-.game-shell[data-lumii-forecast-active="true"]
-  > .game-bottom-nav
-  button[data-disabled="true"]
-  span,
-.game-shell[data-lumii-forecast-active="true"]
-  > .game-bottom-nav
-  button[data-disabled="true"]
-  svg {
-  opacity: 0.68;
-}
-
-.game-shell[data-lumii-forecast-active="true"][data-board-presentation="celestial"][data-board-density][data-forge-density] {
-  grid-template-rows: 62px minmax(0, 1fr) 204px 56px !important;
-  grid-template-areas: "lumii-forecast" "main" "well" "nav" !important;
 }
 
 @media (max-width: 640px) {
@@ -2568,7 +603,7 @@
     width: 100%;
   }
   .lumii-encounter-hud.is-docked .lumii-encounter-hud__bar {
-    grid-template-columns: minmax(124px, 0.85fr) minmax(92px, 1fr) auto;
+    grid-template-columns: 60px minmax(74px, 1fr) minmax(104px, 0.9fr) 36px;
     gap: 5px;
   }
   .lumii-encounter-hud.is-docked .lumii-encounter-hud__message {
@@ -2577,176 +612,43 @@
   }
 }
 
-@media (max-width: 680px) {
-  .game-shell[data-lumii-forecast-active="true"][data-board-presentation="celestial"][data-board-density][data-forge-density] {
-    grid-template-rows: 62px minmax(0, 1fr) 228px 58px !important;
-    grid-template-areas: "lumii-forecast" "main" "well" "nav" !important;
-  }
-}
-
-@media (max-width: 680px) and (max-height: 650px) {
-  .game-shell[data-lumii-forecast-active="true"][data-board-presentation="celestial"][data-board-density][data-forge-density]:has(
-      > .affinity-well-panel[data-well-expanded="false"]
-    ) {
-    grid-template-rows: 62px minmax(0, 1fr) 58px 58px !important;
-  }
-}
-
-@media (min-width: 681px) and (max-width: 940px) and (max-height: 520px) and (orientation: landscape) {
-  .game-shell[data-lumii-forecast-active="true"] {
-    grid-template-rows: 62px minmax(0, 1fr) auto 48px !important;
-    grid-template-areas: "lumii-forecast" "main" "well" "nav" !important;
-  }
-}
-
-@keyframes lumii-forecast-crimson-current {
-  0% {
-    opacity: 0.48;
-    transform: translateX(-20%);
-  }
-  45% {
-    opacity: 0.9;
-  }
-  100% {
-    opacity: 0.52;
-    transform: translateX(16%);
-  }
-}
-
-@keyframes lumii-hud-name-absorb {
-  0% {
-    border-color: rgba(255, 255, 255, 0.14);
-    box-shadow:
-      inset 0 0 0 rgba(255, 56, 86, 0),
-      0 0 0 rgba(255, 56, 86, 0);
-    color: #f4f0ff;
-  }
-  38% {
-    border-color: rgba(255, 238, 240, 0.72);
-    box-shadow:
-      inset 0 0 20px rgba(255, 56, 86, 0.34),
-      0 0 28px rgba(255, 56, 86, 0.48);
-    color: #fff8fa;
-  }
-  100% {
-    border-color: rgba(255, 255, 255, 0.14);
-    box-shadow:
-      inset 0 0 0 rgba(255, 56, 86, 0),
-      0 0 0 rgba(255, 56, 86, 0);
-    color: #f4f0ff;
-  }
-}
-
-@keyframes lumii-hud-name-absorb-current {
-  0% {
-    opacity: 0;
-    transform: scaleX(0.12) scaleY(0.62);
-  }
-  34% {
-    opacity: 0.92;
-    transform: scaleX(0.92) scaleY(1);
-  }
-  100% {
-    opacity: 0;
-    transform: scaleX(1.24) scaleY(0.72);
-  }
-}
-
-@keyframes lumii-hud-avatar-absorb-react {
-  0% {
-    transform: scale(1);
-    filter: drop-shadow(0 0 3px rgba(255, 70, 104, 0.78))
-      drop-shadow(0 0 8px rgba(124, 58, 237, 0.48));
-  }
-  36% {
-    transform: scale(1.16);
-    filter: drop-shadow(0 0 5px rgba(255, 238, 242, 0.98))
-      drop-shadow(0 0 15px rgba(255, 56, 86, 0.88))
-      drop-shadow(0 0 26px rgba(124, 58, 237, 0.54));
-  }
-  100% {
-    transform: scale(1);
-    filter: drop-shadow(0 0 3px rgba(255, 70, 104, 0.78))
-      drop-shadow(0 0 8px rgba(124, 58, 237, 0.48));
-  }
-}
-
-@media (prefers-reduced-motion: reduce) {
-  .lumii-encounter-hud__bar::before {
-    animation: none;
-    opacity: 0.58;
-    transform: none;
-  }
-  .lumii-encounter-hud[data-lumii-absorbing="true"]
-    .lumii-encounter-hud__name-pill,
-  .lumii-encounter-hud[data-lumii-absorbing="true"]
-    .lumii-encounter-hud__name-pill::after,
-  .lumii-encounter-hud[data-lumii-absorbing="true"]
-    .lumii-encounter-hud__entity
-    svg {
-    animation-duration: 1ms;
-  }
-}
-
-.lumii-vault-encounter[data-preview-viewport="mobile"] {
-  --lumii-camera-step-1: 1.022;
-  --lumii-camera-step-2: 1.045;
-  --lumii-camera-step-3: 1.066;
-  --lumii-camera-final: 1.085;
-}
-.lumii-vault-encounter[data-preview-viewport="mobile"]
-  .lumii-vault-encounter__header {
+.lumii-vault-encounter[data-preview-viewport="mobile"] .lumii-vault-encounter__header {
   top: 12px;
   left: 14px;
 }
-.lumii-vault-encounter[data-preview-viewport="mobile"]
-  .lumii-vault-encounter__header
-  strong {
+.lumii-vault-encounter[data-preview-viewport="mobile"] .lumii-vault-encounter__header strong {
   font-size: 25px;
 }
-.lumii-vault-encounter[data-preview-viewport="mobile"]
-  .lumii-vault-encounter__stage {
+.lumii-vault-encounter[data-preview-viewport="mobile"] .lumii-vault-encounter__stage {
   inset: 60px 0 245px;
 }
-.lumii-vault-encounter[data-preview-viewport="mobile"]
-  .lumii-vault-encounter__threshold-motion {
+.lumii-vault-encounter[data-preview-viewport="mobile"] .lumii-vault-encounter__threshold {
   width: min(92%, 51vh);
 }
-.lumii-vault-encounter[data-preview-viewport="mobile"]
-  .lumii-vault-encounter__lumii-anchor {
+.lumii-vault-encounter[data-preview-viewport="mobile"] .lumii-vault-encounter__lumii-anchor {
   transform: translate(-50%, -50%) scale(0.78);
 }
-.lumii-vault-encounter[data-preview-viewport="mobile"]
-  .lumii-vault-encounter__copy {
+.lumii-vault-encounter[data-preview-viewport="mobile"] .lumii-vault-encounter__copy {
   bottom: 12px;
   width: calc(100% - 20px);
   min-height: 218px;
 }
-.lumii-vault-encounter[data-preview-viewport="mobile"]
-  .lumii-vault-encounter__copy
-  blockquote {
+.lumii-vault-encounter[data-preview-viewport="mobile"] .lumii-vault-encounter__copy blockquote {
   max-width: 100%;
   font-size: 19px;
 }
-.lumii-vault-encounter[data-preview-viewport="mobile"]
-  .lumii-vault-encounter__choices,
-.lumii-vault-encounter[data-preview-viewport="mobile"]
-  .lumii-vault-encounter__choices.is-routes,
-.lumii-vault-encounter[data-preview-viewport="mobile"]
-  .lumii-vault-encounter__choices.single-plus-leave {
+.lumii-vault-encounter[data-preview-viewport="mobile"] .lumii-vault-encounter__choices,
+.lumii-vault-encounter[data-preview-viewport="mobile"] .lumii-vault-encounter__choices.is-routes,
+.lumii-vault-encounter[data-preview-viewport="mobile"] .lumii-vault-encounter__choices.single-plus-leave {
   grid-template-columns: minmax(0, 1fr);
 }
-.lumii-vault-encounter[data-preview-viewport="mobile"]
-  .lumii-vault-encounter__choices
-  button {
+.lumii-vault-encounter[data-preview-viewport="mobile"] .lumii-vault-encounter__choices button {
   min-height: 44px;
 }
-.lumii-vault-encounter[data-preview-viewport="mobile"]
-  .lumii-vault-encounter__reward {
+.lumii-vault-encounter[data-preview-viewport="mobile"] .lumii-vault-encounter__reward {
   width: 100%;
 }
-.lumii-vault-encounter[data-phase="reward"][data-preview-viewport="mobile"]
-  .lumii-vault-encounter__copy {
+.lumii-vault-encounter[data-phase="reward"][data-preview-viewport="mobile"] .lumii-vault-encounter__copy {
   top: 10px;
   bottom: 10px;
   min-height: 0;
@@ -2754,35 +656,7 @@
 
 @media (prefers-reduced-motion: reduce) {
   .lumii-vault-encounter *,
-  .lumii-encounter-hud * {
-    animation-duration: 1ms !important;
-    animation-iteration-count: 1 !important;
-    transition-duration: 1ms !important;
-  }
-  .lumii-vault-encounter .lumii-vault-encounter__threshold {
-    animation: none;
-    transform: scale(1.02);
-  }
-}
-.lumii-vault-encounter[data-reduced-motion="true"]
-  .lumii-vault-encounter__threshold {
-  animation: none;
-  transform: scale(1.02);
-}
-.lumii-vault-encounter[data-reduced-motion="true"]
-  .lumii-vault-encounter__lumii-float,
-.lumii-vault-encounter[data-reduced-motion="true"]
-  .lumii-vault-encounter__cinematic-advance,
-.lumii-vault-encounter[data-reduced-motion="true"]
-  .lumii-vault-encounter__sentence-advance {
-  animation: none;
-}
-.lumii-vault-encounter[data-reduced-motion="true"] .vault-threshold *,
-.lumii-vault-encounter[data-reduced-motion="true"] .vault-threshold *::before,
-.lumii-vault-encounter[data-reduced-motion="true"] .vault-threshold *::after {
-  animation-duration: 1ms !important;
-  animation-iteration-count: 1 !important;
-  transition-duration: 1ms !important;
+  .lumii-encounter-hud * { animation-duration: 1ms !important; animation-iteration-count: 1 !important; transition-duration: 1ms !important; }
 }
 
 .dev-lumii-encounter {
@@ -2807,17 +681,9 @@
   background: rgba(3, 6, 11, 0.96);
   box-shadow: 0 8px 30px rgba(0, 0, 0, 0.38);
 }
-.dev-lumii-encounter__phase-tabs {
-  display: flex;
-  min-width: 0;
-  gap: 4px;
-  overflow-x: auto;
-  scrollbar-width: none;
-}
+.dev-lumii-encounter__phase-tabs { display: flex; min-width: 0; gap: 4px; overflow-x: auto; scrollbar-width: none; }
 .dev-lumii-encounter__phase-tabs::-webkit-scrollbar,
-.dev-lumii-encounter__tools::-webkit-scrollbar {
-  display: none;
-}
+.dev-lumii-encounter__tools::-webkit-scrollbar { display: none; }
 .dev-lumii-encounter__phase-tabs button,
 .dev-lumii-encounter__tools button {
   min-height: 32px;
@@ -2833,26 +699,11 @@
   text-transform: uppercase;
 }
 .dev-lumii-encounter__phase-tabs button[data-active="true"],
-.dev-lumii-encounter__tools button[data-active="true"] {
-  border-color: rgba(228, 194, 102, 0.58);
-  background: rgba(228, 194, 102, 0.13);
-  color: #f0d984;
-}
-.dev-lumii-encounter__tools {
-  display: flex;
-  gap: 4px;
-}
-.dev-lumii-encounter__tools {
-  scrollbar-width: none;
-}
-.dev-lumii-encounter__tools button[aria-label] {
-  width: 34px;
-  padding: 0;
-}
-.dev-lumii-encounter__tools svg {
-  width: 15px;
-  height: 15px;
-}
+.dev-lumii-encounter__tools button[data-active="true"] { border-color: rgba(228, 194, 102, 0.58); background: rgba(228, 194, 102, 0.13); color: #f0d984; }
+.dev-lumii-encounter__tools { display: flex; gap: 4px; }
+.dev-lumii-encounter__tools { scrollbar-width: none; }
+.dev-lumii-encounter__tools button[aria-label] { width: 34px; padding: 0; }
+.dev-lumii-encounter__tools svg { width: 15px; height: 15px; }
 .dev-lumii-encounter__board {
   position: fixed;
   top: 68px;
@@ -2862,20 +713,9 @@
   overflow: hidden;
   border: 1px solid rgba(255, 255, 255, 0.1);
   border-radius: 6px;
-  background:
-    radial-gradient(
-      circle at 50% 48%,
-      rgba(92, 72, 130, 0.18),
-      transparent 36%
-    ),
-    rgba(3, 5, 12, 0.78);
+  background: radial-gradient(circle at 50% 48%, rgba(92, 72, 130, 0.18), transparent 36%), rgba(3, 5, 12, 0.78);
 }
-.dev-lumii-encounter__board[data-viewport="mobile"] {
-  left: 50%;
-  right: auto;
-  width: min(390px, calc(100vw - 20px));
-  transform: translateX(-50%);
-}
+.dev-lumii-encounter__board[data-viewport="mobile"] { left: 50%; right: auto; width: min(390px, calc(100vw - 20px)); transform: translateX(-50%); }
 .dev-lumii-encounter__board .lumii-encounter-hud {
   position: absolute;
   top: 6px;
@@ -2891,36 +731,12 @@
   grid-template-columns: repeat(4, minmax(0, 1fr));
   gap: 12px;
 }
-.dev-lumii-encounter__forge i {
-  aspect-ratio: 5 / 7;
-  border: 1px solid rgba(192, 210, 224, 0.18);
-  background: linear-gradient(
-    145deg,
-    rgba(80, 99, 121, 0.3),
-    rgba(8, 12, 19, 0.72)
-  );
-}
-.dev-lumii-encounter__well {
-  position: absolute;
-  left: 50%;
-  bottom: 10%;
-  width: 190px;
-  aspect-ratio: 1;
-  transform: translateX(-50%);
-  border: 1px solid rgba(227, 202, 119, 0.24);
-  border-radius: 50%;
-  box-shadow: inset 0 0 45px rgba(89, 119, 156, 0.16);
-}
+.dev-lumii-encounter__forge i { aspect-ratio: 5 / 7; border: 1px solid rgba(192, 210, 224, 0.18); background: linear-gradient(145deg, rgba(80, 99, 121, 0.3), rgba(8, 12, 19, 0.72)); }
+.dev-lumii-encounter__well { position: absolute; left: 50%; bottom: 10%; width: 190px; aspect-ratio: 1; transform: translateX(-50%); border: 1px solid rgba(227, 202, 119, 0.24); border-radius: 50%; box-shadow: inset 0 0 45px rgba(89, 119, 156, 0.16); }
 
 @media (max-width: 880px) {
-  .dev-lumii-encounter__controls {
-    grid-template-columns: 1fr;
-  }
-  .dev-lumii-encounter__tools {
-    justify-content: flex-end;
-    overflow-x: auto;
-  }
-  .dev-lumii-encounter__board {
-    top: 104px;
-  }
+  .dev-lumii-encounter__controls { grid-template-columns: 1fr; }
+  .dev-lumii-encounter__tools { justify-content: flex-end; overflow-x: auto; }
+  .lumii-vault-encounter[data-preview-viewport] { top: 104px !important; height: calc(100dvh - 116px) !important; }
+  .dev-lumii-encounter__board { top: 104px; }
 }

@@ -1,5 +1,5 @@
 import React from 'react';
-import { motion } from 'framer-motion';
+import { AnimatePresence, motion } from 'framer-motion';
 import { Eye } from 'lucide-react';
 import type { ArtifactCard, AffinityCounts } from '@workspace/api-client-react';
 import { AFFINITY_META, type AffinityKey } from '@/lib/affinityMeta';
@@ -10,7 +10,6 @@ import { getArtifactBrandTypes } from '@/lib/artifactBrands';
 import type { BoardForgeProps } from './game-board-forge';
 import { CARD_ART } from './game-constants';
 import { AvatarSeedMoldMark } from '@/components/AvatarSeedSymbol';
-import { ArtifactMoldCastingOverlay } from './game-mold-casting';
 
 interface ForgeCardSlotProps extends Pick<BoardForgeProps,
   'brandDelayMap' | 'burstGhostCards' | 'cardDetailDiscovered' | 'computeCosts' | 'costMode' |
@@ -131,7 +130,6 @@ export function ForgeCardSlot({
   tutorialStep,
 }: ForgeCardSlotProps) {
   const isHidden = hiddenSlots.has(slotKey);
-  const moldCastCue = refillingSlots.get(slotKey);
   const isAvatarSeedMold = state.avatarSeedMoldSlots?.includes(slotKey) ?? false;
   const avatarSeedMoldProps = {
     'data-avatar-seed-mold': isAvatarSeedMold ? 'true' : undefined,
@@ -414,7 +412,20 @@ export function ForgeCardSlot({
           compact
         />
         <CompactForgeCardReadout card={c} costs={effCosts} />
-        {moldCastCue && <ArtifactMoldCastingOverlay cue={moldCastCue} compact />}
+        <AnimatePresence>
+          {refillingSlots.has(slotKey) && (
+            <motion.div
+              key="refill"
+              className="pointer-events-none absolute inset-0 flex items-center justify-center rounded-xl"
+              style={{ fontSize: 18, color: '#4ade80', zIndex: 25 }}
+              initial={{ opacity: 0 }}
+              animate={{ opacity: [0, 1, 0.85, 0] }}
+              transition={{ duration: 0.7, ease: 'easeOut' }}
+            >
+              ↺
+            </motion.div>
+          )}
+        </AnimatePresence>
         {isPendingPlan && (
           <PendingActionOverlay
             label={plannedCardLabel}
@@ -483,7 +494,20 @@ export function ForgeCardSlot({
           suppressed={suppressedMarkerIds.has(c.id)}
           suppressedMarkerTypes={[...(suppressedBrandTypesByCardId.get(c.id) ?? [])]}
         />
-        {moldCastCue && <ArtifactMoldCastingOverlay cue={moldCastCue} />}
+        <AnimatePresence>
+          {refillingSlots.has(slotKey) && (
+            <motion.div
+              key="refill"
+              className="pointer-events-none absolute inset-0 flex items-center justify-center rounded-xl"
+              style={{ fontSize: 28, color: '#4ade80', zIndex: 25 }}
+              initial={{ opacity: 0, scale: 0.7 }}
+              animate={{ opacity: [0, 1, 0.85, 0], scale: [0.7, 1.1, 1.05, 0.9] }}
+              transition={{ duration: 0.7, ease: 'easeOut' }}
+            >
+              ↺
+            </motion.div>
+          )}
+        </AnimatePresence>
         <div
           className="pointer-events-none absolute bottom-1 right-1 flex items-center gap-0.5 rounded border border-white/10 bg-black/78 px-1 py-0.5 transition-opacity duration-500"
           style={{ opacity: cardDetailDiscovered ? 0 : 1 }}

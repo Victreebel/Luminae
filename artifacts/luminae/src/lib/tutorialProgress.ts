@@ -1,12 +1,19 @@
 import { apiUpdatePreferences } from "./cinematicPrefs";
-import { apiClaimArchitectRecordOnboarding } from "./accountSession";
-import { resolveTutorialBeatIndex } from "./tutorialData";
-import type { FirstContactStance } from "@workspace/game-types";
+import {
+  getLocalFirstContactStance,
+  rememberLocalFirstContactStance,
+} from "./firstContactMemory";
+import { recordProgressionOnce } from "./telemetry";
+import type { ArchitectFirstContactStance } from "@workspace/game-types";
 
 // Module-level token set by AccountContext alongside setPreferencesSyncToken.
 let _token: string | null = null;
 export function setTutorialToken(token: string | null): void {
   _token = token;
+  const stance = getLocalFirstContactStance();
+  if (token && stance) {
+    void apiUpdatePreferences(token, { firstContactStance: stance }).catch(() => undefined);
+  }
 }
 
 const PROGRESS_KEY = "luminae_tutorial_progress";
@@ -16,18 +23,20 @@ const STATE_KEY = "luminae_tutorial_state";
 const SEEN_KEY = "luminae_tutorial_seen";
 const COMPLETED_KEY = "luminae_tutorial_completed";
 const INTRO_SEEN_KEY = "luminae_intro_seen_beat";
-const STANCE_KEY = "luminae_first_contact_stance";
-export const TUTORIAL_CLAIM_KEY = "luminae_tutorial_completion_claim";
-
-interface PendingTutorialClaim {
-  claimId: string;
-  stance: FirstContactStance | null;
-}
 
 // Increment this whenever beat ordering or IDs change so that stale saved
 // progress (which may point at the wrong beat) is silently discarded.
-const TUTORIAL_SEQUENCE_VERSION = 10;
-const MIGRATABLE_SEQUENCE_VERSIONS = new Set([5, 6, 7, 8, 9, TUTORIAL_SEQUENCE_VERSION]);
+const TUTORIAL_SEQUENCE_VERSION = 12;
+
+export function recordFirstContactStance(
+  stance: ArchitectFirstContactStance,
+): ArchitectFirstContactStance {
+  const remembered = rememberLocalFirstContactStance(stance);
+  if (_token) {
+    void apiUpdatePreferences(_token, { firstContactStance: remembered }).catch(() => undefined);
+  }
+  return remembered;
+}
 
 export function markTutorialSeen(): void {
   try {
@@ -58,21 +67,9 @@ export function saveTutorialProgress(beat: number): void {
 export function loadTutorialProgress(): number | null {
   try {
     const ver = localStorage.getItem(PROGRESS_VERSION_KEY);
-    const version = ver === null ? null : parseInt(ver, 10);
-    if (version === null || !MIGRATABLE_SEQUENCE_VERSIONS.has(version)) {
+    if (ver === null || parseInt(ver, 10) !== TUTORIAL_SEQUENCE_VERSION) {
       clearTutorialProgress();
       return null;
-    }
-    if (version !== TUTORIAL_SEQUENCE_VERSION) {
-      const migratedBeat = resolveTutorialBeatIndex(localStorage.getItem(PROGRESS_ID_KEY));
-      if (migratedBeat === null) {
-        clearTutorialProgress();
-        return null;
-      }
-      localStorage.setItem(PROGRESS_KEY, String(migratedBeat));
-      localStorage.setItem(PROGRESS_VERSION_KEY, String(TUTORIAL_SEQUENCE_VERSION));
-      localStorage.removeItem(STATE_KEY);
-      return migratedBeat;
     }
     const v = localStorage.getItem(PROGRESS_KEY);
     if (v === null) return null;
@@ -127,68 +124,18 @@ export function clearTutorialProgress(): void {
   }
 }
 
-export function markTutorialComplete(
-  stance: FirstContactStance | null,
-  claimId: string,
-): void {
+export function markTutorialComplete(): void {
   try {
     localStorage.setItem(COMPLETED_KEY, "1");
-    localStorage.setItem(SEEN_KEY, "1");
-    if (stance) localStorage.setItem(STANCE_KEY, stance);
-    const pending: PendingTutorialClaim = { claimId, stance };
-    localStorage.setItem(TUTORIAL_CLAIM_KEY, JSON.stringify(pending));
   } catch {
   }
   if (_token) {
-    const token = _token;
-    void claimPendingTutorialCompletion(token)
-      .then(() => apiUpdatePreferences(token, { tutorialCompleted: true }))
-      .catch(() => undefined);
+    void apiUpdatePreferences(_token, {
+      tutorialCompleted: true,
+      firstContactStance: getLocalFirstContactStance() ?? undefined,
+    }).catch(() => undefined);
   }
-}
-
-export function getSavedFirstContactStance(): FirstContactStance | null {
-  try {
-    const value = localStorage.getItem(STANCE_KEY);
-    return value === "curious" || value === "guarded" || value === "resolute" ? value : null;
-  } catch {
-    return null;
-  }
-}
-
-export function hasPendingTutorialCompletion(): boolean {
-  try {
-    return localStorage.getItem(TUTORIAL_CLAIM_KEY) !== null;
-  } catch {
-    return false;
-  }
-}
-
-export async function claimPendingTutorialCompletion(token: string): Promise<boolean> {
-  let claim: PendingTutorialClaim | null = null;
-  try {
-    const raw = localStorage.getItem(TUTORIAL_CLAIM_KEY);
-    if (!raw) return false;
-    const parsed = JSON.parse(raw) as Partial<PendingTutorialClaim>;
-    const stance = parsed.stance;
-    if (
-      typeof parsed.claimId !== "string"
-      || (stance !== null && stance !== "curious" && stance !== "guarded" && stance !== "resolute")
-    ) return false;
-    claim = { claimId: parsed.claimId, stance };
-  } catch {
-    return false;
-  }
-  await apiClaimArchitectRecordOnboarding(token, claim);
-  try {
-    const current = localStorage.getItem(TUTORIAL_CLAIM_KEY);
-    if (current) {
-      const parsed = JSON.parse(current) as Partial<PendingTutorialClaim>;
-      if (parsed.claimId === claim.claimId) localStorage.removeItem(TUTORIAL_CLAIM_KEY);
-    }
-  } catch {
-  }
-  return true;
+  recordProgressionOnce("tutorial_completed");
 }
 
 export function hasTutorialBeenCompleted(): boolean {

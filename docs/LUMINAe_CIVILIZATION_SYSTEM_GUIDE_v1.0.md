@@ -8,9 +8,10 @@ It is meant as a practical design reference for implementation, docs, and playte
 Use this order:
 
 1. [LUMINAe_LORE_BIBLE_v1.0](./LUMINAe_LORE_BIBLE_v1.0.md)
-2. [LUMINAe_STORY_MODE_FRAMEWORK_v1.0](./LUMINAe_STORY_MODE_FRAMEWORK_v1.0.md)
-3. [LUMINAe_LORE_CONCORDANCE_LEDGER_v1.0](./LUMINAe_LORE_CONCORDANCE_LEDGER_v1.0.md)
-4. [LUMINAe_MECHANIC_TO_LORE_MAPPING_v1.0](./LUMINAe_MECHANIC_TO_LORE_MAPPING_v1.0.md)
+2. [LUMINAe_TECHNOLOGY_SYSTEM_v2.0](./LUMINAe_TECHNOLOGY_SYSTEM_v2.0.md)
+3. [LUMINAe_BLUEPRINT_FIRST_POOL_SPEC_v2.0](./LUMINAe_BLUEPRINT_FIRST_POOL_SPEC_v2.0.md)
+4. [LUMINAe_LORE_CONCORDANCE_LEDGER_v1.0](./LUMINAe_LORE_CONCORDANCE_LEDGER_v1.0.md)
+5. [LUMINAe_MECHANIC_TO_LORE_MAPPING_v1.0](./LUMINAe_MECHANIC_TO_LORE_MAPPING_v1.0.md)
 
 The guide below is synthesized from those documents and is for use as a single working doctrine.
 
@@ -34,6 +35,9 @@ The guide below is synthesized from those documents and is for use as a single w
   4. no universal omniscience
   5. no enforced morality
 - The shared Well and token actions are a normalized interface for real Domain addressability.
+- Affinity is finite addressability, not matter, energy, or fuel.
+- Harnessing stabilizes uncommitted possibilities. Ten is the interface holding
+  limit for unresolved alignments.
 
 ## 4) Civilization ontology
 
@@ -82,7 +86,18 @@ Rules:
   - acceleration to first operational mastery now
   - not removing a capability from everyone else
   - not deleting future discovery
-- Card removal means the current first-mastery window is closed and frontier has advanced.
+- Paid Affinity commits to compressed research, construction, coordination, and
+  adoption, then returns to its matching Well channel once the implementation
+  sustains itself.
+- The permanent bonus is civilization-local expertise, infrastructure, and
+  institutional capacity left by mastery.
+- Every Artifact class has a recognizable signature but locally different
+  embodiments. First mastery creates Domain-local signature interference that
+  closes the same class's acceleration window, often for centuries or the
+  observed epoch.
+- Signature interference never suppresses related technologies or an entire
+  lineage. Refill exposes the next reachable possibility; it does not transfer
+  intellectual ownership.
 - Civilizations can still discover/develop equivalent capability later, usually beyond observed epoch.
 - Permanent cost reductions/bonuses represent civilization-local durable infrastructure and institutions, not universal exclusive ownership.
 
@@ -90,9 +105,13 @@ Rules:
 
 - **Artifact** = a translated capability class with local embodiment-specific realization.
 - **Implementation** = specific operational instance in the match context.
-- **Damage** = temporary disablement; reversible by repair condition.
-- **Annihilate** = permanent loss of an implementation, not of underlying discovery.
-- **Burn** = closes an unmastered acceleration pathway for current epoch.
+- **Forge** = operational mastery plus same-class signature interference.
+- **Encrypt** = isolation of an uncommitted pathway; no mastery signature.
+- **Burn** = collapse of an unmastered pathway for the epoch; recurrence may restore it.
+- **Assimilate** = Final Hunger consumes the pathway into Affinity without a normal implementation.
+- **Damage** = temporary disablement; mastery and signature interference persist.
+- **Annihilate** = permanent loss of an implementation or near-complete pathway, not discovery; the class remains unavailable this epoch.
+- **Foundry seal** = archived mastery, removed bonus, unwound interference, and Cipher storage for re-Forge. These components do not consume ordinary Encrypt capacity.
 - **Nullify** = suppresses projected outcome/value, does not delete capability.
 - **Operational Reach** = observed scale capability demonstrated during the match (planetary/stellar/galactic context per doctrine)
 - **Kardashev Type** = separate historical metadata for long-term energy/infrastructure extent; never a single match trigger.
@@ -159,4 +178,3 @@ Those remain in balance/testing docs and implementation plans.
 - Use this as the canonical “civilization-system” reference during code/schema/tests.
 - When a mechanic appears to imply magical monopoly, retrocausality, mass agency theft, or moral physics, flag it as a lore-conflict.
 - Any future mechanic should pass through mechanic-to-lore mapping before production use.
-

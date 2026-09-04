@@ -1,0 +1,167 @@
+.tutorial-semantic-term {
+  --tutorial-term-color: rgba(235, 241, 255, 0.96);
+  --tutorial-term-glow: rgba(191, 219, 254, 0.72);
+  --tutorial-term-delay: 0ms;
+  position: relative;
+  display: inline-flex;
+  align-items: baseline;
+  color: var(--tutorial-term-color);
+  font-size: inherit;
+  font-weight: 650;
+  line-height: inherit;
+  letter-spacing: 0;
+  vertical-align: baseline;
+  white-space: nowrap;
+  text-shadow: 0 0 0.65em color-mix(in srgb, var(--tutorial-term-glow) 34%, transparent);
+  isolation: isolate;
+}
+
+.tutorial-semantic-term--mechanic {
+  --tutorial-term-color: #f8dda0;
+  --tutorial-term-glow: #efbd5f;
+  font-family: var(--app-font-serif);
+  font-weight: 700;
+}
+
+.tutorial-semantic-term--concept {
+  --tutorial-term-color: #d9e9f4;
+  --tutorial-term-glow: #8ec5e5;
+}
+
+.tutorial-semantic-term--field {
+  --tutorial-term-color: #d4c7ff;
+  --tutorial-term-glow: #9f87ff;
+  font-family: var(--app-font-serif);
+}
+
+.tutorial-semantic-term--system {
+  --tutorial-term-color: #c9dcff;
+  --tutorial-term-glow: #80aaff;
+  font-family: var(--app-font-mono);
+  font-weight: 650;
+}
+
+.tutorial-semantic-term--role {
+  --tutorial-term-color: #f1eaff;
+  --tutorial-term-glow: #cab9ff;
+  font-family: var(--app-font-serif);
+  font-weight: 700;
+}
+
+.tutorial-semantic-term--artifact {
+  font-family: var(--app-font-serif);
+  font-weight: 700;
+}
+
+.tutorial-semantic-term--score {
+  --tutorial-term-color: #f6cf76;
+  --tutorial-term-glow: #e8ad43;
+  font-family: var(--app-font-serif);
+  font-weight: 700;
+}
+
+.tutorial-semantic-term--value {
+  --tutorial-term-color: #f9e4ae;
+  --tutorial-term-glow: #efc76e;
+  font-variant-numeric: tabular-nums;
+  font-weight: 750;
+}
+
+.tutorial-semantic-term--encryption {
+  --tutorial-term-color: #d9caff;
+  --tutorial-term-glow: #9f75ff;
+  text-shadow:
+    0 0 0.55em color-mix(in srgb, var(--tutorial-term-glow) 55%, transparent),
+    0 0 1.15em color-mix(in srgb, var(--tutorial-term-glow) 24%, transparent);
+}
+
+.tutorial-semantic-term--singularity {
+  --tutorial-term-color: #f6f4ff;
+  --tutorial-term-glow: #c8c0ff;
+  text-shadow:
+    0 0 0.42em rgba(255, 255, 255, 0.72),
+    0 0 0.95em rgba(167, 139, 250, 0.42);
+}
+
+.tutorial-semantic-term__emblem {
+  display: inline-flex;
+  align-items: center;
+  margin-left: 0.14em;
+  transform: translateY(0.08em);
+}
+
+.tutorial-semantic-term[data-introduction="true"] {
+  transform-origin: center;
+  animation: tutorial-semantic-arrival 620ms cubic-bezier(0.16, 1, 0.3, 1) var(--tutorial-term-delay) both;
+}
+
+.tutorial-semantic-term[data-introduction="true"]::after {
+  position: absolute;
+  right: 0;
+  bottom: 0.02em;
+  left: 0;
+  z-index: -1;
+  height: 0.12em;
+  border-radius: 999px;
+  background: linear-gradient(90deg, transparent, var(--tutorial-term-glow), transparent);
+  content: "";
+  opacity: 0;
+  transform: scaleX(0);
+  transform-origin: center;
+  animation: tutorial-semantic-mark 720ms ease-out calc(var(--tutorial-term-delay) + 80ms) both;
+}
+
+.tutorial-semantic-term--value[data-introduction="true"] {
+  animation-name: tutorial-semantic-value;
+}
+
+.tutorial-semantic-term--encryption[data-introduction="true"] {
+  animation-duration: 760ms;
+  animation-name: tutorial-semantic-encryption;
+}
+
+.tutorial-semantic-term--singularity[data-introduction="true"] {
+  animation-duration: 820ms;
+  animation-name: tutorial-semantic-singularity;
+}
+
+@keyframes tutorial-semantic-arrival {
+  0% { opacity: 0.5; filter: brightness(0.82); transform: translateY(0.14em) scale(0.96); }
+  48% { opacity: 1; filter: brightness(1.42); transform: translateY(0) scale(1.025); }
+  100% { opacity: 1; filter: brightness(1); transform: translateY(0) scale(1); }
+}
+
+@keyframes tutorial-semantic-value {
+  0% { opacity: 0.45; filter: brightness(0.8); transform: scale(0.86); }
+  52% { opacity: 1; filter: brightness(1.55); transform: scale(1.075); }
+  100% { opacity: 1; filter: brightness(1); transform: scale(1); }
+}
+
+@keyframes tutorial-semantic-encryption {
+  0% { opacity: 0.28; filter: brightness(0.72); transform: translateY(0.12em) scaleX(0.92); }
+  44% { opacity: 1; filter: brightness(1.7); transform: translateY(0) scaleX(1.025); }
+  100% { opacity: 1; filter: brightness(1); transform: translateY(0) scaleX(1); }
+}
+
+@keyframes tutorial-semantic-singularity {
+  0% { opacity: 0.3; filter: brightness(0.7); transform: scale(0.88) rotate(-2deg); }
+  40% { opacity: 1; filter: brightness(1.85); transform: scale(1.08) rotate(1deg); }
+  100% { opacity: 1; filter: brightness(1); transform: scale(1) rotate(0); }
+}
+
+@keyframes tutorial-semantic-mark {
+  0% { opacity: 0; transform: scaleX(0); }
+  48% { opacity: 0.68; transform: scaleX(1); }
+  100% { opacity: 0.18; transform: scaleX(1); }
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .tutorial-semantic-term[data-introduction="true"],
+  .tutorial-semantic-term[data-introduction="true"]::after {
+    animation: none;
+  }
+
+  .tutorial-semantic-term[data-introduction="true"]::after {
+    display: none;
+  }
+}

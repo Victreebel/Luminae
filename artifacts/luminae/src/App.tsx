@@ -1,12 +1,12 @@
 import { Component, lazy, Suspense, type ReactNode } from "react";
-import { Redirect, Switch, Route, Router as WouterRouter } from "wouter";
+import { Switch, Route, Router as WouterRouter } from "wouter";
 import { QueryClient, QueryClientProvider } from "@tanstack/react-query";
 import { Toaster } from "@/components/ui/toaster";
 import { TooltipProvider } from "@/components/ui/tooltip";
 import NotFound from "@/pages/not-found";
 import Home from "@/pages/home";
 import { PwaUpdatePrompt } from "@/components/PwaUpdatePrompt";
-import { AccountProvider, useAccount } from "@/contexts/AccountContext";
+import { AccountProvider } from "@/contexts/AccountContext";
 import { CosmeticsProvider } from "@/contexts/CosmeticsContext";
 import {
   LuminaeWordmark,
@@ -21,11 +21,7 @@ const Game = lazy(() => import("@/pages/game"));
 const Dashboard = lazy(() => import("@/pages/dashboard"));
 const ResetPassword = lazy(() => import("@/pages/reset-password"));
 const Tutorial = lazy(() => import("@/pages/tutorial"));
-const ArchitectRecordContinuity = lazy(() =>
-  import("@/components/ArchitectRecordContinuity").then((module) => ({
-    default: module.ArchitectRecordContinuity,
-  })),
-);
+const Legal = lazy(() => import("@/pages/legal"));
 // Every development import sits behind a compile-time false branch in release
 // builds, so Vite omits both the route and its assets from production output.
 const FontPreview = import.meta.env.DEV ? lazy(() => import("@/pages/font-preview")) : null;
@@ -35,12 +31,18 @@ const DevAnimSandbox = import.meta.env.DEV ? lazy(() => import("@/pages/dev-anim
 const DevAntimatterCinematic = import.meta.env.DEV ? lazy(() => import("@/pages/dev-antimatter-cinematic")) : null;
 const DevAntimatterDetonation = import.meta.env.DEV ? lazy(() => import("@/pages/dev-antimatter-detonation")) : null;
 const DevBlueprintCard = import.meta.env.DEV ? lazy(() => import("@/pages/dev-blueprint-card")) : null;
+const DevBlueprintPresentation = import.meta.env.DEV ? lazy(() => import("@/pages/dev-blueprint-presentation")) : null;
+const DevFoundryStorage = import.meta.env.DEV ? lazy(() => import("@/pages/dev-foundry-storage")) : null;
 const DevBlueprintVault = import.meta.env.DEV ? lazy(() => import("@/pages/dev-blueprint-vault")) : null;
 const DevLumiiVaultEncounter = import.meta.env.DEV ? lazy(() => import("@/pages/dev-lumii-vault-encounter")) : null;
-const DevBalanceLab = import.meta.env.DEV ? lazy(() => import("@/pages/dev-balance-lab")) : null;
-const BalanceLabOverlay = import.meta.env.DEV ? lazy(() =>
-  import("@/components/BalanceLabOverlay").then((module) => ({ default: module.BalanceLabOverlay }))
-) : null;
+const DevCivilizationScene = import.meta.env.DEV ? lazy(() => import("@/pages/dev-civilization-scene")) : null;
+const DevTraceChronicle = import.meta.env.DEV ? lazy(() => import("@/pages/dev-trace-chronicle")) : null;
+const DevRecurrenceChronicle = import.meta.env.DEV ? lazy(() => import("@/pages/dev-recurrence-chronicle")) : null;
+const DevTriangulationChronicle = import.meta.env.DEV ? lazy(() => import("@/pages/dev-triangulation-chronicle")) : null;
+const DevReleaseJourney = import.meta.env.DEV ? lazy(() => import("@/pages/dev-release-journey")) : null;
+const DevUxReviewBridge = import.meta.env.DEV
+  ? lazy(() => import("@/components/dev/DevUxReviewBridge"))
+  : null;
 
 function RouteLoading() {
   return (
@@ -112,28 +114,6 @@ class ErrorBoundary extends Component<
 
 const queryClient = new QueryClient();
 
-function AuthenticatedArchitectRecordContinuity() {
-  const { account, isLoading } = useAccount();
-  if (isLoading || !account) return null;
-
-  return (
-    <Suspense fallback={null}>
-      <ArchitectRecordContinuity />
-    </Suspense>
-  );
-}
-
-function TutorialAwareGameRoute() {
-  const params = new URLSearchParams(window.location.search);
-  if (params.get("tutorial") === "1") {
-    return <Redirect to="/tutorial" replace />;
-  }
-  const balanceCandidate = params.get("balanceLab");
-  const balanceFormat = params.get("balanceFormat") ?? "standard";
-  const balancePlayers = Number(params.get("balancePlayers")) || null;
-  return <>{BalanceLabOverlay && balanceCandidate ? <BalanceLabOverlay candidateId={balanceCandidate} format={balanceFormat} playerCount={balancePlayers} /> : null}<Game /></>;
-}
-
 function Router() {
   return (
     <Suspense fallback={<RouteLoading />}>
@@ -144,8 +124,9 @@ function Router() {
         <Route path="/dashboard/archive" component={Dashboard} />
         <Route path="/dashboard" component={Dashboard} />
         <Route path="/reset-password" component={ResetPassword} />
+        <Route path="/legal/:section" component={Legal} />
         <Route path="/lobby/:roomId" component={Lobby} />
-        <Route path="/game/:roomId" component={TutorialAwareGameRoute} />
+        <Route path="/game/:roomId" component={Game} />
         {FontPreview && <Route path="/dev/font-preview" component={FontPreview} />}
         {DevCardBacks && <Route path="/dev/card-backs/:tier" component={DevCardBacks} />}
         {DevCardBrowser && <Route path="/dev/card-browser" component={DevCardBrowser} />}
@@ -157,11 +138,29 @@ function Router() {
           <Route path="/dev/antimatter-detonation" component={DevAntimatterDetonation} />
         )}
         {DevBlueprintCard && <Route path="/dev/blueprint-card" component={DevBlueprintCard} />}
+        {DevBlueprintPresentation && (
+          <Route path="/dev/blueprint-presentation" component={DevBlueprintPresentation} />
+        )}
+        {DevFoundryStorage && <Route path="/dev/foundry-storage" component={DevFoundryStorage} />}
         {DevBlueprintVault && <Route path="/dev/blueprint-vault" component={DevBlueprintVault} />}
         {DevLumiiVaultEncounter && (
           <Route path="/dev/lumii-vault-encounter" component={DevLumiiVaultEncounter} />
         )}
-        {DevBalanceLab && <Route path="/dev/balance-lab" component={DevBalanceLab} />}
+        {DevCivilizationScene && (
+          <Route path="/dev/civilization-scene" component={DevCivilizationScene} />
+        )}
+        {DevTraceChronicle && (
+          <Route path="/dev/trace-chronicle" component={DevTraceChronicle} />
+        )}
+        {DevRecurrenceChronicle && (
+          <Route path="/dev/recurrence-chronicle" component={DevRecurrenceChronicle} />
+        )}
+        {DevTriangulationChronicle && (
+          <Route path="/dev/triangulation-chronicle" component={DevTriangulationChronicle} />
+        )}
+        {DevReleaseJourney && (
+          <Route path="/dev/release-journey" component={DevReleaseJourney} />
+        )}
         <Route component={NotFound} />
       </Switch>
     </Suspense>
@@ -181,8 +180,12 @@ function App() {
               <WouterRouter base={import.meta.env.BASE_URL.replace(/\/$/, "")}>
                 <div className="dark min-h-[100dvh] bg-background text-foreground">
                   <Router />
-                  <AuthenticatedArchitectRecordContinuity />
                 </div>
+                {DevUxReviewBridge && (
+                  <Suspense fallback={null}>
+                    <DevUxReviewBridge />
+                  </Suspense>
+                )}
               </WouterRouter>
               <Toaster />
               {!isDesktopShell && <PwaUpdatePrompt />}

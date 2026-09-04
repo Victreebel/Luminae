@@ -10,7 +10,6 @@ export function useScrollLock(
   useEffect(() => {
     if (!isAnyOpen) return;
 
-    const main = mainScrollRef.current;
     lockedScrollYRef.current = window.scrollY;
     document.body.style.position = 'fixed';
     document.body.style.top = `-${lockedScrollYRef.current}px`;
@@ -26,6 +25,7 @@ export function useScrollLock(
       document.body.style.overflow = '';
       window.scrollTo({ top: lockedScrollYRef.current, behavior: 'auto' });
 
+      const main = mainScrollRef.current;
       if (main) {
         requestAnimationFrame(() => {
           const active = document.activeElement;
