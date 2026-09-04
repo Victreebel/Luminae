@@ -238,25 +238,32 @@ describe('opening tutorial choices', () => {
     expect(TUTORIAL_BEATS[state.beat].id).toBe('b3c_border');
   });
 
-  it('places the three remembered stances after Lumii offers to light the way', () => {
+  it('offers a clear invitation and a polite refusal after establishing the border', () => {
     const borderBeat = TUTORIAL_BEATS[BEAT_INDEX.b3c_border];
     expect(borderBeat.dialogue).toEqual([
       { text: "Almost. You've been wandering along the border." },
-      { text: 'I can light your way.' },
+      { text: 'But it seems you do not yet possess the tools to use the interface.' },
+      { text: 'Perhaps I can help.' },
     ]);
     expect(borderBeat.choices).toEqual([
-      { label: 'Show me what lies beyond.', value: 'curious' },
-      { label: "I'll follow, but I want answers.", value: 'guarded' },
-      { label: "Then let's build.", value: 'resolute' },
+      { label: 'Show me.', value: 'go' },
+      { label: 'Umm... no, thanks.', value: 'home' },
     ]);
 
-    for (const choice of ['curious', 'guarded', 'resolute'] as const) {
-      const state = tutorialReducer(
-        { ...INIT_STATE, beat: BEAT_INDEX.b3c_border },
-        { type: 'BRANCH_CHOICE', choice },
-      );
-      expect(TUTORIAL_BEATS[state.beat].id).toBe('b4_shatter');
-    }
+    const accepted = tutorialReducer(
+      { ...INIT_STATE, beat: BEAT_INDEX.b3c_border },
+      { type: 'BRANCH_CHOICE', choice: 'go' },
+    );
+    expect(TUTORIAL_BEATS[accepted.beat].id).toBe('b4_shatter');
+
+    let declined = tutorialReducer(
+      { ...INIT_STATE, beat: BEAT_INDEX.b3c_border },
+      { type: 'BRANCH_CHOICE', choice: 'home' },
+    );
+    expect(TUTORIAL_BEATS[declined.beat].id).toBe('b3b_farewell');
+    expect(TUTORIAL_BEATS[declined.beat].dialogue[0].text).toBe('Very well. May we meet again.');
+    declined = tutorialReducer(declined, { type: 'NEXT_DLG' });
+    expect(declined.navigateTo).toBe('/');
   });
 
   it('keeps superseded exposition out of the restored Architect exchange', () => {

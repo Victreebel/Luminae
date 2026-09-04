@@ -361,13 +361,13 @@ export const TUTORIAL_BEATS: TutorialBeat[] = [
     lumiiZone: "center",
     dialogue: [
       { text: "Almost. You've been wandering along the border." },
-      { text: "I can light your way." },
+      { text: "But it seems you do not yet possess the tools to use the interface." },
+      { text: "Perhaps I can help." },
     ],
     completion: { type: "dialogue" },
     choices: [
-      { label: "Show me what lies beyond.", value: "curious" },
-      { label: "I'll follow, but I want answers.", value: "guarded" },
-      { label: "Then let's build.", value: "resolute" },
+      { label: "Show me.", value: "go" },
+      { label: "Umm... no, thanks.", value: "home" },
     ],
   },
   {
