@@ -214,7 +214,7 @@ describe('phase-routing invariant — beat 0 is always cinematic', () => {
 });
 
 describe('opening tutorial choices', () => {
-  it('introduces Lumii, establishes the boundary, and asks how the player approaches it', () => {
+  it('restores Lumii\'s original Architect exchange before asking how the player proceeds', () => {
     expect(TUTORIAL_BEATS[BEAT_INDEX.b2_lumii_intro]).toMatchObject({
       dialogue: [
         { text: 'There you are.' },
@@ -226,54 +226,37 @@ describe('opening tutorial choices', () => {
     });
     expect(TUTORIAL_BEATS[BEAT_INDEX.b3_architect]).toMatchObject({
       dialogue: [
-        { text: 'In my universe, an Architect is someone outside it who can make possibilities easier for civilizations to reach.' },
-        { text: 'You are still outside my universe.' },
-        { text: 'LUMINAe is how we can perceive one another.' },
+        { text: 'In my Universe, that is what we call those who have the power to shape cosmic society.' },
+        { text: 'They determine what my people reach for, and what we become.' },
       ],
-      choices: [
-        { label: 'What can I discover from here?', value: 'curious' },
-        { label: 'What can LUMINAe see of me?', value: 'guarded' },
-        { label: 'Show me where I can act.', value: 'resolute' },
-      ],
+      playerResponse: "So I'm in your universe now?",
+      nextBeatId: 'b3c_border',
     });
 
-    for (const [choice, responseId] of [
-      ['curious', 'b3a_stance_curious'],
-      ['guarded', 'b3a_stance_guarded'],
-      ['resolute', 'b3a_stance_resolute'],
-    ] as const) {
-      let state = tutorialReducer(
-        { ...INIT_STATE, beat: BEAT_INDEX.b3_architect },
-        { type: 'BRANCH_CHOICE', choice },
-      );
-      expect(TUTORIAL_BEATS[state.beat].id).toBe(responseId);
-      while (state.dlgLine < TUTORIAL_BEATS[state.beat].dialogue.length - 1) {
-        state = tutorialReducer(state, { type: 'NEXT_DLG' });
-      }
-      state = tutorialReducer(state, { type: 'NEXT_DLG' });
-      expect(TUTORIAL_BEATS[state.beat].id).toBe('b3c_border');
-    }
+    let state = { ...INIT_STATE, beat: BEAT_INDEX.b3_architect, dlgLine: 1 };
+    state = tutorialReducer(state, { type: 'PLAYER_RESPONSE' });
+    expect(TUTORIAL_BEATS[state.beat].id).toBe('b3c_border');
   });
 
-  it('offers a polite refusal that plays the farewell and returns home', () => {
+  it('places the three remembered stances after Lumii offers to light the way', () => {
     const borderBeat = TUTORIAL_BEATS[BEAT_INDEX.b3c_border];
     expect(borderBeat.dialogue).toEqual([
-      { text: "You've been wandering along the border." },
-      { text: 'But it seems you do not yet possess the tools to use the interface.' },
-      { text: 'Perhaps I can help.' },
+      { text: "Almost. You've been wandering along the border." },
+      { text: 'I can light your way.' },
     ]);
     expect(borderBeat.choices).toEqual([
-      { label: 'Show me.', value: 'go' },
-      { label: 'Umm... no, thanks.', value: 'home' },
+      { label: 'Show me what lies beyond.', value: 'curious' },
+      { label: "I'll follow, but I want answers.", value: 'guarded' },
+      { label: "Then let's build.", value: 'resolute' },
     ]);
 
-    let state = { ...INIT_STATE, beat: BEAT_INDEX.b3c_border };
-    state = tutorialReducer(state, { type: 'BRANCH_CHOICE', choice: 'home' });
-    expect(TUTORIAL_BEATS[state.beat].id).toBe('b3b_farewell');
-    expect(TUTORIAL_BEATS[state.beat].dialogue[0].text).toContain('May we meet again.');
-
-    state = tutorialReducer(state, { type: 'NEXT_DLG' });
-    expect(state.navigateTo).toBe('/');
+    for (const choice of ['curious', 'guarded', 'resolute'] as const) {
+      const state = tutorialReducer(
+        { ...INIT_STATE, beat: BEAT_INDEX.b3c_border },
+        { type: 'BRANCH_CHOICE', choice },
+      );
+      expect(TUTORIAL_BEATS[state.beat].id).toBe('b4_shatter');
+    }
   });
 
   it('keeps superseded exposition out of the restored Architect exchange', () => {
@@ -388,8 +371,8 @@ describe('opening tutorial choices', () => {
 
     expect(preActionDialogue).toContain("You've been wandering along the border.");
     expect(preActionDialogue).toContain("We'll begin with a simulation.");
-    expect(preActionDialogue).toContain('You are still outside my universe.');
-    expect(preActionDialogue).toContain('make possibilities easier for civilizations to reach');
+    expect(preActionDialogue).toContain('power to shape cosmic society');
+    expect(preActionDialogue).toContain('what my people reach for, and what we become');
   });
 });
 

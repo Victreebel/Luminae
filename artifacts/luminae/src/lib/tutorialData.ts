@@ -316,16 +316,12 @@ export const TUTORIAL_BEATS: TutorialBeat[] = [
     mode: "listen",
     lumiiZone: "center",
     dialogue: [
-      { text: "In my universe, an Architect is someone outside it who can make possibilities easier for civilizations to reach." },
-      { text: "You are still outside my universe." },
-      { text: "LUMINAe is how we can perceive one another." },
+      { text: "In my Universe, that is what we call those who have the power to shape cosmic society." },
+      { text: "They determine what my people reach for, and what we become." },
     ],
     completion: { type: "dialogue" },
-    choices: [
-      { label: "What can I discover from here?", value: "curious" },
-      { label: "What can LUMINAe see of me?", value: "guarded" },
-      { label: "Show me where I can act.", value: "resolute" },
-    ],
+    playerResponse: "So I'm in your universe now?",
+    nextBeatId: "b3c_border",
   },
   {
     id: "b3a_stance_curious",
@@ -364,14 +360,14 @@ export const TUTORIAL_BEATS: TutorialBeat[] = [
     mode: "listen",
     lumiiZone: "center",
     dialogue: [
-      { text: "You've been wandering along the border." },
-      { text: "But it seems you do not yet possess the tools to use the interface." },
-      { text: "Perhaps I can help." },
+      { text: "Almost. You've been wandering along the border." },
+      { text: "I can light your way." },
     ],
     completion: { type: "dialogue" },
     choices: [
-      { label: "Show me.", value: "go" },
-      { label: "Umm... no, thanks.", value: "home" },
+      { label: "Show me what lies beyond.", value: "curious" },
+      { label: "I'll follow, but I want answers.", value: "guarded" },
+      { label: "Then let's build.", value: "resolute" },
     ],
   },
   {

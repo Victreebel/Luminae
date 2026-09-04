@@ -505,6 +505,13 @@ export function tutorialReducer(s: TutState, a: TAction): TutState {
       }
 
       if (beat.id === "b3c_border") {
+        if (
+          a.choice === "curious" ||
+          a.choice === "guarded" ||
+          a.choice === "resolute"
+        ) {
+          return { ...s, beat: BEAT_INDEX.b4_shatter, dlgLine: 0, subStep: 0, nudge: null };
+        }
         if (a.choice !== "go" && a.choice !== "home") return s;
         const targetId = a.choice === "home" ? "b3b_farewell" : "b4_shatter";
         const targetIndex = TUTORIAL_BEATS.findIndex(candidate => candidate.id === targetId);
