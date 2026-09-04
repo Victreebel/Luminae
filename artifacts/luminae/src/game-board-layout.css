@@ -2,16 +2,16 @@
    Component skin and animation remain in index.css; this file owns viewport
    allocation so the Forge and Affinity Well cannot override one another. */
 
-.game-shell[data-board-presentation] {
+.game-live[data-board-presentation] {
   --artifact-card-aspect: 0.7;
 }
 
-.game-shell[data-board-presentation] .forge-foundry-mold {
+.game-live[data-board-presentation] .forge-foundry-mold {
   aspect-ratio: var(--artifact-card-aspect) !important;
 }
 
 @media (max-width: 600px) and (orientation: portrait) {
-  .game-shell[data-board-presentation][data-board-viewport="phone-portrait"][data-forge-density="compact"] {
+  .game-live[data-board-presentation][data-board-viewport="phone-portrait"][data-forge-density="compact"] {
     --phone-header-h: 48px;
     --phone-nav-h: max(52px, calc(46px + env(safe-area-inset-bottom, 0px)));
     --phone-well-h: clamp(142px, 26.5dvh, 224px);
@@ -56,14 +56,14 @@
     overflow: hidden !important;
   }
 
-  .game-shell[data-board-viewport="phone-portrait"] > .game-header {
+  .game-live[data-board-viewport="phone-portrait"] > .game-header {
     grid-area: header !important;
     width: 100% !important;
     height: var(--phone-header-h) !important;
     min-height: var(--phone-header-h) !important;
   }
 
-  .game-shell[data-board-viewport="phone-portrait"] > .game-main[data-active-tab="board"] {
+  .game-live[data-board-viewport="phone-portrait"] > .game-main[data-active-tab="board"] {
     grid-area: main !important;
     display: block !important;
     width: 100% !important;
@@ -75,7 +75,7 @@
     overscroll-behavior-y: contain;
   }
 
-  .game-shell[data-board-viewport="phone-portrait"] > .game-main[data-active-tab="board"] .board-tab-main {
+  .game-live[data-board-viewport="phone-portrait"] > .game-main[data-active-tab="board"] .board-tab-main {
     display: flex !important;
     flex-direction: column !important;
     width: 100% !important;
@@ -87,7 +87,7 @@
     overflow: hidden !important;
   }
 
-  #root .game-shell[data-board-viewport="phone-portrait"] .board-forge.board-forge--compact {
+  #root .game-live[data-board-viewport="phone-portrait"] .board-forge.board-forge--compact {
     --forge-chip-w: var(--canonical-forge-chip-w) !important;
     --forge-chip-h: var(--canonical-forge-chip-h) !important;
     order: 1 !important;
@@ -102,7 +102,7 @@
     border-radius: 0 !important;
   }
 
-  #root .game-shell[data-board-viewport="phone-portrait"] .board-forge--compact .board-forge-header {
+  #root .game-live[data-board-viewport="phone-portrait"] .board-forge--compact .board-forge-header {
     display: flex !important;
     width: 100% !important;
     height: var(--forge-header-h) !important;
@@ -112,7 +112,7 @@
     overflow: hidden !important;
   }
 
-  #root .game-shell[data-board-viewport="phone-portrait"] .board-forge--compact .board-forge-controls {
+  #root .game-live[data-board-viewport="phone-portrait"] .board-forge--compact .board-forge-controls {
     display: flex !important;
     width: 100% !important;
     height: var(--forge-controls-h) !important;
@@ -123,11 +123,11 @@
     overflow: hidden !important;
   }
 
-  #root .game-shell[data-board-viewport="phone-portrait"] .board-forge--compact .board-forge-controls button {
+  #root .game-live[data-board-viewport="phone-portrait"] .board-forge--compact .board-forge-controls button {
     min-height: 40px !important;
   }
 
-  #root .game-shell[data-board-viewport="phone-portrait"] .board-forge--compact [data-forge-tiers="true"] {
+  #root .game-live[data-board-viewport="phone-portrait"] .board-forge--compact [data-forge-tiers="true"] {
     display: grid !important;
     grid-template-columns: minmax(0, 1fr) !important;
     grid-template-rows: repeat(3, var(--forge-shelf-h)) !important;
@@ -141,7 +141,7 @@
     box-sizing: border-box !important;
   }
 
-  #root .game-shell[data-board-viewport="phone-portrait"] .board-forge--compact .board-forge-shelf {
+  #root .game-live[data-board-viewport="phone-portrait"] .board-forge--compact .board-forge-shelf {
     display: grid !important;
     grid-template-columns: minmax(0, 1fr) !important;
     grid-template-rows: var(--forge-tier-label-h) var(--forge-chip-h) !important;
@@ -154,7 +154,7 @@
     box-sizing: border-box !important;
   }
 
-  #root .game-shell[data-board-viewport="phone-portrait"] .board-forge--compact .board-forge-tier-header {
+  #root .game-live[data-board-viewport="phone-portrait"] .board-forge--compact .board-forge-tier-header {
     display: flex !important;
     width: 100% !important;
     height: var(--forge-tier-label-h) !important;
@@ -164,7 +164,7 @@
     overflow: hidden !important;
   }
 
-  #root .game-shell[data-board-viewport="phone-portrait"] .board-forge--compact .board-forge-shelf-content {
+  #root .game-live[data-board-viewport="phone-portrait"] .board-forge--compact .board-forge-shelf-content {
     --forge-archive-rail-width: clamp(44px, 13vw, 52px);
     display: grid !important;
     grid-template-columns: minmax(0, 1fr) var(--forge-archive-rail-width) !important;
@@ -176,7 +176,7 @@
     overflow: hidden !important;
   }
 
-  #root .game-shell[data-board-viewport="phone-portrait"] .board-forge--compact .board-forge-card-row {
+  #root .game-live[data-board-viewport="phone-portrait"] .board-forge--compact .board-forge-card-row {
     display: grid !important;
     grid-template-columns: repeat(4, var(--forge-chip-w)) !important;
     grid-template-rows: var(--forge-chip-h) !important;
@@ -192,8 +192,8 @@
     overflow: hidden !important;
   }
 
-  #root .game-shell[data-board-viewport="phone-portrait"] .board-forge--compact .forge-foundry-mold,
-  #root .game-shell[data-board-viewport="phone-portrait"] .board-forge--compact .board-forge-compact-chip {
+  #root .game-live[data-board-viewport="phone-portrait"] .board-forge--compact .forge-foundry-mold,
+  #root .game-live[data-board-viewport="phone-portrait"] .board-forge--compact .board-forge-compact-chip {
     --card-w: 100%;
     --card-h: 100%;
     --forge-compact-card-scale: 1;
@@ -206,7 +206,7 @@
     aspect-ratio: var(--artifact-card-aspect) !important;
   }
 
-  #root .game-shell[data-board-viewport="phone-portrait"] .board-forge--compact .board-forge-archive-rail {
+  #root .game-live[data-board-viewport="phone-portrait"] .board-forge--compact .board-forge-archive-rail {
     display: flex !important;
     align-items: center !important;
     justify-content: center !important;
@@ -216,8 +216,8 @@
     padding: 0 !important;
   }
 
-  #root .game-shell[data-board-viewport="phone-portrait"] .board-forge--compact .board-forge-compact-deck,
-  #root .game-shell[data-board-viewport="phone-portrait"] .board-forge--compact .board-forge-compact-deck > div:first-child {
+  #root .game-live[data-board-viewport="phone-portrait"] .board-forge--compact .board-forge-compact-deck,
+  #root .game-live[data-board-viewport="phone-portrait"] .board-forge--compact .board-forge-compact-deck > div:first-child {
     width: var(--forge-archive-rail-width) !important;
     height: calc(var(--forge-archive-rail-width) / var(--artifact-card-aspect)) !important;
     min-width: var(--forge-archive-rail-width) !important;
@@ -226,7 +226,7 @@
     aspect-ratio: var(--artifact-card-aspect) !important;
   }
 
-  #root .game-shell[data-board-viewport="phone-portrait"] .board-terminus {
+  #root .game-live[data-board-viewport="phone-portrait"] .board-terminus {
     order: 2 !important;
     flex: 0 0 34px !important;
     width: 100% !important;
@@ -238,37 +238,37 @@
     border-radius: 0 !important;
   }
 
-  #root .game-shell[data-board-viewport="phone-portrait"] .board-terminus-header {
+  #root .game-live[data-board-viewport="phone-portrait"] .board-terminus-header {
     height: 34px !important;
     min-height: 34px !important;
     padding: 2px 8px !important;
   }
 
-  #root .game-shell[data-board-viewport="phone-portrait"] .board-terminus-title > div > span:first-child,
-  #root .game-shell[data-board-viewport="phone-portrait"] .board-terminus-subtitle {
+  #root .game-live[data-board-viewport="phone-portrait"] .board-terminus-title > div > span:first-child,
+  #root .game-live[data-board-viewport="phone-portrait"] .board-terminus-subtitle {
     display: none !important;
   }
 
-  #root .game-shell[data-board-viewport="phone-portrait"] .board-terminus-title > div > span:nth-child(2) {
+  #root .game-live[data-board-viewport="phone-portrait"] .board-terminus-title > div > span:nth-child(2) {
     font-size: 12px !important;
     line-height: 1 !important;
   }
 
-  #root .game-shell[data-board-viewport="phone-portrait"] .board-terminus-title > svg {
+  #root .game-live[data-board-viewport="phone-portrait"] .board-terminus-title > svg {
     width: 7px !important;
     height: 13px !important;
   }
 
-  #root .game-shell[data-board-viewport="phone-portrait"] .board-terminus-cards,
-  #root .game-shell[data-board-viewport="phone-portrait"] .board-terminus::before {
+  #root .game-live[data-board-viewport="phone-portrait"] .board-terminus-cards,
+  #root .game-live[data-board-viewport="phone-portrait"] .board-terminus::before {
     display: none !important;
   }
 
-  #root .game-shell[data-board-viewport="phone-portrait"] .board-opponents {
+  #root .game-live[data-board-viewport="phone-portrait"] .board-opponents {
     display: none !important;
   }
 
-  #root .game-shell[data-board-viewport="phone-portrait"] > .affinity-well-panel[data-shared-affinity-well] {
+  #root .game-live[data-board-viewport="phone-portrait"] > .affinity-well-panel[data-shared-affinity-well] {
     --well-cell-pad: 2px 1px;
     --well-cell-gap: 1px;
     --well-icon-size: 24px;
@@ -294,7 +294,7 @@
     box-sizing: border-box !important;
   }
 
-  #root .game-shell[data-board-viewport="phone-portrait"] > .affinity-well-panel .affinity-well-header {
+  #root .game-live[data-board-viewport="phone-portrait"] > .affinity-well-panel .affinity-well-header {
     display: grid !important;
     grid-template-columns: minmax(112px, 1fr) minmax(0, auto) 68px !important;
     grid-template-areas: "title player status" !important;
@@ -308,22 +308,22 @@
     overflow: hidden !important;
   }
 
-  #root .game-shell[data-board-viewport="phone-portrait"] > .affinity-well-panel .affinity-well-dock-toggle,
-  #root .game-shell[data-board-viewport="phone-portrait"] > .affinity-well-panel .affinity-well-compact-strip {
+  #root .game-live[data-board-viewport="phone-portrait"] > .affinity-well-panel .affinity-well-dock-toggle,
+  #root .game-live[data-board-viewport="phone-portrait"] > .affinity-well-panel .affinity-well-compact-strip {
     display: none !important;
   }
 
-  #root .game-shell[data-board-viewport="phone-portrait"] > .affinity-well-panel .affinity-well-eminence {
+  #root .game-live[data-board-viewport="phone-portrait"] > .affinity-well-panel .affinity-well-eminence {
     width: 68px !important;
     min-width: 68px !important;
     height: 34px !important;
     min-height: 34px !important;
   }
 
-  #root .game-shell[data-board-viewport="phone-portrait"] > .affinity-well-panel .affinity-well-cells,
-  #root .game-shell[data-board-viewport="phone-portrait"] > .affinity-well-panel .affinity-well-cells > div,
-  #root .game-shell[data-board-viewport="phone-portrait"] > .affinity-well-panel .affinity-well-cells > div > div,
-  #root .game-shell[data-board-viewport="phone-portrait"] > .affinity-well-panel .affinity-well-cells [data-well-carousel] {
+  #root .game-live[data-board-viewport="phone-portrait"] > .affinity-well-panel .affinity-well-cells,
+  #root .game-live[data-board-viewport="phone-portrait"] > .affinity-well-panel .affinity-well-cells > div,
+  #root .game-live[data-board-viewport="phone-portrait"] > .affinity-well-panel .affinity-well-cells > div > div,
+  #root .game-live[data-board-viewport="phone-portrait"] > .affinity-well-panel .affinity-well-cells [data-well-carousel] {
     display: block !important;
     width: 100% !important;
     min-width: 0 !important;
@@ -333,7 +333,7 @@
     overflow: hidden !important;
   }
 
-  #root .game-shell[data-board-viewport="phone-portrait"] > .affinity-well-panel .affinity-well-cells [data-well-carousel] > div {
+  #root .game-live[data-board-viewport="phone-portrait"] > .affinity-well-panel .affinity-well-cells [data-well-carousel] > div {
     display: grid !important;
     grid-template-columns: repeat(6, minmax(0, 1fr)) !important;
     grid-template-rows: minmax(0, 1fr) !important;
@@ -346,7 +346,7 @@
     box-sizing: border-box !important;
   }
 
-  #root .game-shell[data-board-viewport="phone-portrait"] > .affinity-well-panel .affinity-well-cell {
+  #root .game-live[data-board-viewport="phone-portrait"] > .affinity-well-panel .affinity-well-cell {
     position: relative !important;
     display: flex !important;
     width: 100% !important;
@@ -356,8 +356,8 @@
     gap: 0 !important;
   }
 
-  #root .game-shell[data-board-viewport="phone-portrait"] > .affinity-well-panel .affinity-well-cell[data-affinity] .affinity-well-cell-button,
-  #root .game-shell[data-board-viewport="phone-portrait"] > .affinity-well-panel .affinity-well-cell[data-affinity="singularity"] .affinity-well-cell-button[data-well-cell-style="instrument"] {
+  #root .game-live[data-board-viewport="phone-portrait"] > .affinity-well-panel .affinity-well-cell[data-affinity] .affinity-well-cell-button,
+  #root .game-live[data-board-viewport="phone-portrait"] > .affinity-well-panel .affinity-well-cell[data-affinity="singularity"] .affinity-well-cell-button[data-well-cell-style="instrument"] {
     width: 100% !important;
     min-width: 0 !important;
     height: calc(100% - var(--well-take2-h)) !important;
@@ -368,12 +368,12 @@
     border-radius: 6px 6px 0 0 !important;
   }
 
-  #root .game-shell[data-board-viewport="phone-portrait"] > .affinity-well-panel .affinity-well-cell .affinity-well-cell-button[data-well-cell-style="instrument"] {
+  #root .game-live[data-board-viewport="phone-portrait"] > .affinity-well-panel .affinity-well-cell .affinity-well-cell-button[data-well-cell-style="instrument"] {
     grid-template-rows: minmax(22px, 1fr) 15px 8px !important;
     row-gap: 1px !important;
   }
 
-  #root .game-shell[data-board-viewport="phone-portrait"] > .affinity-well-panel .affinity-well-take2 {
+  #root .game-live[data-board-viewport="phone-portrait"] > .affinity-well-panel .affinity-well-take2 {
     position: static !important;
     inset: auto !important;
     display: flex !important;
@@ -390,11 +390,11 @@
     font-size: 9px !important;
   }
 
-  #root .game-shell[data-board-viewport="phone-portrait"] > .affinity-well-panel[data-affinity-action-active="false"] .affinity-well-action-zone {
+  #root .game-live[data-board-viewport="phone-portrait"] > .affinity-well-panel[data-affinity-action-active="false"] .affinity-well-action-zone {
     display: none !important;
   }
 
-  #root .game-shell[data-board-viewport="phone-portrait"] > .affinity-well-panel[data-affinity-action-active="true"] .affinity-well-action-zone {
+  #root .game-live[data-board-viewport="phone-portrait"] > .affinity-well-panel[data-affinity-action-active="true"] .affinity-well-action-zone {
     position: absolute !important;
     right: 0 !important;
     bottom: 0 !important;
@@ -410,7 +410,7 @@
     box-shadow: 0 -6px 16px rgba(0, 0, 0, 0.48) !important;
   }
 
-  #root .game-shell[data-board-viewport="phone-portrait"] > .affinity-well-panel .affinity-well-action-bar {
+  #root .game-live[data-board-viewport="phone-portrait"] > .affinity-well-panel .affinity-well-action-bar {
     display: flex !important;
     align-items: center !important;
     width: 100% !important;
@@ -419,12 +419,12 @@
     box-sizing: border-box !important;
   }
 
-  #root .game-shell[data-board-viewport="phone-portrait"] > .affinity-well-panel .affinity-well-action-bar > div {
+  #root .game-live[data-board-viewport="phone-portrait"] > .affinity-well-panel .affinity-well-action-bar > div {
     width: 100% !important;
     min-width: 0 !important;
   }
 
-  #root .game-shell[data-board-viewport="phone-portrait"] > .affinity-well-panel .affinity-return-phase {
+  #root .game-live[data-board-viewport="phone-portrait"] > .affinity-well-panel .affinity-return-phase {
     position: absolute !important;
     inset: 0 !important;
     z-index: 40 !important;
@@ -432,7 +432,7 @@
     background: rgba(4, 3, 14, 0.99) !important;
   }
 
-  .game-shell[data-board-viewport="phone-portrait"] > .game-bottom-nav {
+  .game-live[data-board-viewport="phone-portrait"] > .game-bottom-nav {
     grid-area: nav !important;
     width: 100% !important;
     height: var(--phone-nav-h) !important;
@@ -443,7 +443,7 @@
 }
 
 @media (max-width: 600px) and (min-height: 700px) and (orientation: portrait) {
-  #root .game-shell[data-board-viewport="phone-portrait"] > .affinity-well-panel {
+  #root .game-live[data-board-viewport="phone-portrait"] > .affinity-well-panel {
     --well-icon-size: 30px;
     --well-label-size: 6.25px;
     --well-count-size: 17px;
@@ -452,14 +452,14 @@
 }
 
 @media (max-width: 600px) and (max-height: 819px) and (orientation: portrait) {
-  #root .game-shell[data-board-presentation][data-board-viewport="phone-portrait"][data-forge-density="compact"] {
+  #root .game-live[data-board-presentation][data-board-viewport="phone-portrait"][data-forge-density="compact"] {
     --forge-header-h: 0px;
     --forge-controls-h: 42px;
     --forge-tier-label-h: 11px;
     --phone-board-fixed-overhead: 102px;
   }
 
-  #root .game-shell[data-board-viewport="phone-portrait"] .board-forge--compact .board-forge-header {
+  #root .game-live[data-board-viewport="phone-portrait"] .board-forge--compact .board-forge-header {
     display: flex !important;
     visibility: hidden !important;
     height: 0 !important;
@@ -469,33 +469,33 @@
     pointer-events: none !important;
   }
 
-  #root .game-shell[data-board-viewport="phone-portrait"] .board-terminus {
+  #root .game-live[data-board-viewport="phone-portrait"] .board-terminus {
     display: none !important;
   }
 
-  #root .game-shell[data-board-viewport="phone-portrait"] .board-terminus-cards,
-  #root .game-shell[data-board-viewport="phone-portrait"] .board-terminus::before {
+  #root .game-live[data-board-viewport="phone-portrait"] .board-terminus-cards,
+  #root .game-live[data-board-viewport="phone-portrait"] .board-terminus::before {
     display: none !important;
   }
 }
 
 @media (max-width: 600px) and (min-height: 820px) and (max-height: 899px) and (orientation: portrait) {
-  #root .game-shell[data-board-viewport="phone-portrait"] .board-terminus {
+  #root .game-live[data-board-viewport="phone-portrait"] .board-terminus {
     display: none !important;
   }
 }
 
 @media (max-width: 340px) and (orientation: portrait) {
-  #root .game-shell[data-board-viewport="phone-portrait"] .board-forge-controls > span:first-child {
+  #root .game-live[data-board-viewport="phone-portrait"] .board-forge-controls > span:first-child {
     display: none !important;
   }
 
-  #root .game-shell[data-board-viewport="phone-portrait"] > .affinity-well-panel .affinity-well-header {
+  #root .game-live[data-board-viewport="phone-portrait"] > .affinity-well-panel .affinity-well-header {
     grid-template-columns: minmax(0, 1fr) 68px !important;
     grid-template-areas: "title status" !important;
   }
 
-  #root .game-shell[data-board-viewport="phone-portrait"] > .affinity-well-panel .affinity-well-player {
+  #root .game-live[data-board-viewport="phone-portrait"] > .affinity-well-panel .affinity-well-player {
     display: none !important;
   }
 }
@@ -504,7 +504,7 @@
    spend the available board height on four readable cards per tier and reduce
    the lower-priority Terminus before compressing the Forge. */
 @media (min-width: 601px) {
-  #root .game-shell[data-board-presentation][data-forge-density="compact"]:not([data-board-viewport="phone-landscape"]) .board-forge--compact {
+  #root .game-live[data-board-presentation][data-forge-density="compact"]:not([data-board-viewport="phone-landscape"]) .board-forge--compact {
     --canonical-forge-chip-h: clamp(100px, calc((100dvh - 350px) / 3), 184px);
     --canonical-forge-chip-w: calc(var(--canonical-forge-chip-h) * var(--artifact-card-aspect));
     --forge-chip-h: var(--canonical-forge-chip-h) !important;
@@ -521,7 +521,7 @@
     overflow: hidden !important;
   }
 
-  #root .game-shell[data-board-presentation][data-forge-density="compact"]:not([data-board-viewport="phone-landscape"]) .board-forge--compact [data-forge-tiers="true"] {
+  #root .game-live[data-board-presentation][data-forge-density="compact"]:not([data-board-viewport="phone-landscape"]) .board-forge--compact [data-forge-tiers="true"] {
     display: grid !important;
     grid-template-columns: minmax(0, 1fr) !important;
     grid-template-rows: repeat(3, var(--forge-shelf-h)) !important;
@@ -534,7 +534,7 @@
     overflow: hidden !important;
   }
 
-  #root .game-shell[data-board-presentation][data-forge-density="compact"]:not([data-board-viewport="phone-landscape"]) .board-forge--compact .board-forge-shelf {
+  #root .game-live[data-board-presentation][data-forge-density="compact"]:not([data-board-viewport="phone-landscape"]) .board-forge--compact .board-forge-shelf {
     display: grid !important;
     grid-template-columns: minmax(0, 1fr) !important;
     grid-template-rows: var(--forge-tier-label-h) var(--canonical-forge-chip-h) !important;
@@ -546,7 +546,7 @@
     box-sizing: border-box !important;
   }
 
-  #root .game-shell[data-board-presentation][data-forge-density="compact"]:not([data-board-viewport="phone-landscape"]) .board-forge--compact .board-forge-tier-header {
+  #root .game-live[data-board-presentation][data-forge-density="compact"]:not([data-board-viewport="phone-landscape"]) .board-forge--compact .board-forge-tier-header {
     display: flex !important;
     width: min(48%, 260px) !important;
     height: var(--forge-tier-label-h) !important;
@@ -555,7 +555,7 @@
     overflow: hidden !important;
   }
 
-  #root .game-shell[data-board-presentation][data-forge-density="compact"]:not([data-board-viewport="phone-landscape"]) .board-forge--compact .board-forge-shelf-content {
+  #root .game-live[data-board-presentation][data-forge-density="compact"]:not([data-board-viewport="phone-landscape"]) .board-forge--compact .board-forge-shelf-content {
     display: grid !important;
     grid-template-columns: minmax(0, 1fr) clamp(52px, 7vw, 84px) !important;
     width: 100% !important;
@@ -566,7 +566,7 @@
     overflow: hidden !important;
   }
 
-  #root .game-shell[data-board-presentation][data-forge-density="compact"]:not([data-board-viewport="phone-landscape"]) .board-forge--compact .board-forge-card-row {
+  #root .game-live[data-board-presentation][data-forge-density="compact"]:not([data-board-viewport="phone-landscape"]) .board-forge--compact .board-forge-card-row {
     display: grid !important;
     grid-template-columns: repeat(4, var(--canonical-forge-chip-w)) !important;
     grid-template-rows: var(--canonical-forge-chip-h) !important;
@@ -582,8 +582,8 @@
     overflow: hidden !important;
   }
 
-  #root .game-shell[data-board-presentation][data-forge-density="compact"]:not([data-board-viewport="phone-landscape"]) .board-forge--compact .forge-foundry-mold,
-  #root .game-shell[data-board-presentation][data-forge-density="compact"]:not([data-board-viewport="phone-landscape"]) .board-forge--compact .board-forge-compact-chip {
+  #root .game-live[data-board-presentation][data-forge-density="compact"]:not([data-board-viewport="phone-landscape"]) .board-forge--compact .forge-foundry-mold,
+  #root .game-live[data-board-presentation][data-forge-density="compact"]:not([data-board-viewport="phone-landscape"]) .board-forge--compact .board-forge-compact-chip {
     width: var(--canonical-forge-chip-w) !important;
     min-width: var(--canonical-forge-chip-w) !important;
     height: var(--canonical-forge-chip-h) !important;
@@ -592,7 +592,7 @@
     aspect-ratio: var(--artifact-card-aspect) !important;
   }
 
-  #root .game-shell[data-board-presentation][data-forge-density="compact"]:not([data-board-viewport="phone-landscape"]) .board-forge--compact .board-forge-archive-rail {
+  #root .game-live[data-board-presentation][data-forge-density="compact"]:not([data-board-viewport="phone-landscape"]) .board-forge--compact .board-forge-archive-rail {
     display: flex !important;
     align-items: center !important;
     justify-content: center !important;
@@ -602,8 +602,8 @@
     padding: 0 !important;
   }
 
-  #root .game-shell[data-board-presentation][data-forge-density="compact"]:not([data-board-viewport="phone-landscape"]) .board-forge--compact .board-forge-compact-deck,
-  #root .game-shell[data-board-presentation][data-forge-density="compact"]:not([data-board-viewport="phone-landscape"]) .board-forge--compact .board-forge-compact-deck > div:first-child {
+  #root .game-live[data-board-presentation][data-forge-density="compact"]:not([data-board-viewport="phone-landscape"]) .board-forge--compact .board-forge-compact-deck,
+  #root .game-live[data-board-presentation][data-forge-density="compact"]:not([data-board-viewport="phone-landscape"]) .board-forge--compact .board-forge-compact-deck > div:first-child {
     width: min(100%, var(--canonical-forge-chip-w)) !important;
     height: auto !important;
     max-height: var(--canonical-forge-chip-h) !important;
@@ -612,13 +612,13 @@
 }
 
 @media (min-width: 601px) and (orientation: portrait) {
-  #root .game-shell[data-board-presentation][data-forge-density="compact"][data-board-viewport="tablet"] .board-forge--compact {
+  #root .game-live[data-board-presentation][data-forge-density="compact"][data-board-viewport="tablet"] .board-forge--compact {
     --canonical-forge-chip-h: clamp(100px, calc((100dvh - 620px) / 3), 170px);
   }
 }
 
 @media (min-width: 601px) and (max-height: 1019px) {
-  #root .game-shell[data-board-presentation][data-forge-density="compact"]:not([data-board-viewport="phone-landscape"]) .board-terminus {
+  #root .game-live[data-board-presentation][data-forge-density="compact"]:not([data-board-viewport="phone-landscape"]) .board-terminus {
     height: 34px !important;
     min-height: 34px !important;
     max-height: 34px !important;
@@ -626,14 +626,14 @@
     overflow: hidden !important;
   }
 
-  #root .game-shell[data-board-presentation][data-forge-density="compact"]:not([data-board-viewport="phone-landscape"]) .board-terminus-header {
+  #root .game-live[data-board-presentation][data-forge-density="compact"]:not([data-board-viewport="phone-landscape"]) .board-terminus-header {
     height: 34px !important;
     min-height: 34px !important;
     padding-block: 2px !important;
   }
 
-  #root .game-shell[data-board-presentation][data-forge-density="compact"]:not([data-board-viewport="phone-landscape"]) .board-terminus-cards,
-  #root .game-shell[data-board-presentation][data-forge-density="compact"]:not([data-board-viewport="phone-landscape"]) .board-terminus::before {
+  #root .game-live[data-board-presentation][data-forge-density="compact"]:not([data-board-viewport="phone-landscape"]) .board-terminus-cards,
+  #root .game-live[data-board-presentation][data-forge-density="compact"]:not([data-board-viewport="phone-landscape"]) .board-terminus::before {
     display: none !important;
   }
 }
@@ -642,7 +642,7 @@
    and the co-primary Well. This selector intentionally owns the legacy
    left-civ grid, whose higher specificity otherwise puts the Well over Tier I. */
 @media (min-width: 1800px) and (min-height: 1020px) and (orientation: landscape) {
-  #root .game-shell[data-board-presentation][data-board-density][data-board-layout="left-civ"][data-forge-density="full"][data-side-affinity-well="true"] {
+  #root .game-live[data-board-presentation][data-board-density][data-board-layout="left-civ"][data-forge-density="full"][data-side-affinity-well="true"] {
     display: grid !important;
     grid-template-columns: 280px minmax(0, 920px) 280px !important;
     grid-template-rows: 56px minmax(0, 1fr) 56px !important;
@@ -659,7 +659,7 @@
     overflow: hidden !important;
   }
 
-  #root .game-shell[data-board-layout="left-civ"][data-forge-density="full"] > .game-main[data-active-tab="board"] {
+  #root .game-live[data-board-layout="left-civ"][data-forge-density="full"] > .game-main[data-active-tab="board"] {
     grid-area: main !important;
     width: 920px !important;
     height: 100% !important;
@@ -669,7 +669,7 @@
     overflow-y: auto !important;
   }
 
-  #root .game-shell[data-board-layout="left-civ"][data-forge-density="full"] > .game-main[data-active-tab="board"] .board-tab-main {
+  #root .game-live[data-board-layout="left-civ"][data-forge-density="full"] > .game-main[data-active-tab="board"] .board-tab-main {
     display: flex !important;
     flex-direction: column !important;
     width: 100% !important;
@@ -678,7 +678,7 @@
     overflow: visible !important;
   }
 
-  #root .game-shell[data-board-layout="left-civ"][data-forge-density="full"] .board-forge:not(.board-forge--compact) {
+  #root .game-live[data-board-layout="left-civ"][data-forge-density="full"] .board-forge:not(.board-forge--compact) {
     --canonical-full-card-h: min(22dvh, 226px);
     --canonical-full-card-w: calc(var(--canonical-full-card-h) * var(--artifact-card-aspect));
     --card-h: var(--canonical-full-card-h) !important;
@@ -693,12 +693,12 @@
     overflow: hidden !important;
   }
 
-  #root .game-shell[data-board-layout="left-civ"][data-forge-density="full"] .board-terminus {
+  #root .game-live[data-board-layout="left-civ"][data-forge-density="full"] .board-terminus {
     order: 2 !important;
     flex: 0 0 228px !important;
   }
 
-  #root .game-shell[data-board-layout="left-civ"][data-forge-density="full"] .board-forge:not(.board-forge--compact) [data-forge-tiers="true"] {
+  #root .game-live[data-board-layout="left-civ"][data-forge-density="full"] .board-forge:not(.board-forge--compact) [data-forge-tiers="true"] {
     display: grid !important;
     grid-template-columns: minmax(0, 1fr) !important;
     grid-template-rows: repeat(3, minmax(0, 1fr)) !important;
@@ -710,7 +710,7 @@
     overflow: hidden !important;
   }
 
-  #root .game-shell[data-board-layout="left-civ"][data-forge-density="full"] .board-forge:not(.board-forge--compact) .board-forge-shelf {
+  #root .game-live[data-board-layout="left-civ"][data-forge-density="full"] .board-forge:not(.board-forge--compact) .board-forge-shelf {
     display: grid !important;
     grid-template-columns: minmax(0, 1fr) !important;
     grid-template-rows: 24px minmax(0, 1fr) !important;
@@ -721,7 +721,7 @@
     overflow: hidden !important;
   }
 
-  #root .game-shell[data-board-layout="left-civ"][data-forge-density="full"] .board-forge:not(.board-forge--compact) .board-forge-tier-header {
+  #root .game-live[data-board-layout="left-civ"][data-forge-density="full"] .board-forge:not(.board-forge--compact) .board-forge-tier-header {
     display: flex !important;
     width: min(48%, 260px) !important;
     height: 24px !important;
@@ -730,7 +730,7 @@
     padding-block: 2px !important;
   }
 
-  #root .game-shell[data-board-layout="left-civ"][data-forge-density="full"] .board-forge:not(.board-forge--compact) .board-forge-shelf-content {
+  #root .game-live[data-board-layout="left-civ"][data-forge-density="full"] .board-forge:not(.board-forge--compact) .board-forge-shelf-content {
     display: grid !important;
     grid-template-columns: minmax(0, 1fr) 74px !important;
     width: 100% !important;
@@ -740,7 +740,7 @@
     overflow: hidden !important;
   }
 
-  #root .game-shell[data-board-layout="left-civ"][data-forge-density="full"] .board-forge:not(.board-forge--compact) .board-forge-card-row {
+  #root .game-live[data-board-layout="left-civ"][data-forge-density="full"] .board-forge:not(.board-forge--compact) .board-forge-card-row {
     display: grid !important;
     grid-template-columns: repeat(4, var(--canonical-full-card-w)) !important;
     grid-template-rows: var(--canonical-full-card-h) !important;
@@ -756,8 +756,8 @@
     overflow: hidden !important;
   }
 
-  #root .game-shell[data-board-layout="left-civ"][data-forge-density="full"] .board-forge:not(.board-forge--compact) .forge-foundry-mold,
-  #root .game-shell[data-board-layout="left-civ"][data-forge-density="full"] .board-forge:not(.board-forge--compact) .forge-foundry-slot {
+  #root .game-live[data-board-layout="left-civ"][data-forge-density="full"] .board-forge:not(.board-forge--compact) .forge-foundry-mold,
+  #root .game-live[data-board-layout="left-civ"][data-forge-density="full"] .board-forge:not(.board-forge--compact) .forge-foundry-slot {
     width: var(--canonical-full-card-w) !important;
     min-width: var(--canonical-full-card-w) !important;
     max-width: var(--canonical-full-card-w) !important;
@@ -767,7 +767,7 @@
     aspect-ratio: var(--artifact-card-aspect) !important;
   }
 
-  #root .game-shell[data-board-layout="left-civ"][data-forge-density="full"] .board-forge:not(.board-forge--compact) .board-forge-archive-rail {
+  #root .game-live[data-board-layout="left-civ"][data-forge-density="full"] .board-forge:not(.board-forge--compact) .board-forge-archive-rail {
     display: flex !important;
     align-items: center !important;
     justify-content: center !important;
@@ -777,7 +777,7 @@
     overflow: hidden !important;
   }
 
-  #root .game-shell[data-board-layout="left-civ"][data-forge-density="full"] > .affinity-well-panel[data-shared-affinity-well] {
+  #root .game-live[data-board-layout="left-civ"][data-forge-density="full"] > .affinity-well-panel[data-shared-affinity-well] {
     grid-area: well !important;
     align-self: start !important;
     display: grid !important;
@@ -793,7 +793,7 @@
     overflow: hidden !important;
   }
 
-  #root .game-shell[data-board-layout="left-civ"] > .affinity-well-panel .affinity-well-header {
+  #root .game-live[data-board-layout="left-civ"] > .affinity-well-panel .affinity-well-header {
     display: grid !important;
     grid-template-columns: minmax(0, 1fr) auto !important;
     grid-template-rows: 36px 36px !important;
@@ -806,29 +806,29 @@
     overflow: hidden !important;
   }
 
-  #root .game-shell[data-board-layout="left-civ"] > .affinity-well-panel .affinity-well-title {
+  #root .game-live[data-board-layout="left-civ"] > .affinity-well-panel .affinity-well-title {
     grid-area: title !important;
   }
 
-  #root .game-shell[data-board-layout="left-civ"] > .affinity-well-panel .affinity-well-player {
+  #root .game-live[data-board-layout="left-civ"] > .affinity-well-panel .affinity-well-player {
     grid-area: player !important;
     justify-self: center !important;
   }
 
-  #root .game-shell[data-board-layout="left-civ"] > .affinity-well-panel .affinity-well-status {
+  #root .game-live[data-board-layout="left-civ"] > .affinity-well-panel .affinity-well-status {
     grid-area: status !important;
     display: flex !important;
     align-items: center !important;
   }
 
-  #root .game-shell[data-board-layout="left-civ"] > .affinity-well-panel .affinity-well-dock-toggle {
+  #root .game-live[data-board-layout="left-civ"] > .affinity-well-panel .affinity-well-dock-toggle {
     display: none !important;
   }
 
-  #root .game-shell[data-board-layout="left-civ"] > .affinity-well-panel .affinity-well-cells,
-  #root .game-shell[data-board-layout="left-civ"] > .affinity-well-panel .affinity-well-cells > div,
-  #root .game-shell[data-board-layout="left-civ"] > .affinity-well-panel .affinity-well-cells > div > div,
-  #root .game-shell[data-board-layout="left-civ"] > .affinity-well-panel .affinity-well-cells [data-well-carousel] {
+  #root .game-live[data-board-layout="left-civ"] > .affinity-well-panel .affinity-well-cells,
+  #root .game-live[data-board-layout="left-civ"] > .affinity-well-panel .affinity-well-cells > div,
+  #root .game-live[data-board-layout="left-civ"] > .affinity-well-panel .affinity-well-cells > div > div,
+  #root .game-live[data-board-layout="left-civ"] > .affinity-well-panel .affinity-well-cells [data-well-carousel] {
     display: block !important;
     width: 100% !important;
     min-width: 0 !important;
@@ -838,7 +838,7 @@
     overflow: hidden !important;
   }
 
-  #root .game-shell[data-board-layout="left-civ"] > .affinity-well-panel .affinity-well-cells [data-well-carousel] > div {
+  #root .game-live[data-board-layout="left-civ"] > .affinity-well-panel .affinity-well-cells [data-well-carousel] > div {
     display: grid !important;
     grid-template-columns: repeat(2, minmax(0, 1fr)) !important;
     grid-template-rows: repeat(3, minmax(0, 1fr)) !important;
@@ -851,8 +851,8 @@
     overflow: hidden !important;
   }
 
-  #root .game-shell[data-board-layout="left-civ"] > .affinity-well-panel .affinity-well-cell,
-  #root .game-shell[data-board-layout="left-civ"] > .affinity-well-panel .affinity-well-cell-button {
+  #root .game-live[data-board-layout="left-civ"] > .affinity-well-panel .affinity-well-cell,
+  #root .game-live[data-board-layout="left-civ"] > .affinity-well-panel .affinity-well-cell-button {
     width: 100% !important;
     min-width: 0 !important;
     height: 153px !important;
@@ -860,8 +860,8 @@
     max-height: 153px !important;
   }
 
-  #root .game-shell[data-board-layout="left-civ"] > .affinity-well-panel .affinity-well-action-zone,
-  #root .game-shell[data-board-layout="left-civ"] > .affinity-well-panel .affinity-well-action-bar {
+  #root .game-live[data-board-layout="left-civ"] > .affinity-well-panel .affinity-well-action-zone,
+  #root .game-live[data-board-layout="left-civ"] > .affinity-well-panel .affinity-well-action-bar {
     width: 100% !important;
     height: 44px !important;
     min-height: 44px !important;

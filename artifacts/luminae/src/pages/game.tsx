@@ -8234,7 +8234,8 @@ export default function GameBoard() {
 
   return (
     <div
-      className="game-shell h-[100dvh] bg-background text-foreground flex flex-col overflow-hidden relative"
+      className="game-shell game-live h-[100dvh] bg-background text-foreground flex flex-col overflow-hidden relative"
+      data-production-game-board="true"
       data-camera-controlled={isCameraControlled ? 'true' : undefined}
       data-luminary-idle-suspended={luminaryPresentationActive ? 'true' : undefined}
       data-avatar-seed-placement-pending={

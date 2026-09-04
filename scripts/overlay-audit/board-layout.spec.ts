@@ -232,3 +232,47 @@ test.describe('canonical responsive board', () => {
     });
   }
 });
+
+test('tutorial keeps its own phone board geometry', async ({ page }) => {
+  const viewport = { width: 320, height: 568 };
+  await page.setViewportSize(viewport);
+  await page.goto(`${BASE}/tutorial?beat=12`, { waitUntil: 'domcontentloaded' });
+
+  const shell = page.locator('.tutorial-gameplay.game-shell[data-tutorial-gameplay="true"]');
+  await expect(shell).toBeVisible({ timeout: 15_000 });
+  await expect(page.getByTestId('forge-module')).toBeVisible({ timeout: 15_000 });
+  await expect(page.getByTestId('affinity-well-panel')).toBeVisible({ timeout: 15_000 });
+
+  const geometry = await page.evaluate(() => {
+    const rect = (selector: string) => {
+      const element = document.querySelector(selector);
+      if (!element) throw new Error(`Missing ${selector}`);
+      return element.getBoundingClientRect().toJSON();
+    };
+    const tutorialShell = document.querySelector('.tutorial-gameplay.game-shell');
+
+    return {
+      document: {
+        width: document.documentElement.scrollWidth,
+        height: document.documentElement.scrollHeight,
+      },
+      productionMarker: tutorialShell?.getAttribute('data-production-game-board') ?? null,
+      tutorialMarker: tutorialShell?.getAttribute('data-tutorial-gameplay') ?? null,
+      main: rect('.tutorial-gameplay > .game-main'),
+      forge: rect('.tutorial-gameplay .board-forge'),
+      well: rect('.tutorial-gameplay > .affinity-well-panel'),
+      nav: rect('.tutorial-gameplay > .game-bottom-nav'),
+    };
+  });
+
+  expect(geometry.productionMarker).toBeNull();
+  expect(geometry.tutorialMarker).toBe('true');
+  expect(geometry.document.width).toBeLessThanOrEqual(viewport.width + 1);
+  expect(geometry.document.height).toBeLessThanOrEqual(viewport.height + 1);
+  expect(geometry.forge.bottom).toBeLessThanOrEqual(geometry.main.bottom + 1);
+  expect(geometry.well.height).toBeGreaterThanOrEqual(204);
+  expect(Math.abs(geometry.well.bottom - geometry.nav.top)).toBeLessThanOrEqual(1);
+
+  mkdirSync(OUT, { recursive: true });
+  await page.screenshot({ path: `${OUT}/tutorial-320x568.png` });
+});
