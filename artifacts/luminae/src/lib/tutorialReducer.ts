@@ -528,9 +528,11 @@ export function tutorialReducer(s: TutState, a: TAction): TutState {
       if (beat.id === "b5a_luminae_origin") {
         const targetId = a.choice === "origin_unsettled"
           ? "b5a2_luminae_reassurance"
-          : a.choice === "origin_expected"
-            ? "b5a3_luminae_expected"
-            : null;
+          : a.choice === "continue"
+            ? "b5_affinities"
+            : a.choice === "origin_expected"
+              ? "b5a3_luminae_expected"
+              : null;
         if (!targetId) return s;
         return { ...s, beat: BEAT_INDEX[targetId], dlgLine: 0, subStep: 0, nudge: null };
       }

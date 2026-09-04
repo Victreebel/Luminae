@@ -406,12 +406,12 @@ export const TUTORIAL_BEATS: TutorialBeat[] = [
     dialogue: [
       { text: "LUMINAe was built by another Architect, long before my time." },
       { text: "I don't know whether they came from your world." },
-      { text: "But the fact that the interface can translate your language means its maker knew enough of your world to receive you." },
+      { text: "But the interface is translating your language, so its maker must have known something about you." },
     ],
     completion: { type: "dialogue" },
     choices: [
+      { label: "Fair, I guess", value: "continue" },
       { label: "That's unsettling.", value: "origin_unsettled" },
-      { label: "Then they expected me.", value: "origin_expected" },
     ],
   },
   {

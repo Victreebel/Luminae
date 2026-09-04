@@ -312,10 +312,11 @@ describe('opening tutorial choices', () => {
     const originDialogue = TUTORIAL_BEATS[state.beat].dialogue.map(line => line.text).join(' ');
     expect(originDialogue).toContain('built by another Architect');
     expect(originDialogue).toContain("I don't know whether they came from your world");
-    expect(originDialogue).toContain('the interface can translate your language');
+    expect(originDialogue).toContain('the interface is translating your language');
+    expect(originDialogue).toContain('its maker must have known something about you');
     expect(TUTORIAL_BEATS[state.beat].choices).toEqual([
+      { label: 'Fair, I guess', value: 'continue' },
       { label: "That's unsettling.", value: 'origin_unsettled' },
-      { label: 'Then they expected me.', value: 'origin_expected' },
     ]);
 
     while (state.dlgLine < TUTORIAL_BEATS[state.beat].dialogue.length - 1) {
@@ -332,13 +333,8 @@ describe('opening tutorial choices', () => {
 
     state = tutorialReducer(
       { ...INIT_STATE, beat: BEAT_INDEX.b5a_luminae_origin },
-      { type: 'BRANCH_CHOICE', choice: 'origin_expected' },
+      { type: 'BRANCH_CHOICE', choice: 'continue' },
     );
-    expect(TUTORIAL_BEATS[state.beat]).toMatchObject({
-      id: 'b5a3_luminae_expected',
-      dialogue: [{ text: 'Perhaps.' }],
-    });
-    state = tutorialReducer(state, { type: 'NEXT_DLG' });
     expect(TUTORIAL_BEATS[state.beat].id).toBe('b5_affinities');
   });
 
