@@ -512,8 +512,8 @@ export const TUTORIAL_BEATS: TutorialBeat[] = [
     foregroundCardId: "t1e01",
     highlightZone: "card-cost",
     dialogue: [
-      { text: "An Artifact's cost shows which Affinities must be held in readiness." },
-      { text: "You will find it difficult to hold more than 10 at once, so choose carefully." },
+      { text: "An Artifact's cost shows which Affinities you need to have on-hand." },
+      { text: "You will find it difficult to hold too many at once, so choose carefully." },
     ],
     completion: { type: "dialogue" },
   },

@@ -386,8 +386,8 @@ describe('guided forge prompts', () => {
       ]],
       ['b6b_root_lattice', ['Choose one, and LUMINAe can compress centuries of research and construction.']],
       ['b7_artifact_cost', [
-        "An Artifact's cost shows which Affinities must be held in readiness.",
-        'You will find it difficult to hold more than 10 at once, so choose carefully.',
+        "An Artifact's cost shows which Affinities you need to have on-hand.",
+        'You will find it difficult to hold too many at once, so choose carefully.',
       ]],
       ['b9_first_forge', ['Select Replication Spore, press Forge, then Confirm to commit those Affinities.']],
       ['b9b_affinity_returns', ['The Affinities return to the Well once the civilization can sustain the Artifact without them.']],

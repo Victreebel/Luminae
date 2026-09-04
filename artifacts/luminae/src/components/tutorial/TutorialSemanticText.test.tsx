@@ -114,7 +114,7 @@ describe("TutorialSemanticText", () => {
   });
 
   it("tokenizes Artifact possessives without changing visible copy", () => {
-    const text = "An Artifact's cost shows which Affinities must be held in readiness.";
+    const text = "An Artifact's cost shows which Affinities you need to have on-hand.";
     const parts = tokenizeTutorialSemanticText(text);
 
     expect(parts.map((part) => part.text).join("")).toBe(text);
