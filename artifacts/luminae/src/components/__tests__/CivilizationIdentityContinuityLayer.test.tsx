@@ -1,6 +1,6 @@
 import React from 'react';
 import { cleanup, render, screen } from '@testing-library/react';
-import { afterEach, describe, expect, it } from 'vitest';
+import { afterEach, describe, expect, it, vi } from 'vitest';
 import type {
   CivilizationDistrictInstance,
   CivilizationDyadId,
@@ -8,6 +8,8 @@ import type {
 } from '@workspace/game-types';
 import { CivilizationIdentityContinuityLayer } from '@/components/CivilizationIdentityContinuityLayer';
 import { getCivilizationDistrictPresentation } from '@/lib/civilizationDistrictPresentation';
+import * as civilianArtRegistry from '@/lib/civilizationCivilianArtRegistry';
+import type { CivilizationSurfaceDistrictParcel } from '@/lib/civilizationSurfaceDistrictPlan';
 import {
   ARTIFACT_CATALOG,
   ARTIFACT_MANIFESTATION_PROFILE_BY_ID,
@@ -118,7 +120,10 @@ function progress(
 }
 
 describe('CivilizationIdentityContinuityLayer', () => {
-  afterEach(cleanup);
+  afterEach(() => {
+    cleanup();
+    vi.restoreAllMocks();
+  });
 
   it('leaves terminal Chrysalis construction inside its integrated city plate', () => {
     render(
@@ -380,13 +385,14 @@ describe('CivilizationIdentityContinuityLayer', () => {
         {...overrides}
       />
     );
-    const geometryAndArt = () => Array.from(document.querySelectorAll('[data-city-district-parcel]'))
+    const geometryAndArt = () => Array.from(document.querySelectorAll<HTMLElement>('[data-city-district-parcel]'))
       .map((parcel) => ({
         id: parcel.getAttribute('data-city-district-parcel'),
         occupied: parcel.hasAttribute('data-district-id'),
         desktop: parcel.getAttribute('data-city-fabric-position'),
         mobile: parcel.getAttribute('data-city-fabric-mobile-position'),
-        style: parcel.getAttribute('style'),
+        style: parcel.getAttribute('style')?.replace(/filter:[^;]+;/, ''),
+        lighting: parcel.style.filter,
         art: parcel.querySelector('img')?.getAttribute('src'),
       }));
     const { rerender } = render(city({ environmentVariantId: 'oceanic_scar' }));
@@ -395,8 +401,8 @@ describe('CivilizationIdentityContinuityLayer', () => {
 
     rerender(city());
 
-    expect(geometryAndArt().map(({ art: _art, ...geometry }) => geometry))
-      .toEqual(before.map(({ art: _art, ...geometry }) => geometry));
+    expect(geometryAndArt().map(({ art: _art, lighting: _lighting, ...geometry }) => geometry))
+      .toEqual(before.map(({ art: _art, lighting: _lighting, ...geometry }) => geometry));
     expect(geometryAndArt().filter(({ occupied }) => occupied)).toEqual(before.filter(({ occupied }) => occupied));
     const entrances = Array.from(document.querySelectorAll('[data-city-district-entrance]'));
     expect(entrances.map((entrance) => [
@@ -429,7 +435,8 @@ describe('CivilizationIdentityContinuityLayer', () => {
     }
   });
 
-  it('keeps empty reference parcels as grounded reserves while preserving occupied districts and every address', () => {
+  it('selects exclusive civilian occupants for empty reference parcels while preserving resident districts and every address', () => {
+    const civilianArt = vi.spyOn(civilianArtRegistry, 'getCivilizationCivilianParcelArt').mockReturnValue(null);
     let state = createInitialCivilizationState();
     const ids = getCivilizationSaturatedPreviewIds('chrysalis', true)
       .filter((id) => ARTIFACT_MANIFESTATION_PROFILE_BY_ID[id].nativeCameraScale === 'surface');
@@ -456,10 +463,14 @@ describe('CivilizationIdentityContinuityLayer', () => {
       />
     );
     const parcels = () => Array.from(document.querySelectorAll<HTMLElement>('[data-city-district-parcel]'));
-    const geometry = () => parcels().map((element) => ({ id: element.dataset.cityDistrictParcel, style: element.getAttribute('style') }));
+    const geometry = () => parcels().map((element) => ({
+      id: element.dataset.cityDistrictParcel,
+      style: element.getAttribute('style')?.replace(/filter:[^;]+;/, ''),
+    }));
     const occupiedArtwork = () => parcels().filter((element) => element.dataset.districtId).map((element) => ({
       id: element.dataset.districtId, dyad: element.dataset.districtDyad,
       count: element.dataset.districtArtifactCount,
+      lighting: element.style.filter,
       art: element.querySelector('[data-city-district-terrain-occlusion] img')!.outerHTML,
       artBounds: element.querySelector('[data-city-district-terrain-occlusion]')!.getAttribute('style'),
       residents: Array.from(element.querySelectorAll('[data-testid="civilization-district-resident"]')).map((resident) => resident.outerHTML),
@@ -476,7 +487,13 @@ describe('CivilizationIdentityContinuityLayer', () => {
     expect(occupiedArtwork()).toEqual(beforeOccupied);
     const reserves = parcels().filter((element) => element.dataset.districtPresentation === 'reserve-foundation');
     expect(reserves).toHaveLength(13);
+    expect(parcels().filter((element) => element.dataset.slotOccupant === 'specialist')).toHaveLength(17);
     for (const reserve of reserves) {
+      expect(reserve).toHaveAttribute('data-slot-occupant', 'civilian');
+      expect(reserve).toHaveAttribute('data-civilian-theme', 'chrysalis');
+      expect(reserve).toHaveAttribute('data-civilian-tier', 'galactic');
+      expect(reserve).not.toHaveAttribute('data-district-id');
+      expect(reserve).not.toHaveAttribute('data-district-dyad');
       expect(reserve).toHaveAttribute('data-district-artifact-count', '0');
       expect(reserve.querySelector('img')).toBeNull();
       expect(reserve.querySelector('[data-city-district-support]')).not.toBeNull();
@@ -495,6 +512,31 @@ describe('CivilizationIdentityContinuityLayer', () => {
       .toHaveAttribute('data-shore-form', 'open-spillway');
     expect(screen.getAllByTestId('civilization-district-resident')).toHaveLength(13);
 
+    civilianArt.mockImplementation((_theme, _maturity, variant) => ({
+      src: `/civilian/${variant}.webp`, anchor: { x: 50, y: 94 }, scale: 1, aspectRatio: 1, groundLine: 0.94,
+    }));
+    rerender(city());
+
+    expect(geometry()).toEqual(beforeGeometry);
+    expect(occupiedArtwork()).toEqual(beforeOccupied);
+    const civilians = parcels().filter((element) => element.dataset.slotOccupant === 'civilian');
+    expect(civilians).toHaveLength(13);
+    for (const civilian of civilians) {
+      expect(civilian).toHaveAttribute('data-district-presentation', 'civilian-filler');
+      expect(civilian).not.toHaveAttribute('data-district-id');
+      expect(civilian).not.toHaveAttribute('data-district-dyad');
+      expect(civilian).toHaveAttribute('data-district-artifact-count', '0');
+      expect(civilian.querySelectorAll('img')).toHaveLength(1);
+      expect(civilian.querySelector('img')).toHaveAttribute('src', `/civilian/${civilian.dataset.civilianVariant}.webp`);
+      expect(civilian.querySelector('[data-city-district-support]')).not.toBeNull();
+      expect(civilian.querySelector('[data-testid="civilization-district-resident"]')).toBeNull();
+      expect(civilian.style.filter).toBe('saturate(0.98) contrast(1.04) brightness(0.98)');
+    }
+    expect(document.querySelector('[data-district-presentation="generic-filler"]')).toBeNull();
+    expect(document.querySelector('[data-district-presentation="reserve-foundation"]')).toBeNull();
+    expect(civilianArt.mock.calls.every(([theme, maturity]) => theme === 'chrysalis' && maturity === 'galactic')).toBe(true);
+    expect(screen.getAllByTestId('civilization-district-resident')).toHaveLength(13);
+
     const outsideScope: Partial<Props>[] = [
       { environmentVariantId: 'oceanic_scar' },
       { progress: progress(3, 40, 8) },
@@ -503,8 +545,123 @@ describe('CivilizationIdentityContinuityLayer', () => {
     ];
     for (const overrides of outsideScope) {
       rerender(city(overrides));
+      expect(document.querySelector('[data-slot-occupant]')).toBeNull();
       expect(document.querySelector('[data-district-presentation="reserve-foundation"]')).toBeNull();
       expect(parcels().every((element) => element.querySelector('img'))).toBe(true);
+    }
+  });
+
+  it('crops each real civilian atlas cell before aligning its foundation to the parcel ground line', () => {
+    const district: CivilizationDistrictInstance = {
+      districtId: 'district:civic_core:0', family: 'civic_core', instance: 0,
+      residentArtifactIds: ['t1r08'], residentAffinities: ['flare'], foundingAffinities: ['flare'],
+      permanentDyad: null, softCapacity: 2, hardCapacity: 3, influence: 0,
+      establishedTurnCount: 1, committedTurnCount: null, historyEvidence: 'recorded',
+    };
+    render(<CivilizationIdentityContinuityLayer
+      scene="surface" identities={identities({ surface: 'chrysalis' })}
+      progress={progress(3, 40, 9)} maturity="galactic" environmentVariantId="aurora_basin"
+      districtInstances={[district]}
+    />);
+    const civilians = Array.from(document.querySelectorAll<HTMLElement>('[data-slot-occupant="civilian"]'));
+    expect(civilians).toHaveLength(29);
+    expect(new Set(civilians.map((parcel) => parcel.dataset.civilianVariant)).size).toBe(5);
+    for (const parcel of civilians) {
+      const art = civilianArtRegistry.getCivilizationCivilianParcelArt(
+        'chrysalis', 'galactic', parcel.dataset.civilianVariant as CivilizationSurfaceDistrictParcel['genericFillerVariant'],
+      )!;
+      const cell = parcel.querySelector<HTMLElement>('[data-civilian-cell-crop]')!;
+      const frame = cell.parentElement!;
+      const groundOffset = Number(cell.dataset.civilianGroundOffset);
+      expect(Number(cell.dataset.civilianGroundLine) + groundOffset / 100).toBeCloseTo(0.94, 7);
+      expect(cell).toHaveClass('overflow-hidden');
+      expect(cell.style.transform).toBe(`translateY(${groundOffset}%)`);
+      expect(frame).toHaveClass('overflow-hidden');
+      expect(frame.style.clipPath).toBe('');
+      expect(cell.querySelector('img')).toHaveAttribute('src', art.src);
+      expect(cell.querySelector('img')).toHaveStyle({
+        width: '300%', height: '200%',
+        left: `${-art.atlas!.column * 100}%`, top: `${-art.atlas!.row * 100}%`,
+      });
+      expect(parcel.style.filter).not.toContain('drop-shadow');
+    }
+    expect(document.querySelector('[data-slot-occupant="specialist"] [data-civilian-cell-crop]')).toBeNull();
+    expect(document.querySelector('[data-slot-occupant="specialist"] img')?.getAttribute('src')).toContain('neutral/surface-settlement-atlas');
+  });
+
+  it('supports the two desktop road-crossing parcels with open decks inside their existing frames', () => {
+    const district: CivilizationDistrictInstance = {
+      districtId: 'district:transit_terminus:0', family: 'transit_terminus', instance: 0,
+      residentArtifactIds: ['t1o09', 't1r01'], residentAffinities: ['abyss', 'flare'],
+      foundingAffinities: ['abyss', 'flare'], permanentDyad: 'chrysalis',
+      softCapacity: 2, hardCapacity: 3, influence: 2,
+      establishedTurnCount: 1, committedTurnCount: 2, historyEvidence: 'recorded',
+    };
+    type Props = React.ComponentProps<typeof CivilizationIdentityContinuityLayer>;
+    const city = (overrides: Partial<Props> = {}) => <CivilizationIdentityContinuityLayer
+      scene="surface" identities={identities({ surface: 'chrysalis' })}
+      progress={progress(3, 40, 9)} maturity="galactic" environmentVariantId="aurora_basin"
+      districtInstances={[district]} {...overrides}
+    />;
+    const { rerender } = render(city());
+    const deck = document.querySelector<SVGElement>('[data-city-district-support="road-spanning-deck"]')!;
+    const parcel = deck.closest<HTMLElement>('[data-city-district-parcel]')!;
+    const parcelStyle = parcel.getAttribute('style');
+    const artwork = parcel.querySelector('img')!.outerHTML;
+    expect(document.querySelectorAll('[data-city-district-support="road-spanning-deck"]')).toHaveLength(2);
+    expect(parcel).toHaveAttribute('data-city-district-parcel', 'transit-west-gate');
+    expect(deck).toHaveAttribute('viewBox', '0 0 100 100');
+    expect(deck).toHaveAttribute('data-road-deck-portal', 'open');
+    expect(deck.querySelectorAll('[data-road-deck-abutment]')).toHaveLength(2);
+    expect(deck.querySelector('[data-road-deck-floor]')).toHaveAttribute('fill', '#494b49');
+    for (const path of deck.querySelectorAll('path')) {
+      expect((path.getAttribute('d')!.match(/\d+(?:\.\d+)?/g) ?? []).map(Number)
+        .every((coordinate) => coordinate >= 0 && coordinate <= 100)).toBe(true);
+    }
+    const mobileFoundation = parcel.querySelector<HTMLElement>('span.civ-city-road-deck-mobile-foundation')!;
+    const apron = parcel.querySelector<SVGElement>('[data-city-district-entrance="transit"]')!;
+    expect(getComputedStyle(deck).display).toBe('block');
+    expect(getComputedStyle(mobileFoundation).display).toBe('none');
+    expect(getComputedStyle(apron).display).toBe('none');
+    const archive = document.querySelector<HTMLElement>('[data-city-district-parcel="archive-east-court"]')!;
+    const archiveDeck = archive.querySelector<SVGElement>('[data-city-district-support="road-spanning-deck"]')!;
+    const archiveFoundation = archive.querySelector<HTMLElement>('span.civ-city-road-deck-mobile-foundation')!;
+    const archiveStyle = archive.getAttribute('style');
+    const archiveArtwork = archive.querySelector('img')!.outerHTML;
+    expect(archive).toHaveAttribute('data-slot-occupant', 'civilian');
+    expect(archiveDeck).toHaveAttribute('viewBox', '0 0 100 100');
+    expect(archiveDeck).toHaveAttribute('data-road-deck-portal', 'open');
+    expect(getComputedStyle(archiveDeck).display).toBe('block');
+    expect(getComputedStyle(archiveFoundation).display).toBe('none');
+
+    rerender(city({ compact: true }));
+    expect(getComputedStyle(deck).display).toBe('none');
+    expect(getComputedStyle(mobileFoundation).display).toBe('block');
+    expect(getComputedStyle(apron).display).toBe('block');
+    expect(parcel.getAttribute('style')).toBe(parcelStyle);
+    expect(parcel.querySelector('img')!.outerHTML).toBe(artwork);
+    expect(getComputedStyle(archiveDeck).display).toBe('none');
+    expect(getComputedStyle(archiveFoundation).display).toBe('block');
+    expect(archive.getAttribute('style')).toBe(archiveStyle);
+    expect(archive.querySelector('img')!.outerHTML).toBe(archiveArtwork);
+
+    rerender(city({ districtInstances: [district, {
+      ...district, districtId: 'district:archive_quarter:2', family: 'archive_quarter', instance: 2,
+      residentArtifactIds: ['t1s06', 't1p08'], permanentDyad: 'orbit',
+      residentAffinities: ['continuum', 'radiance'], foundingAffinities: ['continuum', 'radiance'],
+    }] }));
+    expect(archive).toHaveAttribute('data-slot-occupant', 'specialist');
+    expect(archive.querySelector('[data-city-district-support="road-spanning-deck"]')).not.toBeNull();
+
+    for (const overrides of [
+      { environmentVariantId: 'oceanic_scar' },
+      { progress: progress(3, 40, 8) },
+      { identities: identities({ surface: 'echo' }) },
+      { districtInstances: [] },
+    ] satisfies Partial<Props>[]) {
+      rerender(city(overrides));
+      expect(document.querySelector('[data-city-district-support="road-spanning-deck"]')).toBeNull();
+      expect(document.querySelector('[data-city-district-parcel="transit-west-gate"] [data-city-district-support]')).not.toBeNull();
     }
   });
 

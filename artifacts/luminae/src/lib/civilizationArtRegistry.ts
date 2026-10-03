@@ -36,8 +36,8 @@ import auroraBasinStellarChrysalisCityUrl from '@/assets/civilization/environmen
 import auroraBasinStellarChrysalisCityMobileUrl from '@/assets/civilization/environments/growth/aurora-basin-stellar-chrysalis-mobile-v1.webp';
 import auroraBasinGalacticChrysalisCityUrl from '@/assets/civilization/environments/growth/aurora-basin-galactic-chrysalis-desktop-v1.webp';
 import auroraBasinGalacticChrysalisCityMobileUrl from '@/assets/civilization/environments/growth/aurora-basin-galactic-chrysalis-mobile-v1.webp';
-import auroraBasinGalacticChrysalisReferenceUrl from '@/assets/civilization/environments/growth/aurora-basin-galactic-chrysalis-desktop-v5.webp';
-import auroraBasinGalacticChrysalisReferenceMobileUrl from '@/assets/civilization/environments/growth/aurora-basin-galactic-chrysalis-mobile-v5.webp';
+import auroraBasinGalacticChrysalisReferenceUrl from '@/assets/civilization/environments/growth/aurora-basin-galactic-chrysalis-desktop-v7.webp';
+import auroraBasinGalacticChrysalisReferenceMobileUrl from '@/assets/civilization/environments/growth/aurora-basin-galactic-chrysalis-mobile-v6.webp';
 import auroraBasinStellarEchoCityUrl from '@/assets/civilization/environments/growth/aurora-basin-stellar-echo-desktop-v1.webp';
 import auroraBasinStellarEchoCityMobileUrl from '@/assets/civilization/environments/growth/aurora-basin-stellar-echo-mobile-v1.webp';
 import auroraBasinSurfaceDistrictMasterUrl from '@/assets/civilization/environments/aurora-basin-surface-district-master-v1.webp';

@@ -298,8 +298,8 @@ describe('civilizationArtRegistry', () => {
       expect(plate.src).toContain('stellar-chrysalis-desktop-v1.webp');
       expect(plate.mobileSrc).toContain('stellar-chrysalis-mobile-v1.webp');
     }
-    expect(stages[5]?.src).toContain('galactic-chrysalis-desktop-v5.webp');
-    expect(stages[5]?.mobileSrc).toContain('galactic-chrysalis-mobile-v5.webp');
+    expect(stages[5]?.src).toContain('galactic-chrysalis-desktop-v7.webp');
+    expect(stages[5]?.mobileSrc).toContain('galactic-chrysalis-mobile-v6.webp');
     for (const plate of stages.slice(2)) {
       expect(plate.position).toBe(stages[0]?.position);
       expect(plate.transformOrigin).toBe(stages[0]?.transformOrigin);
@@ -325,9 +325,10 @@ describe('civilizationArtRegistry', () => {
         );
 
         if (scene === 'surface') {
-          const version = variant.id === 'aurora_basin' ? 'v5' : 'v1';
-          expect(cinematic.src).toContain(`galactic-chrysalis-desktop-${version}.webp`);
-          expect(cinematic.mobileSrc).toContain(`galactic-chrysalis-mobile-${version}.webp`);
+          const desktopVersion = variant.id === 'aurora_basin' ? 'v7' : 'v1';
+          const mobileVersion = variant.id === 'aurora_basin' ? 'v6' : 'v1';
+          expect(cinematic.src).toContain(`galactic-chrysalis-desktop-${desktopVersion}.webp`);
+          expect(cinematic.mobileSrc).toContain(`galactic-chrysalis-mobile-${mobileVersion}.webp`);
         } else {
           expect(cinematic.src).toBe(priorStage.src);
           expect(cinematic.mobileSrc).toBe(priorStage.mobileSrc);
@@ -384,8 +385,8 @@ describe('civilizationArtRegistry', () => {
                   ? [`young-${authoredDyad ? `${dyad}-` : ''}desktop-v1.webp`, `young-${authoredDyad ? `${dyad}-` : ''}mobile-v1.webp`]
                   : stage === 9 && dyad === 'chrysalis'
                     ? [
-                        `galactic-chrysalis-desktop-${variant.id === 'aurora_basin' ? 'v5' : 'v1'}.webp`,
-                        `galactic-chrysalis-mobile-${variant.id === 'aurora_basin' ? 'v5' : 'v1'}.webp`,
+                        `galactic-chrysalis-desktop-${variant.id === 'aurora_basin' ? 'v7' : 'v1'}.webp`,
+                        `galactic-chrysalis-mobile-${variant.id === 'aurora_basin' ? 'v6' : 'v1'}.webp`,
                       ]
                   : stage >= 6
                     ? [`stellar-${authoredDyad ? dyad : 'neutral'}-desktop-v1.webp`, `stellar-${authoredDyad ? dyad : 'neutral'}-mobile-v1.webp`]

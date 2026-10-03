@@ -15,6 +15,11 @@ import {
 } from '@/lib/civilizationArtRegistry';
 import type { CivilizationPlateMaturity } from '@/lib/civilizationDyadEvolutionPlateManifest';
 import {
+  getCivilizationCivilianParcelArt,
+  type CivilizationCivilianParcelArt,
+} from '@/lib/civilizationCivilianArtRegistry';
+import { resolveCivilizationSurfaceParcelOccupant } from '@/lib/civilizationSurfaceParcelOccupant';
+import {
   getCivilizationManifestationArt,
   getCivilizationNeutralSettlementArt,
   getCivilizationSurfaceDistrictArt,
@@ -42,6 +47,7 @@ import type {
 import { CIVILIZATION_DYAD_VISUALS } from '@/lib/civilizationVisualState';
 import { AFFINITY_META } from '@/lib/affinityMeta';
 import { getCivilizationDistrictPresentation } from '@/lib/civilizationDistrictPresentation';
+import { CIVILIZATION_DESKTOP_ROAD_SPANNING_PARCELS } from '@/lib/civilizationDistrictGroundFootprint';
 import type { CivilizationDeploymentSite } from '@/lib/civilizationDeploymentSites';
 import {
   CivilizationDistrictResidents,
@@ -401,22 +407,46 @@ const DISTRICT_ENTRANCE_BY_PARCEL: Readonly<Partial<Record<string, DistrictEntra
 
 function CityDistrictPhysicalSupport({
   entranceApron,
+  roadSpanningDeck = false,
   ...foundation
 }: {
   mode: CivilizationManifestationSupportMode;
   shoreSupportDepth?: number;
   shoreSpillway?: boolean;
   entranceApron?: DistrictEntranceApron;
+  roadSpanningDeck?: boolean;
 }) {
   const apron = entranceApron ? DISTRICT_ENTRANCE_APRONS[entranceApron] : null;
   return (
     <>
-      <CityDistrictFoundation {...foundation} />
+      {roadSpanningDeck ? (
+        <>
+          <span className="civ-city-road-deck-mobile-foundation pointer-events-none absolute inset-0">
+            <CityDistrictFoundation {...foundation} />
+          </span>
+          <svg
+            aria-hidden="true"
+            viewBox="0 0 100 100"
+            className="civ-city-road-spanning-deck pointer-events-none absolute inset-0 z-0 h-full w-full"
+            data-city-district-support="road-spanning-deck"
+            data-road-deck-portal="open"
+          >
+            {/* Separate abutments leave x32–66 below y95 unpainted, so the
+                existing road continues under the parcel instead of ending at a wall. */}
+            <path d="M2 83 20 94 32 94 32 100 20 100 2 89Z" fill="#292c2e" data-road-deck-abutment="west" />
+            <path d="M66 94 70 94 96 88 96 94 70 100 66 100Z" fill="#292c2e" data-road-deck-abutment="east" />
+            <path d="M20 94 70 94 96 88 96 89 70 95 20 95 2 84 2 83Z" fill="#303538" data-road-deck-bearing-edge="front" />
+            <path d="M14 60 78 60 98 76 96 88 70 94 20 94 2 83 2 74Z" fill="#494b49" stroke="#6f716b" strokeWidth="0.45" data-road-deck-floor="platform" />
+            <path d="M3 75 15 62 77 62 96 77M4 82 21 92 69 92 94 87" fill="none" stroke="#88857a" strokeWidth="0.55" />
+            <path d="M20 96V99M29 96V99M70 96V99M89 92V95" fill="none" stroke="#555b59" strokeWidth="0.65" />
+          </svg>
+        </>
+      ) : <CityDistrictFoundation {...foundation} />}
       {apron && (
         <svg
           aria-hidden="true"
           viewBox="0 0 100 100"
-          className="pointer-events-none absolute inset-0 z-0 h-full w-full"
+          className={`pointer-events-none absolute inset-0 z-0 h-full w-full${roadSpanningDeck ? ' civ-city-road-deck-mobile-foundation' : ''}`}
           data-city-district-entrance={entranceApron}
         >
           {/* Short bearing faces stay inside the already fitted parcel and
@@ -744,6 +774,23 @@ function ManifestationArtwork({ art }: { art: CivilizationManifestationArt }) {
       decoding="async"
       draggable={false}
     />
+  );
+}
+
+function CivilianParcelArtwork({ art }: { art: CivilizationCivilianParcelArt }) {
+  const groundOffset = Number(((0.94 - art.groundLine) * 100).toFixed(6));
+  return (
+    // Crop in the cell's own frame before moving it; moving the atlas image
+    // directly would expose the adjacent row inside the parcel's outer clip.
+    <span
+      className="absolute inset-0 block overflow-hidden"
+      style={{ transform: `translateY(${groundOffset}%)` }}
+      data-civilian-cell-crop="before-ground-alignment"
+      data-civilian-ground-line={art.groundLine}
+      data-civilian-ground-offset={groundOffset}
+    >
+      <ManifestationArtwork art={art} />
+    </span>
   );
 }
 
@@ -1497,6 +1544,7 @@ function ActiveSettlementInfrastructure({
   const usesGalacticChrysalisEntrances = scene === 'surface' &&
     environmentVariantId === 'aurora_basin' && progress.cityDevelopmentStage === 9 &&
     committed && identity.dyad === 'chrysalis';
+  const usesExclusiveParcelOccupants = usesGalacticChrysalisEntrances && usesPersistentDistricts;
   const cityFabricIntegratedIntoPlate = scene === 'surface' &&
     !placementProof &&
     progress.cityDevelopmentStage >= 1;
@@ -1581,26 +1629,35 @@ function ActiveSettlementInfrastructure({
               .filter((candidate) => candidate.instance < parcel.instance)
               .reduce((total, candidate) => total + candidate.capacity, 0);
             const occupiedCount = districtOccupancyCounts[parcel.family] ?? 0;
-            const districtInstance = districtInstances.find((district) => (
-              district.family === parcel.family && district.instance === parcel.instance
-            ));
-            const specialist = districtInstance
+            const occupant = usesExclusiveParcelOccupants
+              ? resolveCivilizationSurfaceParcelOccupant({
+                parcel, districtInstances, themeKey: 'chrysalis', maturity: 'galactic',
+              })
+              : null;
+            const civilian = occupant?.kind === 'civilian' ? occupant : null;
+            const districtInstance = occupant
+              ? occupant.kind === 'specialist' ? occupant.district : undefined
+              : districtInstances.find((district) => (
+                district.family === parcel.family && district.instance === parcel.instance
+              ));
+            const specialist = occupant ? occupant.kind === 'specialist' : districtInstance
               ? districtInstance.residentArtifactIds.length > 0
               : occupiedCount > precedingCapacity;
-            // The finished reference already contains serviced courts in its
-            // city plate. Keep unused addresses grounded without stamping a
-            // miniature complete district into each reserve court.
-            const emptyReserve = usesGalacticChrysalisEntrances && usesPersistentDistricts && !specialist;
             const districtDyad = districtInstance?.permanentDyad ?? (
               districtInstance ? null : identity.dyad
             );
-            const entranceApron = usesGalacticChrysalisEntrances && !emptyReserve && districtDyad === 'chrysalis'
+            const entranceApron = usesGalacticChrysalisEntrances && !civilian && districtDyad === 'chrysalis'
               ? DISTRICT_ENTRANCE_BY_PARCEL[parcel.id]
               : undefined;
-            const art = districtDyad
+            // Select one occupant before looking up art. A missing civilian
+            // edition keeps its foundation; it never borrows specialist art.
+            const civilianArt = civilian
+              ? getCivilizationCivilianParcelArt(civilian.themeKey, civilian.maturity, civilian.variant)
+              : null;
+            const art = civilian ? civilianArt : districtDyad
               ? getCivilizationSurfaceDistrictArt(districtDyad, parcel.family, parcel.instance)
               : getCivilizationNeutralSettlementArt('surface', parcel.family);
-            if (!art) return null;
+            if (!art && !civilian) return null;
             const desktopTransform = parcel.desktopTransform;
             const mobileTransform = parcel.mobileTransform;
             const physical = getArtifactPlacementPhysicalContract(parcel.family);
@@ -1636,7 +1693,9 @@ function ActiveSettlementInfrastructure({
                   '--city-fabric-mobile-scale': '1',
                   aspectRatio: '1',
                   opacity: 1,
-                  filter: physical.requiredSupport === 'shore_pylons'
+                  filter: civilianArt
+                    ? 'saturate(0.98) contrast(1.04) brightness(0.98)'
+                    : physical.requiredSupport === 'shore_pylons'
                     ? `saturate(${specialist ? 0.98 : 0.72}) contrast(1.06) brightness(${specialist ? 0.98 : 0.86}) drop-shadow(0 1px 1px rgba(0,0,0,0.55))`
                     : parcel.depth === 'distance'
                     ? `saturate(${specialist ? 0.98 : 0.72}) contrast(1.06) brightness(${specialist ? 0.92 : 0.78}) drop-shadow(0 3px 4px rgba(0,0,0,0.9)) drop-shadow(0 0 3px ${districtPrimaryTone}42)`
@@ -1647,11 +1706,15 @@ function ActiveSettlementInfrastructure({
                 data-city-district-parcel={parcel.id}
                 data-district-instance={parcel.instance}
                 data-district-id={districtInstance?.districtId}
-                data-district-dyad={districtDyad ?? 'neutral'}
-                data-district-presentation={emptyReserve ? 'reserve-foundation' : specialist
+                data-district-dyad={civilian ? undefined : districtDyad ?? 'neutral'}
+                data-slot-occupant={occupant?.kind}
+                data-civilian-theme={civilian?.themeKey}
+                data-civilian-tier={civilian?.maturity}
+                data-civilian-variant={civilian?.variant}
+                data-district-presentation={civilian ? art ? 'civilian-filler' : 'reserve-foundation' : specialist
                   ? districtDyad ? 'locked-dyad' : 'neutral-residents'
                   : 'generic-filler'}
-                data-district-artifact-count={districtInstance?.residentArtifactIds.length ?? Math.max(0, Math.min(
+                data-district-artifact-count={civilian ? 0 : districtInstance?.residentArtifactIds.length ?? Math.max(0, Math.min(
                   parcel.capacity,
                   occupiedCount - precedingCapacity,
                 ))}
@@ -1680,20 +1743,21 @@ function ActiveSettlementInfrastructure({
                 <CityDistrictPhysicalSupport
                   mode={physical.requiredSupport}
                   shoreSupportDepth={parcel.shoreSupportDepth}
-                  shoreSpillway={!emptyReserve && districtDyad === 'chrysalis'}
+                  shoreSpillway={!civilian && districtDyad === 'chrysalis'}
                   entranceApron={entranceApron}
+                  roadSpanningDeck={usesExclusiveParcelOccupants && CIVILIZATION_DESKTOP_ROAD_SPANNING_PARCELS.includes(parcel.id)}
                 />
-                {!emptyReserve && <span
+                {art && <span
                   className="absolute inset-0 z-[1] block overflow-hidden"
-                  style={{ clipPath: getCityFabricTerrainClipPath(parcel.depth, physical.requiredSupport) }}
-                  data-city-district-terrain-occlusion={parcel.depth === 'foreground' || physical.requiredSupport === 'shore_pylons' ? 'architecture' : 'terrain'}
+                  style={{ clipPath: civilianArt ? undefined : getCityFabricTerrainClipPath(parcel.depth, physical.requiredSupport) }}
+                  data-city-district-terrain-occlusion={civilianArt || parcel.depth === 'foreground' || physical.requiredSupport === 'shore_pylons' ? 'architecture' : 'terrain'}
                 >
                   {physical.requiredSupport !== 'shore_pylons' && (
                     <span className={`absolute left-[8%] right-[8%] rounded-[50%] bg-black/55 blur-[2px] ${entranceApron
                       ? 'bottom-[7%] h-[7%]'
                       : 'bottom-[2%] h-[12%]'}`} />
                   )}
-                  <ManifestationArtwork art={art} />
+                  {civilianArt ? <CivilianParcelArtwork art={civilianArt} /> : <ManifestationArtwork art={art} />}
                 </span>}
                 {districtInstance && (
                   <CivilizationDistrictResidents district={districtInstance} sites={residentSites} />
@@ -2009,6 +2073,18 @@ const CONTINUITY_STYLES = `
     transform: translate(-50%, -94%) scale(var(--city-fabric-scale));
     transform-origin: 50% 94%;
   }
+  .civ-city-road-spanning-deck {
+    display: block;
+  }
+  .civ-city-road-deck-mobile-foundation {
+    display: none;
+  }
+  .civ-continuity-compact .civ-city-road-spanning-deck {
+    display: none;
+  }
+  .civ-continuity-compact .civ-city-road-deck-mobile-foundation {
+    display: block;
+  }
   .civ-continuity-compact .civ-city-fabric-district {
     left: var(--city-fabric-mobile-x);
     top: var(--city-fabric-mobile-y);
@@ -2026,6 +2102,12 @@ const CONTINUITY_STYLES = `
     animation: none;
   }
   @media (max-width: 640px) {
+    .civ-city-road-spanning-deck {
+      display: none;
+    }
+    .civ-city-road-deck-mobile-foundation {
+      display: block;
+    }
     .civ-galaxy-colony-system {
       left: var(--galaxy-colony-mobile-x);
       top: var(--galaxy-colony-mobile-y);
