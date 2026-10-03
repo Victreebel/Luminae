@@ -61,9 +61,9 @@ import { artifactMarkerHasBrand } from './artifactBrands';
 
 // ── Helpers ────────────────────────────────────────────────────────────────────
 
-function t3(s: GameState): ArtifactCard[] { return s.forgeTier3 ?? []; }
-function t2(s: GameState): ArtifactCard[] { return s.forgeTier2 ?? []; }
-function t1(s: GameState): ArtifactCard[] { return s.forgeTier1 ?? []; }
+function t3(s: GameState): ArtifactCard[] { return (s.forgeTier3 ?? []).filter((card): card is ArtifactCard => card !== null); }
+function t2(s: GameState): ArtifactCard[] { return (s.forgeTier2 ?? []).filter((card): card is ArtifactCard => card !== null); }
+function t1(s: GameState): ArtifactCard[] { return (s.forgeTier1 ?? []).filter((card): card is ArtifactCard => card !== null); }
 function allForgeArtifacts(s: GameState): ArtifactCard[] { return [...t3(s), ...t2(s), ...t1(s)]; }
 function allForgeArtifactIds(s: GameState): string[] { return allForgeArtifacts(s).map(c => c.id); }
 function allPlayerIds(s: GameState): string[] {

@@ -838,6 +838,7 @@ router.post(
             maxPlayers: 2,
             victoryRequirement: DEFAULT_VICTORY_REQUIREMENT,
             cinematicMode: "epic",
+            eventFrequency: "off",
             gameMode: "campaign",
             scenarioId: CLEARANCE_SCENARIO_ID,
             blueprintPolicy: "scenario",
@@ -893,6 +894,7 @@ router.post(
           15,
           "epic",
           {
+            eventFrequency: "off",
             blueprintSetups: {
               [lumii.id]: {
                 blueprintIds: [...OUTER_VAULT_BLUEPRINT_IDS],

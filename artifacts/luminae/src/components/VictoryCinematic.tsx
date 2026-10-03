@@ -1,5 +1,6 @@
 import React, { useEffect, useRef, useState } from 'react';
 import { motion, AnimatePresence } from 'framer-motion';
+import { Orbit } from 'lucide-react';
 import { KardashevScene } from '@/components/KardashevScene';
 import { useFocusTrap } from '@/hooks/use-focus-trap';
 import type { KardashevTier, AffinityPalette } from '@/lib/kardashev';
@@ -16,6 +17,11 @@ export interface VictoryCinematicProps {
   civilizationProfile?: CivilizationProfile;
   eminence: number;
   cardsForged: number;
+  legacyWinnerName?: string | null;
+  isLocalLegacyWinner?: boolean;
+  isAbsoluteVictory?: boolean;
+  legacyCompletedCriteria?: number;
+  legacyRequiredCriteria?: number;
   accolades: Accolade[];
   onDismiss: () => void;
 }
@@ -49,6 +55,11 @@ export function VictoryCinematic({
   civilizationProfile,
   eminence,
   cardsForged,
+  legacyWinnerName = null,
+  isLocalLegacyWinner = false,
+  isAbsoluteVictory = false,
+  legacyCompletedCriteria = 0,
+  legacyRequiredCriteria = 4,
   accolades,
   onDismiss,
 }: VictoryCinematicProps) {
@@ -99,20 +110,36 @@ export function VictoryCinematic({
     };
   }, []);
 
-  const titleText = isLocalWinner
-    ? 'Victory'
-    : isSpectator
-      ? `${winnerName} Wins`
-      : 'Defeat';
+  const titleText = isAbsoluteVictory
+    ? isLocalWinner
+      ? 'Absolute Victory'
+      : isSpectator
+        ? `${winnerName}: Absolute Victory`
+        : 'Defeat'
+    : isLocalWinner
+      ? 'Victory'
+      : isLocalLegacyWinner
+        ? 'Legacy Victory'
+        : isSpectator
+          ? `${winnerName} Wins`
+          : 'Defeat';
 
-  const titleColor = isLocalWinner
-    ? palette.primary
+  const titleColor = isAbsoluteVictory && isLocalWinner
+    ? '#fff1b8'
+    : isLocalLegacyWinner && !isLocalWinner
+      ? '#d9f8ff'
+      : isLocalWinner
+        ? palette.primary
     : isSpectator
       ? palette.primary
       : 'hsl(var(--muted-foreground))';
 
-  const titleGlow = isLocalWinner
-    ? `0 0 40px ${palette.primary}88, 0 0 80px ${palette.primary}44`
+  const titleGlow = isAbsoluteVictory && isLocalWinner
+    ? '0 0 28px rgba(255,239,176,0.9), 0 0 70px rgba(129,230,255,0.44)'
+    : isLocalLegacyWinner && !isLocalWinner
+      ? '0 0 34px rgba(145,232,255,0.65)'
+      : isLocalWinner
+        ? `0 0 40px ${palette.primary}88, 0 0 80px ${palette.primary}44`
     : undefined;
 
   return (
@@ -176,9 +203,21 @@ export function VictoryCinematic({
       <div
         className="absolute inset-0 pointer-events-none"
         style={{
-          background: `radial-gradient(ellipse 55% 35% at 50% 50%, ${palette.primary}18 0%, transparent 70%)`,
+          background: isAbsoluteVictory
+            ? `radial-gradient(ellipse 55% 35% at 50% 50%, rgba(255,231,151,0.18) 0%, ${palette.primary}14 42%, transparent 72%)`
+            : `radial-gradient(ellipse 55% 35% at 50% 50%, ${palette.primary}18 0%, transparent 70%)`,
         }}
       />
+
+      {isAbsoluteVictory && (
+        <motion.div
+          className="pointer-events-none absolute left-1/2 top-1/2 aspect-square w-[min(72vw,72vh)] -translate-x-1/2 -translate-y-1/2 rounded-full border border-amber-100/20"
+          initial={{ opacity: 0, scale: 0.8 }}
+          animate={{ opacity: [0, 0.65, 0.32], scale: 1 }}
+          transition={{ delay: 1.65, duration: 1.5, ease: 'easeOut' }}
+          aria-hidden="true"
+        />
+      )}
 
       {/* ── Title — anchored near top; delayed to ~2.0 s ── */}
       <motion.div
@@ -195,7 +234,7 @@ export function VictoryCinematic({
         </h2>
         {!isLocalWinner && !isSpectator && (
           <p className="mt-1 text-sm text-muted-foreground/80">
-            {winnerName}&rsquo;s civilization prevails
+            {winnerName} claimed the Eminence Victory
           </p>
         )}
       </motion.div>
@@ -256,7 +295,45 @@ export function VictoryCinematic({
               Forged
             </span>
           </span>
+          {isAbsoluteVictory && (
+            <>
+              <span className="h-8 w-px rounded-full bg-white/10" />
+              <span className="flex flex-col items-center gap-0.5">
+                <span className="text-2xl font-bold tabular-nums text-cyan-50">
+                  {legacyCompletedCriteria}
+                  <span className="text-sm text-cyan-100/45">/{legacyRequiredCriteria}</span>
+                </span>
+                <span className="text-[10px] uppercase tracking-widest text-cyan-100/55">
+                  Legacy
+                </span>
+              </span>
+            </>
+          )}
         </motion.div>
+
+        {legacyWinnerName && !isAbsoluteVictory && (
+          <motion.div
+            initial={{ opacity: 0, y: 8 }}
+            animate={{ opacity: 1, y: 0 }}
+            transition={{ delay: 3.05, duration: 0.4 }}
+            className="flex w-full max-w-sm items-center gap-3 border border-cyan-100/20 bg-cyan-200/[0.055] px-3 py-2.5 text-left pointer-events-none select-none"
+            aria-label={`Legacy Victory: ${legacyWinnerName}`}
+          >
+            <span className="grid h-9 w-9 shrink-0 place-items-center border border-cyan-100/25 text-cyan-100">
+              <Orbit className="h-5 w-5" aria-hidden="true" />
+            </span>
+            <span className="min-w-0">
+              <span className="block text-[9px] font-black uppercase tracking-[0.18em] text-cyan-100/55">
+                Legacy Victory
+              </span>
+              <strong className="block truncate text-sm text-cyan-50">{legacyWinnerName}</strong>
+            </span>
+            <span className="ml-auto shrink-0 font-serif text-lg text-cyan-50/80">
+              {legacyCompletedCriteria}
+              <span className="text-xs text-cyan-100/35">/{legacyRequiredCriteria} conditions</span>
+            </span>
+          </motion.div>
+        )}
 
         {/* Accolades — first badge at ~3.2 s, per-badge stagger preserved */}
         {accolades.length > 0 && (

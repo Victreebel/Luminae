@@ -1,0 +1,247 @@
+{
+  "version": "artifact-tier-audit-v4",
+  "date": "2026-09-28",
+  "tool": "image_gen",
+  "entries": [
+    {
+      "id": "t3r01",
+      "kind": "card",
+      "prompt": "Use case: stylized-concept. Asset: final LUMINAe science-fiction strategy card illustration, portrait 7:10 or 1024x1536. Premium cinematic hard-science-fiction concept painting, believable opaque engineering, tiny service vessels for scale, detailed functional materials. One dominant readable silhouette and visible activity in central 65%; dark quiet margins and bottom fifth for existing UI. No typography, letters, numbers, insignia, borders, watermarks, collage, or handheld tokens. SPIRAL-ARM SHEPHERD: an inhabited orange star is being slowly steered by an enormous asymmetric array of reflective stellar-thruster petals. Only one side of the star has the immense open metallic collector crescent; its directed outflow points away from tiny protected orbital habitats and sail tugs. Multiple distant stars and sparse similar thruster glints imply a coordinated regional migration corridor without drawing any physical bridge. The scene depicts controlled slow stellar engineering, not an exploding star or a miniature artificial sun in a cage. Red-orange light, deep black, dark forged metal; enormous scale, clear asymmetric silhouette.",
+      "source": "artifacts/luminae/src/assets/cards/tier-audit-v4/t3r01.png",
+      "originalSource": "/Users/chaoscalligraphy/.codex/generated_images/01a0e5d5-4e9f-7792-8c15-a2504c2c9b0c/exec-95492fb7-ccc5-4dcc-b5e8-95b6d237af52.png",
+      "runtime": "artifacts/luminae/src/assets/cards/runtime/tier-audit-v4/t3r01.webp",
+      "runtimeBytes": 23012,
+      "review": "Reviewed for practical function, distinctive silhouette, tier context, and crop compatibility."
+    },
+    {
+      "id": "t2s01",
+      "kind": "card",
+      "prompt": "Use case: stylized-concept. Asset: final LUMINAe science-fiction strategy card illustration, portrait 7:10 or 1024x1536. Premium cinematic hard-science-fiction concept painting, believable opaque engineering, tiny service vessels for scale, detailed functional materials. One dominant readable silhouette and visible activity in central 65%; dark quiet margins and bottom fifth for existing UI. No typography, letters, numbers, insignia, borders, watermarks, collage, or handheld tokens. ORBITAL TRANSFER LOOM: a monumental cobalt navigation and traffic-control station in interplanetary space, a branching family of tiny sailcraft and cargo vessels departing on clearly different curved gravity-assist trajectories past a distant gas giant and an inner planet. Main subject is a long open relay truss with three physically separated tracking dishes and a large outbound sailship. Orbital guide traces are sparse optical instrumentation with no writing; no wormholes, gateways, rings containing portals, or teleportation. Cool navy, sapphire, silver-blue. Convey functioning routes within one star system.",
+      "source": "artifacts/luminae/src/assets/cards/tier-audit-v4/t2s01.png",
+      "originalSource": "/Users/chaoscalligraphy/.codex/generated_images/01a0e5d5-4e9f-7792-8c15-a2504c2c9b0c/exec-b858bf55-617d-4e97-8aa4-343be88abb8a.png",
+      "runtime": "artifacts/luminae/src/assets/cards/runtime/tier-audit-v4/t2s01.webp",
+      "runtimeBytes": 25494,
+      "review": "Reviewed for practical function, distinctive silhouette, tier context, and crop compatibility."
+    },
+    {
+      "id": "t2e03",
+      "kind": "card",
+      "prompt": "Use case: stylized-concept. Asset: final LUMINAe science-fiction strategy card illustration, portrait 7:10 or 1024x1536. Premium cinematic hard-science-fiction concept painting, believable opaque engineering, tiny service vessels for scale, detailed functional materials. One dominant readable silhouette and visible activity in central 65%; dark quiet margins and bottom fifth for existing UI. No typography, letters, numbers, insignia, borders, watermarks, collage, or handheld tokens. SUNLESS HABITAT CHAIN: several immense sealed green-lit biological habitats are anchored to different small icy bodies in the dark outer solar system, serviced by visible chemical-feedstock tankers. Main subject is a massive pressurized biome cylinder half-buried in a comet, with luminous internal wetland and shielded chemical processing bays, two nearby smaller moon stations imply a supply chain. No sunlight in gardens, no miniature bottle or laboratory flask, no branches growing through vacuum. Deep emerald, icy blue-green, dark graphite, restrained warm reactor windows. One local star is a tiny distant point.",
+      "source": "artifacts/luminae/src/assets/cards/tier-audit-v4/t2e03.png",
+      "originalSource": "/Users/chaoscalligraphy/.codex/generated_images/01a0e5d5-4e9f-7792-8c15-a2504c2c9b0c/exec-3ef1540d-059f-4534-b4f7-89dbf64adf3a.png",
+      "runtime": "artifacts/luminae/src/assets/cards/runtime/tier-audit-v4/t2e03.webp",
+      "runtimeBytes": 41178,
+      "review": "Reviewed for practical function, distinctive silhouette, tier context, and crop compatibility."
+    },
+    {
+      "id": "t2r02",
+      "kind": "card",
+      "prompt": "Use case: stylized-concept. Asset: final LUMINAe science-fiction strategy card illustration, portrait 7:10 or 1024x1536. Premium cinematic hard-science-fiction concept painting, believable opaque engineering, tiny service vessels for scale, detailed functional materials. One dominant readable silhouette and visible activity in central 65%; dark quiet margins and bottom fifth for existing UI. No typography, letters, numbers, insignia, borders, watermarks, collage, or handheld tokens. ECLIPSE RESERVE GRID: a great dark orange orbital fuel depot on the night side of a gas giant, tankers arrive from distant sunlit solar collectors and depart toward shadowed rotating habitats. Main focal shape is a curved open industrial depot with luminous amber fuel-processing vessels, clearly separate from the planet. The eclipse boundary is legible behind it. Amber and dark red engineering, no magic energy bubbles.",
+      "source": "artifacts/luminae/src/assets/cards/tier-audit-v4/t2r02.png",
+      "originalSource": "/Users/chaoscalligraphy/.codex/generated_images/01a0e5d5-4e9f-7792-8c15-a2504c2c9b0c/exec-ecf1f1d6-b496-4152-a56c-a18c0064442c.png",
+      "runtime": "artifacts/luminae/src/assets/cards/runtime/tier-audit-v4/t2r02.webp",
+      "runtimeBytes": 21706,
+      "review": "Reviewed for practical function, distinctive silhouette, tier context, and crop compatibility."
+    },
+    {
+      "id": "t2r04",
+      "kind": "card",
+      "prompt": "Use case: stylized-concept. Asset: final LUMINAe science-fiction strategy card illustration, portrait 7:10 or 1024x1536. Premium cinematic hard-science-fiction concept painting, believable opaque engineering, tiny service vessels for scale, detailed functional materials. One dominant readable silhouette and visible activity in central 65%; dark quiet margins and bottom fifth for existing UI. No typography, letters, numbers, insignia, borders, watermarks, collage, or handheld tokens. LIVING DYSON ORCHARD: a vast incomplete swarm of inhabited photosynthetic collector leaves orbiting ONE bright orange star. Dominant foreground broad amber-green collector frond has opaque pressurized garden chambers along its spine, tiny maintenance vessels showing scale. Gaps between independent orbital leaves expose the star. A working solar energy and habitat ecosystem, no organism enveloping or touching the star.",
+      "source": "artifacts/luminae/src/assets/cards/tier-audit-v4/t2r04.png",
+      "originalSource": "/Users/chaoscalligraphy/.codex/generated_images/01a0e5d5-4e9f-7792-8c15-a2504c2c9b0c/exec-97307e1a-9b6d-42a7-8c87-9f3076ad5944.png",
+      "runtime": "artifacts/luminae/src/assets/cards/runtime/tier-audit-v4/t2r04.webp",
+      "runtimeBytes": 35166,
+      "review": "Reviewed for practical function, distinctive silhouette, tier context, and crop compatibility."
+    },
+    {
+      "id": "t2r05",
+      "kind": "card",
+      "prompt": "Use case: stylized-concept. Asset: final LUMINAe science-fiction strategy card illustration, portrait 7:10 or 1024x1536. Premium cinematic hard-science-fiction concept painting, believable opaque engineering, tiny service vessels for scale, detailed functional materials. One dominant readable silhouette and visible activity in central 65%; dark quiet margins and bottom fifth for existing UI. No typography, letters, numbers, insignia, borders, watermarks, collage, or handheld tokens. CORONAL SAFETY GOVERNOR: immense refractory interlock towers and shutter petals supervise a stellar extraction beam near the limb of ONE orange star. The main beam is visibly diverted safely into a capture basin, with small distant habitat stations well outside its path. Focus on mechanical fail-safe shutters, directional emitters, shielded service bays; no simple valve, handheld key, warning text, or exploding star. Flare amber, dark iron, red-orange restrained radiation.",
+      "source": "artifacts/luminae/src/assets/cards/tier-audit-v4/t2r05.png",
+      "originalSource": "/Users/chaoscalligraphy/.codex/generated_images/01a0e5d5-4e9f-7792-8c15-a2504c2c9b0c/exec-fa6a751d-41df-439c-b041-e436dbc9e2f4.png",
+      "runtime": "artifacts/luminae/src/assets/cards/runtime/tier-audit-v4/t2r05.webp",
+      "runtimeBytes": 32790,
+      "review": "Reviewed for practical function, distinctive silhouette, tier context, and crop compatibility."
+    },
+    {
+      "id": "t2r06",
+      "kind": "card",
+      "prompt": "Use case: stylized-concept. Asset: final LUMINAe science-fiction strategy card illustration, portrait 7:10 or 1024x1536. Premium cinematic hard-science-fiction concept painting, believable opaque engineering, tiny service vessels for scale, detailed functional materials. One dominant readable silhouette and visible activity in central 65%; dark quiet margins and bottom fifth for existing UI. No typography, letters, numbers, insignia, borders, watermarks, collage, or handheld tokens. HELIOSPHERE HEAT CASCADE: an imposing terraced industrial radiator station in outer-system space, close-up working copper-dark heat exchangers glowing orange at their input and progressively duller toward huge cold graphite radiator wings. Distant orbital processing installations recede sunward toward a small warm star. Physical cooling infrastructure and a clear warm-to-cold gradient, no bottomless drain, no black hole. Dark copper and red thermal light.",
+      "source": "artifacts/luminae/src/assets/cards/tier-audit-v4/t2r06.png",
+      "originalSource": "/Users/chaoscalligraphy/.codex/generated_images/01a0e5d5-4e9f-7792-8c15-a2504c2c9b0c/exec-d5c8bc54-87bf-430a-8ca3-a398665a228b.png",
+      "runtime": "artifacts/luminae/src/assets/cards/runtime/tier-audit-v4/t2r06.webp",
+      "runtimeBytes": 27594,
+      "review": "Reviewed for practical function, distinctive silhouette, tier context, and crop compatibility."
+    },
+    {
+      "id": "t2s03",
+      "kind": "card",
+      "prompt": "Use case: stylized-concept. Asset: final LUMINAe science-fiction strategy card illustration, portrait 7:10 or 1024x1536. Premium cinematic hard-science-fiction concept painting, believable opaque engineering, tiny service vessels for scale, detailed functional materials. One dominant readable silhouette and visible activity in central 65%; dark quiet margins and bottom fifth for existing UI. No typography, letters, numbers, insignia, borders, watermarks, collage, or handheld tokens. ORBITAL CAUSALITY LOOM: monumental sapphire computation-and-observation station overlooking an inhabited planet and a distant asteroid transfer stream. Its open central calculation gallery contains a restrained physical volumetric orbital model with several distinct projected future paths, no symbols or text; external telescopes observe the actual planetary geometry. Main silhouette open angular compute vault with cold radiator wings and tiny service ships. Navy, cobalt, icy silver; no loom threads stretching between planets.",
+      "source": "artifacts/luminae/src/assets/cards/tier-audit-v4/t2s03.png",
+      "originalSource": "/Users/chaoscalligraphy/.codex/generated_images/01a0e5d5-4e9f-7792-8c15-a2504c2c9b0c/exec-f984cd04-e1bb-490b-a313-bfe2bc5412b8.png",
+      "runtime": "artifacts/luminae/src/assets/cards/runtime/tier-audit-v4/t2s03.webp",
+      "runtimeBytes": 41086,
+      "review": "Reviewed for practical function, distinctive silhouette, tier context, and crop compatibility."
+    },
+    {
+      "id": "t2s04",
+      "kind": "card",
+      "prompt": "Use case: stylized-concept. Asset: final LUMINAe science-fiction strategy card illustration, portrait 7:10 or 1024x1536. Premium cinematic hard-science-fiction concept painting, believable opaque engineering, tiny service vessels for scale, detailed functional materials. One dominant readable silhouette and visible activity in central 65%; dark quiet margins and bottom fifth for existing UI. No typography, letters, numbers, insignia, borders, watermarks, collage, or handheld tokens. CONTINUITY FLEET: three huge blue-silver rotating generation ships departing an inhabited planet toward a distant world in the same solar system. Foreground ship has independently lit civic districts, archive galleries, gardens behind opaque pressure walls with occasional windows, and large radiator fins. Show a coherent inhabited fleet in real space, no teleportation, no ceremonial bottle, no hollow glowing token. Sapphire, dark navy, restrained warm windows.",
+      "source": "artifacts/luminae/src/assets/cards/tier-audit-v4/t2s04.png",
+      "originalSource": "/Users/chaoscalligraphy/.codex/generated_images/01a0e5d5-4e9f-7792-8c15-a2504c2c9b0c/exec-9175f9c7-a230-4bc3-8793-cec49fe6ca79.png",
+      "runtime": "artifacts/luminae/src/assets/cards/runtime/tier-audit-v4/t2s04.webp",
+      "runtimeBytes": 33768,
+      "review": "Reviewed for practical function, distinctive silhouette, tier context, and crop compatibility."
+    },
+    {
+      "id": "t2s06",
+      "kind": "card",
+      "prompt": "Use case: stylized-concept. Asset: final LUMINAe science-fiction strategy card illustration, portrait 7:10 or 1024x1536. Premium cinematic hard-science-fiction concept painting, believable opaque engineering, tiny service vessels for scale, detailed functional materials. One dominant readable silhouette and visible activity in central 65%; dark quiet margins and bottom fifth for existing UI. No typography, letters, numbers, insignia, borders, watermarks, collage, or handheld tokens. HELIOSPHERE DISCRIMINATOR: an immense open cobalt sensor array near a distant star, with differently oriented receiver dishes and long baseline spars tracking thin stellar plasma arcs, an industrial beam, and the faint aurora at a planet's limb. Keep main instrument silhouette clear and emissions subtle. Separate physical signal sources in the scene without labels. Science observatory rather than crystal lens. Deep navy, cool cyan and silver.",
+      "source": "artifacts/luminae/src/assets/cards/tier-audit-v4/t2s06.png",
+      "originalSource": "/Users/chaoscalligraphy/.codex/generated_images/01a0e5d5-4e9f-7792-8c15-a2504c2c9b0c/exec-17c546dd-aae9-4462-999a-8eb9f99f375e.png",
+      "runtime": "artifacts/luminae/src/assets/cards/runtime/tier-audit-v4/t2s06.webp",
+      "runtimeBytes": 20844,
+      "review": "Reviewed for practical function, distinctive silhouette, tier context, and crop compatibility."
+    },
+    {
+      "id": "t2e01",
+      "kind": "card",
+      "prompt": "Use case: stylized-concept. Asset: final LUMINAe science-fiction strategy card illustration, portrait 7:10 or 1024x1536. Premium cinematic hard-science-fiction concept painting, believable opaque engineering, tiny service vessels for scale, detailed functional materials. One dominant readable silhouette and visible activity in central 65%; dark quiet margins and bottom fifth for existing UI. No typography, letters, numbers, insignia, borders, watermarks, collage, or handheld tokens. SOLAR IMMUNE CANOPY: an inhabited orbital biosphere protected by a layered living radiation-shield canopy, large thick opaque emerald fronds and mineralized shielding plates above sealed garden habitats. A stellar particle storm lights the outer shield faintly, while repair organisms and small service vessels work in protected recesses. Planet is distant, station beyond its shelter. Jade, emerald, dark green, warm living windows. No organism exposed unprotected as ordinary trees in space.",
+      "source": "artifacts/luminae/src/assets/cards/tier-audit-v4/t2e01.png",
+      "originalSource": "/Users/chaoscalligraphy/.codex/generated_images/01a0e5d5-4e9f-7792-8c15-a2504c2c9b0c/exec-52e04d73-f020-410d-91fb-96419b2c1b41.png",
+      "runtime": "artifacts/luminae/src/assets/cards/runtime/tier-audit-v4/t2e01.webp",
+      "runtimeBytes": 41786,
+      "review": "Reviewed for practical function, distinctive silhouette, tier context, and crop compatibility."
+    },
+    {
+      "id": "t2e05",
+      "kind": "card",
+      "prompt": "Use case: stylized-concept. Asset: final LUMINAe science-fiction strategy card illustration, portrait 7:10 or 1024x1536. Premium cinematic hard-science-fiction concept painting, believable opaque engineering, tiny service vessels for scale, detailed functional materials. One dominant readable silhouette and visible activity in central 65%; dark quiet margins and bottom fifth for existing UI. No typography, letters, numbers, insignia, borders, watermarks, collage, or handheld tokens. BIOSPHERE PROVENANCE ARRAY: enormous green-lit biological archive station in orbit, with visible protected galleries of fossil cores, living culture vaults, meteorite sample docks and deep-space receiver dishes. A near planet and a distant differently colored planet establish interplanetary provenance. Focus on a monumental curved archive wing with small specimen courier ships. Emerald, ivory mineral, dark green, restrained gold. No tiny ledger or unreadable labels.",
+      "source": "artifacts/luminae/src/assets/cards/tier-audit-v4/t2e05.png",
+      "originalSource": "/Users/chaoscalligraphy/.codex/generated_images/01a0e5d5-4e9f-7792-8c15-a2504c2c9b0c/exec-7cc68fa2-78ce-483d-a197-ab4eaf1a5742.png",
+      "runtime": "artifacts/luminae/src/assets/cards/runtime/tier-audit-v4/t2e05.webp",
+      "runtimeBytes": 43228,
+      "review": "Reviewed for practical function, distinctive silhouette, tier context, and crop compatibility."
+    },
+    {
+      "id": "t2e06",
+      "kind": "card",
+      "prompt": "Use case: stylized-concept. Asset: final LUMINAe science-fiction strategy card illustration, portrait 7:10 or 1024x1536. Premium cinematic hard-science-fiction concept painting, believable opaque engineering, tiny service vessels for scale, detailed functional materials. One dominant readable silhouette and visible activity in central 65%; dark quiet margins and bottom fifth for existing UI. No typography, letters, numbers, insignia, borders, watermarks, collage, or handheld tokens. CRYSTAL HABITAT REEF: a magnificent asteroid-belt settlement grown from opaque green mineral ribs and crystal-organic pressure chambers, sealed gardens visible through a few protected windows. Mining tenders deliver raw asteroid material to living fabrication fronts where new habitat chambers are growing. The construction is physically rooted in a large asteroid; smaller inhabited asteroids behind. Emerald, malachite, luminous green veins and dark vacuum; no loose trees floating in space.",
+      "source": "artifacts/luminae/src/assets/cards/tier-audit-v4/t2e06.png",
+      "originalSource": "/Users/chaoscalligraphy/.codex/generated_images/01a0e5d5-4e9f-7792-8c15-a2504c2c9b0c/exec-835b98b7-c35c-4a7f-b31b-61434624609d.png",
+      "runtime": "artifacts/luminae/src/assets/cards/runtime/tier-audit-v4/t2e06.webp",
+      "runtimeBytes": 46112,
+      "review": "Reviewed for practical function, distinctive silhouette, tier context, and crop compatibility."
+    },
+    {
+      "id": "t2o01",
+      "kind": "card",
+      "prompt": "Use case: stylized-concept. Asset: final LUMINAe science-fiction strategy card illustration, portrait 7:10 or 1024x1536. Premium cinematic hard-science-fiction concept painting, believable opaque engineering, tiny service vessels for scale, detailed functional materials. One dominant readable silhouette and visible activity in central 65%; dark quiet margins and bottom fifth for existing UI. No typography, letters, numbers, insignia, borders, watermarks, collage, or handheld tokens. HORIZON EXTRACTOR: a monumental graphite and violet stand-off collection station outside a compact star's brilliant accretion flow. Long shielded collector booms sample a thin stream of charged matter into armored isolated receiver bays; broad radiator fins and a tiny maintenance vessel establish scale. Central star is distant and small; the station does not touch or encircle an event horizon. Cool violet, graphite and faint hot-white plasma. No handheld lens, no portal, no torn spacetime.",
+      "source": "artifacts/luminae/src/assets/cards/tier-audit-v4/t2o01.png",
+      "originalSource": "/Users/chaoscalligraphy/.codex/generated_images/01a0e5d5-4e9f-7792-8c15-a2504c2c9b0c/exec-6f0fd7ec-96a2-4afe-aa36-f21906811800.png",
+      "runtime": "artifacts/luminae/src/assets/cards/runtime/tier-audit-v4/t2o01.webp",
+      "runtimeBytes": 28216,
+      "review": "Reviewed for practical function, distinctive silhouette, tier context, and crop compatibility."
+    },
+    {
+      "id": "t2o02",
+      "kind": "card",
+      "prompt": "Use case: stylized-concept. Asset: final LUMINAe science-fiction strategy card illustration, portrait 7:10 or 1024x1536. Premium cinematic hard-science-fiction concept painting, believable opaque engineering, tiny service vessels for scale, detailed functional materials. One dominant readable silhouette and visible activity in central 65%; dark quiet margins and bottom fifth for existing UI. No typography, letters, numbers, insignia, borders, watermarks, collage, or handheld tokens. STELLAR SIGNAL QUARANTINE: an immense dark interplanetary relay junction with physically isolated receiver towers and opaque mechanical command-isolation shutters. One thin violet optical link terminates at a closed barrier while a separate safe link routes toward a distant habitat. Archive custody vaults and inspectable maintenance galleries visibly integrated. Black graphite, silver edge light, violet emissions. A working communications firebreak, no coffin or magic erasure box.",
+      "source": "artifacts/luminae/src/assets/cards/tier-audit-v4/t2o02.png",
+      "originalSource": "/Users/chaoscalligraphy/.codex/generated_images/01a0e5d5-4e9f-7792-8c15-a2504c2c9b0c/exec-01fd1c17-92f9-41b8-9bfa-aaac4890cc7f.png",
+      "runtime": "artifacts/luminae/src/assets/cards/runtime/tier-audit-v4/t2o02.webp",
+      "runtimeBytes": 27174,
+      "review": "Reviewed for practical function, distinctive silhouette, tier context, and crop compatibility."
+    },
+    {
+      "id": "t2o03",
+      "kind": "card",
+      "prompt": "Use case: stylized-concept. Asset: final LUMINAe science-fiction strategy card illustration, portrait 7:10 or 1024x1536. Premium cinematic hard-science-fiction concept painting, believable opaque engineering, tiny service vessels for scale, detailed functional materials. One dominant readable silhouette and visible activity in central 65%; dark quiet margins and bottom fifth for existing UI. No typography, letters, numbers, insignia, borders, watermarks, collage, or handheld tokens. ECLIPSE RADIATOR WEB: a large dark orbital industrial complex whose immense graphite radiator fins face away from a distant inhabited planet, shedding faint warm infrared-colored light into empty space. Main silhouette layered directional radiator wings with a sharply shaded side toward the viewer; small maintenance craft and one remote radiator station imply a system-wide heat-signature service. Restrained violet, near-black, muted amber thermal edges. Heat is emitted, not swallowed by a portal.",
+      "source": "artifacts/luminae/src/assets/cards/tier-audit-v4/t2o03.png",
+      "originalSource": "/Users/chaoscalligraphy/.codex/generated_images/01a0e5d5-4e9f-7792-8c15-a2504c2c9b0c/exec-9c661965-2ce2-4c53-932a-6ddf49eeeffb.png",
+      "runtime": "artifacts/luminae/src/assets/cards/runtime/tier-audit-v4/t2o03.webp",
+      "runtimeBytes": 23008,
+      "review": "Reviewed for practical function, distinctive silhouette, tier context, and crop compatibility."
+    },
+    {
+      "id": "t2o04",
+      "kind": "card",
+      "prompt": "Use case: stylized-concept. Asset: final LUMINAe science-fiction strategy card illustration, portrait 7:10 or 1024x1536. Premium cinematic hard-science-fiction concept painting, believable opaque engineering, tiny service vessels for scale, detailed functional materials. One dominant readable silhouette and visible activity in central 65%; dark quiet margins and bottom fifth for existing UI. No typography, letters, numbers, insignia, borders, watermarks, collage, or handheld tokens. WORLDFALL RECONSTRUCTION YARD: huge dark-violet orbital shipyard rebuilding large industrial habitat modules from the salvage of a visibly ruined planet behind. Foreground open factory ribs contain a half-assembled functional machine complex, inbound scrap tug on one side and outbound completed utility station on the other. Small construction vessels show immense scale. Charcoal, violet, pale industrial lights. No forging die close-up or portable trinket.",
+      "source": "artifacts/luminae/src/assets/cards/tier-audit-v4/t2o04.png",
+      "originalSource": "/Users/chaoscalligraphy/.codex/generated_images/01a0e5d5-4e9f-7792-8c15-a2504c2c9b0c/exec-b01e8b20-d469-48d7-bb8e-282c02d74767.png",
+      "runtime": "artifacts/luminae/src/assets/cards/runtime/tier-audit-v4/t2o04.webp",
+      "runtimeBytes": 42294,
+      "review": "Reviewed for practical function, distinctive silhouette, tier context, and crop compatibility."
+    },
+    {
+      "id": "t2o05",
+      "kind": "card",
+      "prompt": "Use case: stylized-concept. Asset: final LUMINAe science-fiction strategy card illustration, portrait 7:10 or 1024x1536. Premium cinematic hard-science-fiction concept painting, believable opaque engineering, tiny service vessels for scale, detailed functional materials. One dominant readable silhouette and visible activity in central 65%; dark quiet margins and bottom fifth for existing UI. No typography, letters, numbers, insignia, borders, watermarks, collage, or handheld tokens. APHELION RESERVE: a dark cometary habitat crossing the cold outer solar system, protected dormant forest chambers embedded in a long irregular icy body, heavy closed insulated shutters and a few violet maintenance lights. A small distant sun and a second active chamber show seasonal orbital survival. Main subject is large sealed dormancy architecture physically anchored in the comet, not a bottle, stamp or magical seal. Violet-grey, black ice, faint pale green life.",
+      "source": "artifacts/luminae/src/assets/cards/tier-audit-v4/t2o05.png",
+      "originalSource": "/Users/chaoscalligraphy/.codex/generated_images/01a0e5d5-4e9f-7792-8c15-a2504c2c9b0c/exec-20598356-3b59-45d6-8fe5-de222e327bd0.png",
+      "runtime": "artifacts/luminae/src/assets/cards/runtime/tier-audit-v4/t2o05.webp",
+      "runtimeBytes": 31202,
+      "review": "Reviewed for practical function, distinctive silhouette, tier context, and crop compatibility."
+    },
+    {
+      "id": "t2o06",
+      "kind": "card",
+      "prompt": "Use case: stylized-concept. Asset: final LUMINAe science-fiction strategy card illustration, portrait 7:10 or 1024x1536. Premium cinematic hard-science-fiction concept painting, believable opaque engineering, tiny service vessels for scale, detailed functional materials. One dominant readable silhouette and visible activity in central 65%; dark quiet margins and bottom fifth for existing UI. No typography, letters, numbers, insignia, borders, watermarks, collage, or handheld tokens. TIDAL SHEAR OBSERVATORY: a dark graphite receiver fleet of three long separate detector stations near a binary pair with one small compact bright companion. Fine violet calibration links connect the local platforms; an inhabited transfer vessel remains well outside a thin accretion stream. Main foreground silhouette asymmetrical instrument boom with tiny maintenance bays, severe natural stellar environment. No cracks in space, portals, gauge dial, clock, or magical lens.",
+      "source": "artifacts/luminae/src/assets/cards/tier-audit-v4/t2o06.png",
+      "originalSource": "/Users/chaoscalligraphy/.codex/generated_images/01a0e5d5-4e9f-7792-8c15-a2504c2c9b0c/exec-077d9be5-3565-4421-8939-01b029d9534d.png",
+      "runtime": "artifacts/luminae/src/assets/cards/runtime/tier-audit-v4/t2o06.webp",
+      "runtimeBytes": 23658,
+      "review": "Reviewed for practical function, distinctive silhouette, tier context, and crop compatibility."
+    },
+    {
+      "id": "t2p01",
+      "kind": "card",
+      "prompt": "Use case: stylized-concept. Asset: final LUMINAe science-fiction strategy card illustration, portrait 7:10 or 1024x1536. Premium cinematic hard-science-fiction concept painting, believable opaque engineering, tiny service vessels for scale, detailed functional materials. One dominant readable silhouette and visible activity in central 65%; dark quiet margins and bottom fifth for existing UI. No typography, letters, numbers, insignia, borders, watermarks, collage, or handheld tokens. CONTAINMENT LATTICE: immense gold-white segmented containment yards in stellar orbit, each armored cell houses a physically distinct plasma-processing installation. Broad gaps and independently closed shutters separate cells; an inspection vessel follows a safe external corridor. A bright star is distant behind shielding panels. Focus one open inspection cross-section with hot confined plasma, not a tabletop cage. Pale gold, white ceramic, dark vacuum, restrained amber energy.",
+      "source": "artifacts/luminae/src/assets/cards/tier-audit-v4/t2p01.png",
+      "originalSource": "/Users/chaoscalligraphy/.codex/generated_images/01a0e5d5-4e9f-7792-8c15-a2504c2c9b0c/exec-a0b783bf-76c2-4f28-bd87-3935f32234df.png",
+      "runtime": "artifacts/luminae/src/assets/cards/runtime/tier-audit-v4/t2p01.webp",
+      "runtimeBytes": 34402,
+      "review": "Reviewed for practical function, distinctive silhouette, tier context, and crop compatibility."
+    },
+    {
+      "id": "t2p02",
+      "kind": "card",
+      "prompt": "Use case: stylized-concept. Asset: final LUMINAe science-fiction strategy card illustration, portrait 7:10 or 1024x1536. Premium cinematic hard-science-fiction concept painting, believable opaque engineering, tiny service vessels for scale, detailed functional materials. One dominant readable silhouette and visible activity in central 65%; dark quiet margins and bottom fifth for existing UI. No typography, letters, numbers, insignia, borders, watermarks, collage, or handheld tokens. PARALLAX ARBITRATION ARRAY: grand white-gold orbital navigation observatory with three widely separated angular telescope platforms aimed along different planetary sightlines. Foreground receiver projects a restrained geometric overlay of diverging orbital trajectories into a dark inspection gallery, no letters or numbers. Two planets at different depths and a tiny transfer ship demonstrate conflicting reference frames. White ceramic, gold lattice engineering, black space. No crystal prism token.",
+      "source": "artifacts/luminae/src/assets/cards/tier-audit-v4/t2p02.png",
+      "originalSource": "/Users/chaoscalligraphy/.codex/generated_images/01a0e5d5-4e9f-7792-8c15-a2504c2c9b0c/exec-56d05372-f1dd-4698-a382-a8f2da0958dc.png",
+      "runtime": "artifacts/luminae/src/assets/cards/runtime/tier-audit-v4/t2p02.webp",
+      "runtimeBytes": 32814,
+      "review": "Reviewed for practical function, distinctive silhouette, tier context, and crop compatibility."
+    },
+    {
+      "id": "t3e02",
+      "kind": "card",
+      "prompt": "Use case: stylized-concept. Asset: final LUMINAe science-fiction strategy card illustration, portrait 7:10 or 1024x1536. Premium cinematic hard-science-fiction concept painting, believable opaque engineering, tiny service vessels for scale, detailed functional materials. One dominant readable silhouette and visible activity in central 65%; dark quiet margins and bottom fifth for existing UI. No typography, letters, numbers, insignia, borders, watermarks, collage, or handheld tokens. STARBORNE SUCCESSION: enormous migrating living collector habitats departing an aging red star and travelling toward a distant younger bright star. The dominant foreground ark is a bundled family of opaque emerald collector fronds folded around illuminated sealed ecosystem chambers, propelled by visible immense sail structures and mechanical tugs. Sparse additional arks and dim distant destinations suggest a long regional migration, no bridge across stars. Deep emerald, amber departing sunlight, cool distant destination. Complete inhabited ecologies in motion, not a stationary Dyson swarm.",
+      "source": "artifacts/luminae/src/assets/cards/tier-audit-v4/t3e02.png",
+      "originalSource": "/Users/chaoscalligraphy/.codex/generated_images/01a0e5d5-4e9f-7792-8c15-a2504c2c9b0c/exec-af60b881-04fc-4ef5-8ca6-069b5e0aebbf.png",
+      "runtime": "artifacts/luminae/src/assets/cards/runtime/tier-audit-v4/t3e02.webp",
+      "runtimeBytes": 35926,
+      "review": "Reviewed for practical function, distinctive silhouette, tier context, and crop compatibility."
+    },
+    {
+      "id": "t1s02",
+      "kind": "card",
+      "prompt": "Use case: stylized-concept. Final LUMINAe strategy-game Artifact card illustration, portrait 7:10. Premium cinematic science-fiction painting with physically credible opaque machinery. Strong central functional silhouette, dark quiet margins and bottom fifth for existing UI. No typography, symbols, letters, watermark, frame, numbers, planets or floating galaxies. Mantlelift Driver Coil, Tier I planetary foundation. In a subterranean launch chamber, one room-sized blue induction-coil assembly composed of thick staggered cobalt copper winding segments and ceramic bracing surrounds a straight mechanical cargo tube. A sealed cylindrical mineral-feedstock capsule accelerates upward through the tube, with subtle blue electromagnetic illumination and service gantries giving clear room scale. The eye sees a working precision accelerator segment, not a planet-sized tower, not a portal or magical ring. Believable dark steel, blue light and white-hot contact sparks.",
+      "source": "artifacts/luminae/src/assets/cards/tier-audit-v4/t1s02.png",
+      "originalSource": "/Users/chaoscalligraphy/.codex/generated_images/01a0e5d5-4e9f-7792-8c15-a2504c2c9b0c/exec-fb1f98f1-b964-4fa6-9aaa-122663981898.png",
+      "runtime": "artifacts/luminae/src/assets/cards/runtime/tier-audit-v4/t1s02.webp",
+      "runtimeBytes": 35260,
+      "review": "Reviewed for practical function, distinctive silhouette, tier context, and crop compatibility."
+    },
+    {
+      "id": "t1o05",
+      "kind": "card",
+      "prompt": "Use case: stylized-concept. Final LUMINAe strategy-game Artifact card illustration, portrait 7:10. Premium cinematic science-fiction painting with physically credible opaque machinery. Strong central functional silhouette, dark quiet margins and bottom fifth for existing UI. No typography, symbols, letters, watermark, frame, numbers, planets or floating galaxies. Blackglass Forge Die, Tier I planetary orbital foundation. Close tabletop three-quarter view of a black vitreous industrial mold opened in two solid halves, held by a compact mechanical press within an airless orbital workshop. Carefully machined cavities match a freshly formed dull-silver metal structural fitting held above the die by a small manipulator. Dense obsidian tooling, crisp precision edges, faint violet seams, cold workshop light. Obvious practical vacuum metal-forming die at bench scale, not a celestial machine, seal, rune, portal or token.",
+      "source": "artifacts/luminae/src/assets/cards/tier-audit-v4/t1o05.png",
+      "originalSource": "/Users/chaoscalligraphy/.codex/generated_images/01a0e5d5-4e9f-7792-8c15-a2504c2c9b0c/exec-7e46982a-701f-4e0d-8afa-d56c6e4abd44.png",
+      "runtime": "artifacts/luminae/src/assets/cards/runtime/tier-audit-v4/t1o05.webp",
+      "runtimeBytes": 27722,
+      "review": "Reviewed for practical function, distinctive silhouette, tier context, and crop compatibility."
+    }
+  ]
+}

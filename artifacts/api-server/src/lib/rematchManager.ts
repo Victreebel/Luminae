@@ -32,6 +32,7 @@ import {
   resolveBlueprintSetupsForMatch,
 } from "./blueprintLoadouts";
 import { resolveLuminaryArrivalSoundsForPlayers } from "./accountCosmetics";
+import { getRoomEventFrequency } from "./roomEventSettings";
 
 // ── Constants ─────────────────────────────────────────────────────────────────
 const START_DELAY_MS = 250;
@@ -321,7 +322,7 @@ async function _executeRematch(roomId: string): Promise<void> {
       confirmed.length,
       room.victoryRequirement,
       room.cinematicMode === "epic" ? "epic" : "standard",
-      { replayBoard, blueprintSetups },
+      { replayBoard, blueprintSetups, eventFrequency: getRoomEventFrequency(room) },
     );
     gameData.turnTimerSeconds = room.turnTimerSeconds ?? null;
     updateTurnDeadline(gameData);

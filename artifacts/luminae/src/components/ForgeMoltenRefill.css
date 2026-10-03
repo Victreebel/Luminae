@@ -1,0 +1,241 @@
+/* Shared mold: a dark floor below sloped metal walls and a machined outer lip.
+   All depth is inside the existing slot bounds; shelf sizes do not change. */
+.forge-molten-refill,
+.forge-depth-mold {
+  --forge-cavity-inset: 4px;
+  isolation: isolate;
+}
+
+.forge-depth-mold { position: relative; }
+
+.forge-mold-cavity,
+.forge-foundry-mold > .forge-mold-cavity {
+  position: absolute;
+  inset: 0;
+  display: block;
+  z-index: 0;
+  overflow: hidden;
+  pointer-events: none;
+  background: #080e14;
+}
+
+.forge-mold-cavity > svg { display: block; width: 100%; height: 100%; }
+
+.forge-mold-rim,
+.forge-foundry-mold > .forge-mold-rim {
+  position: absolute;
+  inset: 0;
+  display: block;
+  z-index: 12;
+  pointer-events: none;
+  border: 3px solid;
+  border-color: #829096 #1c2831 #35434b #52616a;
+  box-shadow: inset 0 0 0 1px #010407, 0 1px 0 #bed0d040;
+  background:
+    linear-gradient(90deg, #d8e0d860, transparent 60%) top / 100% 1px no-repeat,
+    linear-gradient(180deg, #ebebe555, transparent 55%) left / 1px 100% no-repeat;
+}
+
+/* Replace the old flat backing, including its empty/vacated engraving. */
+.game-shell[data-board-presentation] .forge-foundry-mold.forge-depth-mold::before,
+.game-shell[data-board-presentation] .forge-foundry-mold.forge-depth-mold::after {
+  content: none !important;
+  display: none !important;
+}
+
+.forge-depth-mold > .forge-foundry-card,
+.game-shell[data-board-presentation] .forge-depth-mold > .forge-foundry-card {
+  width: calc(100% - 6px);
+  height: calc(100% - 6px);
+  z-index: 1;
+  overflow: hidden;
+  border-radius: 2px;
+}
+
+.game-shell[data-board-presentation] .forge-depth-mold > .forge-foundry-card .artifact-card-view {
+  width: 100% !important;
+  height: 100% !important;
+}
+
+.forge-depth-mold > .compact-forge-card-stage,
+.game-shell[data-board-presentation] .forge-depth-mold > .compact-forge-card-stage {
+  position: absolute !important;
+  inset: 3px !important;
+  width: calc(100% - 6px) !important;
+  height: calc(100% - 6px) !important;
+  transform: none !important;
+  z-index: 1;
+}
+
+.game-shell[data-board-presentation] .forge-depth-mold > .compact-card-info {
+  inset: 3px !important;
+}
+
+.forge-depth-mold > .forge-tablet-surface { inset: 3px; }
+
+.forge-molten-refill {
+  pointer-events: none;
+  overflow: hidden;
+  border-radius: 0;
+  clip-path: polygon(4px 0, calc(100% - 4px) 0, 100% 4px, 100% calc(100% - 4px), calc(100% - 4px) 100%, 4px 100%, 0 calc(100% - 4px), 0 4px);
+  background: #060a0f;
+  animation: forge-refill-lifecycle var(--forge-refill-duration) linear var(--forge-refill-delay) both;
+}
+
+.forge-molten-refill > .forge-molten-refill__face,
+.game-shell[data-board-presentation][data-board-density][data-forge-density] .forge-molten-refill > .forge-molten-refill__face {
+  position: absolute;
+  inset: var(--forge-cavity-inset);
+  width: calc(100% - var(--forge-cavity-inset) * 2) !important;
+  height: calc(100% - var(--forge-cavity-inset) * 2) !important;
+  min-height: 0 !important;
+  min-width: 0 !important;
+  max-height: none !important;
+  border: 0 !important;
+  overflow: hidden;
+  border-radius: 2px;
+  z-index: 1;
+  animation:
+    forge-refill-solidify var(--forge-refill-duration) ease-in-out var(--forge-refill-delay) both,
+    forge-refill-detail var(--forge-refill-duration) ease-in-out var(--forge-refill-delay) both;
+}
+
+.forge-molten-refill__face > .artifact-card-view {
+  width: 100% !important;
+  height: 100% !important;
+  border-radius: 2px !important;
+}
+
+/* The liquid spreads over the recessed floor, then rises toward the viewer.
+   Scaling the whole surface, its meniscus and its shadow together lets the
+   walls disappear under the rising level, rather than wiping bottom-to-top. */
+.forge-molten-refill__liquid {
+  position: absolute;
+  inset: var(--forge-cavity-inset);
+  overflow: hidden;
+  z-index: 2;
+  transform-origin: 50% 56%;
+  will-change: transform;
+  animation: forge-refill-depth var(--forge-refill-duration) cubic-bezier(.22,.61,.36,1) var(--forge-refill-delay) both;
+}
+
+.forge-molten-refill__surface,
+.forge-molten-refill__fallback {
+  position: absolute;
+  inset: 0;
+  display: block;
+  width: 100%;
+  height: 100%;
+}
+
+.forge-molten-refill__surface { z-index: 1; }
+.forge-molten-refill__surface[data-ready="true"] + .forge-molten-refill__fallback { display: none; }
+
+/* Layered nebula and starlight also work without a GPU surface. */
+.forge-molten-refill__fallback {
+  background:
+    radial-gradient(circle at 26% 19%, #eef4ff 0 .6px, transparent 1.4px),
+    radial-gradient(circle at 72% 36%, #d2eaff 0 .5px, transparent 1.2px),
+    radial-gradient(circle at 39% 74%, #f1dbff 0 .7px, transparent 1.7px),
+    radial-gradient(ellipse at 30% 28%, color-mix(in srgb, var(--forge-melt-primary) 65%, #9b8aff), transparent 62%),
+    radial-gradient(ellipse at 82% 72%, color-mix(in srgb, var(--forge-melt-secondary) 55%, #528dff), transparent 62%),
+    radial-gradient(ellipse at 15% 85%, #6338a6, transparent 60%), #0b0b24;
+  box-shadow: inset 1px 2px 3px #c0dbff40, inset -2px -3px 5px #07091bc9;
+  animation: forge-refill-fallback var(--forge-refill-duration) ease-in-out var(--forge-refill-delay) both;
+}
+
+.forge-molten-refill__heat {
+  position: absolute;
+  inset: var(--forge-cavity-inset);
+  z-index: 3;
+  border: 1px solid color-mix(in srgb, var(--forge-melt-primary) 45%, #d8dcff);
+  box-shadow:
+    0 1px 6px color-mix(in srgb, var(--forge-melt-primary) 32%, transparent),
+    inset 0 0 5px #a9b4ff50;
+  animation: forge-refill-heat var(--forge-refill-duration) ease-out var(--forge-refill-delay) both;
+}
+
+/* This narrower tablet bevel sits within the permanent cavity lip. */
+.forge-tablet-surface,
+.forge-foundry-mold > .forge-tablet-surface {
+  position: absolute;
+  display: block;
+  inset: 0;
+  z-index: 9;
+  pointer-events: none;
+  border: 1px solid;
+  border-color: #c8d0cc9c #303b42b8 #11171fe6 #778791a8;
+  border-radius: 2px;
+  box-shadow: inset 0 0 0 1px #02040788, inset 0 2px 1px #f1efdb30, inset 0 -2px 2px #0008;
+  background: linear-gradient(105deg, #bcdcff1c, transparent 30% 72%, #cdb0ff18);
+}
+
+.forge-foundry-mold.forge-depth-mold > .forge-tablet-surface { inset: 3px; }
+
+.forge-tablet-surface::after {
+  content: "";
+  position: absolute;
+  inset: 0;
+  border-top: 1px solid color-mix(in srgb, var(--forge-affinity, #a8bbc7) 55%, #fff0d4);
+  opacity: .65;
+}
+
+@keyframes forge-refill-lifecycle {
+  from { opacity: 1; }
+  to { opacity: 1; }
+}
+
+@keyframes forge-refill-depth {
+  0% {
+    opacity: 0;
+    transform: translate(-3%, 7%) scale(.18, .12);
+    border-radius: 48% 52% 44% 56%;
+    filter: brightness(.7);
+    box-shadow: 0 -6px 5px #000e, 0 3px 4px #000b;
+  }
+  /* One uninterrupted rise: intermediate keyframes restarted the easing
+     and made the pool visibly slow down at every change in size. */
+  43%, 100% {
+    transform: translateY(0) scale(1);
+    border-radius: 2px;
+    filter: brightness(1);
+    box-shadow: 0 0 0 #0000, 0 0 0 #0000;
+  }
+  6%, 100% { opacity: 1; }
+}
+
+@keyframes forge-refill-fallback {
+  0%, 44% { opacity: 1; filter: saturate(1) brightness(1); }
+  100% { opacity: 0; filter: saturate(.65) brightness(.9); }
+}
+
+@keyframes forge-refill-solidify {
+  0%, 43% { opacity: 0; }
+  49%, 100% { opacity: 1; }
+}
+
+@keyframes forge-refill-detail {
+  0%, 44% { filter: brightness(.95) saturate(.6) contrast(.85); }
+  100% { filter: brightness(1) saturate(1) contrast(1); }
+}
+
+@keyframes forge-refill-heat {
+  0%, 15% { opacity: 0; transform: translateY(4%) scale(.84, .78); }
+  43% { opacity: .45; transform: translateY(0) scale(1); }
+  92%, 100% { opacity: 0; transform: translateY(0) scale(1); }
+}
+
+.forge-molten-refill[data-motion="reduced"] .forge-molten-refill__face {
+  animation-name: forge-refill-reduced;
+}
+
+@keyframes forge-refill-reduced {
+  from { opacity: 0; }
+  to { opacity: 1; }
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .forge-molten-refill__liquid,
+  .forge-molten-refill__heat { display: none; }
+  .forge-molten-refill .forge-molten-refill__face { animation-name: forge-refill-reduced; }
+}

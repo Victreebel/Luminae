@@ -24,6 +24,7 @@ import {
   compareVictoryStandings,
   DEFAULT_VICTORY_REQUIREMENT,
   getArtifactTierCounts,
+  getCivilizationLegacyProgress,
   MIN_VICTORY_REQUIREMENT,
   OPENING_TURN_ORDER_PRESENTATION_MS,
   type BlueprintClaimAction,
@@ -62,6 +63,8 @@ import {
   type LuminarySequenceGateSnapshot,
 } from '@/lib/luminarySequenceGate';
 import { useViewOrchestrator } from '@/hooks/use-view-orchestrator';
+import { useAcceptedCosmicEventLane } from '@/hooks/use-cosmic-event-lane';
+import { canStartCosmicEventPresentation } from '@/lib/cosmicEventSequenceGate';
 import { SeedBeyondSeasonsEffect, SEED_EFFECT_TOTAL_MS } from '@/components/SeedBeyondSeasonsEffect';
 import { useQueryClient } from '@tanstack/react-query';
 import { getSession, clearSession, saveSession } from '@/lib/session';
@@ -87,18 +90,22 @@ import {
 import { useCameraInputLease } from '@/hooks/use-camera-input-lease';
 import { useToast } from '@/hooks/use-toast';
 import { gameAudio } from '@/lib/audio';
+import { EventTurnWarning, getEventTurnWarning, type EventTurnWarningState } from '@/components/EventForecast';
+import { getCosmicEventSourceAnchor, measureCosmicEventSource } from '@/lib/cosmicEventSource';
+import { getCompletedCosmicEventRefill } from '@/lib/cosmicEventRefill';
 import { CipherApertureAnimation, CipherSigil } from '@/components/CipherApertureAnimation';
 import { ForgeReplacementDealAnimation } from '@/components/ForgeReplacementDealAnimation';
+import { FORGE_REFILL_STAGGER_MS } from '@/lib/forgeRefillTiming';
 import { ForgeButton, EncryptButton, AssimilateButton } from '@/components/ForgeEncryptButton';
 import { CompactForgeCardReadout } from './game-board-forge-card-slot';
 
-import { motion, AnimatePresence, useAnimation } from 'framer-motion';
+import { motion, AnimatePresence, useAnimation, useReducedMotion } from 'framer-motion';
 import { Button } from '@/components/ui/button';
 import {
   Volume2, VolumeX, AlertCircle, Sparkles, Clock,
   Gavel, Package, LayoutGrid, Landmark, List,
   ChevronDown, ChevronUp, ChevronRight, Flag, X, HelpCircle, Check, DoorOpen,
-  MoreVertical, Zap, RefreshCw, Lightbulb, FlaskConical, Gauge, Eye, Loader2, Lock
+  MoreVertical, Zap, RefreshCw, Lightbulb, FlaskConical, Gauge, Eye, Loader2, Lock, Orbit
 } from 'lucide-react';
 import {
   DropdownMenu,
@@ -127,13 +134,14 @@ import { useGameKeyboardShortcuts } from '@/hooks/use-game-keyboard-shortcuts';
 import { useForgeKeyboardNav } from '@/hooks/use-forge-keyboard-nav';
 import { KardashevScene } from '@/components/KardashevScene';
 import { getKardashevTier, getDominantAffinityPalette, getCivilizationName, type AffinityPalette, type KardashevTier } from '@/lib/kardashev';
-import { hexRgba, AFFINITIES, TIER_CIVILIZATION, AFFINITY_KEY_TO_HEX, DEAL_ANIM_MS, DEAL_FLIP_SOUND_MS, INITIAL_TURN_GUARD_MS, ABRIDGED_SHRINK_MS, ANIM_LOCK_BUFFER_MS, ABRIDGED_ACTION_MS, FORGE_FULL_MS, RESERVED_FORGE_FULL_MS, FALLBACK_FLIP_ANIM_MS, FALLBACK_FLIP_CLEANUP_MS, CIPHER_TAIL_BUFFER_MS, AFFINITY_BURST_STAGGER_MS, AFFINITY_BURST_BASE_MS, AFFINITY_BURST_SETTLE_MS, ABRIDGED_FORGE_LOCK_MS, CIPHER_GAME_TOTAL_MS, CIPHER_DEAL_FIRE_DELAY_MS, ARRIVAL_LABEL_LINGER_MS, RETURN_FLIGHT_MS } from './game-constants';
+import { hexRgba, AFFINITIES, TIER_CIVILIZATION, AFFINITY_KEY_TO_HEX, DEAL_ANIM_MS, INITIAL_TURN_GUARD_MS, ABRIDGED_SHRINK_MS, ANIM_LOCK_BUFFER_MS, ABRIDGED_ACTION_MS, FORGE_FULL_MS, RESERVED_FORGE_FULL_MS, CIPHER_TAIL_BUFFER_MS, AFFINITY_BURST_STAGGER_MS, AFFINITY_BURST_BASE_MS, AFFINITY_BURST_SETTLE_MS, ABRIDGED_FORGE_LOCK_MS, CIPHER_GAME_TOTAL_MS, CIPHER_DEAL_FIRE_DELAY_MS, ARRIVAL_LABEL_LINGER_MS, RETURN_FLIGHT_MS } from './game-constants';
 import { PlayerAvatar, OpponentChip } from './game-player';
 import { AffinityToken, BaseDialog, type EminenceBreakdown, ArtifactCardView, ForgedCardWithTooltip, TurnCountdown, CardBack, EminenceBadge, EminenceDiamond, EminenceSigil, PendingActionOverlay } from './game-card';
 import { getLuminaryEminenceTitle } from './game-luminary';
 import { LuminaryOrderPicker } from './game-luminary-order-picker';
 import { CompactCardGhost } from './game-animation';
 import { ArtifactBrandDetails, BurnBadgeOverlay, BurnFlash, DelayedEffectFloat, LuminaryEminenceBurst, BloomSeedParticle, BurnPileParticle, ArchiveReturnParticle, BurnChipLandingSpark, OrchardCopyPulse, ArrivalBrandStrike, ForgottenHourDescription, MARKER_SOURCE, SOURCE_PULSE_LEAD_MS, type BrandStrikeTarget, type MarkerType } from './game-luminary-effects';
+import { ArtifactFunctionTags } from '@/components/ArtifactFunctionTags';
 import { ConnectionLostBanner, ReturnResultsBanner } from './game-banners';
 import { civilizationStateKey } from './game-civilization-utils';
 import { handledArrivalEventIds } from './game-arrival-dedup';
@@ -157,7 +165,6 @@ import {
   getTurnPresentationKey,
 } from './game-planning';
 import { getReplacementDealMotion } from './game-replacement-motion';
-import { artifactFrameUsesArtCrop } from '@/lib/artifactFramePresentation';
 import {
   artifactMarkerBlocksForgeEminence,
   artifactMarkerHasBrand,
@@ -208,6 +215,11 @@ const BlueprintPresentationOverlay = React.lazy(async () => {
 const ScenarioProtocolPresentationOverlay = React.lazy(async () => {
   const module = await import('@/components/blueprints/ScenarioProtocolPresentationOverlay');
   return { default: module.ScenarioProtocolPresentationOverlay };
+});
+
+const CosmicEventPresentationOverlay = React.lazy(async () => {
+  const module = await import('@/components/CosmicEventPresentationOverlay');
+  return { default: module.CosmicEventPresentationOverlay };
 });
 
 function playMarkerStrikeSound(markerType?: string | null) {
@@ -322,7 +334,7 @@ type ActiveDelayedLuminaryResult = DelayedLuminaryResultRequest & {
   secondaryColor?: string;
 };
 
-const NORMAL_BURN_VISUAL_MS = 2520;
+const NORMAL_BURN_VISUAL_MS = 1520 + DEAL_ANIM_MS;
 
 function ConcealedArchiveArtifact({ tier }: { tier: number }) {
   return (
@@ -578,6 +590,8 @@ export default function GameBoard() {
   const [abridgedAnims, setAbridgedAnims] = useState<boolean>(
     () => localStorage.getItem('luminae_abridged_anims') === '1'
   );
+  const prefersReducedMotion = useReducedMotion();
+  const stillTurnAnnouncement = abridgedAnims || prefersReducedMotion;
   const toggleAbridgedAnims = () => {
     const next = !abridgedAnims;
     setAbridgedAnims(next);
@@ -607,6 +621,10 @@ export default function GameBoard() {
   };
 
   const [muted, setMuted] = useState(gameAudio.isMuted());
+  const [wellDockExpanded, setWellDockExpanded] = useState(() =>
+    typeof window === 'undefined'
+      || !window.matchMedia('(max-width: 680px) and (max-height: 650px)').matches,
+  );
   const [selectedAffinities, setSelectedAffinities] = useState<Partial<AffinityCounts>>({});
   const [harnessBurstKeys, setHarnessBurstKeys] = useState<Partial<Record<AffinityKey, number>>>({});
   const [harnessBlockedKeys, setHarnessBlockedKeys] = useState<Partial<Record<AffinityKey, number>>>({});
@@ -660,6 +678,10 @@ export default function GameBoard() {
     localStorage.setItem(key, forgeCompact ? 'compact' : 'full');
   }, [forgeCompact]);
   const [activeTab, setActiveTab] = useState<ActiveTab>('board');
+  const activeTabRef = useRef(activeTab);
+  useEffect(() => {
+    activeTabRef.current = activeTab;
+  }, [activeTab]);
   const [civilizationScanRequested, setCivilizationScanRequested] = useState(false);
   const openCivilizationScan = useCallback(() => {
     setCivilizationScanRequested(true);
@@ -1000,7 +1022,6 @@ export default function GameBoard() {
   const foundryStorageRevealTimerRef = useRef<ReturnType<typeof setTimeout> | null>(null);
   const [expandedOpponents, setExpandedOpponents] = useState<Set<string>>(new Set());
   const [expandedHeaderOpponents, setExpandedHeaderOpponents] = useState<Set<string>>(new Set());
-  const [boardOpponentsExpanded, setBoardOpponentsExpanded] = useState(false);
   const [boardExpandedOpponentId, setBoardExpandedOpponentId] = useState<string | null>(null);
   const [showDevSequenceLab, setShowDevSequenceLab] = useState(
     () => import.meta.env.DEV
@@ -1244,6 +1265,7 @@ export default function GameBoard() {
     eminence: number;
     turnStartedAt: number;
     timerSeconds: number | null;
+    eventWarning: EventTurnWarningState | null;
   } | null>(null);
   const [turnOrderIntro, setTurnOrderIntro] = useState<TurnOrderIntroState | null>(null);
   const turnOrderIntroTimerRef = useRef<ReturnType<typeof setTimeout> | null>(null);
@@ -1266,6 +1288,15 @@ export default function GameBoard() {
   const animBarrierMsRef = useRef(0);
   const pendingTurnAnnounceRef = useRef<ReturnType<typeof setTimeout> | null>(null);
   const [animationLockUntil, setAnimationLockUntil] = useState(0);
+  const [tracePresentationActive, setTracePresentationActive] = useState(false);
+  const [recurrencePresentationActive, setRecurrencePresentationActive] = useState(false);
+  const [triangulationPresentationActive, setTriangulationPresentationActive] = useState(false);
+  const chroniclePresentationActive = tracePresentationActive || recurrencePresentationActive || triangulationPresentationActive;
+  const [cosmicEventStage, setCosmicEventStage] = useState<{
+    eventId: string;
+    sourceRect: { left: number; top: number; width: number; height: number } | null;
+  } | null>(null);
+  const cosmicEventReturnView = useRef<{ tab: ActiveTab; scrollTop: number } | null>(null);
   const processUpdateRef = useRef<(s: GameState) => void>(() => {});
   // Tracks WS health so the REST poll can back off to 30 s when the socket is
   // live. Updated inline on each render (safe — refs are always current inside
@@ -1405,6 +1436,20 @@ export default function GameBoard() {
   const cipherBurstIsDeckRef = useRef(false);
   const [singularityAbsorbKey, setSingularityAbsorbKey] = useState(0);
   const [hiddenSlots, setHiddenSlots] = useState<Set<string>>(new Set());
+  // Archive release precedes the end of the formation overlay. Associate the
+  // receipt with its card so a later replacement in this slot stays concealed.
+  const [archiveRevealedCards, setArchiveRevealedCards] = useState<Record<string, string>>({});
+  const markArchiveRefillReveal = useCallback((slotKey: string, cardId: string) => {
+    setArchiveRevealedCards(previous => previous[slotKey] === cardId
+      ? previous
+      : { ...previous, [slotKey]: cardId });
+  }, []);
+  useEffect(() => {
+    setArchiveRevealedCards(previous => {
+      const entries = Object.entries(previous).filter(([slotKey]) => hiddenSlots.has(slotKey));
+      return entries.length === Object.keys(previous).length ? previous : Object.fromEntries(entries);
+    });
+  }, [hiddenSlots]);
   // Ghost Artifacts keep the previous Forge faces visible while waiting for
   // burst animations to start (during queue-drain delay).  Keyed by slotKey so
   // multiple simultaneous Forge actions can retain independent ghosts. A slot's
@@ -1477,15 +1522,11 @@ export default function GameBoard() {
   const [dealingCard, setDealingCard] = useState<{
     card: ArtifactCard;
     tier: number;
+    slotKey: string;
     deckRect: { x: number; y: number; w: number; h: number };
     slotRect: { x: number; y: number; w: number; h: number };
-    // Precomputed stable animate targets — created once at deal-start so the
-    // motion.div receives the same array references across re-renders.  If
-    // these were computed inline, every React re-render (e.g. the
-    // setHandAbsorbBurst(null) call at t≈4100ms) would pass new array
-    // instances to Framer Motion, which compares by reference and can
-    // short-circuit the in-flight animation, firing onAnimationComplete early
-    // and revealing the card before the deal completes.
+    // Captured once at refill start; the shared animation forms the replacement
+    // in slotRect while retaining the existing deal geometry contract.
     animX: number[];
     animY: number[];
     animRotateY: [number, number, number];
@@ -1493,7 +1534,7 @@ export default function GameBoard() {
     faceScale: number;
   } | null>(null);
   // Post-burn refill deals — Cinder Mandate burns multiple cards simultaneously;
-  // each replacement gets its own fly+flip animation staggered by ~120 ms.
+  // each replacement forms in its mold, staggered by ~120 ms.
   // Kept separate from dealingCard to avoid touching the existing forge paths.
   const [directorDealingCards, setDirectorDealingCards] = useState<Array<{
     id: string;
@@ -1548,10 +1589,11 @@ export default function GameBoard() {
     const staggerEnvelopeMs = Math.max(0, ids.length - 1) * staggerMs;
     setNewlyMarkedCardIds(new Set(ids));
     // Brand lands at 420ms + 1.35s duration + stagger + buffer
-    setTimeout(
+    const markedResetTimer = setTimeout(
       () => setNewlyMarkedCardIds(new Set()),
       2_200 + lead + staggerEnvelopeMs,
     );
+    cardAnimTimersRef.current.push(markedResetTimer);
 
     // Capture card DOM rects and build the beam strike list.
     const strikes: BrandStrikeTarget[] = [];
@@ -1599,10 +1641,11 @@ export default function GameBoard() {
     const delayMap = new Map<string, number>();
     ids.forEach((cardId, i) => delayMap.set(cardId, lead + i * staggerMs + 570));
     setBrandDelayMap(delayMap);
-    setTimeout(
+    const brandDelayResetTimer = setTimeout(
       () => setBrandDelayMap(new Map()),
       2_200 + lead + staggerEnvelopeMs,
     );
+    cardAnimTimersRef.current.push(brandDelayResetTimer);
     // Electric aura — starts at beam impact per card, lingers 3.2s
     const auraMap = new Map<string, { type: MarkerType; delay: number }>();
     ids.forEach((cardId, i) => {
@@ -1612,10 +1655,11 @@ export default function GameBoard() {
       });
     });
     setStrikeAuraMap(auraMap);
-    setTimeout(
+    const auraResetTimer = setTimeout(
       () => setStrikeAuraMap(new Map()),
       lead + staggerEnvelopeMs + 420 + 1_000,
     );
+    cardAnimTimersRef.current.push(auraResetTimer);
     return strikeId;
   }, []);
 
@@ -1789,6 +1833,19 @@ export default function GameBoard() {
     }
     return result;
   }, [pendingArtifactBrandTypesByCardId, revealedBrandKeys]);
+  // Polling can publish a future state before ingress accepts it. Retaining an
+  // Event from that future snapshot would block the very update that clears its
+  // predecessor's authoritative queue.
+  const cosmicEventLane = useAcceptedCosmicEventLane(state, prevStateRef.current);
+  useEffect(() => {
+    const eventId = cosmicEventLane.completedPendingEventId;
+    if (!eventId) return;
+    // A transient REST failure must not leave a finished local receipt holding the match.
+    const retry = window.setInterval(() => {
+      void executeActionRef.current({ type: 'resolve_civilization_event', eventId });
+    }, 3000);
+    return () => window.clearInterval(retry);
+  }, [cosmicEventLane.completedPendingEventId]);
   const luminaryPresentationSignals: LuminaryPresentationRuntimeSignals = {
     visibleArrivalActive: summonSequenceActive,
     activationGateActive,
@@ -1809,6 +1866,7 @@ export default function GameBoard() {
   };
   const luminaryPresentationEngine = useLuminaryPresentationEngine<GameState>({
     signals: luminaryPresentationSignals,
+    externalPresentationActive: cosmicEventLane.ingressBlocked,
     getProcessedVersion: () => prevStateRef.current?.version,
     processAuthoritativeState: nextState => processUpdateRef.current(nextState),
     beginCameraSequence: viewOrchestrator.beginSequence,
@@ -1819,7 +1877,16 @@ export default function GameBoard() {
   const authoritativeLuminaryResolutionActive =
     luminarySequenceStatus.authoritativeSequenceActive;
   const luminaryCameraSequenceRequested = luminarySequenceStatus.cameraLeaseRequested;
-  const isCameraControlled = luminarySequenceStatus.cameraControlled;
+  const blueprintPresentationPending =
+    (state?.pendingBlueprintManifestationEvents?.length ?? 0) > 0 ||
+    (state?.pendingBlueprintDetonationEvents?.length ?? 0) > 0 ||
+    (state?.pendingScenarioProtocolEvents?.length ?? 0) > 0;
+  const civilizationEventPresentationPending =
+    (state?.pendingCivilizationEventCards?.length ?? 0) > 0 || cosmicEventLane.ingressBlocked;
+  const civilizationCinematicPending =
+    blueprintPresentationPending || civilizationEventPresentationPending;
+  const isCameraControlled =
+    luminarySequenceStatus.cameraControlled || civilizationCinematicPending || chroniclePresentationActive;
   cameraControlledRef.current = isCameraControlled;
   useCameraInputLease({
     active: isCameraControlled,
@@ -1838,6 +1905,30 @@ export default function GameBoard() {
         : 1
     : 1;
   const effectiveLuminaryTimelineRate = lumiiPresentationLocked ? 1 : devSequenceTimelineRate;
+
+  useEffect(() => {
+    if (!import.meta.env.DEV) return undefined;
+
+    const diagnostics = () => ({
+      cameraControlled: isCameraControlled,
+      presentationActive: luminaryPresentationActive,
+      queuedStateCount,
+      transientAudio: gameAudio.getTransientResourceCounts(),
+      activeAnimations: document.getAnimations().filter(animation => (
+        animation.playState === 'running'
+      )).length,
+      domNodes: document.getElementsByTagName('*').length,
+    });
+    const debugWindow = window as Window & {
+      __LUMINAE_RUNTIME_DIAGNOSTICS__?: typeof diagnostics;
+    };
+    debugWindow.__LUMINAE_RUNTIME_DIAGNOSTICS__ = diagnostics;
+    return () => {
+      if (debugWindow.__LUMINAE_RUNTIME_DIAGNOSTICS__ === diagnostics) {
+        delete debugWindow.__LUMINAE_RUNTIME_DIAGNOSTICS__;
+      }
+    };
+  }, [isCameraControlled, luminaryPresentationActive, queuedStateCount]);
 
   useEffect(() => {
     if (!devSequencePlaybackActive || devSequencePlaybackMode === 'canonical') return;
@@ -1906,12 +1997,12 @@ export default function GameBoard() {
         const owner = state?.players.find(player => (
           player.claimedLuminaryIds?.includes(next.luminaryId)
         ));
-        const targetElement = owner?.playerId === session?.playerId
-          ? document.querySelector<HTMLElement>('[data-eminence-panel="player"]')
+        const targetHit = owner?.playerId === session?.playerId
+          ? getVisibleElementRect('[data-eminence-panel="player"]')
           : owner
-            ? document.querySelector<HTMLElement>(`[data-opponent-chip="${CSS.escape(owner.playerId)}"]`)
+            ? getVisibleElementRect(`[data-opponent-chip="${CSS.escape(owner.playerId)}"]`)
             : null;
-        const targetRect = targetElement?.getBoundingClientRect() ?? null;
+        const targetRect = targetHit?.rect ?? null;
         const usesEminenceBestowal = usesControlledEminenceBestowal(next.luminaryId);
         const luminary = state?.luminaries.find(candidate => candidate.id === next.luminaryId);
 
@@ -1986,6 +2077,8 @@ export default function GameBoard() {
       currentActivationBlocked ||
       activationAftermathBlocked ||
       delayedLuminaryResultActive ||
+      chroniclePresentationActive ||
+      cosmicEventStage !== null ||
       isTutorial
     ) return;
     const evt = activationQueue[0];
@@ -2022,6 +2115,8 @@ export default function GameBoard() {
     activationGateActive,
     currentActivationBlocked,
     delayedLuminaryResultActive,
+    chroniclePresentationActive,
+    cosmicEventStage,
   ]); // eslint-disable-line react-hooks/exhaustive-deps
 
   // Body scroll lock — a single call covering all overlays at once.
@@ -2162,7 +2257,8 @@ export default function GameBoard() {
   const forgedPillsScrollableProps = forgedSheetMakeScrollableAreaProps({ axis: 'horizontal' });
   const forgedBodyScrollableProps = forgedSheetMakeScrollableAreaProps();
 
-  const TURN_ANNOUNCE_DURATION = 1800;
+  const TURN_ANNOUNCE_DURATION = 2600;
+  const EVENT_TURN_ANNOUNCE_DURATION = 3400;
   const OPPONENT_ANNOUNCE_DURATION = 1100;
 
   const clearQueuedStateUpdates = authoritativeStateIngress.clear;
@@ -2186,19 +2282,67 @@ export default function GameBoard() {
     const slotEl = document.querySelector(`[data-slot-key="${slotKey}"]`);
     const deckR = deckEl?.getBoundingClientRect();
     const slotR = slotEl?.getBoundingClientRect();
-    if (!deckR || !slotR) return false;
+    if (!slotR || slotR.width <= 0 || slotR.height <= 0) return false;
 
     const rawCardW = parseFloat(getComputedStyle(document.documentElement).getPropertyValue('--card-w')) || 112;
-    const motion = getReplacementDealMotion(deckR, slotR, rawCardW);
+    const motion = getReplacementDealMotion(deckR ?? slotR, slotR, rawCardW);
 
     setAnimEndTime(DEAL_ANIM_MS);
+    setArchiveRevealedCards(previous => {
+      const next = { ...previous };
+      delete next[slotKey];
+      return next;
+    });
     setDealingCard({
       card,
       tier,
+      slotKey,
       ...motion,
     });
-    gameAudio.playCardDraw();
     return true;
+  };
+
+  // Every batch replacement uses the same slot-bound formation as a normal draw.
+  const refillForgeSlots = (slotKeys: string[]) => {
+    const snapshot = prevStateRef.current ?? state;
+    const entries: typeof directorDealingCards = [];
+    const rawCardW = parseFloat(getComputedStyle(document.documentElement).getPropertyValue('--card-w')) || 112;
+    for (const slotKey of slotKeys) {
+      const [tier, index] = slotKey.split('-').map(Number);
+      const row = tier === 1 ? snapshot?.forgeTier1 : tier === 2 ? snapshot?.forgeTier2 : snapshot?.forgeTier3;
+      const card = row?.[index];
+      const slotRect = document.querySelector(`[data-slot-key="${slotKey}"]`)?.getBoundingClientRect();
+      if (!card || !slotRect || slotRect.width <= 0 || slotRect.height <= 0) continue;
+      const deckRect = document.querySelector(`[data-deck-tier="${tier}"]`)?.getBoundingClientRect();
+      entries.push({
+        id: `refill-${slotKey}-${Date.now()}`,
+        card, tier, slotKey,
+        ...getReplacementDealMotion(deckRect ?? slotRect, slotRect, rawCardW),
+        delay: entries.length * FORGE_REFILL_STAGGER_MS / 1000,
+      });
+    }
+    const active = new Set(entries.map(entry => entry.slotKey));
+    setArchiveRevealedCards(previous => {
+      const next = { ...previous };
+      slotKeys.forEach(key => delete next[key]);
+      return next;
+    });
+    setBurstGhostCards(previous => {
+      const next = { ...previous };
+      slotKeys.forEach(key => delete next[key]);
+      return next;
+    });
+    setHiddenSlots(previous => {
+      const next = new Set(previous);
+      slotKeys.forEach(key => active.has(key) ? next.add(key) : next.delete(key));
+      return next;
+    });
+    if (entries.length > 0) {
+      setDirectorDealingCards(previous => [...previous.filter(entry => !active.has(entry.slotKey)), ...entries]);
+      setAnimEndTime(DEAL_ANIM_MS + (entries.length - 1) * FORGE_REFILL_STAGGER_MS);
+    } else if (slotKeys.length > 0) {
+      gameAudio.playForgeRefill({ cardDeal: true });
+    }
   };
 
   const playNormalBurnVisuals = (entries: LuminaryBurnVisualEntry[]) => {
@@ -2245,7 +2389,7 @@ export default function GameBoard() {
       });
     }
 
-    setAnimEndTime(NORMAL_BURN_VISUAL_MS);
+    setAnimEndTime(NORMAL_BURN_VISUAL_MS + Math.max(0, resolvedEntries.length - 1) * FORGE_REFILL_STAGGER_MS);
     setBurnBadgeOverlays(pf => [
       ...pf,
       ...resolvedEntries.map(e => ({ id: e.id, slotRect: e.rect })),
@@ -2314,20 +2458,8 @@ export default function GameBoard() {
     }, 320);
 
     const nonDirectorKeys = resolvedEntries.map(({ tier, slotIndex }) => `${tier}-${slotIndex}`);
-    setTimeout(() => {
-      if (normalGhostEntries.length > 0) {
-        setBurstGhostCards(previous => {
-          const next = { ...previous };
-          normalGhostEntries.forEach(({ slotKey }) => {
-            delete next[slotKey];
-          });
-          return next;
-        });
-      }
-      setRefillingSlots(new Set(nonDirectorKeys));
-      gameAudio.playForgeRefill();
-      setTimeout(() => setRefillingSlots(new Set()), 700);
-    }, 1520);
+    const refillTimer = setTimeout(() => refillForgeSlots(nonDirectorKeys), 1520);
+    cardAnimTimersRef.current.push(refillTimer);
   };
 
   const flushDeferredNormalBurns = () => {
@@ -2431,18 +2563,21 @@ export default function GameBoard() {
     accentColor: string,
     eminence: number,
     timerSeconds: number | null,
+    eventWarning: EventTurnWarningState | null,
   ) => {
     if (dedupeKey === lastAnnouncedTurnRef.current) return;
     lastAnnouncedTurnRef.current = dedupeKey;
     if (pendingTurnAnnounceRef.current) clearTimeout(pendingTurnAnnounceRef.current);
     pendingTurnAnnounceRef.current = null;
 
-    const duration = isYou ? TURN_ANNOUNCE_DURATION : OPPONENT_ANNOUNCE_DURATION;
+    const duration = isYou
+      ? (eventWarning ? EVENT_TURN_ANNOUNCE_DURATION : TURN_ANNOUNCE_DURATION)
+      : OPPONENT_ANNOUNCE_DURATION;
     if (turnAnnounceTimerRef.current) clearTimeout(turnAnnounceTimerRef.current);
     turnAnnounceKeyRef.current += 1;
     const seq = turnAnnounceKeyRef.current;
     if (isYou) setTurnPresentationPending(true);
-    setTurnAnnouncement({ key: seq, turnIdentity, playerName, avatarId, isYou, accentColor, eminence, turnStartedAt: Date.now(), timerSeconds });
+    setTurnAnnouncement({ key: seq, turnIdentity, playerName, avatarId, isYou, accentColor, eminence, turnStartedAt: Date.now(), timerSeconds, eventWarning });
     if (isYou) gameAudio.playTurnStart();
     else gameAudio.playOpponentTurnStart();
     turnAnnounceTimerRef.current = setTimeout(() => {
@@ -2466,17 +2601,18 @@ export default function GameBoard() {
     accentColor: string,
     eminence: number,
     timerSeconds: number | null,
+    eventWarning: EventTurnWarningState | null,
   ) => {
     if (isYou) setTurnPresentationPending(true);
     if (pendingTurnAnnounceRef.current) clearTimeout(pendingTurnAnnounceRef.current);
     const waitMs = Math.max(0, animationEndTimeRef.current - Date.now());
     if (waitMs <= 0) {
-      fireTurnAnnouncement(dedupeKey, turnIdentity, playerName, avatarId, isYou, accentColor, eminence, timerSeconds);
+      fireTurnAnnouncement(dedupeKey, turnIdentity, playerName, avatarId, isYou, accentColor, eminence, timerSeconds, eventWarning);
       return;
     }
     pendingTurnAnnounceRef.current = setTimeout(() => {
       pendingTurnAnnounceRef.current = null;
-      fireTurnAnnouncement(dedupeKey, turnIdentity, playerName, avatarId, isYou, accentColor, eminence, timerSeconds);
+      fireTurnAnnouncement(dedupeKey, turnIdentity, playerName, avatarId, isYou, accentColor, eminence, timerSeconds, eventWarning);
     }, waitMs);
   };
 
@@ -2514,6 +2650,7 @@ export default function GameBoard() {
       accentColor,
       cp.eminence,
       state.turnTimerSeconds ?? null,
+      getEventTurnWarning(state.eventDelivery, state.eventForecast, cp.playerId),
     );
   };
 
@@ -2547,7 +2684,7 @@ export default function GameBoard() {
   // can appear without waiting for queued card/arrival animations to drain.
   // Does NOT affect audio — win fanfare and playWin() still fire normally.
   // Should be called at the moment game-over is detected.
-  const cancelPendingAnimations = () => {
+  const cancelPendingAnimations = (boundary: 'game-over' | 'new-epoch' = 'game-over') => {
     // Reset the animation barrier so drainQueue stops waiting.
     animationEndTimeRef.current = 0;
     // Cancel every tracked card-animation timer (burst, deal, flip watchdogs, etc.).
@@ -2573,6 +2710,33 @@ export default function GameBoard() {
     // Reveal hidden Forge slots and finish flips so the board is clean.
     setHiddenSlots(new Set());
     setFlippingCards(new Set());
+
+    if (boundary === 'new-epoch') {
+      cancelTurnAnnouncement();
+      if (affinityBurstTimerRef.current) clearTimeout(affinityBurstTimerRef.current);
+      affinityBurstTimerRef.current = null;
+      setAffinityBurst(null);
+      setCompactGhost(null);
+      setBurnFlashes([]);
+      setBurnBadgeOverlays([]);
+      setDelayedEffectFloatQueue([]);
+      setActiveDelayedEffectFloat(null);
+      setBloomSeedParticles([]);
+      setBurnPileParticles([]);
+      setArchiveReturnParticles([]);
+      setBurnChipSparks([]);
+      setShowSeedBoardEffect(false);
+      setRefillingSlots(new Set());
+      setNewlyMarkedCardIds(new Set());
+      setSuppressedMarkerIds(new Set());
+      setRevealedBrandKeys(new Set());
+      setBrandStrikes([]);
+      setBrandDelayMap(new Map());
+      setStrikeAuraMap(new Map());
+      setTracedSourceLumId(null);
+      setReturnPhase(null);
+      setLuminaryEffectReceipts([]);
+    }
   };
 
 
@@ -2722,6 +2886,7 @@ export default function GameBoard() {
             accentColor,
             cp.eminence,
             state.turnTimerSeconds ?? null,
+            getEventTurnWarning(state.eventDelivery, state.eventForecast, cp.playerId),
           );
         }
       };
@@ -2926,6 +3091,9 @@ export default function GameBoard() {
   useEffect(() => {
     if (!state) return;
     const prev = prevStateForAnimRef.current;
+    // A polling snapshot can land before ingress rolls it back. Future effects
+    // must not run behind a still-playing local Event.
+    if (cosmicEventLane.ingressBlocked && prevStateRef.current && state.version > prevStateRef.current.version) return;
     // Guard: when processUpdate drains older queue entries after TQ polling already
     // delivered a newer state, this effect fires with state going BACKWARDS (e.g.
     // v145 → v141). Without this guard the marker diff re-detects already-processed
@@ -3336,6 +3504,9 @@ export default function GameBoard() {
     // ── Catalyst Bloom seed particles (per burn while Bloom is claimed) ────
     const bloomClaimed = state.players.some(p => p.claimedLuminaryIds?.includes('lum_bloom'));
     if (bloomClaimed && !isForgeOrReserve) {
+      const previousBurnIds = new Set((prev.burnEvents ?? []).map(event => event.eventId));
+      const actuallyBurnedCardIds = new Set((state.burnEvents ?? [])
+        .filter(event => !previousBurnIds.has(event.eventId)).map(event => event.cardId));
       const bloomEl  = document.querySelector('[data-luminary-id="lum_bloom"]');
       const bloomRect = bloomEl?.getBoundingClientRect() ?? null;
       if (bloomRect) {
@@ -3348,7 +3519,7 @@ export default function GameBoard() {
           const len2 = Math.min(oldCards.length, newCards.length);
           for (let i = 0; i < len2; i++) {
             const o = oldCards[i], n = newCards[i];
-            if (o && n && o.id !== n.id) {
+            if (o && n && o.id !== n.id && actuallyBurnedCardIds.has(o.id)) {
               const slotEl = document.querySelector(`[data-slot-key="${tier}-${i}"]`);
               if (slotEl) {
                 const fromR = slotEl.getBoundingClientRect();
@@ -3451,10 +3622,51 @@ export default function GameBoard() {
   const luminaryChoiceIsOurs = !!pendingLuminaryChoice && pendingLuminaryChoice.playerId === session?.playerId;
   const luminaryChoiceActive = !!pendingLuminaryChoice;
   const turnOrderIntroActive = !!turnOrderIntro;
-  const blueprintPresentationActive =
-    (state?.pendingBlueprintManifestationEvents?.length ?? 0) > 0 ||
-    (state?.pendingBlueprintDetonationEvents?.length ?? 0) > 0 ||
-    (state?.pendingScenarioProtocolEvents?.length ?? 0) > 0;
+  const civilizationPresentationActive = civilizationCinematicPending;
+  const priorVisualsSettled = canStartCosmicEventPresentation({
+    animationLockUntil,
+    luminaryPresentationActive,
+    activationGateActive,
+    pendingSummonCount: state?.pendingSummonEvents?.length ?? 0,
+    pendingActivationCount: state?.pendingLuminaryActivationEvents?.length ?? 0,
+    coreActionAnimationActive: !!cardActionBurst || !!cipherBurst || !!affinityBurst ||
+      !!opponentForgeAbsorb || !!handTabAbsorbFlash || !!dealingCard ||
+      directorDealingCards.length > 0 || flippingCards.size > 0 || !!compactGhost,
+    boardEffectAnimationActive: showSeedBoardEffect || brandStrikes.length > 0 ||
+      burnFlashes.length > 0 || burnBadgeOverlays.length > 0 || bloomSeedParticles.length > 0 ||
+      burnPileParticles.length > 0 || archiveReturnParticles.length > 0 ||
+      burnChipSparks.length > 0 || refillingSlots.size > 0,
+    cameraMotionActive: viewOrchestrator.isOrchestrating || viewOrchestrator.isRestoring,
+    blueprintPresentationPending,
+    chroniclePresentationActive: false,
+    turnPresentationActive: !!turnAnnouncement || turnOrderIntroActive,
+  });
+  const cosmicEventReady = priorVisualsSettled && !chroniclePresentationActive;
+  const cosmicEventToPresent = cosmicEventLane.presentation?.event ?? null;
+  useEffect(() => {
+    if (!cosmicEventToPresent || !cosmicEventReady || cosmicEventStage?.eventId === cosmicEventToPresent.eventId) return;
+    cosmicEventReturnView.current ??= { tab: activeTab, scrollTop: mainScrollRef.current?.scrollTop ?? 0 };
+    setSelectedCard(null);
+    setSelectedDeckTier(null);
+    setSelectedLuminary(null);
+    setShowReservedOverlay(false);
+    setShowForgedOverlay(false);
+    setShowBurnPileOverlay(false);
+    setActiveTab('board');
+    let secondFrame = 0;
+    const frame = requestAnimationFrame(() => {
+      const source = cosmicEventToPresent.sourceCard;
+      const anchor = getCosmicEventSourceAnchor(source);
+      anchor?.scrollIntoView({ block: 'nearest', behavior: 'instant' });
+      secondFrame = requestAnimationFrame(() => {
+        setCosmicEventStage({
+          eventId: cosmicEventToPresent.eventId,
+          sourceRect: measureCosmicEventSource(source, anchor),
+        });
+      });
+    });
+    return () => { cancelAnimationFrame(frame); cancelAnimationFrame(secondFrame); };
+  }, [activeTab, cosmicEventReady, cosmicEventStage?.eventId, cosmicEventToPresent]);
   // isMyTurn is false while we're waiting through modal/intro phases — the active
   // overlay is the only interactive surface during that phase.
   // Camera movement and the broader presentation lease are separate signals.
@@ -3464,10 +3676,11 @@ export default function GameBoard() {
     isActivePlayer &&
     !authoritativeLuminaryResolutionActive &&
     !luminaryPresentationActive &&
-    !blueprintPresentationActive &&
+    !civilizationPresentationActive &&
+    !chroniclePresentationActive &&
     !luminaryChoiceIsOurs &&
     !turnOrderIntroActive;
-  const visualTimelineLocked = queuedStateCount > 0 || blueprintPresentationActive;
+  const visualTimelineLocked = queuedStateCount > 0 || civilizationPresentationActive;
   const isMyTurnForCoreAction =
     isMyTurn &&
     !coreActionSubmitted &&
@@ -3513,7 +3726,7 @@ export default function GameBoard() {
   const canPlan = canUsePlanningEngine({
     gameStatus: state?.status,
     hasLocalPlayer: !!me,
-    exclusivePresentationActive: luminaryCameraSequenceRequested || blueprintPresentationActive,
+    exclusivePresentationActive: luminaryCameraSequenceRequested || civilizationPresentationActive,
     arrivalGateActive,
     localArrivalSkipped,
   });
@@ -3553,6 +3766,7 @@ export default function GameBoard() {
       progressFraction,
       name: me?.civName || getCivilizationName(palette, tier),
       forgedCount: forgedArtifacts.length,
+      civilization: me?.civilization,
     };
   // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [loreCatalog, myCivilizationKey]);
@@ -3587,6 +3801,7 @@ export default function GameBoard() {
       scenarioProtocols: state?.scenarioProtocols ?? [],
       civilizationArtifacts: me?.civilization?.artifacts ?? [],
       activeCapabilityIds: me?.civilization?.activeCapabilityIds,
+      manifestationAssignments: me?.civilization?.manifestationAssignments ?? [],
     })
   ), [
     myForgedArtifacts,
@@ -3598,6 +3813,7 @@ export default function GameBoard() {
     me?.manifestedBlueprintDevices,
     me?.civilization?.artifacts,
     me?.civilization?.activeCapabilityIds,
+    me?.civilization?.manifestationAssignments,
     state?.scenarioProtocols,
   ]);
   const [recentCivilizationSiteIds, setRecentCivilizationSiteIds] = useState<string[]>([]);
@@ -3871,7 +4087,10 @@ export default function GameBoard() {
 
   processUpdateRef.current = (newState: GameState) => {
     const prev = prevStateRef.current;
-    const isRematch = prev?.status === 'finished' && newState.status === 'playing';
+    const isRematch = !!prev && newState.status === 'playing' && (
+      prev.status === 'finished' ||
+      (prev.startedAt !== newState.startedAt && newState.startedAt > 0)
+    );
     const isFreshLiveGameTransition = !!prev && prev.status !== 'playing' && newState.status === 'playing';
     if (prev && newState.version <= prev.version && !isRematch) return;
     if (isFreshLiveGameTransition) {
@@ -3880,8 +4099,11 @@ export default function GameBoard() {
       pendingTurnOrderIntroIdRef.current = openingTurnOrderId;
     }
     if (isRematch) {
+      setCosmicEventStage(null);
+      cosmicEventReturnView.current = null;
       gameAudio.resetTransientAudio();
       gameAudio.setEndgameIntensity(0);
+      cancelPendingAnimations('new-epoch');
       viewOrchestrator.endSequence({ immediate: true });
       viewOrchestrator.restore({ immediate: true });
       initialTurnFiredRef.current = false;
@@ -3951,6 +4173,14 @@ export default function GameBoard() {
         });
       }
       const action = newState.lastAction;
+      const eventRefill = getCompletedCosmicEventRefill(prev, newState);
+      if (eventRefill) {
+        const { card, tier, slotKey } = eventRefill;
+        setHiddenSlots(previous => new Set(previous).add(slotKey));
+        if (!dealReplacementIntoSlot(card, tier, slotKey)) {
+          setHiddenSlots(previous => { const next = new Set(previous); next.delete(slotKey); return next; });
+        }
+      }
 
       // ── Planned-action cancellation ────────────────────────────────────────
       // The engine stamps lastAction = { type: "planned_action_cancelled", playerId, reason }
@@ -4096,7 +4326,7 @@ export default function GameBoard() {
 
       if (prev && forgeActionKey && optimisticForge) {
         // The forged card already departed on tap. The authoritative snapshot owns
-        // the replacement identity, so hand directly from departure to Archive deal.
+        // the replacement identity, so hand directly from departure to molten refill.
         lastForgeBurstActionRef.current = forgeActionKey;
         optimisticLocalForgeRef.current = null;
         const forgeRowsBefore: Record<number, (ArtifactCard | null)[]> = {
@@ -4112,7 +4342,9 @@ export default function GameBoard() {
           const replacementCard = forgeRowsAfter[tier][slotIndex];
           setBurstGhostCards(prevGhosts => { const next = { ...prevGhosts }; delete next[slotKey]; return next; });
           const completeIn = Math.max(0, (abridgedAnims ? 720 : 1250) - (Date.now() - optimisticForge.startedAt));
-          setAnimEndTime(completeIn + DEAL_ANIM_MS);
+          // A reserved Event mold has no Artifact draw yet; its own formation
+          // starts after departure without waiting through a nonexistent refill.
+          setAnimEndTime(completeIn + (replacementCard ? DEAL_ANIM_MS : 0));
           const completionTimer = setTimeout(() => {
             if (cardActionBurstKeyRef.current !== optimisticForge.burstKey) return;
             setCardActionBurst(null);
@@ -4200,7 +4432,9 @@ export default function GameBoard() {
                 opponentForgeAbsorbKeyRef.current += 1;
                 const absorbSeq = opponentForgeAbsorbKeyRef.current;
                 const forgeActorName = player?.playerName;
-                setAnimEndTime(abridgedAnims ? ABRIDGED_FORGE_LOCK_MS : FORGE_FULL_MS);
+                setAnimEndTime(forgeRowsAfter[tier][idx]
+                  ? (abridgedAnims ? ABRIDGED_FORGE_LOCK_MS : FORGE_FULL_MS)
+                  : (abridgedAnims ? 720 : 1250));
                 setBurstGhostCards(prev => { const n = { ...prev }; delete n[slotKey]; return n; });
                 setOpponentForgeAbsorb({
                   key: absorbSeq,
@@ -4236,12 +4470,9 @@ export default function GameBoard() {
 
                   if (newCard) {
                     if (!dealReplacementIntoSlot(newCard, tier, slotKey)) {
-                      // Opponent forge fallback: deck or slot element not in DOM
+                      // Opponent forge fallback: slot element not in DOM
                       // (player on a different tab, compact layout not rendered, etc.).
-                      // Do NOT extend the animation lock with FALLBACK_FLIP_ANIM_MS (5800 ms) —
-                      // the initial forge lock set above is sufficient sequencing.
-                      // Just reveal the replacement card immediately; no in-place flip needed
-                      // for an opponent's action the local player isn't watching.
+                      // Reveal immediately when the local player cannot see a target mold.
                       gameAudio.playCardDraw();
                       setHiddenSlots(new Set());
                     }
@@ -4253,7 +4484,9 @@ export default function GameBoard() {
               } else {
                 // ── Local player forge: full celebration burst ──────────────────
                 cardActionBurstKeyRef.current += 1;
-                setAnimEndTime(abridgedAnims ? ABRIDGED_FORGE_LOCK_MS : FORGE_FULL_MS);
+                setAnimEndTime(forgeRowsAfter[tier][idx]
+                  ? (abridgedAnims ? ABRIDGED_FORGE_LOCK_MS : FORGE_FULL_MS)
+                  : (abridgedAnims ? 720 : 1300));
                 const forgeDestination = resolveLocalForgeDestination();
                 // Compute which affinity colors were spent for the energy-stream animation.
                   const _spentCost = player
@@ -4295,25 +4528,8 @@ export default function GameBoard() {
                   setCardActionBurst(null);
                   if (newCard) {
                     if (!dealReplacementIntoSlot(newCard, tier, slotKey)) {
-                      // Fallback: flip in place if DOM elements not found.
-                      // Keep the slot hidden until the flip completes — do NOT clear
-                      // hiddenSlots immediately or the new card pops in before the flip.
-                      setAnimEndTime(FALLBACK_FLIP_ANIM_MS);
-                      setFlippingCards(new Set([newCard.id]));
-                      gameAudio.playCardDraw();
-                      if (effectiveForgeCompact) {
-                        const slotEl = document.querySelector(`[data-slot-key="${slotKey}"]`);
-                        const slotR = slotEl?.getBoundingClientRect();
-                        if (slotR) {
-                          setCompactGhost({ id: `${newCard.id}-${Date.now()}`, cardViewProps: { card: newCard, tier }, chipRect: slotR });
-                        }
-                      }
-                      const t2 = setTimeout(() => {
-                        if (cardActionBurstKeyRef.current !== seq) return;
-                        setFlippingCards(new Set());
-                        setHiddenSlots(new Set());
-                      }, FALLBACK_FLIP_CLEANUP_MS);
-                      cardAnimTimersRef.current.push(t2);
+                      gameAudio.playForgeRefill({ cardDeal: true });
+                      setHiddenSlots(new Set());
                     }
                   } else {
                     setHiddenSlots(new Set());
@@ -4331,10 +4547,9 @@ export default function GameBoard() {
               const isLocalReserve = (action.playerId as string | undefined) === session?.playerId;
               cipherBurstIsDeckRef.current = isLocalReserve;
               const reserveActorId = action.playerId as string;
-              const destEl = isLocalReserve
-                ? document.querySelector('[data-singularity-reserve-target]')
-                : document.querySelector(`[data-opponent-chip="${reserveActorId}"]`);
-              const destElRect = destEl?.getBoundingClientRect();
+              const destElRect = getVisibleElementRect(isLocalReserve
+                ? '[data-singularity-reserve-target]'
+                : `[data-opponent-chip="${reserveActorId}"]`)?.rect;
               const reserveOwnerName = isLocalReserve
                 ? undefined
                 : ((newState.players as GamePlayerState[]).find(p => p.playerId === reserveActorId))?.playerName;
@@ -4366,31 +4581,19 @@ export default function GameBoard() {
               setBurstGhostCards(prev => { const n = { ...prev }; delete n[slotKey]; return n; }); // cipher burst now owns the card
               if (gotSingularity) gameAudio.playSingularityToken();
               gameAudio.playCipherSeal();
-              setAnimEndTime(abridgedAnims ? ABRIDGED_FORGE_LOCK_MS : CIPHER_GAME_TOTAL_MS + DEAL_ANIM_MS + ANIM_LOCK_BUFFER_MS); // full: cipher + deal-from-deck + buffer
-              setHiddenSlots(new Set([slotKey]));
-              // Deal replacement card from deck after the cipher aperture animation clears.
-              const cipherSeq = cipherBurstKeyRef.current;
               const cipherNewCard = forgeRowsAfter[tier][idx];
+              setAnimEndTime(abridgedAnims
+                ? (cipherNewCard ? ABRIDGED_FORGE_LOCK_MS : ABRIDGED_ACTION_MS)
+                : CIPHER_GAME_TOTAL_MS + (cipherNewCard ? DEAL_ANIM_MS : 0) + ANIM_LOCK_BUFFER_MS);
+              setHiddenSlots(new Set([slotKey]));
+              // Fill the replacement mold after the cipher aperture animation clears.
+              const cipherSeq = cipherBurstKeyRef.current;
 	              const tCipherDeal = setTimeout(() => {
 	                if (cipherBurstKeyRef.current !== cipherSeq) return;
 	                if (cipherNewCard) {
 	                  if (!dealReplacementIntoSlot(cipherNewCard, tier, slotKey)) {
-	                    setAnimEndTime(FALLBACK_FLIP_ANIM_MS);
-	                    setFlippingCards(new Set([cipherNewCard.id]));
-	                    gameAudio.playCardDraw();
-                    if (effectiveForgeCompact) {
-                      const slotEl = document.querySelector(`[data-slot-key="${slotKey}"]`);
-                      const slotR = slotEl?.getBoundingClientRect();
-                      if (slotR) {
-                        setCompactGhost({ id: `${cipherNewCard.id}-${Date.now()}`, cardViewProps: { card: cipherNewCard, tier }, chipRect: slotR });
-                      }
-                    }
-                    const t2 = setTimeout(() => {
-                      if (cipherBurstKeyRef.current !== cipherSeq) return;
-                      setFlippingCards(new Set());
-                      setHiddenSlots(new Set());
-                    }, FALLBACK_FLIP_CLEANUP_MS);
-                    cardAnimTimersRef.current.push(t2);
+                    gameAudio.playForgeRefill({ cardDeal: true });
+                    setHiddenSlots(new Set());
                   }
                 } else {
                   setHiddenSlots(new Set());
@@ -5070,7 +5273,11 @@ export default function GameBoard() {
         if (action?.type === 'reserve_artifact' && !action.cardId) {
           const playerId = action.playerId as string | undefined;
           const player = (newState.players as GamePlayerState[]).find((p) => p.playerId === playerId);
-          if (player) {
+          const previousReserve = (prev ?? state)?.players.find(p => p.playerId === playerId)?.reservedArtifacts ?? [];
+          const drewArtifact = player?.reservedArtifacts.some(card => !previousReserve.some(old => old.id === card.id));
+          // An exhausted Archive may reveal only Events. It creates no Cipher
+          // flight and must never depict a fabricated Artifact entering a hand.
+          if (player && drewArtifact) {
             const gotSingularity = (newState.affinityWell.singularity ?? 0) < ((prev ?? state)?.affinityWell.singularity ?? 0);
             const tier = Number(action.tier ?? 1) as 1 | 2 | 3;
             // Diff prev → new to find the newly drawn card
@@ -5082,10 +5289,9 @@ export default function GameBoard() {
             const isLocalReserve = playerId === session?.playerId;
             const reserveActorId = playerId ?? player.playerId;
             // Local player: fly to Singularity panel; opponent: fly to their player chip.
-            const destEl = isLocalReserve
-              ? document.querySelector('[data-singularity-reserve-target]')
-              : document.querySelector(`[data-opponent-chip="${reserveActorId}"]`);
-            const destRect = destEl?.getBoundingClientRect();
+            const destRect = getVisibleElementRect(isLocalReserve
+              ? '[data-singularity-reserve-target]'
+              : `[data-opponent-chip="${reserveActorId}"]`)?.rect;
             if (!isLocalReserve) {
               traceOpponentActionOwner(reserveActorId, '#aebbd4');
             }
@@ -5141,6 +5347,7 @@ export default function GameBoard() {
             accentColor,
             nextPlayer.eminence,
             newState.turnTimerSeconds ?? null,
+            getEventTurnWarning(newState.eventDelivery, newState.eventForecast, nextPlayer.playerId),
           );
         }
       }
@@ -5393,7 +5600,10 @@ export default function GameBoard() {
     const polledVersion = state.version;
     const prevVersion = prevStateRef.current.version;
     const isRematchEpoch =
-      prevStateRef.current.status === 'finished' && state.status === 'playing';
+      state.status === 'playing' && (
+        prevStateRef.current.status === 'finished' ||
+        (prevStateRef.current.startedAt !== state.startedAt && state.startedAt > 0)
+      );
     if (typeof polledVersion !== 'number') return;
     if (isRematchEpoch) {
       // Rematches restart the server version counter. They must replace the
@@ -5619,6 +5829,7 @@ export default function GameBoard() {
   // enqueue here even when the same Luminary was claimed by an earlier lab run.
   useEffect(() => {
     if (!state) return;
+    if (cosmicEventLane.ingressBlocked && prevStateRef.current && state.version > prevStateRef.current.version) return;
 
     const pendingArrivals = state.pendingSummonEvents ?? [];
     for (const evt of pendingArrivals) {
@@ -5716,6 +5927,8 @@ export default function GameBoard() {
     // synchronously when each event lands in setArrivalQueue (inside enqueueSummon).
     if (
       pendingGameOver &&
+      !cosmicEventLane.ingressBlocked &&
+      !chroniclePresentationActive &&
       !summonSequenceActive &&
       enqueuingCountRef.current === 0 &&
       !fanfareFiredForGameOverRef.current
@@ -5748,7 +5961,7 @@ export default function GameBoard() {
         if (!isActualLumiiScenario) gameAudio.playWin();
       }, WIN_FANFARE_DELAY_MS + arrivalFlushBarrierMs);
     }
-  }, [isActualLumiiScenario, summonSequenceActive, pendingGameOver]);
+  }, [isActualLumiiScenario, summonSequenceActive, pendingGameOver, cosmicEventLane.ingressBlocked, chroniclePresentationActive]);
 
   // In tutorial mode, suppress the arrival cutscene entirely — immediately drain
   // any queued arrival entries by running the onComplete logic synchronously.
@@ -6388,6 +6601,7 @@ export default function GameBoard() {
       payload.type !== 'resolve_luminary_activation' &&
       payload.type !== 'resolve_blueprint_manifestation' &&
       payload.type !== 'resolve_blueprint_detonation' &&
+      payload.type !== 'resolve_civilization_event' &&
       isTutorial &&
       tutorialStep >= 0 &&
       tutorialStep < LUMII_BEAT_COUNT
@@ -6922,7 +7136,11 @@ export default function GameBoard() {
             },
           );
         }
-        toast({ title: 'Pending action set', description: getPlannedActionSummary(plannedActionData, state, me) });
+        // The Board's persistent banner already confirms the plan. Check the
+        // current tab in case it changed while the request was in flight.
+        if (activeTabRef.current !== 'board') {
+          toast({ title: 'Pending action set', description: getPlannedActionSummary(plannedActionData, state, me) });
+        }
         lastPlannedCancelNoticeRef.current = null;
       }
       setSelectedCard(null);
@@ -7243,6 +7461,33 @@ export default function GameBoard() {
 
   // ---- TABS ----
 
+  // Hold Archive depletion from the authoritative burn update through any
+  // arrival/activation staging, until the replacement begins emerging.
+  const archiveRevealedSlotKeys = new Set<string>();
+  if (state) {
+    [state.forgeTier1, state.forgeTier2, state.forgeTier3].forEach((row, tierIndex) => {
+      row.forEach((card, index) => {
+        const slotKey = `${tierIndex + 1}-${index}`;
+        if (card && archiveRevealedCards[slotKey] === card.id) archiveRevealedSlotKeys.add(slotKey);
+      });
+    });
+  }
+  const archivePendingSlotKeys = new Set(deferredNormalBurnsRef.current.map(entry => `${entry.tier}-${entry.slotIndex}`));
+  if (directorDealingCards.length === 0 && directorGhostSlotKeysRef.current.length === 0
+    && activationQueue.some(event => event.luminaryId === 'lum_ember' && event.effectType === 'end_of_turn')) {
+    pendingDirectorBurnSlotsRef.current.forEach(slot => archivePendingSlotKeys.add(slot.slotKey));
+  }
+  const beforeBurn = prevStateForAnimRef.current;
+  if (beforeBurn && state) {
+    const knownBurns = new Set((beforeBurn.burnEvents ?? []).map(event => event.eventId));
+    const newBurnIds = new Set((state.burnEvents ?? []).filter(event => !knownBurns.has(event.eventId)).map(event => event.cardId));
+    [beforeBurn.forgeTier1, beforeBurn.forgeTier2, beforeBurn.forgeTier3].forEach((row, tierIndex) => {
+      row.forEach((card, index) => {
+        if (card && newBurnIds.has(card.id)) archivePendingSlotKeys.add(`${tierIndex + 1}-${index}`);
+      });
+    });
+  }
+
   const boardTabMainScope = {
     armedLumIds,
     arrivalQueue,
@@ -7265,6 +7510,8 @@ export default function GameBoard() {
     handleCardTap,
     handleDeckTap,
     hiddenSlots,
+    archivePendingSlotKeys,
+    archiveRevealedSlotKeys,
     isCameraControlled,
     luminaryPresentationActive,
     isLandscapeCockpit,
@@ -7303,63 +7550,21 @@ export default function GameBoard() {
       .filter(({ player }) => player.playerId !== session?.playerId);
     if (opponents.length === 0) return null;
 
-    const currentOpponent = opponents.find(({ index }) =>
-      state.status === 'playing' && state.currentPlayerIndex === index
-    )?.player;
-
     return (
       <section
         className="board-opponents board-module board-module--opponents"
-        data-board-opponents-expanded={boardOpponentsExpanded}
+        data-testid="board-opponents"
       >
-        <button
-          type="button"
-          className="board-opponents-toggle"
-          data-testid="board-opponents-toggle"
-          aria-expanded={boardOpponentsExpanded}
-          onClick={() => setBoardOpponentsExpanded((expanded) => !expanded)}
-        >
-          <span className="board-opponents-toggle__title">Opponents</span>
-          <span className="board-opponents-toggle__summary">
-            <span className="board-opponents-toggle__avatars" aria-hidden="true">
-              {opponents.map(({ player, index }) => {
-                const isCurrent = state.status === 'playing' && state.currentPlayerIndex === index;
-                return (
-                  <span
-                    key={player.playerId}
-                    className={`board-opponents-toggle__avatar ${isCurrent ? 'board-opponents-toggle__avatar--active' : ''}`}
-                  >
-                    <PlayerAvatar avatarId={player.avatarId ?? null} name={player.playerName} size={18} />
-                  </span>
-                );
-              })}
-            </span>
-            <span className="board-opponents-toggle__status">
-              {currentOpponent
-                ? `${currentOpponent.playerName}'s turn`
-                : `${opponents.length} opponent${opponents.length === 1 ? '' : 's'}`}
-            </span>
-          </span>
-          <ChevronDown className="board-opponents-toggle__chevron" aria-hidden="true" />
-        </button>
-
-        <AnimatePresence initial={false}>
-          {boardOpponentsExpanded && (
-            <motion.div
-              key="board-opponents-body"
-              initial={{ height: 0, opacity: 0 }}
-              animate={{ height: 'auto', opacity: 1 }}
-              exit={{ height: 0, opacity: 0 }}
-              transition={{ duration: 0.2 }}
-              className="board-opponents-body overflow-hidden"
-            >
-              <div className="flex flex-col gap-2">
+        <h2 className="board-opponents-title">Opponents</h2>
+        <div className="board-opponents-body">
+          <div className="board-opponents-list">
             {opponents.map(({ player: p, index: i }) => {
               const isCurrent = state.status === 'playing' && state.currentPlayerIndex === i;
               const oppD = opponentData[p.playerId];
               const totalAffinity = oppD?.totalAffinity ?? 0;
               const cardCount = oppD?.cardCount ?? 0;
               const reservedCount = oppD?.reservedCount ?? 0;
+              const encryptedCount = getOrdinaryEncryptedCount(p);
               const isExpanded = boardExpandedOpponentId === p.playerId;
               const oppCivPalette = oppD?.civPalette ?? getDominantAffinityPalette(p.forgedArtifacts);
               const oppCivName = oppD?.civName ?? p.civName ?? p.playerName;
@@ -7369,18 +7574,24 @@ export default function GameBoard() {
               return (
                 <div
                   key={p.playerId}
-                  className={`rounded-2xl border p-3 bg-card/85 transition-[border-color,box-shadow] ${isCurrent ? 'border-primary/50 shadow-[0_0_12px_rgba(99,102,241,0.2)]' : 'border-border/40'}`}
+                  className={`board-opponent-card rounded-2xl border p-3 bg-card/85 transition-[border-color,box-shadow] ${isCurrent ? 'border-primary/50 shadow-[0_0_12px_rgba(99,102,241,0.2)]' : 'border-border/40'}`}
+                  data-opponent-player={p.playerId}
                 >
-                  {/* Two-row summary keeps identity readable while counters stay tappable on phones. */}
                   <div className="opponent-card-header">
                     <div className="opponent-card-identity">
                       <PlayerAvatar avatarId={p.avatarId ?? null} name={p.playerName} size={22} />
-                      {isCurrent && <span className="h-1.5 w-1.5 rounded-full bg-primary animate-pulse shrink-0" />}
+                      {isCurrent && (
+                        <span
+                          className="opponent-card-turn-indicator h-1.5 w-1.5 rounded-full bg-primary shrink-0"
+                          role="img"
+                          title={`${p.playerName}'s turn`}
+                          aria-label={`${p.playerName}'s turn`}
+                        />
+                      )}
                       <span className="opponent-card-identity__copy">
-                        <span className="text-xs font-semibold truncate">{p.playerName}</span>
-                        <span className="opponent-card-identity__civ truncate" style={{ color: oppCivPalette.primary, opacity: 0.8 }}>{oppCivName}</span>
+                        <span className="text-xs font-semibold truncate" title={p.playerName}>{p.playerName}</span>
+                        <span className="opponent-card-identity__civ truncate" title={oppCivName} style={{ color: oppCivPalette.primary, opacity: 0.8 }}>{oppCivName}</span>
                       </span>
-                      {isCurrent && <span className="text-[10px] font-bold text-primary bg-primary/15 px-1.5 py-0.5 rounded-full shrink-0">their turn</span>}
                     </div>
                     <div className="opponent-card-metrics">
                       <OpponentStatStrip
@@ -7389,10 +7600,6 @@ export default function GameBoard() {
                         reservedCount={reservedCount}
                         sigilId={9500 + i}
                       />
-                      <span className="opponent-card-eminence" title={`${p.eminence} Eminence`}>
-                        <span>{p.eminence}</span>
-                        <EminenceDiamond size={12} />
-                      </span>
                       <button
                         type="button"
                         data-opponent-detail-toggle={p.playerId}
@@ -7405,8 +7612,15 @@ export default function GameBoard() {
                         aria-label={`${isExpanded ? 'Hide' : 'Show'} ${p.playerName} affinity details`}
                         title={`${isExpanded ? 'Hide' : 'Show'} affinity details`}
                       >
-                        <ChevronDown className="h-3.5 w-3.5" aria-hidden="true" />
+                        {isExpanded
+                          ? <ChevronUp className="h-3.5 w-3.5" aria-hidden="true" />
+                          : <Eye className="h-3.5 w-3.5" aria-hidden="true" />}
+                        <span>{isExpanded ? 'Hide' : 'View'}</span>
                       </button>
+                      <span className="opponent-card-eminence" title={`${p.eminence} Eminence`}>
+                        <span>{p.eminence}</span>
+                        <EminenceDiamond size={12} />
+                      </span>
                     </div>
                   </div>
 
@@ -7461,15 +7675,29 @@ export default function GameBoard() {
                                   {!isSingularity && (bonus > 0 || lumBonus > 0) && (
                                     <div className="opponent-affinity-cell__modifiers">
                                       {bonus > 0 && (
-                                        <span className="opponent-affinity-cell__bonus">+{bonus} bonus</span>
+                                        <span
+                                          className="opponent-affinity-cell__bonus"
+                                          title={`${bonus} permanent ${meta.name} bonus`}
+                                          aria-label={`${bonus} permanent ${meta.name} bonus`}
+                                        >+{bonus}</span>
                                       )}
                                       {lumBonus > 0 && (
                                         <span className="opponent-affinity-cell__luminary">+{lumBonus}✦</span>
                                       )}
                                     </div>
                                   )}
-                                  {isSingularity && reservedCount > 0 && (
-                                    <span className="opponent-affinity-cell__encrypted">{reservedCount} encrypted</span>
+                                  {isSingularity && (
+                                    <span
+                                      className="opponent-affinity-cell__encrypted"
+                                      role="img"
+                                      aria-label={`${encryptedCount} of 3 Encrypted Artifacts`}
+                                      title={`${encryptedCount} of 3 Encrypted Artifacts`}
+                                    >
+                                      <span>{encryptedCount}/3</span>
+                                      <span className="opponent-affinity-cell__cipher" aria-hidden="true">
+                                        <CipherSigil affinityHex="#e2e8f0" id={9600 + i} />
+                                      </span>
+                                    </span>
                                   )}
                                 </div>
                               );
@@ -7482,10 +7710,8 @@ export default function GameBoard() {
                 </div>
               );
             })}
-              </div>
-            </motion.div>
-          )}
-        </AnimatePresence>
+          </div>
+        </div>
       </section>
     );
   };
@@ -7538,6 +7764,11 @@ export default function GameBoard() {
       blueprintAction: 'foundry_recovery',
     });
   };
+
+  const handleRepairArtifacts = (artifactIds: readonly string[]) => executeAction({
+    type: 'repair_artifacts',
+    artifactIds: [...artifactIds],
+  });
 
   const renderEncryptedArtifactRow = (
     card: ArtifactCard,
@@ -7657,6 +7888,7 @@ export default function GameBoard() {
     handleCancelPlan,
     handleCardTap,
     handleFoundryRecovery,
+    handleRepairArtifacts,
     isEditingCivName,
     isMyTurn,
     kardashevPalette,
@@ -7713,6 +7945,8 @@ export default function GameBoard() {
   } satisfies LogTabScope;
 
   const isSideAffinityWell = activeTab === 'board' && isSideAffinityWellLayout;
+  const wellForcedOpen = isSideAffinityWell || isTutorial || !!returnPhase;
+  const wellExpanded = wellForcedOpen || wellDockExpanded;
 
   const affinityWellPanelScope = {
     canPlan,
@@ -7764,6 +7998,7 @@ export default function GameBoard() {
     tutorialStep,
     tutorialZone,
     victoryRequirement,
+    wellExpanded,
   };
   const boardPresentation =
     new URLSearchParams(window.location.search).get('marketPreview') === '1'
@@ -7772,7 +8007,7 @@ export default function GameBoard() {
   const lumiiHudSuppressed =
     state.status !== 'playing' ||
     luminaryPresentationActive ||
-    blueprintPresentationActive ||
+    civilizationPresentationActive ||
     !!cardActionBurst ||
     !!cipherBurst ||
     !!affinityBurst ||
@@ -7845,6 +8080,14 @@ export default function GameBoard() {
         <DropdownMenuItem onClick={toggleAbridgedAnims}>
           <Zap className={`h-4 w-4 ${abridgedAnims ? 'text-yellow-400' : 'text-muted-foreground opacity-50'}`} />
           Reduced motion
+        </DropdownMenuItem>
+        <DropdownMenuItem
+          className="min-[681px]:hidden"
+          disabled={wellForcedOpen}
+          onClick={() => setWellDockExpanded((expanded) => !expanded)}
+        >
+          {wellExpanded ? <ChevronDown className="h-4 w-4" /> : <ChevronUp className="h-4 w-4" />}
+          {wellExpanded ? 'Compact Affinity Well' : 'Expand Affinity Well'}
         </DropdownMenuItem>
         {lumiiPresentationLocked ? (
           <>
@@ -8066,6 +8309,8 @@ export default function GameBoard() {
 
       {isTraceScenario && state.traceScenario && (
         <TraceChronicleExperience
+          presentationEnabled={priorVisualsSettled && !civilizationEventPresentationPending}
+          onPresentationActiveChange={setTracePresentationActive}
           state={state.traceScenario}
           gameStatus={state.status}
           localPlayerId={session.playerId}
@@ -8082,6 +8327,8 @@ export default function GameBoard() {
 
       {isRecurrenceScenario && recurrenceScenario && (
         <RecurrenceChronicleExperience
+          presentationEnabled={priorVisualsSettled && !civilizationEventPresentationPending}
+          onPresentationActiveChange={setRecurrencePresentationActive}
           state={recurrenceScenario}
           gameStatus={state.status}
           localPlayerId={session.playerId}
@@ -8098,6 +8345,8 @@ export default function GameBoard() {
 
       {isTriangulationScenario && triangulationScenario && (
         <TriangulationChronicleExperience
+          presentationEnabled={priorVisualsSettled && !civilizationEventPresentationPending}
+          onPresentationActiveChange={setTriangulationPresentationActive}
           state={triangulationScenario}
           gameStatus={state.status}
           localPlayerId={session.playerId}
@@ -8297,9 +8546,9 @@ export default function GameBoard() {
                   : undefined}
               >
               {/* Card preview + info */}
-              <div className="flex gap-4 mb-5">
+              <div className="flex items-start gap-3 mb-3">
                 {/* Flippable thumbnail column */}
-                <div className="flex flex-col items-center gap-1 shrink-0">
+                <div className="flex flex-col items-center gap-1 shrink-0" style={{ width: 'var(--card-w)' }}>
                   <div
                     style={{ perspective: '600px', width: 'var(--card-w)', height: 'var(--card-h)' }}
                     className="cursor-pointer"
@@ -8319,14 +8568,16 @@ export default function GameBoard() {
                       </div>
                     </motion.div>
                   </div>
-                  {/* Tier civilization label */}
-                  <span className="font-serif tracking-[0.16em] uppercase text-[8px] mt-0.5" style={{ color: '#C0A472', textShadow: '0 1px 8px rgba(192,164,114,0.5)' }}>
+                  <span className="max-w-full text-center font-serif tracking-[0.16em] uppercase text-[8px] mt-0.5" style={{ color: '#C0A472', textShadow: '0 1px 8px rgba(192,164,114,0.5)' }}>
                     Tier {selectedCard.card.tier}, {TIER_CIVILIZATION[selectedCard.card.tier]}
                   </span>
                   <span className="text-[7px] text-white/20">tap to flip</span>
-                  <div className="flex w-full flex-col items-center gap-1 pt-1">
+                </div>
+                {/* Keep the scan beside the artwork, aligned to its top edge. */}
+                <div className="min-w-0 flex-1 flex flex-col gap-2">
+                  <div className="flex flex-wrap items-center gap-x-2 gap-y-1">
                     <span className="text-[9px] font-bold uppercase tracking-widest text-muted-foreground/50">Cost</span>
-                    <div className="flex flex-wrap justify-center gap-0.5">
+                    <div className="flex flex-wrap gap-0.5">
                       {AFFINITIES.map((c) => {
                         const baseCost = selectedCard.card.cost[c as keyof AffinityCounts] ?? 0;
                         if (baseCost <= 0) return null;
@@ -8339,69 +8590,15 @@ export default function GameBoard() {
                       })}
                     </div>
                   </div>
-                </div>
-                {/* Right: flavor → lore metadata */}
-                <div className="flex-1 flex flex-col gap-2.5 justify-center">
-                  {/* Forged with — cost paid snapshot, shown only for already-forged (readOnly) cards */}
-                  {selectedCard.readOnly && (() => {
-                    const snap = selectedCard.card.bonusesAtForge;
-                    const snapKeys = snap
-                      ? AFFINITIES.filter(k => k !== 'singularity' && (snap[k as keyof AffinityCounts] ?? 0) > 0)
-                      : [];
-                    return (
-                      <div className="flex flex-col gap-1 border-t border-border/30 pt-2">
-                        <span className="text-[9px] font-bold uppercase tracking-widest text-muted-foreground/50">Forged with</span>
-                        {snapKeys.length > 0 ? (
-                          <div className="flex flex-wrap gap-0.5">
-                            {snapKeys.map(k => (
-                              <div key={k} className="flex items-center gap-0.5 bg-black/55 rounded px-1 py-0.5">
-                                <AffinityToken color={k as AffinityKey} size={10} />
-                                <span className="text-[10px] font-bold text-white">×{snap![k as keyof AffinityCounts]}</span>
-                              </div>
-                            ))}
-                          </div>
-                        ) : (
-                          <span className="text-[10px] text-muted-foreground italic">No snapshot available</span>
-                        )}
-                      </div>
-                    );
-                  })()}
                   {/* Flavor text — from lore catalog, fallback to card field */}
                   {(() => {
                     const flavorText = loreCatalog?.[selectedCard.card.id]?.flavor ?? (selectedCard.card as { flavor?: string }).flavor;
                     if (!flavorText) return null;
                     return (
-                      <p className="text-[11px] text-muted-foreground italic leading-relaxed border-t border-border/30 pt-2">"{flavorText}"</p>
+                      <p className="text-[11px] text-muted-foreground italic leading-relaxed">"{flavorText}"</p>
                     );
                   })()}
-                  {/* Optional world-building metadata stays available without competing with play data. */}
-                  {loreCatalog && (() => {
-                    const lore = loreCatalog[selectedCard.card.id];
-                    if (!lore) return null;
-                    const fields: { label: string; value: string | undefined }[] = [
-                      { label: 'Form',     value: lore.artifactForm },
-                      { label: 'Role',     value: lore.practicalCapability },
-                      { label: 'Culture',  value: lore.civLane },
-                    ];
-                    const visible = fields.filter(f => f.value);
-                    if (visible.length === 0) return null;
-                    return (
-                      <details className="group border-t border-border/30 pt-2">
-                        <summary className="flex cursor-pointer list-none items-center gap-1.5 text-[10px] font-semibold text-muted-foreground/75 [&::-webkit-details-marker]:hidden">
-                          Artifact details
-                          <ChevronDown className="h-3 w-3 transition-transform group-open:rotate-180" />
-                        </summary>
-                        <div className="mt-2 flex flex-col gap-1">
-                          {visible.map(({ label, value }) => (
-                            <div key={label} className="flex gap-1.5 items-baseline">
-                              <span className="text-[9px] font-bold uppercase tracking-widest text-muted-foreground/50 shrink-0 w-[46px]">{label}</span>
-                              <span className="text-[10px] text-muted-foreground/75 leading-snug">{value}</span>
-                            </div>
-                          ))}
-                        </div>
-                      </details>
-                    );
-                  })()}
+                  <ArtifactFunctionTags artifactId={selectedCard.card.id} className="border-t border-border/30 pt-2" />
                 </div>
               </div>
 
@@ -9058,6 +9255,7 @@ export default function GameBoard() {
       <AnimatePresence>
         {selectedDeckTier !== null && (() => {
           const deckTier = selectedDeckTier;
+          const archiveName = `${TIER_CIVILIZATION[deckTier]} Archive`;
           const deckCount = deckTier === 1 ? (state?.deckCounts.tier1 ?? 0)
             : deckTier === 2 ? (state?.deckCounts.tier2 ?? 0)
             : (state?.deckCounts.tier3 ?? 0);
@@ -9105,7 +9303,7 @@ export default function GameBoard() {
                     Shows the tier title and close button so the sheet is identifiable at a glance. */}
                 <div className="flex items-center gap-2 pb-2 border-b border-border/40 mb-3">
                   <span className="font-semibold text-sm leading-tight flex-1 truncate">
-                    Tier {deckTier} Archive
+                    {archiveName}
                   </span>
                   <span className="text-xs text-muted-foreground shrink-0">{deckCount} remaining</span>
                   <kbd className="hidden [@media(pointer:fine)]:inline-flex items-center px-1 py-0.5 rounded text-[10px] font-mono text-muted-foreground/40 border border-border/30 bg-muted/10 leading-none select-none">Esc</kbd>
@@ -9132,7 +9330,7 @@ export default function GameBoard() {
                       <button
                         type="button"
                         className="h-full w-full overflow-hidden rounded-[inherit] focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-sky-300/80"
-                        aria-label={`Inspect ${tideTopCard.name}, revealed atop the Tier ${deckTier} Archive`}
+                        aria-label={`Inspect ${tideTopCard.name}, revealed atop the ${archiveName}`}
                         onClick={() => {
                           closeDeckSheet();
                           openCardSheet(tideTopCard, false, true);
@@ -9141,14 +9339,12 @@ export default function GameBoard() {
                         <ArtifactCardView card={tideTopCard} tier={deckTier} artOnly />
                       </button>
                     ) : (
-                      <div aria-hidden="true">
-                        <CardBack size="compact" tier={deckTier} count={deckCount} />
-                      </div>
+                      <CardBack size="compact" tier={deckTier} count={deckCount} />
                     )}
                   </div>
                   <div className="flex-1 flex flex-col gap-2 justify-center">
                     <div className="font-bold text-base leading-tight">
-                      {tideTopCard ? tideTopCard.name : `Tier ${deckTier} Manifestations`}
+                      {tideTopCard ? tideTopCard.name : archiveName}
                     </div>
                     <p className="text-xs text-muted-foreground italic leading-relaxed">
                       "{tierLore}"
@@ -9162,8 +9358,7 @@ export default function GameBoard() {
                       </p>
                     ) : (
                       <p className="text-xs text-muted-foreground leading-relaxed mt-1">
-                        {deckCount} concealed Artifact{deckCount !== 1 ? 's' : ''} remain in this Archive.
-                        One will manifest at random and be encrypted into your encrypted pile.
+                        {deckCount} concealed Artifact{deckCount !== 1 ? 's remain' : ' remains'} in this archive.
                       </p>
                     )}
                     {me && !canReserveMore(me) && (
@@ -9454,12 +9649,17 @@ export default function GameBoard() {
         />
       ))}
 
-      {/* ── Deal-from-Deck overlay — card flies from deck tile to empty slot ── */}
+      {/* ── Forge refill — molten affinity colors solidify inside the empty mold ── */}
       {dealingCard && (
         <ForgeReplacementDealAnimation
           animKey={dealingCard.card.id}
+          onReveal={() => markArchiveRefillReveal(dealingCard.slotKey, dealingCard.card.id)}
           cardId={dealingCard.card.id}
           tier={dealingCard.tier}
+          bonusAffinity={dealingCard.card.bonusAffinity}
+          cost={dealingCard.card.cost}
+          compact={effectiveForgeCompact}
+          targetSlotKey={dealingCard.slotKey}
           deckRect={dealingCard.deckRect}
           slotRect={dealingCard.slotRect}
           animX={dealingCard.animX}
@@ -9475,10 +9675,10 @@ export default function GameBoard() {
               tapped={false}
               effectiveCosts={computeCosts(dealingCard.card, costMode)}
               hideStrike={costMode === 'needed_now'}
-              artOnly={artifactFrameUsesArtCrop(dealingCard.slotRect.w, dealingCard.slotRect.h)}
+              artOnly={effectiveForgeCompact}
             />
           )}
-          cardOverlay={artifactFrameUsesArtCrop(dealingCard.slotRect.w, dealingCard.slotRect.h) ? (
+          cardOverlay={effectiveForgeCompact ? (
             <CompactForgeCardReadout
               card={dealingCard.card}
               costs={computeCosts(dealingCard.card, costMode) ?? dealingCard.card.cost}
@@ -9486,105 +9686,62 @@ export default function GameBoard() {
           ) : undefined}
           onComplete={() => {
             setDealingCard(null);
-            setHiddenSlots(new Set());
+            setHiddenSlots(previous => {
+              const next = new Set(previous);
+              next.delete(dealingCard.slotKey);
+              return next;
+            });
           }}
         />
       )}
 
-      {/* ── Cinder Mandate post-burn refill deals — staggered fly+flip per slot ── */}
-      {directorDealingCards.length > 0 && (
-        <div style={{ position: 'fixed', inset: 0, zIndex: 9050, pointerEvents: 'none', perspective: '1200px' }}>
-          {directorDealingCards.map(dc => (
-            <motion.div
-              key={dc.id}
-              style={{
-                position: 'absolute',
-                left: dc.deckRect.x,
-                top: dc.deckRect.y,
-                width: dc.deckRect.w,
-                height: dc.deckRect.h,
-                transformStyle: 'preserve-3d',
-              }}
-              initial={{ x: 0, y: 0, rotateY: 0, scale: 1 }}
-              animate={{
-                x: dc.animX,
-                y: dc.animY,
-                rotateY: dc.animRotateY,
-                scale: dc.animScale,
-              }}
-              transition={{
-                duration: 1.5,
-                delay: dc.delay,
-                x: { ease: 'easeInOut', times: [0, 0.4, 1] },
-                y: { ease: 'easeInOut', times: [0, 0.35, 1] },
-                rotateY: { ease: 'easeInOut', times: [0, 0.5, 1] },
-                scale: { ease: 'easeInOut', times: [0, 0.35, 1] },
-              }}
-              onAnimationComplete={() => {
-                setDirectorDealingCards(prev => prev.filter(d => d.id !== dc.id));
-                setHiddenSlots(prev => {
-                  const n = new Set(prev);
-                  n.delete(dc.slotKey);
-                  return n;
-                });
-              }}
-            >
-              {/* Card back — hidden after rotateY reaches 90° */}
-              <div style={{
-                position: 'absolute', inset: 0,
-                backfaceVisibility: 'hidden',
-                WebkitBackfaceVisibility: 'hidden',
-                overflow: 'hidden',
-                borderRadius: 12,
-              }}>
-                <div className="w-full h-full relative rounded-xl bg-[#030509] border border-[#c4a85a]/30">
-                  {dc.tier === 1 && <CardBackTier1 />}
-                  {dc.tier === 2 && <CardBackTier2 />}
-                  {dc.tier === 3 && <CardBackTier3 />}
-                </div>
-              </div>
-              {/* Card face — revealed after rotateY passes 90° */}
-              <div style={{
-                position: 'absolute', inset: 0,
-                backfaceVisibility: 'hidden',
-                WebkitBackfaceVisibility: 'hidden',
-                transform: 'rotateY(180deg)',
-                overflow: 'hidden',
-                borderRadius: 12,
-              }}>
-                <div
-                  data-frame-presentation={artifactFrameUsesArtCrop(dc.slotRect.w, dc.slotRect.h) ? 'compact' : 'full-card'}
-                  className={artifactFrameUsesArtCrop(dc.slotRect.w, dc.slotRect.h)
-                    ? "forge-foundry-mold board-forge-compact-chip relative h-full w-full overflow-hidden rounded-xl"
-                    : "relative h-full w-full overflow-hidden rounded-xl"}
-                  style={{
-                    "--card-w": `${dc.slotRect.w}px`,
-                    "--card-h": `${dc.slotRect.h}px`,
-                    "--forge-chip-w": `${dc.slotRect.w}px`,
-                    "--forge-chip-h": `${dc.slotRect.h}px`,
-                  } as React.CSSProperties}
-                >
-                  <ArtifactCardView
-                    card={dc.card}
-                    tier={dc.tier}
-                    onTap={() => {}}
-                    tapped={false}
-                    effectiveCosts={computeCosts(dc.card, costMode)}
-                    hideStrike={costMode === 'needed_now'}
-                    artOnly={artifactFrameUsesArtCrop(dc.slotRect.w, dc.slotRect.h)}
-                  />
-                  {artifactFrameUsesArtCrop(dc.slotRect.w, dc.slotRect.h) && (
-                    <CompactForgeCardReadout
-                      card={dc.card}
-                      costs={computeCosts(dc.card, costMode) ?? dc.card.cost}
-                    />
-                  )}
-                </div>
-              </div>
-            </motion.div>
-          ))}
-        </div>
-      )}
+      {/* ── Batch post-burn refills — staggered cosmic molds ── */}
+      {directorDealingCards.map(dc => (
+        <ForgeReplacementDealAnimation
+          key={dc.id}
+          animKey={dc.id}
+          onReveal={() => markArchiveRefillReveal(dc.slotKey, dc.card.id)}
+          cardId={dc.card.id}
+          tier={dc.tier}
+          bonusAffinity={dc.card.bonusAffinity}
+          cost={dc.card.cost}
+          compact={effectiveForgeCompact}
+          targetSlotKey={dc.slotKey}
+          deckRect={dc.deckRect}
+          slotRect={dc.slotRect}
+          animX={dc.animX}
+          animY={dc.animY}
+          animRotateY={dc.animRotateY}
+          animScale={dc.animScale}
+          faceScale={dc.faceScale}
+          delayMs={dc.delay * 1000}
+          cardFace={(
+            <ArtifactCardView
+              card={dc.card}
+              tier={dc.tier}
+              onTap={() => {}}
+              tapped={false}
+              effectiveCosts={computeCosts(dc.card, costMode)}
+              hideStrike={costMode === 'needed_now'}
+              artOnly={effectiveForgeCompact}
+            />
+          )}
+          cardOverlay={effectiveForgeCompact ? (
+            <CompactForgeCardReadout
+              card={dc.card}
+              costs={computeCosts(dc.card, costMode) ?? dc.card.cost}
+            />
+          ) : undefined}
+          onComplete={() => {
+            setDirectorDealingCards(prev => prev.filter(d => d.id !== dc.id));
+            setHiddenSlots(prev => {
+              const next = new Set(prev);
+              next.delete(dc.slotKey);
+              return next;
+            });
+          }}
+        />
+      ))}
 
       {/* ── Reserved Artifact Forge notice ── */}
       <AnimatePresence>
@@ -9662,40 +9819,30 @@ export default function GameBoard() {
         {turnAnnouncement && (
           <motion.div
             key={turnAnnouncement.key}
-            className="fixed inset-0 z-50 flex items-center justify-center"
+            className="turn-announcement fixed inset-0 z-50 flex items-center justify-center"
+            data-testid="turn-announcement"
             onPointerUp={handleTurnCinematicPointerUp}
             style={{ pointerEvents: 'auto', touchAction: 'manipulation' }}
             initial={{ opacity: 0 }}
             animate={{ opacity: 1 }}
             exit={{ opacity: 0 }}
-            transition={{ duration: 0.2 }}
+            transition={{ duration: stillTurnAnnouncement ? 0 : 0.2 }}
           >
+            <div className="turn-announcement__backdrop absolute inset-0" aria-hidden="true" />
             <motion.div
-              className="absolute inset-0"
-              style={{
-                background: `radial-gradient(ellipse 70% 55% at 50% 50%, ${hexRgba(turnAnnouncement.accentColor, turnAnnouncement.isYou ? 0.28 : 0.14)} 0%, rgba(0,0,0,0.55) 70%)`,
-              }}
-              initial={{ opacity: 0 }}
-              animate={{ opacity: 1 }}
-              exit={{ opacity: 0 }}
-            />
-            <motion.div
-              className="relative flex flex-col items-center gap-3"
-              initial={{ scale: 0.5, opacity: 0, y: 20 }}
-              animate={{ scale: [0.5, 1.08, 1], opacity: [0, 1, 1], y: [20, -4, 0] }}
-              exit={{ opacity: 0, y: -20, transition: { duration: 0.16 } }}
-              transition={{ duration: 0.5, times: [0, 0.6, 1], ease: 'easeOut' }}
+              className="turn-announcement__panel"
+              data-testid="turn-announcement-panel"
+              role="status"
+              aria-atomic="true"
+              initial={stillTurnAnnouncement ? false : { y: 8 }}
+              animate={{ y: 0 }}
+              transition={{ duration: stillTurnAnnouncement ? 0 : 0.25, ease: 'easeOut' }}
             >
-              <motion.div
-                className="rounded-full overflow-hidden border-4 shadow-lg"
+              <div
+                className="turn-announcement__avatar"
                 style={{
-                  width: 80,
-                  height: 80,
                   borderColor: hexRgba(turnAnnouncement.accentColor, 0.7),
-                  boxShadow: `0 0 40px ${hexRgba(turnAnnouncement.accentColor, 0.45)}, 0 0 80px ${hexRgba(turnAnnouncement.accentColor, 0.18)}`,
                 }}
-                animate={{ scale: [1, 1.06, 1] }}
-                transition={{ duration: 1.2, repeat: 0 }}
               >
                 <img
                   src={getAvatarForPlayer(turnAnnouncement.avatarId).image}
@@ -9703,17 +9850,17 @@ export default function GameBoard() {
                   className="w-full h-full object-cover"
                   draggable={false}
                 />
-              </motion.div>
-              <motion.div
+              </div>
+              <span className="turn-announcement__title">
+                {turnAnnouncement.isYou ? 'Your Turn' : `${turnAnnouncement.playerName}'s Turn`}
+              </span>
+              <div
                 className="turn-announcement-eminence"
-                initial={{ opacity: 0, scale: 0.88, y: 4 }}
-                animate={{ opacity: 1, scale: 1, y: 0 }}
-                transition={{ delay: 0.12, duration: 0.28, ease: 'easeOut' }}
                 aria-label={`Eminence ${turnAnnouncement.eminence} of ${victoryRequirement}`}
               >
                 <span className="turn-announcement-eminence__sigil" aria-hidden="true">
                   <EminenceSigil
-                    size={52}
+                    size={38}
                     value={turnAnnouncement.eminence}
                     target={victoryRequirement}
                   />
@@ -9725,28 +9872,19 @@ export default function GameBoard() {
                     <span>/{victoryRequirement}</span>
                   </span>
                 </span>
-              </motion.div>
-              <motion.span
-                className="text-2xl font-serif font-bold tracking-wide"
-                style={{
-                  color: turnAnnouncement.isYou ? turnAnnouncement.accentColor : 'rgba(255,255,255,0.85)',
-                  textShadow: `0 0 16px ${hexRgba(turnAnnouncement.accentColor, 0.7)}`,
-                }}
-                initial={{ opacity: 0, y: 8 }}
-                animate={{ opacity: 1, y: 0 }}
-                transition={{ delay: 0.2, duration: 0.3 }}
-              >
-                {turnAnnouncement.isYou ? 'Your Turn' : `${turnAnnouncement.playerName}'s Turn`}
-              </motion.span>
+              </div>
+              {turnAnnouncement.isYou && turnAnnouncement.eventWarning && (
+                <EventTurnWarning
+                  warning={turnAnnouncement.eventWarning}
+                  turnIdentity={`${roomId}:${state.startedAt}:${turnAnnouncement.turnIdentity}`}
+                  reducedMotion={Boolean(stillTurnAnnouncement)}
+                  muted={muted}
+                />
+              )}
               {state?.turnDeadline != null && (
-                <motion.div
-                  className="flex items-center gap-1 rounded-full bg-black/60 px-2.5 py-1 text-xs text-white/70 backdrop-blur-sm"
-                  initial={{ opacity: 0 }}
-                  animate={{ opacity: 1 }}
-                  transition={{ delay: 0.3, duration: 0.2 }}
-                >
+                <div className="turn-announcement__timer flex items-center gap-1 rounded-full px-3 py-1 text-sm">
                   <TurnCountdown deadline={state.turnDeadline} active={turnAnnouncement.isYou} />
-                </motion.div>
+                </div>
               )}
             </motion.div>
           </motion.div>
@@ -10298,7 +10436,7 @@ export default function GameBoard() {
       </AnimatePresence>
 
       {/* ── Victory Cinematic ── */}
-      {isActualLumiiScenario && state.status === 'finished' && !pendingGameOver && !summonSequenceActive && (
+      {isActualLumiiScenario && state.status === 'finished' && !pendingGameOver && !summonSequenceActive && !cosmicEventLane.ingressBlocked && !chroniclePresentationActive && (
         <LumiiVaultEncounter
           attempt="remembered"
           cipherDeactivated
@@ -10315,7 +10453,7 @@ export default function GameBoard() {
         />
       )}
       <AnimatePresence>
-        {!isSpecialOutcomeScenario && state.status === 'finished' && !pendingGameOver && !summonSequenceActive && showCinematic && (() => {
+        {!isSpecialOutcomeScenario && state.status === 'finished' && !pendingGameOver && !summonSequenceActive && !cosmicEventLane.ingressBlocked && !chroniclePresentationActive && showCinematic && (() => {
           const winnerId = state.winnerId;
           if (!winnerId) return null;
           const winnerPlayer = (state.players as GamePlayerState[]).find(p => p.playerId === winnerId);
@@ -10332,6 +10470,14 @@ export default function GameBoard() {
           const winnerCivName = getCivilizationName(winnerPalette, winnerTier);
           const isLocalWinner = winnerId === session.playerId;
           const isSpectator = !state.players.some(p => p.playerId === session.playerId);
+          const legacyWinnerPlayer = state.legacyWinnerId
+            ? (state.players as GamePlayerState[]).find(p => p.playerId === state.legacyWinnerId)
+            : null;
+          const legacyProgress = getCivilizationLegacyProgress(
+            legacyWinnerPlayer?.civilization,
+            state.legacyVictoryRequirement,
+          );
+          const isAbsoluteVictory = !!state.legacyWinnerId && state.legacyWinnerId === winnerId;
           const accolades = deriveAccolades(state, winnerId);
           return (
             <VictoryCinematic
@@ -10345,6 +10491,11 @@ export default function GameBoard() {
               civilizationProfile={winnerProfile}
               eminence={winnerPlayer.eminence}
               cardsForged={winnerCards.length}
+              legacyWinnerName={legacyWinnerPlayer?.playerName ?? null}
+              isLocalLegacyWinner={state.legacyWinnerId === session.playerId}
+              isAbsoluteVictory={isAbsoluteVictory}
+              legacyCompletedCriteria={legacyProgress.completedCriterionCount}
+              legacyRequiredCriteria={legacyProgress.requiredCriterionCount}
               accolades={accolades}
               onDismiss={() => setShowCinematic(false)}
             />
@@ -10353,7 +10504,7 @@ export default function GameBoard() {
       </AnimatePresence>
 
       {/* ── Return-to-Results banner (shown when board is visible after game over) ── */}
-      {!isSpecialOutcomeScenario && state.status === 'finished' && !pendingGameOver && !summonSequenceActive && !showCinematic && !showWinOverlay && (() => {
+      {!isSpecialOutcomeScenario && state.status === 'finished' && !pendingGameOver && !summonSequenceActive && !cosmicEventLane.ingressBlocked && !chroniclePresentationActive && !showCinematic && !showWinOverlay && (() => {
         const onReturnToResults = () => setShowWinOverlay(true);
         return (
           <ReturnResultsBanner
@@ -10365,7 +10516,7 @@ export default function GameBoard() {
       })()}
 
       {/* ── Board-view action log panel (shown when viewing board after game over) ── */}
-      {!isSpecialOutcomeScenario && state.status === 'finished' && !pendingGameOver && !summonSequenceActive && !showCinematic && !showWinOverlay && (() => {
+      {!isSpecialOutcomeScenario && state.status === 'finished' && !pendingGameOver && !summonSequenceActive && !cosmicEventLane.ingressBlocked && !chroniclePresentationActive && !showCinematic && !showWinOverlay && (() => {
         const AFFINITY_DOT_COLOR: Record<string, string> = {
           Flare: '#FF5A3C',
           Continuum: '#3D6BFF',
@@ -10375,7 +10526,13 @@ export default function GameBoard() {
         };
         const entries = [...(state.actionLog ?? [])].reverse();
         return (
-          <div className="fixed bottom-0 left-0 right-0 z-[200] flex flex-col" style={{ maxHeight: '45vh' }}>
+          <div
+            className="game-results-action-history fixed left-0 right-0 z-[200] flex flex-col"
+            style={{
+              bottom: 'var(--game-bottom-nav-offset)',
+              maxHeight: '45vh',
+            }}
+          >
             {/* Toggle header */}
             <button
               type="button"
@@ -10486,10 +10643,18 @@ export default function GameBoard() {
 
       {/* ── Win Overlay ── */}
       <AnimatePresence>
-        {!isSpecialOutcomeScenario && state.status === 'finished' && !pendingGameOver && !summonSequenceActive && !showCinematic && showWinOverlay && (() => {
+        {!isSpecialOutcomeScenario && state.status === 'finished' && !pendingGameOver && !summonSequenceActive && !cosmicEventLane.ingressBlocked && !chroniclePresentationActive && !showCinematic && showWinOverlay && (() => {
           const winnerPlayer = state.winnerId
             ? (state.players as GamePlayerState[]).find(p => p.playerId === state.winnerId)
             : null;
+          const legacyWinnerPlayer = state.legacyWinnerId
+            ? (state.players as GamePlayerState[]).find(p => p.playerId === state.legacyWinnerId)
+            : null;
+          const isAbsoluteVictory = !!state.winnerId && state.winnerId === state.legacyWinnerId;
+          const legacyProgress = getCivilizationLegacyProgress(
+            legacyWinnerPlayer?.civilization,
+            state.legacyVictoryRequirement,
+          );
           const winnerCards = (winnerPlayer?.forgedArtifacts ?? []) as ArtifactCard[];
           const winnerDiscountedIds = (winnerPlayer?.discountedForgeIds ?? []) as string[];
           const victoryTier = getCivilizationSceneTier(
@@ -10520,7 +10685,11 @@ export default function GameBoard() {
               ref={(el) => { winOverlayContainerRef.current = el; }}
               role="dialog"
               aria-modal="true"
-              aria-label={state.winnerId === session.playerId ? 'Victory' : 'Game over'}
+              aria-label={isAbsoluteVictory && state.winnerId === session.playerId
+                ? 'Absolute Victory'
+                : state.winnerId === session.playerId
+                  ? 'Victory'
+                  : 'Game over'}
               initial={{ y: 14, opacity: 0 }}
               animate={{ y: 0, opacity: 1 }}
               transition={{ duration: 0.22, ease: 'easeOut', delay: 0.04 }}
@@ -10549,7 +10718,7 @@ export default function GameBoard() {
                     transition={{ delay: 0.45 }}
                     className="text-4xl font-serif font-bold text-primary affinity-glow"
                   >
-                    Victory!
+                    {isAbsoluteVictory ? 'Absolute Victory' : 'Victory!'}
                   </motion.h2>
                   <motion.p
                     initial={{ opacity: 0 }}
@@ -10566,11 +10735,46 @@ export default function GameBoard() {
                   <div className="mx-auto flex h-14 w-14 items-center justify-center rounded-md border border-primary/35 bg-primary/10 text-primary">
                     <Sparkles className="h-8 w-8" />
                   </div>
-                  <h2 className="text-4xl font-serif font-bold text-primary">Game Over</h2>
+                  <h2 className="text-4xl font-serif font-bold text-primary">
+                    {state.legacyWinnerId === session.playerId ? 'Legacy Victory' : 'Game Over'}
+                  </h2>
                   <div className="text-base text-foreground">
-                    Winner: <span className="font-bold text-primary">{safePlayers.find(p => p.playerId === state.winnerId)?.playerName}</span>
+                    Eminence Victor: <span className="font-bold text-primary">{safePlayers.find(p => p.playerId === state.winnerId)?.playerName}</span>
                   </div>
                 </>
+              )}
+
+              {legacyWinnerPlayer && (
+                <motion.div
+                  initial={{ opacity: 0, y: 8 }}
+                  animate={{ opacity: 1, y: 0 }}
+                  transition={{ delay: 0.62 }}
+                  className={`flex items-center gap-3 border px-3 py-2.5 text-left ${
+                    isAbsoluteVictory
+                      ? 'border-amber-200/30 bg-amber-200/[0.07]'
+                      : 'border-cyan-100/20 bg-cyan-200/[0.055]'
+                  }`}
+                >
+                  <span className={`grid h-9 w-9 shrink-0 place-items-center border ${
+                    isAbsoluteVictory
+                      ? 'border-amber-100/35 text-amber-100'
+                      : 'border-cyan-100/25 text-cyan-100'
+                  }`}>
+                    <Orbit className="h-5 w-5" aria-hidden="true" />
+                  </span>
+                  <span className="min-w-0">
+                    <span className={`block text-[9px] font-black uppercase tracking-[0.18em] ${
+                      isAbsoluteVictory ? 'text-amber-100/65' : 'text-cyan-100/55'
+                    }`}>
+                      {isAbsoluteVictory ? 'Eminence + Legacy' : 'Legacy Victory'}
+                    </span>
+                    <strong className="block truncate text-sm text-white">{legacyWinnerPlayer.playerName}</strong>
+                  </span>
+                  <span className="ml-auto shrink-0 font-serif text-lg text-white/80">
+                    {legacyProgress.completedCriterionCount}
+                    <span className="text-xs text-white/35">/{legacyProgress.requiredCriterionCount} conditions</span>
+                  </span>
+                </motion.div>
               )}
 
               {/* Luminary badge on win screen */}
@@ -10661,6 +10865,8 @@ export default function GameBoard() {
                     const claimedIds = (p.claimedLuminaryIds ?? []) as string[];
                     const claimedLums = (state.luminaries ?? []).filter(l => claimedIds.includes(l.id));
                     const isWinner = p.playerId === state.winnerId;
+                    const isLegacyWinner = p.playerId === state.legacyWinnerId;
+                    const isAbsoluteWinner = isWinner && isLegacyWinner;
                     const showTieBreak = isWinner && tiedOnEminence;
                     return (
                       <motion.div
@@ -10668,20 +10874,38 @@ export default function GameBoard() {
                         initial={{ opacity: 0, x: -16 }}
                         animate={{ opacity: 1, x: 0 }}
                         transition={{ delay: 0.55 + i * 0.1 }}
-                      className={`flex flex-col gap-1 rounded-md border px-3 py-2.5 transition-colors ${isWinner ? 'border-primary/50 bg-primary/20' : 'border-white/10 bg-secondary/55'}`}
+                      className={`flex flex-col gap-1 rounded-md border px-3 py-2.5 transition-colors ${
+                        isAbsoluteWinner
+                          ? 'border-amber-200/50 bg-amber-200/[0.10]'
+                          : isWinner
+                            ? 'border-primary/50 bg-primary/20'
+                            : isLegacyWinner
+                              ? 'border-cyan-100/30 bg-cyan-200/[0.06]'
+                              : 'border-white/10 bg-secondary/55'
+                      }`}
                       >
                         {/* Name row */}
                         <div className="flex justify-between items-center">
                           <span className="font-medium text-sm flex items-center gap-2">
                             {isWinner && <span className="text-xs">🏆</span>}
+                            {isLegacyWinner && <Orbit className="h-3.5 w-3.5 text-cyan-100/80" aria-label="Legacy Victor" />}
                             <PlayerAvatar avatarId={avatarIdForPlayer} name={p.playerName} size={24} />
                             <span className="flex flex-col items-start">
                               <span>{p.playerName}</span>
                               <span className="text-[10px] font-normal tracking-wide" style={{ color: civPalette.primary, opacity: 0.85 }}>{isMe ? civLabel : civName}</span>
                             </span>
                           </span>
-                          <span className="font-bold text-primary flex items-center gap-1">
-                            {p.eminence}<EminenceDiamond size={13} />
+                          <span className="flex flex-col items-end gap-0.5">
+                            <span className="font-bold text-primary flex items-center gap-1">
+                              {p.eminence}<EminenceDiamond size={13} />
+                            </span>
+                            {(isLegacyWinner || isAbsoluteWinner) && (
+                              <span className={`text-[8px] font-black uppercase tracking-wider ${
+                                isAbsoluteWinner ? 'text-amber-200' : 'text-cyan-100/70'
+                              }`}>
+                                {isAbsoluteWinner ? 'Absolute' : 'Legacy'}
+                              </span>
+                            )}
                           </span>
                         </div>
                         {/* Breakdown row */}
@@ -10944,6 +11168,7 @@ export default function GameBoard() {
         (state.pendingBlueprintDetonationEvents?.length ?? 0) > 0 ||
         (state.pendingScenarioProtocolEvents?.length ?? 0) > 0
       ) &&
+        !chroniclePresentationActive && cosmicEventStage === null &&
         (state.pendingSummonEvents?.length ?? 0) === 0 &&
         (state.pendingLuminaryActivationEvents?.length ?? 0) === 0 &&
         arrivalQueue.length === 0 &&
@@ -10997,6 +11222,35 @@ export default function GameBoard() {
           );
         })()}
 
+      {cosmicEventLane.presentation && cosmicEventStage?.eventId === cosmicEventLane.presentation.event.eventId && (
+        <React.Suspense
+          fallback={<div className="fixed inset-0 z-[12000] grid place-items-center bg-black/70" aria-label="Loading Event presentation"><Loader2 className="h-6 w-6 animate-spin text-cyan-100" /></div>}
+        >
+          <CosmicEventPresentationOverlay
+            key={cosmicEventLane.presentation.event.eventId}
+            event={cosmicEventLane.presentation.event}
+            players={cosmicEventLane.presentation.players}
+            sourceRect={cosmicEventStage.sourceRect}
+            reducedMotion={effectiveBlueprintPresentationReducedMotion}
+            onComplete={() => {
+              const eventId = cosmicEventLane.presentation?.event.eventId;
+              if (!eventId) return;
+              cosmicEventLane.complete(eventId);
+              setCosmicEventStage(null);
+              const previousView = cosmicEventReturnView.current;
+              cosmicEventReturnView.current = null;
+              if (previousView) {
+                setActiveTab(previousView.tab);
+                requestAnimationFrame(() => {
+                  if (mainScrollRef.current) mainScrollRef.current.scrollTop = previousView.scrollTop;
+                });
+              }
+              void executeAction({ type: 'resolve_civilization_event', eventId });
+            }}
+          />
+        </React.Suspense>
+      )}
+
       {import.meta.env.DEV && showDevSequenceLab && state.status === 'playing' && roomId && (
         <DevLuminarySequencePanel
           roomId={roomId}
@@ -11026,7 +11280,7 @@ export default function GameBoard() {
           the component must never mount here so the full-screen dark overlay
           (z-9000, up to 88% opacity) never appears during the tutorial. */}
       <AnimatePresence>
-        {!isTutorial && arrivalQueue.length > 0 && arrivalQueue[0] && (() => {
+        {!isTutorial && !chroniclePresentationActive && cosmicEventStage === null && arrivalQueue.length > 0 && arrivalQueue[0] && (() => {
           const entry = arrivalQueue[0];
           if (renderedArrivalEventIdRef.current !== entry.eventId) {
             renderedArrivalEventIdRef.current = entry.eventId;
@@ -11330,6 +11584,7 @@ export default function GameBoard() {
             • lum_astral + start      → PhoenixArchiveReturnDirector
             • all others              → shared generic phase cinematic */}
       {!isTutorial &&
+        !chroniclePresentationActive && cosmicEventStage === null &&
         activationQueue.length > 0 &&
         !activationGateActive &&
         !currentActivationBlocked &&
@@ -11493,69 +11748,7 @@ export default function GameBoard() {
                   directorGhostSlotKeysRef.current = [];
                 }
 
-                // Build fly+flip deal animations for each refilling slot.
-                const rawCardW = parseFloat(getComputedStyle(document.documentElement).getPropertyValue('--card-w')) || 112;
-                const dealEntries: typeof directorDealingCards = [];
-                const fallbackSlotKeys: string[] = [];
-                const hiddenDealSlotKeys: string[] = [];
-
-                slotKeys.forEach((slotKey, i) => {
-                  const [tierStr, idxStr] = slotKey.split('-');
-                  const tier = parseInt(tierStr, 10) as 1 | 2 | 3;
-                  const idx = parseInt(idxStr, 10);
-                  const forgeRow = tier === 1 ? state?.forgeTier1 : tier === 2 ? state?.forgeTier2 : state?.forgeTier3;
-                  const newCard = forgeRow?.[idx] ?? null;
-
-                  if (!newCard) { fallbackSlotKeys.push(slotKey); return; }
-
-                  const deckEl = document.querySelector(`[data-deck-tier="${tier}"]`);
-                  const slotEl = document.querySelector(`[data-slot-key="${slotKey}"]`);
-                  const deckR = deckEl?.getBoundingClientRect();
-                  const slotR = slotEl?.getBoundingClientRect();
-
-                  if (!deckR || !slotR) { fallbackSlotKeys.push(slotKey); return; }
-
-                  const faceScale = slotR.width / rawCardW;
-                  const startX = deckR.left + (deckR.width  - slotR.width)  / 2;
-                  const startY = deckR.top  + (deckR.height - slotR.height) / 2;
-                  const dx = slotR.left - startX;
-                  const dy = slotR.top  - startY;
-                  const arcY = Math.min(dy - 60, -40);
-
-                  hiddenDealSlotKeys.push(slotKey);
-                  dealEntries.push({
-                    id: `director-deal-${slotKey}-${Date.now()}-${i}`,
-                    card: newCard,
-                    tier,
-                    slotKey,
-                    deckRect: { x: startX, y: startY, w: slotR.width, h: slotR.height },
-                    slotRect: { x: slotR.left, y: slotR.top, w: slotR.width, h: slotR.height },
-                    animX: [0, dx * 0.5, dx],
-                    animY: [0, arcY, dy],
-                    animRotateY: [0, 90, 180],
-                    animScale: [1, 1, 1],
-                    faceScale,
-                    delay: i * 0.12,
-                  });
-                });
-
-                // Keep slots that are receiving a deal animation hidden during flight.
-                // Fallback slots (deck/slot element missing) pop in immediately with ↺.
-                setHiddenSlots(new Set(hiddenDealSlotKeys));
-
-                if (dealEntries.length > 0) {
-                  setDirectorDealingCards(dealEntries);
-                  // Stagger the card-draw flip sound to the half-rotation point of each deal.
-                  dealEntries.forEach((_, i) => {
-                    setTimeout(() => gameAudio.playCardDraw(), i * 120 + DEAL_FLIP_SOUND_MS);
-                  });
-                }
-
-                if (fallbackSlotKeys.length > 0) {
-                  setRefillingSlots(new Set(fallbackSlotKeys));
-                  gameAudio.playForgeRefill();
-                  setTimeout(() => setRefillingSlots(new Set()), 700);
-                }
+                refillForgeSlots(slotKeys);
               },
               playCardBurn: (index, total) => gameAudio.playCardBurn(index, total),
             }}
@@ -11567,6 +11760,11 @@ export default function GameBoard() {
               },
               onLiftSlots: (slotKeys) => {
                 const keySet = new Set(slotKeys);
+                setArchiveRevealedCards(current => {
+                  const next = { ...current };
+                  slotKeys.forEach(key => delete next[key]);
+                  return next;
+                });
                 setIronHarbingerGhostIds(current => {
                   const next = { ...current };
                   slotKeys.forEach(key => delete next[key]);
@@ -11578,6 +11776,12 @@ export default function GameBoard() {
                   return next;
                 });
                 setHiddenSlots(current => new Set([...current, ...keySet]));
+              },
+              onRefillReveal: (slotKey) => {
+                const [tier, index] = slotKey.split('-').map(Number);
+                const row = tier === 1 ? state?.forgeTier1 : tier === 2 ? state?.forgeTier2 : state?.forgeTier3;
+                const card = row?.[index];
+                if (card) markArchiveRefillReveal(slotKey, card.id);
               },
               onRevealSlot: (slotKey) => {
                 setHiddenSlots(current => {
@@ -11611,6 +11815,7 @@ export default function GameBoard() {
               playShuffle: () => gameAudio.playCardFlip(),
               playArchiveImpact: () => gameAudio.playImpactExtinctionArchive(),
               playDeal: () => gameAudio.playCardDraw(),
+              getRefillCosts: card => computeCosts(card, costMode),
             }}
             assimilationActions={{
               takeOverSlot: (slotKey) => {
@@ -11690,7 +11895,9 @@ export default function GameBoard() {
                 });
                 directorGhostSlotKeysRef.current = [];
               }
-              setHiddenSlots(new Set());
+              // A skip can finish the director while its cast is still forming.
+              // Preserve those molds until their individual completion callbacks.
+              setHiddenSlots(new Set(directorDealingCards.map(card => card.slotKey)));
               setActivationQueue(q => q.slice(1));
               setPreparedRectDirectorEventId(null);
               queueActivationServerResolution(evt.eventId);

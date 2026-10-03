@@ -664,6 +664,137 @@
   justify-content: end;
   gap: 10px;
 }
+.account-archive__civilization-snapshot {
+  grid-column: 1 / -1;
+  display: grid;
+  grid-template-columns: auto minmax(128px, 0.8fr) minmax(270px, 1.35fr) minmax(190px, 1fr) auto;
+  align-items: center;
+  gap: 12px;
+  margin-top: 2px;
+  padding-top: 10px;
+  border-top: 1px solid color-mix(in srgb, var(--civ-record-primary) 24%, transparent);
+}
+.account-archive__civilization-mark {
+  position: relative;
+  display: grid;
+  width: 34px;
+  height: 34px;
+  place-items: center;
+  border: 1px solid color-mix(in srgb, var(--civ-record-primary) 58%, transparent);
+  background: linear-gradient(135deg, color-mix(in srgb, var(--civ-record-primary) 18%, transparent), color-mix(in srgb, var(--civ-record-secondary) 12%, transparent));
+  clip-path: polygon(50% 0, 88% 22%, 100% 64%, 50% 100%, 0 64%, 12% 22%);
+}
+.account-archive__civilization-mark::before,
+.account-archive__civilization-mark::after,
+.account-archive__civilization-mark i {
+  position: absolute;
+  content: "";
+}
+.account-archive__civilization-mark::before {
+  width: 21px;
+  height: 21px;
+  border: 1px solid var(--civ-record-primary);
+  transform: rotate(45deg);
+  opacity: 0.8;
+}
+.account-archive__civilization-mark::after {
+  width: 15px;
+  height: 15px;
+  border: 1px solid var(--civ-record-secondary);
+  border-radius: 50%;
+  opacity: 0.72;
+}
+.account-archive__civilization-mark i {
+  width: 4px;
+  height: 4px;
+  border-radius: 50%;
+  background: #f8f2dd;
+  box-shadow: 0 0 10px var(--civ-record-primary);
+}
+.account-archive__civilization-heading {
+  min-width: 0;
+}
+.account-archive__civilization-heading small {
+  display: block;
+  color: color-mix(in srgb, var(--civ-record-primary) 72%, #d4dbe5);
+  font-family: var(--font-mono, monospace);
+  font-size: 8px;
+  font-weight: 800;
+  text-transform: uppercase;
+}
+.account-archive__civilization-heading strong {
+  overflow: hidden;
+  color: #f2eee2;
+  font-family: var(--font-serif, serif);
+  font-size: 13px;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+.account-archive__civilization-state,
+.account-archive__civilization-metrics {
+  display: grid;
+  margin: 0;
+}
+.account-archive__civilization-state {
+  grid-template-columns: repeat(3, minmax(72px, 1fr));
+  gap: 8px;
+}
+.account-archive__civilization-state div,
+.account-archive__civilization-metrics div {
+  min-width: 0;
+}
+.account-archive__civilization-state dt,
+.account-archive__civilization-metrics dt {
+  color: hsl(var(--muted-foreground));
+  font-size: 7px;
+  font-weight: 700;
+  text-transform: uppercase;
+}
+.account-archive__civilization-state dd,
+.account-archive__civilization-metrics dd {
+  margin: 2px 0 0;
+  color: hsl(var(--foreground));
+  font-size: 10px;
+  font-weight: 700;
+}
+.account-archive__civilization-state dd {
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+.account-archive__civilization-metrics {
+  grid-template-columns: repeat(4, minmax(34px, 1fr));
+  gap: 5px;
+}
+.account-archive__civilization-metrics div {
+  text-align: center;
+}
+.account-archive__civilization-metrics dd {
+  color: color-mix(in srgb, var(--civ-record-secondary) 78%, #fff);
+  font-family: var(--font-mono, monospace);
+  font-size: 13px;
+}
+.account-archive__civilization-copy {
+  display: grid;
+  width: 32px;
+  height: 32px;
+  place-items: center;
+  border: 1px solid rgba(154, 168, 180, 0.18);
+  border-radius: 4px;
+  background: rgba(255, 255, 255, 0.025);
+  color: hsl(var(--muted-foreground));
+  cursor: pointer;
+}
+.account-archive__civilization-copy:hover,
+.account-archive__civilization-copy:focus-visible {
+  border-color: color-mix(in srgb, var(--civ-record-primary) 62%, transparent);
+  color: hsl(var(--foreground));
+  outline: 0;
+}
+.account-archive__civilization-copy svg {
+  width: 14px;
+  height: 14px;
+}
 .account-archive__lume {
   min-width: 44px;
   text-align: right;
@@ -974,7 +1105,7 @@
   min-width: 0;
   padding: 13px 8px 12px 11px;
 }
-.account-archive__artifact-copy p {
+.account-archive__artifact-copy > p {
   margin: 0 0 3px;
   color: var(--artifact-accent);
   font-size: 8px;
@@ -2532,6 +2663,21 @@
   }
   .account-archive__match-date {
     grid-column: 2 / -1;
+  }
+  .account-archive__civilization-snapshot {
+    grid-template-columns: auto minmax(0, 1fr) auto;
+    gap: 9px;
+  }
+  .account-archive__civilization-state,
+  .account-archive__civilization-metrics {
+    grid-column: 1 / -1;
+  }
+  .account-archive__civilization-state {
+    grid-template-columns: repeat(3, minmax(0, 1fr));
+  }
+  .account-archive__civilization-metrics {
+    border-top: 1px solid rgba(154, 168, 180, 0.1);
+    padding-top: 7px;
   }
   .account-archive__match-outcome dl {
     grid-template-columns: repeat(2, minmax(58px, 1fr));

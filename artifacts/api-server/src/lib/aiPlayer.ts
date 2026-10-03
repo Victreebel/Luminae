@@ -167,7 +167,7 @@ function scoreCard(
         if (!lum) continue;
         const req = lum.requirements[card.bonusAffinity];
         if (req <= 0) continue;
-        const have = player.bonuses[card.bonusAffinity];
+        const have = effectiveAffinityBonuses(state, player)[card.bonusAffinity];
         const need = Math.max(0, req - have);
         if (need > 0) {
           // Base boost proportional to Luminary value (1–4)
@@ -478,6 +478,18 @@ export function chooseAiAction(
   if (!player) {
     // Should never happen, but provide safe fallback
     return { type: "harness_three_affinities", affinities: {} };
+  }
+
+  // Repairs are free auxiliary orders, resolved after this player's core action.
+  // Queue them once before choosing that action so AI and simulation players
+  // participate in the same damage/recovery loop as human players.
+  const pendingRepairs = new Set(player.pendingArtifactRepairIds ?? []);
+  const damagedArtifactIds = [...new Set(player.forgedArtifactIds)].filter((id) => (
+    player.civilization.artifacts[id]?.implementationState === "damaged" &&
+    !pendingRepairs.has(id)
+  ));
+  if (damagedArtifactIds.length > 0) {
+    return { type: "repair_artifacts", artifactIds: damagedArtifactIds };
   }
 
   const totalHeld = totalAffinities(player.affinities);

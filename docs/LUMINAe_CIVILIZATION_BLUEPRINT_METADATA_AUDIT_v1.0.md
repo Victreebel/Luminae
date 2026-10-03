@@ -99,9 +99,9 @@ Verdict: `SUPPORTED` for live state projection; `PARTIAL` because static client 
 
 - Automatic exact-component manifestation: supported.
 - Components retained: supported.
-- Canon form/scale: Stellar Device.
-- Runtime presentation metadata: Stellar, dedicated manifestation and detonation treatment.
-- Civilization presentation: `Antimatter Quarantine Orbit`, a cold red stellar exclusion path rather than a giant card object: `civilizationDeploymentSites.ts:142-149`.
+- Canon form/theater: Stellar Device. Canonical physical manifestation: satellite-scale.
+- Runtime presentation metadata: Stellar theater, satellite manifestation scale, gimbaled-orbit motion, and dedicated manifestation and detonation treatment.
+- Civilization presentation: `Antimatter Quarantine Orbit`, an opaque 2.5D satellite device inside a cold red stellar exclusion path rather than a card cutout or planet-sized object.
 - Art/presentation: dedicated Antimatter card, model, detonation animation, and audio assets exist under `artifacts/luminae/src/components/blueprints/` and `artifacts/luminae/src/assets/blueprints/antimatter/`.
 
 Verdict: `SUPPORTED` visually.

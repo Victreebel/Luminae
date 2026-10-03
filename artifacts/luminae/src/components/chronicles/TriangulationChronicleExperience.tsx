@@ -8,6 +8,7 @@ import {
 import { ArrowLeft, Check, GitMerge, Orbit, Triangle } from 'lucide-react';
 import { gameAudio } from '@/lib/audio';
 import { useFocusTrap } from '@/hooks/use-focus-trap';
+import { useChroniclePresentationGate, type ChroniclePresentationGateProps } from '@/hooks/use-chronicle-presentation-gate';
 import orthePlate from '@/assets/civilization/chronicle-triangulation-orthe-v1.jpg';
 import './TriangulationChronicleExperience.css';
 
@@ -70,7 +71,7 @@ const OUTCOMES: Record<TriangulationOutcomeId, { title: string; lines: string[] 
   triangulation_composite_vesper_reference: { title: 'One Sky', lines: ['Every voice remained available.', 'Only one voice remained necessary.'] },
 };
 
-type Props = {
+type Props = ChroniclePresentationGateProps & {
   state: TriangulationScenarioState;
   gameStatus: 'lobby' | 'playing' | 'finished';
   localPlayerId: string;
@@ -121,6 +122,8 @@ export function TriangulationChronicleExperience({
   disableFocusTrap = false,
   instanceId,
   forceArrival = false,
+  presentationEnabled,
+  onPresentationActiveChange,
   onChoose,
   onReturn,
 }: Props) {
@@ -145,24 +148,39 @@ export function TriangulationChronicleExperience({
   const dialogueComplete = lineIndex >= dialogueLines.length - 1;
   const selectedChoice = selected ? CHOICES[selected] : null;
   const outcome = state.outcomeId ? OUTCOMES[state.outcomeId] : null;
+  const { presentationVisible, completePresentationExit, holdPresentationForSound } = useChroniclePresentationGate({
+    requested: arrivalOpen || alignmentOpen || (gameStatus === 'finished' && !!outcome),
+    presentationEnabled,
+    onPresentationActiveChange,
+  });
+  const arrivalVisible = presentationVisible && arrivalOpen;
+  const alignmentVisible = presentationVisible && !arrivalOpen && alignmentOpen;
+  const outcomeVisible = presentationVisible && !arrivalOpen && gameStatus === 'finished' && !!outcome;
   const progress = Math.min(state.architectCoreActions, state.alignmentDueAfterActions);
   const runLabel = state.runKind === 'rehearsal' ? 'REHEARSAL' : 'PRIMARY HISTORY';
 
-  useFocusTrap(decisionRef, alignmentOpen && !disableFocusTrap, () => undefined);
-  useFocusTrap(outcomeRef, gameStatus === 'finished' && !!outcome && !disableFocusTrap, () => undefined);
+  useFocusTrap(decisionRef, alignmentVisible && !disableFocusTrap, () => undefined);
+  useFocusTrap(outcomeRef, outcomeVisible && !disableFocusTrap, () => undefined);
 
   useEffect(() => {
-    if (!alignmentOpen) return;
+    if (!alignmentVisible) return;
     setLineIndex(0);
     setSelected(null);
+    holdPresentationForSound(1_300);
     gameAudio.playTriangulationSignal('alignment');
-  }, [alignmentOpen]);
+  }, [alignmentVisible, holdPresentationForSound]);
   useEffect(() => {
-    if (arrivalOpen) gameAudio.playTriangulationSignal('arrival');
-  }, [arrivalOpen]);
+    if (arrivalVisible) {
+      holdPresentationForSound(1_300);
+      gameAudio.playTriangulationSignal('arrival');
+    }
+  }, [arrivalVisible, holdPresentationForSound]);
   useEffect(() => {
-    if (state.phase === 'finished') gameAudio.playTriangulationSignal('closure');
-  }, [state.phase]);
+    if (outcomeVisible) {
+      holdPresentationForSound(1_300);
+      gameAudio.playTriangulationSignal('closure');
+    }
+  }, [outcomeVisible, holdPresentationForSound]);
 
   const advanceArrival = () => {
     if (arrivalLine < ARRIVAL_LINES.length - 1) {
@@ -174,14 +192,15 @@ export function TriangulationChronicleExperience({
   };
   const commit = async () => {
     if (!selected || submitting) return;
+    holdPresentationForSound(1_300);
     gameAudio.playTriangulationSignal(CHOICES[selected].tone);
     await onChoose(selected);
   };
 
   return (
     <>
-      <AnimatePresence>
-        {arrivalOpen && (
+      <AnimatePresence onExitComplete={completePresentationExit}>
+        {arrivalVisible && (
           <motion.div
             className="triangulation-arrival"
             role="dialog"
@@ -228,8 +247,8 @@ export function TriangulationChronicleExperience({
         </section>
       )}
 
-      <AnimatePresence>
-        {alignmentOpen && (
+      <AnimatePresence onExitComplete={completePresentationExit}>
+        {alignmentVisible && (
           <motion.div
             ref={decisionRef}
             className="triangulation-decision"
@@ -279,8 +298,8 @@ export function TriangulationChronicleExperience({
         )}
       </AnimatePresence>
 
-      <AnimatePresence>
-        {gameStatus === 'finished' && outcome && (
+      <AnimatePresence onExitComplete={completePresentationExit}>
+        {outcomeVisible && outcome && (
           <motion.div ref={outcomeRef} className="triangulation-outcome" role="dialog" aria-modal="true" aria-label={outcome.title} initial={{ opacity: 0 }} animate={{ opacity: 1 }}>
             <img src={orthePlate} alt="" /><div className="triangulation-scene-tint" />
             <section>

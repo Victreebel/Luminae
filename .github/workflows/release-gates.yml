@@ -156,6 +156,7 @@ jobs:
           pnpm --filter @workspace/scripts run test:dialog-keyboard
           pnpm --filter @workspace/scripts run test:overlays
           pnpm --filter @workspace/scripts run test:ws-keepalive
+          pnpm --filter @workspace/scripts run test:rematch-lifecycle
       - name: Upload live-game browser artifacts on failure
         if: failure()
         uses: actions/upload-artifact@v4

@@ -28,6 +28,7 @@ import {
 import backgroundCosmos from "@assets/generated_images/background_cosmos.png";
 import { CipherSigil } from "@/components/CipherSigil";
 import { LumiiOrb, type LumiiAppearance } from "@/components/LumiiTutorial";
+import { TransmissionFault } from "@/components/TransmissionFault";
 import { useFocusTrap } from "@/hooks/use-focus-trap";
 import { gameAudio } from "@/lib/audio";
 import {
@@ -304,32 +305,44 @@ function splitLumiiSentences(lines: string | readonly string[]): string[] {
 function LumiiSentenceReveal({
   lines,
   reducedMotion,
+  onComplete,
 }: {
   lines: string | readonly string[];
   reducedMotion: boolean;
+  onComplete?: () => void;
 }) {
   const sentences = splitLumiiSentences(lines);
   const sentenceKey = sentences.join("\n");
   const [sentenceIndex, setSentenceIndex] = useState(0);
+  const completedKeyRef = useRef<string | null>(null);
   const activeSentence = sentences[Math.min(sentenceIndex, sentences.length - 1)] ?? "";
 
   useEffect(() => {
     setSentenceIndex(0);
+    completedKeyRef.current = null;
   }, [sentenceKey]);
 
   useEffect(() => {
-    if (sentenceIndex >= sentences.length - 1) return undefined;
     const readMs = reducedMotion
       ? 160
       : Math.min(
         LUMII_SENTENCE_REVEAL_MAX_MS,
         LUMII_SENTENCE_REVEAL_BASE_MS + activeSentence.length * LUMII_SENTENCE_REVEAL_CHAR_MS,
       );
+    if (sentenceIndex >= sentences.length - 1) {
+      if (!onComplete || completedKeyRef.current === sentenceKey) return undefined;
+      const timer = window.setTimeout(() => {
+        if (completedKeyRef.current === sentenceKey) return;
+        completedKeyRef.current = sentenceKey;
+        onComplete();
+      }, readMs);
+      return () => window.clearTimeout(timer);
+    }
     const timer = window.setTimeout(() => {
       setSentenceIndex((value) => Math.min(value + 1, sentences.length - 1));
     }, readMs);
     return () => window.clearTimeout(timer);
-  }, [activeSentence.length, reducedMotion, sentenceIndex, sentences.length]);
+  }, [activeSentence.length, onComplete, reducedMotion, sentenceIndex, sentenceKey, sentences.length]);
 
   return (
     <blockquote
@@ -414,6 +427,8 @@ export function LumiiVaultEncounter({
   const [dialogueNodeId, setDialogueNodeId] = useState<LumiiDialogueNodeId>(() => thresholdApproach
     ? resolveLumiiDialogueNodeId(thresholdApproach, dialoguePath)
     : "root");
+  const [inquiryFaultComplete, setInquiryFaultComplete] = useState(false);
+  const [inquiryRootRepliesComplete, setInquiryRootRepliesComplete] = useState(false);
   const [cipherAttemptKey, setCipherAttemptKey] = useState(0);
   const visiblePhase = controlledPhase ?? phase;
   const dialogRef = useRef<HTMLDivElement | null>(null);
@@ -441,6 +456,12 @@ export function LumiiVaultEncounter({
       setDialogueNodeId(resolveLumiiDialogueNodeId(thresholdApproach, dialoguePath));
     }
   }, [cipherDeactivated, dialoguePath, dialogueResolution, onDeactivateCipher, thresholdApproach]);
+
+  useEffect(() => {
+    if (dialogueNodeId !== "root" || (selectedApproach ?? thresholdApproach) !== "inquiry") return;
+    setInquiryFaultComplete(false);
+    setInquiryRootRepliesComplete(false);
+  }, [dialogueNodeId, selectedApproach, thresholdApproach]);
 
   const requestLeave = useCallback(async () => {
     if (!canLeave || pending) return;
@@ -759,6 +780,7 @@ export function LumiiVaultEncounter({
   const hostile = appearance === "hostile";
   const route = selectedApproach ?? thresholdApproach ?? "inquiry";
   const dialogueNode = LUMII_THRESHOLD_DIALOGUE[route][dialogueNodeId];
+  const isInquiryRoot = visiblePhase === "dialogue" && route === "inquiry" && dialogueNodeId === "root";
   const outcomeDialogue = LUMII_OUTCOME_DIALOGUE[route];
   const routeEscalationLabel =
     route === "kinship"
@@ -899,9 +921,17 @@ export function LumiiVaultEncounter({
         {visiblePhase === "dialogue" && dialogueNode && (
           <motion.div key={`${route}-${dialogueNodeId}`} initial={{ opacity: 0, y: 9 }} animate={{ opacity: 1, y: 0 }}>
             <span>LUMII</span>
-            <LumiiSentenceReveal lines={dialogueNode.replies} reducedMotion={reducedMotion} />
+            <LumiiSentenceReveal
+              lines={isInquiryRoot
+                ? inquiryFaultComplete ? dialogueNode.replies.slice(1) : dialogueNode.replies.slice(0, 1)
+                : dialogueNode.replies}
+              reducedMotion={reducedMotion}
+              onComplete={isInquiryRoot && inquiryFaultComplete
+                ? () => setInquiryRootRepliesComplete(true)
+                : undefined}
+            />
             {error && <p className="lumii-vault-encounter__error">{error}</p>}
-            <div className={`lumii-vault-encounter__choices ${dialogueNode.choices?.length === 1 ? "single-plus-leave" : ""}`}>
+            {(!isInquiryRoot || inquiryRootRepliesComplete) && <div className={`lumii-vault-encounter__choices ${dialogueNode.choices?.length === 1 ? "single-plus-leave" : ""}`}>
               {dialogueNode.choices?.map((choice) => (
                 <button
                   key={choice.id}
@@ -920,8 +950,18 @@ export function LumiiVaultEncounter({
               <button type="button" className="is-secondary" onClick={() => void requestLeave()} disabled={pending}>
                 <DoorOpen aria-hidden="true" /><span>Leave it sealed</span>
               </button>
-            </div>
+            </div>}
           </motion.div>
+        )}
+
+        {isInquiryRoot && !inquiryFaultComplete && (
+          <TransmissionFault
+            variant="vault"
+            muted={muted}
+            delayMs={reducedMotion ? 180 : 620}
+            reducedMotion={reducedMotion}
+            onComplete={() => setInquiryFaultComplete(true)}
+          />
         )}
 
         {visiblePhase === "threshold-choice" && (

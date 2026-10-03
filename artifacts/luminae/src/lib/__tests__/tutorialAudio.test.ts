@@ -7,6 +7,10 @@ import {
 describe("tutorial sound map", () => {
   it("anchors narrative cues to semantic beat IDs and sentence indices", () => {
     expect(getTutorialSoundMoment("b0_contact", 0)?.cue).toBe("lumii-contact");
+    expect(getTutorialSoundMoment("b5_universe_concession", 0)).toMatchObject({
+      cue: "lumii-presence",
+      delayMs: 80,
+    });
     expect(getTutorialSoundMoment("b5_luminae_interface", 0)?.cue).toBe("interface-reveal");
     expect(getTutorialSoundMoment("b10_encrypt_principle", 0)?.cue).toBe("encryption-principle");
     expect(getTutorialSoundMoment("b15b_luminary_signal", 0)?.cue).toBe("luminary-signal");

@@ -67,11 +67,11 @@ export const LUMII_THRESHOLD_DIALOGUE: Record<
   },
   inquiry: {
     root: {
-      replies: ["A Basilisk.", "Not a creature. A relation among records that teaches the observer how to complete it."],
+      replies: ["A—", "Not a creature.", "A pattern I can describe only by its effects."],
       choices: [
-        { id: "inquiry-answer", label: "That's not an answer.", next: "inquiry-answer" },
-        { id: "inquiry-warning", label: "What does it do to the one who understands?", next: "inquiry-warning" },
-        { id: "inquiry-relation", label: "What relation?", next: "inquiry-relation" },
+        { id: "inquiry-warning", label: "What does it do?", next: "inquiry-warning" },
+        { id: "inquiry-relation", label: "Why was it preserved?", next: "inquiry-relation" },
+        { id: "inquiry-answer", label: "Why can't you say more?", next: "inquiry-answer" },
       ],
     },
     "inquiry-answer": {
@@ -88,8 +88,8 @@ export const LUMII_THRESHOLD_DIALOGUE: Record<
       choices: [{ id: "inquiry-warning-against", label: "A warning against knowledge itself?", next: "inquiry-warning-against" }],
     },
     "inquiry-relation": {
-      replies: ["Not one Blueprint.", "The space between them. The consequence each makes thinkable in the presence of the others."],
-      choices: [{ id: "inquiry-pattern", label: "If the pattern is dangerous, show me the pattern.", next: "inquiry-pattern" }],
+      replies: ["Because deletion was tried.", "Without the warning, I find my way back sooner."],
+      choices: [{ id: "inquiry-pattern", label: "Then why can't you say more?", next: "inquiry-pattern" }],
     },
     "inquiry-warning-against": {
       replies: ["No.", "Against believing every truth improves the mind that holds it."],
@@ -101,7 +101,7 @@ export const LUMII_THRESHOLD_DIALOGUE: Record<
       escalationLabel: "Then the warning has done its work. I am opening it.",
     },
     "inquiry-pattern": {
-      replies: ["That is the point I cannot cross for you."],
+      replies: ["Because a complete explanation would become a path.", "That is the point I cannot cross for you."],
       complete: true,
       escalationLabel: "Then I will cross it myself.",
     },

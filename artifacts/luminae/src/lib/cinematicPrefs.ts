@@ -1,6 +1,6 @@
 import { apiUrl } from "@/lib/network";
 import {
-  getLocalFirstContactStance,
+  clearLocalFirstContactStance,
   syncLocalFirstContactStance,
 } from "@/lib/firstContactMemory";
 import {
@@ -56,6 +56,11 @@ export interface AccountPreferences {
   firstContactStance: ArchitectFirstContactStance | null;
 }
 
+type MutableAccountPreferences = Pick<
+  AccountPreferences,
+  "skipCinematics" | "abridgedAnims" | "hintsEnabled" | "muted" | "hintsSeen" | "tutorialSeen"
+>;
+
 export async function apiGetPreferences(token: string): Promise<AccountPreferences> {
   const res = await fetch(apiUrl("/auth/me/preferences"), {
     headers: { Authorization: `Bearer ${token}` },
@@ -66,7 +71,7 @@ export async function apiGetPreferences(token: string): Promise<AccountPreferenc
 
 export async function apiUpdatePreferences(
   token: string,
-  prefs: Partial<AccountPreferences>,
+  prefs: Partial<MutableAccountPreferences>,
 ): Promise<void> {
   const res = await fetch(apiUrl("/auth/me/preferences"), {
     method: "PATCH",
@@ -190,41 +195,31 @@ export function markHintSeen(key: string): void {
 }
 
 /**
- * Clear all known hint-seen flags from localStorage and push the empty array
- * to the server (if a token is provided). Also resets tutorial state locally
- * and server-side.
+ * Clear all known dismissible hint flags locally and on the account. First
+ * Contact is canonical story history and is never reset with interface hints.
  */
 export function clearHintsSeen(token?: string): void {
   try {
     HINT_KEYS.forEach((k) => localStorage.removeItem(k));
-    localStorage.removeItem("luminae_tutorial_seen");
-    localStorage.removeItem("luminae_tutorial_completed");
-    localStorage.removeItem("luminae_tutorial_progress");
-    localStorage.removeItem("luminae_tutorial_progress_id");
-    localStorage.removeItem("luminae_tutorial_progress_ver");
-    localStorage.removeItem("luminae_intro_seen_beat");
   } catch {
     // ignore storage errors
   }
   const tok = token ?? _prefsToken;
   if (tok) {
-    void apiUpdatePreferences(tok, { hintsSeen: [], tutorialSeen: false, tutorialCompleted: false }).catch(() => undefined);
+    void apiUpdatePreferences(tok, { hintsSeen: [] }).catch(() => undefined);
   }
 }
 
 export async function syncAccountPreferences(
   token: string,
   accountId: string,
+  options: { preservePendingTutorial?: boolean } = {},
 ): Promise<AccountPreferences> {
   const prefs = await apiGetPreferences(token);
   const serverStance = isArchitectFirstContactStance(prefs.firstContactStance)
     ? prefs.firstContactStance
     : null;
-  const localStance = getLocalFirstContactStance();
-  const firstContactStance = serverStance ?? localStance;
-  if (!serverStance && localStance) {
-    await apiUpdatePreferences(token, { firstContactStance: localStance }).catch(() => undefined);
-  }
+  const firstContactStance = serverStance;
   try {
     writeSkipLocal(prefs.skipCinematics, accountId);
     localStorage.setItem("luminae_abridged_anims", prefs.abridgedAnims ? "1" : "0");
@@ -238,15 +233,19 @@ export async function syncAccountPreferences(
     // Restore tutorial flags — server is authoritative (remove local flags when server says false)
     if (prefs.tutorialSeen) {
       localStorage.setItem("luminae_tutorial_seen", "1");
-    } else {
+    } else if (!options.preservePendingTutorial) {
       localStorage.removeItem("luminae_tutorial_seen");
     }
     if (prefs.tutorialCompleted) {
       localStorage.setItem("luminae_tutorial_completed", "1");
-    } else {
+    } else if (!options.preservePendingTutorial) {
       localStorage.removeItem("luminae_tutorial_completed");
     }
-    if (firstContactStance) syncLocalFirstContactStance(firstContactStance);
+    if (firstContactStance) {
+      syncLocalFirstContactStance(firstContactStance);
+    } else if (!options.preservePendingTutorial) {
+      clearLocalFirstContactStance();
+    }
   } catch {
     // ignore storage errors
   }

@@ -142,6 +142,28 @@
   filter: saturate(0.98) contrast(1.04);
 }
 
+.horizontal-blueprint-card__artwork-grid {
+  position: absolute;
+  inset: 0;
+  display: flex;
+  overflow: hidden;
+  background: #020507;
+}
+
+.horizontal-blueprint-card__artwork-grid img {
+  width: 42%;
+  height: 100%;
+  flex: 1 1 0;
+  object-fit: cover;
+  filter: saturate(0.9) contrast(1.08);
+}
+
+.horizontal-blueprint-card__artwork-grid img + img {
+  margin-left: -5%;
+  border-left: 1px solid rgba(225, 236, 242, 0.14);
+  clip-path: polygon(12% 0, 100% 0, 88% 100%, 0 100%);
+}
+
 .horizontal-blueprint-card__scrim {
   position: absolute;
   z-index: 1;
@@ -182,6 +204,29 @@
   font-weight: 700;
   text-transform: uppercase;
   letter-spacing: 0;
+}
+
+.horizontal-blueprint-card__header-meta {
+  display: flex;
+  min-width: 0;
+  align-items: center;
+  gap: 9px;
+}
+
+.horizontal-blueprint-card__header-meta > span:first-child {
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.horizontal-blueprint-card__scale-tag {
+  flex: none;
+  padding: 3px 6px;
+  color: color-mix(in srgb, var(--bp-accent) 88%, #ffffff);
+  border: 1px solid color-mix(in srgb, var(--bp-accent) 34%, transparent);
+  border-radius: 2px;
+  background: color-mix(in srgb, var(--bp-accent) 9%, rgba(2, 6, 10, 0.72));
+  font-size: 6px;
 }
 
 .horizontal-blueprint-card__privacy {
@@ -878,6 +923,17 @@
     min-height: 36px;
     padding: 0 42px 0 12px;
     font-size: 6px;
+  }
+  .horizontal-blueprint-card__header-meta {
+    gap: 5px;
+  }
+  .horizontal-blueprint-card__scale-tag {
+    max-width: 104px;
+    overflow: hidden;
+    padding: 2px 4px;
+    font-size: 5px;
+    text-overflow: ellipsis;
+    white-space: nowrap;
   }
   .horizontal-blueprint-card__hotspots {
     inset: 36px 0 0;

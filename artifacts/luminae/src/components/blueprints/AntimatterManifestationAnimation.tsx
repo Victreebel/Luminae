@@ -3122,6 +3122,15 @@ export function AntimatterManifestationAnimation({
           letter-spacing: 0;
         }
 
+        .antimatter-cinematic--runtime {
+          position: fixed;
+          inset: 0;
+          z-index: 12000;
+          width: 100vw;
+          height: 100dvh;
+          min-height: 0;
+        }
+
         .antimatter-cinematic--capture > :not(.antimatter-canvas):not(.antimatter-vignette):not(style) {
           display: none !important;
         }

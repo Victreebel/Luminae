@@ -16,16 +16,16 @@ describe("CARD_NAME_FALLBACK", () => {
     expect(CARD_NAME_FALLBACK).toEqual(serverNames);
   });
 
-  it("preserves the complete 40 / 30 / 20 Artifact tier structure", () => {
+  it("preserves the complete 45 / 30 / 20 Artifact tier structure", () => {
     const ids = Object.keys(CARD_LORE);
 
-    expect(ids).toHaveLength(90);
-    expect(ids.filter((id) => id.startsWith("t1"))).toHaveLength(40);
+    expect(ids).toHaveLength(95);
+    expect(ids.filter((id) => id.startsWith("t1"))).toHaveLength(45);
     expect(ids.filter((id) => id.startsWith("t2"))).toHaveLength(30);
     expect(ids.filter((id) => id.startsWith("t3"))).toHaveLength(20);
   });
 
-  it("keeps Tier III engineering reach distinct from bounded artwork scale", () => {
+  it("keeps Tier III engineering reach distinct from its operational artwork viewpoint", () => {
     const tierThreeLore = Object.entries(CARD_LORE)
       .filter(([id]) => id.startsWith("t3"))
       .map(([, lore]) => lore);
@@ -34,10 +34,10 @@ describe("CARD_NAME_FALLBACK", () => {
     expect(tierThreeLore.every((lore) => lore.engineeringScale === "Galactic"))
       .toBe(true);
     expect(tierThreeLore.every((lore) => (
-      getArtifactDepictionScale(lore) === "macro" ||
-      getArtifactDepictionScale(lore) === "tabletop" ||
-      getArtifactDepictionScale(lore) === "room" ||
-      getArtifactDepictionScale(lore) === "installation"
+      getArtifactDepictionScale(lore) === "installation" ||
+      getArtifactDepictionScale(lore) === "planetary" ||
+      getArtifactDepictionScale(lore) === "stellar" ||
+      getArtifactDepictionScale(lore) === "galactic"
     )))
       .toBe(true);
     expect(Object.keys(TIER_THREE_ARTIFACT_CANON)).toHaveLength(20);
@@ -48,7 +48,6 @@ describe("CARD_NAME_FALLBACK", () => {
       const missingFields = [
         ["artifactForm", lore.artifactForm],
         ["blueprintRole", lore.blueprintRole],
-        ["blueprintFamilies", lore.blueprintFamilies],
         ["civLane", lore.civLane],
         ["engineeringScale", lore.engineeringScale],
         ["depictionScale", getArtifactDepictionScale(lore)],
@@ -63,11 +62,11 @@ describe("CARD_NAME_FALLBACK", () => {
   });
 
   it("uses explicit Artifact depiction scale independent of tier", () => {
-    expect(Object.keys(ARTIFACT_DEPICTION_SCALE_BY_ID)).toHaveLength(90);
+    expect(Object.keys(ARTIFACT_DEPICTION_SCALE_BY_ID)).toHaveLength(95);
     expect(getArtifactDepictionScale(CARD_LORE.t1r02!)).toBe("macro");
     expect(getArtifactDepictionScale(CARD_LORE.t1s02!)).toBe("room");
     expect(getArtifactDepictionScale(CARD_LORE.t2p06!)).toBe("tabletop");
-    expect(getArtifactDepictionScale(CARD_LORE.t3s01!)).toBe("room");
+    expect(getArtifactDepictionScale(CARD_LORE.t3s01!)).toBe("stellar");
   });
 
   it("keeps Artifact engineering scale aligned to tier", () => {

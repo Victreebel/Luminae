@@ -1,5 +1,7 @@
 import { expect, test, type Page } from "playwright/test";
 
+const phoneProjects = new Set(["compact-phone", "phone-portrait"]);
+
 const surfaces = [
   {
     name: "Trace decision",
@@ -92,7 +94,7 @@ for (const surface of surfaces) {
 }
 
 test("opened Vault exposes a compact mobile section switch", async ({ page }, testInfo) => {
-  test.skip(testInfo.project.name !== "android-portrait", "Mobile navigation contract");
+  test.skip(!phoneProjects.has(testInfo.project.name), "Mobile navigation contract");
   await page.goto("/dev/blueprint-vault?state=opened", { waitUntil: "domcontentloaded" });
   const recovered = page.getByRole("button", { name: "Recovered", exact: true });
   const sealed = page.getByRole("button", { name: "Sealed Records", exact: true });
@@ -105,7 +107,7 @@ test("opened Vault exposes a compact mobile section switch", async ({ page }, te
 });
 
 test("first Civilization guidance preserves the mobile portrait", async ({ page }, testInfo) => {
-  test.skip(testInfo.project.name !== "android-portrait", "Mobile composition contract");
+  test.skip(!phoneProjects.has(testInfo.project.name), "Mobile composition contract");
   await page.goto("/dev/civilization-scene?tier=planetary&scan=0&preset=balanced", {
     waitUntil: "domcontentloaded",
   });
@@ -121,7 +123,7 @@ test("first Civilization guidance preserves the mobile portrait", async ({ page 
 });
 
 test("Civilization scan exposes its compact mobile site rail", async ({ page }, testInfo) => {
-  test.skip(testInfo.project.name !== "android-portrait", "Mobile scan contract");
+  test.skip(!phoneProjects.has(testInfo.project.name), "Mobile scan contract");
   await page.goto("/dev/civilization-scene?tier=stellar&scan=1&preset=foundry", {
     waitUntil: "domcontentloaded",
   });
@@ -133,7 +135,9 @@ for (const reducedMotion of [false, true]) {
     const pageErrors: string[] = [];
     page.on("pageerror", (error) => pageErrors.push(error.message));
     await page.emulateMedia({ reducedMotion: reducedMotion ? "reduce" : "no-preference" });
-    await page.goto("/tutorial?beat=14", { waitUntil: "domcontentloaded" });
+    await page.goto("/tutorial?beatId=b9_first_forge&tutorialDebug=1", {
+      waitUntil: "domcontentloaded",
+    });
 
     await page.getByRole("button", {
       name: "Replication Spore, Tier 1 Artifact",
@@ -153,7 +157,7 @@ for (const reducedMotion of [false, true]) {
     );
     await expect(affinityReturn).toBeVisible({ timeout: 2_500 });
     await expect(page.getByText(
-      "Once the Artifact can sustain itself, the Affinities used to accelerate it return to the Well.",
+      "The Affinities return to the Well after the Artifact is Forged.",
       { exact: true },
     )).toBeVisible();
     await expect(page.getByRole("button", {

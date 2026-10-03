@@ -12,6 +12,9 @@ describe("MantleToOrbitBlueprintCard", () => {
       ),
     ).toBeInTheDocument();
     expect(
+      screen.getByText("Planetary-scale manifestation"),
+    ).toBeInTheDocument();
+    expect(
       screen.getAllByRole("button", { name: /^Open .* component record$/ }),
     ).toHaveLength(3);
     expect(screen.getByText("2 / 3")).toBeInTheDocument();
@@ -52,6 +55,8 @@ describe("MantleToOrbitBlueprintCard", () => {
     ).toBeInTheDocument();
     expect(within(panel).getByText("Required")).toBeInTheDocument();
     expect(within(panel).getByText("Tier I")).toBeInTheDocument();
+    expect(within(panel).getByText("Functions")).toBeVisible();
+    expect(within(panel).getByText("Materials")).toBeVisible();
   });
 
   it("shows every component as matched after manifestation", async () => {

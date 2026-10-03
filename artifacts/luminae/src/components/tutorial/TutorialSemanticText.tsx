@@ -73,7 +73,7 @@ const TUTORIAL_SEMANTIC_RE = new RegExp(
     "Affinit(?:y|ies)",
     "Artifacts?",
     "Architects?",
-    "Forg(?:e|ed|ing)",
+    "Forg(?:ed|ing|e)\\b",
     "Harness(?:ed|ing)?",
     "Encrypt(?:ion|ed)?",
     "Eminence",
@@ -97,9 +97,9 @@ const KINETIC_INTRODUCTIONS = new Set([
   "b8_first_harness:0:artifact:t1e01",
   "b8_first_harness:0:mechanic:harness",
   "b9b_affinity_returns:0:concept:well",
-  "b9b_forge_complete:0:value:+1:verdance",
-  "b9b_forge_complete:2:value:3:verdance",
-  "b9b_forge_complete:2:value:2",
+  "b9b_forge_complete:1:value:+1:verdance",
+  "b9b_forge_complete:3:value:3:verdance",
+  "b9b_forge_complete:3:value:2:verdance",
   "b9d_signature:0:field:signature",
   "b9e_interference:0:field:interference",
   "b9e_interference:2:system:civilization-tab",
@@ -110,9 +110,7 @@ const KINETIC_INTRODUCTIONS = new Set([
   "b15b_luminary_signal:0:luminary:verdant-oracle",
 ]);
 
-const CONTEXTUAL_AFFINITIES = new Map<string, AffinityKey>([
-  ["b9b_forge_complete:2:value:2", "verdance"],
-]);
+const CONTEXTUAL_AFFINITIES = new Map<string, AffinityKey>();
 
 function affinityFromText(text: string): AffinityKey | undefined {
   const match = AFFINITY_NAMES.find((name) =>
@@ -176,7 +174,7 @@ function classifyTutorialTerm(text: string): TutorialSemanticToken {
   if (/^luminar(?:y|ies)$/.test(normalized)) {
     return { text, kind: "role", semanticId: "role:luminary" };
   }
-  if (/^forg(?:e|ed|ing)$/.test(normalized)) {
+  if (/^forg(?:ed|ing|e)$/.test(normalized)) {
     return { text, kind: "mechanic", semanticId: "mechanic:forge" };
   }
   if (/^harness(?:ed|ing)?$/.test(normalized)) {
@@ -260,7 +258,7 @@ export function TutorialSemanticText({
         const isIntroduction = animateIntroductions && KINETIC_INTRODUCTIONS.has(introductionKey);
         const affinity = token.affinity ?? CONTEXTUAL_AFFINITIES.get(introductionKey);
         const isForgeCostComparison = beatId === "b9b_forge_complete"
-          && lineIndex === 2
+          && lineIndex === 3
           && token.kind === "value"
           && affinity === "verdance";
         const visibleText = isForgeCostComparison

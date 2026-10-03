@@ -7,7 +7,7 @@
 ## Table of Contents
 
 1. [Active Pool & Tier Structure](#active-pool--tier-structure)
-2. [Luminary Profiles (12 Active)](#luminary-profiles)
+2. [Luminary Profiles (15 Active)](#luminary-profiles)
 3. [Deferred / Inactive Luminaries](#deferred--inactive-luminaries)
 4. [Animation System Overview](#animation-system-overview)
 5. [Living Luminary Mechanics](#living-luminary-mechanics)
@@ -19,15 +19,17 @@
 
 ## Active Pool & Tier Structure
 
-The active Luminary pool is `AVAILABLE_LUMINARIES` (12 illustrated Luminaries). Each game draws `playerCount + 1` from this pool. The pool is divided by summoning cost tier:
+The active Luminary pool is `AVAILABLE_LUMINARIES` (15 Luminaries). Each game draws `playerCount + 1` from this pool. The pool is divided by permanent-Affinity requirements:
 
-| Tier | Cost | Eminence | Count | Luminaries |
+| Tier | Requirement | Native Eminence | Count | Luminaries |
 |------|------|----------|-------|------------|
-| **Mono** (Tier 1) | 5–6 of one affinity | 0–4 | 5 | Red Moth, Tide Architect, Verdant Oracle, Void Warden, Concordance Mandala |
-| **Dual** (Tier 2) | 4+4 of two affinities | 3–4 | 5 | Phoenix Paradox, Catalyst Bloom, Iron Harbinger, Hourless Compass, Seed Beyond Seasons, Glass Orchard, Pale Merchant |
-| **Triple** (Tier 3) | 3+3+3 of three affinities | 2–4 | 3 | Ember Sovereign, Final Hunger, Null Sovereign |
+| **Mono** (Tier 1) | 5–6 of one affinity | 1–3 | 5 | Red Moth, Tide Architect, Verdant Oracle, Void Warden, Concordance Mandala |
+| **Dual** (Tier 2) | 4+4 of two affinities | 1–3 | 7 | Phoenix Paradox, Catalyst Bloom, Iron Harbinger, ??? (The Forgotten Hour), Seed Beyond Seasons, Glass Orchard, Pale Merchant |
+| **Triple** (Tier 3) | 3+3+3, or 4+4+4 for Null Sovereign | 0–3 | 3 | Ember Sovereign, Final Hunger, Null Sovereign |
 
-> **Note:** The 12 "locked" illustrated assets per `replit.md` are: lum_ember, lum_forge, lum_verdant, lum_void, lum_radiant, lum_compass, lum_oracle, lum_bloom, lum_tide, lum_pale, lum_astral, lum_null. The `AVAILABLE_LUMINARIES` list includes these plus some extras (moth, seed, orchard, hunger) — see the full engine list below.
+Native arrival rewards are capped at **3 Eminence**, as defined by `LUMINARY_NATIVE_EMINENCE` in `lib/game-types/src/index.ts` (updated 2026-09-30). The 3-point rewards compensate for modest, shared, or unreliable effects relative to their requirements. Ability-generated Eminence is separate and unchanged; previously earned scores are preserved.
+
+> **Note:** Art-lock status does not determine pool membership. The active pool includes Red Moth, Seed Beyond Seasons, Glass Orchard, and Final Hunger; Cosmic Oracle and Celestial Scholar remain deferred.
 
 ---
 
@@ -44,7 +46,7 @@ The active Luminary pool is `AVAILABLE_LUMINARIES` (12 illustrated Luminaries). 
 | **Domain** | Rupture |
 | **Affinity** | Flare (ruby) |
 | **Cost** | 6 Flare |
-| **Eminence** | 2 |
+| **Native Eminence** | 3 |
 | **Effect** | On arrival, burns all Tier III Artifacts whose **Flare cost is 4 or less**. Those slots immediately redraw. |
 | **Flavor** | *"Where it passes, the universe is divided into before and after."* |
 | **Animation Archetype** | `burn` |
@@ -62,7 +64,7 @@ The active Luminary pool is `AVAILABLE_LUMINARIES` (12 illustrated Luminaries). 
 | **Domain** | Tides |
 | **Affinity** | Continuum (continuum) |
 | **Cost** | 6 Continuum |
-| **Eminence** | 2 |
+| **Native Eminence** | 2 |
 | **Effect** | The allied player may view the top Artifact of each Archive. Once, the allied player may Forge an Artifact on the top of an Archive. |
 | **Flavor** | *"Possibility collapses to its bias."* |
 | **Animation Archetype** | `scry` |
@@ -80,7 +82,7 @@ The active Luminary pool is `AVAILABLE_LUMINARIES` (12 illustrated Luminaries). 
 | **Domain** | Verdance |
 | **Affinity** | Verdance (emerald) |
 | **Cost** | 5 Verdance |
-| **Eminence** | 1 |
+| **Native Eminence** | 3 |
 | **Effect** | On arrival, gain 1 Verdance token from the Affinity Well. Like every manifested Luminary, its active-Affinity Forge bonus begins on the following turn. |
 | **Flavor** | *"It answers only after the question has taken root."* |
 | **Animation Archetype** | `resourceTransfer` |
@@ -98,7 +100,7 @@ The active Luminary pool is `AVAILABLE_LUMINARIES` (12 illustrated Luminaries). 
 | **Domain** | Void |
 | **Affinity** | Abyss (onyx) |
 | **Cost** | 6 Abyss |
-| **Eminence** | 3 |
+| **Native Eminence** | 2 |
 | **Oblivion** | +8 shared victory requirement |
 | **Effect** | On arrival, raise the shared victory requirement by 8. |
 | **Flavor** | *"In the space between stars, something watches without eyes."* |
@@ -117,7 +119,7 @@ The active Luminary pool is `AVAILABLE_LUMINARIES` (12 illustrated Luminaries). 
 | **Domain** | Coherence |
 | **Affinity** | Radiance (pearl) |
 | **Cost** | 6 Radiance |
-| **Eminence** | 4 |
+| **Native Eminence** | 1 |
 | **Effect** | Once, when you end your turn with at least 8 Radiance Artifacts, gain +2 Eminence. Once, when you end your turn with at least 10 Radiance Artifacts, gain +2 Eminence. |
 | **Flavor** | *"Truth is not revealed. It is aligned."* |
 | **Animation Archetype** | `thresholdPayoff` |
@@ -128,7 +130,7 @@ The active Luminary pool is `AVAILABLE_LUMINARIES` (12 illustrated Luminaries). 
 
 ---
 
-### Dual-Color Luminaries (3–4 Eminence)
+### Dual-Color Luminaries (1–3 Native Eminence)
 
 ---
 
@@ -139,7 +141,7 @@ The active Luminary pool is `AVAILABLE_LUMINARIES` (12 illustrated Luminaries). 
 | **Domain** | Recurrence |
 | **Affinities** | Flare, Continuum |
 | **Cost** | 4 Flare + 4 Continuum |
-| **Eminence** | 4 |
+| **Native Eminence** | 3 |
 | **Effect** | While Phoenix Paradox is manifested, future Burned Artifacts return to the bottom of their corresponding Archives instead of remaining in the Burn Pile. At the beginning of the owner's next turn, every Artifact already in the Burn Pile returns to the bottom of its corresponding Archive; any empty Forge positions then refill. |
 | **Flavor** | *"Every ending becomes fuel. Every return comes back less innocent."* |
 | **Animation Archetype** | `recurrence` |
@@ -157,7 +159,7 @@ The active Luminary pool is `AVAILABLE_LUMINARIES` (12 illustrated Luminaries). 
 | **Domain** | Aftergrowth |
 | **Affinities** | Flare, Verdance |
 | **Cost** | 4 Flare + 4 Verdance |
-| **Eminence** | 3 |
+| **Native Eminence** | 1 |
 | **Effect** | At the end of each of your turns, gain +1 Eminence for every burn effect that occurred since your last turn (from any source). |
 | **Flavor** | *"It waits for the nova to wound the world, then flowers in the scar."* |
 | **Animation Archetype** | `thresholdPayoff` |
@@ -175,7 +177,7 @@ The active Luminary pool is `AVAILABLE_LUMINARIES` (12 illustrated Luminaries). 
 | **Domain** | Ruin |
 | **Affinities** | Flare, Abyss |
 | **Cost** | 4 Flare + 4 Abyss |
-| **Eminence** | 3 |
+| **Native Eminence** | 3 |
 | **Effect** | On arrival, return every face-up Forge Artifact to its corresponding Archive, randomize each Archive, then refill every Forge row. This is not a Burn effect. |
 | **Flavor** | *"The hammer falls only after the future has already broken."* |
 | **Animation Archetype** | `forgeReset` |
@@ -193,7 +195,7 @@ The active Luminary pool is `AVAILABLE_LUMINARIES` (12 illustrated Luminaries). 
 | **Domain** | Erasure |
 | **Affinities** | Continuum, Abyss |
 | **Cost** | 4 Continuum + 4 Abyss |
-| **Eminence** | 1 |
+| **Native Eminence** | 1 |
 | **Effect** | On arrival, raise the shared victory requirement by 1 and mark every face-up Forge Artifact as **Forgotten**. Until the ally's next end of turn, only the ally may Encrypt. Artifacts forged while Forgotten award 0 Eminence and cannot be used for Blueprints. After the marks expire, wait 12 of the ally's turns, then mark the face-up Forge Artifacts as Forgotten again without raising the victory requirement. |
 | **Flavor** | *"Everyone remembered something happened, but no one can recall what was lost."* |
 | **Animation Archetype** | `suppression` |
@@ -211,7 +213,7 @@ The active Luminary pool is `AVAILABLE_LUMINARIES` (12 illustrated Luminaries). 
 | **Domain** | Propagation |
 | **Affinities** | Continuum, Verdance |
 | **Cost** | 4 Continuum + 4 Verdance |
-| **Eminence** | 3 |
+| **Native Eminence** | 2 |
 | **Effect** | On arrival, permanently mark one random mold in each tier with an **Avatar Seed**. At the end of every turn, each unseeded Artifact occupying one of those molds becomes **Seeded**. When an opponent forges a Seeded Artifact, the allied player gains 1 permanent Affinity matching that Artifact's bonus Affinity. |
 | **Flavor** | *"It leaves its avatars where tomorrow has already begun to remember."* |
 | **Animation Archetype** | `seeded` |
@@ -229,7 +231,7 @@ The active Luminary pool is `AVAILABLE_LUMINARIES` (12 illustrated Luminaries). 
 | **Domain** | Replication |
 | **Affinities** | Verdance, Radiance |
 | **Cost** | 4 Verdance + 4 Radiance |
-| **Eminence** | 3 |
+| **Native Eminence** | 3 |
 | **Effect** | Once per game, when you first forge an Artifact whose cost includes Verdance or Radiance, gain a second permanent bonus Affinity matching that Artifact. |
 | **Flavor** | *"It learned to copy itself perfectly, and called the absence of error peace."* |
 | **Animation Archetype** | `replication` |
@@ -247,7 +249,7 @@ The active Luminary pool is `AVAILABLE_LUMINARIES` (12 illustrated Luminaries). 
 | **Domain** | Balance |
 | **Affinities** | Abyss, Radiance |
 | **Cost** | 4 Abyss + 4 Radiance |
-| **Eminence** | 3 |
+| **Native Eminence** | 3 |
 | **Effect** | On arrival, each player returns 2 tokens of every Affinity, including Singularity, that they hold at half or more of its starting supply (rounded up). |
 | **Flavor** | *"Every bargain reveals one truth and buries another."* |
 | **Animation Archetype** | `affinityReturn` |
@@ -258,7 +260,7 @@ The active Luminary pool is `AVAILABLE_LUMINARIES` (12 illustrated Luminaries). 
 
 ---
 
-### Triple-Color Luminaries (2–4 Eminence)
+### Triple-Color Luminaries (0–3 Native Eminence)
 
 ---
 
@@ -269,7 +271,7 @@ The active Luminary pool is `AVAILABLE_LUMINARIES` (12 illustrated Luminaries). 
 | **Domain** | Flame |
 | **Affinities** | Flare, Abyss, Radiance |
 | **Cost** | 3 Flare + 3 Abyss + 3 Radiance |
-| **Eminence** | 4 |
+| **Native Eminence** | 3 |
 | **Effect** | **Cinder Mandate:** On arrival, mark each face-up Forge Artifact as Condemned unless its cost includes at least 3 of Flare, Abyss, or Radiance. At the end of your next turn, burn each remaining Condemned Artifact and refill its Forge position. |
 | **Flavor** | *"What cannot survive the fire is granted the mercy of disappearance."* |
 | **Animation Archetype** | `condemned` |
@@ -287,7 +289,7 @@ The active Luminary pool is `AVAILABLE_LUMINARIES` (12 illustrated Luminaries). 
 | **Domain** | Assimilation |
 | **Affinities** | Flare, Verdance, Radiance |
 | **Cost** | 3 Flare + 3 Verdance + 3 Radiance |
-| **Eminence** | 2 |
+| **Native Eminence** | 2 |
 | **Effect** | Once after arrival, you may replace your Forge action with **Assimilation**. Assimilate any face-up Artifact for free: gain its permanent bonus Affinity and no Eminence. The Artifact counts as owned only for Blueprints. |
 | **Flavor** | *"Its first act is consumption. Its second is perfect repetition."* |
 | **Animation Archetype** | `assimilate` |
@@ -305,7 +307,7 @@ The active Luminary pool is `AVAILABLE_LUMINARIES` (12 illustrated Luminaries). 
 | **Domain** | Transcendence |
 | **Affinities** | Continuum, Abyss, Radiance |
 | **Cost** | 4 Continuum + 4 Abyss + 4 Radiance |
-| **Eminence** | 0 (awards none) |
+| **Native Eminence** | 0 (awards none) |
 | **Effect** | On arrival, marks all face-up Tier III Artifacts that do not require all three of Continuum, Abyss, and Radiance as **Nullified**. Nullified Artifacts award 0 Eminence, cannot be used for Blueprints, and cannot be Encrypted. If the first Nullified Artifact forged this game is forged by the allied player, it is unaffected by Nullified. |
 | **Flavor** | *"Past the last observable star, entire futures fall silent without being destroyed."* |
 | **Animation Archetype** | `suppression` |
@@ -320,10 +322,10 @@ The active Luminary pool is `AVAILABLE_LUMINARIES` (12 illustrated Luminaries). 
 
 These Luminaries are defined in the engine but are **not** in the `AVAILABLE_LUMINARIES` pool. They do not appear in games.
 
-| ID | Name | Domain | Cost | Eminence | Note |
+| ID | Name | Domain | Cost | Native Eminence | Note |
 |----|------|--------|------|----------|------|
-| `lum_oracle` | The Cosmic Oracle | Prophecy | 3+3+3 (F/C/V) | 4 | Deferred — no effectName/effectDescription in current build |
-| `lum_scholar` | The Celestial Scholar | Erasure | 4 Continuum + 4 Radiance | 3 | v0.9 addition; deferred from active rotation. Effect: draws two cards, keeps one. |
+| `lum_oracle` | The Cosmic Oracle | Prophecy | 3+3+3 (F/C/V) | 3 | Deferred — no effectName/effectDescription in current build |
+| `lum_scholar` | The Celestial Scholar | Erasure | 4 Continuum + 4 Radiance | 2 | v0.9 addition; deferred from active rotation. Effect: draws two cards, keeps one. |
 
 ---
 
@@ -413,7 +415,7 @@ When a single action qualifies a player for multiple Luminaries, the canonical o
 2. If tied, order in `LUMINARIES` array (stable deterministic order)
 
 ### Oblivion vs. Eminence
-- **Oblivion**: Set via `oblivion: N` on the LuminaryDef. On claim, the shared victory requirement rises by N. The claimer gains **zero** Eminence.
+- **Oblivion**: Set via `oblivion: N` on the LuminaryDef. On claim, the shared victory requirement rises by N, separately from the listed native reward. Void Warden grants 2 native Eminence and raises the target by 8.
 - **Eminence**: Stored as `eminence: N`. Claimer gains N Eminence immediately.
 
 ### Win Attribution

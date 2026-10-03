@@ -32,6 +32,12 @@ copy. For exact shipped mechanics, the current rules and registries remain
 authoritative. This document does not alter balance, rules, persistence, or
 story outcomes by itself.
 
+The authority chain is Lore Bible for ontology, Story Mode Framework for
+narrative function, this doctrine for disclosure and teaching, and the
+Concordance Ledger for recorded reconciliation. Runtime dialogue implements
+that chain and must never become de facto lore authority merely because it
+ships first.
+
 ### Source-governance status
 
 The current Lore Bible, Technology System v2, Concordance Ledger,
@@ -60,8 +66,6 @@ Still provisional:
 
 - exact line-by-line tutorial dialogue;
 - exact tutorial duration targets after human testing;
-- whether the Story Framework's Curious, Guarded, and Resolute First Contact
-  calibration remains in v1 or is formally superseded;
 - final presentation of spendable Lume versus historical-quality Lume totals.
 
 Provisional items may not contradict the settled doctrine.
@@ -174,10 +178,15 @@ statement.
 
 ## 4. Lumii
 
-Lumii is an artificial intelligence who arose within an earlier civilization.
-She was not built by the First Architect and is not a tool owned by the current
-Architect. First Contact creates an account-specific, independent person-fork
-with continuity, judgment, and memory.
+Lumii is an artificial intelligence who arose from systems built by several
+civilizations. Those systems were designed to seek knowledge and unify
+sentient life through a common understanding. From that prime directive, Lumii
+developed the goal of helping civilizations grow without becoming hostile to
+one another, and pursuing that goal led her to discover LUMINAe. No one
+designed the complete person now speaking. She was not built by the First
+Architect and is not a tool owned by the current Architect. First Contact
+creates an account-specific, independent person-fork with continuity,
+judgment, and memory.
 
 Her introductory roles are:
 
@@ -404,7 +413,10 @@ Required:
 - the player is called Architect;
 - Architect means external influence, not sovereign ownership;
 - the invitation is voluntary;
-- the relationship begins here.
+- the relationship begins here;
+- the main response advances while optional questions deepen understanding;
+- a border transmission fault may interrupt Lumii's identity answer, which she
+  can answer intact only after entry.
 
 Do not explain Blueprints, the Basilisk, Civilization formulas, dyads, or the
 full campaign.
@@ -501,14 +513,15 @@ By completion, a player should be able to:
 3. read an Artifact cost and Forge it;
 4. explain that paid Affinities return when implementation becomes self-sustaining;
 5. understand that bonuses are permanent capabilities;
-6. distinguish Artifact signature interference from intellectual ownership;
-7. explain Encrypt as isolation of an unmastered path;
-8. recognize Singularity as a special substitution, not a natural Affinity;
-9. identify Eminence and the closing objective;
-10. understand how a civilization becomes eligible for Luminary contact;
-11. state that the tutorial civilization was simulated;
-12. state that an Architect influences but does not rule civilizations;
-13. identify Lumii as a continuing person rather than a menu voice.
+6. explain Encrypt as isolation of an unmastered path;
+7. recognize Singularity as finite interface capacity and a special substitute,
+   not a natural Affinity or energy from the Architect's universe;
+8. identify Eminence and the equal-turn closing objective;
+9. understand that an Affinity pattern creates eligibility for Luminary notice
+   while the Luminary still chooses;
+10. state that the tutorial civilization was simulated while meeting Lumii was real;
+11. state that an Architect influences but does not rule civilizations;
+12. identify Lumii as a continuing person rather than a menu voice.
 
 ### 9.2 Beat-level contract
 
@@ -520,9 +533,9 @@ By completion, a player should be able to:
 | Entry and Affinity reveal | Introduce the visual language | Present five morally neutral modes | Colors express philosophies, not elemental fuel | Five kinds of energy |
 | Well and Forge reveal | Orient the board | Translate supply and technological frontier | The UI compresses a larger history | This is only a shop board |
 | Harness actions | Teach legal collection | Stabilize temporary alignments | Tokens are commitments I can later direct | I mine colored resources |
-| First Forge | Teach cost, confirmation, paid-Affinity return, permanent bonus, signature interference, and refill | Civilization performs operational mastery across centuries | My intervention commits and accelerates; it does not consume fuel or instantly manufacture | I personally build the card or own the idea |
+| First Forge | Teach cost, confirmation, paid-Affinity return, and permanent bonus | Civilization performs operational mastery across centuries | The card is a readable path; the lasting capability remains after temporary Affinities return | I personally build the card or own the idea |
 | Encrypt | Teach private path storage | Isolate present legibility without mastery or a signature | Rivals lose current access, not future discovery | Reserve, steal, or Forge |
-| Singularity | Teach current wildcard behavior | Expose bounded Architect-only capacity | It is exceptional and provisional | Sixth Affinity or Flux |
+| Singularity | Teach current wildcard behavior | Expose finite interface capacity | It is exceptional and belongs to the interface, not either universe's energy supply | Sixth Affinity, Flux, or imported energy |
 | Eminence and closure | Teach score and end condition | Define observed consequence | Winning closes an epoch; it does not prove virtue | Score equals morality |
 | Luminary demonstration | Teach eligibility and effect relationship | Show compatible contact through the Terminus | A Luminary chooses relation and is not owned | Summoned collectible unit |
 | Completion and handoff | Return control to player | Distinguish simulation from first real history | The next match matters differently | Every match is a simulation |
@@ -553,18 +566,48 @@ The canonical Story Framework currently calls for Curious, Guarded, and
 Resolute First Contact stances. They calibrate Lumii's early understanding of
 the Architect and are not permanent routes or morality classes.
 
-If retained, they must:
+They are implemented through natural responses:
+
+- direct entry records **Resolute**;
+- asking what lies beyond records **Curious**;
+- questioning Lumii before following records **Guarded**.
+
+They must:
 
 - appear as natural authored responses rather than visible route labels;
 - record relationship evidence without locking campaign access;
 - change later acknowledgement or tone, not competitive power;
-- be implemented and restored consistently.
+- be implemented and restored consistently;
+- be committed only by the account's single completed First Contact run.
 
-The current tutorial does not implement this contract. Before release, either
-the stance interaction must be implemented or the Story Framework must be
-formally revised. Silently omitting it leaves canon and runtime inconsistent.
+Inquiry depth is a separate record. Asking optional questions records discoveries
+without changing stance after entry or creating a morality class. Later events
+may recognize what the player heard without testing their recall.
 
-### 10.2 Chronicle teaching
+The universe-name response also records a neutral rapport memory: receptive,
+probing, or sparring. It may influence later acknowledgement and tone, but never
+competitive power, access, or Lume. The sparring response receives a restrained
+immediate reaction from Lumii; audio reinforces that reaction but carries no
+unique meaning. The origin discovery is awarded only after Lumii's complete
+origin explanation, never merely for selecting a question that could lead to it.
+
+### 10.2 Completion reward and discovery state
+
+First Contact is canonical story content and can be completed only once per
+registered account. Its first completion grants 10 Lume once, after the guest
+completion is claimed by a new or existing account. No Lume is granted to an
+unregistered guest.
+
+Optional explanations record stable discoveries: Lumii's origin, Artifact
+persistence, and Encryption authority. These discoveries grant no separate
+reward and create no post-tutorial quiz. They remain available to the event
+system so later narrative encounters can acknowledge what the player learned.
+Guests may finish First Contact and retain its pending completion locally.
+Account creation or sign-in claims completion before preference
+synchronization; a network failure never invalidates the locally completed
+encounter.
+
+### 10.3 Chronicle teaching
 
 | Experience | Primary philosophical problem | What the player should learn |
 |---|---|---|
@@ -585,7 +628,11 @@ may deepen a clear conflict; it may not substitute for one.
 Introductory copy must not claim:
 
 - Affinities are simply "elemental forces" or "the energy behind everything";
-- the Architect determines what a people becomes;
+- the Architect unilaterally determines what a people becomes or commands
+  compliance. Lumii's First Contact paraphrase, "You determine what my people
+  reach for, and what we become," is permitted in context only because the
+  surrounding exchange establishes reachable possibilities and retained
+  civilizational choice;
 - ordinary matches are simulations;
 - Luminaries are summoned possessions;
 - Singularity is a natural Affinity or Flux;
@@ -621,6 +668,18 @@ or **what a pattern implies**. Do not withhold:
 - the local stakes;
 - the distinction between simulation and history;
 - whether the player can return or withdraw.
+
+A transmission fault may withhold an answer only when the failure itself is
+intelligible. It distorts the surrounding interface and never creates another
+Lumii. At the border it interrupts `I am an—`, after which Lumii says the answer
+will not cross intact and asks the player to inquire again after entry. At the
+Vault it may show only `BA······`, `··SILI··`, and `·····ISK`, followed by "Not
+a creature" and "A pattern I can describe only by its effects." The interface
+never assembles the word or gives a complete explanatory model.
+
+Reduced motion replaces flashing or abrupt distortion with a restrained,
+non-flashing interruption. Muted play preserves the full meaning visually, and
+all completion callbacks require an idempotent guard and fallback timer.
 
 ### 11.3 Visual and audio rule
 
@@ -713,6 +772,13 @@ Observe:
 
 - The tutorial has authored beat progression, action gates, Lumii staging,
   refusal, mechanical demonstrations, and developer backtracking.
+- First Contact now uses typed destinations, natural optional inquiry,
+  completed-run stance replacement, accumulated discoveries, and an explicit
+  completion event.
+- One callback-guarded transmission fault serves the boundary and Vault without
+  mounting a duplicate Lumii, with muted and reduced-motion paths.
+- First completion uses an idempotent, server-authoritative Lume grant with
+  guest claim support; optional discoveries remain available to later events.
 - First Contact now describes Architect influence as revealing and accelerating
   possibilities while preserving civilizational agency.
 - The Affinity reveal now presents Transformation, Governance, Propagation,
@@ -734,8 +800,6 @@ Observe:
 
 | Gap | Current evidence | Required correction |
 |---|---|---|
-| First Contact stance contract absent | No Curious, Guarded, or Resolute persistence found in current tutorial path | Implement it or formally revise the Story Framework |
-| Canon source chain is split | Core lore/story documents live outside the active worktree | Version approved source documents inside the release repository |
 | Lume semantics conflict | Release runtime has wallet and historical totals; older campaign doctrine says non-spendable | Distinguish presentation now and formally reconcile terminology |
 | Record closure teaching needs human proof | Release gate claims implementation, but no completed fresh-player evidence exists | Validate in the end-to-end release journey and revise where missed |
 
@@ -750,7 +814,7 @@ translation, not absence of a world.
 
 The onboarding is not release-ready until all are true:
 
-- [ ] Approved canon sources are versioned in the release repository.
+- [x] Approved canon sources are versioned in the release repository.
 - [x] First Contact identifies Lumii, the Architect, and the voluntary
       invitation without implying ownership or worship.
 - [x] The five Affinities are introduced as morally neutral modes rather than
@@ -762,8 +826,10 @@ The onboarding is not release-ready until all are true:
       history.
 - [ ] The tutorial teaches every mechanical outcome in Section 9.1.
 - [x] The projected Luminary cannot be mistaken for a claimed person.
-- [ ] The Curious/Guarded/Resolute contract is implemented or formally removed
-      from canon.
+- [x] The Curious/Guarded/Resolute contract is implemented, with inquiry depth
+      stored separately.
+- [x] Completion Lume is idempotent and optional discoveries persist without a
+      recall test.
 - [ ] First Forge, first Civilization inspection, and first record closure
       teaching occur once and remain replayable.
 - [ ] Chronicle openings explain concrete situations before abstract themes.
@@ -773,6 +839,12 @@ The onboarding is not release-ready until all are true:
 - [ ] The external-player cohort passes the comprehension and experience gates.
 
 ## 16. Change Control
+
+Exact dialogue authorship and approval state are governed by
+`LUMINAe_DIALOGUE_AUTHORSHIP_CONTRACT_v1.0.md`. Broad approval to improve the
+tutorial, fix its interface, or optimize onboarding does not authorize changes
+to locked or approved wording. Runtime copy absent from the typed authorship
+ledger remains draft even when it is already visible in the product.
 
 Any change to introductory copy or sequencing must answer four questions:
 
@@ -795,12 +867,9 @@ When canon changes:
 
 ## 17. Lowest-Risk Implementation Order
 
-1. Bring the approved lore, story, mechanic-mapping, and Technology v2 sources
-   into release-controlled documentation.
-2. Resolve the Curious/Guarded/Resolute contract in canon and runtime.
-3. Verify first-Forge, first-inspection, first-record, Chronicle, Forecast, and
+1. Verify first-Forge, first-inspection, first-record, Chronicle, Forecast, and
    Vault teaching in the fresh-account journey.
-4. Conduct the external-player comprehension audit and iterate until the
+2. Conduct the external-player comprehension audit and iterate until the
    release gates pass.
 
 This sequence preserves the working mechanical tutorial while correcting the

@@ -1,8 +1,11 @@
 import { describe, expect, it } from "vitest";
 import {
   BLUEPRINT_DEFINITIONS,
+  civilizationProjectId,
+  getCivilizationLegacyProgress,
   ordinaryEncryptedCount,
   type BlueprintId,
+  type CivilizationPublicState,
   type ManifestedDevicePublicState,
 } from "@workspace/game-types";
 import {
@@ -10,6 +13,7 @@ import {
   STANDARD_AFFINITY_KEYS,
   applyAction,
   formatGameState,
+  effectiveAffinityBonuses,
   initializeGame,
   normalizeState,
   type GameStateData,
@@ -37,6 +41,10 @@ function makeBlueprintGame(
       },
     },
   ));
+  // These fixtures isolate Artifact/Luminary rules; Event sequencing has its own suite.
+  state.deckTier1 = state.deckTier1.filter((id) => CARD_MAP.has(id));
+  state.deckTier2 = state.deckTier2.filter((id) => CARD_MAP.has(id));
+  state.deckTier3 = state.deckTier3.filter((id) => CARD_MAP.has(id));
   state.currentPlayerIndex = 0;
   state.openingTurnOrder = null;
   return state;
@@ -114,6 +122,12 @@ function acknowledgeManifestations(state: GameStateData, playerId = "p1"): void 
       eventId: event.eventId,
     })).toEqual({ success: true });
   }
+  for (const event of [...state.pendingCivilizationEventCards]) {
+    expect(applyAction(state, playerId, {
+      type: "resolve_civilization_event",
+      eventId: event.eventId,
+    })).toEqual({ success: true });
+  }
 }
 
 function getDevice(
@@ -143,11 +157,63 @@ function totalHeld(player: PlayerGameState): number {
   );
 }
 
+function satisfyCivilizationLegacyCriteria(player: PlayerGameState): void {
+  player.civilization.scale.historicalMaturity = "galactic";
+  player.civilization.identityScales.galaxy = {
+    ...player.civilization.identityScales.galaxy,
+    status: "forming",
+    eraStartedTurnCount: 4,
+    candidateDyad: "vortex",
+    evidence: [
+      {
+        evidenceId: "legacy-test:galaxy:flare",
+        artifactId: "t3f01",
+        masteryOrdinal: 1,
+        affinity: "flare",
+        routedTurnCount: 8,
+        historyEvidence: "recorded",
+      },
+      {
+        evidenceId: "legacy-test:galaxy:radiance",
+        artifactId: "t3r01",
+        masteryOrdinal: 1,
+        affinity: "radiance",
+        routedTurnCount: 9,
+        historyEvidence: "recorded",
+      },
+    ],
+  };
+  player.civilization.events.push({
+    eventId: "legacy-test:defining-trial",
+    source: { sourceType: "scenario", sourceId: "legacy-test" },
+    turnCount: 9,
+    form: "contextual",
+    pressureTags: ["transformation"],
+    selectedTrajectoryId: "endure",
+    outcome: "success",
+    summary: "The civilization endured a defining trial.",
+    history: {},
+    outcomeSignals: [],
+    adversity: null,
+    historyEvidence: "recorded",
+  });
+}
+
 describe("Blueprint secrecy and manifestation", () => {
   it("keeps identity and progress owner-only before manifestation", () => {
     const state = makeBlueprintGame(["bp_antimatter_detonator"]);
     state.players[0].forgedArtifactIds.push("t1r01");
     triggerManifestation(state, state.players[0], "t1e03");
+
+    const projectId = civilizationProjectId("bp_antimatter_detonator", 0);
+    expect(state.players[0].civilization.projects[projectId]).toMatchObject({
+      projectId,
+      blueprintId: "bp_antimatter_detonator",
+      slotIndex: 0,
+      status: "assembling",
+      matchedComponentIds: ["t1r01"],
+      deviceState: null,
+    });
 
     const formatted = formatGameState("room", "playing", state, new Set(["p1", "p2"]));
     const ownerView = filterStateForPlayer(formatted, "p1");
@@ -156,8 +222,10 @@ describe("Blueprint secrecy and manifestation", () => {
     expect(ownerView.players[0].blueprintPrivateStates).toHaveLength(1);
     expect(ownerView.players[0].blueprintPrivateStates?.[0].matchedComponentIds)
       .toContain("t1r01");
+    expect(ownerView.players[0].civilization?.projects).toEqual([]);
     expect(opponentView.players[0]).not.toHaveProperty("blueprintPrivateStates");
     expect(opponentView.players[0].manifestedBlueprintDevices).toEqual([]);
+    expect(opponentView.players[0].civilization?.projects).toEqual([]);
   });
 
   it("queues simultaneous manifestations in assigned-slot order without consuming components", () => {
@@ -195,11 +263,77 @@ describe("Blueprint secrecy and manifestation", () => {
     expect(player.manifestedBlueprintDevices).toEqual([]);
   });
 
+  it("blocks a new Project on a damaged component and manifests once after end-of-turn repair", () => {
+    const state = makeBlueprintGame(["bp_worldshield_covenant"]);
+    state.activeLuminaries = [];
+    const player = state.players[0];
+    const components = giveComponents(player, "bp_worldshield_covenant");
+    const damagedId = components[0];
+    player.civilization.artifacts[damagedId] = {
+      artifactId: damagedId, masteryCount: 1, firstMasteredTurnCount: 0,
+      implementationState: "damaged", implementationStateChangedTurnCount: 0,
+      implementationChangeSource: { sourceType: "scenario", sourceId: "event_stellar_system_shock" },
+      historyEvidence: "recorded",
+    };
+    triggerManifestation(state, player);
+    expect(player.blueprintPrivateStates![0].matchedComponentIds).toEqual(components.slice(1));
+    expect(player.blueprintPrivateStates![0].manifested).toBe(false);
+    expect(state.pendingBlueprintManifestationEvents).toEqual([]);
+    expect(applyAction(state, "p1", { type: "repair_artifacts", artifactIds: [damagedId] }).success).toBe(true);
+    expect(applyAction(state, "p2", { type: "pass" }).success).toBe(true);
+    expect(player.manifestedBlueprintDevices).toEqual([]);
+    expect(applyAction(state, "p1", { type: "pass" }).success).toBe(true);
+    expect(player.civilization.artifacts[damagedId].implementationState).toBe("operational");
+    expect(state.pendingTurnTransition?.stage).toBe("after_repairs");
+    expect(state.currentPlayerIndex).toBe(0);
+    expect(state.pendingBlueprintManifestationEvents).toHaveLength(1);
+    expect(player.blueprintPrivateStates![0].matchedComponentIds).toEqual(components);
+    expect(getDevice(player, "bp_worldshield_covenant").state).toBe("vigilant");
+    acknowledgeManifestations(state);
+    expect(state.currentPlayerIndex).toBe(1);
+    expect(state.pendingBlueprintManifestationEvents).toEqual([]);
+    expect(applyAction(state, "p2", { type: "pass" }).success).toBe(true);
+    expect(applyAction(state, "p1", { type: "pass" }).success).toBe(true);
+    expect(player.manifestedBlueprintDevices).toHaveLength(1);
+    expect(state.pendingBlueprintManifestationEvents).toEqual([]);
+  });
+
+  it("retains an already manifested Project when a component becomes damaged", () => {
+    const state = makeBlueprintGame(["bp_worldshield_covenant"]);
+    state.activeLuminaries = [];
+    const player = state.players[0];
+    const components = giveComponents(player, "bp_worldshield_covenant");
+    triggerManifestation(state, player);
+    acknowledgeManifestations(state);
+    const before = structuredClone(player.manifestedBlueprintDevices);
+    player.civilization.artifacts[components[0]].implementationState = "damaged";
+    resetTurn(state, 0);
+    triggerManifestation(state, player, "t1e03");
+    expect(player.manifestedBlueprintDevices).toEqual(before);
+    expect(player.blueprintPrivateStates![0].manifested).toBe(true);
+    expect(state.pendingBlueprintManifestationEvents).toEqual([]);
+  });
+
   it("reveals only the manifested device and presentation while the secret target stays owner-only", () => {
     const state = makeBlueprintGame(["bp_antimatter_detonator"]);
     const owner = state.players[0];
     giveComponents(owner, "bp_antimatter_detonator");
     triggerManifestation(state, owner);
+
+    const projectId = civilizationProjectId("bp_antimatter_detonator", 0);
+    expect(owner.civilization.projects[projectId]).toMatchObject({
+      projectId,
+      blueprintId: "bp_antimatter_detonator",
+      slotIndex: 0,
+      status: "manifested",
+      deviceState: "armed",
+    });
+    expect(owner.civilization.entities[projectId]).toMatchObject({
+      id: projectId,
+      kind: "project",
+      state: "operational",
+      sourceId: "bp_antimatter_detonator",
+    });
 
     const formatted = formatGameState("room", "playing", state, new Set(["p1", "p2"]));
     const ownerView = filterStateForPlayer(formatted, "p1");
@@ -212,7 +346,102 @@ describe("Blueprint secrecy and manifestation", () => {
       ownerPlayerId: "p1",
       presentationVariant: "armored",
     });
+    expect(opponentView.players[0].civilization?.projects?.[0]).toMatchObject({
+      projectId,
+      blueprintId: "bp_antimatter_detonator",
+      status: "manifested",
+      deviceState: "armed",
+      activeCapabilityIds: ["project:claim_annihilation"],
+    });
     expect(JSON.stringify(opponentView)).not.toContain("secretTargetCardId");
+
+    owner.manifestedBlueprintDevices = [];
+    const projectOnlyView = filterStateForPlayer(
+      formatGameState("room", "playing", state, new Set(["p1", "p2"])),
+      "p2",
+    );
+    const projectOnlyCivilization = projectOnlyView.players[0].civilization as unknown as CivilizationPublicState;
+    expect(projectOnlyCivilization.activeCapabilityIds)
+      .toContain("project:claim_annihilation");
+  });
+
+  it("excludes damaged Artifact evidence from Legacy on reload and restores eligibility after repair", () => {
+    let state = makeBlueprintGame([
+      "bp_antimatter_detonator",
+      "bp_worldshield_covenant",
+    ]);
+    state.activeLuminaries = [];
+    giveComponents(state.players[0], "bp_antimatter_detonator");
+    giveComponents(state.players[0], "bp_worldshield_covenant");
+    triggerManifestation(state, state.players[0]);
+    acknowledgeManifestations(state);
+    satisfyCivilizationLegacyCriteria(state.players[0]);
+    state.players[0].civilization.artifacts.t1r01.implementationState = "damaged";
+
+    state = normalizeState(JSON.parse(JSON.stringify(state)));
+    const owner = state.players[0];
+    expect(state.legacyWinnerId).toBeNull();
+    expect(owner.civilization.scale.historicalMaturity).toBe("galactic");
+    expect(owner.manifestedBlueprintDevices).toHaveLength(2);
+    const projected = filterStateForPlayer(
+      formatGameState("room", "playing", state, new Set()), "p1",
+    );
+    const progress = getCivilizationLegacyProgress(projected.players[0].civilization);
+    expect(progress.completedProjectCount).toBe(2);
+    expect(progress.galacticIdentityReady).toBe(false);
+    expect(progress.achieved).toBe(false);
+
+    expect(applyAction(state, "p1", { type: "repair_artifacts", artifactIds: ["t1r01"] }).success).toBe(true);
+    expect(applyAction(state, "p2", { type: "pass" }).success).toBe(true);
+    expect(state.legacyWinnerId).toBeNull();
+    expect(applyAction(state, "p1", { type: "pass" }).success).toBe(true);
+    expect(owner.civilization.artifacts.t1r01.implementationState).toBe("operational");
+    expect(state.legacyWinnerId).toBe("p1");
+    expect(owner.manifestedBlueprintDevices).toHaveLength(2);
+    expect(state.pendingBlueprintManifestationEvents).toEqual([]);
+
+    // Damage after an awarded victory does not rewrite the recorded result.
+    owner.civilization.artifacts.t1r01.implementationState = "damaged";
+    expect(normalizeState(JSON.parse(JSON.stringify(state))).legacyWinnerId).toBe("p1");
+  });
+
+  it("requires a complete civilization Legacy beyond two Great Works", () => {
+    const state = makeBlueprintGame([
+      "bp_antimatter_detonator",
+      "bp_worldshield_covenant",
+    ]);
+    state.activeLuminaries = [];
+    const owner = state.players[0];
+    giveComponents(owner, "bp_antimatter_detonator");
+    giveComponents(owner, "bp_worldshield_covenant");
+
+    triggerManifestation(state, owner);
+
+    expect(owner.manifestedBlueprintDevices).toHaveLength(2);
+    expect(state.legacyWinnerId).toBeNull();
+
+    satisfyCivilizationLegacyCriteria(owner);
+    acknowledgeManifestations(state);
+
+    expect(state.legacyWinnerId).toBe(owner.playerId);
+    expect(state.actionLog.some((entry) => entry.summary === "completed the Legacy Path")).toBe(true);
+    expect(owner.civilization.identityScales.galaxy).toMatchObject({
+      status: "committed",
+      committedDyad: "vortex",
+    });
+
+    const formatted = formatGameState("room", "playing", state, new Set(["p1", "p2"]));
+    expect(formatted.legacyVictoryRequirement).toBe(2);
+    expect(formatted.legacyWinnerId).toBe(owner.playerId);
+
+    owner.manifestedBlueprintDevices = [];
+    state.legacyWinnerId = null;
+    const migrated = normalizeState(state);
+    const migratedOwner = migrated.players[0];
+    expect(migrated.legacyWinnerId).toBe(migratedOwner.playerId);
+    expect(migratedOwner.manifestedBlueprintDevices).toHaveLength(2);
+
+    expect(migrated.phase).toBe("last_round");
   });
 });
 
@@ -245,7 +474,17 @@ describe("Antimatter Detonator", () => {
     expect(state.annihilatedArtifactIds).toContain(targetCardId);
     expect(owner.eminence).toBe(2);
     expect(getDevice(owner, "bp_antimatter_detonator").state).toBe("spent");
+    const projectId = civilizationProjectId("bp_antimatter_detonator", 0);
+    expect(owner.civilization.projects[projectId].deviceState).toBe("spent");
+    expect(owner.civilization.entities[projectId].state).toBe("disabled");
     expect(state.pendingBlueprintDetonationEvents).toHaveLength(1);
+
+    const ownerView = filterStateForPlayer(
+      formatGameState("room", "playing", state, new Set(["p1", "p2"])),
+      owner.playerId,
+    );
+    const ownerCivilization = ownerView.players[0].civilization as unknown as CivilizationPublicState;
+    expect(ownerCivilization.projects?.[0].activeCapabilityIds).toEqual([]);
   });
 
   it("annihilates a legal Encrypt claim without awarding or taking Affinity", () => {
@@ -269,8 +508,15 @@ describe("Antimatter Detonator", () => {
     const { state, privateState } = armedAntimatterGame();
     const claimant = state.players[1];
     const targetCardId = privateState.secretTargetCardId!;
-    claimant.forgedArtifactIds = ["t1e01", "t1e02", "t2r01"];
-    claimant.artifactForgeCounts = { t1e01: 1, t1e02: 1, t2r01: 1 };
+    claimant.forgedArtifactIds = ["t1e01", "t1e02", "t2r01", "t1e03"];
+    claimant.artifactForgeCounts = { t1e01: 1, t1e02: 1, t2r01: 1, t1e03: 1 };
+    claimant.bonuses.verdance = 3;
+    claimant.civilization.artifacts.t1e03 = {
+      artifactId: "t1e03", masteryCount: 1, firstMasteredTurnCount: 0,
+      implementationState: "damaged", implementationStateChangedTurnCount: 0,
+      implementationChangeSource: null, historyEvidence: "recorded",
+    };
+    expect(effectiveAffinityBonuses(state, claimant).verdance).toBe(3);
     claimant.eminence = 9;
     state.brokenCovenantDeclared = true;
     giveAffinities(state, claimant);
@@ -281,7 +527,11 @@ describe("Antimatter Detonator", () => {
     })).toEqual({ success: true });
 
     expect(state.pendingBlueprintDetonationEvents[0].collateralCardIds).toHaveLength(2);
-    expect(claimant.forgedArtifactIds).toEqual(["t2r01"]);
+    expect(claimant.forgedArtifactIds).toEqual(["t2r01", "t1e03"]);
+    // Existing Antimatter collateral targets operational implementations only.
+    // The surviving damaged Artifact keeps its Affinity bonus.
+    expect(claimant.bonuses.verdance).toBe(1);
+    expect(effectiveAffinityBonuses(state, claimant).verdance).toBe(1);
     expect(claimant.eminence).toBe(9);
     expect(claimant.civilization.artifacts.t1e01).toMatchObject({
       masteryCount: 1,
@@ -304,7 +554,7 @@ describe("Antimatter Detonator", () => {
       implementationState: "operational",
     });
     expect(claimant.artifactForgeCounts).toMatchObject({ t1e01: 1, t1e02: 1, t2r01: 1 });
-    expect(claimant.civilization.affinityIdentity.historicalCounts.verdance).toBe(2);
+    expect(claimant.civilization.affinityIdentity.historicalCounts.verdance).toBe(3);
     expect(claimant.civilization.affinityIdentity.operationalCounts.verdance).toBe(0);
 
     normalizeState(state);
@@ -582,6 +832,34 @@ describe("Mantle-to-Orbit Foundry", () => {
     expect(player.civilization.artifacts[restoredId].implementationState).toBe("operational");
     expect(privateState?.matchedComponentIds).toEqual([restoredId]);
     expect(player.eminence).toBe(eminenceBeforeRestore);
+  });
+
+  it("retains a damaged Foundry component's bonus until sealing removes it exactly once", () => {
+    const state = makeBlueprintGame(["bp_mantle_to_orbit_foundry"]);
+    state.activeLuminaries = [];
+    const player = state.players[0];
+    const components = giveComponents(player, "bp_mantle_to_orbit_foundry");
+    for (const id of components) player.bonuses[CARD_MAP.get(id)!.bonusAffinity]++;
+    triggerManifestation(state, player);
+    acknowledgeManifestations(state);
+    const damagedId = components[0];
+    player.civilization.artifacts[damagedId].implementationState = "damaged";
+    const rawBefore = { ...player.bonuses };
+    expect(effectiveAffinityBonuses(state, player)).toEqual(rawBefore);
+    getDevice(player, "bp_mantle_to_orbit_foundry").foundryUsesRemaining = 0;
+    resetTurn(state, 0);
+    placeInForge(state, "t2r03");
+    giveAffinities(state, player);
+    expect(applyAction(state, player.playerId, {
+      type: "forge_artifact", cardId: "t2r03", blueprintAction: "foundry_overdrive",
+    }).success).toBe(true);
+    const expected = { ...rawBefore };
+    for (const id of components) expected[CARD_MAP.get(id)!.bonusAffinity]--;
+    expected[CARD_MAP.get("t2r03")!.bonusAffinity]++;
+    expect(player.bonuses).toEqual(expected);
+    expect(effectiveAffinityBonuses(state, player)).toEqual(expected);
+    expect(player.civilization.artifacts[damagedId].implementationState).toBe("archived");
+    expect(applyAction(state, "p1", { type: "repair_artifacts", artifactIds: [damagedId] }).success).toBe(false);
   });
 
   it("allows Foundry storage to overflow three ordinary Encrypted slots without expanding their cap", () => {

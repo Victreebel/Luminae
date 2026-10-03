@@ -6,6 +6,7 @@ export type TutorialSoundCue =
   | "lumii-presence"
   | "interface-reveal"
   | "archive-memory"
+  | "transmission-fault"
   | "affinity-introduction"
   | "affinity-reveal"
   | "simulation-open"
@@ -47,6 +48,7 @@ const TUTORIAL_SOUND_MOMENTS = {
   "b0_contact:0": { cue: "lumii-contact", delayMs: 120 },
   "b1_locate:0": { cue: "lumii-locate", delayMs: 520 },
   "b2_lumii_intro:0": { cue: "lumii-presence", delayMs: 100 },
+  "b5_universe_concession:0": { cue: "lumii-presence", delayMs: 80 },
   "b5_luminae_interface:0": { cue: "interface-reveal", delayMs: 120 },
   "b5a_luminae_origin:0": { cue: "archive-memory", delayMs: 100 },
   "b5_affinities:0": { cue: "affinity-introduction", delayMs: 180 },

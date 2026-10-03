@@ -31,7 +31,7 @@ describe("Archive presentation preference", () => {
   it("can show a physical tier card stack without changing Archive state", () => {
     setArchivePresentation("cards");
 
-    const { container } = render(<ArchiveVessel tier={2} remaining={7} />);
+    const { container } = render(<ArchiveVessel tier={2} remaining={8} />);
     const archive = container.querySelector(".archive-vessel");
 
     expect(getArchivePresentation()).toBe("cards");

@@ -1,4 +1,5 @@
 import type {
+  EventFrequency,
   BlueprintClearanceSummary,
   BlueprintChallengeSession,
   BlueprintChallengeWithdrawal,
@@ -20,6 +21,8 @@ import type {
   RecurrenceChronicleSession,
   TraceChronicleSession,
   TriangulationChronicleSession,
+  CompleteTutorialInvestigationRequest,
+  TutorialInvestigationProgress,
 } from "@workspace/game-types";
 import { apiUrl } from "@/lib/network";
 
@@ -182,6 +185,32 @@ export async function apiGetMe(token: string): Promise<AccountMe> {
     headers: { Authorization: `Bearer ${token}` },
   });
   if (!res.ok) throw new Error("Failed to refresh account");
+  return res.json();
+}
+
+export async function apiGetTutorialInvestigation(
+  token: string,
+): Promise<TutorialInvestigationProgress> {
+  const res = await fetch(apiUrl("/onboarding/tutorial"), {
+    headers: { Authorization: `Bearer ${token}` },
+  });
+  if (!res.ok) throw new Error("Failed to load First Contact progress");
+  return res.json();
+}
+
+export async function apiCompleteTutorialInvestigation(
+  token: string,
+  input: CompleteTutorialInvestigationRequest,
+): Promise<TutorialInvestigationProgress> {
+  const res = await fetch(apiUrl("/onboarding/tutorial/complete"), {
+    method: "POST",
+    headers: { Authorization: `Bearer ${token}`, "Content-Type": "application/json" },
+    body: JSON.stringify(input),
+  });
+  if (!res.ok) {
+    const body = await res.json().catch(() => null);
+    throw new Error(body?.error ?? "Failed to claim First Contact completion");
+  }
   return res.json();
 }
 
@@ -607,6 +636,7 @@ export interface LobbyRoomSettingsUpdate {
   sessionToken: string;
   gameMode?: "standard" | "custom";
   blueprintPolicy?: "none" | "owned";
+  eventFrequency?: EventFrequency;
 }
 
 export async function apiUpdateRoomSettings(
@@ -623,6 +653,7 @@ export async function apiUpdateRoomSettings(
   gameMode: string;
   scenarioId: string | null;
   blueprintPolicy: string;
+  eventFrequency: EventFrequency;
 }> {
   const res = await fetch(apiUrl(`/rooms/${roomId}/settings`), {
     method: "PATCH",

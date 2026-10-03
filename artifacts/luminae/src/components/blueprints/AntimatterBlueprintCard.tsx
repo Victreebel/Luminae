@@ -1,7 +1,5 @@
-import ignitionKernelArtwork from "@/assets/cards/runtime/t1r01.webp";
-import causalSparkCoilArtwork from "@/assets/cards/runtime/t1r04.webp";
-import magneticBottleArtwork from "@/assets/cards/runtime/t1p04.webp";
-import horizonExtractorArtwork from "@/assets/cards/runtime/t2o01.webp";
+import { ARTIFACT_CANON } from '@workspace/game-types';
+import { CARD_ART } from '@/lib/cardArtManifest';
 import antimatterDetonatorDevice from "@/assets/blueprints/antimatter/antimatter-detonator-card.webp";
 import {
   HorizontalBlueprintCard,
@@ -16,6 +14,8 @@ type AntimatterBlueprintCardProps = {
   /** Retained for old Vault links; all Blueprint records now use one card framework. */
   presentation?: AntimatterBlueprintPresentation;
   matchedSockets?: number;
+  matchedComponentIds?: readonly string[];
+  publicStateLabel?: string;
   assigned?: boolean;
   covenantBroken?: boolean;
   knownComponentIds?: readonly string[];
@@ -24,9 +24,9 @@ type AntimatterBlueprintCardProps = {
 const components = [
   {
     artifactId: "t1r01",
-    artifactName: "Ignition Kernel",
+    artifactName: ARTIFACT_CANON.t1r01.name,
     affinity: "flare",
-    artwork: ignitionKernelArtwork,
+    artwork: CARD_ART.t1r01,
     tier: "Tier I",
     eminence: 0,
     cost: [
@@ -35,20 +35,19 @@ const components = [
       { affinity: "radiance", amount: 1 },
     ],
     requirement: "1 Flare Power Component",
-    flavor:
-      "The first fire a city learns to trust. Pressed into deep-bore channels and launch cradles alike, it ignites on command and refuses to consume beyond its charter. Civilizations that master it stop fearing fire and start building with it.",
-    artifactForm: "Power Component / Control Instrument",
-    blueprintRole: "Controlled ignition and thermal regulation",
-    blueprintFamilies: "Mantle-to-Orbit Foundry; Planetary Cradle Engine",
-    civilizationLane: "Planetary forge culture",
-    engineeringScale: "Planetary",
+    flavor: `${ARTIFACT_CANON.t1r01.functionalText} ${ARTIFACT_CANON.t1r01.mystery}`,
+    artifactForm: ARTIFACT_CANON.t1r01.forms.join(" / "),
+    blueprintRole: ARTIFACT_CANON.t1r01.practicalCapability,
+    blueprintFamilies: "Antimatter Detonator",
+    civilizationLane: ARTIFACT_CANON.t1r01.civLane,
+    engineeringScale: ARTIFACT_CANON.t1r01.engineeringScale,
     hotspot: { left: "50%", top: "51%" },
   },
   {
     artifactId: "t1p04",
-    artifactName: "Magnetic Bottle",
+    artifactName: ARTIFACT_CANON.t1p04.name,
     affinity: "radiance",
-    artwork: magneticBottleArtwork,
+    artwork: CARD_ART.t1p04,
     tier: "Tier I",
     eminence: 0,
     cost: [
@@ -56,39 +55,36 @@ const components = [
       { affinity: "radiance", amount: 1 },
     ],
     requirement: "1 Containment Artifact",
-    flavor:
-      "A bottle made of discipline more than matter. It holds fire by persuading every field in the vicinity to agree. What it contains presses against geometry rather than walls, which holds better.",
-    artifactForm: "Containment / Power Component",
-    blueprintRole: "Plasma or field containment",
-    blueprintFamilies: "Starlift Foundry precursor; Mantle-to-Orbit Foundry",
-    civilizationLane: "Field-containment culture",
-    engineeringScale: "Planetary",
+    flavor: `${ARTIFACT_CANON.t1p04.functionalText} ${ARTIFACT_CANON.t1p04.mystery}`,
+    artifactForm: ARTIFACT_CANON.t1p04.forms.join(" / "),
+    blueprintRole: ARTIFACT_CANON.t1p04.practicalCapability,
+    blueprintFamilies: "Antimatter Detonator",
+    civilizationLane: ARTIFACT_CANON.t1p04.civLane,
+    engineeringScale: ARTIFACT_CANON.t1p04.engineeringScale,
     hotspot: { left: "57%", top: "35%" },
   },
   {
     artifactId: "t1r04",
-    artifactName: "Causal Spark Coil",
+    artifactName: ARTIFACT_CANON.t1r04.name,
     affinity: "flare",
-    artwork: causalSparkCoilArtwork,
+    artwork: CARD_ART.t1r04,
     tier: "Tier I",
     eminence: 0,
     cost: [{ affinity: "continuum", amount: 2 }],
     requirement: "1 Control Instrument or Protocol",
-    flavor:
-      "Before it fires, it asks what will happen three steps later. Industrial triggers and irreversible ignitions wait on its judgment: not the operator's desire, but a formal account of consequences.",
-    artifactForm: "Control Instrument / Protocol Object",
-    blueprintRole: "Safe trigger sequencing",
-    blueprintFamilies:
-      "Mantle-to-Orbit Foundry; Causality Audit Court precursor",
-    civilizationLane: "Experimental causal engineer civilization",
-    engineeringScale: "Planetary",
+    flavor: `${ARTIFACT_CANON.t1r04.functionalText} ${ARTIFACT_CANON.t1r04.mystery}`,
+    artifactForm: ARTIFACT_CANON.t1r04.forms.join(" / "),
+    blueprintRole: ARTIFACT_CANON.t1r04.practicalCapability,
+    blueprintFamilies: "Antimatter Detonator",
+    civilizationLane: ARTIFACT_CANON.t1r04.civLane,
+    engineeringScale: ARTIFACT_CANON.t1r04.engineeringScale,
     hotspot: { left: "31%", top: "51%" },
   },
   {
     artifactId: "t2o01",
-    artifactName: "Horizon Extractor",
+    artifactName: ARTIFACT_CANON.t2o01.name,
     affinity: "abyss",
-    artwork: horizonExtractorArtwork,
+    artwork: CARD_ART.t2o01,
     tier: "Tier II",
     eminence: 1,
     cost: [
@@ -97,13 +93,12 @@ const components = [
       { affinity: "radiance", amount: 3 },
     ],
     requirement: "1 Abyss Artifact",
-    flavor:
-      "An extractor that samples the edge of forbidden physics without inviting the edge inside. It harvests what is available at boundaries where ordinary instruments would be destroyed.",
-    artifactForm: "Sensor / Containment",
-    blueprintRole: "Boundary-energy sampling",
-    blueprintFamilies: "Dark-Sector Observatory; Starlift Foundry",
-    civilizationLane: "Horizon engineer civilization",
-    engineeringScale: "Star-system",
+    flavor: `${ARTIFACT_CANON.t2o01.functionalText} ${ARTIFACT_CANON.t2o01.mystery}`,
+    artifactForm: ARTIFACT_CANON.t2o01.forms.join(" / "),
+    blueprintRole: ARTIFACT_CANON.t2o01.practicalCapability,
+    blueprintFamilies: "Antimatter Detonator",
+    civilizationLane: ARTIFACT_CANON.t2o01.civLane,
+    engineeringScale: ARTIFACT_CANON.t2o01.engineeringScale,
     hotspot: { left: "82%", top: "52%" },
   },
 ] as const satisfies readonly HorizontalBlueprintComponentRecord[];
@@ -112,7 +107,11 @@ const definition = {
   name: "Antimatter Detonator",
   publicEffect:
     "Uniformly mark a face-up Tier II Artifact. A legal Forge or Encrypt Annihilates it before payment; gain 2 Eminence and become Spent.",
-  presentation: { scaleLabel: "Stellar", serialCode: "BP-AD-01" },
+  presentation: {
+    scaleLabel: "Stellar",
+    serialCode: "BP-AD-01",
+    manifestationScale: "satellite",
+  },
   components: [
     { artifactId: "t1r01", stage: "Reaction Core", function: "Supplies the controlled reaction mass and the first ignition event inside the containment field." },
     { artifactId: "t1p04", stage: "Containment Cage", function: "Suspends matter and antimatter across a governed magnetic boundary until firing is authorized." },
@@ -124,6 +123,8 @@ const definition = {
 export function AntimatterBlueprintCard({
   state = "assembling",
   matchedSockets = 3,
+  matchedComponentIds,
+  publicStateLabel = "Armed",
   covenantBroken = false,
   knownComponentIds,
 }: AntimatterBlueprintCardProps) {
@@ -132,10 +133,11 @@ export function AntimatterBlueprintCard({
       definition={definition}
       state={state}
       matchedComponents={matchedSockets}
+      matchedComponentIds={matchedComponentIds}
       artwork={antimatterDetonatorDevice}
       artworkAlt="The Antimatter Detonator suspended above a planet"
       category="Catastrophe Engine"
-      publicStateLabel="Armed"
+      publicStateLabel={publicStateLabel}
       publicLabel="Public Device"
       components={components}
       knownComponentIds={knownComponentIds}

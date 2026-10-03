@@ -61,6 +61,25 @@ afterEach(() => {
 });
 
 describe('useLuminaryPresentationEngine', () => {
+  it('holds future state behind an Event lease without requesting a Luminary camera', () => {
+    let version = 1;
+    const process = vi.fn((state: TestState) => { version = state.version; });
+    const { result, rerender } = renderHook(({ external }) => useLuminaryPresentationEngine<TestState>({
+      signals: IDLE_SIGNALS,
+      externalPresentationActive: external,
+      getProcessedVersion: () => version,
+      processAuthoritativeState: process,
+      beginCameraSequence: vi.fn(),
+      endCameraSequence: vi.fn(),
+    }), { initialProps: { external: true } });
+    act(() => { result.current.ingress.accept({ version: 2 }, 'websocket'); });
+    expect(process).not.toHaveBeenCalled();
+    expect(result.current.status.cameraLeaseRequested).toBe(false);
+    rerender({ external: false });
+    act(() => vi.advanceTimersByTime(1));
+    expect(process).toHaveBeenCalledWith({ version: 2 }, 'websocket');
+  });
+
   it('holds one camera lease across adjacent presentation phases', () => {
     const beginCameraSequence = vi.fn();
     const endCameraSequence = vi.fn();

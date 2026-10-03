@@ -15,7 +15,8 @@ import {
   useAddAiPlayer,
   getGetRoomByInviteCodeQueryKey,
 } from "@workspace/api-client-react";
-import { DEFAULT_VICTORY_REQUIREMENT } from "@workspace/game-types";
+import { DEFAULT_VICTORY_REQUIREMENT, EVENT_FREQUENCY_LABELS, type EventFrequency } from "@workspace/game-types";
+import { EventFrequencySetting } from "@/components/EventFrequencySetting";
 import { Button } from "@/components/ui/button";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { getSession, clearSession, saveSession } from "@/lib/session";
@@ -287,6 +288,8 @@ export default function Lobby() {
   const isHost = me?.isHost ?? session?.isHost ?? false;
   const blueprintCleared = account?.clearance?.status === "cleared";
   const blueprintsEnabled = roomInfo?.gameMode === "custom" && roomInfo?.blueprintPolicy !== "none";
+  const eventFrequency = roomInfo?.eventFrequency ?? "standard";
+  const isStoryRoom = roomInfo?.gameMode === "campaign" || Boolean(roomInfo?.scenarioId);
   const maxPlayers = roomInfo?.maxPlayers ?? 4;
   const canStart = isHost && connectedPlayers.length >= 2;
   const canAddMore = players.length < maxPlayers;
@@ -313,6 +316,24 @@ export default function Lobby() {
       toast({
         variant: "destructive",
         title: "Could not update room settings",
+        description: err instanceof Error ? err.message : "Try again in a moment.",
+      });
+    } finally {
+      setRoomSettingsUpdating(false);
+    }
+  };
+
+  const handleEventFrequencyChange = async (next: EventFrequency) => {
+    if (!session || !roomId || !isHost || isStoryRoom || roomSettingsUpdating || next === eventFrequency) return;
+    setRoomSettingsUpdating(true);
+    try {
+      await apiUpdateRoomSettings(roomId, { sessionToken: session.sessionToken, eventFrequency: next });
+      await refetchRoomInfo();
+      toast({ title: `Events: ${EVENT_FREQUENCY_LABELS[next]}` });
+    } catch (err: unknown) {
+      toast({
+        variant: "destructive",
+        title: "Could not update Event frequency",
         description: err instanceof Error ? err.message : "Try again in a moment.",
       });
     } finally {
@@ -543,7 +564,7 @@ export default function Lobby() {
                   <Button
                     size="lg"
                     className="oom-action-primary h-12 w-full"
-                    disabled={!canStart || startGame.isPending}
+                    disabled={!canStart || startGame.isPending || roomSettingsUpdating}
                     onClick={handleStart}
                   >
                     {startGame.isPending
@@ -558,6 +579,15 @@ export default function Lobby() {
                   </div>
                 )}
               </div>
+              {!isStoryRoom && (
+                <div className="mt-4 rounded-md border border-border/35 bg-secondary/25 px-3 py-3">
+                  <EventFrequencySetting
+                    value={eventFrequency}
+                    onChange={isHost ? handleEventFrequencyChange : undefined}
+                    disabled={roomSettingsUpdating || startGame.isPending || !roomInfo}
+                  />
+                </div>
+              )}
               {isHost && blueprintCleared && (
                 <div className="mt-4 rounded-md border border-border/35 bg-secondary/25 px-3 py-3">
                   <div className="flex items-center justify-between gap-3">

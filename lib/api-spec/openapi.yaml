@@ -15,6 +15,8 @@ tags:
     description: Game state and actions
   - name: auth
     description: Account authentication
+  - name: onboarding
+    description: First Contact completion, investigation, and rewards
   - name: friends
     description: Friends list and requests
   - name: challenges
@@ -444,6 +446,48 @@ paths:
                 $ref: "#/components/schemas/AccountDeletionResult"
         "401":
           description: Password confirmation failed
+
+  /onboarding/tutorial:
+    get:
+      operationId: getTutorialInvestigation
+      tags: [onboarding]
+      summary: Get account-backed First Contact progress
+      security:
+        - accountToken: []
+      responses:
+        "200":
+          description: Tutorial investigation progress
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/TutorialInvestigationProgress"
+        "401":
+          description: Unauthorized
+
+  /onboarding/tutorial/complete:
+    post:
+      operationId: completeTutorialInvestigation
+      tags: [onboarding]
+      summary: Record the account's one canonical First Contact completion and base Lume grant
+      security:
+        - accountToken: []
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: "#/components/schemas/CompleteTutorialInvestigationBody"
+      responses:
+        "200":
+          description: First completion, or the unchanged canonical result of a repeated request
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/TutorialInvestigationProgress"
+        "400":
+          description: Invalid completion payload
+        "401":
+          description: Unauthorized
 
   /store:
     get:
@@ -1155,9 +1199,74 @@ components:
         - username
         - password
 
+    ArchitectFirstContactStance:
+      type: string
+      enum: [curious, guarded, resolute]
+
+    FirstContactRapport:
+      type: string
+      enum: [receptive, probing, sparring]
+
+    TutorialDiscoveryId:
+      type: string
+      enum: [lumii_origin, artifact_mastery, encryption_authority]
+
+    TutorialInvestigationProgress:
+      type: object
+      properties:
+        investigationId:
+          type: string
+          const: first_contact
+        definitionVersion:
+          type: integer
+        completed:
+          type: boolean
+        completedAt:
+          type: [string, "null"]
+          format: date-time
+        firstContactRapport:
+          anyOf:
+            - $ref: "#/components/schemas/FirstContactRapport"
+            - type: "null"
+        discoveries:
+          type: array
+          items:
+            $ref: "#/components/schemas/TutorialDiscoveryId"
+        completionLumeAwarded:
+          type: integer
+        lumeBalance:
+          type: [integer, "null"]
+      required:
+        - investigationId
+        - definitionVersion
+        - completed
+        - completedAt
+        - firstContactRapport
+        - discoveries
+        - completionLumeAwarded
+        - lumeBalance
+
+    CompleteTutorialInvestigationBody:
+      type: object
+      properties:
+        stance:
+          $ref: "#/components/schemas/ArchitectFirstContactStance"
+        rapport:
+          anyOf:
+            - $ref: "#/components/schemas/FirstContactRapport"
+            - type: "null"
+        discoveries:
+          type: array
+          uniqueItems: true
+          items:
+            $ref: "#/components/schemas/TutorialDiscoveryId"
+      required: [stance, discoveries]
+
     ActiveRoomEntry:
       type: object
       properties:
+        eventFrequency:
+          $ref: "#/components/schemas/EventFrequency"
         roomId:
           type: string
         inviteCode:
@@ -1448,6 +1557,12 @@ components:
             scaleBand:
               type: string
               enum: [planetary, stellar, galactic]
+            manifestationScale:
+              type: string
+              enum: [installation, satellite, planetary, stellar, distributed]
+            manifestationMotion:
+              type: string
+              enum: [gimbaled_orbit, industrial_transit, signal_constellation, shield_breath]
             affinity:
               type: string
               enum: [flare, continuum, verdance, abyss, radiance]
@@ -1481,6 +1596,8 @@ components:
           required:
             - projectForm
             - scaleBand
+            - manifestationScale
+            - manifestationMotion
             - affinity
             - siteTitle
             - visibleAs
@@ -2360,6 +2477,8 @@ components:
     ActiveGame:
       type: object
       properties:
+        eventFrequency:
+          $ref: "#/components/schemas/EventFrequency"
         roomId:
           type: string
         inviteCode:
@@ -2721,6 +2840,8 @@ components:
     CreateChallengeBody:
       type: object
       properties:
+        eventFrequency:
+          $ref: "#/components/schemas/EventFrequency"
         challengedUsername:
           type: string
         maxPlayers:
@@ -2788,6 +2909,8 @@ components:
         room:
           type: object
           properties:
+            eventFrequency:
+              $ref: "#/components/schemas/EventFrequency"
             id:
               type: string
             inviteCode:
@@ -2826,6 +2949,8 @@ components:
     CreateRoomBody:
       type: object
       properties:
+        eventFrequency:
+          $ref: "#/components/schemas/EventFrequency"
         hostName:
           type: string
         maxPlayers:
@@ -2974,6 +3099,8 @@ components:
     RoomInfo:
       type: object
       properties:
+        eventFrequency:
+          $ref: "#/components/schemas/EventFrequency"
         id:
           type: string
         inviteCode:
@@ -3026,6 +3153,36 @@ components:
         - room
         - player
         - sessionToken
+
+    EventDelivery:
+      type: string
+      enum: [archive_v1, scheduled_forge_v1]
+      description: Historical Archive insertion or a separate Event deck armed by a countdown and revealed after a successful Forge.
+
+    EventForecast:
+      type: object
+      description: Public timing only; never includes the selected Event identities or their order.
+      properties:
+        status:
+          type: string
+          enum: [off, countdown, armed, resolving, complete, closed]
+        tier:
+          type: [integer, "null"]
+          enum: [1, 2, 3, null]
+        roundsRemaining:
+          type: [integer, "null"]
+          minimum: 0
+        turnsRemainingByPlayerId:
+          type: object
+          additionalProperties:
+            type: integer
+            minimum: 0
+      required: [status, tier, roundsRemaining, turnsRemainingByPlayerId]
+
+    EventFrequency:
+      type: string
+      enum: [off, standard, frequent]
+      description: Regular game Event frequency; Standard selects one unique Event per tier, Frequent selects two, and Off selects none. New games use a separate countdown-driven Event deck. Omitted settings default to Standard.
 
     GameMode:
       type: string
@@ -3238,6 +3395,167 @@ components:
         - targetCardId
         - presentationVariant
         - createdAt
+
+    CivilizationEventRespondingManifestation:
+      type: object
+      properties:
+        sourceType:
+          type: string
+          enum: [artifact, blueprint]
+        sourceId:
+          type: string
+        capabilityIds:
+          type: array
+          items:
+            type: string
+      required: [sourceType, sourceId, capabilityIds]
+
+    CivilizationEventTargetEvidence:
+      type: object
+      description: Public, frozen causal evidence for an authored Event target or response.
+      properties:
+        artifactId: { type: string }
+        match:
+          type: object
+          properties:
+            kind:
+              type: string
+              enum: [capability, event_fact]
+            id: { type: string }
+          required: [kind, id]
+        role:
+          type: string
+          enum: [responder, target, mitigator]
+        reason: { type: string }
+      required: [artifactId, match, role, reason]
+
+    CivilizationEventPlayerOutcome:
+      type: object
+      properties:
+        playerId:
+          type: string
+        outcomeId:
+          type: string
+          enum: [protected, partial, exposed]
+        capabilityCoverage:
+          type: string
+          enum: [none, partial, strong]
+        respondingCapabilityIds:
+          type: array
+          items:
+            type: string
+        respondingManifestations:
+          type: array
+          items:
+            $ref: "#/components/schemas/CivilizationEventRespondingManifestation"
+        damagedArtifactIds:
+          type: array
+          description: Public forged Artifact implementations damaged by this Event.
+          items:
+            type: string
+        targetEvidence:
+          type: array
+          items:
+            $ref: "#/components/schemas/CivilizationEventTargetEvidence"
+        appliedConditionType:
+          type: ["string", "null"]
+        stabilityPressure:
+          type: integer
+        summary:
+          type: string
+      required:
+        - playerId
+        - outcomeId
+        - capabilityCoverage
+        - respondingCapabilityIds
+        - respondingManifestations
+        - appliedConditionType
+        - stabilityPressure
+        - summary
+
+    CivilizationEventInstance:
+      type: object
+      properties:
+        eventId:
+          type: string
+        rulesVersion: { type: string }
+        rulesText:
+          type: string
+          description: Frozen rules explanation captured with the versioned resolution plan.
+        definitionId:
+          type: string
+          enum: [event_planetary_affinity_bloom, event_planetary_forge_drift, event_stellar_containment_cascade, event_stellar_affinity_inversion, event_stellar_system_shock, event_galactic_entropy_storm, event_galactic_terminus_tide, event_galactic_fracture_wave, event_planetary_signal_clarity, event_stellar_synchronization_shear]
+        sourceCard:
+          type: object
+          properties:
+            id:
+              type: string
+              enum: [event_planetary_affinity_bloom, event_planetary_forge_drift, event_stellar_containment_cascade, event_stellar_affinity_inversion, event_stellar_system_shock, event_galactic_entropy_storm, event_galactic_terminus_tide, event_galactic_fracture_wave, event_planetary_signal_clarity, event_stellar_synchronization_shear]
+            tier:
+              type: integer
+              enum: [1, 2, 3]
+            forgeSlotIndex:
+              type: ["integer", "null"]
+            origin:
+              type: string
+              enum: [forge, archive, scheduled]
+          required: [id, tier, forgeSlotIndex]
+        triggerWindow:
+          type: string
+          enum: [deck_reveal, first_contact, late_pressure, authored]
+        triggerTurnCount:
+          type: integer
+        phase:
+          type: string
+          enum: [reveal, awaiting_choice, resolving, receipt, complete]
+        affectedPlayerIds:
+          type: array
+          items:
+            type: string
+        outcomesByPlayerId:
+          type: object
+          additionalProperties:
+            $ref: "#/components/schemas/CivilizationEventPlayerOutcome"
+        createdAt:
+          type: integer
+      required:
+        - eventId
+        - definitionId
+        - triggerWindow
+        - triggerTurnCount
+        - phase
+        - affectedPlayerIds
+        - outcomesByPlayerId
+        - createdAt
+
+    CivilizationEventDeckState:
+      type: object
+      properties:
+        delivery:
+          $ref: "#/components/schemas/EventDelivery"
+        eventFrequency:
+          $ref: "#/components/schemas/EventFrequency"
+        contentProfile:
+          type: string
+          enum: [general_v1, general_v2, lore_pilot_v1]
+        rulesVersion: { type: string }
+        definitionIds:
+          type: array
+          items:
+            type: string
+            enum: [event_planetary_affinity_bloom, event_planetary_forge_drift, event_stellar_containment_cascade, event_stellar_affinity_inversion, event_stellar_system_shock, event_galactic_entropy_storm, event_galactic_terminus_tide, event_galactic_fracture_wave, event_planetary_signal_clarity, event_stellar_synchronization_shear]
+        nextIndex:
+          type: integer
+        firedWindows:
+          type: array
+          items:
+            type: string
+            enum: [deck_reveal, first_contact, late_pressure, authored]
+        completedEventIds:
+          type: array
+          items:
+            type: string
+      required: [definitionIds, nextIndex, firedWindows, completedEventIds]
 
     ScenarioProtocolId:
       type: string
@@ -3490,12 +3808,143 @@ components:
     CivilizationNaturalAffinityCounts:
       type: object
       properties:
-        flare: { type: integer }
-        radiance: { type: integer }
-        verdance: { type: integer }
-        continuum: { type: integer }
-        abyss: { type: integer }
+        flare: { type: number }
+        radiance: { type: number }
+        verdance: { type: number }
+        continuum: { type: number }
+        abyss: { type: number }
       required: [flare, radiance, verdance, continuum, abyss]
+
+    CivilizationEnvironmentIdentity:
+      type: object
+      properties:
+        policyId: { type: string, enum: [persistent-world-v1] }
+        matchScopedSeed: { type: integer, minimum: 0 }
+        variantId:
+          type: string
+          enum: [aurora_basin, terminator_reach, oceanic_scar, obsidian_steppe]
+        terrain:
+          type: string
+          enum: [terraced_basin, terminator_highlands, archipelago_scar, volcanic_steppe]
+        celestial:
+          type: string
+          enum: [near_ringed_world, binary_dawn, tidal_moon, distant_giant]
+        atmosphere:
+          type: string
+          enum: [auroral_twilight, copper_haze, storm_blue, clear_violet]
+        historyEvidence:
+          type: string
+          enum: [recorded, legacy_inferred]
+      required: [policyId, matchScopedSeed, variantId, terrain, celestial, atmosphere, historyEvidence]
+
+    CivilizationIdentityEpoch:
+      type: object
+      properties:
+        epochIndex: { type: integer, minimum: 0 }
+        dyad:
+          type: string
+          enum: [vortex, flux, bloom, chrysalis, orbit, canopy, eclipse, lineage, echo, spore]
+        startedTurnCount: { type: ["integer", "null"] }
+        endedTurnCount: { type: ["integer", "null"] }
+        historicalSharesAtStart:
+          $ref: "#/components/schemas/CivilizationNaturalAffinityCounts"
+        historyEvidence:
+          type: string
+          enum: [recorded, legacy_inferred]
+      required: [epochIndex, dyad, startedTurnCount, endedTurnCount, historicalSharesAtStart, historyEvidence]
+
+    CivilizationManifestationAssignment:
+      type: object
+      properties:
+        sourceId: { type: string }
+        sourceType: { type: string, enum: [artifact, blueprint] }
+        nativeScene: { type: string, enum: [surface, orbit, stellar, galaxy] }
+        placementFamily:
+          type: string
+          enum: [industrial_district, civic_core, habitat_district, wilderness_margin, subsurface_works, observatory_ridge, transit_terminus, archive_quarter, coastal_margin, containment_zone, low_orbit, high_orbit, orbital_yard, habitat_orbit, moonward_lane, atmosphere_edge, inner_system, habitable_orbits, lagrange_network, outer_system, heliopause, distributed_systems, spiral_arm, coreward_region, rimward_region, dark_sector, distributed_clusters, interarm_void]
+        socketId: { type: string }
+        assignmentTurnCount: { type: ["integer", "null"] }
+        historyEvidence: { type: string, enum: [recorded, legacy_inferred] }
+      required: [sourceId, sourceType, nativeScene, placementFamily, socketId, assignmentTurnCount, historyEvidence]
+
+    CivilizationDistrictInstance:
+      type: object
+      description: Persistent Surface district whose first two distinct resident Affinities permanently establish its dyad
+      properties:
+        districtId: { type: string }
+        family:
+          type: string
+          enum: [industrial_district, civic_core, habitat_district, wilderness_margin, subsurface_works, observatory_ridge, transit_terminus, archive_quarter, coastal_margin, containment_zone]
+        instance: { type: integer, minimum: 0 }
+        residentArtifactIds:
+          type: array
+          items: { type: string }
+        residentAffinities:
+          type: array
+          items:
+            type: string
+            enum: [flare, radiance, verdance, continuum, abyss]
+        foundingAffinities:
+          type: array
+          maxItems: 2
+          items:
+            type: string
+            enum: [flare, radiance, verdance, continuum, abyss]
+        permanentDyad:
+          type: ["string", "null"]
+          enum: [vortex, flux, bloom, chrysalis, orbit, canopy, eclipse, lineage, echo, spore, null]
+        softCapacity: { type: integer, enum: [2] }
+        hardCapacity: { type: integer, enum: [3] }
+        influence: { type: integer, minimum: 0 }
+        establishedTurnCount: { type: ["integer", "null"] }
+        committedTurnCount: { type: ["integer", "null"] }
+        historyEvidence:
+          type: string
+          enum: [recorded, legacy_inferred]
+      required: [districtId, family, instance, residentArtifactIds, residentAffinities, foundingAffinities, permanentDyad, softCapacity, hardCapacity, influence, establishedTurnCount, committedTurnCount, historyEvidence]
+
+    CivilizationDyadInfluence:
+      type: object
+      properties:
+        vortex: { type: integer, minimum: 0 }
+        flux: { type: integer, minimum: 0 }
+        bloom: { type: integer, minimum: 0 }
+        chrysalis: { type: integer, minimum: 0 }
+        orbit: { type: integer, minimum: 0 }
+        canopy: { type: integer, minimum: 0 }
+        eclipse: { type: integer, minimum: 0 }
+        lineage: { type: integer, minimum: 0 }
+        echo: { type: integer, minimum: 0 }
+        spore: { type: integer, minimum: 0 }
+      required: [vortex, flux, bloom, chrysalis, orbit, canopy, eclipse, lineage, echo, spore]
+
+    CivilizationDistrictIdentityState:
+      type: object
+      description: Authoritative persistent district assignments and live civilization-wide dyad direction
+      properties:
+        policyId: { type: string, enum: [district-dyad-v1] }
+        districts:
+          type: object
+          additionalProperties:
+            $ref: "#/components/schemas/CivilizationDistrictInstance"
+        artifactAssignments:
+          type: object
+          additionalProperties: { type: string }
+        influenceByDyad:
+          $ref: "#/components/schemas/CivilizationDyadInfluence"
+        totalInfluence: { type: integer, minimum: 0 }
+        rawDominantDyad:
+          type: ["string", "null"]
+          enum: [vortex, flux, bloom, chrysalis, orbit, canopy, eclipse, lineage, echo, spore, null]
+        presentationDyad:
+          type: ["string", "null"]
+          enum: [vortex, flux, bloom, chrysalis, orbit, canopy, eclipse, lineage, echo, spore, null]
+        calculatedTurnCount: { type: ["integer", "null"] }
+        presentationCommittedTurnCount: { type: ["integer", "null"] }
+        historyEvidence:
+          type: string
+          enum: [recorded, legacy_inferred]
+      required: [policyId, districts, artifactAssignments, influenceByDyad, totalInfluence, rawDominantDyad, presentationDyad, calculatedTurnCount, presentationCommittedTurnCount, historyEvidence]
 
     CivilizationRankedAffinity:
       type: object
@@ -3530,6 +3979,20 @@ components:
         dominantDyad:
           type: ["string", "null"]
           enum: [vortex, flux, bloom, chrysalis, orbit, canopy, eclipse, lineage, echo, spore, null]
+        foundingDyad:
+          type: ["string", "null"]
+          enum: [vortex, flux, bloom, chrysalis, orbit, canopy, eclipse, lineage, echo, spore, null]
+        presentationDyad:
+          type: ["string", "null"]
+          enum: [vortex, flux, bloom, chrysalis, orbit, canopy, eclipse, lineage, echo, spore, null]
+        identityEpochs:
+          type: array
+          items:
+            $ref: "#/components/schemas/CivilizationIdentityEpoch"
+        normalizedHistoricalShares:
+          $ref: "#/components/schemas/CivilizationNaturalAffinityCounts"
+        normalizedOperationalShares:
+          $ref: "#/components/schemas/CivilizationNaturalAffinityCounts"
         thirdAffinity:
           type: ["string", "null"]
           enum: [flare, radiance, verdance, continuum, abyss, null]
@@ -3544,10 +4007,109 @@ components:
         - rankedAffinities
         - dominantAffinity
         - dominantDyad
+        - foundingDyad
+        - presentationDyad
+        - identityEpochs
+        - normalizedHistoricalShares
+        - normalizedOperationalShares
         - thirdAffinity
         - dominantShare
         - secondaryToPrimaryRatio
         - thirdToPrimaryRatio
+
+    CivilizationIdentityEvidence:
+      type: object
+      properties:
+        evidenceId: { type: string }
+        artifactId: { type: string }
+        masteryOrdinal: { type: integer, minimum: 1 }
+        affinity:
+          type: string
+          enum: [flare, radiance, verdance, continuum, abyss]
+        routedTurnCount: { type: ["integer", "null"] }
+        historyEvidence:
+          type: string
+          enum: [recorded, legacy_inferred]
+      required: [evidenceId, artifactId, masteryOrdinal, affinity, routedTurnCount, historyEvidence]
+
+    CivilizationIdentityRankedAffinity:
+      type: object
+      properties:
+        affinity:
+          type: string
+          enum: [flare, radiance, verdance, continuum, abyss]
+        weight: { type: integer, minimum: 0 }
+      required: [affinity, weight]
+
+    CivilizationIdentityLayerState:
+      type: object
+      properties:
+        policyId: { type: string, enum: [nested-milestone-v1] }
+        layer: { type: string, enum: [city, planet, system, galaxy] }
+        status: { type: string, enum: [plain, forming, committed] }
+        eraStartedTurnCount: { type: ["integer", "null"] }
+        affinityCounts:
+          $ref: "#/components/schemas/CivilizationNaturalAffinityCounts"
+        normalizedShares:
+          $ref: "#/components/schemas/CivilizationNaturalAffinityCounts"
+        rankedAffinities:
+          type: array
+          items:
+            $ref: "#/components/schemas/CivilizationIdentityRankedAffinity"
+        dominantAffinity:
+          type: ["string", "null"]
+          enum: [flare, radiance, verdance, continuum, abyss, null]
+        candidateDyad:
+          type: ["string", "null"]
+          enum: [vortex, flux, bloom, chrysalis, orbit, canopy, eclipse, lineage, echo, spore, null]
+        committedDyad:
+          type: ["string", "null"]
+          enum: [vortex, flux, bloom, chrysalis, orbit, canopy, eclipse, lineage, echo, spore, null]
+        committedTurnCount: { type: ["integer", "null"] }
+        evidence:
+          type: array
+          items:
+            $ref: "#/components/schemas/CivilizationIdentityEvidence"
+        historyEvidence:
+          type: string
+          enum: [recorded, legacy_inferred]
+      required: [policyId, layer, status, eraStartedTurnCount, affinityCounts, normalizedShares, rankedAffinities, dominantAffinity, candidateDyad, committedDyad, committedTurnCount, evidence, historyEvidence]
+
+    CivilizationNestedIdentityState:
+      type: object
+      properties:
+        city:
+          $ref: "#/components/schemas/CivilizationIdentityLayerState"
+        planet:
+          $ref: "#/components/schemas/CivilizationIdentityLayerState"
+        system:
+          $ref: "#/components/schemas/CivilizationIdentityLayerState"
+        galaxy:
+          $ref: "#/components/schemas/CivilizationIdentityLayerState"
+      required: [city, planet, system, galaxy]
+
+    CivilizationLegacyState:
+      type: object
+      properties:
+        completedTurnCount: { type: ["integer", "null"] }
+        historyEvidence:
+          type: string
+          enum: [recorded, legacy_inferred]
+      required: [completedTurnCount, historyEvidence]
+
+    CivilizationLegacyArtifactEligibility:
+      type: object
+      description: Current Legacy qualification excluding damaged Artifacts while preserving historical Civilization records and manifested Projects
+      properties:
+        qualifyingMaturity:
+          type: string
+          enum: [planetary, stellar, galactic]
+        galacticIdentityReady:
+          type: boolean
+        excludedDamagedArtifactIds:
+          type: array
+          items: { type: string }
+      required: [qualifyingMaturity, galacticIdentityReady, excludedDamagedArtifactIds]
 
     CivilizationPublicArtifactState:
       type: object
@@ -3679,6 +4241,14 @@ components:
       type: object
       properties:
         eventId: { type: string }
+        definitionId:
+          type: string
+          enum: [event_planetary_affinity_bloom, event_planetary_forge_drift, event_stellar_containment_cascade, event_stellar_affinity_inversion, event_stellar_system_shock, event_galactic_entropy_storm, event_galactic_terminus_tide, event_galactic_fracture_wave, event_planetary_signal_clarity, event_stellar_synchronization_shear]
+        rulesVersion: { type: string }
+        targetEvidence:
+          type: array
+          items:
+            $ref: "#/components/schemas/CivilizationEventTargetEvidence"
         sourceType:
           type: string
           enum: [artifact, blueprint, chronicle, scenario, system]
@@ -3700,19 +4270,60 @@ components:
           enum: [recorded, legacy_inferred]
       required: [eventId, sourceType, turnCount, form, pressureTags, outcome, summary, historyEvidence]
 
+    CivilizationPublicProjectState:
+      type: object
+      description: Public lifecycle of a Blueprint project after Civilization manifestation
+      properties:
+        projectId: { type: string }
+        blueprintId:
+          $ref: "#/components/schemas/BlueprintId"
+        slotIndex: { type: integer }
+        status:
+          type: string
+          const: manifested
+        deviceState:
+          $ref: "#/components/schemas/BlueprintDeviceState"
+        presentationVariant:
+          $ref: "#/components/schemas/BlueprintPresentationVariant"
+        manifestedTurnCount: { type: ["integer", "null"] }
+        stateChangedTurnCount: { type: ["integer", "null"] }
+        activeCapabilityIds:
+          type: array
+          items: { type: string }
+        historyEvidence:
+          type: string
+          enum: [recorded, legacy_inferred]
+      required:
+        - projectId
+        - blueprintId
+        - slotIndex
+        - status
+        - deviceState
+        - presentationVariant
+        - manifestedTurnCount
+        - stateChangedTurnCount
+        - activeCapabilityIds
+        - historyEvidence
+
     CivilizationPublicState:
       type: object
       description: Public, identity-safe Civilization history and current operational summary
       properties:
         version:
           type: integer
-          enum: [2]
+          enum: [5]
+        environmentIdentity:
+          $ref: "#/components/schemas/CivilizationEnvironmentIdentity"
         artifacts:
           type: array
           items:
             $ref: "#/components/schemas/CivilizationPublicArtifactState"
         affinityIdentity:
           $ref: "#/components/schemas/CivilizationAffinityIdentity"
+        districtIdentity:
+          $ref: "#/components/schemas/CivilizationDistrictIdentityState"
+        identityScales:
+          $ref: "#/components/schemas/CivilizationNestedIdentityState"
         scale:
           $ref: "#/components/schemas/CivilizationPublicScaleState"
         stability:
@@ -3721,14 +4332,27 @@ components:
           type: array
           items:
             $ref: "#/components/schemas/CivilizationPublicConditionState"
+        projects:
+          type: array
+          description: Manifested Civilization projects; private assembly is projected separately to its owner
+          items:
+            $ref: "#/components/schemas/CivilizationPublicProjectState"
         activeCapabilityIds:
           type: array
           items: { type: string }
+        manifestationAssignments:
+          type: array
+          items:
+            $ref: "#/components/schemas/CivilizationManifestationAssignment"
         events:
           type: array
           items:
             $ref: "#/components/schemas/CivilizationPublicEventHistoryEntry"
-      required: [version, artifacts, affinityIdentity, scale, stability, activeConditions, activeCapabilityIds, events]
+        legacy:
+          $ref: "#/components/schemas/CivilizationLegacyState"
+        legacyArtifactEligibility:
+          $ref: "#/components/schemas/CivilizationLegacyArtifactEligibility"
+      required: [version, environmentIdentity, artifacts, affinityIdentity, districtIdentity, identityScales, scale, stability, activeConditions, activeCapabilityIds, manifestationAssignments, events, legacy]
 
     GamePlayerState:
       type: object
@@ -3763,6 +4387,11 @@ components:
         civilization:
           $ref: "#/components/schemas/CivilizationPublicState"
           description: Public Civilization history and operational state; omitted only for legacy responses
+        pendingArtifactRepairIds:
+          type: array
+          items:
+            type: string
+          description: Damaged Artifact implementations queued for free repair at the end of this player's turn
         blueprintPrivateStates:
           type: array
           description: Owner-only assembly and secret device state; omitted from opponent projections
@@ -4002,11 +4631,28 @@ components:
     GameState:
       type: object
       properties:
+        eventDelivery:
+          $ref: "#/components/schemas/EventDelivery"
+        eventForecast:
+          $ref: "#/components/schemas/EventForecast"
+        eventFrequency:
+          $ref: "#/components/schemas/EventFrequency"
         roomId:
           type: string
         status:
           type: string
           enum: [lobby, playing, finished]
+        eventContentProfile:
+          type: string
+          enum: [general_v1, general_v2, lore_pilot_v1]
+          description: Fixed match content profile; never depends on individual account progress.
+        eventRulesVersion: { type: string }
+        eventCardPool:
+          type: array
+          description: Eligible Event catalog for scheduled delivery, or the historical exact selection for Archive delivery. Scheduled selections and order remain private.
+          items:
+            type: string
+            enum: [event_planetary_affinity_bloom, event_planetary_forge_drift, event_stellar_containment_cascade, event_stellar_affinity_inversion, event_stellar_system_shock, event_galactic_entropy_storm, event_galactic_terminus_tide, event_galactic_fracture_wave, event_planetary_signal_clarity, event_stellar_synchronization_shear]
         scenarioId:
           type: ["string", "null"]
           description: Server-authored campaign scenario identifier
@@ -4069,6 +4715,9 @@ components:
         victoryRequirement:
           type: integer
           description: Eminence required to trigger the final round
+        legacyVictoryRequirement:
+          type: integer
+          description: Distinct manifested Blueprint projects required to trigger the final round through the Legacy Path
         voidSealOwnerId:
           type: ["string", "null"]
           description: Deprecated compatibility field; Void Seal was removed and this is always null
@@ -4079,16 +4728,25 @@ components:
           $ref: "#/components/schemas/AffinityCounts"
         forgeTier1:
           type: array
+          description: Public Artifact molds; an activating Event occupies a null mold until its presentation resolves.
           items:
-            $ref: "#/components/schemas/ArtifactCard"
+            anyOf:
+              - $ref: "#/components/schemas/ArtifactCard"
+              - type: "null"
         forgeTier2:
           type: array
+          description: Public Artifact molds; an activating Event occupies a null mold until its presentation resolves.
           items:
-            $ref: "#/components/schemas/ArtifactCard"
+            anyOf:
+              - $ref: "#/components/schemas/ArtifactCard"
+              - type: "null"
         forgeTier3:
           type: array
+          description: Public Artifact molds; an activating Event occupies a null mold until its presentation resolves.
           items:
-            $ref: "#/components/schemas/ArtifactCard"
+            anyOf:
+              - $ref: "#/components/schemas/ArtifactCard"
+              - type: "null"
         deckCounts:
           type: object
           properties:
@@ -4117,6 +4775,9 @@ components:
             $ref: "#/components/schemas/GamePlayerState"
         winnerId:
           type: ["string", "null"]
+        legacyWinnerId:
+          type: ["string", "null"]
+          description: First player to complete the Legacy Path; null when no civilization completed it
         winTriggerLuminaryId:
           type: ["string", "null"]
           description: ID of the Luminary whose summon sealed the win; null if the win was sealed by a card forge
@@ -4154,6 +4815,13 @@ components:
           description: Blueprint detonation events awaiting synchronized presentation acknowledgement
           items:
             $ref: "#/components/schemas/BlueprintDetonationEvent"
+        pendingCivilizationEventCards:
+          type: array
+          description: Authoritatively resolved Civilization Events awaiting synchronized presentation acknowledgement
+          items:
+            $ref: "#/components/schemas/CivilizationEventInstance"
+        civilizationEventDeck:
+          $ref: "#/components/schemas/CivilizationEventDeckState"
         scenarioProtocols:
           type: array
           description: Anonymous public protocol devices used by identity-redacted scenarios
@@ -4173,6 +4841,7 @@ components:
               type: string
               enum:
                 - after_action
+                - after_repairs
                 - after_end_effects
                 - after_start_effects
             endingPlayerId:
@@ -4314,6 +4983,8 @@ components:
         - pendingLuminaryActivationEvents
         - pendingBlueprintManifestationEvents
         - pendingBlueprintDetonationEvents
+        - pendingCivilizationEventCards
+        - civilizationEventDeck
         - scenarioProtocols
         - pendingScenarioProtocolEvents
         - pendingTurnTransition
@@ -4338,11 +5009,13 @@ components:
             - resolve_luminary_activation
             - resolve_blueprint_manifestation
             - resolve_blueprint_detonation
+            - resolve_civilization_event
             - plan_action
             - execute_plan
             - cancel_plan
             - tutorial_fast_forward
             - set_civ_name
+            - repair_artifacts
             - choose_luminary_order
             - resolve_chronicle_choice
             - assimilate
@@ -4358,6 +5031,12 @@ components:
           description: Deprecated compatibility field; ignored by the game engine
         cardId:
           type: string
+        artifactIds:
+          type: array
+          items:
+            type: string
+          maxItems: 64
+          description: Damaged Artifact implementation IDs to queue for end-of-turn repair
         tier:
           type: integer
         blueprintAction:

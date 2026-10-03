@@ -1,6 +1,5 @@
-import entropyPyreBaffleArtwork from "@/assets/cards/runtime/t1r07.webp";
-import mantleliftDriverCoilArtwork from "@/assets/cards/runtime/t1s02.webp";
-import blackglassForgeDieArtwork from "@/assets/cards/runtime/t1o05.webp";
+import { ARTIFACT_CANON } from '@workspace/game-types';
+import { CARD_ART } from '@/lib/cardArtManifest';
 import mantleToOrbitFoundryArtwork from "@/assets/blueprints/mantle-to-orbit/mantle-to-orbit-foundry-card.webp";
 import {
   HorizontalBlueprintCard,
@@ -12,15 +11,17 @@ export type MantleToOrbitBlueprintState = "assembling" | "manifested";
 type MantleToOrbitBlueprintCardProps = {
   state?: MantleToOrbitBlueprintState;
   matchedSockets?: number;
+  matchedComponentIds?: readonly string[];
+  publicStateLabel?: string;
   knownComponentIds?: readonly string[];
 };
 
 const components = [
   {
     artifactId: "t1r07",
-    artifactName: "Entropy Pyre Baffle",
+    artifactName: ARTIFACT_CANON.t1r07.name,
     affinity: "flare",
-    artwork: entropyPyreBaffleArtwork,
+    artwork: CARD_ART.t1r07,
     tier: "Tier I",
     eminence: 0,
     cost: [
@@ -28,20 +29,19 @@ const components = [
       { affinity: "abyss", amount: 2 },
     ],
     requirement: "1 Tier I Flare Thermal-Control Component",
-    flavor:
-      "Waste heat has a destination before it has a catastrophe. Industrial installations ring themselves with baffles that route entropy into useful work before it teaches the city how to die.",
-    artifactForm: "Containment / Thermal Control",
-    blueprintRole: "Waste heat and decay routing",
-    blueprintFamilies: "Mantle-to-Orbit Foundry; Worldshield Covenant",
-    civilizationLane: "Entropy-tolerant industrial culture",
-    engineeringScale: "Planetary",
+    flavor: `${ARTIFACT_CANON.t1r07.functionalText} ${ARTIFACT_CANON.t1r07.mystery}`,
+    artifactForm: ARTIFACT_CANON.t1r07.forms.join(" / "),
+    blueprintRole: ARTIFACT_CANON.t1r07.practicalCapability,
+    blueprintFamilies: "Mantle-to-Orbit Foundry",
+    civilizationLane: ARTIFACT_CANON.t1r07.civLane,
+    engineeringScale: ARTIFACT_CANON.t1r07.engineeringScale,
     hotspot: { left: "66%", top: "81%" },
   },
   {
     artifactId: "t1s02",
-    artifactName: "Mantlelift Driver Coil",
+    artifactName: ARTIFACT_CANON.t1s02.name,
     affinity: "continuum",
-    artwork: mantleliftDriverCoilArtwork,
+    artwork: CARD_ART.t1s02,
     tier: "Tier I",
     eminence: 0,
     cost: [
@@ -49,21 +49,19 @@ const components = [
       { affinity: "verdance", amount: 1 },
     ],
     requirement: "1 Tier I Continuum Transit Component",
-    flavor:
-      "Each coil is one link in the ascent line, but its timing must agree with every link above it. Once mass moves upward cheaply, orbit becomes a place of manufacture rather than visitation.",
-    artifactForm: "Transit Component / Power Component",
-    blueprintRole: "Planetary-to-orbit mass acceleration",
-    blueprintFamilies:
-      "Mantle-to-Orbit Foundry; Arkseed Migration Fleet precursor",
-    civilizationLane: "Orbital logistics civilization",
-    engineeringScale: "Planetary",
+    flavor: `${ARTIFACT_CANON.t1s02.functionalText} ${ARTIFACT_CANON.t1s02.mystery}`,
+    artifactForm: ARTIFACT_CANON.t1s02.forms.join(" / "),
+    blueprintRole: ARTIFACT_CANON.t1s02.practicalCapability,
+    blueprintFamilies: "Mantle-to-Orbit Foundry",
+    civilizationLane: ARTIFACT_CANON.t1s02.civLane,
+    engineeringScale: ARTIFACT_CANON.t1s02.engineeringScale,
     hotspot: { left: "50%", top: "52%" },
   },
   {
     artifactId: "t1o05",
-    artifactName: "Blackglass Forge Die",
+    artifactName: ARTIFACT_CANON.t1o05.name,
     affinity: "abyss",
-    artwork: blackglassForgeDieArtwork,
+    artwork: CARD_ART.t1o05,
     tier: "Tier I",
     eminence: 0,
     cost: [
@@ -71,14 +69,12 @@ const components = [
       { affinity: "continuum", amount: 1 },
     ],
     requirement: "1 Tier I Abyss Fabrication Tool",
-    flavor:
-      "Blackglass holds its geometry in vacuum, swallowing stray radiation while imprinting feedstock with surfaces precise enough for orbital assembly.",
-    artifactForm: "Fabrication Tool / Material",
-    blueprintRole: "Vacuum-stable precision forming",
-    blueprintFamilies:
-      "Mantle-to-Orbit Foundry; Galactic Relic Forge precursor",
-    civilizationLane: "Vacuum manufacturing civilization",
-    engineeringScale: "Planetary",
+    flavor: `${ARTIFACT_CANON.t1o05.functionalText} ${ARTIFACT_CANON.t1o05.mystery}`,
+    artifactForm: ARTIFACT_CANON.t1o05.forms.join(" / "),
+    blueprintRole: ARTIFACT_CANON.t1o05.practicalCapability,
+    blueprintFamilies: "Mantle-to-Orbit Foundry",
+    civilizationLane: ARTIFACT_CANON.t1o05.civLane,
+    engineeringScale: ARTIFACT_CANON.t1o05.engineeringScale,
     hotspot: { left: "51%", top: "20%" },
   },
 ] as const satisfies readonly HorizontalBlueprintComponentRecord[];
@@ -87,7 +83,11 @@ const definition = {
   name: "Mantle-to-Orbit Foundry",
   publicEffect:
     "Gain 1 Eminence. Twice, Foundry Forge a face-up Tier II Artifact with each nonzero printed natural Affinity cost reduced by 1. Then Overdrive may repeat the discount and seal this Project's components.",
-  presentation: { scaleLabel: "Planetary", serialCode: "BP-MO-01" },
+  presentation: {
+    scaleLabel: "Planetary",
+    serialCode: "BP-MO-01",
+    manifestationScale: "planetary",
+  },
   components: [
     { artifactId: "t1r07", stage: "Thermal Baffle", function: "Routes mantle heat and decay into useful work before either can destroy the ascent chambers." },
     { artifactId: "t1s02", stage: "Mantlelift Coil", function: "Accelerates sealed feedstock capsules from the deep crust into stable orbit along a timed induction line." },
@@ -98,6 +98,8 @@ const definition = {
 export function MantleToOrbitBlueprintCard({
   state = "assembling",
   matchedSockets = 2,
+  matchedComponentIds,
+  publicStateLabel = "Ready",
   knownComponentIds,
 }: MantleToOrbitBlueprintCardProps) {
   return (
@@ -105,10 +107,11 @@ export function MantleToOrbitBlueprintCard({
       definition={definition}
       state={state}
       matchedComponents={matchedSockets}
+      matchedComponentIds={matchedComponentIds}
       artwork={mantleToOrbitFoundryArtwork}
       artworkAlt="The Mantle-to-Orbit Foundry connecting a planetary mantle furnace to an orbital fabrication ring"
       category="Ascension Industry"
-      publicStateLabel="Ready"
+      publicStateLabel={publicStateLabel}
       publicLabel="Public Foundry"
       components={components}
       knownComponentIds={knownComponentIds}

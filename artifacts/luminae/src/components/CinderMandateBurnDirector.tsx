@@ -40,6 +40,7 @@ import {
 } from '@/lib/luminaryPresentationPacing';
 import { gameAudio } from '@/lib/audio';
 import { playLuminaryEffectPhaseSound } from '@/lib/luminaryEffectSound';
+import { FORGE_REFILL_LOCK_MS, FORGE_REFILL_STAGGER_MS } from '@/lib/forgeRefillTiming';
 
 // ─── Timing constants ─────────────────────────────────────────────────────────
 
@@ -228,7 +229,12 @@ export function CinderMandateBurnDirector({
     const burnFlashMs = timelinePlaybackRate > 1
       ? paced(BURN_FLASH_TOTAL_MS)
       : BURN_FLASH_TOTAL_MS;
-    const aftermathMs = paced(260);
+    // The shared refill has its own real-time lifetime, including each slot's
+    // stagger. Keep the camera and hidden slots owned until the final cast ends.
+    const refillMs = slots.length > 0
+      ? FORGE_REFILL_LOCK_MS + (slots.length - 1) * FORGE_REFILL_STAGGER_MS
+      : 0;
+    const aftermathMs = Math.max(paced(260), refillMs);
     const totalMs =
       announceLeadMs + cameraSettleMs + shudderMs + burnFlashMs + aftermathMs;
     actionsRef.current.setAnimEndTime(totalMs);

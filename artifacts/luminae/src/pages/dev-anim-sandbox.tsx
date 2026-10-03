@@ -1,6 +1,6 @@
 import { useState, useEffect, useRef, type CSSProperties } from "react";
 import { useLocation } from "wouter";
-import { AnimatePresence, motion } from "framer-motion";
+import { AnimatePresence, motion, useReducedMotion } from "framer-motion";
 import {
   LuminaryArrivalCutscene,
   getLuminaryVisuals,
@@ -25,15 +25,14 @@ import type { BrandStrikeTarget } from "./game-luminary-effects";
 import {
   CIPHER_MODE_TOTAL_MS,
   type CipherApertureMode,
-  DEAL_ANIM_MS,
 } from "./game-constants";
 import { ArtifactCardView, EminenceDiamond } from "./game-card";
+import { ForgeMobilePreviewFrame, ForgeMobilePreviewPage, FORGE_PREVIEW_STAGGER_MS } from "./dev-forge-refill-preview";
 import { LuminaryCard } from "./game-luminary";
 import {
-  CardBackTier1,
-  CardBackTier2,
-  CardBackTier3,
-} from "@/components/ArtifactCardBack";
+  REPLACEMENT_DEAL_DURATION_MS,
+  REDUCED_REPLACEMENT_DEAL_DURATION_MS,
+} from "@/components/ForgeReplacementDealAnimation";
 import {
   AFFINITY_META,
   AFFINITY_KEYS,
@@ -48,7 +47,7 @@ import {
   type LuminaryActiveState,
   ArtifactCardBonusAffinity,
 } from "@workspace/api-client-react";
-import { DEFAULT_VICTORY_REQUIREMENT } from "@workspace/game-types";
+import { DEFAULT_VICTORY_REQUIREMENT, LUMINARY_NATIVE_EMINENCE } from "@workspace/game-types";
 import { gameAudio } from "@/lib/audio";
 import { resolveLuminaryProcedure } from "@/lib/luminaryAnimationProcedures";
 import { LUMINARY_ANIMATION_CONFIG } from "@/lib/luminaryAnimationConfig";
@@ -70,7 +69,7 @@ const SANDBOX_LUMINARIES: SandboxLuminary[] = [
     id: "lum_ember",
     name: "The Ember Sovereign",
     domain: "Flame",
-    eminence: 4,
+    eminence: LUMINARY_NATIVE_EMINENCE.lum_ember,
     flavor:
       "What cannot survive the fire is granted the mercy of disappearance.",
   },
@@ -78,42 +77,42 @@ const SANDBOX_LUMINARIES: SandboxLuminary[] = [
     id: "lum_tide",
     name: "The Tide Architect",
     domain: "Tides",
-    eminence: 2,
+    eminence: LUMINARY_NATIVE_EMINENCE.lum_tide,
     flavor: "Possibility collapses to its bias.",
   },
   {
     id: "lum_verdant",
     name: "The Verdant Oracle",
     domain: "Verdance",
-    eminence: 1,
+    eminence: LUMINARY_NATIVE_EMINENCE.lum_verdant,
     flavor: "It answers only after the question has taken root.",
   },
   {
     id: "lum_void",
     name: "The Void Warden",
     domain: "Void",
-    eminence: 2,
+    eminence: LUMINARY_NATIVE_EMINENCE.lum_void,
     flavor: "In the space between stars, something watches without eyes.",
   },
   {
     id: "lum_radiant",
     name: "Concordance Mandala",
     domain: "Coherence",
-    eminence: 4,
+    eminence: LUMINARY_NATIVE_EMINENCE.lum_radiant,
     flavor: "Truth is not revealed. It is aligned.",
   },
   {
     id: "lum_astral",
     name: "Phoenix Paradox",
     domain: "Recurrence",
-    eminence: 4,
+    eminence: LUMINARY_NATIVE_EMINENCE.lum_astral,
     flavor: "Every ending becomes fuel. Every return comes back less innocent.",
   },
   {
     id: "lum_bloom",
     name: "Catalyst Bloom",
     domain: "Aftergrowth",
-    eminence: 4,
+    eminence: LUMINARY_NATIVE_EMINENCE.lum_bloom,
     flavor:
       "It waits for the nova to wound the world, then flowers in the scar.",
   },
@@ -121,14 +120,14 @@ const SANDBOX_LUMINARIES: SandboxLuminary[] = [
     id: "lum_forge",
     name: "The Iron Harbinger",
     domain: "Ruin",
-    eminence: 3,
+    eminence: LUMINARY_NATIVE_EMINENCE.lum_forge,
     flavor: "The hammer falls only after the future has already broken.",
   },
   {
     id: "lum_compass",
     name: "???",
     domain: "Erasure",
-    eminence: 1,
+    eminence: LUMINARY_NATIVE_EMINENCE.lum_compass,
     flavor:
       "Everyone remembers something happened, but no one recalls what was lost.",
   },
@@ -136,14 +135,14 @@ const SANDBOX_LUMINARIES: SandboxLuminary[] = [
     id: "lum_pale",
     name: "The Pale Merchant",
     domain: "Balance",
-    eminence: 3,
+    eminence: LUMINARY_NATIVE_EMINENCE.lum_pale,
     flavor: "Every bargain reveals one truth and buries another.",
   },
   {
     id: "lum_oracle",
     name: "The Cosmic Oracle",
     domain: "Prophecy",
-    eminence: 4,
+    eminence: LUMINARY_NATIVE_EMINENCE.lum_oracle,
     flavor:
       "She sees what will be, and what might have been, and cannot tell the difference.",
   },
@@ -151,7 +150,7 @@ const SANDBOX_LUMINARIES: SandboxLuminary[] = [
     id: "lum_null",
     name: "The Null Sovereign",
     domain: "Transcendence",
-    eminence: 0,
+    eminence: LUMINARY_NATIVE_EMINENCE.lum_null,
     flavor:
       "Past the last observable star, entire futures fall silent without being destroyed.",
   },
@@ -159,21 +158,21 @@ const SANDBOX_LUMINARIES: SandboxLuminary[] = [
     id: "lum_hunger",
     name: "The Final Hunger",
     domain: "Assimilation",
-    eminence: 2,
+    eminence: LUMINARY_NATIVE_EMINENCE.lum_hunger,
     flavor: "Its first act is consumption. Its second is perfect repetition.",
   },
   {
     id: "lum_moth",
     name: "Red Moth",
     domain: "Rupture",
-    eminence: 2,
+    eminence: LUMINARY_NATIVE_EMINENCE.lum_moth,
     flavor: "Where it passes, the universe is divided into before and after.",
   },
   {
     id: "lum_seed",
     name: "The Seed Beyond Seasons",
     domain: "Propagation",
-    eminence: 3,
+    eminence: LUMINARY_NATIVE_EMINENCE.lum_seed,
     flavor:
       "It leaves its avatars where tomorrow has already begun to remember.",
   },
@@ -181,7 +180,7 @@ const SANDBOX_LUMINARIES: SandboxLuminary[] = [
     id: "lum_orchard",
     name: "The Glass Orchard",
     domain: "Replication",
-    eminence: 3,
+    eminence: LUMINARY_NATIVE_EMINENCE.lum_orchard,
     flavor:
       "It learned to copy itself perfectly, and called the absence of error peace.",
   },
@@ -320,7 +319,7 @@ const CARD_FX_MODES: { id: CardFxMode; label: string }[] = [
   { id: "forge_burst", label: "Forge Burst" },
   { id: "opponent_forge", label: "Opponent Forge" },
   { id: "reserved_forge_ring", label: "Encrypted Forge Ring" },
-  { id: "forge_refill_flip", label: "Forge Refill Flip" },
+  { id: "forge_refill_flip", label: "Forge Cosmic Refill" },
   { id: "burn_pile_particle", label: "Burn → Pile" },
 ];
 
@@ -1303,141 +1302,162 @@ function ReservedForgeRingPreview() {
   );
 }
 
-// ─── Forge Deal Flip Preview ──────────────────────────────────────────────────
+// ─── Forge Cosmic Refill Preview ──────────────────────────────────────────────
 
-// Flip animation durations (ms) — extracted so TimingBar and setTimeout share the same source.
-const FLIP_SETTLE_MS = 60;    // brief settle before the rotateY starts
-const FLIP_DUR_MS    = 1500;  // rotateY duration (1.5 s)
-// DEAL_ANIM_MS (imported from game-constants) is the full game-side lock (1700 ms),
-// which includes FLIP_SETTLE_MS + FLIP_DUR_MS plus a trailing settle buffer.
-
-function ForgeRefillFlipPreview() {
-  const [tier, setTier]       = useState<1 | 2 | 3>(1);
-  const [flipKey, setFlipKey] = useState(0);
-  const [phase, setPhase] = useState<"back" | "flipping" | "face">("back");
-  const [playing, setPlaying] = useState(false);
-  const timerRef = useRef<ReturnType<typeof setTimeout> | null>(null);
+function ForgeRefillPreview() {
+  const [tier, setTier] = useState<1 | 2 | 3>(1);
+  const [affinity, setAffinity] = useState<AffinityKey>("flare");
+  const [frame, setFrame] = useState<"full" | "compact">("full");
+  const [playbackRate, setPlaybackRate] = useState(1);
+  const [animKey, setAnimKey] = useState(0);
+  const [phase, setPhase] = useState<"empty" | "filling" | "solid">("empty");
+  const [refillMode, setRefillMode] = useState<"single" | "all">("single");
+  const [soundEnabled, setSoundEnabled] = useState(true);
+  const reduceMotion = Boolean(useReducedMotion());
+  const durationMs = Math.round((reduceMotion
+    ? REDUCED_REPLACEMENT_DEAL_DURATION_MS
+    : REPLACEMENT_DEAL_DURATION_MS) / playbackRate);
+  const fillMs = Math.round(durationMs * 0.43);
+  const playing = phase === "filling";
 
   function play() {
-    if (timerRef.current) clearTimeout(timerRef.current);
-    setPhase("back");
-    setPlaying(true);
-    setFlipKey((k) => k + 1);
-    timerRef.current = setTimeout(() => {
-      setPhase("flipping");
-      // Pair the Card draw.mp3 flip SFX with the in-place rotateY flip.
-      gameAudio.playCardFlip();
-      timerRef.current = setTimeout(() => {
-        setPhase("face");
-        setPlaying(false);
-      }, FLIP_DUR_MS);
-    }, FLIP_SETTLE_MS);
+    if (soundEnabled) gameAudio.prepareForgeRefillAudio();
+    setAnimKey((key) => key + 1);
+    setPhase("filling");
   }
-  useEffect(
-    () => () => {
-      if (timerRef.current) clearTimeout(timerRef.current);
-    },
-    [],
-  );
 
-  const card = makeMockCard(tier, "flare");
-  const CARD_W = 112;
-  const CARD_H = 160;
+  const meta = AFFINITY_META[affinity];
 
   return (
     <CardFxPreviewShell
-      note="rotateY flip from Artifact reverse to Artifact face — the same animation used when The Forge refills after a forge."
+      note="An actual mobile Forge at 390 × 844, with the game’s full and compact slots, card artwork, and costs. Single slot fills the leftmost slot in the selected tier. All 12 slots tests a staggered refill across the whole Forge; full shelves can be swiped horizontally."
       controls={
         <>
+          <ControlRow label="Affinity">
+            <AffinityPicker
+              value={affinity}
+              onChange={(nextAffinity) => {
+                setAffinity(nextAffinity);
+                setPhase("empty");
+              }}
+            />
+          </ControlRow>
           <ControlRow label="Tier">
-            <TierPicker value={tier} onChange={setTier} />
+            <TierPicker
+              value={tier}
+              onChange={(nextTier) => {
+                setTier(nextTier);
+                setPhase("empty");
+              }}
+            />
+          </ControlRow>
+          <ControlRow label="Mobile view">
+            {(["full", "compact"] as const).map((value) => (
+              <button
+                key={value}
+                type="button"
+                aria-pressed={frame === value}
+                onClick={() => {
+                  setFrame(value);
+                  setPhase("empty");
+                }}
+                className="text-[10px] font-mono px-2.5 py-0.5 rounded border transition-colors"
+                style={{
+                  borderColor: frame === value ? meta.hex : "rgba(255,255,255,0.15)",
+                  color: frame === value ? meta.hex : "#64748b",
+                }}
+              >
+                {value === "full" ? "Full" : "Compact"}
+              </button>
+            ))}
+          </ControlRow>
+          <ControlRow label="Playback">
+            {[{ label: "1×", rate: 1 }, { label: "Slow", rate: 0.35 }].map(({ label, rate }) => (
+              <button
+                key={rate}
+                type="button"
+                aria-pressed={playbackRate === rate}
+                onClick={() => {
+                  setPlaybackRate(rate);
+                  setPhase("empty");
+                }}
+                className="text-[10px] font-mono px-2.5 py-0.5 rounded border transition-colors"
+                style={{
+                  borderColor: playbackRate === rate ? meta.hex : "rgba(255,255,255,0.15)",
+                  color: playbackRate === rate ? meta.hex : "#64748b",
+                }}
+              >
+                {label}
+              </button>
+            ))}
+          </ControlRow>
+          <ControlRow label="Refill">
+            {([{ label: "Single slot", value: "single" }, { label: "All 12 slots", value: "all" }] as const).map(({ label, value }) => (
+              <button
+                key={value}
+                type="button"
+                aria-pressed={refillMode === value}
+                onClick={() => {
+                  setRefillMode(value);
+                  setPhase("empty");
+                }}
+                className="text-[10px] font-mono px-2.5 py-0.5 rounded border transition-colors"
+                style={{
+                  borderColor: refillMode === value ? meta.hex : "rgba(255,255,255,0.15)",
+                  color: refillMode === value ? meta.hex : "#64748b",
+                }}
+              >
+                {label}
+              </button>
+            ))}
+          </ControlRow>
+          <ControlRow label="Sound">
+            {[true, false].map(enabled => (
+              <button
+                key={String(enabled)}
+                type="button"
+                aria-pressed={soundEnabled === enabled}
+                onClick={() => {
+                  setSoundEnabled(enabled);
+                  setPhase("empty");
+                }}
+                className="text-[10px] font-mono px-2.5 py-0.5 rounded border transition-colors"
+                style={{
+                  borderColor: soundEnabled === enabled ? meta.hex : "rgba(255,255,255,0.15)",
+                  color: soundEnabled === enabled ? meta.hex : "#64748b",
+                }}
+              >
+                {enabled ? "On" : "Off"}
+              </button>
+            ))}
           </ControlRow>
           <div className="flex justify-center pt-1">
-            <ReplayButton onClick={play} accentHex="#a78bfa" />
+            <ReplayButton onClick={play} accentHex={meta.hex} />
           </div>
           <TimingBar
-            totalMs={DEAL_ANIM_MS}
-            phases={[
-              { label: "settle", ms: FLIP_SETTLE_MS },
-              { label: "flip", ms: FLIP_DUR_MS },
-              {
-                label: "trail buffer",
-                ms: DEAL_ANIM_MS - FLIP_SETTLE_MS - FLIP_DUR_MS,
-              },
-            ]}
+            totalMs={durationMs + (refillMode === "all" ? Math.round(11 * FORGE_PREVIEW_STAGGER_MS / playbackRate) : 0)}
+            phases={reduceMotion
+              ? [{ label: "resolve", ms: durationMs }, ...(refillMode === "all" ? [{ label: "stagger", ms: Math.round(11 * FORGE_PREVIEW_STAGGER_MS / playbackRate) }] : [])]
+              : [
+                  { label: "fill", ms: fillMs },
+                  { label: "condense & reveal", ms: durationMs - fillMs },
+                  ...(refillMode === "all" ? [{ label: "stagger", ms: Math.round(11 * FORGE_PREVIEW_STAGGER_MS / playbackRate) }] : []),
+                ]}
             playing={playing}
-            playKey={flipKey}
+            playKey={animKey}
           />
         </>
       }
       previewArea={
-        <div className="flex flex-col items-center gap-3 py-6 px-4">
-          <p className="text-[10px] font-mono text-muted-foreground/40 uppercase tracking-widest">
-            {phase === "back"
-              ? "Artifact reverse"
-              : phase === "flipping"
-                ? "flipping…"
-                : "Artifact face revealed"}
-          </p>
-          <div
-            style={{
-              width: CARD_W,
-              height: CARD_H,
-              perspective: "800px",
-            }}
-          >
-            <motion.div
-              key={flipKey}
-              style={{
-                width: "100%",
-                height: "100%",
-                position: "relative",
-                transformStyle: "preserve-3d",
-              }}
-              initial={{ rotateY: 0 }}
-              animate={{
-                rotateY:
-                  phase === "back" ? 0 : phase === "flipping" ? 180 : 180,
-              }}
-              transition={{
-                duration: phase === "flipping" ? 1.5 : 0,
-                ease: "easeInOut",
-              }}
-            >
-              {/* Card back face */}
-              <div
-                style={{
-                  position: "absolute",
-                  inset: 0,
-                  backfaceVisibility: "hidden",
-                  WebkitBackfaceVisibility: "hidden",
-                  overflow: "hidden",
-                  borderRadius: 10,
-                }}
-              >
-                <div className="w-full h-full relative rounded-xl bg-[#030509] border border-[#c4a85a]/30">
-                  {tier === 1 && <CardBackTier1 />}
-                  {tier === 2 && <CardBackTier2 />}
-                  {tier === 3 && <CardBackTier3 />}
-                </div>
-              </div>
-              {/* Card face */}
-              <div
-                style={{
-                  position: "absolute",
-                  inset: 0,
-                  backfaceVisibility: "hidden",
-                  WebkitBackfaceVisibility: "hidden",
-                  transform: "rotateY(180deg)",
-                  overflow: "hidden",
-                  borderRadius: 10,
-                }}
-              >
-                <ArtifactCardView card={card} tier={tier} />
-              </div>
-            </motion.div>
-          </div>
-        </div>
+        <ForgeMobilePreviewFrame
+          config={{ tier, affinity, frame, playbackRate, animKey, phase, refillMode, soundEnabled }}
+          onReplay={play}
+          onComplete={() => setPhase("solid")}
+          onFrameChange={(nextFrame) => {
+            setFrame(nextFrame);
+            setPhase("empty");
+          }}
+        />
       }
     />
   );
@@ -2003,7 +2023,7 @@ const CARD_FX_TOTALS: Record<CardFxMode, number> = {
   forge_burst:         FORGE_PHASE_MS.total,
   opponent_forge:      FORGE_PHASE_MS.total,
   reserved_forge_ring: RING_DISMISS_MS,
-  forge_refill_flip: DEAL_ANIM_MS,
+  forge_refill_flip: REPLACEMENT_DEAL_DURATION_MS,
   burn_pile_particle:  BURN_PILE_PARTICLE_MS,
 };
 
@@ -2498,9 +2518,9 @@ function MockForgeBoard({
   slotRefs: React.MutableRefObject<Map<string, HTMLElement>>;
 }) {
   const tiers: Array<{ label: string; cards: ArtifactCard[] }> = [
-    { label: "Tier III", cards: state.forgeTier3 ?? [] },
-    { label: "Tier II", cards: state.forgeTier2 ?? [] },
-    { label: "Tier I", cards: state.forgeTier1 ?? [] },
+    { label: "Tier III", cards: (state.forgeTier3 ?? []).filter((card): card is ArtifactCard => card !== null) },
+    { label: "Tier II", cards: (state.forgeTier2 ?? []).filter((card): card is ArtifactCard => card !== null) },
+    { label: "Tier I", cards: (state.forgeTier1 ?? []).filter((card): card is ArtifactCard => card !== null) },
   ].filter((t) => t.cards.length > 0);
 
   if (tiers.length === 0) return null;
@@ -3082,7 +3102,7 @@ function ProcedureReviewSection() {
           selectedId === "lum_astral" && effectType === "start_of_turn"
             ? (mockEntry.state.burnPile ?? [])
             : selectedId === "lum_moth" && effectType === "summon"
-              ? (mockEntry.state.forgeTier3 ?? []).map((card) => card.id)
+              ? (mockEntry.state.forgeTier3 ?? []).flatMap((card) => card ? [card.id] : [])
             : undefined,
       },
     );
@@ -3677,10 +3697,19 @@ function LuminaryGridCard({
 type SandboxGroup = "luminary" | "cardFx" | "keywordFx" | "sfx" | "procedure";
 
 export default function DevAnimSandbox() {
+  if (new URLSearchParams(window.location.search).get("forgeMobilePreview") === "1") {
+    return <ForgeMobilePreviewPage />;
+  }
+  return <DevAnimSandboxContent />;
+}
+
+function DevAnimSandboxContent() {
   const [, setLocation] = useLocation();
 
   // ── Group selection ────────────────────────────────────────────────────────
-  const [group, setGroup] = useState<SandboxGroup>("luminary");
+  const [group, setGroup] = useState<SandboxGroup>(() =>
+    new URLSearchParams(window.location.search).has("forgeRefill") ? "cardFx" : "luminary",
+  );
 
   // ── Luminary group state ───────────────────────────────────────────────────
   const [active, setActive] = useState<SandboxLuminary | null>(null);
@@ -3694,7 +3723,9 @@ export default function DevAnimSandbox() {
   const [idleKey, setIdleKey] = useState(0);
 
   // ── Card FX group state ────────────────────────────────────────────────────
-  const [cardFxMode, setCardFxMode] = useState<CardFxMode>("cipher_reserve");
+  const [cardFxMode, setCardFxMode] = useState<CardFxMode>(() =>
+    new URLSearchParams(window.location.search).has("forgeRefill") ? "forge_refill_flip" : "cipher_reserve",
+  );
 
   // ── Keyword FX group state ─────────────────────────────────────────────────
   const [keywordFxMode, setKeywordFxMode] =
@@ -3758,7 +3789,7 @@ export default function DevAnimSandbox() {
     reserved_forge_ring:
       'Press Play to preview the expanding-ring "Forged!" overlay shown when an encrypted Artifact is forged.',
     forge_refill_flip:
-      "Press Play to preview the Artifact-reverse → Artifact-face flip when The Forge refills after a forge.",
+      "Press Play to preview a Forge mold filling with luminous cosmic matter and condensing into an Artifact tablet.",
     burn_pile_particle:
       "Press Play to preview the BurnPileParticle — a charred fragment that arcs from the burned slot to the burn-pile chip.",
   };
@@ -4561,7 +4592,7 @@ export default function DevAnimSandbox() {
               {cardFxMode === "reserved_forge_ring" && (
                 <ReservedForgeRingPreview />
               )}
-              {cardFxMode === "forge_refill_flip" && <ForgeRefillFlipPreview />}
+              {cardFxMode === "forge_refill_flip" && <ForgeRefillPreview />}
               {cardFxMode === "burn_pile_particle" && (
                 <BurnPileParticlePreview />
               )}

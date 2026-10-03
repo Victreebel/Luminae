@@ -1,0 +1,1204 @@
+<!doctype html>
+<html lang="en">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <title>Luminae Civilization Vision</title>
+  <style>
+    :root {
+      color-scheme: dark;
+      --ink: #05080d;
+      --panel: #091117;
+      --panel-2: #0d171d;
+      --line: rgba(184, 207, 199, 0.2);
+      --line-bright: rgba(212, 186, 122, 0.48);
+      --text: #f2efe7;
+      --muted: #a2adb1;
+      --dim: #6f7b80;
+      --gold: #ddc17d;
+      --mint: #77d7a1;
+      --cyan: #7fd5e8;
+      --flare: #ff5a3c;
+      --radiance: #dfc878;
+      --verdance: #2ecc71;
+      --continuum: #3d6bff;
+      --abyss: #a83acb;
+      --singularity: #e8e4ff;
+      --header-h: 56px;
+      --well-h: 68px;
+      --nav-h: 64px;
+      font-family: Inter, ui-sans-serif, system-ui, -apple-system, BlinkMacSystemFont, "Segoe UI", sans-serif;
+      letter-spacing: 0;
+    }
+
+    * {
+      box-sizing: border-box;
+      letter-spacing: 0;
+    }
+
+    html,
+    body {
+      width: 100%;
+      min-height: 100%;
+      margin: 0;
+      background: #020509;
+      color: var(--text);
+    }
+
+    body {
+      overflow: hidden;
+    }
+
+    button {
+      font: inherit;
+    }
+
+    button:focus-visible {
+      outline: 2px solid var(--cyan);
+      outline-offset: 2px;
+    }
+
+    .app {
+      position: relative;
+      display: grid;
+      grid-template-rows: var(--header-h) minmax(0, 1fr) var(--well-h) var(--nav-h);
+      width: 100%;
+      height: 100dvh;
+      min-height: 620px;
+      overflow: hidden;
+      background:
+        radial-gradient(circle at 50% -20%, rgba(77, 148, 144, 0.17), transparent 38%),
+        linear-gradient(180deg, #061016 0%, #020509 46%, #06070d 100%);
+    }
+
+    .app::before {
+      content: "";
+      position: absolute;
+      inset: 0;
+      pointer-events: none;
+      opacity: 0.22;
+      background-image:
+        linear-gradient(rgba(255,255,255,0.025) 1px, transparent 1px),
+        linear-gradient(90deg, rgba(255,255,255,0.018) 1px, transparent 1px);
+      background-size: 40px 40px;
+      mask-image: linear-gradient(to bottom, transparent, black 18%, black 82%, transparent);
+    }
+
+    .game-header {
+      position: relative;
+      z-index: 10;
+      display: flex;
+      align-items: center;
+      gap: 8px;
+      min-width: 0;
+      padding: 7px 10px;
+      border-bottom: 1px solid rgba(164, 194, 187, 0.22);
+      background: rgba(4, 9, 13, 0.97);
+      box-shadow: 0 8px 20px rgba(0, 0, 0, 0.35);
+    }
+
+    .brand {
+      display: none;
+      color: var(--gold);
+      font-family: Georgia, "Times New Roman", serif;
+      font-size: 18px;
+      font-weight: 700;
+      white-space: nowrap;
+    }
+
+    .opponents {
+      display: grid;
+      grid-template-columns: repeat(3, minmax(0, 1fr));
+      flex: 1;
+      min-width: 0;
+      gap: 5px;
+    }
+
+    .opponent-pill {
+      display: flex;
+      align-items: center;
+      min-width: 0;
+      height: 38px;
+      padding: 0 8px 0 5px;
+      border: 1px solid rgba(255, 255, 255, 0.06);
+      border-radius: 8px;
+      background: #101723;
+      color: var(--muted);
+    }
+
+    .opponent-pill img {
+      width: 26px;
+      height: 26px;
+      flex: 0 0 26px;
+      object-fit: contain;
+      filter: drop-shadow(0 0 6px currentColor);
+    }
+
+    .opponent-pill strong {
+      min-width: 0;
+      margin-left: 4px;
+      overflow: hidden;
+      text-overflow: ellipsis;
+      color: #bec8cb;
+      font-size: 12px;
+      white-space: nowrap;
+    }
+
+    .opponent-pill b {
+      margin-left: auto;
+      color: var(--gold);
+      font-family: Georgia, "Times New Roman", serif;
+      font-size: 13px;
+    }
+
+    .menu-button {
+      width: 38px;
+      height: 38px;
+      flex: 0 0 38px;
+      border: 1px solid rgba(158, 183, 180, 0.3);
+      border-radius: 6px;
+      background: rgba(12, 21, 27, 0.92);
+      color: #9db0b5;
+      font-size: 24px;
+      line-height: 1;
+    }
+
+    .civilization-main {
+      position: relative;
+      z-index: 2;
+      min-height: 0;
+      overflow-x: hidden;
+      overflow-y: auto;
+      overscroll-behavior-y: contain;
+      scrollbar-width: none;
+    }
+
+    .civilization-main::-webkit-scrollbar {
+      display: none;
+    }
+
+    .identity {
+      display: flex;
+      align-items: center;
+      gap: 12px;
+      min-height: 94px;
+      padding: 13px 14px 11px;
+      border-bottom: 1px solid var(--line);
+      background:
+        radial-gradient(circle at 72% 0%, rgba(77, 193, 139, 0.13), transparent 42%),
+        rgba(5, 10, 15, 0.82);
+    }
+
+    .identity-copy {
+      min-width: 0;
+      flex: 1;
+    }
+
+    .eyebrow {
+      margin: 0 0 4px;
+      color: var(--mint);
+      font-size: 10px;
+      font-weight: 700;
+      text-transform: uppercase;
+    }
+
+    .identity h1 {
+      margin: 0;
+      overflow: hidden;
+      color: #f1ebd9;
+      font-family: Georgia, "Times New Roman", serif;
+      font-size: 24px;
+      font-weight: 700;
+      line-height: 1.08;
+      text-overflow: ellipsis;
+      white-space: nowrap;
+    }
+
+    .identity-meta {
+      display: flex;
+      align-items: center;
+      flex-wrap: wrap;
+      gap: 5px 8px;
+      margin-top: 7px;
+      color: var(--muted);
+      font-size: 11px;
+    }
+
+    .identity-meta span {
+      display: inline-flex;
+      align-items: center;
+      gap: 5px;
+    }
+
+    .identity-meta i {
+      width: 5px;
+      height: 5px;
+      border-radius: 50%;
+      background: var(--mint);
+      box-shadow: 0 0 7px var(--mint);
+    }
+
+    .eminence {
+      position: relative;
+      display: grid;
+      place-items: center;
+      width: 62px;
+      height: 70px;
+      flex: 0 0 62px;
+      color: var(--gold);
+    }
+
+    .eminence::before,
+    .eminence::after {
+      content: "";
+      position: absolute;
+      inset: 7px 12px;
+      border: 1px solid rgba(221, 193, 125, 0.62);
+      clip-path: polygon(50% 0, 100% 22%, 87% 82%, 50% 100%, 13% 82%, 0 22%);
+    }
+
+    .eminence::after {
+      inset: 12px 17px;
+      border-color: rgba(221, 193, 125, 0.28);
+    }
+
+    .eminence strong {
+      position: relative;
+      z-index: 1;
+      font-family: Georgia, "Times New Roman", serif;
+      font-size: 24px;
+      line-height: 1;
+    }
+
+    .eminence small {
+      position: absolute;
+      z-index: 1;
+      bottom: 4px;
+      color: #9f8b5e;
+      font-size: 10px;
+      font-weight: 700;
+    }
+
+    .scene {
+      position: relative;
+      aspect-ratio: 16 / 9;
+      min-height: 218px;
+      max-height: 310px;
+      overflow: hidden;
+      border-bottom: 1px solid var(--line-bright);
+      background: #020407;
+    }
+
+    .scene-art {
+      position: absolute;
+      inset: 0;
+      width: 100%;
+      height: 100%;
+      object-fit: cover;
+      object-position: center;
+      transition: opacity 180ms ease;
+    }
+
+    .scene::after {
+      content: "";
+      position: absolute;
+      inset: 0;
+      pointer-events: none;
+      background: linear-gradient(180deg, rgba(0, 0, 0, 0.42), transparent 30%, transparent 66%, rgba(2, 5, 9, 0.88));
+    }
+
+    .scale-tabs {
+      position: absolute;
+      z-index: 3;
+      top: 10px;
+      left: 10px;
+      display: inline-grid;
+      grid-template-columns: repeat(3, 1fr);
+      gap: 2px;
+      padding: 3px;
+      border: 1px solid rgba(188, 213, 204, 0.24);
+      border-radius: 7px;
+      background: rgba(2, 7, 11, 0.78);
+      backdrop-filter: blur(8px);
+    }
+
+    .scale-tabs button {
+      min-width: 58px;
+      height: 28px;
+      border: 0;
+      border-radius: 5px;
+      background: transparent;
+      color: #89999d;
+      font-size: 10px;
+      font-weight: 700;
+    }
+
+    .scale-tabs button[aria-pressed="true"] {
+      background: rgba(116, 211, 157, 0.16);
+      color: #d9f8e5;
+      box-shadow: inset 0 0 0 1px rgba(119, 215, 161, 0.46);
+    }
+
+    .trace-hotspot {
+      position: absolute;
+      z-index: 4;
+      display: grid;
+      place-items: center;
+      width: 30px;
+      height: 30px;
+      padding: 0;
+      border: 1px solid rgba(127, 213, 232, 0.78);
+      border-radius: 50%;
+      background: rgba(4, 18, 25, 0.78);
+      color: #dffaff;
+      box-shadow: 0 0 0 5px rgba(77, 179, 199, 0.1), 0 0 18px rgba(127, 213, 232, 0.5);
+    }
+
+    .trace-hotspot::before,
+    .trace-hotspot::after {
+      content: "";
+      position: absolute;
+      background: currentColor;
+    }
+
+    .trace-hotspot::before {
+      width: 10px;
+      height: 1px;
+    }
+
+    .trace-hotspot::after {
+      width: 1px;
+      height: 10px;
+    }
+
+    .hotspot-a { left: 20%; top: 53%; }
+    .hotspot-b { right: 17%; top: 30%; color: #d7ca88; border-color: rgba(223, 200, 120, 0.8); box-shadow: 0 0 0 5px rgba(223, 200, 120, 0.09), 0 0 18px rgba(223, 200, 120, 0.38); }
+    .hotspot-c { right: 35%; bottom: 24%; color: #8be0ac; border-color: rgba(46, 204, 113, 0.8); box-shadow: 0 0 0 5px rgba(46, 204, 113, 0.09), 0 0 18px rgba(46, 204, 113, 0.38); }
+
+    .scene-status {
+      position: absolute;
+      z-index: 3;
+      right: 11px;
+      bottom: 11px;
+      left: 11px;
+      display: flex;
+      align-items: flex-end;
+      justify-content: space-between;
+      gap: 12px;
+    }
+
+    .scene-status strong {
+      display: block;
+      color: #f0eadb;
+      font-family: Georgia, "Times New Roman", serif;
+      font-size: 16px;
+      line-height: 1.1;
+    }
+
+    .scene-status span {
+      display: block;
+      margin-top: 3px;
+      color: #a9b9bc;
+      font-size: 10px;
+    }
+
+    .maturity {
+      width: 116px;
+      flex: 0 0 116px;
+    }
+
+    .maturity-label {
+      display: flex;
+      justify-content: space-between;
+      margin-bottom: 5px;
+      color: #d8c488;
+      font-size: 9px;
+      font-weight: 700;
+    }
+
+    .maturity-track {
+      height: 4px;
+      overflow: hidden;
+      border: 1px solid rgba(221, 193, 125, 0.3);
+      background: rgba(0, 0, 0, 0.6);
+    }
+
+    .maturity-fill {
+      width: 68%;
+      height: 100%;
+      background: linear-gradient(90deg, #6fbd8c, #d9c27b);
+      box-shadow: 0 0 12px rgba(119, 215, 161, 0.6);
+    }
+
+    .foundation {
+      padding: 12px 12px 10px;
+      border-bottom: 1px solid rgba(255, 255, 255, 0.08);
+      background: rgba(6, 11, 15, 0.82);
+    }
+
+    .section-heading {
+      display: flex;
+      align-items: baseline;
+      justify-content: space-between;
+      gap: 12px;
+      margin-bottom: 8px;
+    }
+
+    .section-heading h2 {
+      margin: 0;
+      color: #e9e5da;
+      font-family: Georgia, "Times New Roman", serif;
+      font-size: 14px;
+      font-weight: 700;
+    }
+
+    .section-heading span {
+      color: var(--dim);
+      font-size: 9px;
+      font-weight: 700;
+      text-transform: uppercase;
+    }
+
+    .affinity-foundation {
+      display: grid;
+      grid-template-columns: repeat(6, minmax(0, 1fr));
+      gap: 4px;
+    }
+
+    .affinity-stat {
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      gap: 2px;
+      min-width: 0;
+      height: 36px;
+      border-bottom: 2px solid var(--tone);
+      background: rgba(255, 255, 255, 0.025);
+    }
+
+    .affinity-stat img {
+      width: 22px;
+      height: 22px;
+      object-fit: contain;
+      filter: drop-shadow(0 0 7px var(--tone));
+    }
+
+    .affinity-stat strong {
+      color: #f5f3ed;
+      font-size: 12px;
+      line-height: 1;
+    }
+
+    .content-tabs {
+      display: grid;
+      grid-template-columns: repeat(4, 1fr);
+      height: 43px;
+      border-bottom: 1px solid rgba(255, 255, 255, 0.1);
+      background: #070c11;
+    }
+
+    .content-tabs button {
+      position: relative;
+      min-width: 0;
+      border: 0;
+      background: transparent;
+      color: #758388;
+      font-size: 10px;
+      font-weight: 700;
+    }
+
+    .content-tabs button[aria-selected="true"] {
+      color: #e9e3d3;
+    }
+
+    .content-tabs button[aria-selected="true"]::after {
+      content: "";
+      position: absolute;
+      right: 15%;
+      bottom: 0;
+      left: 15%;
+      height: 2px;
+      background: var(--gold);
+      box-shadow: 0 0 9px rgba(221, 193, 125, 0.55);
+    }
+
+    .tab-panel {
+      min-height: 210px;
+      padding: 12px;
+      background: rgba(3, 7, 11, 0.84);
+    }
+
+    .tab-panel[hidden] {
+      display: none;
+    }
+
+    .system-list,
+    .artifact-grid {
+      display: grid;
+      gap: 8px;
+    }
+
+    .system-card {
+      display: grid;
+      grid-template-columns: 62px minmax(0, 1fr) auto;
+      align-items: stretch;
+      min-height: 70px;
+      overflow: hidden;
+      border: 1px solid rgba(255, 255, 255, 0.1);
+      border-radius: 7px;
+      background: rgba(11, 18, 23, 0.88);
+    }
+
+    .system-card img {
+      width: 62px;
+      height: 100%;
+      min-height: 70px;
+      object-fit: cover;
+    }
+
+    .system-copy {
+      min-width: 0;
+      padding: 9px 9px 8px;
+    }
+
+    .system-copy small {
+      display: block;
+      margin-bottom: 2px;
+      color: var(--tone, var(--mint));
+      font-size: 9px;
+      font-weight: 700;
+      text-transform: uppercase;
+    }
+
+    .system-copy strong {
+      display: block;
+      overflow: hidden;
+      color: #efede6;
+      font-family: Georgia, "Times New Roman", serif;
+      font-size: 14px;
+      line-height: 1.2;
+      text-overflow: ellipsis;
+      white-space: nowrap;
+    }
+
+    .system-copy p {
+      display: -webkit-box;
+      margin: 4px 0 0;
+      overflow: hidden;
+      color: #94a1a5;
+      font-size: 10px;
+      line-height: 1.35;
+      -webkit-box-orient: vertical;
+      -webkit-line-clamp: 2;
+    }
+
+    .system-value {
+      display: grid;
+      place-items: center;
+      min-width: 42px;
+      padding: 0 8px;
+      border-left: 1px solid rgba(255, 255, 255, 0.08);
+      color: var(--gold);
+      font-family: Georgia, "Times New Roman", serif;
+      font-size: 15px;
+      font-weight: 700;
+    }
+
+    .trace-row {
+      display: flex;
+      align-items: center;
+      gap: 10px;
+      min-height: 50px;
+      margin-top: 8px;
+      padding: 8px 10px;
+      border-left: 2px solid var(--cyan);
+      background: rgba(127, 213, 232, 0.055);
+    }
+
+    .trace-mark {
+      width: 11px;
+      height: 11px;
+      flex: 0 0 11px;
+      transform: rotate(45deg);
+      border: 1px solid var(--cyan);
+      box-shadow: 0 0 8px rgba(127, 213, 232, 0.48);
+    }
+
+    .trace-row strong {
+      display: block;
+      color: #dfe9e9;
+      font-size: 11px;
+    }
+
+    .trace-row span {
+      display: block;
+      margin-top: 2px;
+      color: #75878b;
+      font-size: 9px;
+    }
+
+    .artifact-grid {
+      grid-template-columns: repeat(3, minmax(0, 1fr));
+    }
+
+    .artifact-card {
+      position: relative;
+      aspect-ratio: 0.72;
+      overflow: hidden;
+      border: 1px solid rgba(221, 193, 125, 0.28);
+      border-radius: 7px;
+      background: #080b0f;
+    }
+
+    .artifact-card img {
+      width: 100%;
+      height: 100%;
+      object-fit: cover;
+    }
+
+    .artifact-card::after {
+      content: "";
+      position: absolute;
+      inset: 45% 0 0;
+      background: linear-gradient(180deg, transparent, rgba(0, 0, 0, 0.94));
+    }
+
+    .artifact-card span {
+      position: absolute;
+      z-index: 2;
+      right: 6px;
+      bottom: 6px;
+      left: 6px;
+      color: #f0ede5;
+      font-size: 9px;
+      font-weight: 700;
+      line-height: 1.2;
+    }
+
+    .artifact-card b {
+      position: absolute;
+      z-index: 3;
+      top: 5px;
+      right: 5px;
+      display: grid;
+      place-items: center;
+      width: 24px;
+      height: 24px;
+      border: 1px solid rgba(255, 255, 255, 0.25);
+      border-radius: 50%;
+      background: rgba(0, 0, 0, 0.72);
+      color: var(--gold);
+      font-size: 10px;
+    }
+
+    .single-feature {
+      display: grid;
+      grid-template-columns: 104px minmax(0, 1fr);
+      gap: 12px;
+      min-height: 154px;
+    }
+
+    .single-feature img {
+      width: 104px;
+      height: 154px;
+      object-fit: cover;
+      border: 1px solid rgba(221, 193, 125, 0.28);
+      border-radius: 7px;
+    }
+
+    .feature-copy {
+      align-self: center;
+    }
+
+    .feature-copy small {
+      color: var(--tone, var(--gold));
+      font-size: 9px;
+      font-weight: 700;
+      text-transform: uppercase;
+    }
+
+    .feature-copy h3 {
+      margin: 4px 0 6px;
+      color: #f1ede3;
+      font-family: Georgia, "Times New Roman", serif;
+      font-size: 18px;
+      line-height: 1.12;
+    }
+
+    .feature-copy p {
+      margin: 0;
+      color: #9aa7aa;
+      font-size: 11px;
+      line-height: 1.45;
+    }
+
+    .well-dock {
+      position: relative;
+      z-index: 10;
+      display: grid;
+      grid-template-columns: 74px minmax(0, 1fr) 50px;
+      align-items: center;
+      gap: 7px;
+      padding: 7px 10px;
+      border-top: 1px solid rgba(146, 136, 209, 0.36);
+      border-bottom: 1px solid rgba(146, 136, 209, 0.2);
+      background: rgba(5, 3, 20, 0.98);
+      box-shadow: 0 -8px 24px rgba(0, 0, 0, 0.42);
+    }
+
+    .well-label {
+      display: flex;
+      align-items: center;
+      gap: 6px;
+      min-width: 0;
+      color: #c9d6ff;
+      font-family: Georgia, "Times New Roman", serif;
+      font-size: 11px;
+      font-weight: 700;
+      line-height: 1.05;
+    }
+
+    .well-count {
+      display: grid;
+      place-items: center;
+      width: 28px;
+      height: 32px;
+      flex: 0 0 28px;
+      clip-path: polygon(50% 0, 100% 24%, 88% 82%, 50% 100%, 12% 82%, 0 24%);
+      background: linear-gradient(180deg, #6f80a6, #1c2740);
+      color: #f6f8ff;
+      font-size: 13px;
+      font-weight: 700;
+    }
+
+    .well-affinities {
+      display: grid;
+      grid-template-columns: repeat(6, minmax(0, 1fr));
+      min-width: 0;
+      gap: 3px;
+    }
+
+    .well-affinity {
+      display: grid;
+      grid-template-columns: 19px auto;
+      place-content: center;
+      align-items: center;
+      min-width: 0;
+      height: 38px;
+      border-bottom: 2px solid var(--tone);
+      background: rgba(255, 255, 255, 0.025);
+    }
+
+    .well-affinity img {
+      width: 19px;
+      height: 19px;
+      object-fit: contain;
+    }
+
+    .well-affinity span {
+      color: #f5f3ed;
+      font-size: 11px;
+      font-weight: 700;
+    }
+
+    .well-eminence {
+      text-align: center;
+      color: var(--gold);
+      font-family: Georgia, "Times New Roman", serif;
+      font-size: 17px;
+      font-weight: 700;
+    }
+
+    .well-eminence small {
+      display: block;
+      color: #8e7e59;
+      font-family: Inter, ui-sans-serif, system-ui, sans-serif;
+      font-size: 8px;
+      font-weight: 700;
+    }
+
+    .bottom-nav {
+      position: relative;
+      z-index: 10;
+      display: grid;
+      grid-template-columns: repeat(3, 1fr);
+      border-top: 1px solid rgba(142, 166, 163, 0.22);
+      background: rgba(4, 10, 13, 0.99);
+    }
+
+    .bottom-nav button {
+      position: relative;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      gap: 7px;
+      border: 0;
+      background: transparent;
+      color: #7f8d91;
+      font-size: 12px;
+      font-weight: 700;
+    }
+
+    .bottom-nav button[aria-current="page"] {
+      color: #f0dfad;
+    }
+
+    .bottom-nav button[aria-current="page"]::before {
+      content: "";
+      position: absolute;
+      top: 0;
+      right: 22%;
+      left: 22%;
+      height: 2px;
+      background: var(--gold);
+      box-shadow: 0 0 10px rgba(221, 193, 125, 0.55);
+    }
+
+    .nav-icon {
+      display: grid;
+      grid-template-columns: repeat(2, 5px);
+      gap: 2px;
+      width: 12px;
+      height: 12px;
+    }
+
+    .nav-icon i {
+      border: 1px solid currentColor;
+    }
+
+    .landmark-icon {
+      position: relative;
+      width: 17px;
+      height: 13px;
+      border-right: 1px solid currentColor;
+      border-bottom: 1px solid currentColor;
+      border-left: 1px solid currentColor;
+    }
+
+    .landmark-icon::before {
+      content: "";
+      position: absolute;
+      top: -5px;
+      left: 1px;
+      width: 13px;
+      height: 8px;
+      transform: rotate(45deg);
+      border-top: 1px solid currentColor;
+      border-left: 1px solid currentColor;
+    }
+
+    .log-icon {
+      display: grid;
+      gap: 3px;
+      width: 16px;
+    }
+
+    .log-icon i {
+      height: 1px;
+      background: currentColor;
+    }
+
+    @media (min-width: 780px) {
+      :root {
+        --header-h: 64px;
+        --well-h: 74px;
+        --nav-h: 70px;
+      }
+
+      .app {
+        max-width: 1180px;
+        margin: 0 auto;
+        border-inline: 1px solid rgba(255, 255, 255, 0.08);
+      }
+
+      .brand {
+        display: block;
+      }
+
+      .opponents {
+        max-width: 620px;
+        margin-left: auto;
+      }
+
+      .civilization-main {
+        display: grid;
+        grid-template-columns: minmax(0, 1.62fr) minmax(300px, 0.78fr);
+        grid-template-rows: auto auto minmax(0, 1fr);
+        overflow: hidden;
+      }
+
+      .identity {
+        grid-column: 1 / -1;
+      }
+
+      .scene {
+        grid-column: 1;
+        grid-row: 2 / 4;
+        height: 100%;
+        max-height: none;
+        aspect-ratio: auto;
+        border-right: 1px solid var(--line-bright);
+      }
+
+      .foundation {
+        grid-column: 2;
+        grid-row: 2;
+      }
+
+      .content-shell {
+        grid-column: 2;
+        grid-row: 3;
+        min-height: 0;
+        overflow-y: auto;
+      }
+
+      .tab-panel {
+        min-height: 100%;
+      }
+
+      .well-dock {
+        grid-template-columns: 150px minmax(0, 1fr) 70px;
+      }
+
+      .well-label {
+        font-size: 14px;
+      }
+    }
+  </style>
+</head>
+<body>
+  <div class="app">
+    <header class="game-header">
+      <div class="brand">LUMINAe</div>
+      <div class="opponents" aria-label="Opponents">
+        <div class="opponent-pill">
+          <img src="/src/assets/affinity/home/radiance.png" alt="">
+          <strong>Thalia</strong>
+          <b>12</b>
+        </div>
+        <div class="opponent-pill">
+          <img src="/src/assets/affinity/home/abyss.png" alt="">
+          <strong>Soren</strong>
+          <b>9</b>
+        </div>
+        <div class="opponent-pill">
+          <img src="/src/assets/affinity/home/continuum.png" alt="">
+          <strong>Lyra</strong>
+          <b>11</b>
+        </div>
+      </div>
+      <button class="menu-button" type="button" aria-label="More options">⋮</button>
+    </header>
+
+    <main class="civilization-main">
+      <section class="identity" aria-labelledby="civilization-name">
+        <div class="identity-copy">
+          <p class="eyebrow">Civilization · Tier II Stellar</p>
+          <h1 id="civilization-name">The Verdant Concord</h1>
+          <div class="identity-meta">
+            <span><i aria-hidden="true"></i>Stable</span>
+            <span>Containment Sentinel</span>
+            <span>9 living traces</span>
+          </div>
+        </div>
+        <div class="eminence" aria-label="14 of 20 Eminence">
+          <strong>14</strong>
+          <small>OF 20</small>
+        </div>
+      </section>
+
+      <section class="scene" aria-label="Interactive civilization portrait">
+        <img
+          id="scene-art"
+          class="scene-art"
+          src="/src/assets/civilization/civilization-plate-stellar-v2-neutral_runtime.webp"
+          alt="A populated stellar system linked by luminous civilization routes"
+        >
+        <div class="scale-tabs" role="group" aria-label="Civilization scale">
+          <button type="button" data-scale="system" aria-pressed="true">System</button>
+          <button type="button" data-scale="planet">Planet</button>
+          <button type="button" data-scale="city">City</button>
+        </div>
+        <button class="trace-hotspot hotspot-a" type="button" aria-label="Inspect Voidline Route Solver" title="Voidline Route Solver"></button>
+        <button class="trace-hotspot hotspot-b" type="button" aria-label="Inspect Mantle-to-Orbit Foundry" title="Mantle-to-Orbit Foundry"></button>
+        <button class="trace-hotspot hotspot-c" type="button" aria-label="Inspect Seed Beyond Seasons" title="Seed Beyond Seasons"></button>
+        <div class="scene-status">
+          <div>
+            <strong id="scene-title">Stellar System</strong>
+            <span id="scene-subtitle">7 Artifacts · 1 Blueprint · 1 allied Luminary</span>
+          </div>
+          <div class="maturity" aria-label="68 percent toward the next era">
+            <div class="maturity-label"><span>Next era</span><span>68%</span></div>
+            <div class="maturity-track"><div class="maturity-fill"></div></div>
+          </div>
+        </div>
+      </section>
+
+      <section class="foundation" aria-labelledby="foundation-title">
+        <div class="section-heading">
+          <h2 id="foundation-title">Strategic Foundation</h2>
+          <span>Permanent Affinity</span>
+        </div>
+        <div class="affinity-foundation">
+          <div class="affinity-stat" style="--tone: var(--flare)"><img src="/src/assets/affinity/home/flare.png" alt="Flare"><strong>+2</strong></div>
+          <div class="affinity-stat" style="--tone: var(--radiance)"><img src="/src/assets/affinity/home/radiance.png" alt="Radiance"><strong>+3</strong></div>
+          <div class="affinity-stat" style="--tone: var(--verdance)"><img src="/src/assets/affinity/home/verdance.png" alt="Verdance"><strong>+4</strong></div>
+          <div class="affinity-stat" style="--tone: var(--continuum)"><img src="/src/assets/affinity/home/continuum.png" alt="Continuum"><strong>+2</strong></div>
+          <div class="affinity-stat" style="--tone: var(--abyss)"><img src="/src/assets/affinity/home/abyss.png" alt="Abyss"><strong>+1</strong></div>
+          <div class="affinity-stat" style="--tone: var(--singularity)"><img src="/dist/public/assets/luminae_singularity_emblem_v1-4_iY3zpO.png" alt="Singularity"><strong>0</strong></div>
+        </div>
+      </section>
+
+      <div class="content-shell">
+        <nav class="content-tabs" aria-label="Civilization records" role="tablist">
+          <button id="tab-overview" type="button" role="tab" aria-selected="true" aria-controls="panel-overview">Overview</button>
+          <button id="tab-artifacts" type="button" role="tab" aria-selected="false" aria-controls="panel-artifacts">Artifacts</button>
+          <button id="tab-blueprints" type="button" role="tab" aria-selected="false" aria-controls="panel-blueprints">Blueprints</button>
+          <button id="tab-allies" type="button" role="tab" aria-selected="false" aria-controls="panel-allies">Allies</button>
+        </nav>
+
+        <section id="panel-overview" class="tab-panel" role="tabpanel" aria-labelledby="tab-overview">
+          <div class="system-list">
+            <article class="system-card" style="--tone: var(--gold)">
+              <img src="/src/assets/blueprints/mantle-to-orbit/mantle-to-orbit-foundry-card.webp" alt="Mantle-to-Orbit Foundry">
+              <div class="system-copy">
+                <small>Blueprint online</small>
+                <strong>Mantle-to-Orbit Foundry</strong>
+                <p>Sustainable claims reshape the industrial core.</p>
+              </div>
+              <div class="system-value">I</div>
+            </article>
+            <article class="system-card" style="--tone: var(--verdance)">
+              <img src="/src/assets/luminaries/lum_seed/panel_runtime.webp" alt="Seed Beyond Seasons">
+              <div class="system-copy">
+                <small>Allied Luminary</small>
+                <strong>Seed Beyond Seasons</strong>
+                <p>Avatar Seeds now persist across all three Forge tiers.</p>
+              </div>
+              <div class="system-value">+1</div>
+            </article>
+          </div>
+          <div class="trace-row">
+            <span class="trace-mark" aria-hidden="true"></span>
+            <div>
+              <strong>Correction Seed integrated</strong>
+              <span>New restorative district · City layer · Turn 18</span>
+            </div>
+          </div>
+        </section>
+
+        <section id="panel-artifacts" class="tab-panel" role="tabpanel" aria-labelledby="tab-artifacts" hidden>
+          <div class="artifact-grid">
+            <article class="artifact-card"><img src="/src/assets/cards/t1p01.png" alt="Correction Seed"><b>+1</b><span>Correction Seed</span></article>
+            <article class="artifact-card"><img src="/src/assets/cards/t1r04.png" alt="Causal Spark Coil"><b>+1</b><span>Causal Spark Coil</span></article>
+            <article class="artifact-card"><img src="/src/assets/cards/t2s04.png" alt="Continuity Vessel"><b>+1</b><span>Continuity Vessel</span></article>
+          </div>
+        </section>
+
+        <section id="panel-blueprints" class="tab-panel" role="tabpanel" aria-labelledby="tab-blueprints" hidden>
+          <div class="single-feature" style="--tone: var(--gold)">
+            <img src="/src/assets/blueprints/mantle-to-orbit/mantle-to-orbit-foundry-card.webp" alt="Mantle-to-Orbit Foundry">
+            <div class="feature-copy">
+              <small>Manifested Blueprint</small>
+              <h3>Mantle-to-Orbit Foundry</h3>
+              <p>Its active state, stored components, and recoverable consequences remain visible here without competing with the civilization portrait.</p>
+            </div>
+          </div>
+        </section>
+
+        <section id="panel-allies" class="tab-panel" role="tabpanel" aria-labelledby="tab-allies" hidden>
+          <div class="single-feature" style="--tone: var(--verdance)">
+            <img src="/src/assets/luminaries/lum_seed/panel_runtime.webp" alt="Seed Beyond Seasons">
+            <div class="feature-copy">
+              <small>Allied Luminary · Verdance active</small>
+              <h3>Seed Beyond Seasons</h3>
+              <p>The alliance, active Affinity, persistent effect, and earned permanent Affinity are grouped in one legible record.</p>
+            </div>
+          </div>
+        </section>
+      </div>
+    </main>
+
+    <aside class="well-dock" aria-label="Collapsed Affinity Well">
+      <div class="well-label"><span class="well-count">6</span><span>Affinity<br>Well</span></div>
+      <div class="well-affinities">
+        <div class="well-affinity" style="--tone: var(--flare)"><img src="/src/assets/affinity/home/flare.png" alt="Flare"><span>1</span></div>
+        <div class="well-affinity" style="--tone: var(--radiance)"><img src="/src/assets/affinity/home/radiance.png" alt="Radiance"><span>2</span></div>
+        <div class="well-affinity" style="--tone: var(--verdance)"><img src="/src/assets/affinity/home/verdance.png" alt="Verdance"><span>1</span></div>
+        <div class="well-affinity" style="--tone: var(--continuum)"><img src="/src/assets/affinity/home/continuum.png" alt="Continuum"><span>1</span></div>
+        <div class="well-affinity" style="--tone: var(--abyss)"><img src="/src/assets/affinity/home/abyss.png" alt="Abyss"><span>1</span></div>
+        <div class="well-affinity" style="--tone: var(--singularity)"><img src="/dist/public/assets/luminae_singularity_emblem_v1-4_iY3zpO.png" alt="Singularity"><span>0</span></div>
+      </div>
+      <div class="well-eminence">14<small>EMINENCE</small></div>
+    </aside>
+
+    <nav class="bottom-nav" aria-label="Game views">
+      <button type="button">
+        <span class="nav-icon" aria-hidden="true"><i></i><i></i><i></i><i></i></span>
+        Board
+      </button>
+      <button type="button" aria-current="page">
+        <span class="landmark-icon" aria-hidden="true"></span>
+        Civilization
+      </button>
+      <button type="button">
+        <span class="log-icon" aria-hidden="true"><i></i><i></i><i></i></span>
+        Log
+      </button>
+    </nav>
+  </div>
+
+  <script>
+    const scenes = {
+      system: {
+        image: '/src/assets/civilization/civilization-plate-stellar-v2-neutral_runtime.webp',
+        title: 'Stellar System',
+        subtitle: '7 Artifacts · 1 Blueprint · 1 allied Luminary'
+      },
+      planet: {
+        image: '/src/assets/civilization/civilization-plate-planetary-v2-neutral_runtime.webp',
+        title: 'Planetary Network',
+        subtitle: '5 districts · 3 orbital works · Stable'
+      },
+      city: {
+        image: '/src/assets/civilization/civilization-plate-surface-v3-city_runtime.webp',
+        title: 'Civilization Core',
+        subtitle: '4 local traces · Restorative district online'
+      }
+    };
+
+    const scaleButtons = Array.from(document.querySelectorAll('[data-scale]'));
+    const sceneArt = document.getElementById('scene-art');
+    const sceneTitle = document.getElementById('scene-title');
+    const sceneSubtitle = document.getElementById('scene-subtitle');
+
+    scaleButtons.forEach((button) => {
+      button.addEventListener('click', () => {
+        const key = button.dataset.scale;
+        const next = scenes[key];
+        if (!next) return;
+        scaleButtons.forEach((candidate) => candidate.setAttribute('aria-pressed', String(candidate === button)));
+        sceneArt.style.opacity = '0.25';
+        window.setTimeout(() => {
+          sceneArt.src = next.image;
+          sceneTitle.textContent = next.title;
+          sceneSubtitle.textContent = next.subtitle;
+          sceneArt.style.opacity = '1';
+        }, 120);
+      });
+    });
+
+    const tabButtons = Array.from(document.querySelectorAll('[role="tab"]'));
+    tabButtons.forEach((button) => {
+      button.addEventListener('click', () => {
+        tabButtons.forEach((candidate) => {
+          const selected = candidate === button;
+          candidate.setAttribute('aria-selected', String(selected));
+          const panel = document.getElementById(candidate.getAttribute('aria-controls'));
+          panel.hidden = !selected;
+        });
+      });
+    });
+  </script>
+</body>
+</html>

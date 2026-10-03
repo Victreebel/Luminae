@@ -1,148 +1,299 @@
-import { Check, Circle, LockKeyhole, RadioTower, Shield } from "lucide-react";
+import { RadioTower, Shield } from "lucide-react";
 import type {
   ArtifactCard,
+  BlueprintPrivateState,
   CardLoreCatalog,
+  CivilizationPublicProjectState,
   GamePlayerState,
+  ManifestedDevicePublicState,
   ScenarioProtocolPublicState,
 } from "@workspace/api-client-react";
-import type {
-  BlueprintPrivateState,
-  ManifestedDevicePublicState,
-} from "@workspace/api-client-react";
+import {
+  ARTIFACT_DEFINITION_BY_ID,
+  BLUEPRINT_DEFINITIONS,
+  type BlueprintDefinition,
+  type BlueprintId,
+  type StandardAffinityKey,
+} from "@workspace/game-types";
 import { CARD_ART } from "@/lib/cardArtManifest";
+import { CARD_NAME_FALLBACK } from "@/lib/cardNameFallback";
+import { AntimatterBlueprintCard } from "./AntimatterBlueprintCard";
+import {
+  HorizontalBlueprintCard,
+  type HorizontalBlueprintComponentRecord,
+  type HorizontalBlueprintCardState,
+} from "./HorizontalBlueprintCard";
+import { MantleToOrbitBlueprintCard } from "./MantleToOrbitBlueprintCard";
 
-const FAMILY_LABELS = {
-  catastrophe_engine: "Catastrophe Engine",
-  industrial_chain: "Industrial Chain",
-  institution: "Stellar Institution",
-  covenant: "Covenant",
+const STANDARD_AFFINITIES = [
+  "flare",
+  "continuum",
+  "verdance",
+  "abyss",
+  "radiance",
+] as const satisfies readonly StandardAffinityKey[];
+
+const COMPONENT_HOTSPOTS = [
+  { left: "28%", top: "43%" },
+  { left: "50%", top: "30%" },
+  { left: "72%", top: "46%" },
+  { left: "51%", top: "66%" },
+] as const;
+
+const BLUEPRINT_CARD_META: Record<
+  BlueprintId,
+  { category: string; tone: "catastrophe" | "industry" | "covenant" }
+> = {
+  bp_antimatter_detonator: {
+    category: "Catastrophe Engine",
+    tone: "catastrophe",
+  },
+  bp_mantle_to_orbit_foundry: {
+    category: "Ascension Industry",
+    tone: "industry",
+  },
+  bp_ascension_registry: {
+    category: "Stellar Institution",
+    tone: "covenant",
+  },
+  bp_worldshield_covenant: {
+    category: "Civic Covenant",
+    tone: "covenant",
+  },
 };
+
+function titleCaseState(value: string) {
+  return value
+    .split("_")
+    .filter(Boolean)
+    .map((part) => part.charAt(0).toUpperCase() + part.slice(1))
+    .join(" ");
+}
+
+function buildComponentRecords(
+  definition: BlueprintDefinition,
+  loreCatalog?: CardLoreCatalog,
+): HorizontalBlueprintComponentRecord[] {
+  return definition.components.map((component, index) => {
+    const artifact = ARTIFACT_DEFINITION_BY_ID[
+      component.artifactId as keyof typeof ARTIFACT_DEFINITION_BY_ID
+    ];
+    const lore = loreCatalog?.[component.artifactId];
+    const tier = artifact?.tier ?? 1;
+
+    return {
+      artifactId: component.artifactId,
+      artifactName:
+        lore?.name ?? CARD_NAME_FALLBACK[component.artifactId] ?? component.artifactId,
+      artwork: CARD_ART[component.artifactId],
+      affinity: artifact?.bonusAffinity ?? definition.civilization.affinity,
+      tier: `Tier ${tier === 1 ? "I" : tier === 2 ? "II" : "III"}`,
+      eminence: artifact?.eminence ?? 0,
+      cost: STANDARD_AFFINITIES.flatMap((affinity) => {
+        const amount = artifact?.cost[affinity] ?? 0;
+        return amount > 0 ? [{ affinity, amount }] : [];
+      }),
+      requirement: component.stage,
+      flavor: lore?.flavor ?? component.function,
+      artifactForm: lore?.artifactForm ?? "Blueprint component",
+      blueprintRole: component.function,
+      blueprintFamilies: definition.name,
+      civilizationLane:
+        lore?.civLane ?? definition.civilization.laneLabel,
+      engineeringScale:
+        lore?.engineeringScale ?? definition.presentation.scaleLabel,
+      hotspot: COMPONENT_HOTSPOTS[index % COMPONENT_HOTSPOTS.length],
+    };
+  });
+}
+
+function BlueprintProjectCard({
+  blueprintId,
+  state,
+  matchedComponentIds,
+  publicStateLabel,
+  loreCatalog,
+}: {
+  blueprintId: BlueprintId;
+  state: HorizontalBlueprintCardState;
+  matchedComponentIds: readonly string[];
+  publicStateLabel: string;
+  loreCatalog?: CardLoreCatalog;
+}) {
+  const definition = BLUEPRINT_DEFINITIONS[blueprintId];
+  const knownComponentIds = definition.components.map(
+    (component) => component.artifactId,
+  );
+
+  if (blueprintId === "bp_antimatter_detonator") {
+    return (
+      <AntimatterBlueprintCard
+        state={state}
+        matchedSockets={matchedComponentIds.length}
+        matchedComponentIds={matchedComponentIds}
+        knownComponentIds={knownComponentIds}
+        publicStateLabel={publicStateLabel}
+      />
+    );
+  }
+
+  if (blueprintId === "bp_mantle_to_orbit_foundry") {
+    return (
+      <MantleToOrbitBlueprintCard
+        state={state}
+        matchedSockets={matchedComponentIds.length}
+        matchedComponentIds={matchedComponentIds}
+        knownComponentIds={knownComponentIds}
+        publicStateLabel={publicStateLabel}
+      />
+    );
+  }
+
+  const components = buildComponentRecords(definition, loreCatalog);
+  const meta = BLUEPRINT_CARD_META[blueprintId];
+
+  return (
+    <HorizontalBlueprintCard
+      definition={{
+        name: definition.name,
+        publicEffect: definition.publicEffect,
+        presentation: {
+          scaleLabel: definition.presentation.scaleLabel,
+          serialCode: definition.presentation.serialCode,
+          manifestationScale: definition.civilization.manifestationScale,
+        },
+        components: definition.components,
+      }}
+      state={state}
+      matchedComponents={matchedComponentIds.length}
+      matchedComponentIds={matchedComponentIds}
+      artwork={components.map((component) => component.artwork)}
+      artworkAlt={`${definition.name} Blueprint components`}
+      category={meta.category}
+      publicStateLabel={publicStateLabel}
+      components={components}
+      knownComponentIds={knownComponentIds}
+      testId={`${blueprintId}-blueprint-card`}
+      componentPanelTestId={`${blueprintId}-component-panel`}
+      tone={meta.tone}
+    />
+  );
+}
 
 function PrivateAssembly({
   state,
   loreCatalog,
-  owner,
-  onOpenArtifact,
 }: {
   state: BlueprintPrivateState;
   loreCatalog?: CardLoreCatalog;
-  owner: GamePlayerState;
-  onOpenArtifact: (card: ArtifactCard) => void;
 }) {
-  const definition = state.definition;
+  const definition = BLUEPRINT_DEFINITIONS[state.blueprintId];
   if (!definition) return null;
-  const matched = new Set(state.matchedComponentIds);
 
   return (
-    <article className="overflow-hidden border border-amber-300/20 bg-black/35" data-blueprint-private={state.blueprintId}>
-      <header className="flex items-start justify-between gap-3 border-b border-white/8 px-3 py-2.5">
-        <div className="min-w-0">
-          <p className="text-[8px] font-black uppercase text-amber-300/65">
-            Slot {state.slotIndex + 1} // {FAMILY_LABELS[definition.family]}
-          </p>
-          <h3 className="mt-0.5 truncate text-sm font-semibold text-white">{definition.name}</h3>
-        </div>
-        <span className="inline-flex shrink-0 items-center gap-1 border border-white/10 bg-white/[0.035] px-1.5 py-1 text-[8px] font-bold uppercase text-white/50">
-          <LockKeyhole className="h-3 w-3" aria-hidden="true" />
-          Owner only
-        </span>
-      </header>
-
-      <div className="grid grid-cols-2 gap-px bg-white/8 sm:grid-cols-4" aria-label={`${definition.name} assembly components`}>
-        {definition.components.map((component) => {
-          const complete = matched.has(component.artifactId);
-          const artifact = owner.forgedArtifacts.find((card) => card.id === component.artifactId);
-          const lore = loreCatalog?.[component.artifactId];
-          return (
-            <button
-              key={component.artifactId}
-              type="button"
-              disabled={!artifact}
-              onClick={() => artifact && onOpenArtifact(artifact)}
-              className="group min-w-0 bg-[#090d12] p-2 text-left enabled:hover:bg-white/[0.055]"
-              aria-label={`${complete ? "Matched" : "Required"}: ${lore?.name ?? component.artifactId}, ${component.function}`}
-            >
-              <span className="relative block aspect-[1.4] overflow-hidden border border-white/10 bg-black">
-                <img
-                  src={CARD_ART[component.artifactId]}
-                  alt=""
-                  className={`h-full w-full object-cover transition-opacity ${complete ? "opacity-90" : "opacity-30 grayscale"}`}
-                  draggable={false}
-                />
-                <span className="absolute right-1 top-1 grid h-5 w-5 place-items-center border border-black/50 bg-black/75">
-                  {complete
-                    ? <Check className="h-3 w-3 text-amber-300" aria-hidden="true" />
-                    : <Circle className="h-3 w-3 text-white/35" aria-hidden="true" />}
-                </span>
-              </span>
-              <strong className={`mt-1.5 block truncate text-[10px] ${complete ? "text-amber-200" : "text-white/50"}`}>
-                {lore?.name ?? component.artifactId}
-              </strong>
-              <small className="block truncate text-[8px] uppercase text-white/35">{component.stage}</small>
-            </button>
-          );
-        })}
-      </div>
-
-      <footer className="flex items-center justify-between gap-3 px-3 py-2 text-[9px]">
-        <span className="text-white/45">Components remain in your civilization.</span>
-        <strong className="font-mono text-amber-200">{matched.size} / {definition.components.length}</strong>
-      </footer>
+    <article
+      className="mx-auto w-full"
+      data-blueprint-private={state.blueprintId}
+    >
+      <BlueprintProjectCard
+        blueprintId={state.blueprintId}
+        state="assembling"
+        matchedComponentIds={state.matchedComponentIds}
+        publicStateLabel="Assembling"
+        loreCatalog={loreCatalog}
+      />
     </article>
   );
 }
 
+function foundryTelemetry(
+  device: ManifestedDevicePublicState,
+  privateState?: BlueprintPrivateState,
+) {
+  const storedIds =
+    privateState?.foundryStoredArtifactIds ??
+    privateState?.foundryRecoveryArtifactIds ??
+    [];
+
+  if (device.state === "recovering") {
+    return `${storedIds.length} component${storedIds.length === 1 ? "" : "s"} awaiting recovery`;
+  }
+  if ((device.foundryUsesRemaining ?? 0) > 0) {
+    return `${device.foundryUsesRemaining} sustainable use${device.foundryUsesRemaining === 1 ? "" : "s"} remaining`;
+  }
+  if (device.state === "ready") return "Overdrive available";
+  if (storedIds.length > 0) {
+    return `${storedIds.length} component${storedIds.length === 1 ? "" : "s"} in Cipher storage`;
+  }
+  return "Foundry inactive";
+}
+
 function PublicDevice({
   device,
+  project,
   ownerName,
   privateState,
+  loreCatalog,
 }: {
   device: ManifestedDevicePublicState;
+  project?: CivilizationPublicProjectState;
   ownerName: string;
   privateState?: BlueprintPrivateState;
+  loreCatalog?: CardLoreCatalog;
 }) {
-  const definition = device.definition;
+  const definition = BLUEPRINT_DEFINITIONS[device.blueprintId];
   if (!definition) return null;
-  const storedIds = privateState?.foundryStoredArtifactIds ??
-    privateState?.foundryRecoveryArtifactIds ?? [];
+  const publicState = project?.deviceState ?? device.state;
+  const telemetry =
+    device.blueprintId === "bp_mantle_to_orbit_foundry"
+      ? foundryTelemetry(device, privateState)
+      : null;
+
   return (
-    <article className="grid gap-3 border border-red-300/20 bg-red-950/[0.08] p-3 sm:grid-cols-[minmax(0,0.55fr)_minmax(0,1.45fr)]" data-blueprint-public={device.blueprintId}>
-      <div>
-        <p className="flex items-center gap-1 text-[8px] font-black uppercase text-red-200/65">
-          <RadioTower className="h-3 w-3" aria-hidden="true" /> Public device
-        </p>
-        <h3 className="mt-1 font-serif text-base font-semibold text-white">{definition.name}</h3>
-        <span className="mt-1 block text-[9px] text-white/45">{ownerName} // {device.presentationVariant}</span>
-      </div>
-      <div className="border-l border-white/8 pl-3">
-        <p className="text-[10px] leading-relaxed text-white/70">{definition.publicEffect}</p>
-        <span className="mt-2 inline-flex items-center gap-1 border border-red-200/20 bg-black/30 px-2 py-1 text-[8px] font-black uppercase text-red-100/75">
-          <Shield className="h-3 w-3" aria-hidden="true" />
-          {device.state}
+    <article
+      className="mx-auto w-full"
+      data-blueprint-public={device.blueprintId}
+    >
+      <BlueprintProjectCard
+        blueprintId={device.blueprintId}
+        state="manifested"
+        matchedComponentIds={definition.components.map(
+          (component) => component.artifactId,
+        )}
+        publicStateLabel={titleCaseState(publicState)}
+        loreCatalog={loreCatalog}
+      />
+
+      <div
+        className="flex min-h-9 items-center justify-between gap-3 border-x border-b border-white/10 bg-black/45 px-3 py-2 text-[9px]"
+        data-blueprint-runtime-status={device.blueprintId}
+      >
+        <span className="inline-flex min-w-0 items-center gap-1.5 font-semibold uppercase text-white/55">
+          <RadioTower className="h-3 w-3 shrink-0" aria-hidden="true" />
+          <span className="truncate">Owner: {ownerName}</span>
         </span>
-        {device.blueprintId === "bp_mantle_to_orbit_foundry" && (
-          <p className="mt-2 font-mono text-[9px] uppercase text-amber-200/70">
-            {device.state === "recovering"
-              ? `${storedIds.length} component${storedIds.length === 1 ? "" : "s"} awaiting recovery`
-              : (device.foundryUsesRemaining ?? 0) > 0
-                ? `${device.foundryUsesRemaining} sustainable use${device.foundryUsesRemaining === 1 ? "" : "s"} remaining`
-                : device.state === "ready"
-                  ? "Overdrive available"
-                  : storedIds.length > 0
-                    ? `${storedIds.length} component${storedIds.length === 1 ? "" : "s"} in Cipher storage`
-                    : "Foundry inactive"}
-          </p>
+        {telemetry && (
+          <strong className="text-right font-mono uppercase text-amber-200/75">
+            {telemetry}
+          </strong>
         )}
         {device.blueprintId === "bp_ascension_registry" && (
-          <div className="mt-2 flex items-center gap-2" aria-label={`${device.ascensionDeferrals ?? 0} of 2 Deferrals`}>
-            <span className="text-[8px] font-black uppercase text-white/45">Deferrals</span>
+          <span
+            className="inline-flex items-center gap-1.5"
+            aria-label={`${device.ascensionDeferrals ?? 0} of 2 Deferrals`}
+          >
+            <span className="font-black uppercase text-white/45">Deferrals</span>
             {[0, 1].map((index) => (
-              <span
+              <i
                 key={index}
-                className={`h-2 w-5 border ${index < (device.ascensionDeferrals ?? 0) ? "border-amber-200/60 bg-amber-300/70" : "border-white/15 bg-white/[0.035]"}`}
+                className={`h-2 w-5 border not-italic ${
+                  index < (device.ascensionDeferrals ?? 0)
+                    ? "border-amber-200/60 bg-amber-300/70"
+                    : "border-white/15 bg-white/[0.035]"
+                }`}
               />
             ))}
-          </div>
+          </span>
         )}
       </div>
     </article>
@@ -205,42 +356,68 @@ export function BlueprintGamePanel({
   loreCatalog?: CardLoreCatalog;
   onOpenArtifact: (card: ArtifactCard) => void;
 }) {
-  const privateStates = (me?.blueprintPrivateStates ?? []).filter((state) => !state.manifested);
-  const publicDevices = players.flatMap((player) =>
-    (player.manifestedBlueprintDevices ?? []).map((device) => ({ device, owner: player })),
+  void onOpenArtifact;
+  const privateStates = (me?.blueprintPrivateStates ?? []).filter(
+    (state) => !state.manifested,
   );
-  if (privateStates.length === 0 && publicDevices.length === 0 && scenarioProtocols.length === 0) return null;
+  const publicDevices = players.flatMap((player) =>
+    (player.manifestedBlueprintDevices ?? []).map((device) => ({
+      device,
+      owner: player,
+    })),
+  );
+  if (
+    privateStates.length === 0 &&
+    publicDevices.length === 0 &&
+    scenarioProtocols.length === 0
+  ) {
+    return null;
+  }
 
   return (
     <section className="space-y-2.5" aria-label="Blueprint assembly and manifested devices">
-      <header className="flex items-center justify-between gap-3 px-1">
-        <h2 className="text-[10px] font-semibold uppercase text-muted-foreground">Blueprint Systems</h2>
-        {privateStates.length > 0 && <span className="text-[8px] font-mono uppercase text-amber-300/55">Private assembly</span>}
+      <header className="px-1">
+        <h2 className="text-[10px] font-semibold uppercase text-muted-foreground">
+          Blueprint Projects
+        </h2>
       </header>
-      {privateStates.map((privateState) => (
-        <PrivateAssembly
-          key={privateState.blueprintId}
-          state={privateState}
-          loreCatalog={loreCatalog}
-          owner={me!}
-          onOpenArtifact={onOpenArtifact}
-        />
-      ))}
-      {publicDevices.map(({ device, owner }) => (
-        <PublicDevice
-          key={`${device.ownerPlayerId}:${device.blueprintId}`}
-          device={device}
-          ownerName={owner.playerName}
-          privateState={owner.playerId === me?.playerId
-            ? me.blueprintPrivateStates?.find((entry) => entry.blueprintId === device.blueprintId)
-            : undefined}
-        />
-      ))}
+      <div className="grid gap-3 xl:grid-cols-2">
+        {privateStates.map((privateState) => (
+          <PrivateAssembly
+            key={privateState.blueprintId}
+            state={privateState}
+            loreCatalog={loreCatalog}
+          />
+        ))}
+        {publicDevices.map(({ device, owner }) => (
+          <PublicDevice
+            key={`${device.ownerPlayerId}:${device.blueprintId}`}
+            device={device}
+            project={owner.civilization?.projects?.find(
+              (project) =>
+                project.blueprintId === device.blueprintId &&
+                project.slotIndex === device.slotIndex,
+            )}
+            ownerName={owner.playerName}
+            privateState={
+              owner.playerId === me?.playerId
+                ? me.blueprintPrivateStates?.find(
+                    (entry) => entry.blueprintId === device.blueprintId,
+                  )
+                : undefined
+            }
+            loreCatalog={loreCatalog}
+          />
+        ))}
+      </div>
       {scenarioProtocols.map((protocol) => (
         <SealedProtocol
           key={protocol.protocolId}
           protocol={protocol}
-          ownerName={players.find((player) => player.playerId === protocol.ownerPlayerId)?.playerName ?? "Unknown civilization"}
+          ownerName={
+            players.find((player) => player.playerId === protocol.ownerPlayerId)
+              ?.playerName ?? "Unknown civilization"
+          }
         />
       ))}
     </section>

@@ -114,12 +114,6 @@
   padding: 4px !important;
 }
 
-.tutorial-gameplay.game-shell[data-tutorial-gameplay="true"] .tutorial-compact-flip-reveal,
-.tutorial-gameplay.game-shell[data-tutorial-gameplay="true"] .tutorial-compact-flip-reveal > div {
-  width: 100%;
-  height: 100%;
-}
-
 .tutorial-dialogue-dock,
 .tutorial-gameplay.game-shell[data-tutorial-gameplay="true"] .tutorial-dialogue.tutorial-dialogue-dock {
   position: fixed !important;
@@ -609,18 +603,15 @@
   }
 }
 
-/* The shared Celestial compact Forge stretches molds to fill each grid track.
-   Tutorial cards must instead retain the same 0.7 portrait geometry as their
-   artwork through the face-down, flip, and settled states. */
+/* Tutorial Forge paths retain the production card ratio while they form and
+   after they settle inside the fitted molds. */
 .tutorial-gameplay.game-shell[data-tutorial-gameplay="true"][data-board-presentation][data-board-density][data-board-layout][data-forge-density]
   .board-forge--compact .board-forge-card-row {
   align-items: center !important;
 }
 
 .tutorial-gameplay.game-shell[data-tutorial-gameplay="true"][data-board-presentation][data-board-density][data-board-layout][data-forge-density]
-  .board-forge--compact .board-forge-card-row > .board-forge-compact-chip,
-.tutorial-gameplay.game-shell[data-tutorial-gameplay="true"][data-board-presentation][data-board-density][data-board-layout][data-forge-density]
-  .board-forge--compact .board-forge-card-row > .tutorial-compact-flip-reveal {
+  .board-forge--compact .board-forge-card-row > .board-forge-compact-chip {
   box-sizing: border-box;
   width: auto !important;
   height: 100% !important;
@@ -630,4 +621,69 @@
   max-height: 100% !important;
   aspect-ratio: 0.7 !important;
   justify-self: center !important;
+}
+
+/* The tutorial exposes only the four lesson molds. It has no Archive/deck
+   rail, so the production shelf grid must devote the full row to those molds. */
+.tutorial-gameplay.game-shell[data-tutorial-gameplay="true"][data-board-presentation][data-board-density][data-board-layout][data-forge-density]
+  .board-forge--compact .tutorial-forge-shelf-content {
+  grid-template-columns: minmax(0, 1fr) !important;
+  gap: 0 !important;
+}
+
+/* The Civilization detour replaces the board and Affinity Well. Let the real
+   Civilization scene use that vacated row at every tutorial viewport. */
+.tutorial-gameplay.game-shell[data-tutorial-gameplay="true"][data-active-tab="civilization"][data-board-density][data-board-layout] {
+  display: flex !important;
+  flex-direction: column !important;
+  grid-template: none !important;
+}
+
+.tutorial-gameplay.game-shell[data-tutorial-gameplay="true"][data-active-tab="civilization"][data-board-density][data-board-layout]
+  > .tutorial-civilization-view {
+  flex: 1 1 0% !important;
+  width: 100% !important;
+  min-height: 0 !important;
+}
+
+@media (max-height: 520px) and (orientation: landscape) {
+  .tutorial-gameplay.game-shell[data-tutorial-gameplay="true"][data-active-tab="civilization"][data-board-density][data-board-layout]
+    > .tutorial-civilization-view > div {
+    gap: 6px !important;
+    padding: 4px 8px 8px !important;
+  }
+
+  .tutorial-gameplay.game-shell[data-tutorial-gameplay="true"][data-active-tab="civilization"]
+    .civilization-scene-panel > .civilization-scene-header {
+    display: flex !important;
+    flex-direction: row !important;
+    align-items: center !important;
+    justify-content: space-between !important;
+    width: 100% !important;
+    height: 42px !important;
+    min-height: 42px !important;
+    gap: 6px !important;
+    padding: 4px 8px !important;
+    overflow: hidden !important;
+  }
+
+  .tutorial-gameplay.game-shell[data-tutorial-gameplay="true"][data-active-tab="civilization"]
+    .civilization-scene-panel > .civilization-scene-header > div:first-child > :not(h2) {
+    display: none !important;
+  }
+
+  .tutorial-gameplay.game-shell[data-tutorial-gameplay="true"][data-active-tab="civilization"]
+    .civilization-scene-panel > .civilization-scene-header > div:last-child {
+    flex-wrap: nowrap !important;
+  }
+
+  .tutorial-gameplay.game-shell[data-tutorial-gameplay="true"][data-active-tab="civilization"]
+    .civilization-scene-panel > .civilization-scene-canvas {
+    height: max(180px, calc(100dvh - 158px)) !important;
+  }
+
+  .tutorial-gameplay.game-shell[data-tutorial-gameplay="true"][data-active-tab="civilization"]
+    .civilization-desktop-scan-rail {
+    display: none !important;
+  }
 }

@@ -79,6 +79,7 @@ export function HarnessConvergenceLayer({
     ...harnessBurstKeys,
   });
   const transferTimerRef = React.useRef<ReturnType<typeof setTimeout> | null>(null);
+  const lastHarnessPointRef = React.useRef<Point | null>(null);
   const [geometry, setGeometry] = React.useState<HarnessGeometry | null>(null);
   const [transfer, setTransfer] = React.useState<{ key: number; affinities: AffinityKey[] } | null>(null);
   const motionActive = selectedKeys.length > 0 || Boolean(transfer);
@@ -91,7 +92,11 @@ export function HarnessConvergenceLayer({
     if (typeof window === 'undefined') return;
     const harnessRect = getVisibleRect('[data-testid="harness-button"]');
     const heldRect = getVisibleRect('[data-affinity-held-target]');
-    if (!harnessRect || !heldRect) {
+    if (harnessRect) lastHarnessPointRef.current = centerOf(harnessRect);
+    // Compact controls retract on submission; keep the launch point while the
+    // transfer travels to the holdings counter in its new visible position.
+    const harnessPoint = harnessRect ? centerOf(harnessRect) : transfer ? lastHarnessPointRef.current : null;
+    if (!harnessPoint || !heldRect) {
       setGeometry(null);
       return;
     }
@@ -106,7 +111,7 @@ export function HarnessConvergenceLayer({
     setGeometry({
       width: window.innerWidth,
       height: window.innerHeight,
-      harness: centerOf(harnessRect),
+      harness: harnessPoint,
       held: centerOf(heldRect),
       sources,
     });

@@ -17,6 +17,11 @@ import { getDominantAffinityPalette, type AffinityPalette, type KardashevTier } 
 import { getLuminaryVisuals, LuminaryPanelArt } from '@/lib/luminaryAssets';
 import type { ChatMessage } from '@/hooks/use-game-websocket';
 import { CivilizationScenePanel } from '@/components/CivilizationScenePanel';
+import { CivilizationLegacyProgress } from '@/components/blueprints/CivilizationLegacyProgress';
+import { CIVILIZATION_EVENT_CARD_DEFINITIONS } from '@workspace/game-types';
+import { CosmicEventTargetEvidence } from '@/components/CosmicEventTargetEvidence';
+import { CosmicEventPoolReference } from '@/components/CosmicEventPoolReference';
+import { CivilizationEventForecast } from '@/components/EventForecast';
 import { AFFINITIES } from './game-constants';
 import { ArtifactCardView, CardBack, EminenceBadge, EminenceDiamond, EminenceProgress, ForgedCardWithTooltip, AffinityToken, PendingActionOverlay } from './game-card';
 import { PlayerAvatar } from './game-player';
@@ -29,7 +34,7 @@ import {
   type CivilizationProfile,
 } from '@/lib/civilizationProfile';
 import type { CivilizationDeploymentSite } from '@/lib/civilizationDeploymentSites';
-import { getFoundryStoredIds } from './game-planning';
+import { getFoundryStoredIds, getOrdinaryEncryptedCount } from './game-planning';
 
 const BlueprintGamePanel = React.lazy(async () => {
   const module = await import('@/components/blueprints/BlueprintGamePanel');
@@ -138,6 +143,7 @@ export interface HandTabScope {
   handleCancelPlan: () => void | Promise<void>;
   handleCardTap: (card: ArtifactCard, fromReserve: boolean) => void;
   handleFoundryRecovery: (artifactId: string) => void;
+  handleRepairArtifacts?: (artifactIds: readonly string[]) => void | Promise<void>;
   isEditingCivName: boolean;
   isMyTurn: boolean;
   kardashevPalette: AffinityPalette;
@@ -212,6 +218,7 @@ export function HandTab({ scope }: { scope: HandTabScope }) {
     handleCancelPlan,
     handleCardTap,
     handleFoundryRecovery,
+    handleRepairArtifacts,
     isEditingCivName,
     isMyTurn,
     kardashevPalette,
@@ -300,25 +307,43 @@ export function HandTab({ scope }: { scope: HandTabScope }) {
     : 'Unrecorded';
   const showReach = reach !== me?.civilization?.scale.historicalMaturity ||
     (reachCondition !== undefined && reachCondition !== 'intact');
-  const civilizationTraceCount = civilizationDeploymentSites.length;
   const civilizationEvents = me?.civilization?.events ?? [];
-  const recentCivilizationTraceCount = recentCivilizationSiteIds.length;
-  const recentCivilizationTrace = civilizationDeploymentSites.find((site) => recentCivilizationSiteIds.includes(site.id));
-  const recentCivilizationTraceLabel = recentCivilizationTrace?.title
-    ?? (recentCivilizationTraceCount > 0 ? `${recentCivilizationTraceCount} new trace${recentCivilizationTraceCount === 1 ? '' : 's'}` : null);
+  const recordedCivilizationEvents = civilizationEvents.filter((event) => (
+    event.sourceType === 'scenario' && event.eventId.startsWith('event_')
+  ));
   const activeCivilizationConditions = React.useMemo(() => [...new Set(
     (me?.civilization?.activeConditions ?? []).flatMap((condition) => (
       condition.coreType ? [condition.coreType] : []
     )),
   )], [me?.civilization?.activeConditions]);
+  const showLegacyProgress = Boolean(me);
 
   return (
     <div data-game-hand-tab="true" className="flex flex-col gap-5 p-4 pb-6">
       <CivilizationScenePanel
+        fitViewport
         tier={kardashevTier}
         palette={kardashevPalette}
         profile={civilizationProfile}
         progressFraction={kardashevProgressFraction}
+        civilizationName={civLabel}
+        permanentAffinities={permanentAffinityEntries.length > 0 ? (
+          <div className="flex flex-wrap items-center gap-1.5" role="group" aria-label="Permanent Affinities" data-testid="civilization-permanent-affinities">
+            {permanentAffinityEntries.map(({ affinity, allianceBonus, total }) => (
+              <span
+                key={affinity}
+                className="inline-flex min-h-7 items-center gap-1 rounded border border-white/10 bg-black/35 px-1.5 py-1"
+                title={allianceBonus > 0
+                  ? `${total} permanent ${AFFINITY_META[affinity].name}, including ${allianceBonus} from allied Luminaries`
+                  : `${total} permanent ${AFFINITY_META[affinity].name}`}
+                aria-label={`${total} permanent ${AFFINITY_META[affinity].name}`}
+              >
+                <AffinityToken color={affinity} size={14} />
+                <span className="text-xs font-bold tabular-nums text-white">{total}</span>
+              </span>
+            ))}
+          </div>
+        ) : undefined}
         paused={
           activationGateActive ||
           activationQueue.length > 0 ||
@@ -327,114 +352,204 @@ export function HandTab({ scope }: { scope: HandTabScope }) {
         defaultScanActive={civilizationScanRequested || recentCivilizationSiteIds.length > 0}
         deploymentSites={civilizationDeploymentSites}
         forgedArtifacts={myForgedArtifacts}
+        civilization={me?.civilization}
         guidanceEnabled={hintsEnabled}
         stabilityBand={stabilityBand}
         activeConditions={activeCivilizationConditions}
         externalRecentSiteIds={recentCivilizationSiteIds}
+        pendingRepairArtifactIds={me?.pendingArtifactRepairIds ?? []}
         onRecentSiteIdsSeen={acknowledgeRecentCivilizationSites}
+        onRepairArtifacts={handleRepairArtifacts}
         onOpenArtifact={openForgedCardSheet}
       />
 
-      {/* Eminence + name */}
+      {/* Forged Cards */}
+      <div className="rounded-2xl border border-border/50 overflow-hidden" data-testid="civilization-artifacts-dropdown">
+        <button
+          type="button"
+          aria-expanded={showForgedArtifacts}
+          onClick={() => setShowForgedArtifacts(v => !v)}
+          className="w-full flex items-center justify-between px-4 py-3 bg-secondary/40 text-sm font-semibold"
+        >
+          <span className="compact-section-label flex items-center gap-2 min-w-0">
+            <Hammer className="compact-section-glyph h-4 w-4 shrink-0 text-muted-foreground" aria-hidden="true" />
+            <span className="compact-label-text truncate">Forged Artifacts</span>
+            <span className="compact-section-count shrink-0">({me?.forgedArtifacts?.length ?? 0})</span>
+          </span>
+          {showForgedArtifacts ? <ChevronUp className="h-4 w-4 text-muted-foreground" /> : <ChevronDown className="h-4 w-4 text-muted-foreground" />}
+        </button>
+        {showForgedArtifacts && (
+          <div className="p-3">
+            {/* Cards / Timeline toggle */}
+            {(me?.forgedArtifacts?.length ?? 0) > 0 && (
+              <div className="flex gap-1 mb-3">
+                <button
+                  type="button"
+                  onClick={() => setForgedView('cards')}
+                  className={`text-[10px] font-semibold px-2.5 py-1 rounded-full transition-colors ${forgedView === 'cards' ? 'bg-primary/20 text-primary' : 'text-muted-foreground hover:text-foreground'}`}
+                >
+                  Cards
+                </button>
+                <button
+                  type="button"
+                  onClick={() => setForgedView('timeline')}
+                  className={`text-[10px] font-semibold px-2.5 py-1 rounded-full transition-colors ${forgedView === 'timeline' ? 'bg-primary/20 text-primary' : 'text-muted-foreground hover:text-foreground'}`}
+                >
+                  Timeline
+                </button>
+              </div>
+            )}
+            {(me?.forgedArtifacts?.length ?? 0) === 0 ? (
+              <p className="text-xs text-muted-foreground italic">No Artifacts forged yet.</p>
+            ) : forgedView === 'cards' ? (
+              <div className="flex flex-wrap gap-2">
+                {(me?.forgedArtifacts ?? []).map((c) => (
+                  <ForgedCardWithTooltip key={c.id} card={c} tier={c.tier} onOpenSheet={() => openForgedCardSheet(c)} />
+                ))}
+              </div>
+            ) : (
+              <div className="flex flex-col divide-y divide-border/30">
+                {(me?.forgedArtifacts ?? []).map((c, idx) => {
+                  const snap = c.bonusesAtForge;
+                  const snapKeys = snap
+                    ? AFFINITIES.filter(k => k !== 'singularity' && (snap[k as keyof AffinityCounts] ?? 0) > 0)
+                    : [];
+                  const bonusMeta = AFFINITY_META[c.bonusAffinity as AffinityKey];
+                  return (
+                    <div key={c.id} className="flex items-center gap-2.5 py-2 cursor-pointer rounded hover:bg-white/5 px-1 -mx-1 transition-colors" onClick={() => openForgedCardSheet(c)}>
+                      <span className="text-[10px] text-muted-foreground w-4 text-right shrink-0 tabular-nums">{idx + 1}</span>
+                      <div className="flex-1 min-w-0">
+                        <p className="text-[11px] font-semibold text-foreground leading-tight truncate">{c.name}</p>
+                        <div className="flex flex-wrap gap-1 mt-1">
+                          {snapKeys.length > 0 ? snapKeys.map(k => (
+                            <div key={k} className="flex items-center gap-0.5 bg-black/40 rounded px-1 py-0.5">
+                              <AffinityToken color={k as AffinityKey} size={9} />
+                              <span className="text-[9px] font-bold text-white">×{snap![k as keyof AffinityCounts]}</span>
+                            </div>
+                          )) : (
+                            <span className="text-[9px] text-muted-foreground italic">no snapshot</span>
+                          )}
+                        </div>
+                      </div>
+                      <div className="shrink-0 flex items-center gap-0.5 rounded-full px-1.5 py-0.5" style={{ background: (bonusMeta?.hex ?? '#888') + '22', border: `1px solid ${(bonusMeta?.hex ?? '#888')}44` }}>
+                        <AffinityToken color={c.bonusAffinity as AffinityKey} size={9} />
+                        <span className="text-[9px] font-semibold" style={{ color: bonusMeta?.glowHex ?? '#fff' }}>+1</span>
+                      </div>
+                    </div>
+                  );
+                })}
+              </div>
+            )}
+          </div>
+        )}
+      </div>
+
+      {/* Immediate victory state; descriptive record stays collapsed. */}
       <section
-        className="relative overflow-hidden rounded-[8px] border p-3 shadow-[inset_0_0_0_1px_rgba(255,255,255,0.035)] sm:p-4"
+        className="relative border-y py-3 sm:py-4"
         data-testid="civilization-command-card"
-        data-civilization-recent={recentCivilizationTraceCount > 0 ? 'true' : undefined}
         style={{
-          borderColor: recentCivilizationTraceCount > 0
-            ? `${kardashevPalette.primary}73`
-            : isMyTurn
-              ? `${kardashevPalette.primary}66`
-              : 'rgba(255,255,255,0.1)',
-          background: `linear-gradient(135deg, rgba(5,9,20,0.94), ${kardashevPalette.primary}12 54%, rgba(3,7,17,0.9))`,
-          boxShadow: recentCivilizationTraceCount > 0
-            ? `inset 0 0 0 1px rgba(255,255,255,0.035), 0 0 28px ${kardashevPalette.primary}1F`
-            : isMyTurn
-              ? `inset 0 0 0 1px rgba(255,255,255,0.035), 0 0 22px ${kardashevPalette.primary}18`
-              : 'inset 0 0 0 1px rgba(255,255,255,0.035)',
+          borderColor: isMyTurn ? `${kardashevPalette.primary}38` : 'rgba(255,255,255,0.1)',
         }}
       >
-        <div
-          className="pointer-events-none absolute inset-x-0 top-0 h-px"
-          style={{ background: `linear-gradient(90deg, transparent, ${kardashevPalette.primary}99, transparent)` }}
-          aria-hidden="true"
-        />
-        <div
-          className="pointer-events-none absolute inset-y-3 left-0 w-px"
-          style={{ background: `linear-gradient(180deg, transparent, ${kardashevPalette.primary}80, transparent)` }}
-          aria-hidden="true"
-        />
-        <div className="flex flex-col gap-4 sm:flex-row sm:items-center sm:justify-between">
-          <div className="min-w-0 flex-1">
-            <p className="mb-1 text-[10px] font-black uppercase tracking-[0.22em] text-primary/58">
+        <div>
+          <p className="mb-2 text-[9px] font-black uppercase tracking-[0.2em] text-primary/58">
+            Victory paths
+          </p>
+          <div className={`grid gap-3 ${showLegacyProgress ? 'sm:grid-cols-2' : ''}`}>
+            <EminenceProgress value={me?.eminence ?? 0} target={victoryRequirement} variant="monument" />
+            {showLegacyProgress && (
+              <CivilizationLegacyProgress
+                player={me}
+                requirement={state.legacyVictoryRequirement}
+                legacyWinnerId={state.legacyWinnerId}
+              />
+            )}
+          </div>
+        </div>
+
+        <details
+          className="group mt-3 border-t border-white/8 pt-2.5"
+          data-testid="civilization-record-details"
+        >
+          <summary className="flex min-h-8 cursor-pointer list-none items-center justify-between gap-3 text-[10px] font-black uppercase tracking-[0.18em] text-white/48 transition-colors hover:text-white/78 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-white/55 [&::-webkit-details-marker]:hidden">
+            <span className="inline-flex items-center gap-1.5">
+              <ChevronDown className="h-3.5 w-3.5 transition-transform group-open:rotate-180" aria-hidden="true" />
               Civilization Record
-            </p>
-          {isEditingCivName ? (
-            <div className="flex items-center gap-1.5">
-              <input
-                autoFocus
-                className="w-full min-w-0 border-b border-primary/60 bg-transparent text-lg font-semibold text-white placeholder:text-white/30 focus:outline-none"
-                value={civEditValue}
-                onChange={(e) => setCivEditValue(e.target.value)}
-                onKeyDown={(e) => {
-                  if (e.key === 'Enter') {
+            </span>
+          </summary>
+          <div className="pt-3">
+            {isEditingCivName ? (
+              <div className="flex items-center gap-1.5">
+                <input
+                  autoFocus
+                  className="w-full min-w-0 border-b border-primary/60 bg-transparent text-base font-semibold text-white placeholder:text-white/30 focus:outline-none"
+                  value={civEditValue}
+                  onChange={(e) => setCivEditValue(e.target.value)}
+                  onKeyDown={(e) => {
+                    if (e.key === 'Enter') {
+                      const trimmed = civEditValue.trim();
+                      setCivLabel(trimmed || getDefaultCivName(getSavedAvatarId(), me?.playerName));
+                      setIsEditingCivName(false);
+                    } else if (e.key === 'Escape') {
+                      setIsEditingCivName(false);
+                    }
+                  }}
+                  onBlur={() => {
                     const trimmed = civEditValue.trim();
                     setCivLabel(trimmed || getDefaultCivName(getSavedAvatarId(), me?.playerName));
                     setIsEditingCivName(false);
-                  } else if (e.key === 'Escape') {
+                  }}
+                  maxLength={48}
+                />
+                <button
+                  type="button"
+                  aria-label="Save civilization name"
+                  className="shrink-0 text-primary/80 transition-colors hover:text-primary"
+                  onMouseDown={(e) => {
+                    e.preventDefault();
+                    const trimmed = civEditValue.trim();
+                    setCivLabel(trimmed || getDefaultCivName(getSavedAvatarId(), me?.playerName));
                     setIsEditingCivName(false);
-                  }
-                }}
-                onBlur={() => {
-                  const trimmed = civEditValue.trim();
-                  setCivLabel(trimmed || getDefaultCivName(getSavedAvatarId(), me?.playerName));
-                  setIsEditingCivName(false);
-                }}
-                maxLength={48}
-              />
+                  }}
+                >
+                  <Check className="h-3.5 w-3.5" />
+                </button>
+                <button
+                  type="button"
+                  aria-label="Cancel civilization rename"
+                  className="shrink-0 text-muted-foreground transition-colors hover:text-foreground"
+                  onMouseDown={(e) => {
+                    e.preventDefault();
+                    setIsEditingCivName(false);
+                  }}
+                >
+                  <X className="h-3.5 w-3.5" />
+                </button>
+              </div>
+            ) : (
               <button
-                className="shrink-0 text-primary/80 hover:text-primary transition-colors"
-                onMouseDown={(e) => {
-                  e.preventDefault();
-                  const trimmed = civEditValue.trim();
-                  setCivLabel(trimmed || getDefaultCivName(getSavedAvatarId(), me?.playerName));
-                  setIsEditingCivName(false);
+                type="button"
+                className="group/name flex w-full min-w-0 items-center gap-1.5 text-left"
+                onClick={() => {
+                  setCivEditValue(civLabel);
+                  setIsEditingCivName(true);
                 }}
+                title="Rename your civilization"
               >
-                <Check className="h-3.5 w-3.5" />
+                <span className="truncate border-b border-transparent text-base font-semibold text-white transition-colors group-hover/name:border-white/30">
+                  {civLabel}
+                </span>
+                <Pencil className="h-3 w-3 shrink-0 text-white/30 transition-colors group-hover/name:text-white/60" />
               </button>
-              <button
-                className="shrink-0 text-muted-foreground hover:text-foreground transition-colors"
-                onMouseDown={(e) => {
-                  e.preventDefault();
-                  setIsEditingCivName(false);
-                }}
-              >
-                <X className="h-3.5 w-3.5" />
-              </button>
-            </div>
-          ) : (
-            <button
-              className="group flex items-center gap-1.5 text-left w-full min-w-0"
-              onClick={() => {
-                setCivEditValue(civLabel);
-                setIsEditingCivName(true);
-              }}
-              title="Rename your civilization"
-            >
-              <span className="truncate border-b border-transparent text-lg font-semibold text-white transition-colors group-hover:border-white/30">
-                {civLabel}
-              </span>
-              <Pencil className="h-3 w-3 shrink-0 text-white/30 group-hover:text-white/60 transition-colors" />
-            </button>
-          )}
+            )}
+
             <div className="mt-3 flex flex-wrap items-center gap-2">
               {[
                 ['Maturity', maturityLabel],
                 ...(showReach ? [['Reach', reachLabel] as const] : []),
                 ['Stability', stabilityLabel],
                 ['Artifacts', myForgedArtifacts.length],
-                ['Traces', civilizationTraceCount],
                 ['Events', civilizationEvents.length],
               ].map(([label, value]) => (
                 <span
@@ -446,124 +561,45 @@ export function HandTab({ scope }: { scope: HandTabScope }) {
                   <span className="text-white/86">{value}</span>
                 </span>
               ))}
-              {recentCivilizationTraceCount > 0 && (
-                <span
-                  className="inline-flex min-h-7 items-center gap-1.5 border px-2.5 py-1 text-[10px] font-black uppercase tracking-widest"
-                  style={{
-                    borderColor: `${kardashevPalette.primary}73`,
-                    background: `${kardashevPalette.primary}1A`,
-                    color: kardashevPalette.accent,
-                    boxShadow: `0 0 18px ${kardashevPalette.primary}1F`,
-                  }}
-                >
-                  New Trace
-                  <span className="text-white/86">{recentCivilizationTraceCount}</span>
-                </span>
-              )}
             </div>
-            {recentCivilizationTraceLabel && (
-              <div
-                className="mt-3 rounded-[6px] border px-3 py-2 text-[10px] font-semibold uppercase tracking-[0.16em]"
-                data-testid="civilization-command-new-trace"
-                aria-live="polite"
-                style={{
-                  borderColor: `${kardashevPalette.primary}59`,
-                  background: `${kardashevPalette.primary}12`,
-                  color: kardashevPalette.accent,
-                  boxShadow: `0 0 22px ${kardashevPalette.primary}18`,
-                }}
-              >
-                <span className="block text-[8px] font-black text-white/38">Recently registered</span>
-                <span className="mt-0.5 block truncate text-white/86">{recentCivilizationTraceLabel}</span>
-                <span className="mt-1 block text-[8px] font-black" style={{ color: `${kardashevPalette.accent}BF` }}>
-                  Scan view is focusing this change
-                </span>
+
+            {recordedCivilizationEvents.length > 0 && (
+              <div className="mt-3 border-t border-white/8 pt-3" data-testid="civilization-event-history">
+                <div className="mb-2 flex items-center gap-1.5 text-[9px] font-black uppercase tracking-[0.18em] text-white/38">
+                  <Flag className="h-3 w-3" aria-hidden="true" />
+                  Defining Events
+                </div>
+                <div className="max-h-80 space-y-2 overflow-y-auto">
+                  {[...recordedCivilizationEvents].reverse().map((event) => (
+                    <div
+                      key={event.eventId}
+                      className="border-l border-cyan-100/24 pl-2.5 text-[10px] leading-relaxed"
+                    >
+                      <div className="flex items-center justify-between gap-3">
+                        <span className="font-black uppercase tracking-[0.12em] text-cyan-100/64">
+                          {event.definitionId ? CIVILIZATION_EVENT_CARD_DEFINITIONS[event.definitionId].title : 'Cosmic Event'}
+                        </span>
+                        <span className="shrink-0 uppercase tracking-[0.1em] text-white/30">
+                          {event.turnCount === null ? 'Recorded' : `Turn ${event.turnCount}`}
+                        </span>
+                      </div>
+                      <p className="mt-0.5 text-white/62">{event.summary}</p>
+                      <CosmicEventTargetEvidence evidence={event.targetEvidence} />
+                    </div>
+                  ))}
+                </div>
               </div>
             )}
-        </div>
-          <div className="shrink-0 self-stretch border-t border-white/8 pt-3 sm:border-l sm:border-t-0 sm:pl-4 sm:pt-0">
-            <EminenceProgress value={me?.eminence ?? 0} target={victoryRequirement} variant="monument" />
           </div>
-        </div>
+        </details>
       </section>
 
-      {civilizationEvents.length > 0 && (
-        <section className="px-1" aria-labelledby="civilization-events-heading">
-          <div className="mb-2 flex items-center justify-between gap-3">
-            <h2
-              id="civilization-events-heading"
-              className="text-[10px] font-semibold uppercase text-muted-foreground"
-            >
-              Recent Consequences
-            </h2>
-            <span className="text-[9px] font-black uppercase tracking-widest text-white/32">
-              Causal Record
-            </span>
-          </div>
-          <ol className="divide-y divide-white/8 border-y border-white/8">
-            {civilizationEvents.slice(-3).reverse().map((event) => (
-              <li key={event.eventId} className="flex items-start gap-3 py-2.5">
-                <span
-                  className="mt-1.5 h-1.5 w-1.5 shrink-0 rotate-45 border border-primary/65 bg-primary/18"
-                  aria-hidden="true"
-                />
-                <div className="min-w-0 flex-1">
-                  <p className="text-xs font-semibold leading-snug text-white/82">
-                    {event.summary}
-                  </p>
-                  <p className="mt-1 text-[9px] font-black uppercase tracking-widest text-white/34">
-                    {event.sourceType}
-                    {event.pressureTags.length > 0 ? ` / ${event.pressureTags.join(' + ')}` : ''}
-                    {event.turnCount !== null ? ` / Turn ${event.turnCount}` : ''}
-                  </p>
-                </div>
-              </li>
-            ))}
-          </ol>
-        </section>
-      )}
-
-      {/* Civilization-wide permanent Affinity ledger */}
-      <section className="px-1" aria-labelledby="permanent-affinities-heading">
-        <div className="mb-2 flex items-center justify-between gap-3">
-          <h2
-            id="permanent-affinities-heading"
-            className="text-[10px] font-semibold uppercase text-muted-foreground"
-          >
-            Permanent Affinities
-          </h2>
-          {permanentAffinityEntries.some(({ allianceBonus }) => allianceBonus > 0) && (
-            <span className="text-[9px] text-yellow-400/65">✦ allied Luminary</span>
-          )}
-        </div>
-        {permanentAffinityEntries.length > 0 ? (
-          <div className="flex flex-wrap items-center gap-1.5">
-            {permanentAffinityEntries.map(({ affinity, allianceBonus, total }) => (
-              <div
-                key={affinity}
-                className="flex min-h-7 items-center gap-1 border border-white/10 bg-black/35 px-2 py-1"
-                title={allianceBonus > 0
-                  ? `${total} permanent ${AFFINITY_META[affinity].name}, including ${allianceBonus} from allied Luminaries`
-                  : `${total} permanent ${AFFINITY_META[affinity].name}`}
-              >
-                <AffinityToken color={affinity} size={13} />
-                <span className="text-xs font-bold tabular-nums text-white">×{total}</span>
-                {allianceBonus > 0 && (
-                  <span className="text-[9px] text-yellow-400/80" aria-label={`${allianceBonus} from allied Luminaries`}>
-                    ✦{allianceBonus}
-                  </span>
-                )}
-              </div>
-            ))}
-          </div>
-        ) : (
-          <p className="text-xs italic text-muted-foreground">No permanent Affinities yet.</p>
-        )}
-      </section>
+      {state.eventDelivery === 'scheduled_forge_v1' && <CivilizationEventForecast forecast={state.eventForecast} />}
 
       {(
         (me?.blueprintPrivateStates?.length ?? 0) > 0 ||
         safePlayers.some((player) => (player.manifestedBlueprintDevices?.length ?? 0) > 0) ||
+        safePlayers.some((player) => (player.civilization?.projects?.length ?? 0) > 0) ||
         (state.scenarioProtocols?.length ?? 0) > 0
       ) && (
         <div data-blueprint-game-panel="true">
@@ -704,98 +740,18 @@ export function HandTab({ scope }: { scope: HandTabScope }) {
         </div>
       )}
 
-      {/* Forged Cards */}
-      <div className="rounded-2xl border border-border/50 overflow-hidden">
-        <button
-          type="button"
-          onClick={() => setShowForgedArtifacts(v => !v)}
-          className="w-full flex items-center justify-between px-4 py-3 bg-secondary/40 text-sm font-semibold"
-        >
-          <span className="compact-section-label flex items-center gap-2 min-w-0">
-            <Hammer className="compact-section-glyph h-4 w-4 shrink-0 text-muted-foreground" aria-hidden="true" />
-            <span className="compact-label-text truncate">Forged Artifacts</span>
-            <span className="compact-section-count shrink-0">({me?.forgedArtifacts?.length ?? 0})</span>
-          </span>
-          {showForgedArtifacts ? <ChevronUp className="h-4 w-4 text-muted-foreground" /> : <ChevronDown className="h-4 w-4 text-muted-foreground" />}
-        </button>
-        {showForgedArtifacts && (
-          <div className="p-3">
-            {/* Cards / Timeline toggle */}
-            {(me?.forgedArtifacts?.length ?? 0) > 0 && (
-              <div className="flex gap-1 mb-3">
-                <button
-                  type="button"
-                  onClick={() => setForgedView('cards')}
-                  className={`text-[10px] font-semibold px-2.5 py-1 rounded-full transition-colors ${forgedView === 'cards' ? 'bg-primary/20 text-primary' : 'text-muted-foreground hover:text-foreground'}`}
-                >
-                  Cards
-                </button>
-                <button
-                  type="button"
-                  onClick={() => setForgedView('timeline')}
-                  className={`text-[10px] font-semibold px-2.5 py-1 rounded-full transition-colors ${forgedView === 'timeline' ? 'bg-primary/20 text-primary' : 'text-muted-foreground hover:text-foreground'}`}
-                >
-                  Timeline
-                </button>
-              </div>
-            )}
-            {(me?.forgedArtifacts?.length ?? 0) === 0 ? (
-              <p className="text-xs text-muted-foreground italic">No Artifacts forged yet.</p>
-            ) : forgedView === 'cards' ? (
-              <div className="flex flex-wrap gap-2">
-                {(me?.forgedArtifacts ?? []).map((c) => (
-                  <ForgedCardWithTooltip key={c.id} card={c} tier={c.tier} onOpenSheet={() => openForgedCardSheet(c)} />
-                ))}
-              </div>
-            ) : (
-              <div className="flex flex-col divide-y divide-border/30">
-                {(me?.forgedArtifacts ?? []).map((c, idx) => {
-                  const snap = c.bonusesAtForge;
-                  const snapKeys = snap
-                    ? AFFINITIES.filter(k => k !== 'singularity' && (snap[k as keyof AffinityCounts] ?? 0) > 0)
-                    : [];
-                  const bonusMeta = AFFINITY_META[c.bonusAffinity as AffinityKey];
-                  return (
-                    <div key={c.id} className="flex items-center gap-2.5 py-2 cursor-pointer rounded hover:bg-white/5 px-1 -mx-1 transition-colors" onClick={() => openForgedCardSheet(c)}>
-                      <span className="text-[10px] text-muted-foreground w-4 text-right shrink-0 tabular-nums">{idx + 1}</span>
-                      <div className="flex-1 min-w-0">
-                        <p className="text-[11px] font-semibold text-foreground leading-tight truncate">{c.name}</p>
-                        <div className="flex flex-wrap gap-1 mt-1">
-                          {snapKeys.length > 0 ? snapKeys.map(k => (
-                            <div key={k} className="flex items-center gap-0.5 bg-black/40 rounded px-1 py-0.5">
-                              <AffinityToken color={k as AffinityKey} size={9} />
-                              <span className="text-[9px] font-bold text-white">×{snap![k as keyof AffinityCounts]}</span>
-                            </div>
-                          )) : (
-                            <span className="text-[9px] text-muted-foreground italic">no snapshot</span>
-                          )}
-                        </div>
-                      </div>
-                      <div className="shrink-0 flex items-center gap-0.5 rounded-full px-1.5 py-0.5" style={{ background: (bonusMeta?.hex ?? '#888') + '22', border: `1px solid ${(bonusMeta?.hex ?? '#888')}44` }}>
-                        <AffinityToken color={c.bonusAffinity as AffinityKey} size={9} />
-                        <span className="text-[9px] font-semibold" style={{ color: bonusMeta?.glowHex ?? '#fff' }}>+1</span>
-                      </div>
-                    </div>
-                  );
-                })}
-              </div>
-            )}
-          </div>
-        )}
-      </div>
-
       {/* Luminaries in Play */}
       {(state.luminaries?.length ?? 0) > 0 && (
         <div className="rounded-2xl border border-border/50 overflow-hidden">
           <button
             type="button"
+            aria-label={`Luminaries in play (${state.luminaries.length})`}
+            aria-expanded={showActiveLuminaries}
+            title="Luminaries"
             onClick={() => setShowActiveLuminaries(v => !v)}
             className="w-full flex items-center justify-between px-4 py-3 bg-secondary/40 text-sm font-semibold"
           >
-            <span className="flex items-center gap-2">
-              <span className="text-base leading-none">✦</span>
-              Luminaries in Play ({state.luminaries.length})
-            </span>
+            <span className="text-base leading-none" aria-hidden="true">✦</span>
             {showActiveLuminaries ? <ChevronUp className="h-4 w-4 text-muted-foreground" /> : <ChevronDown className="h-4 w-4 text-muted-foreground" />}
           </button>
           {showActiveLuminaries && (
@@ -966,6 +922,7 @@ export function LogTab({ scope }: { scope: LogTabScope }) {
             const totalAffinity = oppD?.totalAffinity ?? 0;
             const cardCount = oppD?.cardCount ?? 0;
             const reservedCount = oppD?.reservedCount ?? 0;
+            const encryptedCount = getOrdinaryEncryptedCount(p);
             const isExpanded = expandedOpponents.has(p.playerId);
             const logOppCivPalette = oppD?.civPalette ?? getDominantAffinityPalette(p.forgedArtifacts);
             const logOppCivName = oppD?.civName ?? p.civName ?? p.playerName;
@@ -1067,15 +1024,29 @@ export function LogTab({ scope }: { scope: LogTabScope }) {
                                 {!isSingularity && (bonus > 0 || lumBonus > 0) && (
                                   <div className="opponent-affinity-cell__modifiers">
                                     {bonus > 0 && (
-                                      <span className="opponent-affinity-cell__bonus">+{bonus} bonus</span>
+                                      <span
+                                        className="opponent-affinity-cell__bonus"
+                                        title={`${bonus} permanent ${meta.name} bonus`}
+                                        aria-label={`${bonus} permanent ${meta.name} bonus`}
+                                      >+{bonus}</span>
                                     )}
                                     {lumBonus > 0 && (
                                       <span className="opponent-affinity-cell__luminary">+{lumBonus}✦</span>
                                     )}
                                   </div>
                                 )}
-                                {isSingularity && reservedCount > 0 && (
-                                  <span className="opponent-affinity-cell__encrypted">{reservedCount} encrypted</span>
+                                {isSingularity && (
+                                  <span
+                                    className="opponent-affinity-cell__encrypted"
+                                    role="img"
+                                    aria-label={`${encryptedCount} of 3 Encrypted Artifacts`}
+                                    title={`${encryptedCount} of 3 Encrypted Artifacts`}
+                                  >
+                                    <span>{encryptedCount}/3</span>
+                                    <span className="opponent-affinity-cell__cipher" aria-hidden="true">
+                                      <CipherSigil affinityHex="#e2e8f0" id={9400 + i} />
+                                    </span>
+                                  </span>
                                 )}
                               </div>
                             );
@@ -1137,6 +1108,8 @@ export function LogTab({ scope }: { scope: LogTabScope }) {
         </div>
       </div>
       )}
+
+      <CosmicEventPoolReference eventCardPool={state.eventCardPool} eventContentProfile={state.eventContentProfile} eventFrequency={state.eventFrequency} eventDelivery={state.eventDelivery} />
 
       {/* Action Log */}
       <div>

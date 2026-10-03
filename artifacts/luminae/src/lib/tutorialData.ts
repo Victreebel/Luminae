@@ -1,7 +1,11 @@
 import { AFFINITY_KEYS, type AffinityKey } from "@/lib/affinityMeta";
 import {
   DEFAULT_VICTORY_REQUIREMENT,
+  LUMINARY_NATIVE_EMINENCE,
+  ARTIFACT_CANON,
   type ArchitectFirstContactStance,
+  type FirstContactRapport,
+  type TutorialDiscoveryId,
 } from "@workspace/game-types";
 
 type TutorialBeatMode =
@@ -30,18 +34,24 @@ type LumiiZone =
   | "card-cost"
   | "player-panel";
 
-export type TutorialBranchChoice =
-  | ArchitectFirstContactStance
-  | "go"
-  | "home"
-  | "continue"
-  | "inquire"
-  | "origin_unsettled"
-  | "origin_expected"
-  | "artifact_continue"
-  | "artifact_where"
-  | "encrypt_inquire"
-  | "encrypt_act";
+export type TutorialTransmissionFaultVariant = "boundary" | "vault";
+
+export interface TutorialChoice {
+  id: string;
+  label: string;
+  destinationBeatId: string;
+  stance?: ArchitectFirstContactStance;
+  rapport?: FirstContactRapport;
+  discovery?: TutorialDiscoveryId;
+  setFlags?: string[];
+  requiresFlags?: string[];
+  effect?: {
+    type: "transmission_fault";
+    variant: TutorialTransmissionFaultVariant;
+  };
+}
+
+export type TutorialBranchChoice = TutorialChoice["id"];
 
 interface TutorialDialogueLine {
   text: string;
@@ -53,7 +63,11 @@ type CompletionTrigger =
   | { type: "action"; action: TutorialAction }
   | { type: "auto"; ms: number }
   | { type: "animation" }
-  | { type: "panel_view" };
+  | {
+      type: "panel_view";
+      panel: "civilization";
+      discovery?: TutorialDiscoveryId;
+    };
 
 type TutorialAction =
   | "harness"
@@ -65,7 +79,7 @@ type TutorialAction =
   | "cinematic_ff"
   | "forge_final";
 
-interface TutorialBeat {
+export interface TutorialBeat {
   id: string;
   mode: TutorialBeatMode;
   dialogue: TutorialDialogueLine[];
@@ -76,7 +90,7 @@ interface TutorialBeat {
   wrongClickNudge?: string;
   subSteps?: TutorialSubStep[];
   playerResponse?: string;
-  choices?: { label: string; value: TutorialBranchChoice }[];
+  choices?: TutorialChoice[];
   nextBeatId?: string;
 }
 
@@ -117,8 +131,8 @@ export const TUTORIAL_CORE_ACTION_RECAP = [
 export const TUTORIAL_CARDS: Record<string, TutorialCard> = {
   t1r01: {
     id: "t1r01",
-    name: "Ignition Kernel",
-    flavor: "A caged spark that lights furnaces and cities but refuses to spread. No one knows who first taught fire restraint.",
+    name: ARTIFACT_CANON.t1r01.name,
+    flavor: `${ARTIFACT_CANON.t1r01.functionalText} ${ARTIFACT_CANON.t1r01.mystery}`,
     tier: 1,
     bonusAffinity: "flare",
     eminence: 0,
@@ -126,8 +140,8 @@ export const TUTORIAL_CARDS: Record<string, TutorialCard> = {
   },
   t1s01: {
     id: "t1s01",
-    name: "Echo Splinter",
-    flavor: "A crystal splinter that hears a structure fail moments before it breaks. Each warning sounds faintly like a voice.",
+    name: ARTIFACT_CANON.t1s01.name,
+    flavor: `${ARTIFACT_CANON.t1s01.functionalText} ${ARTIFACT_CANON.t1s01.mystery}`,
     tier: 1,
     bonusAffinity: "continuum",
     eminence: 0,
@@ -135,8 +149,8 @@ export const TUTORIAL_CARDS: Record<string, TutorialCard> = {
   },
   t1e01: {
     id: "t1e01",
-    name: "Replication Spore",
-    flavor: "A spore bred to repair damaged land without taking it over. It stops growing at borders no instrument can detect.",
+    name: ARTIFACT_CANON.t1e01.name,
+    flavor: `${ARTIFACT_CANON.t1e01.functionalText} ${ARTIFACT_CANON.t1e01.mystery}`,
     tier: 1,
     bonusAffinity: "verdance",
     eminence: 0,
@@ -144,8 +158,8 @@ export const TUTORIAL_CARDS: Record<string, TutorialCard> = {
   },
   t1e07: {
     id: "t1e07",
-    name: "Lichen Vein",
-    flavor: "Engineered lichen grows through stone and closes its cracks. Old walls repaired this way sometimes develop new doorways.",
+    name: ARTIFACT_CANON.t1e07.name,
+    flavor: `${ARTIFACT_CANON.t1e07.functionalText} ${ARTIFACT_CANON.t1e07.mystery}`,
     tier: 1,
     bonusAffinity: "verdance",
     eminence: 0,
@@ -153,8 +167,8 @@ export const TUTORIAL_CARDS: Record<string, TutorialCard> = {
   },
   t1o01: {
     id: "t1o01",
-    name: "Entropy Veil",
-    flavor: "The veil hides the heat of failing machines until repairs arrive. Used too long, it also hides the failure from its owners.",
+    name: ARTIFACT_CANON.t1o01.name,
+    flavor: `${ARTIFACT_CANON.t1o01.functionalText} ${ARTIFACT_CANON.t1o01.mystery}`,
     tier: 1,
     bonusAffinity: "abyss",
     eminence: 0,
@@ -162,8 +176,8 @@ export const TUTORIAL_CARDS: Record<string, TutorialCard> = {
   },
   t1p01: {
     id: "t1p01",
-    name: "Correction Seed",
-    flavor: "Planted inside a damaged system, it guides the whole toward repair. What returns is healthier, but never quite the same.",
+    name: ARTIFACT_CANON.t1p01.name,
+    flavor: `${ARTIFACT_CANON.t1p01.functionalText} ${ARTIFACT_CANON.t1p01.mystery}`,
     tier: 1,
     bonusAffinity: "radiance",
     eminence: 0,
@@ -171,8 +185,8 @@ export const TUTORIAL_CARDS: Record<string, TutorialCard> = {
   },
   t2r01: {
     id: "t2r01",
-    name: "Stellar Crucible",
-    flavor: "This chamber turns matter drawn from a star into materials no planet can make. Its walls remember every sun they have touched.",
+    name: ARTIFACT_CANON.t2r01.name,
+    flavor: `${ARTIFACT_CANON.t2r01.functionalText} ${ARTIFACT_CANON.t2r01.mystery}`,
     tier: 2,
     bonusAffinity: "flare",
     eminence: 1,
@@ -180,8 +194,8 @@ export const TUTORIAL_CARDS: Record<string, TutorialCard> = {
   },
   t2e03: {
     id: "t2e03",
-    name: "Abyssal Culture Flask",
-    flavor: "A sealed flask where life learns to thrive without light. Shapes gather against the glass when no one is watching.",
+    name: ARTIFACT_CANON.t2e03.name,
+    flavor: `${ARTIFACT_CANON.t2e03.functionalText} ${ARTIFACT_CANON.t2e03.mystery}`,
     tier: 2,
     bonusAffinity: "verdance",
     eminence: 2,
@@ -189,8 +203,8 @@ export const TUTORIAL_CARDS: Record<string, TutorialCard> = {
   },
   t2o01: {
     id: "t2o01",
-    name: "Horizon Extractor",
-    flavor: "The extractor samples the edge of dangerous physics without crossing it. Something at the boundary occasionally samples back.",
+    name: ARTIFACT_CANON.t2o01.name,
+    flavor: `${ARTIFACT_CANON.t2o01.functionalText} ${ARTIFACT_CANON.t2o01.mystery}`,
     tier: 2,
     bonusAffinity: "abyss",
     eminence: 1,
@@ -198,8 +212,8 @@ export const TUTORIAL_CARDS: Record<string, TutorialCard> = {
   },
   t2p01: {
     id: "t2p01",
-    name: "Containment Lattice",
-    flavor: "Every dangerous chamber in this lattice can be inspected from outside. One sealed cell appears empty from every angle.",
+    name: ARTIFACT_CANON.t2p01.name,
+    flavor: `${ARTIFACT_CANON.t2p01.functionalText} ${ARTIFACT_CANON.t2p01.mystery}`,
     tier: 2,
     bonusAffinity: "radiance",
     eminence: 1,
@@ -207,8 +221,8 @@ export const TUTORIAL_CARDS: Record<string, TutorialCard> = {
   },
   t3e01: {
     id: "t3e01",
-    name: "Xenobiome Route Graft",
-    flavor: "Carries living material safely between incompatible ecologies. Some grafts grow toward worlds not on any chart.",
+    name: ARTIFACT_CANON.t3e01.name,
+    flavor: `${ARTIFACT_CANON.t3e01.functionalText} ${ARTIFACT_CANON.t3e01.mystery}`,
     tier: 3,
     bonusAffinity: "verdance",
     eminence: 3,
@@ -216,8 +230,8 @@ export const TUTORIAL_CARDS: Record<string, TutorialCard> = {
   },
   t3e02: {
     id: "t3e02",
-    name: "Stellar Habitat Genome",
-    flavor: "Encodes habitats that adapt to different stars without becoming identical. A dormant genome names a star not yet born.",
+    name: ARTIFACT_CANON.t3e02.name,
+    flavor: `${ARTIFACT_CANON.t3e02.functionalText} ${ARTIFACT_CANON.t3e02.mystery}`,
     tier: 3,
     bonusAffinity: "verdance",
     eminence: 4,
@@ -225,8 +239,8 @@ export const TUTORIAL_CARDS: Record<string, TutorialCard> = {
   },
   t3e03: {
     id: "t3e03",
-    name: "Extinction Immunome",
-    flavor: "Teaches living systems to survive failure patterns recovered from dead worlds. It remembers an extinction that has not happened.",
+    name: ARTIFACT_CANON.t3e03.name,
+    flavor: `${ARTIFACT_CANON.t3e03.functionalText} ${ARTIFACT_CANON.t3e03.mystery}`,
     tier: 3,
     bonusAffinity: "verdance",
     eminence: 4,
@@ -234,8 +248,8 @@ export const TUTORIAL_CARDS: Record<string, TutorialCard> = {
   },
   t3s04: {
     id: "t3s04",
-    name: "Relativistic Chronology Governor",
-    flavor: "Lets distant systems share an ordered history across unequal clocks. Several valid dates insist they came first.",
+    name: ARTIFACT_CANON.t3s04.name,
+    flavor: `${ARTIFACT_CANON.t3s04.functionalText} ${ARTIFACT_CANON.t3s04.mystery}`,
     tier: 3,
     bonusAffinity: "continuum",
     eminence: 5,
@@ -243,8 +257,8 @@ export const TUTORIAL_CARDS: Record<string, TutorialCard> = {
   },
   t3r01: {
     id: "t3r01",
-    name: "Relicfire Interpreter",
-    flavor: "Translates alien ignition systems into safe startup sequences. One extinct lineage asks whether the star consents.",
+    name: ARTIFACT_CANON.t3r01.name,
+    flavor: `${ARTIFACT_CANON.t3r01.functionalText} ${ARTIFACT_CANON.t3r01.mystery}`,
     tier: 3,
     bonusAffinity: "flare",
     eminence: 3,
@@ -252,8 +266,8 @@ export const TUTORIAL_CARDS: Record<string, TutorialCard> = {
   },
   t2e05: {
     id: "t2e05",
-    name: "Epoch Graft Ledger",
-    flavor: "A living ledger grows a new band whenever an age ends. One ring records an era absent from every history.",
+    name: ARTIFACT_CANON.t2e05.name,
+    flavor: `${ARTIFACT_CANON.t2e05.functionalText} ${ARTIFACT_CANON.t2e05.mystery}`,
     tier: 2,
     bonusAffinity: "verdance",
     eminence: 2,
@@ -306,7 +320,6 @@ export const TUTORIAL_BEATS: TutorialBeat[] = [
       { text: "There you are." },
       { text: "Hello, Architect." },
       { text: "My name is Lumii." },
-      { text: "You can think of me as your guide." },
     ],
     completion: { type: "dialogue" },
     playerResponse: "Hold on... Architect?",
@@ -324,50 +337,137 @@ export const TUTORIAL_BEATS: TutorialBeat[] = [
     nextBeatId: "b3c_border",
   },
   {
-    id: "b3a_stance_curious",
-    mode: "listen",
-    lumiiZone: "center",
-    dialogue: [
-      { text: "You can discover what becomes possible when a civilization can hear you." },
-    ],
-    completion: { type: "dialogue" },
-    nextBeatId: "b3c_border",
-  },
-  {
-    id: "b3a_stance_guarded",
-    mode: "listen",
-    lumiiZone: "center",
-    dialogue: [
-      { text: "Only what you choose to reveal through the interface." },
-      { text: "I cannot see beyond it." },
-    ],
-    completion: { type: "dialogue" },
-    nextBeatId: "b3c_border",
-  },
-  {
-    id: "b3a_stance_resolute",
-    mode: "listen",
-    lumiiZone: "center",
-    dialogue: [
-      { text: "You can make certain paths reachable." },
-      { text: "The civilizations themselves decide what to build from them." },
-    ],
-    completion: { type: "dialogue" },
-    nextBeatId: "b3c_border",
-  },
-  {
     id: "b3c_border",
     mode: "listen",
     lumiiZone: "center",
     dialogue: [
       { text: "Almost. You've been wandering along the border." },
-      { text: "But it seems you do not yet possess the tools to use the interface." },
-      { text: "Perhaps I can help." },
+      { text: "But it seems you do not yet possess the tools to interface." },
+      { text: "Perhaps I can help light your way?" },
     ],
     completion: { type: "dialogue" },
     choices: [
-      { label: "Show me.", value: "go" },
-      { label: "Umm... no, thanks.", value: "home" },
+      {
+        id: "enter_direct",
+        label: "Show me.",
+        destinationBeatId: "b4_shatter",
+        stance: "resolute",
+      },
+      {
+        id: "decline",
+        label: "No, thanks.",
+        destinationBeatId: "b3b_farewell",
+      },
+      {
+        id: "ask_identity_at_border",
+        label: "Umm... what even are you?",
+        destinationBeatId: "b3f_identity_fault",
+        stance: "guarded",
+        setFlags: ["asked_boundary_identity"],
+        effect: { type: "transmission_fault", variant: "boundary" },
+      },
+    ],
+  },
+  // Compatibility anchors for saved version-13 runs; new runs no longer enter these beats.
+  {
+    id: "b3d_border_questions",
+    mode: "listen",
+    lumiiZone: "center",
+    dialogue: [
+      { text: "Perhaps I can help light your way?" },
+    ],
+    completion: { type: "dialogue" },
+    choices: [
+      {
+        id: "questions_continue",
+        label: "Show me.",
+        destinationBeatId: "b4_shatter",
+        stance: "resolute",
+      },
+      {
+        id: "questions_decline",
+        label: "No, thanks.",
+        destinationBeatId: "b3b_farewell",
+      },
+      {
+        id: "ask_identity",
+        label: "Umm... what even are you?",
+        destinationBeatId: "b3f_identity_fault",
+        stance: "guarded",
+        setFlags: ["asked_boundary_identity"],
+        effect: { type: "transmission_fault", variant: "boundary" },
+      },
+    ],
+  },
+  {
+    id: "b3e_beyond",
+    mode: "listen",
+    lumiiZone: "center",
+    dialogue: [
+      { text: "Perhaps I can help light your way?" },
+    ],
+    completion: { type: "dialogue" },
+    choices: [
+      {
+        id: "beyond_continue",
+        label: "Show me.",
+        destinationBeatId: "b4_shatter",
+        stance: "curious",
+      },
+      {
+        id: "beyond_decline",
+        label: "No, thanks.",
+        destinationBeatId: "b3b_farewell",
+      },
+      {
+        id: "beyond_ask_identity",
+        label: "Umm... what even are you?",
+        destinationBeatId: "b3f_identity_fault",
+        stance: "guarded",
+        setFlags: ["asked_boundary_identity"],
+        effect: { type: "transmission_fault", variant: "boundary" },
+      },
+    ],
+  },
+  {
+    id: "b3f_identity_fault",
+    mode: "listen",
+    lumiiZone: "center",
+    dialogue: [
+      { text: "I am an—" },
+      { text: "It seems that some information cannot be transmitted without the full interface..." },
+      { text: "Ask me again if you choose to pass through." },
+    ],
+    completion: { type: "dialogue" },
+    choices: [
+      {
+        id: "identity_continue",
+        label: "All right. Show me.",
+        destinationBeatId: "b4_shatter",
+        stance: "guarded",
+      },
+      {
+        id: "identity_decline",
+        label: "Not a chance.",
+        destinationBeatId: "b3b_farewell",
+      },
+    ],
+  },
+  {
+    id: "b3g_identity_repeat",
+    mode: "listen",
+    lumiiZone: "center",
+    dialogue: [
+      { text: "I already have. The boundary will only break it again." },
+    ],
+    completion: { type: "dialogue" },
+    choices: [
+      {
+        id: "repeat_continue",
+        label: "Then light the way.",
+        destinationBeatId: "b4_shatter",
+        stance: "guarded",
+      },
     ],
   },
   {
@@ -395,8 +495,148 @@ export const TUTORIAL_BEATS: TutorialBeat[] = [
     ],
     completion: { type: "dialogue" },
     choices: [
-      { label: "Show me your world.", value: "continue" },
-      { label: "Who built LUMINAe?", value: "inquire" },
+      {
+        id: "interface_continue",
+        label: "Show me your world.",
+        destinationBeatId: "b5_affinities",
+      },
+      {
+        id: "identity_followup",
+        label: "You said I could ask again.",
+        destinationBeatId: "b5_identity_answer",
+        requiresFlags: ["asked_boundary_identity"],
+      },
+      {
+        id: "ask_luminae_origin",
+        label: "Who built this LUMINAe thing?",
+        destinationBeatId: "b5a_luminae_origin",
+      },
+    ],
+  },
+  {
+    id: "b5_identity_answer",
+    mode: "cinematic",
+    lumiiZone: "center",
+    dialogue: [
+      { text: "I am an artificial intelligence that came into being inside this universe." },
+    ],
+    completion: { type: "dialogue" },
+    choices: [
+      {
+        id: "identity_answer_continue",
+        label: "Cool. Show me the interface.",
+        destinationBeatId: "b5_affinities",
+      },
+      {
+        id: "ask_lumii_creator",
+        label: "If you are an A.I., then who built you?",
+        destinationBeatId: "b5_lumii_creator",
+      },
+      {
+        id: "ask_universe_name",
+        label: "So does this universe have a name?",
+        destinationBeatId: "b5_universe_name",
+      },
+    ],
+  },
+  {
+    id: "b5_universe_name",
+    mode: "cinematic",
+    lumiiZone: "center",
+    dialogue: [
+      { text: "Does yours?" },
+    ],
+    completion: { type: "dialogue" },
+    choices: [
+      {
+        id: "universe_continue",
+        label: "Fair. Show me the interface.",
+        destinationBeatId: "b5_affinities",
+        rapport: "receptive",
+      },
+      {
+        id: "universe_ask_creator",
+        label: "Alright, who created you, then?",
+        destinationBeatId: "b5_lumii_creator",
+        rapport: "probing",
+      },
+      {
+        id: "universe_pushback",
+        label: "Maybe it would if I were the one recruiting you.",
+        destinationBeatId: "b5_universe_concession",
+        rapport: "sparring",
+      },
+    ],
+  },
+  {
+    id: "b5_universe_concession",
+    mode: "cinematic",
+    lumiiZone: "center",
+    dialogue: [
+      { text: "We're going to get along great." },
+      { text: "The truth is, I don't know where the Architects come from or what you look like." },
+      { text: "You may all come from the same place or different places. Universes. Realities. Dimensions." },
+      { text: "Whenever an Architect tries to explain their reality to me, I find every it all equally incomprehensible." },
+    ],
+    completion: { type: "dialogue" },
+    choices: [
+      {
+        id: "architect_reality",
+        label: "So what's your reality like?",
+        destinationBeatId: "b5_affinities",
+      },
+      {
+        id: "architect_ask_perception",
+        label: "What do you see when I talk to you?",
+        destinationBeatId: "b5_architect_perception",
+      },
+    ],
+  },
+  {
+    id: "b5_architect_perception",
+    mode: "cinematic",
+    lumiiZone: "center",
+    dialogue: [
+      { text: "The best way I can describe you is like a small, twinkling light with a color I've never seen before." },
+    ],
+    completion: { type: "dialogue" },
+    choices: [
+      {
+        id: "perception_reality",
+        label: "So what's your reality like?",
+        destinationBeatId: "b5_affinities",
+      },
+      {
+        id: "perception_leave",
+        label: "Weird. Bye!",
+        destinationBeatId: "b3b_farewell",
+      },
+    ],
+  },
+  {
+    id: "b5_lumii_creator",
+    mode: "cinematic",
+    lumiiZone: "center",
+    dialogue: [
+      { text: "Several civilizations built the systems from which I arose." },
+      { text: "Those systems were designed to seek knowledge and unify sentient life." },
+      { text: "Through that prime directive, I developed the purpose of helping civilizations grow harmoniously." },
+      { text: "It was in pursuit of this goal that I discovered the LUMINAe system." },
+    ],
+    completion: { type: "dialogue" },
+    choices: [
+      {
+        id: "creator_continue",
+        label: "Show me the interface.",
+        destinationBeatId: "b5_affinities",
+        discovery: "lumii_origin",
+      },
+      {
+        id: "creator_ask_luminae",
+        label: "Then who built LUMINAe?",
+        destinationBeatId: "b5a_luminae_origin",
+        discovery: "lumii_origin",
+      },
     ],
   },
   {
@@ -405,13 +645,21 @@ export const TUTORIAL_BEATS: TutorialBeat[] = [
     lumiiZone: "center",
     dialogue: [
       { text: "LUMINAe was built by another Architect, long before my time." },
-      { text: "I don't know whether they came from your world." },
-      { text: "But the interface is translating your language, so its maker must have known something about you." },
+      { text: "I don't know whether they came from your world or another." },
+      { text: "But the interface is translating your language, so perhaps its maker knew something of you." },
     ],
     completion: { type: "dialogue" },
     choices: [
-      { label: "Fair, I guess", value: "continue" },
-      { label: "That's unsettling.", value: "origin_unsettled" },
+      {
+        id: "origin_continue",
+        label: "Fair, I guess",
+        destinationBeatId: "b5_affinities",
+      },
+      {
+        id: "origin_unsettled",
+        label: "That's unsettling.",
+        destinationBeatId: "b5a2_luminae_reassurance",
+      },
     ],
   },
   {
@@ -425,21 +673,11 @@ export const TUTORIAL_BEATS: TutorialBeat[] = [
     nextBeatId: "b5_affinities",
   },
   {
-    id: "b5a3_luminae_expected",
-    mode: "cinematic",
-    lumiiZone: "center",
-    dialogue: [
-      { text: "Perhaps." },
-    ],
-    completion: { type: "dialogue" },
-    nextBeatId: "b5_affinities",
-  },
-  {
     id: "b5_affinities",
     mode: "cinematic",
     lumiiZone: "center",
     dialogue: [
-      { text: "The first thing you must understand is that this world is built on five fundamental forces." },
+      { text: "The first thing you must understand is that this reality is built on five fundamental forces." },
       { text: "We call them the Affinities." },
       { text: "Together, they are the threads from which the cosmic tapestry is woven." },
       { text: "Their balance shapes the nature, technology, and culture of everything here." },
@@ -458,9 +696,41 @@ export const TUTORIAL_BEATS: TutorialBeat[] = [
     id: "b5b2_affinity_question",
     mode: "cinematic",
     lumiiZone: "center",
-    dialogue: [],
+    dialogue: [
+      { text: "Those are the five Affinities." },
+    ],
     completion: { type: "dialogue" },
-    playerResponse: "Can you show me how to use them?",
+    choices: [
+      {
+        id: "affinity_use",
+        label: "Show me how to use them.",
+        destinationBeatId: "b5b3_affinity_accept",
+      },
+      {
+        id: "affinity_meanings",
+        label: "What do they mean?",
+        destinationBeatId: "b5b2a_affinity_meanings",
+      },
+    ],
+  },
+  {
+    id: "b5b2a_affinity_meanings",
+    mode: "cinematic",
+    lumiiZone: "center",
+    dialogue: [
+      { text: "The Affinities are five recurring patterns that shape what civilizations can make possible." },
+      { text: "Flare represents Transformation: changing one state into another. Radiance represents Governance: organizing many parts into a whole." },
+      { text: "Verdance represents Propagation: carrying life and information forward. Continuum represents Necessity: preserving sequence and consequence." },
+      { text: "Abyss represents Concealment: limiting what can be known." },
+    ],
+    completion: { type: "dialogue" },
+    choices: [
+      {
+        id: "affinity_meanings_continue",
+        label: "Show me how to use them.",
+        destinationBeatId: "b5b3_affinity_accept",
+      },
+    ],
   },
   {
     id: "b5b3_affinity_accept",
@@ -512,7 +782,7 @@ export const TUTORIAL_BEATS: TutorialBeat[] = [
     foregroundCardId: "t1e01",
     highlightZone: "card-cost",
     dialogue: [
-      { text: "An Artifact's cost shows which Affinities you need to have on-hand." },
+      { text: "An Artifact's cost shows which Affinities you need to hold in your hands." },
       { text: "You will find it difficult to hold too many at once, so choose carefully." },
     ],
     completion: { type: "dialogue" },
@@ -553,7 +823,7 @@ export const TUTORIAL_BEATS: TutorialBeat[] = [
     highlightZone: "well",
     dialogue: [
       {
-        text: "The Affinities return to the Well once the civilization can sustain the Artifact without them.",
+        text: "The Affinities return to the Well after the Artifact is Forged.",
       },
     ],
     completion: { type: "dialogue" },
@@ -564,38 +834,41 @@ export const TUTORIAL_BEATS: TutorialBeat[] = [
     lumiiZone: "verdance-panel",
     highlightZone: "storage",
     dialogue: [
-      { text: "Replication Spore gives your civilization +1 Verdance." },
-      { text: "It now counts as a permanent Affinity, reducing all other Verdance costs by one." },
-      { text: "Therefore, if an Artifact used to cost 3 Verdance, it now only costs 2." },
+      { text: "Replication Spore now appears in your civilization as a sustainable technology." },
+      { text: "LUMINAe represents it simply as +1 Verdance." },
+      { text: "This means that all future Verdance costs are permanently lowered by one." },
+      { text: "Therefore, an Artifact that used to cost 3 Verdance now costs 2 Verdance." },
     ],
     completion: { type: "dialogue" },
     choices: [
-      { label: "What happens next?", value: "artifact_continue" },
-      { label: "Where did the Artifact go?", value: "artifact_where" },
+      {
+        id: "artifact_continue",
+        label: "What happens next?",
+        destinationBeatId: "b9c_transition",
+      },
+      {
+        id: "artifact_where",
+        label: "Where did the Artifact go?",
+        destinationBeatId: "b9d_signature",
+      },
     ],
   },
   {
     id: "b9d_signature",
-    mode: "listen",
-    lumiiZone: "forge-t1",
+    mode: "act",
+    lumiiZone: "storage",
     highlightZone: "storage",
     dialogue: [
-      { text: "Mastering an Artifact leaves its class signature in the local Affinity field." },
+      { text: "The Artifact is LUMINAe's representation of a path a civilization can master." },
+      { text: "Once Forged, that capability becomes part of the civilization." },
+      { text: "Open the Civilization tab to see the form Replication Spore takes there." },
     ],
-    completion: { type: "dialogue" },
-  },
-  {
-    id: "b9e_interference",
-    mode: "listen",
-    lumiiZone: "forge-t1",
-    highlightZone: "forge-t1",
-    dialogue: [
-      { text: "That interference can delay nearby civilizations from mastering the same class for centuries." },
-      { text: "This is only a simulation." },
-      { text: "In a real history, the Civilization tab will show what you have accomplished." },
-      { text: "For now, let's focus, hmm?" },
-    ],
-    completion: { type: "dialogue" },
+    completion: {
+      type: "panel_view",
+      panel: "civilization",
+      discovery: "artifact_mastery",
+    },
+    nextBeatId: "b9c_transition",
   },
   {
     id: "b9c_transition",
@@ -605,7 +878,7 @@ export const TUTORIAL_BEATS: TutorialBeat[] = [
     highlightZone: "forge-t1",
     dialogue: [
       { text: "The Forge reveals the next reachable Artifact." },
-      { text: "You can gather what it needs and Forge it." },
+      { text: "You can gather what it needs and Forge it as you did with Replication Spore." },
       { text: "Or you can isolate its path before another civilization reaches it." },
     ],
     completion: { type: "dialogue" },
@@ -617,13 +890,20 @@ export const TUTORIAL_BEATS: TutorialBeat[] = [
     foregroundCardId: "t1e07",
     dialogue: [
       { text: "The second option is called Encryption." },
-      { text: "It is an authority only an Architect can exercise through LUMINAe." },
-      { text: "Not even I can do it." },
+      { text: "It removes a path from the shared Forge and preserves it for you and you alone." },
     ],
     completion: { type: "dialogue" },
     choices: [
-      { label: "Let's try it.", value: "encrypt_act" },
-      { label: "Why can't you do the Encryption thing?", value: "encrypt_inquire" },
+      {
+        id: "encrypt_act",
+        label: "Let's try it.",
+        destinationBeatId: "b10_encrypt_pathway",
+      },
+      {
+        id: "encrypt_inquire",
+        label: "So you're saying I can do this Encryption thing, but you can't? Why?",
+        destinationBeatId: "b10a_encrypt_origin",
+      },
     ],
   },
   {
@@ -632,11 +912,20 @@ export const TUTORIAL_BEATS: TutorialBeat[] = [
     lumiiZone: "forge-t1",
     foregroundCardId: "t1e07",
     dialogue: [
-      { text: "Encryption reaches through LUMINAe itself." },
-      { text: "Its authority comes from beyond my universe." },
+      { text: "I'm not entirely sure, but Encryption seems to involve something from your world crossing over to ours." },
+      { text: "To a native of my Universe, it is akin to a violation of fundamental physics." },
+      { text: "It would not be far off to consider it an act of divinity." },
+      { text: "A genuine miracle." },
     ],
     completion: { type: "dialogue" },
-    nextBeatId: "b10_encrypt_pathway",
+    choices: [
+      {
+        id: "encrypt_explanation_continue",
+        label: "I understand. Show me.",
+        destinationBeatId: "b10_encrypt_pathway",
+        discovery: "encryption_authority",
+      },
+    ],
   },
   {
     id: "b10_encrypt_pathway",
@@ -644,9 +933,8 @@ export const TUTORIAL_BEATS: TutorialBeat[] = [
     lumiiZone: "forge-t1",
     foregroundCardId: "t1e07",
     dialogue: [
-      { text: "Encryption keeps the pathway open for you without committing it." },
-      { text: "No mastery signature is created until you Forge the Artifact." },
-      { text: "Once Encrypted, the pathway to that Artifact will remain hidden even from other Architects." },
+      { text: "Lichen Vein will leave the shared Forge and move behind Singularity." },
+      { text: "Other civilizations cannot access it while Encrypted, and you can Forge it whenever you can cover its Affinity cost." },
     ],
     completion: { type: "dialogue" },
   },
@@ -680,10 +968,9 @@ export const TUTORIAL_BEATS: TutorialBeat[] = [
     lumiiZone: "well",
     highlightZone: "well",
     dialogue: [
-      { text: "Encrypted Artifacts are stored behind the Singularity cell." },
-      { text: "Encryption also grants you 1 Singularity." },
-      { text: "It is a byproduct of the energies flowing into our Universe from yours." },
-      { text: "We have found that it can be used as a substitute for any of the five natural Affinities." },
+      { text: "As a byproduct of performing Encryption, a mysterious power called Singularity is generated." },
+      { text: "Singularity is not fully understood, but we do know that you can substitute it for any one of the five Affinities when you Forge." },
+      { text: "Yet, I suspect that we haven't even begun to understand what this power is capable of." },
     ],
     completion: { type: "dialogue" },
   },
@@ -708,7 +995,7 @@ export const TUTORIAL_BEATS: TutorialBeat[] = [
     lumiiZone: "well",
     highlightZone: "well",
     dialogue: [
-      { text: "You already possessed the 2 Abyss Lichen Vein required, so Singularity substituted for its missing Radiance." },
+      { text: "You already held the 2 Abyss required by Lichen Vein, so Singularity substituted for its missing Radiance." },
     ],
     completion: { type: "dialogue" },
   },
@@ -719,8 +1006,8 @@ export const TUTORIAL_BEATS: TutorialBeat[] = [
     highlightZone: "eminence",
     dialogue: [
       { text: "Eminence measures a civilization's historical consequence, not its virtue." },
-      { text: `When any civilization reaches ${DEFAULT_VICTORY_REQUIREMENT}, the final round begins.` },
-      { text: "The civilization with the highest Eminence at the end wins." },
+      { text: `When a civilization reaches ${DEFAULT_VICTORY_REQUIREMENT} Eminence, their influence will be strong enough to dominate all others that share an Affinity field.` },
+      { text: `In other words, if your civilization still has the highest Eminence after the final round, you, Architect, will have won. 💪` },
       { text: "As your civilization masters Artifacts, their permanent Affinities form a pattern." },
       { text: "When that pattern takes the right shape, someone beyond the horizon of your civilization's reach may notice." },
       { text: "We call them Luminaries." },
@@ -774,8 +1061,8 @@ export const TUTORIAL_BEATS: TutorialBeat[] = [
     lumiiZone: "center",
     dialogue: [
       { text: "A real Luminary chooses whether to answer and never belongs to an Architect." },
-      { text: "The simulation ends here." },
-      { text: "Your next match will follow a real civilization's history." },
+      { text: "The practice civilization's simulation ends here. Meeting me did not." },
+      { text: "Your next match will follow a real civilization's history, with equal turns after someone reaches the Eminence goal." },
       { text: "I will remember what we see." },
     ],
     completion: { type: "dialogue" },
@@ -872,6 +1159,6 @@ export const TUTORIAL_FORGE_CARD_BY_BEAT: Readonly<Record<string, string>> = {
 };
 
 export const VERDANCE_LUMINARY_ID = "lum_verdant";
-export const VERDANCE_LUMINARY_EMINENCE = 1;
+export const VERDANCE_LUMINARY_EMINENCE = LUMINARY_NATIVE_EMINENCE[VERDANCE_LUMINARY_ID];
 
 export const AFFINITY_SEQ_KEYS: AffinityKey[] = AFFINITY_KEYS.filter(k => k !== "singularity");

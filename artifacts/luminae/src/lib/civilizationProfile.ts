@@ -4,6 +4,7 @@ import {
   type ArtifactId,
   type TechnologyLineage,
 } from '@workspace/game-types';
+import { getKardashevTier, type KardashevTier } from '@/lib/kardashev';
 
 export const CIVILIZATION_TRAITS = [
   'ignition',
@@ -73,6 +74,33 @@ export interface CivilizationProfile {
   traitWeights: Record<CivilizationTrait, number>;
   dominantTraits: CivilizationTrait[];
   landmarks: CivilizationLandmark[];
+  kardashevArrivalArtifactCounts: Record<Exclude<KardashevTier, 0>, number | null>;
+}
+
+function deriveKardashevArrivalArtifactCounts(
+  forgedArtifacts: ReadonlyArray<ArtifactCard>,
+): CivilizationProfile['kardashevArrivalArtifactCounts'] {
+  const arrivals: CivilizationProfile['kardashevArrivalArtifactCounts'] = {
+    1: null,
+    2: null,
+    3: null,
+  };
+  const uniqueArtifacts: ArtifactCard[] = [];
+  const seen = new Set<string>();
+
+  for (const artifact of forgedArtifacts) {
+    if (seen.has(artifact.id)) continue;
+    seen.add(artifact.id);
+    uniqueArtifacts.push(artifact);
+    const tier = getKardashevTier(uniqueArtifacts);
+    for (const reachedTier of [1, 2, 3] as const) {
+      if (tier >= reachedTier && arrivals[reachedTier] === null) {
+        arrivals[reachedTier] = uniqueArtifacts.length;
+      }
+    }
+  }
+
+  return arrivals;
 }
 
 function emptyTraitRecord(): Record<CivilizationTrait, number> {
@@ -187,6 +215,7 @@ export function buildCivilizationProfile(
     traitWeights,
     dominantTraits,
     landmarks: selectLandmarks(landmarks, 6),
+    kardashevArrivalArtifactCounts: deriveKardashevArrivalArtifactCounts(forgedArtifacts),
   };
 }
 

@@ -51,6 +51,30 @@ function makeHudState(): GameState {
   } as GameState;
 }
 
+async function revealInquiryRoot({ verifySequence = false }: { verifySequence?: boolean } = {}): Promise<void> {
+  await act(async () => { await vi.advanceTimersByTimeAsync(200); });
+  if (verifySequence) {
+    expect(screen.getByTestId("transmission-fault-vault")).toHaveTextContent("BA······");
+  }
+  await act(async () => { await vi.advanceTimersByTimeAsync(260); });
+  if (verifySequence) {
+    expect(screen.getByTestId("transmission-fault-vault")).toHaveTextContent("··SILI··");
+  }
+  await act(async () => { await vi.advanceTimersByTimeAsync(260); });
+  if (verifySequence) {
+    expect(screen.getByTestId("transmission-fault-vault")).toHaveTextContent("·····ISK");
+  }
+  await act(async () => { await vi.advanceTimersByTimeAsync(560); });
+  if (verifySequence) {
+    expect(screen.getByText("Not a creature.")).toBeInTheDocument();
+  }
+  await act(async () => { await vi.advanceTimersByTimeAsync(200); });
+  if (verifySequence) {
+    expect(screen.getByText("A pattern I can describe only by its effects.")).toBeInTheDocument();
+  }
+  await act(async () => { await vi.advanceTimersByTimeAsync(200); });
+}
+
 describe("Lumii Vault encounter interactions", () => {
   it("labels the HUD pressure meter instead of showing an unlabeled numeric ratio", () => {
     const view = render(
@@ -199,7 +223,8 @@ describe("Lumii Vault encounter interactions", () => {
     expect(onPhaseChange).toHaveBeenCalledWith("dialogue");
   });
 
-  it("keeps Leave it sealed at every Inquiry question", () => {
+  it("keeps Leave it sealed at every Inquiry question", async () => {
+    vi.useFakeTimers();
     const onPhaseChange = vi.fn();
     render(
       <LumiiVaultEncounter
@@ -207,13 +232,16 @@ describe("Lumii Vault encounter interactions", () => {
         previewViewport="desktop"
         thresholdApproach="inquiry"
         muted
+        forceReducedMotion
         onPhaseChange={onPhaseChange}
       />,
     );
 
-    expect(screen.getByText("A Basilisk.")).toBeInTheDocument();
+    expect(screen.getByText("A—")).toBeInTheDocument();
+    expect(screen.queryByText("A Basilisk.")).not.toBeInTheDocument();
+    await revealInquiryRoot({ verifySequence: true });
     expect(screen.getByRole("button", { name: /Leave it sealed/i })).toBeInTheDocument();
-    fireEvent.click(screen.getByRole("button", { name: "What does it do to the one who understands?" }));
+    fireEvent.click(screen.getByRole("button", { name: "What does it do?" }));
     expect(screen.getByText("It removes the instinct to turn away.")).toBeInTheDocument();
     expect(screen.getByRole("button", { name: /Leave it sealed/i })).toBeInTheDocument();
     fireEvent.click(screen.getByRole("button", { name: "A warning against knowledge itself?" }));
@@ -231,12 +259,14 @@ describe("Lumii Vault encounter interactions", () => {
         previewViewport="desktop"
         thresholdApproach="inquiry"
         muted
+        forceReducedMotion
         onRecordDialoguePath={onRecordDialoguePath}
       />,
     );
 
+    await revealInquiryRoot();
     await act(async () => {
-      fireEvent.click(screen.getByRole("button", { name: "What does it do to the one who understands?" }));
+      fireEvent.click(screen.getByRole("button", { name: "What does it do?" }));
     });
     expect(onRecordDialoguePath).toHaveBeenLastCalledWith(["inquiry-warning"]);
     view.unmount();

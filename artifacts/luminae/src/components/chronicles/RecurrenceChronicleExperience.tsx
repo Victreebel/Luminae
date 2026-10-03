@@ -4,6 +4,7 @@ import type { RecurrenceCustodyMethod, RecurrenceScenarioState } from '@workspac
 import { ArrowLeft, BookOpen, Check, KeyRound, Split } from 'lucide-react';
 import { gameAudio } from '@/lib/audio';
 import { useFocusTrap } from '@/hooks/use-focus-trap';
+import { useChroniclePresentationGate, type ChroniclePresentationGateProps } from '@/hooks/use-chronicle-presentation-gate';
 import eidoPlate from '@/assets/civilization/civilization-plate-planetary-v2-neutral_runtime.webp';
 import './RecurrenceChronicleExperience.css';
 
@@ -72,7 +73,7 @@ const OUTCOMES: Record<NonNullable<RecurrenceScenarioState['outcomeId']>, { titl
   recurrence_conditional_defeat: { title: 'The Withheld Half', lines: ['The mechanism held.', 'Their trust did not.'] },
 };
 
-type Props = {
+type Props = ChroniclePresentationGateProps & {
   state: RecurrenceScenarioState;
   gameStatus: 'lobby' | 'playing' | 'finished';
   localPlayerId: string;
@@ -101,6 +102,7 @@ function DeepIndex({ method, active = false }: { method: RecurrenceCustodyMethod
 export function RecurrenceChronicleExperience({
   state, gameStatus, localPlayerId, winnerId, submitting = false, reduceMotion,
   disableFocusTrap = false, instanceId, forceArrival = false, onChoose, onReturn,
+  presentationEnabled, onPresentationActiveChange,
 }: Props) {
   const systemReducedMotion = useReducedMotion();
   const calmer = reduceMotion ?? !!systemReducedMotion;
@@ -119,27 +121,42 @@ export function RecurrenceChronicleExperience({
   const custodyOpen = state.phase === 'awaiting_custody';
   const isArchitect = state.architectPlayerId === localPlayerId;
   const outcome = state.outcomeId ? OUTCOMES[state.outcomeId] : null;
+  const { presentationVisible, completePresentationExit, holdPresentationForSound } = useChroniclePresentationGate({
+    requested: arrivalOpen || custodyOpen || (gameStatus === 'finished' && !!outcome),
+    presentationEnabled,
+    onPresentationActiveChange,
+  });
+  const arrivalVisible = presentationVisible && arrivalOpen;
+  const custodyVisible = presentationVisible && !arrivalOpen && custodyOpen;
+  const outcomeVisible = presentationVisible && !arrivalOpen && gameStatus === 'finished' && !!outcome;
   const actionCount = Math.min(state.architectCoreActionCount, state.custodyDueAfterCoreActions);
   const selectedChoice = selectedMethod ? CHOICES[selectedMethod] : null;
   const setupComplete = lineIndex >= SETUP_LINES.length - 1;
   const runLabel = state.runKind === 'rehearsal' ? 'REHEARSAL' : 'PRIMARY HISTORY';
 
-  useFocusTrap(decisionRef, custodyOpen && !disableFocusTrap, () => undefined);
-  useFocusTrap(outcomeRef, gameStatus === 'finished' && !!outcome && !disableFocusTrap, () => undefined);
+  useFocusTrap(decisionRef, custodyVisible && !disableFocusTrap, () => undefined);
+  useFocusTrap(outcomeRef, outcomeVisible && !disableFocusTrap, () => undefined);
 
   useEffect(() => {
-    if (!custodyOpen) return;
+    if (!custodyVisible) return;
     setLineIndex(0);
     setSelectedMethod(null);
+    holdPresentationForSound(1_300);
     gameAudio.playWhiteReturnSignal('presence');
-  }, [custodyOpen]);
+  }, [custodyVisible, holdPresentationForSound]);
   useEffect(() => {
-    if (state.phase === 'finished') gameAudio.playWhiteReturnSignal('closure');
-  }, [state.phase]);
+    if (outcomeVisible) {
+      holdPresentationForSound(1_300);
+      gameAudio.playWhiteReturnSignal('closure');
+    }
+  }, [outcomeVisible, holdPresentationForSound]);
 
   useEffect(() => {
-    if (arrivalOpen) gameAudio.playWhiteReturnSignal('presence');
-  }, [arrivalOpen]);
+    if (arrivalVisible) {
+      holdPresentationForSound(1_300);
+      gameAudio.playWhiteReturnSignal('presence');
+    }
+  }, [arrivalVisible, holdPresentationForSound]);
 
   const status = useMemo(() => {
     if (custodyOpen) return 'CUSTODY REQUIRED';
@@ -149,6 +166,7 @@ export function RecurrenceChronicleExperience({
 
   const confirm = async () => {
     if (!selectedMethod || submitting) return;
+    holdPresentationForSound(1_300);
     gameAudio.playWhiteReturnSignal(CHOICES[selectedMethod].tone);
     await onChoose(selectedMethod);
   };
@@ -163,8 +181,8 @@ export function RecurrenceChronicleExperience({
 
   return (
     <>
-      <AnimatePresence>
-        {arrivalOpen && (
+      <AnimatePresence onExitComplete={completePresentationExit}>
+        {arrivalVisible && (
           <motion.div className="recurrence-arrival" role="dialog" aria-modal="true" aria-label="Arrival at Eido" initial={{ opacity: 0 }} animate={{ opacity: 1 }} exit={{ opacity: 0 }} onClick={advanceArrival}>
             <img src={eidoPlate} alt="" className="recurrence-decision__plate" />
             <div className="recurrence-decision__star" /><div className="recurrence-decision__ice" /><div className="recurrence-decision__oru" /><div className="recurrence-decision__veil" />
@@ -181,8 +199,8 @@ export function RecurrenceChronicleExperience({
         </section>
       )}
 
-      <AnimatePresence>
-        {custodyOpen && (
+      <AnimatePresence onExitComplete={completePresentationExit}>
+        {custodyVisible && (
           <motion.div ref={decisionRef} className="recurrence-decision" role="dialog" aria-modal="true" aria-label="Deep Index custody decision" initial={calmer ? { opacity: 0 } : { opacity: 0, scale: 1.012 }} animate={{ opacity: 1, scale: 1 }} exit={{ opacity: 0 }}>
             <img src={eidoPlate} alt="" className="recurrence-decision__plate" />
             <div className="recurrence-decision__star" /><div className="recurrence-decision__ice" /><div className="recurrence-decision__oru" />
@@ -206,8 +224,8 @@ export function RecurrenceChronicleExperience({
         )}
       </AnimatePresence>
 
-      <AnimatePresence>
-        {gameStatus === 'finished' && outcome && (
+      <AnimatePresence onExitComplete={completePresentationExit}>
+        {outcomeVisible && outcome && (
           <motion.div ref={outcomeRef} className="recurrence-outcome" role="dialog" aria-modal="true" aria-label={outcome.title} initial={{ opacity: 0 }} animate={{ opacity: 1 }}>
             <img src={eidoPlate} alt="" className="recurrence-decision__plate" /><div className="recurrence-outcome__veil" />
             <section><DeepIndex method={state.custodyMethod} active /><span className="recurrence-outcome__eyebrow">THE RECURRENCE · {winnerId === state.architectPlayerId ? 'MERIDIAN REFERENCE' : 'ORU REFERENCE'}</span><h1>{outcome.title}</h1>

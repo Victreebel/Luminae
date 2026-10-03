@@ -1,0 +1,77 @@
+{
+  "version": "artifact-tier-audit-v4",
+  "date": "2026-09-28",
+  "tool": "image_gen",
+  "entries": [
+    {
+      "id": "t2r",
+      "kind": "scene",
+      "prompt": "Use case: precise-object-edit. Edit this existing LUMINAe game sprite atlas into the new functional identities below. Preserve SQUARE canvas and TRUE TRANSPARENT background, fixed equal-cell grid, reading order, consistent oblique isometric view, detailed premium opaque spacecraft engineering. Every cell is a distinct self-contained sprite, centered inside its own exact cell with 8 percent FULLY TRANSPARENT padding; do not crop any silhouette or allow it to cross a cell boundary. No ground plane, no painted space/stars, no cast shadows outside sprites, no text, no labels, no border, no miniature planets or celestial models. Empty space inside structural openings is transparent. 3 columns by 2 rows, SIX independent tall cells in this exact reading order: 01 shielded stellar-fed furnace yard with physically confined orange plasma; 02 orbital fuel reserve depot with tanks and tanker docks; 03 massive stellar extraction nozzle and armored capture channels; 04 living collector frond swarm with sealed inhabited chambers and no enclosed miniature sun; 05 coronal safety station with large mechanical beam shutters and an armored dump target; 06 terraced hot-to-cold heat exchangers with immense black radiator wings. Flare dark iron, copper, restrained orange energy.",
+      "source": "artifacts/luminae/src/assets/civilization/manifestations/artifacts/authored/t2r-artifact-atlas-v4.png",
+      "originalSource": "/Users/chaoscalligraphy/.codex/generated_images/01a0e5d5-4e9f-7792-8c15-a2504c2c9b0c/exec-683fa2ee-bfc0-43f8-9cd7-b01bcf5975aa.png",
+      "runtime": "artifacts/luminae/src/assets/civilization/manifestations/artifacts/authored/t2r-artifact-atlas-v4.webp",
+      "runtimeBytes": 435946,
+      "review": "Reviewed for practical function, distinctive silhouette, tier context, and crop compatibility."
+    },
+    {
+      "id": "t2s",
+      "kind": "scene",
+      "prompt": "Use case: precise-object-edit. Edit this existing LUMINAe game sprite atlas into the new functional identities below. Preserve SQUARE canvas and TRUE TRANSPARENT background, fixed equal-cell grid, reading order, consistent oblique isometric view, detailed premium opaque spacecraft engineering. Every cell is a distinct self-contained sprite, centered inside its own exact cell with 8 percent FULLY TRANSPARENT padding; do not crop any silhouette or allow it to cross a cell boundary. No ground plane, no painted space/stars, no cast shadows outside sprites, no text, no labels, no border, no miniature planets or celestial models. Empty space inside structural openings is transparent. 3 columns by 2 rows, SIX independent tall cells in this exact reading order: 01 branching gravity-assist navigation station with three tracking dishes and two tiny sailcraft, REMOVE portals; 02 heliosphere storm-monitoring probe group with an archival receiver mast, no floating globe; 03 angular orbital-dynamics computation vault with telescopes and radiator wings, not glowing crossed magic threads; 04 three inhabited generation ships with sealed civic districts and archive galleries; 05 tall multiworld archive beacon with independent receiver platforms; 06 open stellar-interference observatory with differently oriented antenna dishes, REMOVE cosmic lenses and energy ovals. Continuum navy, blue, silver.",
+      "source": "artifacts/luminae/src/assets/civilization/manifestations/artifacts/authored/t2s-artifact-atlas-v4.png",
+      "originalSource": "/Users/chaoscalligraphy/.codex/generated_images/01a0e5d5-4e9f-7792-8c15-a2504c2c9b0c/exec-6abefadc-368c-47d9-9c5c-81c163a9dd8e.png",
+      "runtime": "artifacts/luminae/src/assets/civilization/manifestations/artifacts/authored/t2s-artifact-atlas-v4.webp",
+      "runtimeBytes": 368680,
+      "review": "Reviewed for practical function, distinctive silhouette, tier context, and crop compatibility."
+    },
+    {
+      "id": "t2e",
+      "kind": "scene",
+      "prompt": "Use case: precise-object-edit. Edit this existing LUMINAe game sprite atlas into the new functional identities below. Preserve SQUARE canvas and TRUE TRANSPARENT background, fixed equal-cell grid, reading order, consistent oblique isometric view, detailed premium opaque spacecraft engineering. Every cell is a distinct self-contained sprite, centered inside its own exact cell with 8 percent FULLY TRANSPARENT padding; do not crop any silhouette or allow it to cross a cell boundary. No ground plane, no painted space/stars, no cast shadows outside sprites, no text, no labels, no border, no miniature planets or celestial models. Empty space inside structural openings is transparent. 3 columns by 2 rows, SIX independent tall cells in this exact reading order: 01 mineralized living radiation canopy sheltering sealed orbital habitat chambers; 02 insulated sleeper habitat with independently shuttered dormancy chambers and timing masts; 03 three icy asteroid habitats with sealed green-lit ecosystems and small chemical tankers, REMOVE the laboratory flask; 04 living communications station with radio dishes, pressure-sealed bio-interfaces and courier docks; 05 protected biological archive with fossil-core galleries and specimen receiving docks; 06 asteroid-rooted crystal-organic settlement growing new pressurized chambers from delivered rubble. Emerald, dark green, mineral ivory. No trees unprotected in space.",
+      "source": "artifacts/luminae/src/assets/civilization/manifestations/artifacts/authored/t2e-artifact-atlas-v4.png",
+      "originalSource": "/Users/chaoscalligraphy/.codex/generated_images/01a0e5d5-4e9f-7792-8c15-a2504c2c9b0c/exec-8e110f09-25fc-4c69-a4d3-029acc81af0e.png",
+      "runtime": "artifacts/luminae/src/assets/civilization/manifestations/artifacts/authored/t2e-artifact-atlas-v4.webp",
+      "runtimeBytes": 408948,
+      "review": "Reviewed for practical function, distinctive silhouette, tier context, and crop compatibility."
+    },
+    {
+      "id": "t2o",
+      "kind": "scene",
+      "prompt": "Use case: precise-object-edit. Edit this existing LUMINAe game sprite atlas into the new functional identities below. Preserve SQUARE canvas and TRUE TRANSPARENT background, fixed equal-cell grid, reading order, consistent oblique isometric view, detailed premium opaque spacecraft engineering. Every cell is a distinct self-contained sprite, centered inside its own exact cell with 8 percent FULLY TRANSPARENT padding; do not crop any silhouette or allow it to cross a cell boundary. No ground plane, no painted space/stars, no cast shadows outside sprites, no text, no labels, no border, no miniature planets or celestial models. Empty space inside structural openings is transparent. 3 columns by 2 rows, SIX independent tall cells in this exact reading order: 01 shielded stand-off charged-particle collection station with a long sampling boom, REMOVE the black hole and vortex; 02 quarantined signal relay with independent opaque command-isolation shutters, not a coffin; 03 large directional graphite radiator wings with dim thermal edges; 04 open reconstruction shipyard with salvage tug and half-built industrial habitat, no hovering rock cube; 05 ice-covered cometary reserve with protected dormant biosphere chambers, no globe ornament; 06 separated tidal-observation detector platforms with calibration links, REMOVE the torn space and portal. Graphite, icy silver, restrained violet.",
+      "source": "artifacts/luminae/src/assets/civilization/manifestations/artifacts/authored/t2o-artifact-atlas-v4.png",
+      "originalSource": "/Users/chaoscalligraphy/.codex/generated_images/01a0e5d5-4e9f-7792-8c15-a2504c2c9b0c/exec-6df55075-4793-41dd-9567-7b4c4165dc17.png",
+      "runtime": "artifacts/luminae/src/assets/civilization/manifestations/artifacts/authored/t2o-artifact-atlas-v4.webp",
+      "runtimeBytes": 378800,
+      "review": "Reviewed for practical function, distinctive silhouette, tier context, and crop compatibility."
+    },
+    {
+      "id": "t2p",
+      "kind": "scene",
+      "prompt": "Use case: precise-object-edit. Edit this existing LUMINAe game sprite atlas into the new functional identities below. Preserve SQUARE canvas and TRUE TRANSPARENT background, fixed equal-cell grid, reading order, consistent oblique isometric view, detailed premium opaque spacecraft engineering. Every cell is a distinct self-contained sprite, centered inside its own exact cell with 8 percent FULLY TRANSPARENT padding; do not crop any silhouette or allow it to cross a cell boundary. No ground plane, no painted space/stars, no cast shadows outside sprites, no text, no labels, no border, no miniature planets or celestial models. Empty space inside structural openings is transparent. 3 columns by 2 rows, SIX independent tall cells in this exact reading order: 01 widely separated armored plasma-processing cells with safe external inspection corridors; 02 three telescope platforms and reference-frame calculation gallery, replace the giant prism; 03 inhabited treaty service complex with visibly different sealed habitat modules and central biological interface, no tiny planet models; 04 stellar mirror-control mast with a crescent of large reflective collector petals, no miniature sun; 05 error-correcting compute towers linked by fine optical lines with large radiator wings; 06 illumination-allocation control hub with adjustable shutters and habitat approaches, no floating planets. White ceramic and pale gold with warm window lights.",
+      "source": "artifacts/luminae/src/assets/civilization/manifestations/artifacts/authored/t2p-artifact-atlas-v4.png",
+      "originalSource": "/Users/chaoscalligraphy/.codex/generated_images/01a0e5d5-4e9f-7792-8c15-a2504c2c9b0c/exec-b54777a0-2d8c-4de8-8b52-6fe3cc5a7390.png",
+      "runtime": "artifacts/luminae/src/assets/civilization/manifestations/artifacts/authored/t2p-artifact-atlas-v4.webp",
+      "runtimeBytes": 443832,
+      "review": "Reviewed for practical function, distinctive silhouette, tier context, and crop compatibility."
+    },
+    {
+      "id": "t3r",
+      "kind": "scene",
+      "prompt": "Use case: precise-object-edit. Edit this existing LUMINAe game sprite atlas into the new functional identities below. Preserve SQUARE canvas and TRUE TRANSPARENT background, fixed equal-cell grid, reading order, consistent oblique isometric view, detailed premium opaque spacecraft engineering. Every cell is a distinct self-contained sprite, centered inside its own exact cell with 8 percent FULLY TRANSPARENT padding; do not crop any silhouette or allow it to cross a cell boundary. No ground plane, no painted space/stars, no cast shadows outside sprites, no text, no labels, no border, no miniature planets or celestial models. Empty space inside structural openings is transparent. 2 columns by 2 rows, FOUR independent square cells, keep the exact reading order. Upper-left replace the caged artificial sun with an asymmetric stellar-thruster mirror crescent and directed emitter bank, tiny inhabited service docks and separated trajectory-observation platforms. It is the infrastructure that steers a real external star, so DO NOT include any sun or miniature celestial body in the sprite. Upper-right remnant-reclamation and exchange yard with salvage tug, disassembly bays, separated safe and hazardous material holds, no star model. Lower-left energy-delivery collector and directional beam relay array with three offset receiver platforms, no floating sun spheres. Lower-right open habitat foundry building a sealed generation ship with feedstock tanks and tiny construction craft. Dark iron, copper, controlled orange light. Each is infrastructure, not a token.",
+      "source": "artifacts/luminae/src/assets/civilization/manifestations/artifacts/authored/t3r-artifact-atlas-v4.png",
+      "originalSource": "/Users/chaoscalligraphy/.codex/generated_images/01a0e5d5-4e9f-7792-8c15-a2504c2c9b0c/exec-82dd7c68-6145-4c01-a660-8b782ff0b460.png",
+      "runtime": "artifacts/luminae/src/assets/civilization/manifestations/artifacts/authored/t3r-artifact-atlas-v4.webp",
+      "runtimeBytes": 566390,
+      "review": "Reviewed for practical function, distinctive silhouette, tier context, and crop compatibility."
+    },
+    {
+      "id": "t3e",
+      "kind": "scene",
+      "prompt": "Use case: precise-object-edit. Edit this existing LUMINAe game sprite atlas into the new functional identities below. Preserve SQUARE canvas and TRUE TRANSPARENT background, fixed equal-cell grid, reading order, consistent oblique isometric view, detailed premium opaque spacecraft engineering. Every cell is a distinct self-contained sprite, centered inside its own exact cell with 8 percent FULLY TRANSPARENT padding; do not crop any silhouette or allow it to cross a cell boundary. No ground plane, no painted space/stars, no cast shadows outside sprites, no text, no labels, no border, no miniature planets or celestial models. Empty space inside structural openings is transparent. 2 columns by 2 rows, FOUR independent square cells, keep the exact reading order. Upper-left a seed-convoy staging habitat with several detachable sealed biosphere arks, no vine physically connecting planets. Upper-right replace the star-swallowing organism with a migrating living collector ark: folded emerald collector fronds protect opaque pressurized ecosystem chambers, immense sails and tiny tugs carry it to its next host star; NO enclosed sun or planet. Lower-left recovery ecology vaults and decomposer chambers processing derelict habitat material, with biological stock couriers. Lower-right a chain of three quarantined converter habitats with visibly distinct sealed ecologies and inspectable transfer chambers; no globe models. Keep dark organic/mineral engineering, deep emerald and ivory, no unprotected trees in vacuum.",
+      "source": "artifacts/luminae/src/assets/civilization/manifestations/artifacts/authored/t3e-artifact-atlas-v4.png",
+      "originalSource": "/Users/chaoscalligraphy/.codex/generated_images/01a0e5d5-4e9f-7792-8c15-a2504c2c9b0c/exec-bae43a94-c052-4ad4-ae32-86ddde11df79.png",
+      "runtime": "artifacts/luminae/src/assets/civilization/manifestations/artifacts/authored/t3e-artifact-atlas-v4.webp",
+      "runtimeBytes": 486476,
+      "review": "Reviewed for practical function, distinctive silhouette, tier context, and crop compatibility."
+    }
+  ]
+}

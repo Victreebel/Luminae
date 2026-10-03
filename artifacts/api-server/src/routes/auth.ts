@@ -25,13 +25,13 @@ import {
 import {
   BLUEPRINT_CLEARANCE_REQUIRED_WINS,
   CIVILIZATION_RECORD_VERSION,
-  ARCHITECT_FIRST_CONTACT_STANCES,
   isArchitectFirstContactStance,
   summarizeCivilizationRecord,
   type CivilizationRecord,
 } from "@workspace/game-types";
 import type { Request } from "express";
 import { rateLimit } from "../lib/httpSecurity";
+import { getRoomEventFrequency } from "../lib/roomEventSettings";
 
 const router: IRouter = Router();
 
@@ -263,6 +263,7 @@ router.get("/auth/me", accountAuth, async (req: Request, res): Promise<void> => 
       playerId: r.player.id,
       isHost: r.player.isHost,
       gameMode: r.room.gameMode,
+      eventFrequency: getRoomEventFrequency(r.room),
       scenarioId: r.room.scenarioId,
     }));
 
@@ -348,6 +349,7 @@ router.get("/auth/me/games", accountAuth, async (req: Request, res): Promise<voi
       inviteCode: r.room.inviteCode,
       status: r.room.status,
       maxPlayers: r.room.maxPlayers,
+      eventFrequency: getRoomEventFrequency(r.room),
       currentPlayers: playersByRoom.get(r.room.id)?.length ?? 1,
       humanPlayers: playersByRoom.get(r.room.id) ?? [],
       updatedAt: r.room.updatedAt,
@@ -445,9 +447,7 @@ const PreferencesBody = z.object({
   muted: z.boolean().optional(),
   hintsSeen: z.array(z.string()).optional(),
   tutorialSeen: z.boolean().optional(),
-  tutorialCompleted: z.boolean().optional(),
-  firstContactStance: z.enum(ARCHITECT_FIRST_CONTACT_STANCES).optional(),
-});
+}).strict();
 
 router.patch("/auth/me/preferences", accountAuth, async (req: Request, res): Promise<void> => {
   const parsed = PreferencesBody.safeParse(req.body);
@@ -464,8 +464,6 @@ router.patch("/auth/me/preferences", accountAuth, async (req: Request, res): Pro
     muted,
     hintsSeen,
     tutorialSeen,
-    tutorialCompleted,
-    firstContactStance,
   } = parsed.data;
 
   const updates: Partial<typeof accountsTable.$inferInsert> = {};
@@ -475,27 +473,12 @@ router.patch("/auth/me/preferences", accountAuth, async (req: Request, res): Pro
   if (muted !== undefined) updates.muted = muted;
   if (hintsSeen !== undefined) updates.hintsSeen = hintsSeen;
   if (tutorialSeen !== undefined) updates.tutorialSeen = tutorialSeen;
-  if (tutorialCompleted !== undefined) updates.tutorialCompleted = tutorialCompleted;
 
   if (Object.keys(updates).length > 0) {
     await db
       .update(accountsTable)
       .set(updates)
       .where(eq(accountsTable.id, account.id));
-  }
-
-  if (firstContactStance) {
-    await db.insert(accountLumiiRelationshipMemoriesTable).values({
-      accountId: account.id,
-      sourceKind: "tutorial",
-      sourceRecordId: FIRST_CONTACT_MEMORY_SOURCE_ID,
-      definitionVersion: 1,
-      memoryKey: FIRST_CONTACT_MEMORY_KEY,
-      valence: 0,
-      detail: firstContactStance,
-      visibility: "account",
-      simulation: false,
-    }).onConflictDoNothing();
   }
 
   res.json({ ok: true });

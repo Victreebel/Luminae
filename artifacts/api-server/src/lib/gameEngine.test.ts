@@ -40,6 +40,10 @@ function makeGame(): GameStateData {
     ],
     2,
   );
+  // These fixtures isolate Artifact/Luminary rules; Event sequencing has its own suite.
+  raw.deckTier1 = raw.deckTier1.filter((id) => CARD_MAP.has(id));
+  raw.deckTier2 = raw.deckTier2.filter((id) => CARD_MAP.has(id));
+  raw.deckTier3 = raw.deckTier3.filter((id) => CARD_MAP.has(id));
   raw.currentPlayerIndex = 0;
   return normalizeState(raw);
 }
@@ -274,6 +278,152 @@ describe("civilization usage history", () => {
     claimLuminary(state, "lum_void");
 
     expect(state.players[0].luminaryAllianceCounts).toEqual({ lum_void: 1 });
+  });
+});
+
+describe("Civilization Artifact repairs", () => {
+  function addDamagedArtifact(
+    state: GameStateData,
+    playerIndex: number,
+    artifactId: string,
+  ) {
+    const player = state.players[playerIndex]!;
+    player.forgedArtifactIds = [...new Set([...player.forgedArtifactIds, artifactId])];
+    player.artifactForgeCounts = {
+      ...player.artifactForgeCounts,
+      [artifactId]: Math.max(1, player.artifactForgeCounts?.[artifactId] ?? 0),
+    };
+    player.civilization.artifacts[artifactId] = {
+      artifactId,
+      firstMasteredTurnCount: 0,
+      masteryCount: 1,
+      implementationState: "damaged",
+      implementationStateChangedTurnCount: state.turnCount,
+      implementationChangeSource: {
+        sourceType: "scenario",
+        sourceId: "repair_test",
+      },
+      historyEvidence: "recorded",
+    };
+  }
+
+  it("queues free multi-Artifact repair without consuming or advancing the current turn", () => {
+    const state = makeGame();
+    addDamagedArtifact(state, 0, "t1r01");
+    addDamagedArtifact(state, 0, "t1r02");
+    const versionBeforeRepair = state.version;
+
+    const result = applyAction(state, "p1", {
+      type: "repair_artifacts",
+      artifactIds: ["t1r01", "t1r02", "t1r01"],
+    });
+
+    expect(result.success).toBe(true);
+    expect(state.currentPlayerIndex).toBe(0);
+    expect(state.version).toBe(versionBeforeRepair + 1);
+    expect(state.players[0]!.pendingArtifactRepairIds).toEqual(["t1r01", "t1r02"]);
+    expect(state.players[0]!.civilization.artifacts.t1r01!.implementationState).toBe("damaged");
+    expect(state.players[0]!.civilization.artifacts.t1r02!.implementationState).toBe("damaged");
+
+    pass(state);
+
+    expect(state.players[0]!.pendingArtifactRepairIds).toEqual([]);
+    expect(state.players[0]!.civilization.artifacts.t1r01!.implementationState).toBe("operational");
+    expect(state.players[0]!.civilization.artifacts.t1r02!.implementationState).toBe("operational");
+    expect(state.currentPlayerIndex).toBe(1);
+  });
+
+  it("allows an off-turn player to queue repair for the end of their upcoming turn", () => {
+    const state = makeGame();
+    addDamagedArtifact(state, 1, "t1r01");
+
+    const result = applyAction(state, "p2", {
+      type: "repair_artifacts",
+      artifactIds: ["t1r01"],
+    });
+
+    expect(result.success).toBe(true);
+    expect(state.currentPlayerIndex).toBe(0);
+    expect(state.players[1]!.pendingArtifactRepairIds).toEqual(["t1r01"]);
+
+    pass(state);
+
+    expect(state.currentPlayerIndex).toBe(1);
+    expect(state.players[1]!.civilization.artifacts.t1r01!.implementationState).toBe("damaged");
+
+    pass(state);
+
+    expect(state.players[1]!.pendingArtifactRepairIds).toEqual([]);
+    expect(state.players[1]!.civilization.artifacts.t1r01!.implementationState).toBe("operational");
+  });
+
+  it("rejects repair requests that contain no damaged Artifact implementation", () => {
+    const state = makeGame();
+
+    expect(applyAction(state, "p1", {
+      type: "repair_artifacts",
+      artifactIds: ["t1r01"],
+    })).toEqual({
+      success: false,
+      error: "Selected Artifacts do not need repair",
+    });
+  });
+
+  it("repairs only owned implementations and resolves damage without removing unrelated conditions", () => {
+    const state = makeGame();
+    state.activeLuminaries = [];
+    addDamagedArtifact(state, 0, "t1r01");
+    addDamagedArtifact(state, 0, "t1r02");
+    const player = state.players[0];
+    player.forgedArtifactIds = player.forgedArtifactIds.filter((id) => id !== "t1r02");
+    for (const coreType of ["damaged", "isolated"] as const) {
+      player.civilization.conditions[coreType] = {
+        id: coreType, type: coreType, coreType,
+        target: { kind: "artifact_implementation", id: "t1r01" },
+        source: { sourceType: "scenario", sourceId: "repair_test" },
+        appliedTurnCount: 0, resolvedTurnCount: null, historyEvidence: "recorded",
+      };
+    }
+    expect(applyAction(state, "p1", { type: "repair_artifacts", artifactIds: ["t1r02"] }).success).toBe(false);
+    expect(applyAction(state, "p1", { type: "repair_artifacts", artifactIds: ["t1r01"] }).success).toBe(true);
+    expect(applyAction(state, "p1", { type: "pass" }).success).toBe(true);
+    expect(player.civilization.conditions.damaged.resolvedTurnCount).toBe(0);
+    expect(player.civilization.conditions.isolated.resolvedTurnCount).toBeNull();
+    expect(player.civilization.artifacts.t1r02.implementationState).toBe("damaged");
+  });
+
+  it("waits for repair-triggered arrivals before delayed end-of-turn payouts, including reconnect", () => {
+    let state = makeGame();
+    addDamagedArtifact(state, 0, "t1e01");
+    const player = state.players[0];
+    player.bonuses = { ...LUMINARY_MAP.get("lum_verdant")!.requirements };
+    player.luminaries = ["lum_bloom"];
+    state.activeLuminaries = ["lum_verdant"];
+    state.catalystBloomBurnCount = 2;
+    expect(applyAction(state, "p1", { type: "repair_artifacts", artifactIds: ["t1e01"] }).success).toBe(true);
+    expect(applyAction(state, "p1", { type: "pass" }).success).toBe(true);
+    expect(state.pendingTurnTransition?.stage).toBe("after_repairs");
+    expect(state.pendingSummonEvents).toMatchObject([{ luminaryId: "lum_verdant" }]);
+    expect(state.catalystBloomBurnCount).toBe(2);
+    expect(state.pendingLuminaryActivationEvents.some((event) => event.effectType === "end_of_turn")).toBe(false);
+    expect(state.players[0].pendingArtifactRepairIds).toEqual([]);
+    const repairLogs = state.actionLog.filter((entry) => entry.summary.startsWith("Repaired "));
+    expect(repairLogs).toHaveLength(1);
+
+    state = normalizeState(JSON.parse(JSON.stringify(state)));
+    const summon = state.pendingSummonEvents[0]!;
+    const arrivalActivation = state.pendingLuminaryActivationEvents[0]!;
+    expect(applyAction(state, "p1", { type: "resolve_summon", eventId: summon.eventId }).success).toBe(true);
+    expect(state.catalystBloomBurnCount).toBe(2);
+    expect(applyAction(state, "p1", { type: "resolve_luminary_activation", eventId: arrivalActivation.eventId }).success).toBe(true);
+    expect(state.pendingTurnTransition?.stage).toBe("after_end_effects");
+    expect(state.pendingLuminaryActivationEvents).toMatchObject([{ luminaryId: "lum_bloom", effectType: "end_of_turn" }]);
+    expect(state.catalystBloomBurnCount).toBe(0);
+    expect(state.currentPlayerIndex).toBe(0);
+    const payout = state.pendingLuminaryActivationEvents[0]!;
+    expect(applyAction(state, "p1", { type: "resolve_luminary_activation", eventId: payout.eventId }).success).toBe(true);
+    expect(state.currentPlayerIndex).toBe(1);
+    expect(state.actionLog.filter((entry) => entry.summary.startsWith("Repaired "))).toHaveLength(1);
   });
 });
 
@@ -1490,8 +1640,8 @@ describe("Concordance Mandala — Perfect Coherence milestones", () => {
     .slice(0, count)
     .map((card) => card.id);
 
-  it("awards 4 native Eminence", () => {
-    expect(LUMINARY_MAP.get("lum_radiant")?.eminence).toBe(4);
+  it("awards 1 native Eminence in addition to its later milestones", () => {
+    expect(LUMINARY_MAP.get("lum_radiant")?.eminence).toBe(1);
   });
 
   it("grants +2 Eminence once at 8 Radiance Artifacts", () => {
@@ -2213,7 +2363,7 @@ describe("Phoenix Paradox (lum_astral) — Eternal Recurrence", () => {
     expect(phoenix).toMatchObject({
       name: "Phoenix Paradox",
       domain: "Recurrence",
-      eminence: 4,
+      eminence: 3,
       requirements: {
         flare: 4,
         continuum: 4,
@@ -2788,7 +2938,7 @@ describe("checkLuminaries — simultaneous-claim sequencing", () => {
 
   it("Eminence is awarded for both Luminaries before any effect runs", () => {
     // Use two passive Luminaries (no Forge effects) to verify clean Eminence sum.
-    // lum_verdant (1 Eminence, verdance×5) and lum_tide (2 Eminence, continuum×6)
+    // lum_verdant (3 Eminence, verdance×5) and lum_tide (2 Eminence, continuum×6)
     const state = makeGame();
     enrichPlayer(state, 0);
     const p = state.players[0];
@@ -2801,14 +2951,14 @@ describe("checkLuminaries — simultaneous-claim sequencing", () => {
     applyAction(state, "p1", { type: "forge_artifact", cardId });
     resolveChoice(state, "p1", ["lum_verdant", "lum_tide"]);
 
-    // lum_verdant = 1, lum_tide = 2: total +3 plus the Artifact's Eminence.
+    // lum_verdant = 3, lum_tide = 2: total +5 plus the Artifact's Eminence.
     const cardEminence = CARD_MAP.get(cardId)?.eminence ?? 0;
-    expect(p.eminence).toBe(startingEminence + 1 + 2 + cardEminence);
+    expect(p.eminence).toBe(startingEminence + 3 + 2 + cardEminence);
   });
 
   it("winTriggerLuminaryId is set to the Luminary that crosses the victory requirement", () => {
     // Player needs exactly 1 more Eminence to win.  Chosen order: verdant first.
-    // lum_verdant (1L, verdance×5) fires first, crosses 20.
+    // lum_verdant (3L, verdance×5) fires first, crosses 20.
     // lum_tide (2L, continuum×6) fires second.
     // winTriggerLuminaryId should be lum_verdant (the first to cross 20 in chosen order).
     const state = makeGame();
@@ -2830,14 +2980,14 @@ describe("checkLuminaries — simultaneous-claim sequencing", () => {
   });
 
   it("winTriggerLuminaryId is set to the second Luminary when the first does not cross 20", () => {
-    // Player is at 17, needs 3+ to win.
-    // Chosen order: verdant first (+1) → 18, does not cross 20.
+    // Player is at 15, needs 5 to win.
+    // Chosen order: verdant first (+3) → 18, does not cross 20.
     // lum_tide (+2) → 20, crosses 20.
     // winTriggerLuminaryId should be lum_tide.
     const state = makeGame();
     enrichPlayer(state, 0);
     const p = state.players[0];
-    p.eminence = DEFAULT_VICTORY_REQUIREMENT - 3;
+    p.eminence = DEFAULT_VICTORY_REQUIREMENT - 5;
     p.bonuses.verdance = 5;
     p.bonuses.continuum = 6;
     const zeroEminenceCard = [...CARD_MAP.entries()].find(([, c]) => c.eminence === 0)?.[0]
@@ -2855,7 +3005,7 @@ describe("checkLuminaries — simultaneous-claim sequencing", () => {
 
   it("lum_void Oblivion applies AFTER all other effects — victory target moves after awards", () => {
     // Forge triggers both lum_void (Oblivion +8 victory requirement) and
-    // lum_verdant (+1 Eminence).
+    // lum_verdant (+3 Eminence).
     // Player chooses: verdant first, void second.
     // Effects fire in that order, but Oblivion is always deferred to post-pass.
     // The post-pass ensures the victory line moves only after all summon
@@ -2880,9 +3030,9 @@ describe("checkLuminaries — simultaneous-claim sequencing", () => {
     applyAction(state, "p1", { type: "forge_artifact", cardId: zeroEminenceCard });
     resolveChoice(state, "p1", ["lum_verdant", "lum_void"]);
 
-    // lum_verdant: +1 Eminence and lum_void: +2 Eminence.
+    // lum_verdant: +3 Eminence and lum_void: +2 Eminence.
     // Oblivion then adds +8 to the shared victory requirement.
-    expect(p1.eminence).toBe(8);
+    expect(p1.eminence).toBe(10);
     expect(p2.eminence).toBe(5);
     expect(state.victoryRequirement).toBe(DEFAULT_VICTORY_REQUIREMENT + 8);
   });
@@ -3393,6 +3543,57 @@ describe("burnPile eligibility guards and burnCard() invariants", () => {
 // ─── LUMINARIES catalogue ─────────────────────────────────────────────────────
 
 describe("LUMINARIES catalogue", () => {
+  it("caps every native arrival reward at 3, including deferred Luminaries", () => {
+    for (const luminary of LUMINARIES) {
+      expect(Number.isInteger(luminary.eminence), luminary.id).toBe(true);
+      expect(luminary.eminence, luminary.id).toBeGreaterThanOrEqual(0);
+      expect(luminary.eminence, luminary.id).toBeLessThanOrEqual(3);
+    }
+  });
+
+  it.each([
+    ["lum_moth", 3],
+    ["lum_verdant", 3],
+    ["lum_radiant", 1],
+    ["lum_astral", 3],
+    ["lum_bloom", 1],
+    ["lum_seed", 2],
+    ["lum_ember", 3],
+  ] as const)("awards and displays %s's revised %i native Eminence", (id, reward) => {
+    const state = makeGame();
+    const player = state.players[0];
+    const before = player.eminence;
+    const cardEminence = CARD_MAP.get(state.forgeTier1[0]!)!.eminence;
+
+    claimLuminary(state, id);
+
+    expect(player.luminaries).toContain(id);
+    expect(player.eminence).toBe(before + cardEminence + reward);
+    expect(state.actionLog).toEqual(expect.arrayContaining([
+      expect.objectContaining({ summary: expect.stringContaining(`(+${reward} Eminence)`) }),
+    ]));
+    const formatted = formatGameState("native-eminence-test", "playing", state, new Set());
+    expect(formatted.luminaries.find((luminary) => luminary.id === id)?.eminence).toBe(reward);
+    expect(formatted.players[0].eminence).toBe(player.eminence);
+  });
+
+  it("preserves already-earned Eminence and does not award an existing alliance again", () => {
+    const state = makeGame();
+    state.activeLuminaries = ["lum_radiant"];
+    state.players[0].luminaries = ["lum_radiant"];
+    state.players[0].bonuses.radiance = 6;
+    state.players[0].eminence = 8;
+
+    const restored = normalizeState(state);
+    expect(restored.players[0].eminence).toBe(8);
+    enrichPlayer(restored, 0);
+    const cardId = restored.forgeTier1[0]!;
+    const cardEminence = CARD_MAP.get(cardId)!.eminence;
+    expect(applyAction(restored, "p1", { type: "forge_artifact", cardId }).success).toBe(true);
+    expect(restored.players[0].eminence).toBe(8 + cardEminence);
+    expect(restored.pendingSummonEvents).toHaveLength(0);
+  });
+
   it("contains all 17 v0.8/v0.9 entries (16 active + lum_oracle deferred)", () => {
     // 12 original + 4 new (lum_moth, lum_seed, lum_orchard, lum_hunger) + 1 v0.9 (lum_scholar) = 17.
     expect(LUMINARIES).toHaveLength(17);
@@ -3406,8 +3607,8 @@ describe("LUMINARIES catalogue", () => {
     }
   });
 
-  it("awards Catalyst Bloom 4 native Eminence", () => {
-    expect(LUMINARY_MAP.get("lum_bloom")?.eminence).toBe(4);
+  it("awards Catalyst Bloom 1 native Eminence in addition to its burn rewards", () => {
+    expect(LUMINARY_MAP.get("lum_bloom")?.eminence).toBe(1);
   });
 
   it("lum_oracle is NOT in the active pool (AVAILABLE_LUMINARIES)", () => {

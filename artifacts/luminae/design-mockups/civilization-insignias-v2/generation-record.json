@@ -1,0 +1,129 @@
+{
+  "generator": "built-in image_gen",
+  "transparent_background": true,
+  "artworkEdits": "None outside image_gen. Sheets place unmodified originals on labeled layouts.",
+  "items": [
+    {
+      "id": "vortex",
+      "name": "Vortex",
+      "source": "/Users/chaoscalligraphy/.codex/generated_images/01a0f23c-8e30-7ba2-875e-316cd0496d67/exec-8e4c4da1-c1e4-4bbe-95e3-1688d1a0e9da.png",
+      "file": "vortex.png"
+    },
+    {
+      "id": "flux",
+      "name": "Flux",
+      "source": "/Users/chaoscalligraphy/.codex/generated_images/01a0f23c-8e30-7ba2-875e-316cd0496d67/exec-785cc64b-2115-4eda-913b-f565315ccd44.png",
+      "file": "flux.png"
+    },
+    {
+      "id": "bloom",
+      "name": "Bloom",
+      "source": "/Users/chaoscalligraphy/.codex/generated_images/01a0f23c-8e30-7ba2-875e-316cd0496d67/exec-23a2329e-5e05-48a5-9416-07b757f46aee.png",
+      "file": "bloom.png"
+    },
+    {
+      "id": "chrysalis",
+      "name": "Chrysalis",
+      "source": "/Users/chaoscalligraphy/.codex/generated_images/01a0f23c-8e30-7ba2-875e-316cd0496d67/exec-edabc2f3-29cd-434b-a082-d7bd8f24e500.png",
+      "file": "chrysalis.png"
+    },
+    {
+      "id": "orbit",
+      "name": "Orbit",
+      "source": "/Users/chaoscalligraphy/.codex/generated_images/01a0f23c-8e30-7ba2-875e-316cd0496d67/exec-ce32e153-9bac-4217-95f8-181a0bdc7f0b.png",
+      "file": "orbit.png"
+    },
+    {
+      "id": "canopy",
+      "name": "Canopy",
+      "source": "/Users/chaoscalligraphy/.codex/generated_images/01a0f23c-8e30-7ba2-875e-316cd0496d67/exec-cd448211-e3b3-4535-af9f-316238e9bcfd.png",
+      "file": "canopy.png"
+    },
+    {
+      "id": "eclipse",
+      "name": "Eclipse",
+      "source": "/Users/chaoscalligraphy/.codex/generated_images/01a0f23c-8e30-7ba2-875e-316cd0496d67/exec-e2c3c45c-dd8e-472f-84f0-ea5584f658df.png",
+      "file": "eclipse.png"
+    },
+    {
+      "id": "lineage",
+      "name": "Lineage",
+      "source": "/Users/chaoscalligraphy/.codex/generated_images/01a0f23c-8e30-7ba2-875e-316cd0496d67/exec-2de54914-b7f3-4270-b7b2-9288d3fb3fdb.png",
+      "file": "lineage.png"
+    },
+    {
+      "id": "echo",
+      "name": "Echo",
+      "source": "/Users/chaoscalligraphy/.codex/generated_images/01a0f23c-8e30-7ba2-875e-316cd0496d67/exec-735d2614-1b3e-49d2-8ef7-f1118f53aadf.png",
+      "file": "echo.png",
+      "previousSource": "/Users/chaoscalligraphy/.codex/generated_images/01a0f23c-8e30-7ba2-875e-316cd0496d67/exec-825b56b2-23ab-4101-8ea1-7f5fb82314e4.png",
+      "editPrompt": "Use case: precise-object-edit. Image 1 is the edit target: the Echo insignia with three nested crescent/ripple contours. Keep precisely the same three shapes, placement, orientation, dimensions and ivory color. REMOVE ALL glow, halos, light scattering, blur, shadows, gradients, illuminated borders, backdrop and other non-shape pixels. Render the three contours as completely FLAT SOLID IVORY INK (#F1E8D7), uniform opacity 100% within each shape, with hard clean edges. Everything between and outside the three shapes must be truly alpha-transparent, with no haze. This is a flat one-color pictogram, not luminous objects. Keep the same empty source position; do not add a dot, other shapes, outline or text."
+    },
+    {
+      "id": "spore",
+      "name": "Spore",
+      "source": "/Users/chaoscalligraphy/.codex/generated_images/01a0f23c-8e30-7ba2-875e-316cd0496d67/exec-45156943-ea03-4f09-b08c-319ab891d1f6.png",
+      "file": "spore.png"
+    },
+    {
+      "id": "homeostasis",
+      "name": "Homeostasis",
+      "source": "/Users/chaoscalligraphy/.codex/generated_images/01a0f23c-8e30-7ba2-875e-316cd0496d67/exec-b2f344a9-5974-4b35-8f2f-fe9887040319.png",
+      "file": "homeostasis.png"
+    },
+    {
+      "id": "cascade",
+      "name": "Cascade",
+      "source": "/Users/chaoscalligraphy/.codex/generated_images/01a0f23c-8e30-7ba2-875e-316cd0496d67/exec-49958a12-7867-4011-a1c9-4fe5d0d765e5.png",
+      "file": "cascade.png"
+    },
+    {
+      "id": "alchemy",
+      "name": "Alchemy",
+      "source": "/Users/chaoscalligraphy/.codex/generated_images/01a0f23c-8e30-7ba2-875e-316cd0496d67/exec-669095dd-2bcf-4766-8cf1-c6069cc8e5a7.png",
+      "file": "alchemy.png"
+    },
+    {
+      "id": "evolution",
+      "name": "Evolution",
+      "source": "/Users/chaoscalligraphy/.codex/generated_images/01a0f23c-8e30-7ba2-875e-316cd0496d67/exec-57374840-29b8-4095-8be5-8a43cae7d014.png",
+      "file": "evolution.png"
+    },
+    {
+      "id": "ouroboros",
+      "name": "Ouroboros",
+      "source": "/Users/chaoscalligraphy/.codex/generated_images/01a0f23c-8e30-7ba2-875e-316cd0496d67/exec-e1532d7f-8e7c-4d9b-b6c5-fcf960ce88a5.png",
+      "file": "ouroboros.png"
+    },
+    {
+      "id": "contagion",
+      "name": "Contagion",
+      "source": "/Users/chaoscalligraphy/.codex/generated_images/01a0f23c-8e30-7ba2-875e-316cd0496d67/exec-2ce1b552-3001-4a44-ba41-7816da84c88b.png",
+      "file": "contagion.png"
+    },
+    {
+      "id": "dynasty",
+      "name": "Dynasty",
+      "source": "/Users/chaoscalligraphy/.codex/generated_images/01a0f23c-8e30-7ba2-875e-316cd0496d67/exec-94ad4ec1-2ede-417b-8900-b372188e4a9a.png",
+      "file": "dynasty.png"
+    },
+    {
+      "id": "testament",
+      "name": "Testament",
+      "source": "/Users/chaoscalligraphy/.codex/generated_images/01a0f23c-8e30-7ba2-875e-316cd0496d67/exec-d1f6b3f7-439a-4415-94ec-fc53f6a92da3.png",
+      "file": "testament.png"
+    },
+    {
+      "id": "mycelium",
+      "name": "Mycelium",
+      "source": "/Users/chaoscalligraphy/.codex/generated_images/01a0f23c-8e30-7ba2-875e-316cd0496d67/exec-487a1b16-0662-40a6-8daa-0d8181b53dcb.png",
+      "file": "mycelium.png"
+    },
+    {
+      "id": "atavism",
+      "name": "Atavism",
+      "source": "/Users/chaoscalligraphy/.codex/generated_images/01a0f23c-8e30-7ba2-875e-316cd0496d67/exec-dc3ec1d2-fd79-4840-844c-74c56c37813d.png",
+      "file": "atavism.png"
+    }
+  ]
+}

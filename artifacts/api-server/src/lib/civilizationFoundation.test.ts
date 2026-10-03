@@ -1,6 +1,8 @@
 import { describe, expect, it } from 'vitest';
 import {
   ARTIFACT_CATALOG,
+  ARTIFACT_CANON,
+  ARTIFACT_TIER_AUDIT_BY_ID,
   ARTIFACT_BUILT_ON,
   ARTIFACT_CIVILIZATION_CAPABILITY_BY_ID,
   ARTIFACT_CIVILIZATION_CAPABILITY_DOMAIN_BY_ID,
@@ -82,10 +84,24 @@ function lifecycle(
 }
 
 describe('shared Artifact authority', () => {
-  it('contains the complete unique 40/30/20 mechanical catalog', () => {
-    expect(ARTIFACT_CATALOG).toHaveLength(90);
-    expect(new Set(ARTIFACT_CATALOG.map((artifact) => artifact.id)).size).toBe(90);
-    expect(ARTIFACT_CATALOG.filter((artifact) => artifact.tier === 1)).toHaveLength(40);
+  it('provides one canonical tier decision and public function for every playable Artifact', () => {
+    const ids = ARTIFACT_CATALOG.map(artifact => artifact.id).sort();
+    expect(Object.keys(ARTIFACT_CANON).sort()).toEqual(ids);
+    expect(Object.keys(ARTIFACT_TIER_AUDIT_BY_ID).sort()).toEqual(ids);
+    for (const artifact of ARTIFACT_CATALOG) {
+      const canon = ARTIFACT_CANON[artifact.id];
+      const audit = ARTIFACT_TIER_AUDIT_BY_ID[artifact.id];
+      expect(audit.tier).toBe(artifact.tier);
+      expect(audit.confinementTest.trim()).not.toBe('');
+      expect(getCardLore(artifact.id).flavor).toBe(`${canon.functionalText} ${canon.mystery}`);
+      expect(canon.engineeringScale).toBe(({ 1: 'Planetary', 2: 'Star-system', 3: 'Galactic' })[artifact.tier]);
+    }
+  });
+
+  it('contains the complete unique 45/30/20 mechanical catalog', () => {
+    expect(ARTIFACT_CATALOG).toHaveLength(95);
+    expect(new Set(ARTIFACT_CATALOG.map((artifact) => artifact.id)).size).toBe(95);
+    expect(ARTIFACT_CATALOG.filter((artifact) => artifact.tier === 1)).toHaveLength(45);
     expect(ARTIFACT_CATALOG.filter((artifact) => artifact.tier === 2)).toHaveLength(30);
     expect(ARTIFACT_CATALOG.filter((artifact) => artifact.tier === 3)).toHaveLength(20);
     expect(ARTIFACT_CATALOG.every((artifact) => artifact.cost.singularity === 0)).toBe(true);
@@ -93,15 +109,15 @@ describe('shared Artifact authority', () => {
 
   it('preserves the five-way bonus distribution', () => {
     for (const affinity of Object.keys(ARTIFACT_BY_AFFINITY) as StandardAffinityKey[]) {
-      expect(ARTIFACT_CATALOG.filter((artifact) => artifact.bonusAffinity === affinity)).toHaveLength(18);
+      expect(ARTIFACT_CATALOG.filter((artifact) => artifact.bonusAffinity === affinity)).toHaveLength(19);
     }
   });
 
-  it('covers all 90 Artifacts with explicit lineage and depiction metadata', () => {
+  it('covers all 95 Artifacts with explicit lineage and depiction metadata', () => {
     const ids = ARTIFACT_CATALOG.map((artifact) => artifact.id);
-    expect(Object.keys(ARTIFACT_LINEAGE_BY_ID)).toHaveLength(90);
-    expect(Object.keys(ARTIFACT_DEPICTION_SCALE_BY_ID)).toHaveLength(90);
-    expect(Object.keys(ARTIFACT_TECHNOLOGY_METADATA_BY_ID)).toHaveLength(90);
+    expect(Object.keys(ARTIFACT_LINEAGE_BY_ID)).toHaveLength(95);
+    expect(Object.keys(ARTIFACT_DEPICTION_SCALE_BY_ID)).toHaveLength(95);
+    expect(Object.keys(ARTIFACT_TECHNOLOGY_METADATA_BY_ID)).toHaveLength(95);
     for (const id of ids) {
       expect(ARTIFACT_LINEAGE_BY_ID[id]).toBeTruthy();
       expect(ARTIFACT_DEPICTION_SCALE_BY_ID[id]).toBeTruthy();
@@ -152,18 +168,18 @@ describe('shared Artifact authority', () => {
       .toContain('artifact:evidence_verification');
   });
 
-  it('tags Tier III keystones by bounded canon rather than displaced Project art', () => {
+  it('tags Tier III achievements by the functions they actually perform', () => {
     expect(ARTIFACT_TECHNOLOGY_METADATA_BY_ID.t3r01.capabilityIds).toEqual([
       'artifact:controlled_energy',
-      'artifact:signal_interpretation',
+      'artifact:transit_navigation',
     ]);
     expect(ARTIFACT_TECHNOLOGY_METADATA_BY_ID.t3e04.capabilityIds).toEqual([
       'artifact:cross_ecology_mediation',
-      'artifact:failure_isolation',
+      'artifact:hazard_containment',
     ]);
     expect(ARTIFACT_TECHNOLOGY_METADATA_BY_ID.t3p01.capabilityIds).toEqual([
-      'artifact:evidence_verification',
       'artifact:plural_governance',
+      'artifact:evidence_verification',
     ]);
   });
 
@@ -236,12 +252,17 @@ describe('shared Artifact authority', () => {
     }
   });
 
-  it('projects bounded Technology v2 Tier III canon without treating tier as art scale', () => {
+  it('projects complete galactic achievements through their actual artwork viewpoint', () => {
     expect(Object.keys(TIER_THREE_ARTIFACT_CANON)).toHaveLength(20);
     for (const [id, canon] of Object.entries(TIER_THREE_ARTIFACT_CANON)) {
       expect(getCardLore(id).name).toBe(canon.name);
       expect(getCardLore(id).artifactForm).toBe(canon.forms.join(' / '));
-      expect(['macro', 'tabletop', 'room', 'installation'])
+      expect(getCardLore(id).flavor).toBe(`${canon.practicalCapability} ${canon.mystery}`);
+      expect(getCardLore(id).artPrompt).toBe(canon.artPrompt);
+      expect(getCardLore(id).engineeringScale).toBe('Galactic');
+      const artifactNames = Object.values(TIER_THREE_ARTIFACT_CANON).map(({ name }) => name);
+      for (const lead of canon.projectLeads) expect(artifactNames).not.toContain(lead.name);
+      expect(['installation', 'planetary', 'stellar', 'galactic'])
         .toContain(ARTIFACT_DEPICTION_SCALE_BY_ID[id as keyof typeof ARTIFACT_DEPICTION_SCALE_BY_ID]);
     }
   });

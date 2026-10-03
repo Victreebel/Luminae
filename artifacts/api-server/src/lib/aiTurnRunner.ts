@@ -107,7 +107,8 @@ export async function runAiTurnsIfNeeded(roomId: string): Promise<void> {
           (state.pendingSummonEvents?.length ?? 0) > 0 ||
           (state.pendingLuminaryActivationEvents?.length ?? 0) > 0 ||
           (state.pendingBlueprintManifestationEvents?.length ?? 0) > 0 ||
-          (state.pendingBlueprintDetonationEvents?.length ?? 0) > 0
+          (state.pendingBlueprintDetonationEvents?.length ?? 0) > 0 ||
+          (state.pendingCivilizationEventCards?.length ?? 0) > 0
         ) {
           return { kind: "stop" as const };
         }

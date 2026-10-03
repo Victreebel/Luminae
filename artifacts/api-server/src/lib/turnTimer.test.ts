@@ -16,6 +16,25 @@ function timedState() {
 }
 
 describe("Blueprint presentation timer gating", () => {
+  it("keeps the full turn clock paused through a reconnect-safe Event receipt", () => {
+    const state = timedState();
+    state.pendingCivilizationEventCards = [{
+      eventId: "cosmic-1",
+      definitionId: "event_stellar_containment_cascade",
+      triggerWindow: "authored",
+      triggerTurnCount: 3,
+      phase: "receipt",
+      affectedPlayerIds: state.players.map((player) => player.playerId),
+      outcomesByPlayerId: {},
+      createdAt: 100,
+    }];
+    updateTurnDeadline(state);
+    expect(state.turnDeadline).toBeNull();
+    state.pendingCivilizationEventCards = [];
+    updateTurnDeadline(state);
+    expect(state.turnDeadline).not.toBeNull();
+  });
+
   it("pauses the turn clock while a manifestation survives reconnect", () => {
     const state = timedState();
     state.pendingBlueprintManifestationEvents = [

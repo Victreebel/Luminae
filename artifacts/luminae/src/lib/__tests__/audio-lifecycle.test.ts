@@ -317,4 +317,15 @@ describe('GameAudio transient resource lifecycle', () => {
     vi.advanceTimersByTime(3_400);
     expect(audio.getTransientResourceCounts().buses).toBe(0);
   });
+
+  it('builds transmission static as bounded procedural audio', () => {
+    const audio = new GameAudio();
+
+    audio.playTutorialCue('transmission-fault');
+    expect(audio.getTransientResourceCounts().buses).toBe(1);
+    expect(audio.getTransientResourceCounts().voices).toBeGreaterThanOrEqual(4);
+
+    vi.advanceTimersByTime(3_400);
+    expect(audio.getTransientResourceCounts().buses).toBe(0);
+  });
 });

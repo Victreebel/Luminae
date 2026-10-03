@@ -1,4 +1,4 @@
-import { useEffect, useRef } from 'react';
+import { useEffect, useRef, useState } from 'react';
 import { animate } from 'framer-motion';
 import { createPortal } from 'react-dom';
 import type { ArtifactCard, GameState } from '@workspace/api-client-react';
@@ -7,6 +7,7 @@ import type { AnimationProcedureStep } from '@/lib/animationProcedure';
 import {
   createLuminaryEffectSequence,
   type LuminaryEffectSequenceController,
+  type LuminaryEffectPhaseContext,
 } from '@/lib/luminaryEffectSequence';
 import {
   LuminaryEffectSkipControl,
@@ -18,6 +19,11 @@ import {
 } from '@/lib/luminaryPresentationPacing';
 import { gameAudio } from '@/lib/audio';
 import { playLuminaryEffectPhaseSound } from '@/lib/luminaryEffectSound';
+import { ARCHIVE_CAPACITY_BY_TIER } from '@/lib/archivePresentation';
+import { FORGE_REFILL_DURATION_MS, FORGE_REFILL_REDUCED_DURATION_MS, FORGE_REFILL_COMPLETION_BUFFER_MS, FORGE_REFILL_STAGGER_MS } from '@/lib/forgeRefillTiming';
+import { ForgeReplacementDealAnimation } from './ForgeReplacementDealAnimation';
+import { ArtifactCardView } from '@/pages/game-card';
+import { CompactForgeCardReadout } from '@/pages/game-board-forge-card-slot';
 
 type Tier = 1 | 2 | 3;
 
@@ -31,15 +37,7 @@ const IMPACT_HOLD_MS = 100;
 const RETURN_FLIGHT_MS = 850;
 const RETURN_STAGGER_MS = 90;
 const SHUFFLE_MS = 750;
-const DEAL_FLIGHT_MS = 800;
-const DEAL_STAGGER_MS = 90;
 const AFTERMATH_MS = 200;
-
-const ARCHIVE_CAPACITY: Record<Tier, number> = {
-  1: 36,
-  2: 26,
-  3: 16,
-};
 
 interface Point {
   x: number;
@@ -62,11 +60,13 @@ export interface IronHarbingerResetActions {
   ) => void;
   setAnimEndTime: (durationMs: number) => void;
   onLiftSlots: (slotKeys: string[]) => void;
+  onRefillReveal?: (slotKey: string) => void;
   onRevealSlot: (slotKey: string) => void;
   onFinish: (slotKeys: string[]) => void;
   playShuffle: () => void;
   playArchiveImpact: (index: number) => void;
   playDeal: (index: number) => void;
+  getRefillCosts?: (card: ArtifactCard) => Partial<ArtifactCard['cost']> | undefined;
 }
 
 interface IronHarbingerResetDirectorProps {
@@ -95,6 +95,16 @@ interface ArchiveVisual {
   rect: DOMRect;
   finalCount: number;
   displayCount: number;
+}
+
+interface RefillVisual {
+  slot: IronHarbingerResetSlot;
+  card: ArtifactCard;
+  rect: { x: number; y: number; w: number; h: number };
+  compact: boolean;
+  delayMs: number;
+  reveal: () => void;
+  complete: () => void;
 }
 
 function tierFromCardId(cardId: string): Tier {
@@ -138,7 +148,7 @@ function centerOf(rect: DOMRect): Point {
   };
 }
 
-function rowForTier(state: GameState | null, tier: Tier): ArtifactCard[] {
+function rowForTier(state: GameState | null, tier: Tier): (ArtifactCard | null)[] {
   if (!state) return [];
   if (tier === 1) return state.forgeTier1 ?? [];
   if (tier === 2) return state.forgeTier2 ?? [];
@@ -241,6 +251,7 @@ export function IronHarbingerResetDirector({
   const returnVisualsRef = useRef<ReturnVisual[]>([]);
   const dealVisualsRef = useRef<HTMLElement[]>([]);
   const archiveVisualsRef = useRef(new Map<Tier, ArchiveVisual>());
+  const [refills, setRefills] = useState<RefillVisual[]>([]);
 
   actionsRef.current = actions;
   onCompleteRef.current = onComplete;
@@ -270,10 +281,10 @@ export function IronHarbingerResetDirector({
       timelinePlaybackRate,
     );
     const shuffleMs = paced(SHUFFLE_MS);
-    const dealFlightMs = paced(DEAL_FLIGHT_MS);
+    const refillDurationMs = reducedMotion ? FORGE_REFILL_REDUCED_DURATION_MS : FORGE_REFILL_DURATION_MS;
     const dealStaggerMs = boundedLuminaryStagger(
       slots.length,
-      DEAL_STAGGER_MS,
+      FORGE_REFILL_STAGGER_MS,
       playbackMode,
       timelinePlaybackRate,
     );
@@ -290,6 +301,7 @@ export function IronHarbingerResetDirector({
     };
 
     const stopVisualWork = () => {
+      setRefills([]);
       timersRef.current.forEach(timer => clearTimeout(timer));
       timersRef.current = [];
       animationControlsRef.current.forEach(control => control.stop());
@@ -316,6 +328,7 @@ export function IronHarbingerResetDirector({
 
         const clone = source.cloneNode(true) as HTMLElement;
         stripCloneIdentity(clone);
+        clone.dataset.archiveCinematic = String(tier);
         Object.assign(clone.style, {
           position: 'fixed',
           left: `${rect.left}px`,
@@ -346,18 +359,39 @@ export function IronHarbingerResetDirector({
     const updateArchiveCount = (tier: Tier, nextCount: number, pulse = true) => {
       const visual = archiveVisualsRef.current.get(tier);
       if (!visual) return;
+      const spent = visual.displayCount - Math.max(0, nextCount);
       visual.displayCount = Math.max(0, nextCount);
       const count = visual.element.querySelector<HTMLElement>(
         '.board-forge-archive-count',
       );
-      if (count) count.textContent = String(visual.displayCount);
+      if (count) {
+        const label = document.createElement('span');
+        label.textContent = String(visual.displayCount);
+        if (spent > 0 && pulse) label.className = 'archive-count-settle';
+        count.replaceChildren(label);
+      }
       const vessel = visual.element.querySelector<HTMLElement>('.archive-vessel');
       if (vessel) {
         const fill = Math.min(
           100,
-          (visual.displayCount / ARCHIVE_CAPACITY[tier]) * 100,
+          (visual.displayCount / ARCHIVE_CAPACITY_BY_TIER[tier]) * 100,
         );
         vessel.style.setProperty('--archive-fill', `${fill}%`);
+        vessel.dataset.archiveRemaining = String(visual.displayCount);
+        vessel.querySelector('.archive-vessel__release')?.remove();
+        if (spent > 0 && pulse) {
+          vessel.style.setProperty('--archive-depleted-fill', `${spent / ARCHIVE_CAPACITY_BY_TIER[tier] * 100}%`);
+          const release = document.createElement('span');
+          release.className = 'archive-vessel__release';
+          vessel.querySelector('.archive-vessel__crystal')?.append(release);
+        }
+      }
+      visual.element.querySelector('.archive-draw-amount')?.remove();
+      if (spent > 0 && pulse) {
+        const amount = document.createElement('span');
+        amount.className = 'archive-draw-amount';
+        amount.textContent = `−${spent}`;
+        visual.element.append(amount);
       }
       if (pulse) {
         trackAnimation(animate(
@@ -638,101 +672,57 @@ export function IronHarbingerResetDirector({
       await wait(shuffleMs + paced(80));
     };
 
-    const dealForge = async (
-      wait: (durationMs: number) => Promise<void>,
-      signal: AbortSignal,
-    ) => {
-      const durationMs = dealFlightMs;
-      const staggerMs = dealStaggerMs;
+    const dealForge = async ({ waitFor, signal }: LuminaryEffectPhaseContext) => {
       const sortedSlots = [...slots].sort((a, b) => (
         b.tier - a.tier || a.slotIndex - b.slotIndex
       ));
+      const totalMs = refillDurationMs + FORGE_REFILL_COMPLETION_BUFFER_MS
+        + Math.max(0, sortedSlots.length - 1) * dealStaggerMs;
 
-      sortedSlots.forEach((slot, index) => {
-        const archive = archiveVisualsRef.current.get(slot.tier);
-        const destinationElement = document.querySelector<HTMLElement>(
-          `[data-slot-key="${slot.slotKey}"]`,
-        );
-        const destinationRect = destinationElement?.getBoundingClientRect();
-        const nextCard = rowForTier(stateRef.current, slot.tier)[slot.slotIndex];
-        if (!archive || !destinationRect || !nextCard) {
-          actionsRef.current.onRevealSlot(slot.slotKey);
-          return;
-        }
-
-        const element = makeFallbackArtifact(
-          nextCard.id,
-          slot.tier,
-          destinationRect,
-        );
-        const source = centerOf(archive.rect);
-        const destination = centerOf(destinationRect);
-        const startX = source.x - destinationRect.width / 2;
-        const startY = source.y - destinationRect.height / 2;
-        const dx = destination.x - source.x;
-        const dy = destination.y - source.y;
-        const arcY = Math.min(-34, dy * 0.34 - 46 - (index % 4) * 7);
-        const delayMs = index * staggerMs;
-
-        Object.assign(element.style, {
-          left: `${startX}px`,
-          top: `${startY}px`,
-          opacity: '0',
-          transformOrigin: '50% 50%',
-          pointerEvents: 'none',
-          zIndex: '9055',
-          willChange: 'transform, opacity, filter',
+      await waitFor(done => {
+        const pending = new Set<string>();
+        const entries: RefillVisual[] = [];
+        sortedSlots.forEach((slot, index) => {
+          const destination = document.querySelector<HTMLElement>(`[data-slot-key="${slot.slotKey}"]`);
+          const rect = destination?.getBoundingClientRect();
+          const card = rowForTier(stateRef.current, slot.tier)[slot.slotIndex];
+          if (!destination || !rect || rect.width <= 0 || rect.height <= 0 || !card) {
+            actionsRef.current.onRevealSlot(slot.slotKey);
+            return;
+          }
+          pending.add(slot.slotKey);
+          let revealed = false;
+          const reveal = () => {
+            if (signal.aborted || revealed || !pending.has(slot.slotKey)) return;
+            revealed = true;
+            const archive = archiveVisualsRef.current.get(slot.tier);
+            if (archive) updateArchiveCount(slot.tier, Math.max(archive.finalCount, archive.displayCount - 1));
+            actionsRef.current.onRefillReveal?.(slot.slotKey);
+          };
+          entries.push({
+            slot, card,
+            rect: { x: rect.x, y: rect.y, w: rect.width, h: rect.height },
+            compact: destination.classList.contains('board-forge-compact-chip'),
+            delayMs: index * dealStaggerMs,
+            reveal,
+            complete: () => {
+              if (signal.aborted || !pending.has(slot.slotKey)) return;
+              reveal();
+              pending.delete(slot.slotKey);
+              actionsRef.current.onRevealSlot(slot.slotKey);
+              setRefills(current => current.filter(refill => refill.slot.slotKey !== slot.slotKey));
+              if (pending.size === 0) done();
+            },
+          });
         });
-        document.body.appendChild(element);
+        setRefills(entries);
+        if (pending.size === 0) done();
+      }, totalMs + 250);
 
-        rememberTimer(() => {
-          if (signal.aborted) return;
-          const latest = archiveVisualsRef.current.get(slot.tier);
-          if (latest) updateArchiveCount(
-            slot.tier,
-            Math.max(latest.finalCount, latest.displayCount - 1),
-          );
-          if (index % 4 === 0) actionsRef.current.playDeal(index);
-        }, delayMs);
-
-        trackAnimation(animate(
-          element,
-          {
-            x: [0, dx * 0.5, dx],
-            y: [0, arcY, dy],
-            opacity: [0, 1, 1, 0],
-            scale: [0.24, 0.92, 1, 1],
-            rotateY: [88, 32, 0],
-            rotateZ: [0, index % 2 === 0 ? -2 : 2, 0],
-            filter: [
-              'brightness(1.75)',
-              'brightness(1.18)',
-              'brightness(1)',
-            ],
-          },
-          {
-            duration: (reducedMotion ? Math.min(220, durationMs) : durationMs) / 1000,
-            delay: delayMs / 1000,
-            ease: [0.22, 0.72, 0.18, 1],
-          },
-        ));
-
-        rememberTimer(() => {
-          if (signal.aborted) return;
-          actionsRef.current.onRevealSlot(slot.slotKey);
-          element.remove();
-          dealVisualsRef.current = dealVisualsRef.current.filter(
-            visual => visual !== element,
-          );
-        }, delayMs + durationMs - 60);
-      });
-
-      const totalMs =
-        durationMs +
-        Math.max(0, sortedSlots.length - 1) * staggerMs +
-        120;
-      await wait(totalMs);
-
+      // Advance/skip and missing-slot fallbacks always leave an authoritative board.
+      setRefills([]);
+      sortedSlots.forEach(slot => actionsRef.current.onRevealSlot(slot.slotKey));
+      if (signal.aborted) return;
       archiveVisualsRef.current.forEach((visual) => {
         updateArchiveCount(visual.tier, visual.finalCount, false);
         trackAnimation(animate(
@@ -755,7 +745,7 @@ export function IronHarbingerResetDirector({
       returnFlightMs + Math.max(0, slots.length - 1) * returnStaggerMs + 90;
     const shuffleEstimate = shuffleMs + paced(80);
     const dealEstimate =
-      dealFlightMs + Math.max(0, slots.length - 1) * dealStaggerMs + 120;
+      refillDurationMs + Math.max(0, slots.length - 1) * dealStaggerMs + FORGE_REFILL_COMPLETION_BUFFER_MS + 250;
     const totalEstimate =
       announceMs + cameraSettleMs + impactEstimate + returnEstimate +
       shuffleEstimate + dealEstimate + aftermathMs + paced(250);
@@ -794,7 +784,7 @@ export function IronHarbingerResetDirector({
         },
         {
           id: 'reveal',
-          run: ({ wait, signal }) => dealForge(wait, signal),
+          run: context => dealForge(context),
         },
         {
           id: 'aftermath',
@@ -867,6 +857,26 @@ export function IronHarbingerResetDirector({
           />
         ))}
       </div>
+
+      {refills.map(refill => (
+        <ForgeReplacementDealAnimation
+          key={refill.slot.slotKey}
+          animKey={`iron-${refill.slot.slotKey}-${refill.card.id}`}
+          cardId={refill.card.id}
+          tier={refill.slot.tier}
+          bonusAffinity={refill.card.bonusAffinity}
+          cost={refill.card.cost}
+          compact={refill.compact}
+          reducedMotion={reducedMotion}
+          targetSlotKey={refill.slot.slotKey}
+          slotRect={refill.rect}
+          delayMs={refill.delayMs}
+          cardFace={<ArtifactCardView card={refill.card} tier={refill.slot.tier} artOnly={refill.compact} effectiveCosts={actionsRef.current.getRefillCosts?.(refill.card)} />}
+          cardOverlay={refill.compact ? <CompactForgeCardReadout card={refill.card} costs={actionsRef.current.getRefillCosts?.(refill.card) ?? refill.card.cost} /> : undefined}
+          onReveal={refill.reveal}
+          onComplete={refill.complete}
+        />
+      ))}
 
       <LuminaryEffectSkipControl
         color="#f97316"

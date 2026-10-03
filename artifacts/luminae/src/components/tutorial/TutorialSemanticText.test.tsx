@@ -7,12 +7,12 @@ import {
 
 describe("TutorialSemanticText", () => {
   it("preserves the authored sentence while styling Affinity quantities", () => {
-    const text = "Replication Spore gives your civilization +1 Verdance.";
+    const text = "LUMINAe represents it simply as +1 Verdance.";
     const { container } = render(
       <TutorialSemanticText
         text={text}
         beatId="b9b_forge_complete"
-        lineIndex={0}
+        lineIndex={1}
       />,
     );
 
@@ -28,12 +28,12 @@ describe("TutorialSemanticText", () => {
   });
 
   it("gives the cost comparison two ordered semantic values", () => {
-    const text = "Therefore, if an Artifact used to cost 3 Verdance, it now only costs 2.";
+    const text = "Therefore, an Artifact that used to cost 3 Verdance now costs 2 Verdance.";
     const { container } = render(
       <TutorialSemanticText
         text={text}
         beatId="b9b_forge_complete"
-        lineIndex={2}
+        lineIndex={3}
       />,
     );
 
@@ -46,7 +46,7 @@ describe("TutorialSemanticText", () => {
     expect(originalCost).toHaveTextContent("3");
     expect(originalCost).not.toHaveTextContent("Verdance");
     expect(originalCost?.querySelector("img")).not.toBeNull();
-    const reducedCost = container.querySelector('[data-semantic-id="value:2"]');
+    const reducedCost = container.querySelector('[data-semantic-id="value:2:verdance"]');
     expect(reducedCost).toHaveAttribute(
       "data-introduction",
       "true",
@@ -72,7 +72,7 @@ describe("TutorialSemanticText", () => {
 
     const singularity = render(
       <TutorialSemanticText
-        text="Encrypted Artifacts are stored behind the Singularity cell."
+        text="As a byproduct of performing Encryption, a mysterious power called Singularity is generated."
         beatId="b10b_reserve_granted"
         lineIndex={0}
       />,
@@ -87,7 +87,7 @@ describe("TutorialSemanticText", () => {
   it("keeps later mentions styled without replaying their introduction", () => {
     const { container } = render(
       <TutorialSemanticText
-        text="You can gather what it needs and Forge it."
+        text="You can gather what it needs and Forge it as you did with Replication Spore."
         beatId="b9c_transition"
         lineIndex={1}
       />,
@@ -96,6 +96,28 @@ describe("TutorialSemanticText", () => {
     const forge = container.querySelector('[data-semantic-id="mechanic:forge"]');
     expect(forge).toHaveClass("tutorial-semantic-term--mechanic");
     expect(forge).not.toHaveAttribute("data-introduction");
+  });
+
+  it("uses the same mechanic typography for every Forge inflection", () => {
+    const { container } = render(
+      <TutorialSemanticText
+        text="Forge, Forged, and Forging."
+        beatId="forge-word-family"
+        lineIndex={0}
+      />,
+    );
+
+    const forgeTerms = container.querySelectorAll(
+      '[data-semantic-id="mechanic:forge"]',
+    );
+    expect(Array.from(forgeTerms, (term) => term.textContent)).toEqual([
+      "Forge",
+      "Forged",
+      "Forging",
+    ]);
+    forgeTerms.forEach((term) => {
+      expect(term).toHaveClass("tutorial-semantic-term--mechanic");
+    });
   });
 
   it("can suppress kinetic introductions without removing semantic styling", () => {
@@ -114,7 +136,7 @@ describe("TutorialSemanticText", () => {
   });
 
   it("tokenizes Artifact possessives without changing visible copy", () => {
-    const text = "An Artifact's cost shows which Affinities you need to have on-hand.";
+    const text = "An Artifact's cost shows which Affinities you need to hold in your hands.";
     const parts = tokenizeTutorialSemanticText(text);
 
     expect(parts.map((part) => part.text).join("")).toBe(text);

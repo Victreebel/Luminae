@@ -2,6 +2,9 @@ import { useSyncExternalStore } from "react";
 
 export type ArchivePresentation = "crystal" | "cards";
 
+/** Concealed cards after the four initial Forge slots are dealt, including Events. */
+export const ARCHIVE_CAPACITY_BY_TIER = { 1: 38, 2: 28, 3: 18 } as const;
+
 export const DEFAULT_ARCHIVE_PRESENTATION: ArchivePresentation = "crystal";
 export const ARCHIVE_PRESENTATION_STORAGE_KEY = "luminae_archive_presentation";
 

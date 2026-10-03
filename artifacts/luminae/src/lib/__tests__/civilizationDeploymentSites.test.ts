@@ -100,9 +100,9 @@ describe('civilization deployment sites', () => {
       tier: 3,
     });
 
-    expect(site?.scaleBand).toBe('galactic');
+    expect(site?.scaleBand).toBe('planetary');
     expect(site?.artifactTier).toBe(1);
-    expect(site?.representationMode).toBe('local_trace');
+    expect(site?.representationMode).toBe('civilization_infrastructure');
     expect(site?.sourceQuality).toBe('authored');
     expect(site?.artifactForm).toBe('Biotech Module / Catalyst');
     expect(site?.blueprintRole).toBe('post-burn ecological recovery');
@@ -110,17 +110,23 @@ describe('civilization deployment sites', () => {
     expect(site?.depictionScale).toBe('macro');
     expect(site?.scalePresence).toBe('artifact_pin');
     expect(site?.nativeArtworkLayer).toBe('surface');
-    expect(site?.nativeArtworkLabel).toBe('Local site');
+    expect(site?.nativeArtworkLabel).toBe('Surface work');
     expect(site?.scalePolicyCopy).toContain('deployment site');
     expect(site?.artifactVisualMotif).toBe('seed');
     expect(site?.artifactSceneTreatment).toBe('ashroot_recovery');
+    expect(site?.artifactManifestation?.artifactId).toBe('t1r02');
+    expect(site?.artifactManifestation?.lineage).toBe('ecology');
+    expect(site?.artifactManifestation?.manifestationFamily).toBe('biological_catalyst');
+    expect(site?.artifactManifestation?.implementationScale).toBe('civic');
+    expect(site?.artifactManifestation?.nativeCameraScale).toBe('surface');
+    expect(site?.artifactManifestation?.visualIdentity).toBeTruthy();
     expect(site?.consequenceLabel).toBe('Living Recovery');
     expect(site?.visualCue).toContain('green recovery threads');
     expect(site?.synergySummary).toContain('solitary trace');
-    expect(site?.title).toBe('Ashroot Bloom Trace');
-    expect(site?.summary).toContain('depicted at macro scale as a biotech module');
-    expect(site?.summary).toContain('deployment pin and consequence layer');
-    expect(site?.summary).toContain('scan registers its work through');
+    expect(site?.title).toBe('Ashroot Bloom Work');
+    expect(site?.summary).toContain('shown on its card at macro scale as a biotech module');
+    expect(site?.summary).toContain('charred recovery nurseries');
+    expect(site?.summary).toContain('physical consequence');
     expect(site?.summary.toLowerCase()).not.toContain('giant');
     expect(site?.visibleAs).toContain('worldroot corridors');
     expect(site?.laneLabel).toContain('Phoenix biosphere');
@@ -138,7 +144,7 @@ describe('civilization deployment sites', () => {
     expect(galactic.visibleAs).toContain('worldroot corridors');
   });
 
-  it('gives duplicate forged copies distinct trace identities so each forge can register', () => {
+  it('represents duplicate mastery as one persistent physical manifestation', () => {
     const sites = buildCivilizationDeploymentSites({
       forgedArtifacts: [
         artifact('t1r02', 1, 'verdance', 'Ashroot Bloom'),
@@ -148,10 +154,9 @@ describe('civilization deployment sites', () => {
       tier: 1,
     });
 
-    expect(sites.map((site) => site.id)).toEqual(['artifact:t1r02', 'artifact:t1r02#2']);
-    expect(sites[0]?.title).toBe('Ashroot Bloom Trace');
-    expect(sites[1]?.title).toBe('Ashroot Bloom Trace II');
-    expect(sites[1]?.synergySummary).toContain('combining with Ashroot Bloom');
+    expect(sites.map((site) => site.id)).toEqual(['artifact:t1r02']);
+    expect(sites[0]?.title).toBe('Ashroot Bloom Work');
+    expect(sites[0]?.masteryCount).toBe(2);
   });
 
   it('uses card-art depiction scale instead of tier for main visual placement', () => {
@@ -180,7 +185,7 @@ describe('civilization deployment sites', () => {
     expect(roomScale.depictionScale).toBe('room');
     expect(roomScale.scalePresence).toBe('deployment_site');
     expect(roomScale.nativeArtworkLayer).toBe('surface');
-    expect(roomScale.nativeArtworkLabel).toBe('City site');
+    expect(roomScale.nativeArtworkLabel).toBe('Surface work');
     expect(roomScale.artifactVisualMotif).toBe('coil');
     expect(roomScale.artifactSceneTreatment).toBe('mantlelift_driver');
     expect(roomScale.representationMode).toBe('civilization_infrastructure');
@@ -191,7 +196,7 @@ describe('civilization deployment sites', () => {
     expect(planetaryScale.nativeArtworkLabel).toBe('Planet feature');
     expect(planetaryScale.artifactVisualMotif).toBe('aperture');
     expect(planetaryScale.representationMode).toBe('civilization_infrastructure');
-    expect(planetaryScale.summary).toContain('planet feature layer');
+    expect(planetaryScale.summary).toContain('unclassified instrument');
   });
 
   it('assigns authored scene treatments to first-pool Blueprint component artifacts', () => {
@@ -238,8 +243,8 @@ describe('civilization deployment sites', () => {
     expect(site?.consequenceLabel).toBeTruthy();
     expect(site?.visualCue).toBeTruthy();
     expect(site?.engineeringScale).toBe('Star-system');
-    expect(site?.summary).toContain('Pocket Null is depicted at tabletop scale as a concealment device');
-    expect(site?.summary).toContain('scan registers its work through');
+    expect(site?.summary).toContain('Pocket Null is shown on its card at tabletop scale as a concealment device');
+    expect(site?.summary).toContain('physical consequence');
   });
 
   it('explains how related artifacts combine into civilization projects', () => {
@@ -326,6 +331,8 @@ describe('civilization deployment sites', () => {
     expect(site?.gameplayEffect).toContain('Annihilate');
     expect(site?.capabilityIds).toEqual(['project:claim_annihilation']);
     expect(site?.consequenceLabel).toBe('Blueprint Project');
+    expect(site?.blueprintManifestationScale).toBe('satellite');
+    expect(site?.blueprintManifestationMotion).toBe('gimbaled_orbit');
     expect(site?.synergySummary).toContain('completed civilization project');
     expect(site?.title).toBe('Antimatter Quarantine Orbit');
     expect(site?.visibleAs).toContain('exclusion path');
@@ -458,7 +465,7 @@ describe('civilization deployment sites', () => {
 
   it('orders newly added civilization sites before changed older sites for recent trace presentation', () => {
     const [oldSite] = buildCivilizationDeploymentSites({
-      forgedArtifacts: [artifact('t3s01', 3, 'continuum', 'Voidline Route Solver')],
+      forgedArtifacts: [artifact('t3s01', 3, 'continuum', 'Starway Spine')],
       tier: 2,
     });
     const newSite = {

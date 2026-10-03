@@ -1,5 +1,6 @@
 import { CivilizationMiniatureScene } from '@/components/CivilizationScenePanel';
 import React from 'react';
+import type { CivilizationPublicState } from '@workspace/api-client-react';
 import type { AffinityPalette, KardashevTier } from '@/lib/kardashev';
 import type { CivilizationProfile } from '@/lib/civilizationProfile';
 import {
@@ -19,6 +20,7 @@ export interface CivilizationPreviewModel {
   palette: AffinityPalette;
   profile: CivilizationProfile;
   forgedCount: number;
+  civilization?: CivilizationPublicState | null;
 }
 
 function getRegistrationKicker(site: CivilizationDeploymentSite | undefined): string {
@@ -174,6 +176,7 @@ export function BoardCivilizationTraceNotice({
             tier={civilizationModel.tier}
             palette={civilizationModel.palette}
             profile={civilizationModel.profile}
+            civilization={civilizationModel.civilization}
             progressFraction={progressFraction}
             paused
             deploymentSites={deploymentSites}
@@ -330,6 +333,7 @@ export function CivilizationPreviewModule({
           tier={civilizationModel.tier}
           palette={civilizationModel.palette}
           profile={civilizationModel.profile}
+          civilization={civilizationModel.civilization}
           progressFraction={progressFraction}
           paused
           deploymentSites={deploymentSites}

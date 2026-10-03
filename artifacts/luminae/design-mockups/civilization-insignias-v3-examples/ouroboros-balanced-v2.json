@@ -1,0 +1,19 @@
+{
+  "name": "Ouroboros",
+  "status": "Revised example for review",
+  "file": "ouroboros-balanced-v2.png",
+  "source": "/Users/chaoscalligraphy/.codex/generated_images/01a0f23c-8e30-7ba2-875e-316cd0496d67/exec-88d43e5b-a24c-4dfc-80b6-de21c8c3922a.png",
+  "generator": "built-in image_gen",
+  "editTarget": "/Users/chaoscalligraphy/Documents/Lumiane/artifacts/luminae/design-mockups/civilization-insignias-v3-examples/ouroboros.png",
+  "prompt": "Use case: precise-object-edit / color rebalancing.\nImage 1 is the EDIT TARGET: the Ouroboros civilization insignia already approved in concept but far too blue. Preserve exactly the existing circular framing, engraved material quality, serpent anatomy, bold head at upper right, the tail entering its jaws, scale detail, frontal perspective, overall size and transparent exterior. Make only the palette/emphasis and central-background changes below.\n\nThe finished insignia must give THREE Affinities comparable visual weight: Flare vivid coral-red (#FF5A3C), Continuum cobalt-blue (#3D6BFF), and Abyss saturated violet (#A832D4). Do not let blue act as a base color with the other two merely added as accents.\n\nSERPENT COLOR ALLOCATION: Visibly divide the ONE continuous serpent into three broad, similarly sized regions with natural short transitions. The red-hot consumed tail should extend along the ENTIRE lower-right arc from the bite at about 2 o'clock down to about 6 o'clock. The blue body should occupy ONLY the lower-left arc from about 6 to 10 o'clock. Rich violet should occupy the upper-left and top arc from about 10 o'clock through the large head at upper right and its consuming mouth. Blue must no longer cover most of the left side, whole bottom and neck. All three regions must be equally saturated, substantial, and similarly luminous; do not make purple the dark leftover shadow. Violet scale surfaces should have visible purple midtones and purple highlights. Red needs equally rich red-hot scale surfaces, with coral highlights rather than dominant yellow.\n\nRIM: Replace the nearly all-blue outer metal ring and blue constellation engraving with three equally long richly colored rim sectors that correspond to those same regions: lower-right red metal, lower-left blue metal, top violet metal. Each sector's edge lighting and engraved details must use ITS OWN corresponding color. Eliminate the all-around cyan outline. The three sectors join smoothly as one physical circular rim, not separate tokens.\n\nCENTER: REMOVE the entire blue spiral galaxy/starfield from the center. Replace it with a quiet very dark near-black neutral void, with only faint restrained local reflections from the neighboring red, blue and violet serpent surfaces. No central galaxy, luminous swirl, separate emblem, or dominant blue environmental lighting. The visual focus is the colored serpent swallowing itself.\n\nKeep the same memorable name cue: a clearly visible single serpent biting and swallowing its own tail. Do not change the head, jaws, pose, silhouette, geometry or add any new symbols, words, text, ornaments or creatures. Keep transparency outside the circular token. One finished edited token only.",
+  "approvedRelatedDesign": {
+    "name": "Eclipse",
+    "file": "eclipse.png",
+    "status": "User approved; unchanged"
+  },
+  "changes": [
+    "Comparable red, blue, and violet weight across the serpent and rim",
+    "Removed central blue galaxy",
+    "Preserved serpent pose, bite, and circular token design"
+  ]
+}

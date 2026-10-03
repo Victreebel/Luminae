@@ -1,14 +1,15 @@
-import React from 'react';
+import React, { useLayoutEffect, useState } from 'react';
 import { Eye } from 'lucide-react';
 import { CardBackTier1, CardBackTier2, CardBackTier3 } from '@/components/ArtifactCardBack';
-import { useArchivePresentation } from '@/lib/archivePresentation';
+import { ARCHIVE_CAPACITY_BY_TIER, useArchivePresentation } from '@/lib/archivePresentation';
 import { PendingActionOverlay } from './game-card';
+import { TIER_CIVILIZATION } from './game-constants';
+import './game-board-forge-deck.css';
 
-const ARCHIVE_CAPACITY_BY_TIER: Record<1 | 2 | 3, number> = {
-  1: 36,
-  2: 26,
-  3: 16,
-};
+interface ArchiveDraw {
+  key: number;
+  amount: number;
+}
 
 function getArchiveMetrics(tier: 1 | 2 | 3, remaining?: number) {
   const capacity = ARCHIVE_CAPACITY_BY_TIER[tier];
@@ -34,10 +35,12 @@ function getArchiveMetrics(tier: 1 | 2 | 3, remaining?: number) {
 export function ArchiveVessel({
   tier,
   remaining,
+  draw,
   className = '',
 }: {
   tier: 1 | 2 | 3;
   remaining?: number;
+  draw?: ArchiveDraw;
   className?: string;
 }) {
   const presentation = useArchivePresentation();
@@ -45,6 +48,7 @@ export function ArchiveVessel({
   const archive = getArchiveMetrics(tier, remaining);
   const archiveStyle = {
     '--archive-fill': archive.fill,
+    '--archive-depleted-fill': `${Math.min(draw?.amount ?? 0, archive.capacity) / archive.capacity * 100}%`,
   } as React.CSSProperties;
 
   return (
@@ -53,6 +57,7 @@ export function ArchiveVessel({
       data-archive-capacity={archive.capacity}
       data-archive-presentation={presentation}
       data-archive-state={archive.state}
+      data-archive-remaining={remaining}
       style={archiveStyle}
       aria-hidden="true"
     >
@@ -69,6 +74,9 @@ export function ArchiveVessel({
           <span className="archive-vessel__halo" />
           <span className="archive-vessel__crystal">
             <span className="archive-vessel__charge" />
+            {draw && (
+              <span key={draw.key} className="archive-vessel__release" />
+            )}
             <span className="archive-vessel__facet" />
             <span className="archive-vessel__ticks" />
           </span>
@@ -81,6 +89,8 @@ export function ArchiveVessel({
 
 export interface ForgeDeckPileProps {
   deckCount: number;
+  /** Cards drawn by the engine whose Forge transfer has not reached its reveal beat. */
+  pendingDrawCount?: number;
   deckDisabled: boolean;
   deckTitle: string;
   isDeckPending: boolean;
@@ -94,6 +104,7 @@ export interface ForgeDeckPileProps {
 
 export function ForgeDeckPile({
   deckCount,
+  pendingDrawCount = 0,
   deckDisabled,
   deckTitle,
   isDeckPending,
@@ -104,7 +115,23 @@ export function ForgeDeckPile({
   onDeckTap,
   tier,
 }: ForgeDeckPileProps) {
-  const countLabel = deckCount > 0 ? deckCount : forgeCompact ? '∅' : 'Empty';
+  const [display, setDisplay] = useState({ count: Math.max(0, deckCount), draw: undefined as ArchiveDraw | undefined });
+  useLayoutEffect(() => {
+    setDisplay(previous => {
+      const actual = Math.max(0, deckCount);
+      // Hold only a real, confirmed decrease while its replacement is hidden.
+      // The liquid-to-Artifact reveal releases one unit with its deal cue.
+      const count = Math.max(actual, Math.min(previous.count, actual + Math.max(0, pendingDrawCount)));
+      if (count === previous.count) return previous;
+      return {
+        count,
+        draw: count < previous.count
+          ? { key: (previous.draw?.key ?? 0) + 1, amount: previous.count - count }
+          : undefined,
+      };
+    });
+  }, [deckCount, pendingDrawCount]);
+  const countLabel = display.count > 0 ? display.count : forgeCompact ? '∅' : 'Empty';
   const countClassName = forgeCompact
     ? 'absolute top-1 right-1 min-w-[16px] h-[16px] flex items-center justify-center rounded-full text-[8px] font-bold tabular-nums px-0.5'
     : 'absolute top-1.5 right-1.5 min-w-[18px] h-[18px] flex items-center justify-center rounded-full text-[9px] font-bold tabular-nums px-1';
@@ -119,15 +146,20 @@ export function ForgeDeckPile({
         : 'board-forge-archive relative shrink-0'} ${deckDisabled ? 'cursor-not-allowed opacity-50' : ''}`}
       title={deckTitle}
     >
-      <ArchiveVessel tier={tier} remaining={deckCount} />
+      <ArchiveVessel tier={tier} remaining={display.count} draw={display.draw} />
+      {display.draw && (
+        <span key={display.draw.key} className="archive-draw-amount" data-archive-draw-amount={display.draw.amount} aria-hidden="true">
+          −{display.draw.amount}
+        </span>
+      )}
       <div
         className={`board-forge-archive-count ${countClassName}`}
-        style={deckCount > 0
+        style={display.count > 0
           ? { background: 'rgba(10,10,20,0.78)', border: '1px solid rgba(192,164,114,0.38)', boxShadow: '0 1px 4px rgba(0,0,0,0.5)', color: 'rgba(255,255,255,0.9)' }
           : { background: 'rgba(40,10,10,0.85)', border: '1px solid rgba(160,60,60,0.5)', color: 'rgba(255,120,120,0.9)' }
         }
       >
-        {countLabel}
+        <span key={`${display.count}:${display.draw?.key ?? 0}`} className={display.draw ? 'archive-count-settle' : undefined}>{countLabel}</span>
       </div>
       {isObserved && !isDeckPending && (
         <span
@@ -145,7 +177,7 @@ export function ForgeDeckPile({
         }}
         disabled={deckDisabled}
         className="absolute inset-0 z-30 rounded-[inherit] focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-inset focus-visible:ring-amber-300/80"
-        aria-label={`Tier ${tier} Archive, ${deckCount} concealed Artifact${deckCount === 1 ? '' : 's'} remaining. ${deckTitle}`}
+        aria-label={`${TIER_CIVILIZATION[tier]} Archive, ${display.count} concealed Artifact${display.count === 1 ? '' : 's'} remaining. ${deckTitle}`}
       />
       {isDeckPending && (
         <PendingActionOverlay

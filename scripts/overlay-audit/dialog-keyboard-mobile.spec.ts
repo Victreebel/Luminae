@@ -21,6 +21,7 @@
 
 import { test, expect, type Page, type Locator } from 'playwright/test';
 import { mkdirSync } from 'node:fs';
+import { TUTORIAL_SEQUENCE_VERSION } from '../../artifacts/luminae/src/lib/tutorialSequenceVersion';
 
 // ── Constants ─────────────────────────────────────────────────────────────────
 
@@ -29,8 +30,8 @@ const OUT  = '/tmp/dialog-keyboard-mobile';
 
 // Tutorial localStorage keys (from artifacts/luminae/src/lib/tutorialProgress.ts)
 const TUTORIAL_PROGRESS_KEY     = 'luminae_tutorial_progress';
+const TUTORIAL_PROGRESS_ID_KEY  = 'luminae_tutorial_progress_id';
 const TUTORIAL_PROGRESS_VER_KEY = 'luminae_tutorial_progress_ver';
-const TUTORIAL_SEQUENCE_VERSION = '5';
 
 // Account session key (from artifacts/luminae/src/lib/accountSession.ts)
 const ACCOUNT_SESSION_KEY = 'luminae_account_session';
@@ -183,12 +184,14 @@ test.describe('A. TutorialStartModal — /tutorial — mobile keyboard nav', () 
     // Set localStorage on the root origin first
     await page.goto(BASE, { waitUntil: 'domcontentloaded' });
     await page.evaluate(
-      ({ progressKey, verKey, ver }) => {
-        localStorage.setItem(progressKey, '5');  // beat 5 → mid-progress
-        localStorage.setItem(verKey, ver);
+      ({ progressKey, progressIdKey, verKey, ver }) => {
+        localStorage.setItem(progressKey, '4');
+        localStorage.setItem(progressIdKey, 'b3c_border');
+        localStorage.setItem(verKey, String(ver));
       },
       {
         progressKey: TUTORIAL_PROGRESS_KEY,
+        progressIdKey: TUTORIAL_PROGRESS_ID_KEY,
         verKey: TUTORIAL_PROGRESS_VER_KEY,
         ver: TUTORIAL_SEQUENCE_VERSION,
       },

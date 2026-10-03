@@ -1,9 +1,17 @@
 import React from 'react';
-import { ScanLine, X, ZoomIn } from 'lucide-react';
-import type { ArtifactCard } from '@workspace/api-client-react';
-import { getCivilizationCapabilityDefinition } from '@workspace/game-types';
+import { Check, ChevronRight, FileText, Layers3, ScanLine, Wrench, X, ZoomIn, ZoomOut } from 'lucide-react';
+import type { ArtifactCard, CivilizationPublicState } from '@workspace/api-client-react';
+import {
+  CIVILIZATION_DISTRICT_IDENTITY_POLICY_ID,
+  CIVILIZATION_DYAD_DEFINITIONS,
+  createCivilizationEnvironmentIdentity,
+  getCivilizationCapabilityDefinition,
+} from '@workspace/game-types';
 import type {
+  ArtifactPlacementFamily,
   CivilizationCoreCondition,
+  CivilizationDyadId,
+  CivilizationEnvironmentVariantId,
   CivilizationStabilityBand,
 } from '@workspace/game-types';
 import type { AffinityPalette, KardashevTier } from '@/lib/kardashev';
@@ -16,24 +24,61 @@ import {
 } from '@/lib/civilizationDeploymentSites';
 import {
   isSmallArtifactVisualSignature,
-  selectCivilizationVisualSignatures,
-  type CivilizationVisualSignatureDescriptor,
 } from '@/lib/civilizationVisualSignatures';
 import {
-  CIVILIZATION_ARCHETYPE_VISUALS,
   deriveCivilizationArchetype,
-  getCivilizationArchetypeTone,
   type CivilizationArchetypeId,
 } from '@/lib/civilizationArchetypes';
-import { getArtifactArtworkScalePolicy, isLocalArtifactDepictionScale } from '@/lib/civilizationArtworkScale';
+import { getArtifactArtworkScalePolicy } from '@/lib/civilizationArtworkScale';
 import {
-  getCivilizationArchetypeArtSlot,
+  getCivilizationEnvironmentDressing,
+  getCivilizationEnvironmentPlateArtSlot,
   getCivilizationPlateArtSlot,
   getCivilizationSiteArtSlot,
 } from '@/lib/civilizationArtRegistry';
 import { AFFINITY_META } from '@/lib/affinityMeta';
 import { useIsMobile } from '@/hooks/use-mobile';
-import { markHintSeen } from '@/lib/cinematicPrefs';
+import { CARD_RUNTIME_ART } from '@/lib/cardArtManifest';
+import { CivilizationHistoryRibbon } from '@/components/CivilizationHistoryRibbon';
+import { ArtifactFunctionTags } from '@/components/ArtifactFunctionTags';
+import { CivilizationDistrictReadout } from '@/components/CivilizationDistrictReadout';
+import {
+  buildCivilizationArtifactWorldAnchors,
+  CivilizationArtifactManifestationLayer,
+  type CivilizationArtifactWorldAnchor,
+} from '@/components/CivilizationArtifactManifestationLayer';
+import { CivilizationLivingWorldLayer } from '@/components/CivilizationLivingWorldLayer';
+import {
+  buildCivilizationBlueprintWorldAnchors,
+  CivilizationBlueprintManifestationLayer,
+  getCivilizationBlueprintManifestationArt,
+} from '@/components/CivilizationBlueprintManifestationLayer';
+import {
+  CivilizationIdentityContinuityLayer,
+  type CivilizationDistrictAffinityAccent,
+} from '@/components/CivilizationIdentityContinuityLayer';
+import {
+  CivilizationMaturityCinematic,
+  CivilizationMorphologyStyles,
+  CivilizationScaleTransition,
+} from '@/components/CivilizationMorphologyLayer';
+import {
+  deriveCivilizationVisualState,
+  type CivilizationCityDevelopmentStage,
+  type CivilizationComplexityStage,
+  type CivilizationSceneKind,
+  type CivilizationSettlementPhase,
+  type CivilizationVisualIdentity,
+  type CivilizationVisualState,
+} from '@/lib/civilizationVisualState';
+import {
+  getCivilizationSurfaceBuildableZones,
+} from '@/lib/civilizationEnvironmentSockets';
+import {
+  CHRYSALIS_SURFACE_DISTRICT_PARCELS,
+  type CivilizationSurfaceDistrictParcel,
+} from '@/lib/civilizationSurfaceDistrictPlan';
+import { useCivilizationViewportFit } from '@/hooks/use-civilization-viewport-fit';
 
 interface CivilizationScenePanelProps {
   tier: KardashevTier;
@@ -41,16 +86,114 @@ interface CivilizationScenePanelProps {
   profile: CivilizationProfile;
   progressFraction: number;
   paused: boolean;
+  civilizationName?: string;
+  permanentAffinities?: React.ReactNode;
+  presentationMode?: boolean;
+  fitViewport?: boolean;
   defaultScanActive?: boolean;
   defaultScene?: MarketSceneKind;
+  showAllArtifactPins?: boolean;
+  placementProof?: boolean;
   deploymentSites: readonly CivilizationDeploymentSite[];
   forgedArtifacts: readonly ArtifactCard[];
+  civilization?: CivilizationPublicState | null;
+  environmentIdentity?: CivilizationPublicState['environmentIdentity'];
   guidanceEnabled?: boolean;
   stabilityBand?: CivilizationStabilityBand;
   activeConditions?: readonly CivilizationCoreCondition[];
   externalRecentSiteIds?: readonly string[];
+  artifactRenderingIds?: Readonly<Record<string, string>>;
+  pendingRepairArtifactIds?: readonly string[];
   onRecentSiteIdsSeen?: (siteIds: readonly string[]) => void;
+  onRepairArtifacts?: (artifactIds: readonly string[]) => void | Promise<void>;
   onOpenArtifact: (card: ArtifactCard) => void;
+}
+
+const DISTRICT_PROOF_DEPTH_TONES = {
+  distance: '#82ddff',
+  midground: '#c8a8ff',
+  foreground: '#ffb76d',
+} as const;
+
+function getDistrictProofLabel(parcel: CivilizationSurfaceDistrictParcel): string {
+  return parcel.family
+    .split('_')
+    .map((part) => part[0]?.toUpperCase() + part.slice(1))
+    .join(' ');
+}
+
+function CivilizationDistrictPlacementProof({
+  compact,
+  environmentVariantId,
+  occupancyCounts,
+}: {
+  compact: boolean;
+  environmentVariantId: CivilizationEnvironmentVariantId;
+  occupancyCounts: Readonly<Record<string, number>>;
+}) {
+  const zones = getCivilizationSurfaceBuildableZones(environmentVariantId, compact);
+  const parcelsById = React.useMemo(() => new Map(
+    CHRYSALIS_SURFACE_DISTRICT_PARCELS.map((parcel) => [parcel.id, parcel]),
+  ), []);
+
+  return (
+    <div
+      className="pointer-events-none absolute inset-0 z-[16] overflow-hidden"
+      data-testid="civilization-district-placement-proof"
+      data-environment-variant={environmentVariantId}
+      data-layout-mode="district-first-saturated-proof"
+      aria-hidden="true"
+    >
+      {zones.map((zone, index) => {
+        const parcel = parcelsById.get(zone.id);
+        if (!parcel) return null;
+        const tone = DISTRICT_PROOF_DEPTH_TONES[zone.depth];
+        const width = zone.maxX - zone.minX;
+        const height = zone.maxY - zone.minY;
+        const occupancy = occupancyCounts[parcel.id] ?? 0;
+        return (
+          <span
+            key={zone.id}
+            className="absolute block border"
+            style={{
+              left: `${zone.minX}%`,
+              top: `${zone.minY}%`,
+              width: `${width}%`,
+              height: `${height}%`,
+              borderColor: `${tone}B8`,
+              background: `linear-gradient(180deg, transparent 18%, ${tone}0D 72%, ${tone}1C)`,
+              boxShadow: `inset 0 0 0 1px rgba(0,0,0,0.42), 0 0 9px ${tone}28`,
+              clipPath: 'polygon(8% 0, 92% 0, 100% 16%, 96% 100%, 4% 100%, 0 16%)',
+            }}
+            data-testid="civilization-district-socket-envelope"
+            data-parcel-id={parcel.id}
+            data-district-family={parcel.family}
+            data-depth={parcel.depth}
+            data-capacity={parcel.capacity}
+            data-occupancy={occupancy}
+          >
+            <span
+              className="absolute bottom-[3%] left-[7%] right-[7%] h-[24%] rounded-[50%] border"
+              style={{
+                borderColor: `${tone}78`,
+                background: `radial-gradient(ellipse, ${tone}22, transparent 72%)`,
+              }}
+              data-testid="civilization-district-foundation-envelope"
+            />
+            <span
+              className="absolute bottom-1 left-1 max-w-[calc(100%-8px)] truncate bg-[#020711]/88 px-1 py-0.5 text-[6px] font-black uppercase text-white shadow-[0_1px_4px_rgba(0,0,0,0.9)] sm:text-[7px]"
+              style={{ color: tone }}
+            >
+              {String(index + 1).padStart(2, '0')} {getDistrictProofLabel(parcel)} // {occupancy}/{parcel.capacity}
+            </span>
+          </span>
+        );
+      })}
+      <span className="absolute left-2 top-2 border border-[#82ddff]/55 bg-[#020711]/90 px-2 py-1 text-[7px] font-black uppercase tracking-[0.14em] text-[#dff7ff] shadow-[0_4px_14px_rgba(0,0,0,0.55)] sm:text-[8px]">
+        Placement proof // {zones.length} protected district sites
+      </span>
+    </div>
+  );
 }
 
 const CIVILIZATION_STABILITY_LABELS: Record<CivilizationStabilityBand, string> = {
@@ -60,54 +203,184 @@ const CIVILIZATION_STABILITY_LABELS: Record<CivilizationStabilityBand, string> =
   crisis: 'Crisis',
 };
 
+const FALLBACK_CIVILIZATION_ENVIRONMENT = createCivilizationEnvironmentIdentity(
+  'civilization-neutral-fallback',
+  'aurora_basin',
+);
+
+function getCivilizationScenePalette(
+  identity: CivilizationVisualIdentity,
+  fallback: AffinityPalette,
+): AffinityPalette {
+  return {
+    primary: identity.primaryTone ?? fallback.primary,
+    secondary: identity.secondaryTone ?? fallback.secondary,
+    accent: identity.primaryAffinity
+      ? AFFINITY_META[identity.primaryAffinity].glowHex
+      : fallback.accent,
+  };
+}
+
+function getCivilizationSceneTitle(identity: CivilizationVisualIdentity): string {
+  if (identity.status === 'committed' && identity.dyad) {
+    const dyad = CIVILIZATION_DYAD_DEFINITIONS.find((definition) => definition.id === identity.dyad);
+    return `${dyad?.name ?? identity.label.replace(' Dyad', '')} Civilization`;
+  }
+  if (identity.status === 'forming') {
+    return `${identity.layer ? `${identity.layer.charAt(0).toUpperCase()}${identity.layer.slice(1)} ` : ''}Identity Forming`;
+  }
+  return 'Unformed Civilization';
+}
+
+const CIVILIZATION_SYSTEM_STATE_STYLES = `
+  .civ-state-smoke {
+    width: 18px;
+    height: 40px;
+    border-radius: 48% 52% 42% 58%;
+    background: rgba(70, 76, 84, 0.82);
+    box-shadow: 9px -11px 0 -2px rgba(96, 101, 109, 0.62), -7px -21px 0 -3px rgba(44, 48, 54, 0.58);
+    filter: blur(2.6px);
+    transform-origin: 50% 100%;
+    animation: civ-state-smoke 5.8s ease-in-out infinite;
+  }
+  .civ-state-fault {
+    width: 8px;
+    height: 8px;
+    border-radius: 50%;
+    background: rgba(255, 158, 82, 0.92);
+    box-shadow: 0 0 5px rgba(255, 126, 62, 0.9), 7px -5px 0 -2px rgba(255, 213, 137, 0.72);
+    animation: civ-state-fault 2.6s steps(4, end) infinite;
+  }
+  .civ-state-beacon {
+    width: 14px;
+    height: 14px;
+    border: 1px solid rgba(238, 184, 91, 0.86);
+    border-radius: 50%;
+    box-shadow: 0 0 8px rgba(238, 184, 91, 0.5), inset 0 0 4px rgba(238, 184, 91, 0.42);
+    animation: civ-state-beacon 3.2s ease-in-out infinite;
+  }
+  .civ-state-disruption {
+    width: 28px;
+    height: 3px;
+    border-radius: 1px;
+    background: rgba(170, 118, 255, 0.72);
+    box-shadow: 8px 6px 0 -0.5px rgba(255, 148, 103, 0.72), -7px -6px 0 -0.5px rgba(170, 118, 255, 0.68), 14px -2px 0 -1px rgba(235,224,255,0.72);
+    animation: civ-state-disruption 2.8s steps(5, end) infinite;
+  }
+  .civ-state-blackout {
+    width: 7px;
+    height: 3px;
+    border-radius: 1px;
+    background: rgba(255, 91, 67, 0.78);
+    box-shadow: 10px 1px 0 -0.5px rgba(255, 91, 67, 0.62), -9px 2px 0 -0.5px rgba(255, 164, 103, 0.48), 0 0 5px rgba(255, 91, 67, 0.42);
+    animation: civ-state-blackout 4.4s steps(2, end) infinite;
+  }
+  @keyframes civ-state-smoke {
+    0%, 100% { transform: translate3d(0, 0, 0) scale(0.86); opacity: 0.66; }
+    50% { transform: translate3d(3px, -10px, 0) scale(1.08); opacity: 0.88; }
+  }
+  @keyframes civ-state-fault {
+    0%, 100% { transform: scale(0.72); opacity: 0.28; }
+    35% { transform: scale(1.16); opacity: 0.94; }
+    58% { transform: scale(0.9); opacity: 0.44; }
+  }
+  @keyframes civ-state-beacon {
+    0%, 100% { transform: scale(0.84); opacity: 0.48; }
+    50% { transform: scale(1.22); opacity: 0.94; }
+  }
+  @keyframes civ-state-disruption {
+    0%, 100% { transform: translate3d(-2px, 0, 0) rotate(-12deg); opacity: 0.24; }
+    45% { transform: translate3d(2px, -2px, 0) rotate(9deg); opacity: 0.9; }
+  }
+  @keyframes civ-state-blackout {
+    0%, 72%, 100% { opacity: 0.34; }
+    76%, 88% { opacity: 0.9; }
+  }
+  [data-civilization-motion="paused"] .civ-state-signal,
+  [data-civilization-visibility="offscreen"] .civ-state-signal {
+    animation-play-state: paused !important;
+  }
+  @media (prefers-reduced-motion: reduce) {
+    .civ-state-signal { animation: none !important; opacity: 0.68; }
+  }
+`;
+
+const CIVILIZATION_STATE_ANCHORS: Record<MarketSceneKind, readonly { x: number; y: number }[]> = {
+  surface: [{ x: 29, y: 76 }, { x: 68, y: 69 }, { x: 82, y: 79 }],
+  orbit: [{ x: 34, y: 64 }, { x: 69, y: 42 }, { x: 78, y: 69 }],
+  stellar: [{ x: 31, y: 63 }, { x: 66, y: 44 }, { x: 79, y: 67 }],
+  galaxy: [{ x: 27, y: 68 }, { x: 61, y: 47 }, { x: 78, y: 70 }],
+};
+
 function CivilizationSystemStateLayer({
+  scene,
   stabilityBand,
   activeConditions,
 }: {
+  scene: MarketSceneKind;
   stabilityBand: CivilizationStabilityBand;
   activeConditions: readonly CivilizationCoreCondition[];
 }) {
   const conditions = new Set(activeConditions);
-  const stabilityBackground = stabilityBand === 'stable'
-    ? 'transparent'
-    : stabilityBand === 'strained'
-      ? 'radial-gradient(ellipse at 50% 48%, transparent 56%, rgba(225,166,82,0.16) 100%)'
-      : stabilityBand === 'unstable'
-        ? 'repeating-linear-gradient(173deg, transparent 0 54px, rgba(232,127,79,0.075) 55px 57px, transparent 58px 104px), radial-gradient(ellipse at 50% 48%, transparent 48%, rgba(176,80,65,0.2) 100%)'
-        : 'repeating-linear-gradient(167deg, transparent 0 72px, rgba(232,92,72,0.105) 73px 75px, transparent 76px 126px), radial-gradient(ellipse at 50% 45%, transparent 32%, rgba(73,12,24,0.48) 100%)';
+  const anchors = CIVILIZATION_STATE_ANCHORS[scene];
+  const faultCount = stabilityBand === 'crisis' ? 3 : stabilityBand === 'unstable' ? 2 : stabilityBand === 'strained' ? 1 : 0;
 
   return (
     <div
-      className="pointer-events-none absolute inset-0 z-[18]"
+      className="pointer-events-none absolute inset-0 z-[18] overflow-hidden"
       data-testid="civilization-system-state"
       data-stability={stabilityBand}
       data-conditions={activeConditions.join(',') || 'none'}
+      data-state-composition="localized-physical"
       aria-hidden="true"
     >
-      <div className="absolute inset-0" style={{ background: stabilityBackground }} />
-      {conditions.has('damaged') && (
-        <div
-          className="absolute inset-0 opacity-55"
-          style={{
-            background: 'linear-gradient(132deg, transparent 0 13%, rgba(245,139,93,0.28) 13.2% 13.45%, transparent 13.7% 77%, rgba(245,139,93,0.2) 77.2% 77.45%, transparent 77.7%)',
-          }}
+      <style>{CIVILIZATION_SYSTEM_STATE_STYLES}</style>
+      {Array.from({ length: faultCount }, (_, index) => (
+        <span
+          key={`fault:${index}`}
+          className="civ-state-signal civ-state-fault absolute"
+          style={{ left: `${anchors[index]!.x}%`, top: `${anchors[index]!.y}%` }}
+          data-state-treatment="power-fault"
         />
-      )}
-      {conditions.has('isolated') && (
-        <div className="absolute inset-[3%] border border-[#b496ff]/22 shadow-[inset_0_0_42px_rgba(75,44,124,0.17)]" />
-      )}
-      {conditions.has('quarantined') && (
-        <div className="absolute inset-[5%] rounded-[50%] border border-[#e8b45f]/30 shadow-[0_0_26px_rgba(232,180,95,0.12),inset_0_0_26px_rgba(232,180,95,0.08)]" />
-      )}
-      {conditions.has('disrupted') && (
-        <div
-          className="absolute inset-0 opacity-35"
-          style={{
-            background: 'repeating-linear-gradient(180deg, transparent 0 41px, rgba(130,221,255,0.18) 42px 43px, transparent 44px 78px)',
-            clipPath: 'polygon(0 0, 38% 0, 38% 24%, 72% 24%, 72% 42%, 26% 42%, 26% 66%, 83% 66%, 83% 82%, 0 82%)',
-          }}
+      ))}
+      {conditions.has('damaged') && anchors.map((anchor, index) => (
+        <React.Fragment key={`damage:${index}`}>
+          <span
+            className="civ-state-signal civ-state-smoke absolute"
+            style={{ left: `${anchor.x}%`, top: `${anchor.y}%` }}
+            data-state-treatment="structural-damage"
+          />
+          <span
+            className="civ-state-signal civ-state-fault absolute"
+            style={{ left: `${anchor.x + 0.6}%`, top: `${anchor.y + 2}%` }}
+            data-state-treatment="damage-ember"
+          />
+        </React.Fragment>
+      ))}
+      {conditions.has('isolated') && anchors.map((anchor, index) => (
+        <span
+          key={`isolation:${index}`}
+          className="civ-state-signal civ-state-blackout absolute"
+          style={{ left: `${anchor.x}%`, top: `${anchor.y}%` }}
+          data-state-treatment="operational-blackout"
         />
-      )}
+      ))}
+      {conditions.has('quarantined') && anchors.map((anchor, index) => (
+        <span
+          key={`quarantine:${index}`}
+          className="civ-state-signal civ-state-beacon absolute"
+          style={{ left: `${anchor.x}%`, top: `${anchor.y}%` }}
+          data-state-treatment="quarantine-beacon"
+        />
+      ))}
+      {conditions.has('disrupted') && anchors.map((anchor, index) => (
+        <span
+          key={`disruption:${index}`}
+          className="civ-state-signal civ-state-disruption absolute"
+          style={{ left: `${anchor.x}%`, top: `${anchor.y}%` }}
+          data-state-treatment="power-disruption"
+        />
+      ))}
     </div>
   );
 }
@@ -119,6 +392,7 @@ export interface CivilizationMiniatureSceneProps {
   progressFraction: number;
   paused: boolean;
   deploymentSites: readonly CivilizationDeploymentSite[];
+  civilization?: CivilizationPublicState | null;
   recentSiteIds?: readonly string[];
   showRecentCard?: boolean;
   presentation?: 'standard' | 'thumbnail';
@@ -130,32 +404,35 @@ type CivilizationImpactKind = 'artifact' | 'blueprint' | 'luminary' | 'protocol'
 
 const RECENT_TRACE_VISIBLE_MS = 6500;
 
-const SCENE_COPY: Record<MarketSceneKind, { title: string; copy: string; label: string }> = {
-  surface: {
-    title: 'City Detail',
-    label: 'City / surface detail',
-    copy:
-      'Local works resolve into districts, vaults, gardens, corridors, and controlled hazard sites.',
-  },
-  orbit: {
-    title: 'Planet View',
-    label: 'Planetary scale',
-    copy:
-      'City lights, weather bands, and orbital works reveal how Artifacts reshape the planet.',
-  },
-  stellar: {
-    title: 'System View',
-    label: 'Stellar system',
-    copy:
-      'Traffic lanes, shield pressure, industry, ecological routing, and warning bands define the system.',
-  },
-  galaxy: {
-    title: 'Galactic View',
-    label: 'Galactic sector',
-    copy:
-      'Spiral arms resolve into recovery corridors, pressure fields, redacted regions, and route networks.',
-  },
-};
+function useDocumentVisible(): boolean {
+  const [visible, setVisible] = React.useState(() => (
+    typeof document === 'undefined' || document.visibilityState !== 'hidden'
+  ));
+
+  React.useEffect(() => {
+    const handleVisibilityChange = () => setVisible(document.visibilityState !== 'hidden');
+    document.addEventListener('visibilitychange', handleVisibilityChange);
+    return () => document.removeEventListener('visibilitychange', handleVisibilityChange);
+  }, []);
+
+  return visible;
+}
+
+function useElementInViewport<T extends Element>(ref: React.RefObject<T | null>): boolean {
+  const [inViewport, setInViewport] = React.useState(true);
+
+  React.useEffect(() => {
+    const element = ref.current;
+    if (!element || typeof IntersectionObserver === 'undefined') return undefined;
+    const observer = new IntersectionObserver(([entry]) => {
+      setInViewport(Boolean(entry?.isIntersecting));
+    }, { rootMargin: '120px 0px' });
+    observer.observe(element);
+    return () => observer.disconnect();
+  }, [ref]);
+
+  return inViewport;
+}
 
 const SCENE_ORDER: readonly MarketSceneKind[] = ['surface', 'orbit', 'stellar', 'galaxy'];
 
@@ -210,21 +487,25 @@ function getCivilizationImpactBadge(kind: CivilizationImpactKind): string {
   return 'ART';
 }
 
-function getCivilizationImpactLabel(kind: CivilizationImpactKind): string {
-  if (kind === 'blueprint') return 'Blueprint reshapes civilization';
-  if (kind === 'luminary') return 'Luminary pressure detected';
-  if (kind === 'protocol') return 'Sealed protocol active';
-  if (kind === 'chronicle') return 'Chronicle thread restored';
-  return 'Artifact trace integrated';
+function CivilizationImpactBadgeContent({
+  kind,
+  className = 'h-2.5 w-2.5',
+}: {
+  kind: CivilizationImpactKind;
+  className?: string;
+}) {
+  if (kind === 'blueprint') {
+    return (
+      <FileText
+        className={className}
+        aria-hidden="true"
+        data-testid="civilization-blueprint-paper-symbol"
+      />
+    );
+  }
+  return <>{getCivilizationImpactBadge(kind)}</>;
 }
 
-function getCivilizationImpactShortLabel(kind: CivilizationImpactKind): string {
-  if (kind === 'blueprint') return 'Blueprint online';
-  if (kind === 'luminary') return 'Luminary pressure';
-  if (kind === 'protocol') return 'Protocol sealed';
-  if (kind === 'chronicle') return 'Chronicle active';
-  return 'Artifact trace';
-}
 
 function getCivilizationScaleTargetChip(site: CivilizationDeploymentSite | undefined): string {
   const kind = getCivilizationImpactKind(site);
@@ -254,15 +535,34 @@ function getSceneKind(tier: KardashevTier): MarketSceneKind {
   return getRootSceneKind(tier);
 }
 
-function getAvailableScenePath(tier: KardashevTier): MarketSceneKind[] {
-  const rootIndex = getSceneIndex(getRootSceneKind(tier));
+function getReachRootScene(
+  tier: KardashevTier,
+  deploymentSites: readonly CivilizationDeploymentSite[] = [],
+): MarketSceneKind {
+  return deploymentSites.reduce<MarketSceneKind>((currentRoot, site) => {
+    const nativeScene = getNativeSceneForSite(site);
+    return getSceneIndex(nativeScene) > getSceneIndex(currentRoot)
+      ? nativeScene
+      : currentRoot;
+  }, getRootSceneKind(tier));
+}
+
+function getAvailableScenePath(
+  tier: KardashevTier,
+  deploymentSites: readonly CivilizationDeploymentSite[] = [],
+): MarketSceneKind[] {
+  const rootIndex = getSceneIndex(getReachRootScene(tier, deploymentSites));
   return SCENE_ORDER
     .filter((scene) => getSceneIndex(scene) <= rootIndex)
     .reverse();
 }
 
-function normalizeSceneForTier(scene: MarketSceneKind | undefined | null, tier: KardashevTier): MarketSceneKind {
-  const rootScene = getRootSceneKind(tier);
+function normalizeSceneForTier(
+  scene: MarketSceneKind | undefined | null,
+  tier: KardashevTier,
+  deploymentSites: readonly CivilizationDeploymentSite[] = [],
+): MarketSceneKind {
+  const rootScene = getReachRootScene(tier, deploymentSites);
   if (!scene) return rootScene;
   return getSceneIndex(scene) <= getSceneIndex(rootScene) ? scene : rootScene;
 }
@@ -278,7 +578,7 @@ function getInitialSceneOverride({
   deploymentSites: readonly CivilizationDeploymentSite[];
   tier: KardashevTier;
 }): MarketSceneKind {
-  if (defaultScene) return normalizeSceneForTier(defaultScene, tier);
+  if (defaultScene) return normalizeSceneForTier(defaultScene, tier, deploymentSites);
 
   const rootScene = getRootSceneKind(tier);
   if (!defaultScanActive) return rootScene;
@@ -287,14 +587,6 @@ function getInitialSceneOverride({
   if (tier === 1 && hasSurfaceNativeWork) return 'surface';
 
   return rootScene;
-}
-
-function getChildScene(scene: MarketSceneKind, tier: KardashevTier): MarketSceneKind | null {
-  const sceneIndex = getSceneIndex(scene);
-  if (sceneIndex <= 0) return null;
-  const child = SCENE_ORDER[sceneIndex - 1] ?? null;
-  if (!child) return null;
-  return getAvailableScenePath(tier).includes(child) ? child : null;
 }
 
 function getSceneForScaleBand(scaleBand: CivilizationDeploymentSite['scaleBand']): MarketSceneKind {
@@ -324,6 +616,22 @@ function getDepictionScaleLabel(
   return labels[depictionScale];
 }
 
+function getBlueprintManifestationScaleLabel(
+  manifestationScale: NonNullable<CivilizationDeploymentSite['blueprintManifestationScale']>,
+): string {
+  const labels: Record<
+    NonNullable<CivilizationDeploymentSite['blueprintManifestationScale']>,
+    string
+  > = {
+    installation: 'Installation-scale',
+    satellite: 'Satellite-scale',
+    planetary: 'Planetary-scale',
+    stellar: 'Stellar-scale',
+    distributed: 'Distributed',
+  };
+  return labels[manifestationScale];
+}
+
 function getArtifactTreatmentLabel(
   treatment: NonNullable<CivilizationDeploymentSite['artifactSceneTreatment']>,
 ): string {
@@ -350,26 +658,15 @@ function getNativeSceneForSite(site: CivilizationDeploymentSite): MarketSceneKin
   return getSceneForScaleBand(site.scaleBand);
 }
 
-function shouldRenderArtifactNative(site: CivilizationDeploymentSite, scene: MarketSceneKind): boolean {
-  return site.kind === 'artifact' && getNativeSceneForSite(site) === scene;
-}
-
-function shouldRenderArtifactAsNativeStructure(site: CivilizationDeploymentSite, scene: MarketSceneKind): boolean {
-  if (!shouldRenderArtifactNative(site, scene)) return false;
-  if (!site.depictionScale) return !isSmallArtifactSite(site);
-  return getArtifactArtworkScalePolicy(site.depictionScale).canRenderAsStructure;
-}
-
-function shouldRenderArtifactInfluence(site: CivilizationDeploymentSite, scene: MarketSceneKind): boolean {
-  return site.kind === 'artifact' && getSceneIndex(scene) > getSceneIndex(getNativeSceneForSite(site));
-}
-
 function shouldRenderDominantBlueprint(site: CivilizationDeploymentSite, scene: MarketSceneKind): boolean {
   if (site.kind !== 'blueprint') return false;
   return getSceneIndex(scene) >= getSceneIndex(getNativeSceneForSite(site));
 }
 
 function isSiteAvailableInScene(site: CivilizationDeploymentSite, scene: MarketSceneKind): boolean {
+  if (site.kind === 'artifact' && site.artifactManifestation) {
+    return Boolean(site.artifactManifestation.visibilityByCameraScale[scene]);
+  }
   return getSceneIndex(scene) >= getSceneIndex(getNativeSceneForSite(site));
 }
 
@@ -386,6 +683,9 @@ function getDossierScaleKicker(
   currentScene: MarketSceneKind,
   nativeScene: MarketSceneKind,
 ): string {
+  if (site.kind === 'blueprint' && site.blueprintManifestationScale) {
+    return `${getSiteKindLabel(site)} // ${getBlueprintManifestationScaleLabel(site.blueprintManifestationScale)} / ${getCivilizationScaleLabel(site.scaleBand)} theater`;
+  }
   if (site.kind !== 'artifact') {
     return `${getSiteKindLabel(site)} // ${getCivilizationScaleLabel(site.scaleBand)}`;
   }
@@ -411,6 +711,9 @@ function getDossierScaleContextLabels(
 
 function getTraceScaleBadge(site: CivilizationDeploymentSite): string {
   const nativeScene = getNativeSceneForSite(site);
+  if (site.kind === 'blueprint' && site.blueprintManifestationScale) {
+    return getBlueprintManifestationScaleLabel(site.blueprintManifestationScale);
+  }
   if (site.kind === 'artifact' && site.depictionScale) {
     return getDepictionScaleLabel(site.depictionScale);
   }
@@ -421,6 +724,9 @@ function getTraceScaleLine(site: CivilizationDeploymentSite): string {
   const nativeScene = getNativeSceneForSite(site);
   if (site.kind === 'artifact') {
     return `Native ${SCENE_UI[nativeScene].label.toLowerCase()} // ${site.visibleAs}`;
+  }
+  if (site.kind === 'blueprint' && site.blueprintManifestationScale) {
+    return `${getBlueprintManifestationScaleLabel(site.blueprintManifestationScale)} manifestation / ${getCivilizationScaleLabel(site.scaleBand)} theater // ${site.visibleAs}`;
   }
   return `${getSiteKindLabel(site)} // ${site.visibleAs}`;
 }
@@ -435,14 +741,6 @@ function getCivilizationSiteTone(site: CivilizationDeploymentSite): string {
   if (site.completedBlueprintId === 'bp_mantle_to_orbit_foundry') return '#dfb86b';
   if (site.completedBlueprintId === 'bp_worldshield_covenant') return '#ffe4a3';
   return AFFINITY_META[site.affinity].hex;
-}
-
-function hasDominantBlueprintMark(site: CivilizationDeploymentSite): boolean {
-  return (
-    site.blueprintId === 'bp_antimatter_detonator' ||
-    site.blueprintId === 'bp_mantle_to_orbit_foundry' ||
-    site.blueprintId === 'bp_worldshield_covenant'
-  );
 }
 
 function getClusterGroups(sites: readonly CivilizationDeploymentSite[]) {
@@ -487,39 +785,6 @@ function isPinTraceArtifactSite(site: CivilizationDeploymentSite): boolean {
   return getArtifactArtworkScalePolicy(site.depictionScale).presence === 'artifact_pin';
 }
 
-function isCompactLocalArtifactSite(site: CivilizationDeploymentSite): boolean {
-  return (
-    site.kind === 'artifact' &&
-    (
-      isPinTraceArtifactSite(site) ||
-      getNativeSceneForSite(site) === 'surface' ||
-      (site.artifactTier ?? 0) <= 1
-    )
-  );
-}
-
-function getSmallArtifactTraceLabels(
-  sites: readonly CivilizationDeploymentSite[],
-  forgedArtifacts: readonly ArtifactCard[],
-): string[] {
-  const labels = sites
-    .filter(isCompactLocalArtifactSite)
-    .map((site) => {
-      const card = site.artifactId
-        ? forgedArtifacts.find((artifactCard) => artifactCard.id === site.artifactId)
-        : null;
-      return card?.name ?? site.title.replace(/\s+Trace$/i, '');
-    });
-  return [...new Set(labels)];
-}
-
-function formatSmallArtifactTraceSummary(labels: readonly string[]): string | null {
-  if (labels.length === 0) return null;
-  const shown = labels.slice(0, 2).join(' / ');
-  const hiddenCount = labels.length - 2;
-  return hiddenCount > 0 ? `${shown} +${hiddenCount}` : shown;
-}
-
 function formatTraceNames(sites: readonly CivilizationDeploymentSite[]): string {
   if (sites.length === 0) return '';
   const shown = sites.slice(0, 2).map((site) => site.title).join(' / ');
@@ -537,242 +802,12 @@ function selectSitesByIdOrder(
     .filter((site): site is CivilizationDeploymentSite => Boolean(site));
 }
 
-function selectSummaryWorks(
-  sites: readonly CivilizationDeploymentSite[],
-  visibleLimit: number,
-  recentSiteIds: readonly string[] = [],
-): CivilizationDeploymentSite[] {
-  const selected: CivilizationDeploymentSite[] = [];
-  const add = (site: CivilizationDeploymentSite | undefined) => {
-    if (!site) return;
-    if (selected.some((entry) => entry.id === site.id)) return;
-    if (selected.length >= visibleLimit) return;
-    selected.push(site);
-  };
 
-  for (const siteId of recentSiteIds) {
-    add(sites.find((site) => site.id === siteId));
-  }
 
-  const sorted = [...sites].sort((left, right) => (
-    right.priority - left.priority ||
-    getSiteKindLabel(left).localeCompare(getSiteKindLabel(right)) ||
-    left.title.localeCompare(right.title)
-  ));
 
-  add(sorted.find((site) => site.kind === 'blueprint'));
-  add(sorted.find((site) => site.kind === 'luminary'));
-  add(sorted.find((site) => site.kind === 'artifact' && (site.artifactTier ?? 0) >= 3));
-  add(sorted.find(isSmallArtifactSite));
 
-  for (const site of sorted) add(site);
-  return selected;
-}
 
-function selectCompactSummaryWorks(
-  sites: readonly CivilizationDeploymentSite[],
-  visibleLimit: number,
-  recentSiteIds: readonly string[] = [],
-): CivilizationDeploymentSite[] {
-  const selected: CivilizationDeploymentSite[] = [];
-  const add = (site: CivilizationDeploymentSite | undefined) => {
-    if (!site) return;
-    if (selected.some((entry) => entry.id === site.id)) return;
-    if (selected.length >= visibleLimit) return;
-    selected.push(site);
-  };
 
-  for (const siteId of recentSiteIds) {
-    add(sites.find((site) => site.id === siteId));
-  }
-
-  const sorted = [...sites].sort((left, right) => (
-    right.priority - left.priority ||
-    getSiteKindLabel(left).localeCompare(getSiteKindLabel(right)) ||
-    left.title.localeCompare(right.title)
-  ));
-
-  add(sorted.find((site) => site.kind === 'blueprint'));
-  add(sorted.find(isCompactLocalArtifactSite));
-  add(sorted.find((site) => site.kind === 'artifact' && (site.artifactTier ?? 0) >= 3));
-  add(sorted.find((site) => site.kind === 'luminary'));
-
-  for (const site of sorted) add(site);
-  return selected;
-}
-
-function getWorkSummaryTitle(site: CivilizationDeploymentSite, recentSiteIds: readonly string[]): string {
-  if (recentSiteIds.includes(site.id)) return site.title;
-  if (site.kind === 'blueprint' || site.kind === 'luminary' || site.kind === 'chronicle') return site.title;
-  if (site.kind === 'protocol') return 'Sealed Protocol Trace';
-  if (site.representationMode === 'local_trace') return `${site.consequenceLabel} Trace`;
-  return site.title;
-}
-
-function selectVisibleSites(
-  sites: readonly CivilizationDeploymentSite[],
-  visibleLimit: number,
-  pinnedSiteIds: readonly string[] = [],
-): CivilizationDeploymentSite[] {
-  if (sites.length <= visibleLimit) return [...sites];
-
-  const selected: CivilizationDeploymentSite[] = [];
-  const add = (site: CivilizationDeploymentSite | undefined) => {
-    if (!site) return;
-    if (selected.some((entry) => entry.id === site.id)) return;
-    if (selected.length >= visibleLimit) return;
-    selected.push(site);
-  };
-
-  for (const siteId of pinnedSiteIds) {
-    add(sites.find((site) => site.id === siteId));
-  }
-
-  const blueprintsAndProtocols = sites.filter((site) => site.kind === 'blueprint' || site.kind === 'protocol' || site.kind === 'chronicle');
-  const luminaries = sites.filter((site) => site.kind === 'luminary');
-  const artifacts = sites.filter((site) => site.kind === 'artifact');
-  const smallArtifacts = artifacts.filter(isPinTraceArtifactSite);
-
-  add(blueprintsAndProtocols[0]);
-  if (visibleLimit > 4) add(blueprintsAndProtocols[1]);
-  add(luminaries[0]);
-  add(artifacts[0]);
-  add(smallArtifacts[0]);
-
-  for (const site of sites) add(site);
-  return selected;
-}
-
-function selectScanFocusSites(
-  sites: readonly CivilizationDeploymentSite[],
-  focusSiteId: string | null,
-  visibleLimit: number,
-  recentSiteIds: readonly string[] = [],
-): CivilizationDeploymentSite[] {
-  if (sites.length <= visibleLimit) return [...sites];
-
-  const selected: CivilizationDeploymentSite[] = [];
-  const add = (site: CivilizationDeploymentSite | undefined) => {
-    if (!site) return;
-    if (selected.some((entry) => entry.id === site.id)) return;
-    if (selected.length >= visibleLimit) return;
-    selected.push(site);
-  };
-
-  const focusSite = focusSiteId ? sites.find((site) => site.id === focusSiteId) : undefined;
-  add(focusSite);
-  for (const siteId of recentSiteIds) add(sites.find((site) => site.id === siteId));
-
-  const sorted = [...sites].sort((left, right) => (
-    right.priority - left.priority ||
-    getSiteKindLabel(left).localeCompare(getSiteKindLabel(right)) ||
-    left.title.localeCompare(right.title)
-  ));
-
-  if (focusSite) {
-    add(sorted.find((site) => (
-      site.id !== focusSite.id &&
-      (site.completedBlueprintId === focusSite.completedBlueprintId ||
-        site.blueprintId === focusSite.completedBlueprintId ||
-        site.trait === focusSite.trait ||
-        site.laneLabel === focusSite.laneLabel)
-    )));
-  }
-
-  add(sorted.find((site) => site.kind === 'blueprint'));
-  add(sorted.find((site) => site.kind === 'chronicle'));
-  add(sorted.find((site) => site.kind === 'luminary'));
-  add(sorted.find((site) => site.kind === 'artifact' && (site.artifactTier ?? 0) >= 3));
-  add(sorted.find(isSmallArtifactSite));
-
-  for (const site of sorted) add(site);
-  return selected;
-}
-
-function selectCinematicSites(
-  sites: readonly CivilizationDeploymentSite[],
-  visibleLimit: number,
-): CivilizationDeploymentSite[] {
-  const selected: CivilizationDeploymentSite[] = [];
-  const add = (site: CivilizationDeploymentSite | undefined) => {
-    if (!site) return;
-    if (selected.some((entry) => entry.id === site.id)) return;
-    if (selected.length >= visibleLimit) return;
-    selected.push(site);
-  };
-
-  const sorted = [...sites].sort((left, right) => (
-    right.priority - left.priority ||
-    getSiteKindLabel(left).localeCompare(getSiteKindLabel(right)) ||
-    left.title.localeCompare(right.title)
-  ));
-
-  const blueprints = sorted.filter((site) => site.kind === 'blueprint');
-  const hasBlueprint = blueprints.length > 0;
-  blueprints.forEach(add);
-  if (!hasBlueprint) {
-    add(sorted.find((site) => site.kind === 'artifact' && (site.artifactTier ?? 0) >= 3));
-    add(sorted.find(isSmallArtifactSite));
-    add(sorted.find((site) => site.kind === 'luminary'));
-  }
-
-  for (const site of sorted) {
-    if (hasBlueprint && site.kind !== 'blueprint' && site.kind !== 'protocol' && site.kind !== 'chronicle') continue;
-    add(site);
-  }
-
-  if (selected.length === 0) add(sorted[0]);
-  return selected;
-}
-
-function selectCinematicSignatureSites(
-  sites: readonly CivilizationDeploymentSite[],
-): CivilizationDeploymentSite[] {
-  const hasBlueprint = sites.some((site) => site.kind === 'blueprint');
-  if (!hasBlueprint) return [...sites];
-  return sites.filter((site) => site.kind === 'blueprint' || site.kind === 'protocol' || site.kind === 'chronicle');
-}
-
-function selectCinematicVisualSites(
-  sites: readonly CivilizationDeploymentSite[],
-  visibleLimit: number,
-  recentSiteIds: readonly string[] = [],
-): CivilizationDeploymentSite[] {
-  const selected: CivilizationDeploymentSite[] = [];
-  const add = (site: CivilizationDeploymentSite | undefined) => {
-    if (!site) return;
-    if (selected.some((entry) => entry.id === site.id)) return;
-    if (selected.length >= visibleLimit) return;
-    selected.push(site);
-  };
-
-  for (const siteId of recentSiteIds) {
-    add(sites.find((site) => site.id === siteId));
-  }
-
-  const sorted = [...sites].sort((left, right) => (
-    right.priority - left.priority ||
-    getSiteKindLabel(left).localeCompare(getSiteKindLabel(right)) ||
-    left.title.localeCompare(right.title)
-  ));
-  const hasBlueprint = sorted.some((site) => site.kind === 'blueprint');
-
-  add(sorted.find((site) => site.kind === 'blueprint'));
-  add(sorted.find((site) => site.kind === 'chronicle'));
-  add(sorted.find((site) => site.kind === 'luminary'));
-  if (!hasBlueprint) {
-    add(sorted.find(isSmallArtifactSite));
-    add(sorted.find((site) => site.kind === 'artifact' && (site.artifactTier ?? 0) >= 3));
-  }
-
-  for (const site of selectCinematicSites(sites, visibleLimit)) add(site);
-  for (const site of sorted) {
-    if (hasBlueprint && site.kind === 'artifact') continue;
-    add(site);
-  }
-
-  return selected;
-}
 
 function selectCinematicHeroSites(
   sites: readonly CivilizationDeploymentSite[],
@@ -809,81 +844,7 @@ function selectCinematicHeroSites(
   return selected;
 }
 
-function selectArtifactSubstructureSites(
-  sites: readonly CivilizationDeploymentSite[],
-  visibleLimit: number,
-  recentSiteIds: readonly string[] = [],
-): CivilizationDeploymentSite[] {
-  const artifacts = sites.filter((site) => site.kind === 'artifact');
-  if (artifacts.length === 0) return [];
 
-  const selected: CivilizationDeploymentSite[] = [];
-  const representedTraits = new Set<CivilizationDeploymentSite['trait']>();
-  const add = (site: CivilizationDeploymentSite | undefined) => {
-    if (!site) return;
-    if (selected.some((entry) => entry.id === site.id)) return;
-    if (selected.length >= visibleLimit) return;
-    selected.push(site);
-    representedTraits.add(site.trait);
-  };
-
-  for (const siteId of recentSiteIds) {
-    add(artifacts.find((site) => site.id === siteId));
-  }
-
-  const sorted = [...artifacts].sort((left, right) => (
-    right.priority - left.priority ||
-    (right.artifactTier ?? 0) - (left.artifactTier ?? 0) ||
-    left.trait.localeCompare(right.trait) ||
-    left.title.localeCompare(right.title)
-  ));
-
-  add(sorted.find((site) => Boolean(site.completedBlueprintId)));
-  add(sorted.find(isSmallArtifactSite));
-  add(sorted.find((site) => (site.artifactTier ?? 0) >= 3));
-
-  for (const site of sorted) {
-    if (!representedTraits.has(site.trait)) add(site);
-  }
-  for (const site of sorted) add(site);
-
-  return selected;
-}
-
-function selectIntegratedConsequenceSites(
-  sites: readonly CivilizationDeploymentSite[],
-  scene: MarketSceneKind,
-  visibleLimit: number,
-  recentSiteIds: readonly string[] = [],
-): CivilizationDeploymentSite[] {
-  const availableSites = sites.filter((site) => isSiteAvailableInScene(site, scene));
-  if (availableSites.length === 0) return [];
-
-  const selected: CivilizationDeploymentSite[] = [];
-  const add = (site: CivilizationDeploymentSite | undefined) => {
-    if (!site) return;
-    if (selected.some((entry) => entry.id === site.id)) return;
-    if (selected.length >= visibleLimit) return;
-    selected.push(site);
-  };
-
-  for (const siteId of recentSiteIds) add(availableSites.find((site) => site.id === siteId));
-
-  const sorted = [...availableSites].sort((left, right) => (
-    right.priority - left.priority ||
-    getSiteKindLabel(left).localeCompare(getSiteKindLabel(right)) ||
-    left.title.localeCompare(right.title)
-  ));
-
-  add(sorted.find((site) => site.kind === 'blueprint'));
-  add(sorted.find((site) => site.kind === 'protocol'));
-  add(sorted.find((site) => site.kind === 'chronicle'));
-  add(sorted.find((site) => site.kind === 'artifact' && Boolean(site.artifactSceneTreatment)));
-  add(sorted.find((site) => site.kind === 'luminary'));
-
-  for (const site of sorted) add(site);
-  return selected;
-}
 
 interface CivilizationSceneSignals {
   living: boolean;
@@ -1030,6 +991,18 @@ function buildSceneIdentity(sites: readonly CivilizationDeploymentSite[]): Civil
   };
 }
 
+function applyCanonicalAffinityIdentity(
+  identity: CivilizationSceneIdentity,
+  primaryAffinity: CivilizationSceneIdentity['primaryAffinity'],
+  secondaryAffinity: CivilizationSceneIdentity['secondaryAffinity'],
+): CivilizationSceneIdentity {
+  return {
+    ...identity,
+    primaryAffinity,
+    secondaryAffinity,
+  };
+}
+
 function getInfluenceSubtitle(site: CivilizationDeploymentSite): string {
   if (site.kind === 'artifact' && site.artifactSceneTreatment) {
     return getArtifactTreatmentLabel(site.artifactSceneTreatment);
@@ -1063,14 +1036,6 @@ function isFieldTrait(site: CivilizationDeploymentSite): boolean {
   return site.trait === 'containment' || site.trait === 'veil' || site.trait === 'accord' || site.trait === 'entropy';
 }
 
-function getTraitDialectTone(trait: CivilizationDeploymentSite['trait']): string {
-  if (trait === 'ignition' || trait === 'entropy') return AFFINITY_META.flare.hex;
-  if (trait === 'biosphere' || trait === 'replication') return AFFINITY_META.verdance.hex;
-  if (trait === 'chronology' || trait === 'transit' || trait === 'aperture') return AFFINITY_META.continuum.hex;
-  if (trait === 'archive' || trait === 'lattice' || trait === 'accord') return AFFINITY_META.radiance.hex;
-  return AFFINITY_META.abyss.hex;
-}
-
 function getDossierScaleReading(site: CivilizationDeploymentSite): string {
   if (site.kind === 'artifact') {
     const depictionScale = site.depictionScale ? getDepictionScaleLabel(site.depictionScale) : null;
@@ -1088,7 +1053,10 @@ function getDossierScaleReading(site: CivilizationDeploymentSite): string {
       : `This ${site.artifactForm ?? 'artifact'} has enough reach to register as infrastructure: ${site.visibleAs}.`;
   }
   if (site.kind === 'blueprint') {
-    return `The Blueprint is read as a civilization condition, not a card object: ${site.visibleAs}.`;
+    if (site.blueprintManifestationScale) {
+      return `The Blueprint manifests as a ${getBlueprintManifestationScaleLabel(site.blueprintManifestationScale).toLowerCase()} project within its ${getCivilizationScaleLabel(site.scaleBand).toLowerCase()} theater. Its wider civilization consequence is ${site.visibleAs}.`;
+    }
+    return `The Blueprint manifests within its ${getCivilizationScaleLabel(site.scaleBand).toLowerCase()} theater. Its wider civilization consequence is ${site.visibleAs}.`;
   }
   if (site.kind === 'luminary') {
     return `The allied Luminary is represented through pressure and behavior changes across the civilization: ${site.visibleAs}.`;
@@ -1119,7 +1087,9 @@ function getDossierRegistrationBody(site: CivilizationDeploymentSite, nativeScen
     return `The artifact is large enough to become part of the ${SCENE_UI[nativeScene].zoomLabel.toLowerCase()} layer.`;
   }
   if (site.kind === 'blueprint') {
-    return 'Blueprints are shown as lasting environmental consequences, not as extra card widgets.';
+    return site.blueprintManifestationScale
+      ? `The physical project is shown at ${getBlueprintManifestationScaleLabel(site.blueprintManifestationScale).toLowerCase()} size while its lasting consequence remains visible across the ${getCivilizationScaleLabel(site.scaleBand).toLowerCase()} theater.`
+      : 'The physical project and its lasting civilization consequence remain visible at their authored scale.';
   }
   if (site.kind === 'luminary') {
     return 'Luminaries alter the scene as atmospheric pressure, allegiance, and affinity behavior.';
@@ -1232,65 +1202,6 @@ function getCivilizationSiteOperationalPresentation(site: CivilizationDeployment
   };
 }
 
-function CivilizationArtifactLifecycleScarLayer({
-  sites,
-  focusedSiteId,
-}: {
-  sites: readonly CivilizationDeploymentSite[];
-  focusedSiteId: string | null;
-}) {
-  const scars = sites.filter((site) => site.kind === 'artifact' && !isCivilizationSiteOperational(site));
-  if (scars.length === 0) return null;
-
-  return (
-    <div className="pointer-events-none absolute inset-0 z-[12]" data-testid="civilization-artifact-lifecycle-scars">
-      {scars.map((site) => {
-        const presentation = getCivilizationSiteOperationalPresentation(site);
-        const focused = site.id === focusedSiteId;
-        const isAnnihilated = site.implementationState === 'annihilated';
-        const isArchived = site.implementationState === 'archived';
-        return (
-          <span
-            key={site.id}
-            className="absolute -translate-x-1/2 -translate-y-1/2"
-            data-artifact-state={site.implementationState ?? 'unknown'}
-            aria-hidden="true"
-            style={{
-              left: `${site.anchor.x}%`,
-              top: `${site.anchor.y}%`,
-              width: focused ? 54 : 38,
-              height: focused ? 54 : 38,
-              opacity: focused ? 0.92 : 0.62,
-            }}
-          >
-            <span
-              className="absolute inset-0 rounded-full border"
-              style={{
-                borderColor: `${presentation.tone}B8`,
-                borderStyle: isArchived ? 'dashed' : 'solid',
-                boxShadow: `0 0 ${focused ? 22 : 14}px ${presentation.tone}32, inset 0 0 12px ${presentation.tone}18`,
-              }}
-            />
-            <span
-              className="absolute left-1/2 top-1/2 h-px w-[72%] -translate-x-1/2 -translate-y-1/2 rotate-45"
-              style={{ backgroundColor: `${presentation.tone}D8` }}
-            />
-            {(isAnnihilated || site.implementationState === 'damaged') && (
-              <span
-                className="absolute left-1/2 top-1/2 h-px w-[72%] -translate-x-1/2 -translate-y-1/2 -rotate-45"
-                style={{ backgroundColor: `${presentation.tone}${isAnnihilated ? 'E8' : '94'}` }}
-              />
-            )}
-            <span
-              className="absolute inset-[35%] rounded-full"
-              style={{ backgroundColor: presentation.tone, boxShadow: `0 0 9px ${presentation.tone}88` }}
-            />
-          </span>
-        );
-      })}
-    </div>
-  );
-}
 
 function ArtifactMotifGlyph({
   site,
@@ -1461,666 +1372,8 @@ function ArtifactMotifGlyph({
   );
 }
 
-function ArtifactTreatmentDeploymentMark({
-  site,
-  index,
-  scene,
-  recent,
-  scanActive,
-  centerGlyph,
-}: {
-  site: CivilizationDeploymentSite;
-  index: number;
-  scene: MarketSceneKind;
-  recent: boolean;
-  scanActive: boolean;
-  centerGlyph: React.ReactNode;
-}) {
-  const treatment = site.artifactSceneTreatment;
-  if (!treatment) return null;
 
-  const tone = getCivilizationSiteTone(site);
-  const x = site.anchor.x;
-  const y = site.anchor.y;
-  const sceneScale = scene === 'surface' ? 1.18 : scene === 'orbit' ? 0.92 : scene === 'stellar' ? 0.76 : 0.64;
-  const spread = (recent ? 20 : 16) * sceneScale;
-  const height = (recent ? 13 : 10) * sceneScale;
-  const rotation = ((index % 5) - 2) * 7;
-  const opacity = recent ? 0.62 : scanActive ? 0.46 : 0.36;
-  const stroke = `${tone}${recent ? 'CC' : '96'}`;
-  const soft = `${tone}${recent ? '30' : '1B'}`;
-  const white = 'rgba(255,255,255,0.38)';
-  const label = getArtifactTreatmentLabel(treatment);
-  const localSurfaceSite = scene === 'surface' && (
-    site.scalePresence === 'artifact_pin' ||
-    site.scalePresence === 'deployment_site' ||
-    site.representationMode === 'local_trace' ||
-    (site.depictionScale ? isLocalArtifactDepictionScale(site.depictionScale) : false)
-  );
 
-  if (treatment === 'ashroot_recovery') {
-    return (
-      <g
-        className="civ-artifact-deployment"
-        data-testid="civilization-artifact-treatment-deployment-ashroot_recovery"
-        data-treatment-label={label}
-        opacity={opacity}
-        style={{ color: tone }}
-      >
-        <path
-          d={`M${Math.max(0, x - spread)} ${y + height * 0.68} C${x - spread * 0.62} ${y - height * 0.82}, ${x - spread * 0.12} ${y - height * 0.62}, ${x} ${y - height * 0.08} C${x + spread * 0.18} ${y - height * 0.98}, ${x + spread * 0.72} ${y - height * 0.5}, ${Math.min(100, x + spread)} ${y + height * 0.44}`}
-          fill={`${tone}16`}
-          stroke={stroke}
-          strokeLinecap="round"
-          strokeWidth={0.72 * sceneScale}
-        />
-        <path
-          className="civ-artifact-deployment-flow"
-          d={`M${Math.max(1, x - spread * 0.78)} ${y + height * 0.94} C${x - spread * 0.32} ${y + height * 0.1}, ${x + spread * 0.3} ${y + height * 0.06}, ${Math.min(99, x + spread * 0.86)} ${y + height * 0.82}`}
-          fill="none"
-          stroke="rgba(229,255,238,0.34)"
-          strokeLinecap="round"
-          strokeWidth={0.3 * sceneScale}
-        />
-        {[-0.54, -0.22, 0.18, 0.5].map((step, nodeIndex) => (
-          <circle
-            key={step}
-            cx={x + spread * step}
-            cy={y + height * (nodeIndex % 2 === 0 ? 0.32 : -0.04)}
-            r={(nodeIndex === 2 ? 0.9 : 0.62) * sceneScale}
-            fill={nodeIndex === 2 ? 'rgba(229,255,238,0.84)' : `${tone}B8`}
-          />
-        ))}
-        {centerGlyph}
-      </g>
-    );
-  }
-
-  if (treatment === 'mantlelift_driver') {
-    const baseY = Math.min(96, y + height * 1.5);
-    const headY = Math.max(4, y - height * 1.45);
-    const liftX = x - spread * 0.18;
-    const freightD = `M${Math.max(1, x - spread)} ${y + height * 0.56} C${x - spread * 0.34} ${y - height * 0.72}, ${x + spread * 0.32} ${y + height * 0.82}, ${Math.min(99, x + spread)} ${y - height * 0.45}`;
-    if (localSurfaceSite) {
-      const localBaseY = Math.min(88, y + 4.6);
-      const localHeadY = Math.max(45, y - 5.8);
-      const localLiftX = x - 0.8;
-      const localOpacity = recent ? 0.5 : scanActive ? 0.34 : 0.28;
-      const localStroke = `${tone}${recent ? '98' : scanActive ? '6E' : '54'}`;
-      return (
-        <g
-          className="civ-artifact-deployment civ-artifact-deployment-local-site"
-          data-testid="civilization-artifact-treatment-deployment-mantlelift_driver"
-          data-treatment-label={label}
-          data-native-work-scale="local-site"
-          opacity={localOpacity}
-          style={{ color: tone }}
-        >
-          <path
-            d={`M${localLiftX} ${localBaseY} C${localLiftX + 0.9} ${y + 2.5}, ${localLiftX - 0.8} ${y - 3.4}, ${localLiftX + 0.7} ${localHeadY}`}
-            fill="none"
-            stroke={`${tone}1F`}
-            strokeLinecap="round"
-            strokeWidth="1.55"
-          />
-          <path
-            className="civ-artifact-deployment-flow"
-            d={`M${localLiftX} ${localBaseY} C${localLiftX + 0.9} ${y + 2.5}, ${localLiftX - 0.8} ${y - 3.4}, ${localLiftX + 0.7} ${localHeadY}`}
-            fill="none"
-            stroke="rgba(255,255,255,0.22)"
-            strokeLinecap="round"
-            strokeWidth="0.16"
-          />
-          <path
-            d={`M${x - 5.2} ${localBaseY + 0.5} L${x - 1.1} ${localBaseY - 1.9} L${x + 5.6} ${localBaseY + 0.6} L${x + 2.7} ${localBaseY + 2.3} L${x - 5.9} ${localBaseY + 1.8} Z`}
-            fill={soft}
-            stroke={localStroke}
-            strokeLinejoin="round"
-            strokeWidth="0.22"
-          />
-          <path
-            d={`M${x - 8.8} ${y + 3.4} C${x - 3.8} ${y - 1.3}, ${x + 3.2} ${y + 3.8}, ${x + 9.4} ${y - 1.6}`}
-            fill="none"
-            stroke={`${tone}58`}
-            strokeLinecap="round"
-            strokeWidth="0.25"
-          />
-          <path
-            d={`M${x - 5.6} ${y + 2.2} C${x - 2.4} ${y - 0.5}, ${x + 2.8} ${y + 2.2}, ${x + 6.3} ${y - 0.8}`}
-            fill="none"
-            stroke="rgba(255,255,255,0.17)"
-            strokeLinecap="round"
-            strokeWidth="0.14"
-          />
-          <circle cx={localLiftX + 0.7} cy={localHeadY} r="0.5" fill="rgba(255,244,194,0.68)" />
-          <circle cx={x + 5.8} cy={y - 1.1} r="0.38" fill={`${tone}96`} />
-          <ArtifactMotifGlyph site={site} x={x} y={y + 0.4} tone={tone} scale={0.42} rotation={rotation} emphasis={recent ? 1 : 0.9} />
-        </g>
-      );
-    }
-    return (
-      <g
-        className="civ-artifact-deployment"
-        data-testid="civilization-artifact-treatment-deployment-mantlelift_driver"
-        data-treatment-label={label}
-        opacity={opacity}
-        style={{ color: tone }}
-      >
-        <path
-          d={`M${liftX} ${baseY} C${liftX + 1.6 * sceneScale} ${y + height * 0.4}, ${liftX - 1.6 * sceneScale} ${y - height * 0.3}, ${liftX + 1.2 * sceneScale} ${headY}`}
-          fill="none"
-          stroke={`${tone}22`}
-          strokeLinecap="round"
-          strokeWidth={4.8 * sceneScale}
-        />
-        <path
-          className="civ-artifact-deployment-flow"
-          d={`M${liftX} ${baseY} C${liftX + 1.6 * sceneScale} ${y + height * 0.4}, ${liftX - 1.6 * sceneScale} ${y - height * 0.3}, ${liftX + 1.2 * sceneScale} ${headY}`}
-          fill="none"
-          stroke={white}
-          strokeLinecap="round"
-          strokeWidth={0.42 * sceneScale}
-        />
-        <path
-          d={freightD}
-          fill="none"
-          stroke={`${tone}54`}
-          strokeLinecap="round"
-          strokeWidth={0.64 * sceneScale}
-        />
-        <path
-          d={`M${liftX - spread * 0.42} ${baseY + height * 0.08} L${liftX - spread * 0.08} ${baseY - height * 0.38} L${liftX + spread * 0.38} ${baseY + height * 0.04} L${liftX + spread * 0.18} ${baseY + height * 0.24} Z`}
-          fill={soft}
-          stroke={stroke}
-          strokeLinejoin="round"
-          strokeWidth={0.38 * sceneScale}
-        />
-        {[0.22, 0.46, 0.72, 0.9].map((step) => (
-          <circle
-            key={step}
-            cx={Math.max(3, Math.min(97, x - spread + spread * 2 * step))}
-            cy={y + height * 0.56 - Math.sin(step * Math.PI) * height * 1.1}
-            r={(step > 0.85 ? 1 : 0.62) * sceneScale}
-            fill={step > 0.85 ? 'rgba(255,244,194,0.82)' : `${tone}B8`}
-          />
-        ))}
-        {centerGlyph}
-      </g>
-    );
-  }
-
-  if (treatment === 'ignition_kernel') {
-    return (
-      <g
-        className="civ-artifact-deployment"
-        data-testid="civilization-artifact-treatment-deployment-ignition_kernel"
-        data-treatment-label={label}
-        opacity={opacity}
-        style={{ color: tone }}
-      >
-        <path
-          d={`M${x} ${y - height} L${x + spread * 0.52} ${y - height * 0.22} L${x + spread * 0.42} ${y + height * 0.74} L${x} ${y + height} L${x - spread * 0.42} ${y + height * 0.74} L${x - spread * 0.52} ${y - height * 0.22} Z`}
-          fill={`${tone}1B`}
-          stroke={stroke}
-          strokeLinejoin="round"
-          strokeWidth={0.52 * sceneScale}
-          transform={`rotate(${rotation} ${x} ${y})`}
-        />
-        <path
-          d={`M${x - spread * 0.82} ${y + height * 0.76} C${x - spread * 0.24} ${y + height * 0.12}, ${x + spread * 0.25} ${y + height * 0.12}, ${x + spread * 0.84} ${y + height * 0.72}`}
-          fill="none"
-          stroke="rgba(255,244,194,0.4)"
-          strokeLinecap="round"
-          strokeWidth={0.34 * sceneScale}
-        />
-        <circle cx={x} cy={y} r={2.1 * sceneScale} fill="rgba(255,244,194,0.75)" />
-        <circle cx={x} cy={y} r={0.72 * sceneScale} fill="#ffffff" />
-        {centerGlyph}
-      </g>
-    );
-  }
-
-  if (treatment === 'magnetic_bottle') {
-    return (
-      <g
-        className="civ-artifact-deployment"
-        data-testid="civilization-artifact-treatment-deployment-magnetic_bottle"
-        data-treatment-label={label}
-        opacity={opacity}
-        style={{ color: tone }}
-      >
-        <ellipse
-          cx={x}
-          cy={y}
-          rx={spread * 0.8}
-          ry={height * 0.56}
-          fill={`${tone}16`}
-          stroke={stroke}
-          strokeWidth={0.56 * sceneScale}
-          transform={`rotate(${rotation} ${x} ${y})`}
-        />
-        <ellipse
-          cx={x}
-          cy={y}
-          rx={spread * 0.42}
-          ry={height * 0.86}
-          fill="rgba(0,0,0,0.18)"
-          stroke={`${tone}70`}
-          strokeWidth={0.34 * sceneScale}
-          transform={`rotate(${-rotation} ${x} ${y})`}
-        />
-        <rect
-          x={x - spread * 0.16}
-          y={y - height * 0.52}
-          width={spread * 0.32}
-          height={height * 1.04}
-          rx={1.1 * sceneScale}
-          fill="rgba(0,0,0,0.28)"
-          stroke={white}
-          strokeWidth={0.22 * sceneScale}
-          transform={`rotate(${rotation} ${x} ${y})`}
-        />
-        <path
-          d={`M${Math.max(0, x - spread)} ${y} H${x - spread * 0.32} M${x + spread * 0.32} ${y} H${Math.min(100, x + spread)} M${x - spread * 0.62} ${y - height * 0.44} C${x - spread * 0.2} ${y - height * 0.9}, ${x + spread * 0.22} ${y - height * 0.9}, ${x + spread * 0.64} ${y - height * 0.44} M${x - spread * 0.62} ${y + height * 0.44} C${x - spread * 0.2} ${y + height * 0.9}, ${x + spread * 0.22} ${y + height * 0.9}, ${x + spread * 0.64} ${y + height * 0.44}`}
-          fill="none"
-          stroke={white}
-          strokeLinecap="round"
-          strokeWidth={0.24 * sceneScale}
-        />
-        {centerGlyph}
-      </g>
-    );
-  }
-
-  if (treatment === 'horizon_extractor') {
-    return (
-      <g
-        className="civ-artifact-deployment"
-        data-testid="civilization-artifact-treatment-deployment-horizon_extractor"
-        data-treatment-label={label}
-        opacity={opacity}
-        style={{ color: tone }}
-      >
-        <path
-          d={`M${x - spread * 0.9} ${y + height * 0.14} C${x - spread * 0.34} ${y - height * 0.94}, ${x + spread * 0.36} ${y - height * 0.94}, ${x + spread * 0.92} ${y + height * 0.14}`}
-          fill="none"
-          stroke={stroke}
-          strokeLinecap="round"
-          strokeWidth={0.66 * sceneScale}
-        />
-        <path
-          d={`M${x - spread * 0.66} ${y + height * 0.52} C${x - spread * 0.2} ${y - height * 0.06}, ${x + spread * 0.22} ${y - height * 0.06}, ${x + spread * 0.68} ${y + height * 0.52}`}
-          fill="none"
-          stroke={`${tone}72`}
-          strokeLinecap="round"
-          strokeWidth={0.32 * sceneScale}
-        />
-        <circle cx={x} cy={y + height * 0.12} r={3.2 * sceneScale} fill="rgba(0,0,0,0.56)" stroke="rgba(255,255,255,0.28)" strokeWidth={0.24 * sceneScale} />
-        <path
-          d={`M${x} ${y - height * 1.18} V${y - height * 0.34} M${x - spread * 0.46} ${y - height * 0.78} L${x - spread * 0.14} ${y - height * 0.18} M${x + spread * 0.46} ${y - height * 0.78} L${x + spread * 0.14} ${y - height * 0.18}`}
-          stroke={white}
-          strokeLinecap="round"
-          strokeWidth={0.22 * sceneScale}
-        />
-        {centerGlyph}
-      </g>
-    );
-  }
-
-  if (treatment === 'entropy_baffle') {
-    const fins = [-0.56, -0.28, 0, 0.28, 0.56];
-    return (
-      <g
-        className="civ-artifact-deployment"
-        data-testid="civilization-artifact-treatment-deployment-entropy_baffle"
-        data-treatment-label={label}
-        opacity={opacity}
-        style={{ color: tone }}
-        transform={`rotate(${rotation} ${x} ${y})`}
-      >
-        <path
-          d={`M${x - spread * 0.72} ${y + height * 0.62} L${x - spread * 0.48} ${y - height * 0.66} H${x + spread * 0.48} L${x + spread * 0.72} ${y + height * 0.62} Z`}
-          fill={`${tone}17`}
-          stroke={stroke}
-          strokeLinejoin="round"
-          strokeWidth={0.5 * sceneScale}
-        />
-        {fins.map((step, finIndex) => (
-          <path
-            key={step}
-            d={`M${x + spread * step} ${y + height * 0.5} V${y - height * (0.42 + (finIndex % 2) * 0.16)}`}
-            stroke={finIndex === 2 ? white : `${tone}98`}
-            strokeLinecap="round"
-            strokeWidth={(finIndex === 2 ? 0.38 : 0.28) * sceneScale}
-          />
-        ))}
-        <path
-          d={`M${x - spread * 0.84} ${y + height * 0.88} C${x - spread * 0.44} ${y + height * 0.46}, ${x - spread * 0.14} ${y + height}, ${x + spread * 0.08} ${y + height * 0.68} S${x + spread * 0.54} ${y + height * 0.4}, ${x + spread * 0.86} ${y + height * 0.86}`}
-          fill="none"
-          stroke="rgba(255,148,93,0.56)"
-          strokeLinecap="round"
-          strokeWidth={0.28 * sceneScale}
-        />
-        {centerGlyph}
-      </g>
-    );
-  }
-
-  return null;
-}
-
-function ArtifactMotifDeploymentMark({
-  site,
-  index,
-  scene,
-  recent,
-  scanActive,
-}: {
-  site: CivilizationDeploymentSite;
-  index: number;
-  scene: MarketSceneKind;
-  recent: boolean;
-  scanActive: boolean;
-}) {
-  const motif = site.artifactVisualMotif;
-  if (!motif) return null;
-
-  const treatment = site.artifactSceneTreatment;
-  const tone = getCivilizationSiteTone(site);
-  const x = site.anchor.x;
-  const y = site.anchor.y;
-  const sceneScale = scene === 'surface' ? 1.18 : scene === 'orbit' ? 0.92 : scene === 'stellar' ? 0.76 : 0.64;
-  const spread = (recent ? 19 : 15.5) * sceneScale;
-  const height = (recent ? 12 : 9.5) * sceneScale;
-  const rotation = ((index % 5) - 2) * 7;
-  const opacity = recent ? 0.56 : scanActive ? 0.42 : 0.34;
-  const stroke = `${tone}${recent ? 'B8' : '8A'}`;
-  const soft = `${tone}${recent ? '32' : '1F'}`;
-  const white = 'rgba(255,255,255,0.3)';
-
-  const centerGlyph = (
-    <ArtifactMotifGlyph
-      site={site}
-      x={x}
-      y={y}
-      tone={tone}
-      scale={sceneScale * (recent ? 1.05 : 0.92)}
-      rotation={rotation}
-      emphasis={recent ? 1.08 : 1}
-    />
-  );
-
-  if (treatment) {
-    const treatmentMark = (
-      <ArtifactTreatmentDeploymentMark
-        site={site}
-        index={index}
-        scene={scene}
-        recent={recent}
-        scanActive={scanActive}
-        centerGlyph={centerGlyph}
-      />
-    );
-    if (treatmentMark) return treatmentMark;
-  }
-
-  if (motif === 'seed' || motif === 'organ') {
-    return (
-      <g
-        className="civ-artifact-deployment"
-        data-testid="civilization-artifact-deployment"
-        opacity={opacity}
-        style={{ color: tone }}
-      >
-        <path
-          d={`M${Math.max(0, x - spread)} ${y + height * 0.72} C${x - spread * 0.55} ${y - height * 0.85}, ${x - spread * 0.1} ${y - height * 0.7}, ${x} ${y - height * 0.18} C${x + spread * 0.18} ${y - height * 1.05}, ${x + spread * 0.74} ${y - height * 0.68}, ${Math.min(100, x + spread)} ${y + height * 0.48}`}
-          fill={`${tone}13`}
-          stroke={stroke}
-          strokeLinecap="round"
-          strokeWidth={0.72 * sceneScale}
-        />
-        <path
-          d={`M${Math.max(0, x - spread * 0.84)} ${y + height * 0.96} C${x - spread * 0.38} ${y + height * 0.1}, ${x + spread * 0.34} ${y + height * 0.08}, ${Math.min(100, x + spread * 0.86)} ${y + height * 0.86}`}
-          fill="none"
-          stroke="rgba(229,255,238,0.26)"
-          strokeLinecap="round"
-          strokeWidth={0.28 * sceneScale}
-        />
-        <circle cx={x - spread * 0.36} cy={y + height * 0.34} r={0.86 * sceneScale} fill={`${tone}A8`} />
-        <circle cx={x + spread * 0.44} cy={y + height * 0.2} r={0.68 * sceneScale} fill="rgba(229,255,238,0.74)" />
-        {centerGlyph}
-      </g>
-    );
-  }
-
-  if (motif === 'coil' || motif === 'relay') {
-    const railY = y + height * 0.52;
-    return (
-      <g
-        className="civ-artifact-deployment"
-        data-testid="civilization-artifact-deployment"
-        opacity={opacity}
-        style={{ color: tone }}
-      >
-        <path
-          className="civ-artifact-deployment-flow"
-          d={`M${Math.max(0, x - spread)} ${railY} C${x - spread * 0.36} ${y - height * 0.85}, ${x + spread * 0.3} ${y + height * 0.8}, ${Math.min(100, x + spread)} ${y - height * 0.5}`}
-          fill="none"
-          stroke={stroke}
-          strokeLinecap="round"
-          strokeWidth={1.05 * sceneScale}
-        />
-        <path
-          d={`M${Math.max(0, x - spread * 0.74)} ${railY + height * 0.28} C${x - spread * 0.22} ${y - height * 0.25}, ${x + spread * 0.28} ${y + height * 0.48}, ${Math.min(100, x + spread * 0.78)} ${y - height * 0.12}`}
-          fill="none"
-          stroke={white}
-          strokeLinecap="round"
-          strokeWidth={0.32 * sceneScale}
-        />
-        <ellipse cx={x} cy={y} rx={spread * 0.38} ry={height * 0.26} fill={soft} stroke={`${tone}70`} strokeWidth={0.3 * sceneScale} transform={`rotate(${rotation} ${x} ${y})`} />
-        {centerGlyph}
-      </g>
-    );
-  }
-
-  if (motif === 'vessel' || motif === 'containment') {
-    return (
-      <g
-        className="civ-artifact-deployment"
-        data-testid="civilization-artifact-deployment"
-        opacity={opacity}
-        style={{ color: tone }}
-      >
-        <ellipse
-          cx={x}
-          cy={y}
-          rx={spread * 0.72}
-          ry={height * 0.52}
-          fill={`${tone}16`}
-          stroke={stroke}
-          strokeDasharray={!treatment && motif === 'containment' ? '3.4 2.1' : undefined}
-          strokeWidth={0.58 * sceneScale}
-          transform={`rotate(${rotation} ${x} ${y})`}
-        />
-        <rect
-          x={x - spread * 0.22}
-          y={y - height * 0.32}
-          width={spread * 0.44}
-          height={height * 0.64}
-          rx={1.2 * sceneScale}
-          fill="rgba(0,0,0,0.2)"
-          stroke="rgba(255,255,255,0.28)"
-          strokeWidth={0.24 * sceneScale}
-          transform={`rotate(${rotation} ${x} ${y})`}
-        />
-        <path
-          d={`M${Math.max(0, x - spread * 0.92)} ${y} H${x - spread * 0.3} M${x + spread * 0.3} ${y} H${Math.min(100, x + spread * 0.92)}`}
-          stroke={`${tone}6C`}
-          strokeLinecap="round"
-          strokeWidth={0.36 * sceneScale}
-          transform={`rotate(${rotation} ${x} ${y})`}
-        />
-        {centerGlyph}
-      </g>
-    );
-  }
-
-  if (motif === 'archive' || motif === 'lattice' || motif === 'seal') {
-    const columns = [-0.48, -0.24, 0, 0.24, 0.48];
-    return (
-      <g
-        className="civ-artifact-deployment"
-        data-testid="civilization-artifact-deployment"
-        opacity={opacity}
-        style={{ color: tone }}
-        transform={`rotate(${rotation} ${x} ${y})`}
-      >
-        <path
-          d={`M${x - spread * 0.82} ${y + height * 0.46} L${x - spread * 0.42} ${y - height * 0.34} L${x + spread * 0.54} ${y - height * 0.46} L${x + spread * 0.86} ${y + height * 0.42} Z`}
-          fill={`${tone}13`}
-          stroke={stroke}
-          strokeLinejoin="round"
-          strokeWidth={0.48 * sceneScale}
-        />
-        {columns.map((column, columnIndex) => (
-          <path
-            key={column}
-            d={`M${x + spread * column} ${y + height * 0.36} V${y - height * (0.08 + (columnIndex % 3) * 0.16)}`}
-            stroke={columnIndex === 2 ? 'rgba(255,255,255,0.42)' : `${tone}82`}
-            strokeLinecap="round"
-            strokeWidth={(columnIndex === 2 ? 0.34 : 0.25) * sceneScale}
-          />
-        ))}
-        {centerGlyph}
-      </g>
-    );
-  }
-
-  if (motif === 'prism' || motif === 'aperture') {
-    return (
-      <g
-        className="civ-artifact-deployment"
-        data-testid="civilization-artifact-deployment"
-        opacity={opacity}
-        style={{ color: tone }}
-      >
-        <path
-          d={`M${x} ${y - height * 0.98} L${x + spread * 0.56} ${y - height * 0.04} L${x + spread * 0.18} ${y + height * 0.9} L${x - spread * 0.62} ${y + height * 0.45} L${x - spread * 0.5} ${y - height * 0.45} Z`}
-          fill={`${tone}12`}
-          stroke={stroke}
-          strokeLinejoin="round"
-          strokeWidth={0.48 * sceneScale}
-          transform={`rotate(${rotation} ${x} ${y})`}
-        />
-        <path
-          d={`M${x - spread * 0.92} ${y} H${x - spread * 0.34} M${x + spread * 0.34} ${y} H${Math.min(100, x + spread * 0.92)} M${x} ${y - height * 0.92} V${y - height * 0.32} M${x} ${y + height * 0.32} V${y + height * 0.92}`}
-          stroke={white}
-          strokeLinecap="round"
-          strokeWidth={0.28 * sceneScale}
-        />
-        {centerGlyph}
-      </g>
-    );
-  }
-
-  if (motif === 'forge') {
-    return (
-      <g
-        className="civ-artifact-deployment"
-        data-testid="civilization-artifact-deployment"
-        opacity={opacity}
-        style={{ color: tone }}
-      >
-        <path
-          d={`M${x - spread * 0.82} ${y + height * 0.55} L${x - spread * 0.26} ${y - height * 0.46} L${x + spread * 0.26} ${y - height * 0.5} L${x + spread * 0.86} ${y + height * 0.48} Z`}
-          fill={`${tone}14`}
-          stroke={stroke}
-          strokeLinejoin="round"
-          strokeWidth={0.5 * sceneScale}
-          transform={`rotate(${rotation} ${x} ${y})`}
-        />
-        <path
-          d={`M${x - spread * 0.32} ${y + height * 0.36} C${x - spread * 0.14} ${y - height * 0.18}, ${x + spread * 0.05} ${y - height * 0.2}, ${x + spread * 0.24} ${y + height * 0.34}`}
-          fill="none"
-          stroke="rgba(255,244,194,0.36)"
-          strokeLinecap="round"
-          strokeWidth={0.36 * sceneScale}
-        />
-        {centerGlyph}
-      </g>
-    );
-  }
-
-  return (
-    <g
-      className="civ-artifact-deployment"
-      data-testid="civilization-artifact-deployment"
-      opacity={opacity}
-      style={{ color: tone }}
-    >
-      <rect
-        x={x - spread * 0.48}
-        y={y - height * 0.36}
-        width={spread * 0.96}
-        height={height * 0.72}
-        rx={1.4 * sceneScale}
-        fill={`${tone}12`}
-        stroke={stroke}
-        strokeWidth={0.44 * sceneScale}
-        transform={`rotate(${rotation} ${x} ${y})`}
-      />
-      {centerGlyph}
-    </g>
-  );
-}
-
-function CivilizationArtifactDeploymentLayer({
-  sites,
-  scene,
-  scanActive,
-  recentSiteIds,
-  maxSites,
-}: {
-  sites: readonly CivilizationDeploymentSite[];
-  scene: MarketSceneKind;
-  scanActive: boolean;
-  recentSiteIds: readonly string[];
-  maxSites: number;
-}) {
-  const nativeSites = React.useMemo(() => (
-    selectArtifactSubstructureSites(
-      sites.filter((site) => (
-        shouldRenderArtifactAsNativeStructure(site, scene) &&
-        Boolean(site.artifactVisualMotif)
-      )),
-      maxSites,
-      recentSiteIds,
-    )
-  ), [sites, scene, maxSites, recentSiteIds]);
-
-  if (nativeSites.length === 0) return null;
-
-  return (
-    <svg
-      className="pointer-events-none absolute inset-0 z-[9] h-full w-full mix-blend-screen"
-      viewBox="0 0 100 100"
-      preserveAspectRatio="none"
-      aria-hidden="true"
-      data-testid="civilization-artifact-deployments"
-    >
-      {nativeSites.map((site, index) => (
-        <ArtifactMotifDeploymentMark
-          key={site.id}
-          site={site}
-          index={index}
-          scene={scene}
-          recent={recentSiteIds.includes(site.id)}
-          scanActive={scanActive}
-        />
-      ))}
-    </svg>
-  );
-}
 
 function MarketSceneStyles() {
   return (
@@ -2185,19 +1438,14 @@ function MarketSceneStyles() {
           50% { transform: scale(1.04); opacity: 1; }
         }
 
+        @keyframes civArtifactIdentityGlow {
+          0%, 100% { opacity: 0.72; }
+          50% { opacity: 1; }
+        }
+
         @keyframes civMapRing {
           0% { transform: translateX(-50%) scale(0.62); opacity: 0.7; }
           100% { transform: translateX(-50%) scale(1.65); opacity: 0; }
-        }
-
-        @keyframes civPortraitSignal {
-          0%, 100% { opacity: 0.52; }
-          50% { opacity: 0.92; }
-        }
-
-        @keyframes civPortraitLoom {
-          0%, 100% { transform: scale(0.992); opacity: 0.78; }
-          50% { transform: scale(1.012); opacity: 1; }
         }
 
         @keyframes civPortraitSweep {
@@ -2215,9 +1463,11 @@ function MarketSceneStyles() {
           50% { transform: translate3d(1%, -1%, 0) scale(1.025); opacity: 0.72; }
         }
 
-        @keyframes civProjectZonePulse {
-          0%, 100% { opacity: 0.62; }
-          50% { opacity: 0.9; }
+        @keyframes civIdentityMetamorphosis {
+          0% { opacity: 0; transform: scale(0.92); }
+          18% { opacity: 0.58; }
+          62% { opacity: 0.34; transform: scale(1.04); }
+          100% { opacity: 0; transform: scale(1.12); }
         }
 
         @keyframes civArtifactSubstructure {
@@ -2341,17 +1591,13 @@ function MarketSceneStyles() {
         .civ-trace-reveal-vector { animation: civTraceRecordedVector 4.8s ease-out both; stroke-dasharray: 11 9; }
         .civ-miniature-trace-card { animation: civMiniatureTraceCard 5.4s ease-out both; }
         .civ-map-pin-core { animation: civMapPinBreathe 3.8s ease-in-out infinite; }
-        .civ-portrait-signal { animation: civPortraitSignal 6.5s ease-in-out infinite; }
-        .civ-portrait-loom { animation: civPortraitLoom 11s ease-in-out infinite; transform-box: fill-box; transform-origin: center; }
+        .civ-artifact-identity-glow { animation: civArtifactIdentityGlow 2.8s ease-in-out infinite; }
         .civ-portrait-flow { stroke-dasharray: 12 14; animation: civPortraitSweep 11s linear infinite; }
         .civ-portrait-haze { animation: civPortraitHaze 14s ease-in-out infinite; will-change: transform, opacity; }
         .civ-portrait-mark { filter: drop-shadow(0 0 10px currentColor); }
         .civ-environment-signature { filter: drop-shadow(0 0 14px currentColor); }
-        .civ-dominant-blueprint { filter: drop-shadow(0 0 20px currentColor); }
         .civ-signature-atmosphere { animation: civIdentityWeather 17s ease-in-out infinite; will-change: transform, opacity; }
         .civ-identity-weather { animation: civIdentityWeather 16s ease-in-out infinite; will-change: transform, opacity; }
-        .civ-project-wash { animation: civProjectZonePulse 12s ease-in-out infinite; will-change: opacity; }
-        .civ-project-zone { animation: civProjectZonePulse 9s ease-in-out infinite; }
         .civ-artifact-substructure { animation: civArtifactSubstructure 10s ease-in-out infinite; filter: drop-shadow(0 0 12px currentColor); transform-box: fill-box; transform-origin: center; }
         .civ-artifact-substructure-flow { stroke-dasharray: 8 12; animation: civArtifactSubstructureFlow 12s linear infinite; }
         .civ-artifact-deployment { animation: civArtifactDeploymentSettle 13s ease-in-out infinite; filter: drop-shadow(0 0 18px currentColor); transform-box: fill-box; transform-origin: center; }
@@ -2378,17 +1624,22 @@ function MarketSceneStyles() {
         .civ-command-frame-flow { stroke-dasharray: 12 16; animation: civCommandFrameFlow 18s linear infinite; }
         .civ-command-frame-beacon { animation: civCommandFrameBeacon 5.8s ease-in-out infinite; transform-box: fill-box; transform-origin: center; }
         .civ-map-pin::before {
-          animation: civMapRing 2.8s ease-out infinite;
           border: 1px solid var(--pin-color);
           border-radius: 9999px;
           bottom: -0.08rem;
           content: '';
           height: 1rem;
           left: 50%;
-          opacity: 0.42;
+          opacity: 0;
+          pointer-events: none;
           position: absolute;
-          transform: translateX(-50%);
+          transform: translateX(-50%) scale(0.72);
           width: 2.6rem;
+        }
+        .civ-map-pin[data-pin-state="selected"]::before,
+        .civ-map-pin[data-pin-state="focused"]::before {
+          animation: civMapRing 2.8s ease-out infinite;
+          opacity: 0.42;
         }
 
         [data-civilization-motion="paused"] .civ-market-pulse,
@@ -2402,14 +1653,11 @@ function MarketSceneStyles() {
         [data-civilization-motion="paused"] .civ-trace-reveal-vector,
         [data-civilization-motion="paused"] .civ-miniature-trace-card,
         [data-civilization-motion="paused"] .civ-map-pin-core,
-        [data-civilization-motion="paused"] .civ-portrait-signal,
-        [data-civilization-motion="paused"] .civ-portrait-loom,
+        [data-civilization-motion="paused"] .civ-artifact-identity-glow,
         [data-civilization-motion="paused"] .civ-portrait-flow,
         [data-civilization-motion="paused"] .civ-portrait-haze,
         [data-civilization-motion="paused"] .civ-signature-atmosphere,
         [data-civilization-motion="paused"] .civ-identity-weather,
-        [data-civilization-motion="paused"] .civ-project-wash,
-        [data-civilization-motion="paused"] .civ-project-zone,
         [data-civilization-motion="paused"] .civ-artifact-substructure,
         [data-civilization-motion="paused"] .civ-artifact-substructure-flow,
         [data-civilization-motion="paused"] .civ-artifact-deployment,
@@ -2441,6 +1689,98 @@ function MarketSceneStyles() {
           animation: none !important;
         }
 
+        .civilization-scene-panel {
+          container-type: inline-size;
+        }
+
+        @container (min-width: 760px) {
+          .civilization-scene-header {
+            align-items: center;
+            flex-direction: row;
+            gap: 0.75rem;
+            justify-content: space-between;
+          }
+
+          .civilization-scene-scale-path {
+            justify-content: flex-end;
+          }
+        }
+
+        .civilization-scene-canvas {
+          contain: layout paint style;
+          isolation: isolate;
+        }
+
+        @media (max-width: 639px) {
+          [data-civilization-performance="mobile"] .civ-market-pulse,
+          [data-civilization-performance="mobile"] .civ-market-drift,
+          [data-civilization-performance="mobile"] .civ-market-breathe,
+          [data-civilization-performance="mobile"] .civ-market-flow,
+          [data-civilization-performance="mobile"] .civ-map-pin-core,
+          [data-civilization-performance="mobile"] .civ-artifact-identity-glow,
+          [data-civilization-performance="mobile"] .civ-portrait-flow,
+          [data-civilization-performance="mobile"] .civ-portrait-haze,
+          [data-civilization-performance="mobile"] .civ-signature-atmosphere,
+          [data-civilization-performance="mobile"] .civ-identity-weather,
+          [data-civilization-performance="mobile"] .civ-artifact-substructure,
+          [data-civilization-performance="mobile"] .civ-artifact-substructure-flow,
+          [data-civilization-performance="mobile"] .civ-artifact-deployment,
+          [data-civilization-performance="mobile"] .civ-artifact-deployment-flow,
+          [data-civilization-performance="mobile"] .civ-focused-projection,
+          [data-civilization-performance="mobile"] .civ-focused-projection-local-site,
+          [data-civilization-performance="mobile"] .civ-integrated-consequence,
+          [data-civilization-performance="mobile"] .civ-evolved-plate-flow,
+          [data-civilization-performance="mobile"] .civ-evolved-plate-weather,
+          [data-civilization-performance="mobile"] .civ-archetype-composition,
+          [data-civilization-performance="mobile"] .civ-archetype-flow,
+          [data-civilization-performance="mobile"] .civ-plate-dialect-flow,
+          [data-civilization-performance="mobile"] .civ-dialect-field,
+          [data-civilization-performance="mobile"] .civ-dialect-flow,
+          [data-civilization-performance="mobile"] .civ-native-work,
+          [data-civilization-performance="mobile"] .civ-native-work-flow,
+          [data-civilization-performance="mobile"] .civ-materialized-site,
+          [data-civilization-performance="mobile"] .civ-depth-pulse,
+          [data-civilization-performance="mobile"] .civ-depth-flow,
+          [data-civilization-performance="mobile"] .civ-scale-theater-mark,
+          [data-civilization-performance="mobile"] .civ-scale-theater-flow,
+          [data-civilization-performance="mobile"] .civ-command-frame-flow,
+          [data-civilization-performance="mobile"] .civ-command-frame-beacon,
+          [data-testid="civilization-miniature-scene"] .civ-market-pulse,
+          [data-testid="civilization-miniature-scene"] .civ-market-drift,
+          [data-testid="civilization-miniature-scene"] .civ-market-breathe,
+          [data-testid="civilization-miniature-scene"] .civ-market-flow,
+          [data-testid="civilization-miniature-scene"] .civ-portrait-haze,
+          [data-testid="civilization-miniature-scene"] .civ-signature-atmosphere,
+          [data-testid="civilization-miniature-scene"] .civ-identity-weather,
+          [data-testid="civilization-miniature-scene"] .civ-archetype-composition,
+          [data-testid="civilization-miniature-scene"] .civ-archetype-flow {
+            animation: none !important;
+            will-change: auto !important;
+          }
+
+          [data-civilization-performance="mobile"] .civ-map-pin::before {
+            animation: none !important;
+          }
+
+          [data-civilization-performance="mobile"] .civ-portrait-mark,
+          [data-civilization-performance="mobile"] .civ-environment-signature,
+          [data-civilization-performance="mobile"] .civ-artifact-substructure,
+          [data-civilization-performance="mobile"] .civ-artifact-deployment,
+          [data-civilization-performance="mobile"] .civ-focused-projection,
+          [data-civilization-performance="mobile"] .civ-integrated-consequence,
+          [data-civilization-performance="mobile"] .civ-archetype-composition,
+          [data-civilization-performance="mobile"] .civ-native-work,
+          [data-civilization-performance="mobile"] .civ-materialized-site,
+          [data-civilization-performance="mobile"] .civ-depth-composition,
+          [data-civilization-performance="mobile"] .civ-scale-theater-mark {
+            filter: none !important;
+          }
+
+          .civilization-scene-header {
+            backdrop-filter: none !important;
+          }
+        }
+
         @media (prefers-reduced-motion: reduce) {
           .civ-market-pulse,
           .civ-market-drift,
@@ -2453,16 +1793,12 @@ function MarketSceneStyles() {
           .civ-trace-reveal-vector,
           .civ-miniature-trace-card,
           .civ-map-pin-core,
-          .civ-portrait-signal,
-          .civ-portrait-loom,
+          .civ-artifact-identity-glow,
           .civ-portrait-flow,
           .civ-portrait-haze,
-          .civ-dominant-blueprint,
           .civ-environment-signature,
           .civ-signature-atmosphere,
           .civ-identity-weather,
-          .civ-project-wash,
-          .civ-project-zone,
           .civ-artifact-substructure,
           .civ-artifact-substructure-flow,
           .civ-artifact-deployment,
@@ -2684,7 +2020,7 @@ function GalaxyLayer({ signals }: { signals: CivilizationSceneSignals }) {
   );
 }
 
-function MarketCivilizationScene({
+export function MarketCivilizationScene({
   scene,
   signals,
 }: {
@@ -2772,35 +2108,65 @@ function MarketCivilizationScene({
 
 function CinematicCivilizationPlate({
   scene,
-  palette,
-  identity,
   signals,
   archetype,
+  dyad,
+  environmentIdentity,
+  evolutionStage = 0,
+  civilizationMaturity = 'planetary',
+  settlementPhase = 'wilderness',
+  cityDevelopmentStage = 0,
   scanActive = false,
+  compact = false,
 }: {
   scene: MarketSceneKind;
-  palette: AffinityPalette;
-  identity?: CivilizationSceneIdentity;
   signals?: CivilizationSceneSignals;
   archetype?: CivilizationArchetypeId | null;
+  dyad?: CivilizationDyadId | null;
+  environmentIdentity?: CivilizationPublicState['environmentIdentity'];
+  evolutionStage?: CivilizationComplexityStage;
+  civilizationMaturity?: CivilizationVisualState['historicalMaturity'];
+  settlementPhase?: CivilizationSettlementPhase;
+  cityDevelopmentStage?: CivilizationCityDevelopmentStage;
   scanActive?: boolean;
+  compact?: boolean;
 }) {
-  const plate = getCivilizationPlateArtSlot(scene, scanActive, archetype);
-  const scale = scanActive ? plate.scanScale : plate.cinematicScale;
-  const plateFocus = getPlateStateFocus(scene, signals);
-  const primaryTone = identity?.primaryAffinity ? AFFINITY_META[identity.primaryAffinity].hex : palette.primary;
-  const secondaryTone = identity?.secondaryAffinity ? AFFINITY_META[identity.secondaryAffinity].hex : palette.secondary;
-  const living = Boolean(signals?.living);
-  const foundry = Boolean(signals?.foundry);
-  const hazard = Boolean(signals?.hazard);
-  const luminary = Boolean(signals?.luminary);
-  const route = Boolean(signals?.route);
-  const redaction = Boolean(signals?.redaction);
-  const gradeSaturation = 1.02 + (living ? 0.08 : 0) + (foundry ? 0.05 : 0) + (luminary ? 0.05 : 0);
-  const gradeContrast = 1.01 + (hazard ? 0.04 : 0) + (redaction ? 0.03 : 0);
-  const gradeBrightness = scene === 'galaxy'
-    ? (scanActive ? 1.04 : 1.06) + (luminary ? 0.03 : 0)
-    : (scanActive ? 1.04 : 1.06) + (foundry ? 0.03 : 0) + (living ? 0.015 : 0) - (hazard ? 0.02 : 0);
+  const plate = environmentIdentity
+    ? getCivilizationEnvironmentPlateArtSlot(
+        scene,
+        scanActive,
+        environmentIdentity,
+        evolutionStage,
+        civilizationMaturity,
+        settlementPhase,
+        dyad ?? null,
+        cityDevelopmentStage,
+      )
+    : getCivilizationPlateArtSlot(
+        scene,
+        scanActive,
+        archetype,
+        dyad,
+        evolutionStage,
+        civilizationMaturity,
+      );
+  const environmentDressing = environmentIdentity && scene === 'surface'
+    ? getCivilizationEnvironmentDressing(environmentIdentity.variantId)
+    : null;
+  const plateFilter = environmentDressing
+    ? `${plate.contrast} ${environmentDressing.artFilter}`
+    : plate.contrast;
+  // Scan annotates the portrait; it never reframes the physical world beneath
+  // its sockets, manifestations, or Blueprint devices.
+  const scale = plate.cinematicScale;
+  const plateFocus = environmentIdentity && scene === 'surface'
+    ? { key: 'authored-masterplan', x: 0, y: 0 }
+    : getPlateStateFocus(scene, signals);
+  const atlasBackgroundPosition = plate.atlasCell
+    ? `${plate.atlasCell.columns <= 1 ? 50 : (plate.atlasCell.column / (plate.atlasCell.columns - 1)) * 100}% ${
+        plate.atlasCell.rows <= 1 ? 50 : 15 + (plate.atlasCell.row / (plate.atlasCell.rows - 1)) * 70
+      }%`
+    : null;
   const verticalVeil = scanActive
     ? scene === 'galaxy'
       ? 'linear-gradient(180deg, rgba(2,4,10,0.08), rgba(2,4,10,0.01) 42%, rgba(2,4,10,0.3))'
@@ -2815,62 +2181,105 @@ function CinematicCivilizationPlate({
     : scene === 'galaxy'
       ? 'radial-gradient(circle at 50% 50%, transparent 58%, rgba(0,0,0,0.08) 100%)'
       : 'radial-gradient(circle at 50% 50%, transparent 46%, rgba(0,0,0,0.15) 100%)';
-  const plateDialect = [
-    living
-      ? `radial-gradient(ellipse at ${scene === 'surface' ? '30% 74%' : '34% 56%'}, ${AFFINITY_META.verdance.hex}${scanActive ? '2E' : '22'} 0%, transparent ${scene === 'galaxy' ? '40%' : '34%'})`
-      : null,
-    foundry
-      ? `radial-gradient(ellipse at ${scene === 'surface' ? '68% 73%' : '58% 62%'}, ${AFFINITY_META.flare.hex}${scanActive ? '2A' : '1D'} 0%, transparent 36%)`
-      : null,
-    route
-      ? `linear-gradient(${scene === 'surface' ? '116deg' : '104deg'}, transparent 18%, ${AFFINITY_META.continuum.hex}${scanActive ? '18' : '10'} 44%, ${primaryTone}${scanActive ? '16' : '0D'} 64%, transparent 88%)`
-      : null,
-    hazard
-      ? `radial-gradient(ellipse at ${scene === 'galaxy' ? '34% 72%' : '72% 58%'}, ${AFFINITY_META.abyss.hex}${scanActive ? '22' : '18'} 0%, rgba(255,105,114,0.08) 28%, transparent 50%)`
-      : null,
-    luminary
-      ? `radial-gradient(ellipse at ${scene === 'galaxy' ? '70% 32%' : '58% 34%'}, ${secondaryTone}${scanActive ? '26' : '18'} 0%, transparent 38%)`
-      : null,
-    redaction
-      ? 'linear-gradient(90deg, transparent 0%, rgba(255,105,114,0.06) 22%, rgba(2,4,10,0.26) 52%, rgba(255,105,114,0.05) 78%, transparent 100%)'
-      : null,
-  ].filter(Boolean).join(',');
+  const artSubstrate = cityDevelopmentStage > 0 || settlementPhase !== 'wilderness'
+    ? 'inhabited-growth'
+    : 'natural-world';
   return (
     <>
-      <img
-        src={plate.src}
-        alt=""
-        aria-hidden="true"
-        data-testid="civilization-plate-art"
-        data-art-slot={plate.id}
-        data-art-resolution={plate.resolution}
-        data-plate-focus={plateFocus.key}
-        className="absolute inset-0 h-full w-full object-cover transition-[filter,transform] duration-500"
-        style={{
-          filter: `${plate.contrast} saturate(${gradeSaturation.toFixed(2)}) contrast(${gradeContrast.toFixed(2)}) brightness(${gradeBrightness.toFixed(2)})`,
-          objectPosition: plate.position,
-          transform: `translate3d(${plateFocus.x}%, ${plateFocus.y}%, 0) scale(${scale})`,
-          transformOrigin: plate.transformOrigin,
-        }}
-        draggable={false}
-      />
-      <div
-        className="pointer-events-none absolute inset-0 mix-blend-soft-light"
-        data-testid="civilization-plate-identity-grade"
-        style={{
-          background: plateDialect || `radial-gradient(circle at 50% 46%, ${primaryTone}12, transparent 48%)`,
-          opacity: scanActive ? 0.32 : 0.74,
-        }}
-        aria-hidden="true"
-      />
+      {plate.atlasCell ? (
+        <div
+          className="absolute inset-0 block h-full w-full overflow-hidden"
+          data-testid="civilization-plate-picture"
+        >
+          <div
+            aria-hidden="true"
+            data-testid="civilization-plate-art"
+            data-art-slot={plate.id}
+            data-art-resolution={plate.resolution}
+            data-art-substrate={artSubstrate}
+            data-atlas-cell={`${plate.atlasCell.column},${plate.atlasCell.row}`}
+            data-plate-focus={plateFocus.key}
+            data-dyad={dyad ?? undefined}
+            data-environment-variant={environmentIdentity?.variantId}
+            data-construction-plan={plate.constructionPlanId}
+            data-evolution-stage={plate.evolutionStage}
+            data-civilization-maturity={plate.civilizationMaturity}
+            data-scan-geometry="invariant"
+            className="h-full w-full bg-no-repeat transition-[filter,transform] duration-500"
+            style={{
+              backgroundImage: `url(${plate.src})`,
+              backgroundPosition: atlasBackgroundPosition ?? '50% 50%',
+              backgroundSize: `${plate.atlasCell.columns * 100}% auto`,
+              filter: plateFilter,
+              transform: `translate3d(${plateFocus.x}%, ${plateFocus.y}%, 0) scale(${scale})`,
+              transformOrigin: plate.transformOrigin,
+            }}
+          />
+        </div>
+      ) : (
+        <picture
+          className="absolute inset-0 block h-full w-full"
+          data-testid="civilization-plate-picture"
+          data-plate-layout={compact ? 'portrait' : 'landscape'}
+        >
+          <img
+            src={compact && plate.mobileSrc ? plate.mobileSrc : plate.src}
+            alt=""
+            aria-hidden="true"
+            data-testid="civilization-plate-art"
+            data-art-slot={plate.id}
+            data-art-resolution={plate.resolution}
+            data-art-substrate={artSubstrate}
+            data-plate-focus={plateFocus.key}
+            data-dyad={dyad ?? undefined}
+            data-environment-variant={environmentIdentity?.variantId}
+            data-construction-plan={plate.constructionPlanId}
+            data-evolution-stage={plate.evolutionStage}
+            data-civilization-maturity={plate.civilizationMaturity}
+            data-scan-geometry="invariant"
+            className="h-full w-full object-cover transition-[filter,transform] duration-500"
+            style={{
+              filter: plateFilter,
+              objectPosition: plate.position,
+              transform: `translate3d(${plateFocus.x}%, ${plateFocus.y}%, 0) scale(${scale})`,
+              transformOrigin: plate.transformOrigin,
+            }}
+            decoding="async"
+            fetchPriority="high"
+            draggable={false}
+          />
+        </picture>
+      )}
+      {environmentDressing && (
+        <div
+          className="pointer-events-none absolute inset-0"
+          data-testid="civilization-environment-dressing"
+          data-environment-dressing={environmentDressing.id}
+          data-construction-plan={plate.constructionPlanId}
+          style={{
+            background: environmentDressing.surfaceAtmosphere,
+            mixBlendMode: 'color',
+          }}
+          aria-hidden="true"
+        />
+      )}
+      {scanActive && plate.evolutionStage !== undefined && (
+        <div
+          className="pointer-events-none absolute inset-0"
+          data-testid="civilization-plate-evolution-veil"
+          data-evolution-stage={plate.evolutionStage}
+          data-evolution-label={plate.evolutionLabel}
+          data-civilization-maturity={plate.civilizationMaturity}
+          style={{
+            background: 'rgba(2,5,11,0.1)',
+          }}
+          aria-hidden="true"
+        />
+      )}
       <div
         className="pointer-events-none absolute inset-0"
         style={{
-          background: [
-            verticalVeil,
-            edgeVeil,
-            `radial-gradient(circle at 50% 46%, ${palette.primary}18, transparent 48%)`,
-          ].join(','),
+          background: scanActive ? `${verticalVeil},${edgeVeil}` : edgeVeil,
         }}
         aria-hidden="true"
       />
@@ -2913,5235 +2322,30 @@ function getPlateStateFocus(
   return { key: 'galactic-core', x: 0, y: 0 };
 }
 
-function formatSceneStateFlags(signals: CivilizationSceneSignals): string {
-  return [
-    signals.living ? 'living' : null,
-    signals.foundry ? 'foundry' : null,
-    signals.hazard ? 'hazard' : null,
-    signals.luminary ? 'luminary' : null,
-    signals.route ? 'route' : null,
-    signals.redaction ? 'redaction' : null,
-  ].filter(Boolean).join(' ') || 'quiet';
-}
 
-function CivilizationEvolvedPlateStateLayer({
-  scene,
-  palette,
-  identity,
-  signals,
-  scanActive,
-}: {
-  scene: MarketSceneKind;
-  palette: AffinityPalette;
-  identity: CivilizationSceneIdentity;
-  signals: CivilizationSceneSignals;
-  scanActive: boolean;
-}) {
-  if (
-    !signals.living &&
-    !signals.foundry &&
-    !signals.hazard &&
-    !signals.luminary &&
-    !signals.route &&
-    !signals.redaction
-  ) {
-    return null;
-  }
 
-  const primaryTone = identity.primaryAffinity ? AFFINITY_META[identity.primaryAffinity].hex : palette.primary;
-  const secondaryTone = identity.secondaryAffinity ? AFFINITY_META[identity.secondaryAffinity].hex : palette.secondary;
-  const opacity = scanActive ? 0.38 : 0.58;
-  const surfaceBackground = [
-    signals.living
-      ? `radial-gradient(ellipse at 34% 76%, ${AFFINITY_META.verdance.hex}24 0%, ${AFFINITY_META.verdance.hex}10 28%, transparent 54%)`
-      : null,
-    signals.foundry
-      ? `radial-gradient(ellipse at 61% 72%, ${AFFINITY_META.flare.hex}20 0%, rgba(223,184,107,0.11) 32%, transparent 58%)`
-      : null,
-    signals.hazard
-      ? `radial-gradient(ellipse at 79% 63%, rgba(255,105,114,0.18) 0%, rgba(21,6,16,0.34) 30%, transparent 58%)`
-      : null,
-    signals.luminary
-      ? `linear-gradient(118deg, transparent 8%, ${secondaryTone}16 30%, ${primaryTone}10 58%, transparent 88%)`
-      : null,
-  ].filter(Boolean).join(',');
-  const orbitBackground = [
-    signals.living
-      ? `radial-gradient(ellipse at 39% 66%, ${AFFINITY_META.verdance.hex}22 0%, transparent 44%)`
-      : null,
-    signals.route || signals.foundry
-      ? `linear-gradient(106deg, transparent 18%, ${AFFINITY_META.continuum.hex}18 42%, ${AFFINITY_META.flare.hex}12 58%, transparent 84%)`
-      : null,
-    signals.hazard
-      ? 'radial-gradient(ellipse at 72% 60%, rgba(255,105,114,0.18) 0%, rgba(2,4,10,0.28) 35%, transparent 60%)'
-      : null,
-  ].filter(Boolean).join(',');
-  const stellarBackground = [
-    signals.foundry
-      ? 'radial-gradient(circle at 44% 42%, rgba(255,196,103,0.2) 0%, transparent 32%)'
-      : null,
-    signals.living
-      ? `radial-gradient(ellipse at 35% 66%, ${AFFINITY_META.verdance.hex}18 0%, transparent 42%)`
-      : null,
-    signals.hazard
-      ? 'radial-gradient(ellipse at 76% 70%, rgba(255,105,114,0.22) 0%, rgba(2,4,10,0.36) 38%, transparent 64%)'
-      : null,
-    signals.luminary
-      ? `linear-gradient(132deg, transparent 10%, ${secondaryTone}18 33%, transparent 72%)`
-      : null,
-  ].filter(Boolean).join(',');
-  const galaxyBackground = [
-    signals.route || signals.living
-      ? `radial-gradient(ellipse at 48% 50%, ${primaryTone}14 0%, transparent 52%)`
-      : null,
-    signals.hazard || signals.redaction
-      ? 'radial-gradient(ellipse at 67% 55%, rgba(255,105,114,0.2) 0%, rgba(0,0,0,0.34) 36%, transparent 62%)'
-      : null,
-    signals.luminary
-      ? `linear-gradient(112deg, transparent 5%, ${secondaryTone}14 34%, transparent 72%)`
-      : null,
-  ].filter(Boolean).join(',');
-  const background = scene === 'surface'
-    ? surfaceBackground
-    : scene === 'orbit'
-      ? orbitBackground
-      : scene === 'stellar'
-        ? stellarBackground
-        : galaxyBackground;
 
-  return (
-    <div
-      className="pointer-events-none absolute inset-0 z-[3]"
-      aria-hidden="true"
-      data-testid="civilization-evolved-plate-state"
-      data-scene={scene}
-      data-state-flags={formatSceneStateFlags(signals)}
-    >
-      <div
-        className="absolute inset-0 mix-blend-soft-light"
-        style={{
-          background: background || `radial-gradient(circle at 50% 50%, ${primaryTone}12, transparent 52%)`,
-          opacity,
-        }}
-      />
-      <svg
-        className="absolute inset-0 h-full w-full mix-blend-screen"
-        viewBox="0 0 100 100"
-        preserveAspectRatio="none"
-      >
-        {scene === 'surface' && (
-          <g data-testid="civilization-evolved-surface-state" opacity={scanActive ? 0.38 : 0.58}>
-            {signals.living && (
-              <g>
-                <path
-                  d="M0 84 C16 76, 28 80, 42 72 C57 63, 72 69, 100 56 L100 100 L0 100 Z"
-                  fill={`${AFFINITY_META.verdance.hex}12`}
-                />
-                <path
-                  d="M8 87 C23 76, 40 82, 54 70 C66 60, 82 61, 96 50"
-                  fill="none"
-                  stroke={`${AFFINITY_META.verdance.hex}80`}
-                  strokeLinecap="round"
-                  strokeWidth="0.72"
-                  className="civ-evolved-plate-flow"
-                />
-              </g>
-            )}
-            {(signals.foundry || signals.route) && (
-              <g>
-                <path
-                  d="M58 92 C60 78, 64 66, 70 50 C73 42, 76 36, 80 29"
-                  fill="none"
-                  stroke={`${signals.foundry ? AFFINITY_META.flare.hex : AFFINITY_META.continuum.hex}42`}
-                  strokeLinecap="round"
-                  strokeWidth="0.54"
-                />
-                <path
-                  d="M50 90 C60 78, 69 66, 84 55"
-                  fill="none"
-                  stroke="rgba(255,255,255,0.12)"
-                  strokeLinecap="round"
-                  strokeWidth="0.24"
-                />
-              </g>
-            )}
-            {signals.hazard && (
-              <g>
-                <ellipse
-                  cx="76"
-                  cy="68"
-                  rx="24"
-                  ry="9"
-                  fill="rgba(255,105,114,0.12)"
-                  stroke="rgba(255,105,114,0.42)"
-                  strokeDasharray="4 2.5"
-                  strokeWidth="0.44"
-                  transform="rotate(-10 76 68)"
-                />
-                <path d="M58 70 H94" stroke="rgba(255,255,255,0.16)" strokeLinecap="round" strokeWidth="0.24" />
-              </g>
-            )}
-            {signals.luminary && (
-              <path
-                d="M-4 28 C18 17, 35 23, 54 17 C72 10, 86 20, 104 12"
-                fill="none"
-                stroke={`${secondaryTone}66`}
-                strokeLinecap="round"
-                strokeWidth="1.2"
-                className="civ-evolved-plate-weather"
-              />
-            )}
-          </g>
-        )}
-        {scene === 'orbit' && (
-          <g data-testid="civilization-evolved-orbit-state" opacity={scanActive ? 0.34 : 0.52}>
-            {signals.living && (
-              <path
-                d="M-6 72 C16 58, 36 62, 55 69 C72 76, 88 72, 106 60"
-                fill="none"
-                stroke={`${AFFINITY_META.verdance.hex}78`}
-                strokeLinecap="round"
-                strokeWidth="1.25"
-                className="civ-evolved-plate-flow"
-              />
-            )}
-            {(signals.route || signals.foundry) && (
-              <>
-                <ellipse cx="56" cy="56" rx="42" ry="11" fill="none" stroke={`${AFFINITY_META.continuum.hex}66`} strokeWidth="0.58" transform="rotate(-11 56 56)" />
-                <path d="M43 78 C48 61, 56 45, 70 29" fill="none" stroke={`${AFFINITY_META.flare.hex}70`} strokeLinecap="round" strokeWidth="0.62" />
-              </>
-            )}
-            {signals.hazard && (
-              <ellipse cx="66" cy="62" rx="31" ry="8" fill="rgba(255,105,114,0.1)" stroke="rgba(255,105,114,0.44)" strokeDasharray="3.5 2.4" strokeWidth="0.42" transform="rotate(-9 66 62)" />
-            )}
-          </g>
-        )}
-        {scene === 'stellar' && (
-          <g data-testid="civilization-evolved-stellar-state" opacity={scanActive ? 0.3 : 0.38}>
-            {(signals.route || signals.foundry) && (
-              <>
-                <ellipse cx="55" cy="50" rx="44" ry="15" fill="none" stroke={`${AFFINITY_META.continuum.hex}66`} strokeWidth="0.6" transform="rotate(-8 55 50)" className="civ-evolved-plate-flow" />
-                <path d="M31 61 C45 50, 61 62, 82 45" fill="none" stroke={`${AFFINITY_META.flare.hex}5C`} strokeLinecap="round" strokeWidth="0.55" />
-              </>
-            )}
-            {signals.living && (
-              <path d="M7 72 C28 54, 42 66, 61 54 C76 45, 88 49, 101 39" fill="none" stroke={`${AFFINITY_META.verdance.hex}72`} strokeLinecap="round" strokeWidth="0.86" />
-            )}
-            {signals.hazard && (
-              <g>
-                <circle cx="80" cy="70" r="13" fill="rgba(255,105,114,0.1)" stroke="rgba(255,105,114,0.44)" strokeDasharray="4 2.5" strokeWidth="0.44" />
-                <circle cx="80" cy="70" r="6" fill="rgba(0,0,0,0.28)" stroke="rgba(255,255,255,0.14)" strokeWidth="0.22" />
-              </g>
-            )}
-            {signals.luminary && (
-              <path d="M18 37 C35 25, 52 32, 70 24 C83 19, 94 24, 103 31" fill="none" stroke={`${secondaryTone}68`} strokeLinecap="round" strokeWidth="0.92" className="civ-evolved-plate-weather" />
-            )}
-          </g>
-        )}
-        {scene === 'galaxy' && (
-          <g data-testid="civilization-evolved-galaxy-state" opacity={scanActive ? 0.28 : 0.34}>
-            {(signals.route || signals.living) && (
-              <>
-                <path d="M8 64 C24 46, 43 48, 58 52 C74 57, 86 49, 98 31" fill="none" stroke={`${primaryTone}70`} strokeLinecap="round" strokeWidth="0.82" className="civ-evolved-plate-flow" />
-                <path d="M9 42 C26 55, 44 57, 60 45 C74 36, 86 42, 99 58" fill="none" stroke={`${AFFINITY_META.verdance.hex}48`} strokeLinecap="round" strokeWidth="0.5" />
-              </>
-            )}
-            {(signals.hazard || signals.redaction) && (
-              <path
-                d="M61 40 C72 31, 85 34, 96 45 C86 52, 76 62, 66 78 C58 66, 55 52, 61 40 Z"
-                fill="rgba(255,105,114,0.11)"
-                stroke="rgba(255,105,114,0.38)"
-                strokeWidth="0.38"
-                className="civ-evolved-plate-weather"
-              />
-            )}
-            {signals.luminary && (
-              <path d="M14 28 C32 20, 47 25, 63 18 C79 11, 90 18, 101 26" fill="none" stroke={`${secondaryTone}64`} strokeLinecap="round" strokeWidth="0.76" />
-            )}
-          </g>
-        )}
-      </svg>
-    </div>
-  );
-}
 
-function CivilizationArchetypeAtmosphereLayer({
-  profile,
-  scene,
-  identity,
-  signals,
-  scanActive,
-}: {
-  profile: CivilizationProfile;
-  scene: MarketSceneKind;
-  identity: CivilizationSceneIdentity;
-  signals: CivilizationSceneSignals;
-  scanActive: boolean;
-}) {
-  const archetype = getCivilizationSceneArchetype(profile, identity, signals);
-  if (!archetype) return null;
 
-  const visual = CIVILIZATION_ARCHETYPE_VISUALS[archetype];
-  const primary = identity.primaryAffinity ? AFFINITY_META[identity.primaryAffinity].hex : AFFINITY_META[visual.affinity].hex;
-  const secondary = identity.secondaryAffinity ? AFFINITY_META[identity.secondaryAffinity].hex : '#dfb86b';
-  const tone = getCivilizationArchetypeTone(archetype, primary);
-  const opacity = scanActive
-    ? scene === 'surface' ? 0.5 : 0.38
-    : scene === 'surface' ? 0.42 : 0.32;
-  const surface = scene === 'surface';
-  const wide = scene === 'galaxy' ? 1.28 : scene === 'stellar' ? 1.12 : 1;
-  const background = getArchetypeAtmosphereBackground(archetype, scene, tone, primary, secondary, scanActive);
 
-  return (
-    <div
-      className="pointer-events-none absolute inset-0 z-[3]"
-      aria-hidden="true"
-      data-testid="civilization-archetype-atmosphere"
-      data-archetype={archetype}
-      data-composition-key={visual.compositionKey}
-      data-scene={scene}
-      style={{ opacity }}
-    >
-      <div
-        className="absolute inset-0 mix-blend-screen"
-        style={{ background }}
-      />
-      <svg
-        className="absolute inset-0 h-full w-full mix-blend-screen"
-        viewBox="0 0 100 100"
-        preserveAspectRatio="none"
-      >
-        {archetype === 'living_arcology' && (
-          <g opacity={surface ? 0.72 : 0.58}>
-            <path d={`M-4 ${surface ? 83 : 71} C14 ${surface ? 72 : 61}, 30 ${surface ? 78 : 66}, 45 ${surface ? 65 : 58} C59 ${surface ? 53 : 49}, 73 ${surface ? 58 : 52}, 104 ${surface ? 39 : 35}`} fill="none" stroke={`${tone}7A`} strokeLinecap="round" strokeWidth={0.9 * wide} />
-            <path d={`M8 ${surface ? 90 : 76} C25 ${surface ? 80 : 66}, 39 ${surface ? 83 : 70}, 57 ${surface ? 72 : 62} C72 ${surface ? 63 : 55}, 84 ${surface ? 66 : 57}, 101 ${surface ? 52 : 44}`} fill="none" stroke="rgba(229,255,238,0.22)" strokeLinecap="round" strokeWidth={0.34 * wide} />
-          </g>
-        )}
-        {archetype === 'forge_spine' && (
-          <g opacity={surface ? 0.76 : 0.58}>
-            <path d={`M${surface ? 58 : 48} 98 C${surface ? 61 : 53} 76, ${surface ? 66 : 61} 57, ${surface ? 75 : 73} 27`} fill="none" stroke={`${tone}78`} strokeLinecap="round" strokeWidth={1.1 * wide} />
-            <path d={`M${surface ? 46 : 35} 94 C${surface ? 58 : 52} 74, ${surface ? 74 : 74} 64, ${surface ? 96 : 94} 48`} fill="none" stroke="rgba(255,244,194,0.24)" strokeLinecap="round" strokeWidth={0.38 * wide} />
-            <path d={`M${surface ? 64 : 58} 86 L${surface ? 72 : 66} 57 L${surface ? 82 : 77} 86 Z`} fill={`${tone}10`} stroke={`${tone}62`} strokeLinejoin="round" strokeWidth="0.32" />
-          </g>
-        )}
-        {archetype === 'containment_sentinel' && (
-          <g opacity={surface ? 0.72 : 0.56}>
-            <ellipse cx={surface ? 75 : 67} cy={surface ? 68 : 58} rx={(surface ? 30 : 25) * wide} ry={(surface ? 10 : 8) * wide} fill="rgba(255,105,114,0.08)" stroke={`${tone}70`} strokeDasharray="4.5 2.6" strokeWidth="0.42" transform={`rotate(-10 ${surface ? 75 : 67} ${surface ? 68 : 58})`} />
-            <path d={`M${surface ? 52 : 45} ${surface ? 68 : 59} H${surface ? 98 : 91}`} stroke="rgba(255,255,255,0.18)" strokeLinecap="round" strokeWidth="0.28" />
-          </g>
-        )}
-        {archetype === 'route_network' && (
-          <g opacity={surface ? 0.72 : 0.62}>
-            <path className="civ-archetype-flow" d={`M-5 ${surface ? 76 : 61} C18 ${surface ? 55 : 44}, 36 ${surface ? 78 : 64}, 58 ${surface ? 61 : 52} C75 ${surface ? 48 : 41}, 87 ${surface ? 58 : 47}, 106 ${surface ? 42 : 34}`} fill="none" stroke={`${tone}80`} strokeLinecap="round" strokeWidth={0.8 * wide} />
-            <path d={`M4 ${surface ? 88 : 72} C25 ${surface ? 77 : 63}, 42 ${surface ? 88 : 72}, 61 ${surface ? 76 : 63} C78 ${surface ? 64 : 52}, 91 ${surface ? 72 : 58}, 104 ${surface ? 62 : 48}`} fill="none" stroke="rgba(255,255,255,0.18)" strokeLinecap="round" strokeWidth="0.3" />
-          </g>
-        )}
-        {archetype === 'accord_beacon' && (
-          <g opacity={surface ? 0.66 : 0.54}>
-            <path d={`M10 ${surface ? 38 : 30} C28 ${surface ? 24 : 19}, 46 ${surface ? 31 : 25}, 63 ${surface ? 19 : 15} C78 ${surface ? 9 : 10}, 91 ${surface ? 20 : 17}, 103 ${surface ? 29 : 24}`} fill="none" stroke={`${tone}76`} strokeLinecap="round" strokeWidth={0.72 * wide} />
-            <path d={`M42 ${surface ? 82 : 67} L56 ${surface ? 63 : 52} L72 ${surface ? 80 : 65} L56 ${surface ? 94 : 76} Z`} fill={`${secondary}0F`} stroke="rgba(255,244,194,0.24)" strokeLinejoin="round" strokeWidth="0.28" />
-          </g>
-        )}
-        {archetype === 'archive_lattice' && (
-          <g opacity={surface ? 0.68 : 0.54}>
-            <path d={`M16 ${surface ? 91 : 75} V${surface ? 58 : 46} H29 V${surface ? 91 : 75} M40 ${surface ? 91 : 75} V${surface ? 48 : 38} H54 V${surface ? 91 : 75} M66 ${surface ? 91 : 75} V${surface ? 56 : 44} H79 V${surface ? 91 : 75}`} fill="rgba(2,7,18,0.38)" stroke={`${tone}78`} strokeLinecap="round" strokeLinejoin="round" strokeWidth="0.38" />
-            <path className="civ-archetype-flow" d={`M10 ${surface ? 84 : 68} C28 ${surface ? 72 : 59}, 46 ${surface ? 78 : 63}, 65 ${surface ? 64 : 53} C80 ${surface ? 53 : 45}, 91 ${surface ? 58 : 49}, 102 ${surface ? 48 : 39}`} fill="none" stroke="rgba(255,255,255,0.18)" strokeLinecap="round" strokeWidth="0.3" />
-          </g>
-        )}
-      </svg>
-    </div>
-  );
-}
 
-function getArchetypeAtmosphereBackground(
-  archetype: CivilizationArchetypeId,
-  scene: MarketSceneKind,
-  tone: string,
-  primary: string,
-  secondary: string,
-  scanActive: boolean,
-): string {
-  const scanBoost = scanActive ? '28' : '1E';
-  if (archetype === 'living_arcology') {
-    return [
-      `radial-gradient(ellipse at ${scene === 'surface' ? '28% 78%' : '35% 62%'}, ${tone}${scanBoost} 0%, transparent 42%)`,
-      `linear-gradient(126deg, transparent 16%, ${primary}12 47%, transparent 84%)`,
-    ].join(',');
-  }
-  if (archetype === 'forge_spine') {
-    return [
-      `radial-gradient(ellipse at ${scene === 'surface' ? '69% 69%' : '58% 54%'}, ${tone}${scanBoost} 0%, transparent 40%)`,
-      'linear-gradient(102deg, transparent 42%, rgba(255,244,194,0.14) 57%, transparent 76%)',
-    ].join(',');
-  }
-  if (archetype === 'containment_sentinel') {
-    return [
-      `radial-gradient(ellipse at ${scene === 'surface' ? '76% 66%' : '68% 58%'}, ${tone}${scanActive ? '30' : '24'} 0%, rgba(12,4,12,0.22) 32%, transparent 56%)`,
-      'linear-gradient(90deg, transparent 0%, rgba(255,105,114,0.06) 35%, rgba(0,0,0,0.18) 65%, transparent 100%)',
-    ].join(',');
-  }
-  if (archetype === 'route_network') {
-    return [
-      `linear-gradient(118deg, transparent 12%, ${tone}${scanBoost} 38%, ${primary}14 58%, transparent 88%)`,
-      `radial-gradient(ellipse at 55% 62%, ${tone}12 0%, transparent 48%)`,
-    ].join(',');
-  }
-  if (archetype === 'accord_beacon') {
-    return [
-      `radial-gradient(ellipse at 55% 30%, ${tone}${scanBoost} 0%, transparent 42%)`,
-      `linear-gradient(142deg, transparent 12%, ${secondary}12 46%, transparent 78%)`,
-    ].join(',');
-  }
-  return [
-    `radial-gradient(ellipse at 43% 56%, ${tone}${scanBoost} 0%, transparent 44%)`,
-    `linear-gradient(90deg, transparent 10%, ${primary}10 45%, transparent 84%)`,
-  ].join(',');
-}
 
-function CivilizationScaleFrameLayer({
-  scene,
-  palette,
-  scanActive,
-}: {
-  scene: MarketSceneKind;
-  palette: AffinityPalette;
-  scanActive: boolean;
-}) {
-  const primary = palette.primary;
-  const secondary = palette.secondary;
-  const opacity = scanActive
-    ? 0.08
-    : scene === 'surface'
-      ? 0.24
-      : scene === 'orbit'
-        ? 0.18
-        : scene === 'stellar'
-          ? 0.11
-          : 0.08;
 
-  return (
-    <svg
-      className="pointer-events-none absolute inset-0 z-[4] h-full w-full mix-blend-screen"
-      viewBox="0 0 100 100"
-      preserveAspectRatio="none"
-      aria-hidden="true"
-      data-testid="civilization-scale-frame"
-      style={{ opacity }}
-    >
-      {scene === 'surface' && (
-        <g>
-          <path
-            d="M0 75 C18 68, 30 74, 45 65 C62 54, 75 64, 100 54 L100 100 L0 100 Z"
-            fill={`${primary}10`}
-          />
-          <path
-            d="M5 92 C22 80, 38 84, 54 74 C70 64, 84 72, 98 61"
-            fill="none"
-            stroke={`${primary}70`}
-            strokeLinecap="round"
-            strokeWidth="0.72"
-            className="civ-portrait-flow"
-          />
-          <path
-            d="M10 98 C25 90, 42 88, 60 80 M18 96 C30 84, 46 81, 61 67 M30 100 C42 88, 54 85, 69 71 M47 100 C56 91, 68 86, 84 76"
-            fill="none"
-            stroke="rgba(255,255,255,0.18)"
-            strokeLinecap="round"
-            strokeWidth="0.28"
-          />
-          {[16, 28, 41, 57, 72, 86].map((x, index) => (
-            <path
-              key={x}
-              d={`M${x} ${83 - (index % 3) * 4} V${70 - (index % 4) * 5}`}
-              stroke={index % 2 === 0 ? `${primary}82` : `${secondary}72`}
-              strokeLinecap="round"
-              strokeWidth={index % 2 === 0 ? 0.54 : 0.38}
-            />
-          ))}
-          <ellipse
-            cx="50"
-            cy="74"
-            rx="34"
-            ry="7"
-            fill="none"
-            stroke="rgba(255,244,194,0.16)"
-            strokeDasharray="2.2 2"
-            strokeWidth="0.32"
-          />
-        </g>
-      )}
-      {scene === 'orbit' && (
-        <g>
-          <path
-            d="M-4 72 C20 55, 42 54, 63 63 C78 70, 91 69, 104 58"
-            fill="none"
-            stroke={`${primary}70`}
-            strokeLinecap="round"
-            strokeWidth="0.82"
-          />
-          <path
-            d="M-3 80 C23 64, 46 63, 69 72 C83 77, 94 76, 104 68"
-            fill="none"
-            stroke="rgba(255,255,255,0.2)"
-            strokeLinecap="round"
-            strokeWidth="0.32"
-          />
-          <path
-            d="M28 64 C36 58, 45 58, 53 63 M35 69 C43 64, 52 64, 61 68"
-            fill="none"
-            stroke={`${secondary}66`}
-            strokeLinecap="round"
-            strokeWidth="0.36"
-            className="civ-portrait-flow"
-          />
-          <circle cx="45" cy="61" r="1.2" fill="#fff" opacity="0.72" />
-          <circle cx="50" cy="64" r="0.78" fill={primary} opacity="0.74" />
-        </g>
-      )}
-      {scene === 'stellar' && (
-        <g>
-          <circle cx="28" cy="47" r="6.2" fill="rgba(255,244,194,0.48)" />
-          <circle cx="28" cy="47" r="13.5" fill="none" stroke={`${primary}48`} strokeWidth="0.28" />
-          <ellipse cx="55" cy="50" rx="37" ry="14" fill="none" stroke={`${primary}62`} strokeWidth="0.42" transform="rotate(-8 55 50)" />
-          <ellipse cx="59" cy="50" rx="26" ry="9.5" fill="none" stroke="rgba(255,255,255,0.18)" strokeWidth="0.22" transform="rotate(-8 59 50)" />
-          <path
-            d="M35 54 C49 41, 67 45, 86 34"
-            fill="none"
-            stroke={`${secondary}72`}
-            strokeLinecap="round"
-            strokeWidth="0.5"
-            className="civ-portrait-flow"
-          />
-          <circle cx="66" cy="50" r="1.15" fill="#fff" opacity="0.72" />
-        </g>
-      )}
-      {scene === 'galaxy' && (
-        <g>
-          <path
-            d="M13 62 C30 42, 49 43, 64 51 C78 59, 88 49, 96 33"
-            fill="none"
-            stroke={`${primary}5C`}
-            strokeLinecap="round"
-            strokeWidth="0.82"
-            className="civ-portrait-flow"
-          />
-          <path
-            d="M9 42 C25 54, 44 55, 60 45 C73 37, 85 42, 96 57"
-            fill="none"
-            stroke={`${secondary}4C`}
-            strokeLinecap="round"
-            strokeWidth="0.56"
-          />
-          <ellipse cx="52" cy="50" rx="9.5" ry="3.8" fill="rgba(255,255,255,0.08)" stroke="rgba(255,255,255,0.2)" strokeWidth="0.24" transform="rotate(-12 52 50)" />
-          {[23, 36, 49, 62, 75, 88].map((x, index) => (
-            <circle
-              key={x}
-              cx={x}
-              cy={index % 2 === 0 ? 55 - index * 2.2 : 40 + index * 2.4}
-              r={index === 3 ? 0.85 : 0.52}
-              fill={index === 3 ? '#fff' : primary}
-              opacity={index === 3 ? 0.82 : 0.58}
-            />
-          ))}
-        </g>
-      )}
-    </svg>
-  );
-}
 
-function CivilizationPlateDialectLayer({
-  scene,
-  identity,
-  signals,
-  scanActive,
-}: {
-  scene: MarketSceneKind;
-  identity: CivilizationSceneIdentity;
-  signals: CivilizationSceneSignals;
-  scanActive: boolean;
-}) {
-  const primary = identity.primaryAffinity ? AFFINITY_META[identity.primaryAffinity].hex : '#82ddff';
-  const secondary = identity.secondaryAffinity ? AFFINITY_META[identity.secondaryAffinity].hex : '#dfb86b';
-  const routeWeight = Math.min(1, identity.routeScore / 12);
-  const fieldWeight = Math.min(1, identity.fieldScore / 12);
-  const districtWeight = Math.min(1, identity.districtScore / 12);
-  const opacity = scanActive
-    ? 0.07
-    : scene === 'surface'
-      ? 0.16
-      : scene === 'orbit'
-        ? 0.12
-        : scene === 'stellar'
-          ? 0.08
-          : 0.06;
-  const horizonY = scene === 'surface' ? 78 : scene === 'orbit' ? 65 : scene === 'stellar' ? 56 : 52;
 
-  return (
-    <svg
-      className="pointer-events-none absolute inset-0 z-[4] h-full w-full mix-blend-screen"
-      viewBox="0 0 100 100"
-      preserveAspectRatio="none"
-      aria-hidden="true"
-      data-testid="civilization-plate-dialect"
-      style={{ opacity }}
-    >
-      {(districtWeight > 0 || signals.foundry) && (
-        <g opacity={0.36 + districtWeight * 0.38}>
-          <path
-            d={`M0 ${horizonY + 10} C18 ${horizonY + 3}, 34 ${horizonY + 7}, 50 ${horizonY - 1} C68 ${horizonY - 10}, 82 ${horizonY - 2}, 100 ${horizonY - 12} L100 100 L0 100 Z`}
-            fill={`${primary}0E`}
-          />
-          {[12, 21, 34, 47, 62, 76, 89].map((x, index) => (
-            <path
-              key={x}
-              d={`M${x} ${horizonY + 8} V${horizonY - 2 - (index % 4) * 3.2}`}
-              stroke={index % 2 === 0 ? `${primary}70` : `${secondary}66`}
-              strokeLinecap="round"
-              strokeWidth={scene === 'surface' ? 0.36 : 0.24}
-            />
-          ))}
-        </g>
-      )}
-      {(routeWeight > 0 || signals.route) && (
-        <g opacity={0.3 + routeWeight * 0.42}>
-          <path
-            className="civ-plate-dialect-flow"
-            d={`M-6 ${horizonY - 4} C18 ${horizonY - 18}, 34 ${horizonY + 5}, 55 ${horizonY - 7} C75 ${horizonY - 19}, 84 ${horizonY - 3}, 106 ${horizonY - 18}`}
-            fill="none"
-            stroke={`${AFFINITY_META.continuum.hex}9A`}
-            strokeLinecap="round"
-            strokeWidth={scene === 'galaxy' ? 0.48 : 0.62}
-          />
-          <path
-            d={`M4 ${horizonY + 3} C24 ${horizonY - 4}, 40 ${horizonY + 9}, 59 ${horizonY} C78 ${horizonY - 8}, 90 ${horizonY + 2}, 104 ${horizonY - 4}`}
-            fill="none"
-            stroke="rgba(255,255,255,0.16)"
-            strokeLinecap="round"
-            strokeWidth="0.22"
-          />
-        </g>
-      )}
-      {(fieldWeight > 0 || signals.hazard || signals.luminary) && (
-        <g opacity={0.26 + fieldWeight * 0.38}>
-          <ellipse
-            cx={signals.hazard ? 68 : 56}
-            cy={scene === 'surface' ? 68 : 52}
-            rx={signals.hazard ? 25 : 32}
-            ry={signals.hazard ? 8 : 11}
-            fill={`${signals.hazard ? AFFINITY_META.abyss.hex : secondary}12`}
-            stroke={`${signals.hazard ? AFFINITY_META.abyss.hex : secondary}6A`}
-            strokeDasharray={signals.hazard ? '4 2.4' : '2.6 2'}
-            strokeWidth="0.34"
-            transform={`rotate(${signals.hazard ? -11 : 8} ${signals.hazard ? 68 : 56} ${scene === 'surface' ? 68 : 52})`}
-          />
-          <ellipse
-            cx={signals.luminary ? 42 : 52}
-            cy={scene === 'galaxy' ? 44 : 38}
-            rx={signals.luminary ? 36 : 22}
-            ry={signals.luminary ? 8 : 5}
-            fill="none"
-            stroke={`${secondary}42`}
-            strokeWidth="0.25"
-            transform={`rotate(-9 ${signals.luminary ? 42 : 52} ${scene === 'galaxy' ? 44 : 38})`}
-          />
-        </g>
-      )}
-      {signals.living && (
-        <g opacity={scanActive ? 0.12 : 0.34}>
-          <path
-            d={`M3 ${horizonY + 2} C20 ${horizonY - 15}, 34 ${horizonY + 4}, 49 ${horizonY - 9} S75 ${horizonY - 6}, 96 ${horizonY - 18}`}
-            fill="none"
-            stroke={`${AFFINITY_META.verdance.hex}8E`}
-            strokeLinecap="round"
-            strokeWidth="0.56"
-          />
-          <path
-            d={`M28 ${horizonY - 5} C31 ${horizonY - 12}, 36 ${horizonY - 12}, 39 ${horizonY - 6} M58 ${horizonY - 9} C64 ${horizonY - 15}, 70 ${horizonY - 12}, 72 ${horizonY - 4}`}
-            fill="none"
-            stroke="rgba(229,255,238,0.24)"
-            strokeLinecap="round"
-            strokeWidth="0.24"
-          />
-        </g>
-      )}
-    </svg>
-  );
-}
 
-function CivilizationScaleContextLayer({
-  scene,
-  palette,
-  scanActive,
-}: {
-  scene: MarketSceneKind;
-  palette: AffinityPalette;
-  scanActive: boolean;
-}) {
-  const primary = palette.primary;
-  const secondary = palette.secondary;
-  const opacity = scanActive
-    ? scene === 'surface' ? 0.06 : 0.05
-    : scene === 'surface'
-      ? 0.26
-      : scene === 'orbit'
-        ? 0.13
-        : scene === 'stellar'
-          ? 0.09
-          : 0.07;
 
-  return (
-    <svg
-      className="pointer-events-none absolute inset-0 z-[5] h-full w-full mix-blend-screen"
-      viewBox="0 0 100 100"
-      preserveAspectRatio="none"
-      aria-hidden="true"
-      data-testid="civilization-scale-context"
-      style={{ opacity }}
-    >
-      {scene === 'surface' && (
-        <g>
-          <path
-            d="M0 96 C13 91, 23 93, 34 88 C45 82, 57 86, 68 80 C80 74, 89 80, 100 72 L100 100 L0 100 Z"
-            fill="rgba(2,5,12,0.78)"
-          />
-          <path
-            d="M7 94 V79 H11 V94 M14 94 V73 H20 V94 M24 94 V82 H28 V94 M38 91 V69 H43 V91 M47 90 V75 H53 V90 M73 82 V62 H77 V82 M81 79 V57 H88 V79 M91 76 V66 H95 V76"
-            fill="rgba(3,8,18,0.72)"
-            stroke={`${primary}78`}
-            strokeLinecap="round"
-            strokeLinejoin="round"
-            strokeWidth="0.34"
-          />
-          <path
-            d="M5 94 C22 86, 39 90, 56 80 C72 70, 85 73, 99 62"
-            fill="none"
-            stroke={`${primary}82`}
-            strokeLinecap="round"
-            strokeWidth="0.56"
-            className="civ-native-work-flow"
-          />
-          <path
-            d="M14 86 H20 M38 77 H43 M49 82 H52 M74 69 H77 M83 64 H88"
-            stroke="rgba(255,244,194,0.62)"
-            strokeLinecap="round"
-            strokeWidth="0.28"
-          />
-          <ellipse
-            cx="56"
-            cy="83"
-            rx="16"
-            ry="4.2"
-            fill={`${secondary}16`}
-            stroke={`${secondary}72`}
-            strokeDasharray="2.5 2"
-            strokeWidth="0.28"
-          />
-        </g>
-      )}
-      {scene === 'orbit' && (
-        <g>
-          <path
-            d="M-5 82 C21 63, 48 66, 70 74 C85 80, 96 75, 105 65"
-            fill="none"
-            stroke={`${primary}8A`}
-            strokeLinecap="round"
-            strokeWidth="1.25"
-          />
-          <path
-            d="M-4 88 C23 70, 48 72, 72 82 C86 88, 98 84, 106 76"
-            fill="none"
-            stroke="rgba(255,255,255,0.18)"
-            strokeLinecap="round"
-            strokeWidth="0.52"
-          />
-          <ellipse
-            cx="56"
-            cy="56"
-            rx="41"
-            ry="10"
-            fill="none"
-            stroke={`${secondary}72`}
-            strokeWidth="0.42"
-            transform="rotate(-11 56 56)"
-            className="civ-native-work-flow"
-          />
-          <ellipse
-            cx="56"
-            cy="56"
-            rx="28"
-            ry="6.8"
-            fill="none"
-            stroke="rgba(255,255,255,0.18)"
-            strokeWidth="0.24"
-            transform="rotate(-11 56 56)"
-          />
-          <path
-            d="M43 76 C46 66, 49 59, 54 49 C57 43, 60 39, 65 34"
-            fill="none"
-            stroke="rgba(255,244,194,0.52)"
-            strokeLinecap="round"
-            strokeWidth="0.5"
-          />
-          <circle cx="66" cy="34" r="0.9" fill="rgba(255,244,194,0.82)" />
-          <circle cx="81" cy="48" r="0.72" fill={primary} />
-          <circle cx="30" cy="62" r="0.62" fill={secondary} />
-        </g>
-      )}
-      {scene === 'stellar' && (
-        <g>
-          <circle cx="32" cy="47" r="5.5" fill="rgba(255,244,194,0.42)" />
-          <circle cx="32" cy="47" r="14" fill="none" stroke="rgba(255,244,194,0.2)" strokeWidth="0.26" />
-          <ellipse
-            cx="56"
-            cy="50"
-            rx="43"
-            ry="15"
-            fill="none"
-            stroke={`${primary}82`}
-            strokeWidth="0.48"
-            transform="rotate(-8 56 50)"
-            className="civ-native-work-flow"
-          />
-          <ellipse
-            cx="58"
-            cy="50"
-            rx="28"
-            ry="9"
-            fill="none"
-            stroke={`${secondary}62`}
-            strokeWidth="0.34"
-            transform="rotate(-8 58 50)"
-          />
-          <path
-            d="M28 64 C42 52, 56 65, 74 52 C84 45, 92 46, 99 40"
-            fill="none"
-            stroke="rgba(255,255,255,0.18)"
-            strokeLinecap="round"
-            strokeWidth="0.36"
-          />
-          <path
-            d="M64 48 L70 45 L77 47 M46 58 L51 61 L58 59"
-            fill="none"
-            stroke="rgba(255,244,194,0.5)"
-            strokeLinecap="round"
-            strokeLinejoin="round"
-            strokeWidth="0.32"
-          />
-          <circle cx="72" cy="49" r="1" fill="#fff" />
-          <circle cx="88" cy="42" r="0.7" fill={primary} />
-          <circle cx="47" cy="59" r="0.66" fill={secondary} />
-        </g>
-      )}
-      {scene === 'galaxy' && (
-        <g>
-          <path
-            d="M7 63 C23 45, 43 48, 56 52 C72 58, 84 49, 96 31"
-            fill="none"
-            stroke={`${primary}86`}
-            strokeLinecap="round"
-            strokeWidth="0.78"
-            className="civ-native-work-flow"
-          />
-          <path
-            d="M8 39 C25 54, 42 57, 59 45 C73 35, 86 42, 98 58"
-            fill="none"
-            stroke={`${secondary}62`}
-            strokeLinecap="round"
-            strokeWidth="0.52"
-          />
-          <path
-            d="M20 71 C35 59, 48 71, 62 62 C78 52, 87 61, 99 49"
-            fill="none"
-            stroke="rgba(255,244,194,0.18)"
-            strokeLinecap="round"
-            strokeWidth="0.36"
-          />
-          {[
-            [18, 57, 0.62],
-            [31, 48, 0.86],
-            [45, 51, 0.7],
-            [58, 51, 1.05],
-            [72, 56, 0.72],
-            [84, 47, 0.82],
-            [94, 34, 0.58],
-          ].map(([x, y, r], index) => (
-            <circle
-              key={`${x}:${y}`}
-              cx={x}
-              cy={y}
-              r={r}
-              fill={index === 3 ? 'rgba(255,255,255,0.86)' : primary}
-              opacity={index === 3 ? 0.9 : 0.64}
-            />
-          ))}
-          <ellipse
-            cx="58"
-            cy="51"
-            rx="18"
-            ry="6"
-            fill="rgba(255,255,255,0.04)"
-            stroke="rgba(255,255,255,0.16)"
-            strokeWidth="0.18"
-            transform="rotate(-12 58 51)"
-          />
-        </g>
-      )}
-    </svg>
-  );
-}
 
-function CivilizationSceneDepthCompositionLayer({
-  scene,
-  palette,
-  identity,
-  signals,
-  scanActive,
-}: {
-  scene: MarketSceneKind;
-  palette: AffinityPalette;
-  identity: CivilizationSceneIdentity;
-  signals: CivilizationSceneSignals;
-  scanActive: boolean;
-}) {
-  const primary = identity.primaryAffinity ? AFFINITY_META[identity.primaryAffinity].hex : palette.primary;
-  const secondary = identity.secondaryAffinity ? AFFINITY_META[identity.secondaryAffinity].hex : palette.secondary;
-  const hazardTone = signals.hazard ? AFFINITY_META.abyss.hex : secondary;
-  const routeTone = signals.route ? AFFINITY_META.continuum.hex : primary;
-  const opacity = scanActive
-    ? scene === 'surface' ? 0.07 : 0.06
-    : scene === 'surface'
-      ? 0.34
-      : scene === 'orbit'
-        ? 0.18
-        : scene === 'stellar'
-          ? 0.12
-          : 0.09;
 
-  return (
-    <svg
-      className="pointer-events-none absolute inset-0 z-[6] h-full w-full"
-      viewBox="0 0 100 100"
-      preserveAspectRatio="none"
-      aria-hidden="true"
-      data-testid="civilization-depth-composition"
-      style={{ opacity }}
-    >
-      {scene === 'surface' && (
-        <g className="civ-depth-composition" style={{ color: primary }}>
-          <path
-            d="M0 84 C13 78, 25 81, 38 74 C51 67, 64 72, 78 64 C88 58, 95 60, 100 55 L100 100 L0 100 Z"
-            fill="rgba(2,5,12,0.72)"
-          />
-          <path
-            d="M3 99 L28 80 L42 100 M20 100 L46 75 L62 100 M47 100 L70 72 L86 100 M74 100 L94 66 L100 76"
-            fill="none"
-            stroke="rgba(255,255,255,0.12)"
-            strokeLinecap="round"
-            strokeWidth="0.38"
-          />
-          <path
-            className="civ-depth-flow"
-            d="M4 88 C19 80, 31 84, 45 76 C60 67, 76 72, 97 58"
-            fill="none"
-            stroke={`${routeTone}92`}
-            strokeLinecap="round"
-            strokeWidth="0.72"
-          />
-          <path
-            d="M9 89 V77 H13 V89 M17 87 V69 H23 V87 M27 85 V73 H31 V85 M36 82 V64 H42 V82 M48 78 V59 H54 V78 M62 74 V55 H68 V74 M78 66 V49 H84 V66 M88 62 V53 H94 V62"
-            fill="rgba(3,8,18,0.8)"
-            stroke={`${primary}86`}
-            strokeLinecap="round"
-            strokeLinejoin="round"
-            strokeWidth="0.34"
-          />
-          {signals.living && (
-            <path
-              className="civ-depth-pulse"
-              d="M6 92 C20 80, 31 92, 46 78 C59 66, 72 80, 96 62"
-              fill="none"
-              stroke={`${AFFINITY_META.verdance.hex}96`}
-              strokeLinecap="round"
-              strokeWidth="0.54"
-            />
-          )}
-          {signals.hazard && (
-            <ellipse
-              className="civ-depth-pulse"
-              cx="72"
-              cy="77"
-              rx="17"
-              ry="5.2"
-              fill={`${AFFINITY_META.abyss.hex}18`}
-              stroke={`${AFFINITY_META.abyss.hex}8A`}
-              strokeDasharray="3 2"
-              strokeWidth="0.34"
-              transform="rotate(-9 72 77)"
-            />
-          )}
-        </g>
-      )}
 
-      {scene === 'orbit' && (
-        <g className="civ-depth-composition" style={{ color: primary }}>
-          <path
-            d="M-6 81 C18 66, 42 67, 63 75 C79 81, 91 76, 106 64 L106 100 L-6 100 Z"
-            fill="rgba(2,5,12,0.36)"
-          />
-          <path
-            d="M-5 82 C20 65, 43 66, 64 75 C82 82, 94 76, 106 64"
-            fill="none"
-            stroke={`${primary}8A`}
-            strokeLinecap="round"
-            strokeWidth="0.88"
-          />
-          <ellipse
-            className="civ-depth-flow"
-            cx="55"
-            cy="54"
-            rx="43"
-            ry="11"
-            fill="none"
-            stroke={`${routeTone}7E`}
-            strokeWidth="0.5"
-            transform="rotate(-11 55 54)"
-          />
-          <ellipse
-            cx="55"
-            cy="54"
-            rx="27"
-            ry="6.8"
-            fill="none"
-            stroke="rgba(255,255,255,0.2)"
-            strokeWidth="0.22"
-            transform="rotate(-11 55 54)"
-          />
-          <path
-            d="M43 80 C47 65, 53 51, 64 34"
-            fill="none"
-            stroke="rgba(255,244,194,0.62)"
-            strokeLinecap="round"
-            strokeWidth="0.58"
-          />
-          <path
-            d="M61 36 L68 31 L75 34 M40 81 L47 85 L55 83"
-            fill="none"
-            stroke={`${secondary}8A`}
-            strokeLinecap="round"
-            strokeLinejoin="round"
-            strokeWidth="0.38"
-          />
-          <circle cx="64" cy="34" r="1" fill="#fff4c2" />
-          {signals.foundry && (
-            <path
-              className="civ-depth-pulse"
-              d="M30 76 C41 65, 54 68, 68 58 C80 50, 91 50, 102 42"
-              fill="none"
-              stroke={`${AFFINITY_META.flare.hex}78`}
-              strokeLinecap="round"
-              strokeWidth="0.52"
-            />
-          )}
-          {signals.hazard && (
-            <ellipse
-              cx="67"
-              cy="53"
-              rx="20"
-              ry="6"
-              fill={`${hazardTone}12`}
-              stroke={`${hazardTone}78`}
-              strokeDasharray="4 2.4"
-              strokeWidth="0.34"
-              transform="rotate(-11 67 53)"
-            />
-          )}
-        </g>
-      )}
 
-      {scene === 'stellar' && (
-        <g className="civ-depth-composition" style={{ color: primary }}>
-          <circle className="civ-depth-pulse" cx="30" cy="47" r="5.8" fill="rgba(255,244,194,0.5)" />
-          <circle cx="30" cy="47" r="15" fill="none" stroke="rgba(255,244,194,0.18)" strokeWidth="0.28" />
-          <ellipse
-            cx="57"
-            cy="50"
-            rx="42"
-            ry="15"
-            fill="none"
-            stroke={`${routeTone}74`}
-            strokeWidth="0.5"
-            transform="rotate(-8 57 50)"
-          />
-          <ellipse
-            className="civ-depth-flow"
-            cx="59"
-            cy="50"
-            rx="30"
-            ry="9.2"
-            fill="none"
-            stroke={`${secondary}68`}
-            strokeWidth="0.36"
-            transform="rotate(-8 59 50)"
-          />
-          <path
-            d="M17 67 C34 51, 50 69, 68 54 C79 45, 89 45, 99 38"
-            fill="none"
-            stroke="rgba(255,255,255,0.16)"
-            strokeLinecap="round"
-            strokeWidth="0.38"
-          />
-          <path
-            d="M53 47 L61 43 L70 46 M41 61 L48 65 L58 62 M77 43 L84 39 L91 41"
-            fill="none"
-            stroke="rgba(255,244,194,0.48)"
-            strokeLinecap="round"
-            strokeLinejoin="round"
-            strokeWidth="0.34"
-          />
-          {[44, 58, 72, 86].map((x, index) => (
-            <circle
-              key={x}
-              cx={x}
-              cy={index % 2 === 0 ? 58 - index * 3 : 44 + index * 2}
-              r={index === 1 ? 1 : 0.68}
-              fill={index === 1 ? 'rgba(255,255,255,0.88)' : primary}
-              opacity={0.72}
-            />
-          ))}
-          {signals.foundry && (
-            <g className="civ-depth-pulse">
-              <path d="M41 39 L46 36 M55 34 L62 34 M70 39 L76 42 M47 63 L52 67 M68 60 L74 63" stroke={`${AFFINITY_META.flare.hex}90`} strokeWidth="1.9" strokeLinecap="round" />
-              <path d="M41 39 L46 36 M55 34 L62 34 M70 39 L76 42 M47 63 L52 67 M68 60 L74 63" stroke="rgba(255,255,255,0.28)" strokeWidth="0.46" strokeLinecap="round" />
-            </g>
-          )}
-          {signals.hazard && (
-            <ellipse
-              cx="58"
-              cy="50"
-              rx="46"
-              ry="17"
-              fill={`${AFFINITY_META.abyss.hex}0E`}
-              stroke={`${AFFINITY_META.abyss.hex}62`}
-              strokeWidth="0.34"
-              transform="rotate(-8 58 50)"
-            />
-          )}
-        </g>
-      )}
 
-      {scene === 'galaxy' && (
-        <g className="civ-depth-composition" style={{ color: primary }}>
-          <path
-            className="civ-depth-pulse"
-            d="M6 64 C23 43, 42 47, 57 52 C72 58, 84 49, 97 30"
-            fill="none"
-            stroke={`${primary}82`}
-            strokeLinecap="round"
-            strokeWidth="0.88"
-          />
-          <path
-            d="M7 39 C25 55, 43 57, 60 45 C74 35, 86 42, 99 59"
-            fill="none"
-            stroke={`${secondary}62`}
-            strokeLinecap="round"
-            strokeWidth="0.58"
-          />
-          <path
-            className="civ-depth-flow"
-            d="M18 72 C34 58, 48 72, 63 62 C78 52, 88 62, 100 49"
-            fill="none"
-            stroke="rgba(255,244,194,0.24)"
-            strokeLinecap="round"
-            strokeWidth="0.42"
-          />
-          <ellipse
-            cx="57"
-            cy="51"
-            rx="18"
-            ry="6.2"
-            fill="rgba(255,255,255,0.045)"
-            stroke="rgba(255,255,255,0.18)"
-            strokeWidth="0.2"
-            transform="rotate(-12 57 51)"
-          />
-          {[17, 30, 44, 58, 72, 85, 95].map((x, index) => (
-            <circle
-              key={x}
-              cx={x}
-              cy={index % 2 === 0 ? 57 - index * 2.1 : 39 + index * 2.5}
-              r={index === 3 ? 1.05 : 0.58}
-              fill={index === 3 ? 'rgba(255,255,255,0.88)' : primary}
-              opacity={index === 3 ? 0.92 : 0.66}
-            />
-          ))}
-          {signals.living && (
-            <path
-              d="M14 66 C32 44, 44 65, 61 48 C73 36, 86 39, 97 28"
-              fill="none"
-              stroke={`${AFFINITY_META.verdance.hex}72`}
-              strokeLinecap="round"
-              strokeWidth="0.48"
-            />
-          )}
-          {signals.hazard && (
-            <path
-              d="M62 35 C72 28, 84 32, 91 42 C81 45, 72 50, 64 57 C60 49, 58 41, 62 35 Z"
-              fill={`${AFFINITY_META.abyss.hex}18`}
-              stroke={`${AFFINITY_META.abyss.hex}72`}
-              strokeWidth="0.28"
-            />
-          )}
-        </g>
-      )}
-    </svg>
-  );
-}
 
-function getScaleTheaterSiteAnchor(
-  site: CivilizationDeploymentSite,
-  index: number,
-  count: number,
-  scene: MarketSceneKind,
-): CivilizationDeploymentAnchor {
-  if (scene === 'surface') {
-    const spread = count <= 1 ? 0 : (index - (count - 1) / 2) * 15;
-    return {
-      x: Math.max(18, Math.min(84, site.anchor.x + spread * 0.45)),
-      y: Math.max(56, Math.min(91, site.anchor.y + 12 + (index % 2) * 5)),
-    };
-  }
-  if (scene === 'orbit') {
-    const anchors = [
-      { x: 31, y: 69 },
-      { x: 66, y: 33 },
-      { x: 76, y: 61 },
-      { x: 43, y: 40 },
-    ];
-    return anchors[index % anchors.length] ?? site.anchor;
-  }
-  if (scene === 'stellar') {
-    const anchors = [
-      { x: 36, y: 63 },
-      { x: 69, y: 39 },
-      { x: 54, y: 73 },
-      { x: 82, y: 54 },
-    ];
-    return anchors[index % anchors.length] ?? site.anchor;
-  }
-  const anchors = [
-    { x: 33, y: 58 },
-    { x: 63, y: 43 },
-    { x: 74, y: 62 },
-    { x: 47, y: 34 },
-  ];
-  return anchors[index % anchors.length] ?? site.anchor;
-}
 
-function SurfaceScaleTheaterMark({
-  site,
-  index,
-  count,
-  native,
-}: {
-  site: CivilizationDeploymentSite;
-  index: number;
-  count: number;
-  native: boolean;
-}) {
-  const tone = getCivilizationSiteTone(site);
-  const anchor = getScaleTheaterSiteAnchor(site, index, count, 'surface');
-  const width = native ? 18 : 11;
-  const height = native ? 18 : 11;
-  const isPin = site.scalePresence === 'artifact_pin';
-  const rotation = index % 2 === 0 ? -7 : 8;
 
-  return (
-    <g
-      className="civ-scale-theater-mark"
-      data-testid={native ? 'civilization-scale-theater-native' : 'civilization-scale-theater-aggregate'}
-      data-native-scene={getNativeSceneForSite(site)}
-      data-site-id={site.id}
-      opacity={native ? 0.72 : 0.42}
-      style={{ color: tone }}
-    >
-      {isPin ? (
-        <>
-          <ellipse
-            cx={anchor.x}
-            cy={anchor.y + 3}
-            rx={width * 0.55}
-            ry={height * 0.18}
-            fill={`${tone}14`}
-            stroke={`${tone}72`}
-            strokeDasharray="2 1.8"
-            strokeWidth="0.28"
-            transform={`rotate(${rotation} ${anchor.x} ${anchor.y + 3})`}
-          />
-          <path
-            d={`M${anchor.x - 7} ${anchor.y + 5} C${anchor.x - 2} ${anchor.y + 1}, ${anchor.x + 3} ${anchor.y + 1}, ${anchor.x + 8} ${anchor.y + 5}`}
-            fill="none"
-            stroke="rgba(255,255,255,0.24)"
-            strokeLinecap="round"
-            strokeWidth="0.22"
-          />
-        </>
-      ) : (
-        <>
-          <path
-            d={`M${anchor.x - width * 0.58} ${anchor.y + height * 0.36} L${anchor.x - width * 0.22} ${anchor.y - height * 0.38} L${anchor.x + width * 0.22} ${anchor.y - height * 0.44} L${anchor.x + width * 0.62} ${anchor.y + height * 0.34} Z`}
-            fill={`${tone}16`}
-            stroke={`${tone}A6`}
-            strokeLinejoin="round"
-            strokeWidth="0.44"
-            transform={`rotate(${rotation} ${anchor.x} ${anchor.y})`}
-          />
-          <path
-            d={`M${anchor.x - width * 0.34} ${anchor.y + height * 0.24} H${anchor.x + width * 0.34} M${anchor.x - width * 0.18} ${anchor.y + height * 0.02} H${anchor.x + width * 0.24} M${anchor.x - width * 0.04} ${anchor.y - height * 0.22} H${anchor.x + width * 0.18}`}
-            stroke="rgba(255,255,255,0.28)"
-            strokeLinecap="round"
-            strokeWidth="0.22"
-            transform={`rotate(${rotation} ${anchor.x} ${anchor.y})`}
-          />
-        </>
-      )}
-      {site.kind === 'artifact' && (
-        <ArtifactMotifGlyph
-          site={site}
-          x={anchor.x}
-          y={anchor.y}
-          tone={tone}
-          scale={native ? 0.64 : 0.48}
-          rotation={rotation}
-          emphasis={native ? 1.08 : 0.9}
-        />
-      )}
-    </g>
-  );
-}
 
-function OrbitScaleTheaterMark({
-  site,
-  index,
-  count,
-  native,
-}: {
-  site: CivilizationDeploymentSite;
-  index: number;
-  count: number;
-  native: boolean;
-}) {
-  const tone = getCivilizationSiteTone(site);
-  const anchor = getScaleTheaterSiteAnchor(site, index, count, 'orbit');
-  const rotation = index % 2 === 0 ? -12 : 14;
-  const nativeScene = getNativeSceneForSite(site);
 
-  return (
-    <g
-      className="civ-scale-theater-mark"
-      data-testid={native ? 'civilization-scale-theater-native' : 'civilization-scale-theater-aggregate'}
-      data-native-scene={nativeScene}
-      data-site-id={site.id}
-      opacity={native ? 0.62 : 0.38}
-      style={{ color: tone }}
-    >
-      {native ? (
-        <>
-          <ellipse
-            cx={anchor.x}
-            cy={anchor.y}
-            rx="19"
-            ry="5.4"
-            fill={`${tone}12`}
-            stroke={`${tone}A0`}
-            strokeWidth="0.42"
-            transform={`rotate(${rotation} ${anchor.x} ${anchor.y})`}
-          />
-          <path
-            className="civ-scale-theater-flow"
-            d={`M${Math.max(3, anchor.x - 26)} ${anchor.y + 3} C${anchor.x - 9} ${anchor.y - 6}, ${anchor.x + 9} ${anchor.y + 7}, ${Math.min(97, anchor.x + 29)} ${anchor.y - 4}`}
-            fill="none"
-            stroke="rgba(255,255,255,0.32)"
-            strokeLinecap="round"
-            strokeWidth="0.32"
-          />
-          <circle cx={anchor.x - 8} cy={anchor.y + 1.4} r="0.82" fill={`${tone}C8`} />
-          <circle cx={anchor.x + 8} cy={anchor.y - 1.3} r="0.7" fill="rgba(255,255,255,0.78)" />
-        </>
-      ) : (
-        <>
-          <path
-            d={`M${anchor.x - 9} ${anchor.y + 5} C${anchor.x - 3} ${anchor.y + 1}, ${anchor.x + 4} ${anchor.y + 1}, ${anchor.x + 10} ${anchor.y + 5}`}
-            fill="none"
-            stroke={`${tone}8C`}
-            strokeLinecap="round"
-            strokeWidth="0.4"
-          />
-          <path
-            d={`M${anchor.x - 7} ${anchor.y + 8} H${anchor.x + 7} M${anchor.x - 4} ${anchor.y + 6} V${anchor.y + 3} M${anchor.x} ${anchor.y + 6.8} V${anchor.y + 2.4} M${anchor.x + 4} ${anchor.y + 6} V${anchor.y + 3.2}`}
-            stroke="rgba(255,255,255,0.24)"
-            strokeLinecap="round"
-            strokeWidth="0.2"
-          />
-          <circle cx={anchor.x} cy={anchor.y + 4.3} r="0.72" fill={`${tone}C8`} />
-        </>
-      )}
-      {site.kind === 'artifact' && native && (
-        <ArtifactMotifGlyph site={site} x={anchor.x} y={anchor.y} tone={tone} scale={0.54} rotation={rotation} />
-      )}
-    </g>
-  );
-}
 
-function StellarScaleTheaterMark({
-  site,
-  index,
-  count,
-  native,
-}: {
-  site: CivilizationDeploymentSite;
-  index: number;
-  count: number;
-  native: boolean;
-}) {
-  const tone = getCivilizationSiteTone(site);
-  const anchor = getScaleTheaterSiteAnchor(site, index, count, 'stellar');
-  const nativeScene = getNativeSceneForSite(site);
-
-  return (
-    <g
-      className="civ-scale-theater-mark"
-      data-testid={native ? 'civilization-scale-theater-native' : 'civilization-scale-theater-aggregate'}
-      data-native-scene={nativeScene}
-      data-site-id={site.id}
-      opacity={native ? 0.62 : 0.36}
-      style={{ color: tone }}
-    >
-      {native ? (
-        <>
-          <path
-            className="civ-scale-theater-flow"
-            d={`M${Math.max(3, anchor.x - 31)} ${anchor.y + 9} C${anchor.x - 11} ${anchor.y - 12}, ${anchor.x + 14} ${anchor.y + 12}, ${Math.min(98, anchor.x + 34)} ${anchor.y - 8}`}
-            fill="none"
-            stroke={`${tone}A6`}
-            strokeLinecap="round"
-            strokeWidth="1.05"
-          />
-          <path
-            d={`M${Math.max(3, anchor.x - 24)} ${anchor.y + 3} C${anchor.x - 8} ${anchor.y - 6}, ${anchor.x + 9} ${anchor.y + 7}, ${Math.min(98, anchor.x + 27)} ${anchor.y - 4}`}
-            fill="none"
-            stroke="rgba(255,255,255,0.24)"
-            strokeLinecap="round"
-            strokeWidth="0.28"
-          />
-          {[0, 0.35, 0.68, 1].map((step) => (
-            <circle
-              key={step}
-              cx={Math.max(5, Math.min(96, anchor.x - 25 + 50 * step))}
-              cy={anchor.y + Math.sin(step * Math.PI * 2 + index) * 5}
-              r={step === 0.68 ? 1.12 : 0.7}
-              fill={step === 0.68 ? 'rgba(255,255,255,0.78)' : `${tone}C0`}
-            />
-          ))}
-        </>
-      ) : (
-        <>
-          <circle cx={anchor.x} cy={anchor.y} r="3.2" fill={`${tone}20`} stroke={`${tone}8E`} strokeWidth="0.28" />
-          <ellipse
-            cx={anchor.x}
-            cy={anchor.y}
-            rx="9.6"
-            ry="3.2"
-            fill="none"
-            stroke={`${tone}54`}
-            strokeWidth="0.22"
-            transform={`rotate(${index % 2 === 0 ? -11 : 13} ${anchor.x} ${anchor.y})`}
-          />
-          <circle cx={anchor.x + 7} cy={anchor.y - 1.8} r="0.5" fill="rgba(255,255,255,0.62)" />
-        </>
-      )}
-      {site.kind === 'artifact' && native && (
-        <ArtifactMotifGlyph site={site} x={anchor.x} y={anchor.y} tone={tone} scale={0.5} rotation={-6} />
-      )}
-    </g>
-  );
-}
-
-function GalaxyScaleTheaterMark({
-  site,
-  index,
-  count,
-  native,
-}: {
-  site: CivilizationDeploymentSite;
-  index: number;
-  count: number;
-  native: boolean;
-}) {
-  const tone = getCivilizationSiteTone(site);
-  const anchor = getScaleTheaterSiteAnchor(site, index, count, 'galaxy');
-  const nativeScene = getNativeSceneForSite(site);
-  const rotation = index % 2 === 0 ? -16 : 18;
-
-  return (
-    <g
-      className="civ-scale-theater-mark"
-      data-testid={native ? 'civilization-scale-theater-native' : 'civilization-scale-theater-aggregate'}
-      data-native-scene={nativeScene}
-      data-site-id={site.id}
-      opacity={native ? 0.58 : 0.32}
-      style={{ color: tone }}
-    >
-      {native ? (
-        <>
-          <path
-            d={`M${anchor.x - 18} ${anchor.y - 5} C${anchor.x - 5} ${anchor.y - 14}, ${anchor.x + 7} ${anchor.y - 13}, ${anchor.x + 19} ${anchor.y - 5} C${anchor.x + 11} ${anchor.y + 8}, ${anchor.x - 10} ${anchor.y + 8}, ${anchor.x - 18} ${anchor.y - 5} Z`}
-            fill={`${tone}12`}
-            stroke={`${tone}88`}
-            strokeWidth="0.34"
-            transform={`rotate(${rotation} ${anchor.x} ${anchor.y})`}
-          />
-          <path
-            className="civ-scale-theater-flow"
-            d={`M${anchor.x - 22} ${anchor.y + 4} C${anchor.x - 7} ${anchor.y - 8}, ${anchor.x + 8} ${anchor.y + 8}, ${anchor.x + 24} ${anchor.y - 4}`}
-            fill="none"
-            stroke="rgba(255,255,255,0.28)"
-            strokeLinecap="round"
-            strokeWidth="0.28"
-          />
-          <circle cx={anchor.x} cy={anchor.y - 2} r="1.1" fill="rgba(255,255,255,0.78)" />
-          <circle cx={anchor.x - 10} cy={anchor.y + 1.5} r="0.62" fill={`${tone}B8`} />
-          <circle cx={anchor.x + 10} cy={anchor.y + 1.5} r="0.62" fill={`${tone}B8`} />
-        </>
-      ) : (
-        <>
-          <ellipse
-            cx={anchor.x}
-            cy={anchor.y}
-            rx="8.4"
-            ry="3.1"
-            fill={`${tone}10`}
-            stroke={`${tone}5C`}
-            strokeWidth="0.22"
-            transform={`rotate(${rotation} ${anchor.x} ${anchor.y})`}
-          />
-          <circle cx={anchor.x - 4} cy={anchor.y + 0.5} r="0.55" fill={`${tone}A8`} />
-          <circle cx={anchor.x + 0.5} cy={anchor.y - 1} r="0.66" fill="rgba(255,255,255,0.66)" />
-          <circle cx={anchor.x + 4.6} cy={anchor.y + 1.2} r="0.48" fill={`${tone}88`} />
-        </>
-      )}
-      {site.kind === 'artifact' && native && (
-        <ArtifactMotifGlyph site={site} x={anchor.x} y={anchor.y - 0.5} tone={tone} scale={0.48} rotation={rotation} />
-      )}
-    </g>
-  );
-}
-
-function ScaleTheaterMark({
-  site,
-  index,
-  count,
-  scene,
-  native,
-}: {
-  site: CivilizationDeploymentSite;
-  index: number;
-  count: number;
-  scene: MarketSceneKind;
-  native: boolean;
-}) {
-  if (scene === 'surface') {
-    return <SurfaceScaleTheaterMark site={site} index={index} count={count} native={native} />;
-  }
-  if (scene === 'orbit') {
-    return <OrbitScaleTheaterMark site={site} index={index} count={count} native={native} />;
-  }
-  if (scene === 'stellar') {
-    return <StellarScaleTheaterMark site={site} index={index} count={count} native={native} />;
-  }
-  return <GalaxyScaleTheaterMark site={site} index={index} count={count} native={native} />;
-}
-
-function CivilizationScaleTheaterLayer({
-  sites,
-  scene,
-  scanActive,
-  recentSiteIds,
-  maxSites,
-}: {
-  sites: readonly CivilizationDeploymentSite[];
-  scene: MarketSceneKind;
-  scanActive: boolean;
-  recentSiteIds: readonly string[];
-  maxSites: number;
-}) {
-  const theaterSites = React.useMemo(() => (
-    sites.filter((site) => isSiteAvailableInScene(site, scene))
-  ), [sites, scene]);
-  const nativeSites = React.useMemo(() => (
-    selectIntegratedConsequenceSites(
-      theaterSites.filter((site) => getNativeSceneForSite(site) === scene),
-      scene,
-      maxSites,
-      recentSiteIds,
-    )
-  ), [theaterSites, scene, maxSites, recentSiteIds]);
-  const aggregateSites = React.useMemo(() => (
-    selectIntegratedConsequenceSites(
-      theaterSites.filter((site) => getSceneIndex(getNativeSceneForSite(site)) < getSceneIndex(scene)),
-      scene,
-      Math.max(1, Math.min(3, maxSites)),
-      recentSiteIds,
-    )
-  ), [theaterSites, scene, maxSites, recentSiteIds]);
-
-  if (nativeSites.length === 0 && aggregateSites.length === 0) return null;
-
-  return (
-    <svg
-      className="pointer-events-none absolute inset-0 z-[7] h-full w-full mix-blend-screen"
-      viewBox="0 0 100 100"
-      preserveAspectRatio="none"
-      aria-hidden="true"
-      data-testid="civilization-scale-theater"
-      data-scene={scene}
-      data-native-count={nativeSites.length}
-      data-aggregate-count={aggregateSites.length}
-      style={{
-        opacity: scanActive
-          ? 0.46
-          : scene === 'surface'
-            ? 0.72
-            : scene === 'orbit'
-              ? 0.62
-              : scene === 'stellar'
-                ? 0.5
-                : 0.44,
-      }}
-    >
-      {aggregateSites.map((site, index) => (
-        <ScaleTheaterMark
-          key={`aggregate:${site.id}`}
-          site={site}
-          index={index}
-          count={aggregateSites.length}
-          scene={scene}
-          native={false}
-        />
-      ))}
-      {nativeSites.map((site, index) => (
-        <ScaleTheaterMark
-          key={`native:${site.id}`}
-          site={site}
-          index={index}
-          count={nativeSites.length}
-          scene={scene}
-          native
-        />
-      ))}
-    </svg>
-  );
-}
-
-function CivilizationTraitDialectMark({
-  trait,
-  index,
-  scene,
-  compact,
-}: {
-  trait: CivilizationDeploymentSite['trait'];
-  index: number;
-  scene: MarketSceneKind;
-  compact: boolean;
-}) {
-  const tone = getTraitDialectTone(trait);
-  const wide = scene === 'galaxy' ? 1.35 : scene === 'stellar' ? 1.18 : scene === 'orbit' ? 1.08 : 1;
-  const yBase = scene === 'surface' ? 72 : scene === 'galaxy' ? 48 : 56;
-  const xShift = (index - 1) * (compact ? 10 : 14);
-  const opacity = compact ? Math.max(0.1, 0.2 - index * 0.04) : Math.max(0.12, 0.28 - index * 0.05);
-
-  if (trait === 'transit' || trait === 'chronology' || trait === 'aperture') {
-    const y = yBase - index * 8;
-    return (
-      <g className="civ-dialect-field" opacity={opacity} style={{ color: tone }}>
-        <path
-          className="civ-dialect-flow"
-          d={`M${Math.max(-8, 10 + xShift)} ${y + 10} C${28 + xShift} ${y - 10}, ${52 + xShift} ${y + 14}, ${Math.min(108, 88 + xShift)} ${y - 8}`}
-          fill="none"
-          stroke={`${tone}9A`}
-          strokeLinecap="round"
-          strokeWidth={compact ? 0.7 : 0.9}
-        />
-        <path
-          d={`M${Math.max(-4, 18 + xShift)} ${y + 3} C${34 + xShift} ${y - 3}, ${55 + xShift} ${y + 6}, ${Math.min(104, 80 + xShift)} ${y - 3}`}
-          fill="none"
-          stroke="rgba(255,255,255,0.16)"
-          strokeLinecap="round"
-          strokeWidth="0.24"
-        />
-      </g>
-    );
-  }
-
-  if (trait === 'biosphere' || trait === 'replication') {
-    const y = scene === 'surface' ? 66 + index * 5 : 58 + index * 4;
-    return (
-      <g className="civ-dialect-field" opacity={opacity} style={{ color: tone }}>
-        <path
-          d={`M${Math.max(-4, 6 + xShift)} ${y + 8} C${25 + xShift} ${y - 16}, ${43 + xShift} ${y + 13}, ${62 + xShift} ${y - 5} S${86 + xShift} ${y + 1}, ${Math.min(106, 98 + xShift)} ${y - 13}`}
-          fill="none"
-          stroke={`${tone}9A`}
-          strokeLinecap="round"
-          strokeWidth={compact ? 0.78 : 1.05}
-        />
-        <path
-          d={`M${30 + xShift} ${y - 4} C${33 + xShift} ${y - 11}, ${39 + xShift} ${y - 11}, ${42 + xShift} ${y - 5} M${63 + xShift} ${y - 2} C${72 + xShift} ${y - 8}, ${79 + xShift} ${y - 4}, ${82 + xShift} ${y + 3}`}
-          fill="none"
-          stroke="rgba(229,255,238,0.2)"
-          strokeLinecap="round"
-          strokeWidth="0.28"
-        />
-      </g>
-    );
-  }
-
-  if (trait === 'containment' || trait === 'veil' || trait === 'entropy') {
-    const x = 58 + xShift * 0.5;
-    const y = scene === 'galaxy' ? 51 : 62 - index * 5;
-    return (
-      <g className="civ-dialect-field" opacity={opacity} style={{ color: tone }}>
-        <ellipse
-          cx={x}
-          cy={y}
-          rx={(compact ? 18 : 25) * wide}
-          ry={(compact ? 5.5 : 7.5) * wide}
-          fill={`${tone}10`}
-          stroke={`${tone}72`}
-          strokeWidth="0.46"
-          strokeDasharray={trait === 'veil' ? '3 2' : '5 3'}
-          transform={`rotate(${-10 + index * 8} ${x} ${y})`}
-        />
-        <path
-          d={`M${x - 19 * wide} ${y - 5} L${x + 20 * wide} ${y + 6} M${x - 18 * wide} ${y + 6} L${x + 19 * wide} ${y - 5}`}
-          fill="none"
-          stroke="rgba(255,255,255,0.12)"
-          strokeLinecap="round"
-          strokeWidth="0.24"
-          transform={`rotate(${-10 + index * 8} ${x} ${y})`}
-        />
-      </g>
-    );
-  }
-
-  if (trait === 'archive' || trait === 'lattice' || trait === 'accord') {
-    const x = 28 + index * 18 + xShift * 0.2;
-    const y = scene === 'surface' ? 74 : 64;
-    const columns = compact ? [-6, 0, 6] : [-10, -5, 0, 5, 10];
-    return (
-      <g className="civ-dialect-field" opacity={opacity} style={{ color: tone }}>
-        <path
-          d={`M${x - 18} ${y + 8} C${x - 8} ${y + 2}, ${x + 8} ${y + 2}, ${x + 18} ${y + 8}`}
-          fill="none"
-          stroke={`${tone}84`}
-          strokeLinecap="round"
-          strokeWidth="0.58"
-        />
-        {columns.map((dx, columnIndex) => (
-          <path
-            key={dx}
-            d={`M${x + dx} ${y + 7} V${y - 3 - (columnIndex % 2) * 4}`}
-            stroke={columnIndex === Math.floor(columns.length / 2) ? 'rgba(255,255,255,0.3)' : `${tone}74`}
-            strokeLinecap="round"
-            strokeWidth={columnIndex === Math.floor(columns.length / 2) ? 0.38 : 0.28}
-          />
-        ))}
-      </g>
-    );
-  }
-
-  const x = 30 + index * 18 + xShift * 0.2;
-  const y = scene === 'surface' ? 70 : 58;
-  return (
-    <g className="civ-dialect-field" opacity={opacity} style={{ color: tone }}>
-      <path
-        d={`M${x} ${y + 12} L${x - 4.2 * wide} ${y + 2} L${x} ${y - 13} L${x + 4.2 * wide} ${y + 2} Z`}
-        fill={`${tone}13`}
-        stroke={`${tone}84`}
-        strokeWidth="0.4"
-      />
-      <path
-        d={`M${x - 13 * wide} ${y + 7} C${x - 5 * wide} ${y + 1}, ${x - 4 * wide} ${y - 7}, ${x} ${y - 13} M${x + 13 * wide} ${y + 7} C${x + 5 * wide} ${y + 1}, ${x + 4 * wide} ${y - 7}, ${x} ${y - 13}`}
-        fill="none"
-        stroke="rgba(255,244,194,0.18)"
-        strokeLinecap="round"
-        strokeWidth="0.28"
-      />
-    </g>
-  );
-}
-
-function CivilizationTraitDialectLayer({
-  profile,
-  scene,
-  compact,
-}: {
-  profile: CivilizationProfile;
-  scene: MarketSceneKind;
-  compact: boolean;
-}) {
-  const dominantTraits = profile.dominantTraits.slice(0, compact ? 2 : 3);
-  if (dominantTraits.length === 0) return null;
-
-  return (
-    <svg
-      className="pointer-events-none absolute inset-0 z-[5] h-full w-full mix-blend-screen"
-      viewBox="0 0 100 100"
-      preserveAspectRatio="none"
-      aria-hidden="true"
-      data-testid="civilization-trait-dialect"
-    >
-      {dominantTraits.map((trait, index) => (
-        <CivilizationTraitDialectMark
-          key={trait}
-          trait={trait}
-          index={index}
-          scene={scene}
-          compact={compact}
-        />
-      ))}
-    </svg>
-  );
-}
-
-function CivilizationArchetypeCompositionLayer({
-  profile,
-  scene,
-  identity,
-  signals,
-  scanActive,
-}: {
-  profile: CivilizationProfile;
-  scene: MarketSceneKind;
-  identity: CivilizationSceneIdentity;
-  signals: CivilizationSceneSignals;
-  scanActive: boolean;
-}) {
-  const archetype = getCivilizationSceneArchetype(profile, identity, signals);
-  if (!archetype) return null;
-
-  const archetypeVisual = CIVILIZATION_ARCHETYPE_VISUALS[archetype];
-  const archetypeArtSlot = getCivilizationArchetypeArtSlot(archetype, scene);
-  const primary = identity.primaryAffinity ? AFFINITY_META[identity.primaryAffinity].hex : '#82ddff';
-  const secondary = identity.secondaryAffinity ? AFFINITY_META[identity.secondaryAffinity].hex : '#dfb86b';
-  const tone = getCivilizationArchetypeTone(archetype, primary);
-  const opacity = scanActive ? 0.22 : scene === 'surface' ? 0.48 : 0.4;
-  const horizon = scene === 'surface' ? 77 : scene === 'orbit' ? 66 : scene === 'stellar' ? 58 : 54;
-  const wide = scene === 'galaxy' ? 1.22 : scene === 'stellar' ? 1.12 : 1;
-
-  return (
-    <svg
-      className="pointer-events-none absolute inset-0 z-[4] h-full w-full mix-blend-screen"
-      viewBox="0 0 100 100"
-      preserveAspectRatio="none"
-      aria-hidden="true"
-      data-testid="civilization-archetype-composition"
-      data-archetype={archetype}
-      data-asset-slot={archetypeArtSlot.id}
-      data-art-resolution={archetypeArtSlot.resolution}
-      data-composition-key={archetypeVisual.compositionKey}
-      data-scene={scene}
-      style={{ opacity }}
-    >
-      {archetype === 'living_arcology' && (
-        <g className="civ-archetype-composition" data-testid="civilization-archetype-living">
-          <path
-            d={`M-4 ${horizon + 11} C12 ${horizon + 2}, 22 ${horizon + 7}, 34 ${horizon - 2} C48 ${horizon - 13}, 61 ${horizon - 5}, 73 ${horizon - 15} C84 ${horizon - 24}, 93 ${horizon - 17}, 104 ${horizon - 27} L104 100 L-4 100 Z`}
-            fill={`${tone}16`}
-          />
-          <path
-            className="civ-archetype-flow"
-            d={`M5 ${horizon + 7} C18 ${horizon - 4}, 30 ${horizon + 7}, 43 ${horizon - 5} S66 ${horizon - 11}, 92 ${horizon - 25}`}
-            fill="none"
-            stroke={`${tone}9A`}
-            strokeLinecap="round"
-            strokeWidth={0.7 * wide}
-          />
-          <path
-            d={`M25 ${horizon + 2} C29 ${horizon - 9}, 36 ${horizon - 9}, 39 ${horizon - 1} M56 ${horizon - 7} C64 ${horizon - 17}, 70 ${horizon - 12}, 72 ${horizon - 3}`}
-            fill="none"
-            stroke="rgba(229,255,238,0.34)"
-            strokeLinecap="round"
-            strokeWidth="0.32"
-          />
-          {[28, 41, 59, 74].map((x, index) => (
-            <path
-              key={x}
-              d={`M${x} ${horizon + 9} C${x - 3} ${horizon - 2}, ${x + 3} ${horizon - 9 - index}, ${x + 1} ${horizon - 20 - index}`}
-              fill="none"
-              stroke={index % 2 === 0 ? `${tone}72` : 'rgba(229,255,238,0.36)'}
-              strokeLinecap="round"
-              strokeWidth={index === 2 ? 0.52 : 0.34}
-            />
-          ))}
-        </g>
-      )}
-      {archetype === 'forge_spine' && (
-        <g className="civ-archetype-composition" data-testid="civilization-archetype-forge">
-          <path
-            d={`M${scene === 'surface' ? 54 : 62} ${horizon + 18} C${scene === 'surface' ? 56 : 59} ${horizon + 2}, ${scene === 'surface' ? 63 : 65} ${horizon - 15}, ${scene === 'surface' ? 74 : 78} ${horizon - 34}`}
-            fill="none"
-            stroke={`${tone}8C`}
-            strokeLinecap="round"
-            strokeWidth={0.92 * wide}
-          />
-          <path
-            d={`M${scene === 'surface' ? 45 : 48} ${horizon + 13} C${scene === 'surface' ? 58 : 62} ${horizon - 3}, ${scene === 'surface' ? 69 : 73} ${horizon - 13}, ${scene === 'surface' ? 88 : 96} ${horizon - 24}`}
-            fill="none"
-            stroke="rgba(255,244,194,0.24)"
-            strokeLinecap="round"
-            strokeWidth="0.36"
-          />
-          <path
-            d={`M${scene === 'surface' ? 60 : 70} ${horizon + 12} L${scene === 'surface' ? 67 : 76} ${horizon - 10} L${scene === 'surface' ? 76 : 85} ${horizon + 11} Z`}
-            fill={`${tone}18`}
-            stroke={`${tone}88`}
-            strokeLinejoin="round"
-            strokeWidth="0.48"
-          />
-          <path
-            d={`M${scene === 'surface' ? 38 : 42} ${horizon + 15} C${scene === 'surface' ? 52 : 56} ${horizon + 5}, ${scene === 'surface' ? 68 : 73} ${horizon + 5}, ${scene === 'surface' ? 91 : 99} ${horizon - 8}`}
-            fill="none"
-            stroke={`${secondary}6E`}
-            strokeLinecap="round"
-            strokeWidth="0.78"
-            className="civ-archetype-flow"
-          />
-          <circle cx={scene === 'surface' ? 67 : 76} cy={horizon - 10} r="2.1" fill="#fff" opacity="0.62" />
-        </g>
-      )}
-      {archetype === 'containment_sentinel' && (
-        <g className="civ-archetype-composition" data-testid="civilization-archetype-containment">
-          <ellipse
-            cx={scene === 'surface' ? 75 : scene === 'galaxy' ? 66 : 72}
-            cy={scene === 'surface' ? 66 : scene === 'galaxy' ? 55 : 62}
-            rx={(scene === 'galaxy' ? 25 : 30) * wide}
-            ry={(scene === 'surface' ? 10 : 8) * wide}
-            fill="rgba(255,105,114,0.08)"
-            stroke={`${tone}84`}
-            strokeDasharray="4 2.4"
-            strokeWidth="0.5"
-            transform={`rotate(${scene === 'galaxy' ? -18 : -9} ${scene === 'surface' ? 75 : scene === 'galaxy' ? 66 : 72} ${scene === 'surface' ? 66 : scene === 'galaxy' ? 55 : 62})`}
-          />
-          <path
-            className="civ-archetype-flow"
-            d={`M${scene === 'galaxy' ? 49 : 50} ${scene === 'surface' ? 68 : 62} H${scene === 'galaxy' ? 91 : 98}`}
-            fill="none"
-            stroke="rgba(255,255,255,0.18)"
-            strokeLinecap="round"
-            strokeWidth="0.32"
-          />
-          <path
-            d={`M${scene === 'galaxy' ? 58 : 67} ${scene === 'surface' ? 56 : 52} C${scene === 'galaxy' ? 70 : 79} ${scene === 'surface' ? 47 : 47}, ${scene === 'galaxy' ? 84 : 91} ${scene === 'surface' ? 52 : 52}, ${scene === 'galaxy' ? 96 : 101} ${scene === 'surface' ? 64 : 63}`}
-            fill="none"
-            stroke="rgba(255,105,114,0.34)"
-            strokeLinecap="round"
-            strokeWidth="0.48"
-          />
-          {[0, 1, 2].map((ring) => (
-            <ellipse
-              key={ring}
-              cx={scene === 'surface' ? 75 : scene === 'galaxy' ? 66 : 72}
-              cy={scene === 'surface' ? 66 : scene === 'galaxy' ? 55 : 62}
-              rx={(14 + ring * 8) * wide}
-              ry={(4.2 + ring * 2.4) * wide}
-              fill="none"
-              stroke={ring === 1 ? 'rgba(255,255,255,0.22)' : `${tone}58`}
-              strokeDasharray={ring === 2 ? '2.6 2.2' : undefined}
-              strokeWidth="0.24"
-              transform={`rotate(${scene === 'galaxy' ? -18 : -9} ${scene === 'surface' ? 75 : scene === 'galaxy' ? 66 : 72} ${scene === 'surface' ? 66 : scene === 'galaxy' ? 55 : 62})`}
-            />
-          ))}
-        </g>
-      )}
-      {archetype === 'route_network' && (
-        <g className="civ-archetype-composition" data-testid="civilization-archetype-route">
-          <path
-            className="civ-archetype-flow"
-            d={`M-5 ${horizon + 2} C18 ${horizon - 16}, 34 ${horizon + 8}, 56 ${horizon - 4} C76 ${horizon - 16}, 88 ${horizon - 1}, 106 ${horizon - 13}`}
-            fill="none"
-            stroke={`${tone}9C`}
-            strokeLinecap="round"
-            strokeWidth={0.84 * wide}
-          />
-          <path
-            d={`M7 ${horizon + 9} C26 ${horizon + 1}, 42 ${horizon + 13}, 61 ${horizon + 3} C78 ${horizon - 5}, 90 ${horizon + 5}, 104 ${horizon - 2}`}
-            fill="none"
-            stroke="rgba(255,255,255,0.18)"
-            strokeLinecap="round"
-            strokeWidth="0.3"
-          />
-          {[22, 43, 63, 84].map((x, index) => (
-            <circle key={x} cx={x} cy={horizon + (index % 2 === 0 ? -2 : 3)} r={index === 2 ? 1.1 : 0.72} fill={index === 2 ? '#fff' : tone} opacity="0.8" />
-          ))}
-          {[31, 67, 91].map((x, index) => (
-            <ellipse
-              key={x}
-              cx={x}
-              cy={horizon + (index === 1 ? -5 : 2)}
-              rx={index === 1 ? 4.8 : 3.2}
-              ry={index === 1 ? 1.8 : 1.2}
-              fill="none"
-              stroke={`${tone}72`}
-              strokeWidth="0.28"
-              transform={`rotate(${index === 1 ? -18 : 12} ${x} ${horizon + (index === 1 ? -5 : 2)})`}
-            />
-          ))}
-        </g>
-      )}
-      {archetype === 'accord_beacon' && (
-        <g className="civ-archetype-composition" data-testid="civilization-archetype-accord">
-          <path
-            d={`M14 ${horizon - 18} C30 ${horizon - 27}, 47 ${horizon - 22}, 60 ${horizon - 30} C75 ${horizon - 39}, 87 ${horizon - 32}, 99 ${horizon - 24}`}
-            fill="none"
-            stroke={`${tone}82`}
-            strokeLinecap="round"
-            strokeWidth="0.66"
-          />
-          <path
-            d={`M24 ${horizon + 2} C38 ${horizon - 16}, 58 ${horizon - 14}, 74 ${horizon + 1}`}
-            fill={`${secondary}0F`}
-            stroke="rgba(255,244,194,0.24)"
-            strokeLinecap="round"
-            strokeWidth="0.32"
-          />
-          {[26, 44, 62, 80].map((x, index) => (
-            <circle key={x} cx={x} cy={horizon - 17 - (index % 2) * 8} r={index === 1 ? 1.1 : 0.72} fill={index === 1 ? '#fff' : tone} opacity="0.82" />
-          ))}
-          <path
-            d={`M48 ${horizon + 5} L58 ${horizon - 7} L70 ${horizon + 4} L58 ${horizon + 16} Z`}
-            fill={`${tone}16`}
-            stroke={`${tone}76`}
-            strokeLinejoin="round"
-            strokeWidth="0.36"
-          />
-        </g>
-      )}
-      {archetype === 'archive_lattice' && (
-        <g className="civ-archetype-composition" data-testid="civilization-archetype-archive">
-          <path
-            d={`M18 ${horizon + 12} V${horizon - 12} H29 V${horizon + 12} M38 ${horizon + 12} V${horizon - 22} H51 V${horizon + 12} M61 ${horizon + 12} V${horizon - 15} H73 V${horizon + 12}`}
-            fill="rgba(3,8,18,0.48)"
-            stroke={`${tone}80`}
-            strokeLinecap="round"
-            strokeLinejoin="round"
-            strokeWidth="0.42"
-          />
-          <path
-            className="civ-archetype-flow"
-            d={`M12 ${horizon + 15} C30 ${horizon + 5}, 46 ${horizon + 10}, 63 ${horizon - 1} C76 ${horizon - 9}, 88 ${horizon - 5}, 99 ${horizon - 13}`}
-            fill="none"
-            stroke="rgba(255,255,255,0.2)"
-            strokeLinecap="round"
-            strokeWidth="0.32"
-          />
-          {[21, 44, 67].map((x, index) => (
-            <path
-              key={x}
-              d={`M${x - 5} ${horizon - 4 - index * 3} H${x + 7} M${x - 5} ${horizon + 4 - index * 3} H${x + 7}`}
-              fill="none"
-              stroke={`${tone}64`}
-              strokeLinecap="round"
-              strokeWidth="0.24"
-            />
-          ))}
-        </g>
-      )}
-    </svg>
-  );
-}
-
-function CivilizationIdentityAtmosphereLayer({
-  identity,
-  palette,
-}: {
-  identity: CivilizationSceneIdentity;
-  palette: AffinityPalette;
-}) {
-  const primaryColor = identity.primaryAffinity ? AFFINITY_META[identity.primaryAffinity].hex : palette.primary;
-  const secondaryColor = identity.secondaryAffinity ? AFFINITY_META[identity.secondaryAffinity].hex : palette.secondary;
-  const routeOpacity = Math.min(0.15, 0.04 + identity.routeScore * 0.004);
-  const fieldOpacity = Math.min(0.16, 0.04 + identity.fieldScore * 0.004 + identity.luminaryCount * 0.014);
-  const districtOpacity = Math.min(0.14, 0.035 + identity.districtScore * 0.004 + identity.blueprintCount * 0.01);
-
-  return (
-    <div
-      className="pointer-events-none absolute inset-0 z-[8] overflow-hidden mix-blend-screen"
-      data-testid="civilization-identity-atmosphere"
-      aria-hidden="true"
-    >
-      <div
-        className="civ-identity-weather absolute -inset-[8%]"
-        style={{
-          background: [
-            `radial-gradient(circle at 30% 35%, ${primaryColor}2E, transparent 34%)`,
-            `radial-gradient(circle at 72% 62%, ${secondaryColor}22, transparent 38%)`,
-            `linear-gradient(105deg, transparent 12%, ${primaryColor}16 42%, ${secondaryColor}12 68%, transparent 92%)`,
-          ].join(','),
-        }}
-      />
-      <svg
-        className="absolute inset-0 h-full w-full"
-        viewBox="0 0 100 100"
-        preserveAspectRatio="none"
-        aria-hidden="true"
-      >
-        <path
-          d="M-4 72 C18 58, 33 66, 48 52 C65 36, 78 45, 104 28"
-          fill="none"
-          stroke={primaryColor}
-          strokeLinecap="round"
-          strokeWidth="0.7"
-          opacity={routeOpacity}
-        />
-        <path
-          d="M-2 34 C20 42, 38 25, 56 38 C72 49, 86 35, 104 44"
-          fill="none"
-          stroke={secondaryColor}
-          strokeLinecap="round"
-          strokeWidth="0.48"
-          opacity={fieldOpacity}
-        />
-        <ellipse
-          cx="52"
-          cy="69"
-          rx="22"
-          ry="5.5"
-          fill={primaryColor}
-          opacity={districtOpacity}
-        />
-      </svg>
-    </div>
-  );
-}
-
-function getProjectWashStyle(
-  site: CivilizationDeploymentSite,
-  index: number,
-  scene: MarketSceneKind,
-  scanActive: boolean,
-): React.CSSProperties {
-  const tone = getCivilizationSiteTone(site);
-  const isBlueprint = site.kind === 'blueprint' || site.kind === 'protocol' || site.kind === 'chronicle';
-  const sceneScale = scene === 'galaxy' ? 1.18 : scene === 'stellar' ? 1.08 : 1;
-  const rotation = ((index % 5) - 2) * 13;
-  const localTrace = site.representationMode === 'local_trace';
-  const route = isRouteTrait(site);
-  const field = isFieldTrait(site);
-  const district = isDistrictTrait(site);
-  const width = localTrace
-    ? 9
-    : isBlueprint
-      ? 28 * sceneScale
-      : site.kind === 'luminary'
-        ? 34 * sceneScale
-        : route
-          ? 28 * sceneScale
-          : field
-            ? 22 * sceneScale
-            : district
-              ? 18 * sceneScale
-              : 18 * sceneScale;
-  const height = localTrace
-    ? 6
-    : isBlueprint
-      ? 10 * sceneScale
-      : site.kind === 'luminary'
-        ? 14 * sceneScale
-        : route
-          ? 7 * sceneScale
-          : field
-            ? 9 * sceneScale
-            : district
-              ? 7 * sceneScale
-              : 8 * sceneScale;
-  const opacity = scanActive
-    ? localTrace ? 0.14 : 0.12
-    : localTrace ? 0.18 : isBlueprint ? 0.23 : site.kind === 'luminary' ? 0.18 : 0.12;
-  const background = site.blueprintId === 'bp_antimatter_detonator'
-    ? `radial-gradient(ellipse at 50% 50%, ${tone}52 0%, ${tone}24 36%, transparent 72%),
-       linear-gradient(90deg, transparent 0%, rgba(255,255,255,0.1) 46%, ${tone}42 50%, rgba(255,255,255,0.08) 54%, transparent 100%)`
-    : site.blueprintId === 'bp_mantle_to_orbit_foundry'
-      ? `linear-gradient(90deg, transparent 0%, rgba(223,184,107,0.1) 22%, rgba(255,228,163,0.34) 50%, rgba(223,184,107,0.1) 78%, transparent 100%),
-         radial-gradient(ellipse at 50% 84%, rgba(223,184,107,0.3) 0%, transparent 58%)`
-      : site.kind === 'luminary'
-        ? `radial-gradient(ellipse at 50% 50%, ${tone}36 0%, ${tone}18 42%, transparent 72%)`
-        : route
-          ? `linear-gradient(90deg, transparent 0%, ${tone}18 20%, ${tone}4A 50%, ${tone}18 80%, transparent 100%)`
-          : field
-            ? `radial-gradient(ellipse at 50% 50%, ${tone}38 0%, ${tone}16 44%, transparent 76%)`
-            : district
-              ? `radial-gradient(ellipse at 50% 55%, ${tone}32 0%, ${tone}18 38%, transparent 72%)`
-              : `radial-gradient(ellipse at 50% 50%, ${tone}30 0%, transparent 70%)`;
-
-  return {
-    background,
-    borderRadius: route || isBlueprint ? '999px' : '45%',
-    filter: localTrace ? `drop-shadow(0 0 8px ${tone}66)` : `blur(6px) drop-shadow(0 0 18px ${tone}2E)`,
-    height: `${height}%`,
-    left: `${site.anchor.x}%`,
-    opacity,
-    top: `${site.anchor.y}%`,
-    transform: `translate(-50%, -50%) rotate(${rotation}deg)`,
-    width: `${width}%`,
-  };
-}
-
-function CivilizationProjectWashLayer({
-  sites,
-  scene,
-  scanActive,
-}: {
-  sites: readonly CivilizationDeploymentSite[];
-  scene: MarketSceneKind;
-  scanActive: boolean;
-}) {
-  if (sites.length === 0) return null;
-  return (
-    <div
-      className="pointer-events-none absolute inset-0 z-[8] overflow-hidden mix-blend-screen"
-      data-testid="civilization-project-washes"
-      aria-hidden="true"
-    >
-      {sites.map((site, index) => (
-        <span
-          key={site.id}
-          className="civ-project-wash absolute"
-          style={{
-            ...getProjectWashStyle(site, index, scene, scanActive),
-            animationDelay: `${(index % 5) * -1.6}s`,
-          }}
-        />
-      ))}
-    </div>
-  );
-}
-
-function getSignatureAtmosphereStyle(
-  descriptor: CivilizationVisualSignatureDescriptor,
-  index: number,
-  scene: MarketSceneKind,
-  scanActive: boolean,
-): React.CSSProperties {
-  const { site, kind } = descriptor;
-  const color = getCivilizationSiteTone(site);
-  const wide = scene === 'galaxy' ? 1.22 : scene === 'stellar' ? 1.12 : 1;
-  const localTrace = descriptor.sourceKind === 'artifact' && site.representationMode === 'local_trace';
-  const dominantBlueprint = descriptor.sourceKind === 'blueprint' && hasDominantBlueprintMark(site);
-  const width = kind === 'quarantine'
-    ? 40 * wide
-    : kind === 'foundry'
-      ? scene === 'surface' || scene === 'orbit'
-        ? (dominantBlueprint && !scanActive ? 15 : 22) * wide
-        : 34 * wide
-      : kind === 'luminary'
-        ? 46 * wide
-        : localTrace
-          ? 13 * wide
-          : 34 * wide;
-  const height = kind === 'foundry'
-    ? scene === 'surface' || scene === 'orbit'
-      ? (dominantBlueprint && !scanActive ? 38 : 58) * wide
-      : 12 * wide
-    : kind === 'quarantine'
-      ? 22 * wide
-      : kind === 'luminary'
-        ? 18 * wide
-        : localTrace
-          ? 8 * wide
-          : 18 * wide;
-  const opacity = scanActive
-    ? localTrace ? 0.09 : 0.12
-    : kind === 'quarantine'
-      ? 0.18
-      : kind === 'foundry'
-        ? dominantBlueprint ? 0.07 : 0.16
-        : kind === 'luminary'
-          ? 0.14
-          : localTrace
-            ? 0.1
-            : 0.13;
-  const rotation = kind === 'foundry'
-    ? scene === 'surface' || scene === 'orbit'
-      ? -22 + index * 7
-      : -9 + index * 5
-    : kind === 'quarantine'
-      ? -9
-      : ((index % 5) - 2) * 11;
-  const background = kind === 'foundry'
-    ? scene === 'surface' || scene === 'orbit'
-      ? `linear-gradient(180deg, rgba(255,244,194,0.48), ${color}33 30%, transparent 82%),
-         radial-gradient(ellipse at 50% 80%, ${color}3A 0%, transparent 64%)`
-      : `linear-gradient(90deg, transparent 0%, ${color}24 22%, rgba(255,244,194,0.24) 50%, ${color}1C 78%, transparent 100%),
-         radial-gradient(ellipse at 50% 50%, ${color}18 0%, transparent 68%)`
-    : kind === 'quarantine'
-      ? `radial-gradient(ellipse at 50% 50%, rgba(255,255,255,0.16) 0%, ${color}30 14%, rgba(0,0,0,0.18) 38%, transparent 74%)`
-      : kind === 'luminary'
-        ? `linear-gradient(90deg, transparent 0%, ${color}20 28%, rgba(255,255,255,0.12) 52%, ${color}1B 74%, transparent 100%)`
-        : kind === 'biosphere'
-          ? `linear-gradient(100deg, transparent 0%, ${color}1E 24%, rgba(229,255,238,0.16) 52%, ${color}18 76%, transparent 100%)`
-          : kind === 'transit' || kind === 'aperture'
-            ? `linear-gradient(90deg, transparent 0%, ${color}1D 24%, rgba(255,255,255,0.11) 50%, ${color}18 76%, transparent 100%)`
-            : kind === 'sealed'
-              ? `linear-gradient(90deg, transparent 0%, rgba(0,0,0,0.42) 24%, ${color}1C 50%, rgba(0,0,0,0.42) 76%, transparent 100%)`
-              : `radial-gradient(ellipse at 50% 50%, ${color}28 0%, ${color}10 42%, transparent 76%)`;
-
-  return {
-    background,
-    borderRadius: kind === 'foundry' ? '42% 42% 999px 999px' : '999px',
-    filter: localTrace ? `blur(3px) drop-shadow(0 0 10px ${color}44)` : `blur(14px) drop-shadow(0 0 24px ${color}2E)`,
-    height: `${height}%`,
-    left: `${site.anchor.x}%`,
-    opacity: Math.max(0.06, opacity - index * 0.018),
-    top: `${site.anchor.y}%`,
-    transform: `translate(-50%, -50%) rotate(${rotation}deg)`,
-    width: `${width}%`,
-  };
-}
-
-function CivilizationSignatureAtmosphereLayer({
-  sites,
-  scene,
-  scanActive,
-  maxSites,
-}: {
-  sites: readonly CivilizationDeploymentSite[];
-  scene: MarketSceneKind;
-  scanActive: boolean;
-  maxSites: number;
-}) {
-  const signatures = React.useMemo(() => (
-    selectCivilizationVisualSignatures(sites, {
-      limit: maxSites,
-      includeSealed: scanActive,
-    }).filter((descriptor) => !(
-      !scanActive &&
-      descriptor.sourceKind === 'blueprint' &&
-      hasDominantBlueprintMark(descriptor.site)
-    )).filter((descriptor) => !(
-      descriptor.sourceKind === 'artifact' &&
-      Boolean(descriptor.site.artifactSceneTreatment)
-    ))
-  ), [sites, maxSites, scanActive]);
-
-  if (signatures.length === 0) return null;
-
-  return (
-    <div
-      className="pointer-events-none absolute inset-0 z-[6] overflow-hidden mix-blend-screen"
-      data-testid="civilization-signature-atmosphere"
-      aria-hidden="true"
-    >
-      {signatures.map((descriptor, index) => (
-        <span
-          key={descriptor.site.id}
-          className="civ-signature-atmosphere absolute"
-          style={{
-            ...getSignatureAtmosphereStyle(descriptor, index, scene, scanActive),
-            animationDelay: `${(index % 4) * -2.3}s`,
-          }}
-        />
-      ))}
-    </div>
-  );
-}
-
-function getPortraitOpacity(site: CivilizationDeploymentSite, index: number, scanActive: boolean): number {
-  const base = scanActive
-    ? site.kind === 'blueprint'
-      ? 0.5
-      : site.kind === 'protocol'
-        ? 0.46
-        : site.kind === 'luminary'
-          ? 0.44
-          : site.representationMode === 'local_trace'
-            ? 0.34
-            : 0.38
-    : site.kind === 'blueprint'
-      ? 0.36
-      : site.kind === 'protocol'
-        ? 0.22
-        : site.kind === 'luminary'
-          ? 0.34
-          : site.representationMode === 'local_trace'
-            ? 0.24
-            : 0.3;
-  const falloff = Math.max(0, index - 2) * 0.05;
-  return Math.max(scanActive ? 0.18 : 0.16, base - falloff);
-}
-
-function BlueprintPortraitMark({
-  site,
-  scene,
-  opacity,
-}: {
-  site: CivilizationDeploymentSite;
-  scene: MarketSceneKind;
-  opacity: number;
-}) {
-  const tone = getCivilizationSiteTone(site);
-  const x = site.anchor.x;
-  const y = site.anchor.y;
-  const sceneWide = scene === 'galaxy' || scene === 'stellar';
-
-  if (site.blueprintId === 'bp_antimatter_detonator') {
-    return (
-      <g
-        className="civ-portrait-loom"
-        opacity={opacity}
-        style={{ color: tone }}
-      >
-        <ellipse
-          cx={x}
-          cy={y}
-          rx={sceneWide ? 22 : 17}
-          ry={sceneWide ? 6.8 : 5.2}
-          fill={`${tone}12`}
-          stroke={`${tone}7A`}
-          strokeWidth="0.42"
-          transform={`rotate(-10 ${x} ${y})`}
-        />
-        <ellipse
-          cx={x}
-          cy={y}
-          rx={sceneWide ? 13 : 9.4}
-          ry={sceneWide ? 3.8 : 2.8}
-          fill="none"
-          stroke="rgba(255,255,255,0.22)"
-          strokeWidth="0.18"
-          strokeDasharray="2 2.4"
-          transform={`rotate(-10 ${x} ${y})`}
-        />
-        <path
-          d={`M${Math.max(3, x - 28)} ${y + 5} C${x - 12} ${y - 7}, ${x + 12} ${y + 10}, ${Math.min(97, x + 30)} ${y - 4}`}
-          fill="none"
-          stroke={`${tone}72`}
-          strokeLinecap="round"
-          strokeWidth="0.38"
-          strokeDasharray="5 4"
-        />
-      </g>
-    );
-  }
-
-  if (site.blueprintId === 'bp_mantle_to_orbit_foundry') {
-    const foundryColor = '#dfb86b';
-    const baseY = Math.min(92, y + (scene === 'surface' ? 20 : 15));
-    const topY = Math.max(8, y - (scene === 'surface' ? 34 : 22));
-    return (
-      <g
-        className="civ-portrait-mark"
-        opacity={opacity}
-        style={{ color: foundryColor }}
-      >
-        <path
-          className="civ-portrait-flow"
-          d={`M${x - 10} ${baseY} C${x - 5} ${y + 5}, ${x + 6} ${y - 8}, ${x + 18} ${topY}`}
-          fill="none"
-          stroke="rgba(255,228,163,0.68)"
-          strokeLinecap="round"
-          strokeWidth="0.86"
-        />
-        <path
-          d={`M${x - 5} ${baseY + 1} C${x - 1} ${y + 2}, ${x + 10} ${y - 10}, ${x + 25} ${topY + 5}`}
-          fill="none"
-          stroke="rgba(255,255,255,0.42)"
-          strokeLinecap="round"
-          strokeWidth="0.28"
-        />
-        <path
-          d={`M${x - 17} ${baseY} L${x + 1} ${baseY - 4} L${x + 15} ${baseY + 2}`}
-          fill="rgba(223,184,107,0.14)"
-          stroke="rgba(255,228,163,0.52)"
-          strokeLinejoin="round"
-          strokeWidth="0.36"
-        />
-        <circle cx={x + 18} cy={topY} r="0.82" fill="#fff4c2" />
-      </g>
-    );
-  }
-
-  if (site.blueprintId === 'bp_worldshield_covenant') {
-    return (
-      <g
-        className="civ-portrait-mark civ-portrait-signal"
-        opacity={opacity}
-        style={{ color: tone }}
-      >
-        <ellipse
-          cx={x}
-          cy={y}
-          rx={sceneWide ? 26 : 20}
-          ry={sceneWide ? 12 : 9}
-          fill={`${tone}12`}
-          stroke={`${tone}B8`}
-          strokeWidth="0.48"
-        />
-        <path
-          d={`M${x - 20} ${y - 2} C${x - 6} ${y - 11}, ${x + 7} ${y - 11}, ${x + 22} ${y - 1}`}
-          fill="none"
-          stroke="rgba(255,255,255,0.35)"
-          strokeLinecap="round"
-          strokeWidth="0.24"
-        />
-      </g>
-    );
-  }
-
-  return (
-    <g className="civ-portrait-mark civ-portrait-signal" opacity={opacity} style={{ color: tone }}>
-      <ellipse cx={x} cy={y} rx="13" ry="5.2" fill={`${tone}1F`} stroke={`${tone}A6`} strokeWidth="0.42" />
-      <path
-        d={`M${x - 14} ${y + 2} C${x - 5} ${y - 5}, ${x + 6} ${y + 5}, ${x + 15} ${y - 1}`}
-        fill="none"
-        stroke={`${tone}AA`}
-        strokeLinecap="round"
-        strokeWidth="0.42"
-      />
-    </g>
-  );
-}
-
-function ProtocolPortraitMark({
-  site,
-  opacity,
-}: {
-  site: CivilizationDeploymentSite;
-  opacity: number;
-}) {
-  const tone = getCivilizationSiteTone(site);
-  const x = site.anchor.x;
-  const y = site.anchor.y;
-  return (
-    <g className="civ-portrait-mark" opacity={opacity} style={{ color: tone }}>
-      <path
-        d={`M${x - 14} ${y - 5} H${x + 15} M${x - 19} ${y} H${x + 11} M${x - 10} ${y + 5} H${x + 20}`}
-        stroke={`${tone}A8`}
-        strokeLinecap="round"
-        strokeWidth="0.92"
-        strokeDasharray="5 2.4"
-      />
-      <path
-        d={`M${x - 14} ${y - 5} H${x + 15} M${x - 19} ${y} H${x + 11} M${x - 10} ${y + 5} H${x + 20}`}
-        stroke="rgba(4,7,15,0.82)"
-        strokeLinecap="round"
-        strokeWidth="0.34"
-        strokeDasharray="1.3 2"
-      />
-    </g>
-  );
-}
-
-function CivilizationEnvironmentalSignatureMark({
-  descriptor,
-  index,
-  scene,
-  scanActive,
-}: {
-  descriptor: CivilizationVisualSignatureDescriptor;
-  index: number;
-  scene: MarketSceneKind;
-  scanActive: boolean;
-}) {
-  const { site, kind } = descriptor;
-  const tone = getCivilizationSiteTone(site);
-  const x = site.anchor.x;
-  const y = site.anchor.y;
-  const wide = scene === 'galaxy' ? 1.38 : scene === 'stellar' ? 1.18 : 1;
-  const rotation = ((index % 5) - 2) * 8;
-  const opacityBase = scanActive
-    ? descriptor.sourceKind === 'blueprint' ? 0.28 : 0.2
-    : descriptor.sourceKind === 'blueprint' ? 0.34 : descriptor.sourceKind === 'luminary' ? 0.22 : 0.16;
-  const opacity = Math.max(scanActive ? 0.12 : 0.14, opacityBase - index * 0.035);
-
-  if (descriptor.sourceKind === 'artifact' && site.representationMode === 'local_trace') {
-    const localOpacity = scanActive ? Math.min(0.22, opacity + 0.03) : Math.min(0.2, opacity + 0.02);
-    return (
-      <g className="civ-environment-signature civ-portrait-signal" opacity={localOpacity} style={{ color: tone }}>
-        <ellipse cx={x} cy={y} rx={8.6 * wide} ry={3.2 * wide} fill={`${tone}14`} stroke={`${tone}7C`} strokeWidth="0.26" strokeDasharray="1.2 1.5" transform={`rotate(${rotation} ${x} ${y})`} />
-        <path d={`M${x - 6} ${y + 2} C${x - 2} ${y - 1}, ${x + 1} ${y + 2.4}, ${x + 6.6} ${y - 1.2}`} fill="none" stroke="rgba(255,255,255,0.24)" strokeLinecap="round" strokeWidth="0.22" />
-        <circle cx={x} cy={y} r="0.78" fill="rgba(255,255,255,0.62)" />
-      </g>
-    );
-  }
-
-  if (kind === 'quarantine') {
-    return (
-      <g className="civ-environment-signature civ-portrait-loom" opacity={opacity} style={{ color: tone }}>
-        <ellipse cx={x} cy={y} rx={30 * wide} ry={8.4 * wide} fill={`${tone}10`} stroke={`${tone}62`} strokeWidth="0.34" strokeDasharray="3.5 2.6" transform={`rotate(${rotation - 8} ${x} ${y})`} />
-        <ellipse cx={x} cy={y} rx={18 * wide} ry={4.6 * wide} fill="rgba(0,0,0,0.18)" stroke="rgba(255,255,255,0.16)" strokeWidth="0.16" transform={`rotate(${rotation - 8} ${x} ${y})`} />
-        <path d={`M${Math.max(0, x - 34 * wide)} ${y - 9} L${Math.min(100, x + 34 * wide)} ${y + 9} M${Math.max(0, x - 33 * wide)} ${y + 10} L${Math.min(100, x + 33 * wide)} ${y - 8}`} fill="none" stroke={`${tone}4F`} strokeLinecap="round" strokeWidth="0.54" transform={`rotate(${rotation - 8} ${x} ${y})`} />
-      </g>
-    );
-  }
-
-  if (kind === 'foundry') {
-    const foundryColor = '#dfb86b';
-    if (scene === 'galaxy' || scene === 'stellar') {
-      const routeD = `M${Math.max(1, x - 36 * wide)} ${y + 12} C${x - 18} ${y - 7}, ${x + 14} ${y + 13}, ${Math.min(99, x + 40 * wide)} ${y - 8}`;
-      return (
-        <g className="civ-environment-signature civ-portrait-signal" opacity={Math.max(scanActive ? 0.14 : 0.12, opacity * 0.82)} style={{ color: foundryColor }}>
-          <path d={routeD} fill="none" stroke="rgba(223,184,107,0.18)" strokeLinecap="round" strokeWidth="3.2" />
-          <path className="civ-portrait-flow" d={routeD} fill="none" stroke="rgba(255,228,163,0.54)" strokeLinecap="round" strokeWidth="0.52" />
-          {[0.16, 0.42, 0.7, 0.91].map((step, stepIndex) => (
-            <circle
-              key={step}
-              cx={Math.max(2, Math.min(98, x - 34 * wide + 72 * wide * step))}
-              cy={y + 10 - Math.sin(step * Math.PI) * 16 + (stepIndex % 2 ? 1.8 : -1.2)}
-              r={stepIndex === 1 ? 0.86 : 0.58}
-              fill={stepIndex === 1 ? 'rgba(255,244,194,0.82)' : 'rgba(223,184,107,0.7)'}
-            />
-          ))}
-        </g>
-      );
-    }
-    const baseY = Math.min(96, y + 24 * wide);
-    const topY = Math.max(4, y - 34 * wide);
-    return (
-      <g className="civ-environment-signature civ-portrait-signal" opacity={Math.max(scanActive ? 0.12 : 0.1, opacity * 0.78)} style={{ color: foundryColor }}>
-        <path d={`M${x - 16} ${baseY} C${x - 8} ${y + 8}, ${x + 3} ${y - 8}, ${x + 19} ${topY}`} fill="none" stroke="rgba(223,184,107,0.2)" strokeLinecap="round" strokeWidth="4.4" />
-        <path className="civ-portrait-flow" d={`M${x - 16} ${baseY} C${x - 8} ${y + 8}, ${x + 3} ${y - 8}, ${x + 19} ${topY}`} fill="none" stroke="rgba(255,228,163,0.58)" strokeLinecap="round" strokeWidth="0.64" />
-        <path d={`M${x - 30} ${baseY + 2} L${x - 8} ${baseY - 5} L${x + 15} ${baseY + 2} M${x - 22} ${baseY - 5} L${x} ${baseY - 12} L${x + 22} ${baseY - 5}`} fill="none" stroke="rgba(255,244,194,0.26)" strokeLinecap="round" strokeWidth="0.34" />
-        <circle cx={x + 19} cy={topY} r="1.2" fill="rgba(255,244,194,0.78)" />
-      </g>
-    );
-  }
-
-  if (kind === 'shield') {
-    return (
-      <g className="civ-environment-signature civ-portrait-loom" opacity={opacity} style={{ color: tone }}>
-        <path d={`M${Math.max(0, x - 38 * wide)} ${y + 10} C${x - 19} ${y - 23 * wide}, ${x + 20} ${y - 23 * wide}, ${Math.min(100, x + 39 * wide)} ${y + 10}`} fill="none" stroke={`${tone}88`} strokeLinecap="round" strokeWidth="0.7" />
-        <path d={`M${Math.max(0, x - 31 * wide)} ${y + 13} C${x - 11} ${y - 10 * wide}, ${x + 12} ${y - 10 * wide}, ${Math.min(100, x + 32 * wide)} ${y + 13}`} fill="none" stroke="rgba(255,255,255,0.24)" strokeLinecap="round" strokeWidth="0.3" />
-        <path d={`M${x - 7} ${y + 9} C${x - 2} ${y + 13}, ${x + 2} ${y + 13}, ${x + 7} ${y + 9}`} fill="none" stroke={`${tone}60`} strokeLinecap="round" strokeWidth="0.36" />
-      </g>
-    );
-  }
-
-  if (kind === 'luminary') {
-    return (
-      <g className="civ-environment-signature civ-portrait-haze" opacity={opacity} style={{ color: tone }}>
-        <path d={`M${Math.max(0, x - 42 * wide)} ${y + 7} C${x - 20} ${y - 15}, ${x + 19} ${y - 15}, ${Math.min(100, x + 42 * wide)} ${y + 6}`} fill="none" stroke={`${tone}78`} strokeLinecap="round" strokeWidth="1.4" />
-        <path d={`M${Math.max(0, x - 36 * wide)} ${y + 15} C${x - 12} ${y + 3}, ${x + 13} ${y + 3}, ${Math.min(100, x + 36 * wide)} ${y + 14}`} fill="none" stroke="rgba(255,255,255,0.18)" strokeLinecap="round" strokeWidth="0.36" />
-        <circle cx={x} cy={y - 5} r="1.1" fill="rgba(255,255,255,0.72)" />
-        <circle cx={x - 9} cy={y - 1} r="0.6" fill={`${tone}CC`} />
-        <circle cx={x + 9} cy={y - 1} r="0.6" fill={`${tone}CC`} />
-      </g>
-    );
-  }
-
-  if (kind === 'sealed') {
-    return (
-      <g className="civ-environment-signature" opacity={opacity} style={{ color: tone }}>
-        <path d={`M${Math.max(0, x - 32 * wide)} ${y - 8} H${Math.min(100, x + 32 * wide)} M${Math.max(0, x - 38 * wide)} ${y} H${Math.min(100, x + 28 * wide)} M${Math.max(0, x - 28 * wide)} ${y + 8} H${Math.min(100, x + 38 * wide)}`} stroke={`${tone}84`} strokeLinecap="round" strokeWidth="1.1" strokeDasharray="6 3" transform={`rotate(${rotation} ${x} ${y})`} />
-        <path d={`M${Math.max(0, x - 32 * wide)} ${y - 8} H${Math.min(100, x + 32 * wide)} M${Math.max(0, x - 38 * wide)} ${y} H${Math.min(100, x + 28 * wide)} M${Math.max(0, x - 28 * wide)} ${y + 8} H${Math.min(100, x + 38 * wide)}`} stroke="rgba(0,0,0,0.68)" strokeLinecap="round" strokeWidth="0.42" strokeDasharray="2 5" transform={`rotate(${rotation} ${x} ${y})`} />
-      </g>
-    );
-  }
-
-  if (kind === 'biosphere') {
-    return (
-      <g className="civ-environment-signature civ-portrait-signal" opacity={opacity} style={{ color: tone }}>
-        <path d={`M${Math.max(0, x - 30 * wide)} ${y + 8} C${x - 17} ${y - 11}, ${x + 10} ${y + 14}, ${Math.min(100, x + 32 * wide)} ${y - 9}`} fill="none" stroke={`${tone}62`} strokeLinecap="round" strokeWidth="0.82" />
-        <path d={`M${x - 8} ${y + 1} C${x - 7} ${y - 7}, ${x - 2} ${y - 8}, ${x + 2} ${y - 3} M${x + 4} ${y + 4} C${x + 12} ${y - 1}, ${x + 17} ${y + 1}, ${x + 19} ${y + 7}`} fill="none" stroke="rgba(229,255,238,0.2)" strokeLinecap="round" strokeWidth="0.28" />
-      </g>
-    );
-  }
-
-  if (kind === 'transit' || kind === 'aperture') {
-    return (
-      <g className="civ-environment-signature" opacity={opacity} style={{ color: tone }}>
-        <path className="civ-portrait-flow" d={`M${Math.max(0, x - 42 * wide)} ${y + 12} C${x - 17} ${y - 14}, ${x + 14} ${y + 15}, ${Math.min(100, x + 44 * wide)} ${y - 10}`} fill="none" stroke={`${tone}92`} strokeLinecap="round" strokeWidth="0.82" />
-        <path d={`M${Math.max(0, x - 31 * wide)} ${y + 4} C${x - 9} ${y - 5}, ${x + 11} ${y + 6}, ${Math.min(100, x + 33 * wide)} ${y - 4}`} fill="none" stroke="rgba(255,255,255,0.2)" strokeLinecap="round" strokeWidth="0.3" />
-      </g>
-    );
-  }
-
-  if (kind === 'reactor' || kind === 'entropy') {
-    return (
-      <g className="civ-environment-signature civ-portrait-signal" opacity={opacity} style={{ color: tone }}>
-        <path d={`M${Math.max(0, x - 30 * wide)} ${y + 8} C${x - 14} ${y - 8}, ${x + 11} ${y + 13}, ${Math.min(100, x + 31 * wide)} ${y - 6}`} fill="none" stroke={`${tone}86`} strokeLinecap="round" strokeWidth="1" />
-        <path d={`M${x - 8} ${y + 12} L${x - 2} ${y - 1} L${x + 2} ${y + 4} L${x + 8} ${y - 12}`} fill="none" stroke="rgba(255,244,194,0.28)" strokeLinecap="round" strokeLinejoin="round" strokeWidth="0.38" />
-      </g>
-    );
-  }
-
-  if (kind === 'archive' || kind === 'lattice' || kind === 'accord' || kind === 'replication') {
-    const cols = [-14, -7, 0, 7, 14];
-    return (
-      <g className="civ-environment-signature civ-portrait-signal" opacity={opacity} style={{ color: tone }}>
-        <path d={`M${x - 20} ${y + 8} C${x - 8} ${y + 2}, ${x + 9} ${y + 2}, ${x + 21} ${y + 8}`} fill="none" stroke={`${tone}76`} strokeLinecap="round" strokeWidth="0.62" />
-        {cols.map((dx, colIndex) => (
-          <path key={dx} d={`M${x + dx} ${y + 7} V${y - 3 - (colIndex % 2) * 4}`} stroke={colIndex === 2 ? 'rgba(255,255,255,0.34)' : `${tone}74`} strokeLinecap="round" strokeWidth={colIndex === 2 ? 0.36 : 0.26} />
-        ))}
-      </g>
-    );
-  }
-
-  return (
-    <g className="civ-environment-signature civ-portrait-loom" opacity={opacity} style={{ color: tone }}>
-      <ellipse cx={x} cy={y} rx={22 * wide} ry={6 * wide} fill={`${tone}12`} stroke={`${tone}62`} strokeWidth="0.34" transform={`rotate(${rotation} ${x} ${y})`} />
-    </g>
-  );
-}
-
-function CivilizationEnvironmentalSignatureLayer({
-  sites,
-  scene,
-  scanActive,
-  maxSites,
-}: {
-  sites: readonly CivilizationDeploymentSite[];
-  scene: MarketSceneKind;
-  scanActive: boolean;
-  maxSites: number;
-}) {
-  const signatures = React.useMemo(() => (
-    selectCivilizationVisualSignatures(sites, {
-      limit: maxSites,
-      includeSealed: scanActive,
-    }).filter((descriptor) => !(
-      !scanActive &&
-      descriptor.sourceKind === 'blueprint' &&
-      hasDominantBlueprintMark(descriptor.site)
-    ))
-  ), [sites, maxSites, scanActive]);
-
-  if (signatures.length === 0) return null;
-
-  return (
-    <svg
-      className="pointer-events-none absolute inset-0 z-[7] h-full w-full mix-blend-screen"
-      viewBox="0 0 100 100"
-      preserveAspectRatio="none"
-      aria-hidden="true"
-      data-testid="civilization-environment-signatures"
-    >
-      {signatures.map((descriptor, index) => (
-        <CivilizationEnvironmentalSignatureMark
-          key={descriptor.site.id}
-          descriptor={descriptor}
-          index={index}
-          scene={scene}
-          scanActive={scanActive}
-        />
-      ))}
-    </svg>
-  );
-}
-
-function ArtifactTreatmentInfluenceMark({
-  site,
-  index,
-  scene,
-  scanActive,
-  recent,
-}: {
-  site: CivilizationDeploymentSite;
-  index: number;
-  scene: MarketSceneKind;
-  scanActive: boolean;
-  recent: boolean;
-}) {
-  const treatment = site.artifactSceneTreatment;
-  if (!treatment) return null;
-
-  const tone = getCivilizationSiteTone(site);
-  const x = site.anchor.x;
-  const y = site.anchor.y;
-  const wide = scene === 'galaxy' ? 1.36 : scene === 'stellar' ? 1.18 : 1;
-  const rotation = ((index % 5) - 2) * 8;
-  const opacity = recent ? 0.64 : scanActive ? 0.36 : 0.28;
-  const stroke = `${tone}${recent ? 'D2' : scanActive ? 'A8' : '82'}`;
-  const soft = `${tone}${recent ? '22' : '14'}`;
-  const white = 'rgba(255,255,255,0.3)';
-  const label = getArtifactTreatmentLabel(treatment);
-
-  if (treatment === 'ashroot_recovery') {
-    return (
-      <g
-        className="civ-artifact-substructure"
-        data-testid="civilization-artifact-treatment-influence-ashroot_recovery"
-        data-treatment-label={label}
-        opacity={opacity}
-        style={{ color: tone }}
-      >
-        <path
-          d={`M${Math.max(0, x - 28 * wide)} ${y + 8} C${x - 15 * wide} ${y - 14}, ${x + 7 * wide} ${y + 12}, ${Math.min(100, x + 32 * wide)} ${y - 8}`}
-          fill="none"
-          stroke={stroke}
-          strokeLinecap="round"
-          strokeWidth={recent ? 1.04 : 0.72}
-        />
-        <path
-          d={`M${x - 10 * wide} ${y + 2} C${x - 7 * wide} ${y - 7}, ${x - 1 * wide} ${y - 8}, ${x + 4 * wide} ${y - 3} M${x + 7 * wide} ${y + 4} C${x + 14 * wide} ${y - 1}, ${x + 22 * wide} ${y + 2}, ${x + 24 * wide} ${y + 8}`}
-          fill="none"
-          stroke="rgba(229,255,238,0.34)"
-          strokeLinecap="round"
-          strokeWidth="0.32"
-        />
-        <circle cx={x - 9 * wide} cy={y + 1.8} r={recent ? 1 : 0.66} fill={`${tone}C8`} />
-        <ArtifactMotifGlyph site={site} x={x + 1.6 * wide} y={y - 0.8} tone={tone} scale={recent ? 0.64 : 0.52} rotation={rotation * 0.4} emphasis={recent ? 1.08 : 1} />
-      </g>
-    );
-  }
-
-  if (treatment === 'mantlelift_driver') {
-    return (
-      <g
-        className="civ-artifact-substructure"
-        data-testid="civilization-artifact-treatment-influence-mantlelift_driver"
-        data-treatment-label={label}
-        opacity={opacity}
-        style={{ color: tone }}
-      >
-        <path
-          className="civ-artifact-substructure-flow"
-          d={`M${Math.max(0, x - 32 * wide)} ${y + 10} C${x - 14 * wide} ${y - 10}, ${x + 14 * wide} ${y + 12}, ${Math.min(100, x + 36 * wide)} ${y - 8}`}
-          fill="none"
-          stroke={stroke}
-          strokeLinecap="round"
-          strokeWidth={recent ? 1.08 : 0.74}
-        />
-        {[0.18, 0.44, 0.68, 0.9].map((step, stepIndex) => (
-          <circle
-            key={step}
-            cx={Math.max(3, Math.min(97, x - 30 * wide + 62 * wide * step))}
-            cy={y + 9 - Math.sin(step * Math.PI) * 18}
-            r={(stepIndex === 2 ? 1 : 0.62) * (recent ? 1.08 : 1)}
-            fill={stepIndex === 2 ? 'rgba(255,244,194,0.82)' : `${tone}C8`}
-          />
-        ))}
-        <ArtifactMotifGlyph site={site} x={x} y={y} tone={tone} scale={recent ? 0.62 : 0.5} rotation={rotation} emphasis={recent ? 1.1 : 1} />
-      </g>
-    );
-  }
-
-  if (treatment === 'ignition_kernel') {
-    return (
-      <g
-        className="civ-artifact-substructure"
-        data-testid="civilization-artifact-treatment-influence-ignition_kernel"
-        data-treatment-label={label}
-        opacity={opacity}
-        style={{ color: tone }}
-      >
-        <path
-          d={`M${Math.max(1, x - 24 * wide)} ${y + 7} C${x - 10 * wide} ${y - 5}, ${x + 10 * wide} ${y + 6}, ${Math.min(99, x + 26 * wide)} ${y - 6}`}
-          fill="none"
-          stroke={`${tone}A4`}
-          strokeLinecap="round"
-          strokeWidth={recent ? 0.92 : 0.6}
-        />
-        {[-0.42, 0, 0.42].map((step, nodeIndex) => (
-          <circle
-            key={step}
-            cx={x + step * 24 * wide}
-            cy={y + (nodeIndex === 1 ? -1.5 : 1.4)}
-            r={(nodeIndex === 1 ? 1.45 : 0.8) * (recent ? 1.08 : 1)}
-            fill={nodeIndex === 1 ? 'rgba(255,244,194,0.82)' : `${tone}B8`}
-          />
-        ))}
-        <ArtifactMotifGlyph site={site} x={x} y={y} tone={tone} scale={recent ? 0.6 : 0.48} rotation={rotation} emphasis={recent ? 1.08 : 1} />
-      </g>
-    );
-  }
-
-  if (treatment === 'magnetic_bottle') {
-    return (
-      <g
-        className="civ-artifact-substructure"
-        data-testid="civilization-artifact-treatment-influence-magnetic_bottle"
-        data-treatment-label={label}
-        opacity={opacity}
-        style={{ color: tone }}
-      >
-        <ellipse
-          cx={x}
-          cy={y}
-          rx={11.5 * wide}
-          ry={4.6 * wide}
-          fill={soft}
-          stroke={stroke}
-          strokeWidth={recent ? 0.58 : 0.4}
-          transform={`rotate(${rotation} ${x} ${y})`}
-        />
-        <ellipse
-          cx={x}
-          cy={y}
-          rx={6.4 * wide}
-          ry={7.8 * wide}
-          fill="rgba(0,0,0,0.14)"
-          stroke={`${tone}66`}
-          strokeWidth="0.24"
-          transform={`rotate(${-rotation} ${x} ${y})`}
-        />
-        <path
-          d={`M${Math.max(1, x - 16 * wide)} ${y} H${x - 5 * wide} M${x + 5 * wide} ${y} H${Math.min(99, x + 16 * wide)}`}
-          stroke={white}
-          strokeLinecap="round"
-          strokeWidth="0.24"
-        />
-        <ArtifactMotifGlyph site={site} x={x} y={y} tone={tone} scale={recent ? 0.6 : 0.48} rotation={rotation} emphasis={recent ? 1.08 : 1} />
-      </g>
-    );
-  }
-
-  if (treatment === 'horizon_extractor') {
-    return (
-      <g
-        className="civ-artifact-substructure"
-        data-testid="civilization-artifact-treatment-influence-horizon_extractor"
-        data-treatment-label={label}
-        opacity={opacity}
-        style={{ color: tone }}
-      >
-        <path
-          d={`M${x - 14 * wide} ${y + 2} C${x - 6 * wide} ${y - 8}, ${x + 7 * wide} ${y - 8}, ${x + 15 * wide} ${y + 2}`}
-          fill="none"
-          stroke={stroke}
-          strokeLinecap="round"
-          strokeWidth={recent ? 0.82 : 0.52}
-        />
-        <path
-          d={`M${x - 10 * wide} ${y + 5} C${x - 3 * wide} ${y - 1}, ${x + 4 * wide} ${y - 1}, ${x + 11 * wide} ${y + 5}`}
-          fill="none"
-          stroke={`${tone}6C`}
-          strokeLinecap="round"
-          strokeWidth="0.28"
-        />
-        <circle cx={x} cy={y + 1.2} r={recent ? 2.2 : 1.6} fill="rgba(0,0,0,0.52)" stroke="rgba(255,255,255,0.28)" strokeWidth="0.2" />
-        <path d={`M${x} ${y - 8} V${y - 2.4} M${x - 5.8 * wide} ${y - 6} L${x - 2.2 * wide} ${y - 1.8} M${x + 5.8 * wide} ${y - 6} L${x + 2.2 * wide} ${y - 1.8}`} stroke={white} strokeLinecap="round" strokeWidth="0.2" />
-        <ArtifactMotifGlyph site={site} x={x} y={y + 0.6} tone={tone} scale={recent ? 0.6 : 0.48} rotation={rotation} emphasis={recent ? 1.08 : 1} />
-      </g>
-    );
-  }
-
-  if (treatment === 'entropy_baffle') {
-    return (
-      <g
-        className="civ-artifact-substructure"
-        data-testid="civilization-artifact-treatment-influence-entropy_baffle"
-        data-treatment-label={label}
-        opacity={opacity}
-        style={{ color: tone }}
-        transform={`rotate(${rotation} ${x} ${y})`}
-      >
-        <path
-          d={`M${x - 12 * wide} ${y + 5} L${x - 8 * wide} ${y - 6} H${x + 8 * wide} L${x + 12 * wide} ${y + 5} Z`}
-          fill={soft}
-          stroke={stroke}
-          strokeLinejoin="round"
-          strokeWidth={recent ? 0.52 : 0.34}
-        />
-        {[-7, -3.5, 0, 3.5, 7].map((dx, finIndex) => (
-          <path
-            key={dx}
-            d={`M${x + dx * wide} ${y + 4.4} V${y - 3.8 - (finIndex % 2) * 1.8}`}
-            stroke={finIndex === 2 ? white : `${tone}92`}
-            strokeLinecap="round"
-            strokeWidth={finIndex === 2 ? 0.32 : 0.24}
-          />
-        ))}
-        <path
-          d={`M${x - 13 * wide} ${y + 7.2} C${x - 6 * wide} ${y + 3.2}, ${x - 2 * wide} ${y + 8}, ${x + 1 * wide} ${y + 5.8} S${x + 8 * wide} ${y + 3.4}, ${x + 13 * wide} ${y + 7}`}
-          fill="none"
-          stroke="rgba(255,148,93,0.48)"
-          strokeLinecap="round"
-          strokeWidth="0.25"
-        />
-        <ArtifactMotifGlyph site={site} x={x} y={y} tone={tone} scale={recent ? 0.58 : 0.46} rotation={0} emphasis={recent ? 1.08 : 1} />
-      </g>
-    );
-  }
-
-  return null;
-}
-
-function ArtifactSubstructureMark({
-  site,
-  index,
-  scene,
-  scanActive,
-  recent,
-}: {
-  site: CivilizationDeploymentSite;
-  index: number;
-  scene: MarketSceneKind;
-  scanActive: boolean;
-  recent: boolean;
-}) {
-  const tone = getCivilizationSiteTone(site);
-  const x = site.anchor.x;
-  const y = site.anchor.y;
-  const wide = scene === 'galaxy' ? 1.35 : scene === 'stellar' ? 1.18 : scene === 'orbit' ? 1.08 : 1;
-  const rotation = ((index % 5) - 2) * 9;
-  const localTrace = site.representationMode === 'local_trace';
-  const baseOpacity = recent
-    ? scanActive ? 0.72 : 0.62
-    : localTrace
-      ? scanActive ? 0.32 : 0.26
-      : scanActive ? 0.38 : 0.3;
-  const motifSilhouetteNative = Boolean(site.artifactVisualMotif && shouldRenderArtifactNative(site, scene));
-  const opacity = motifSilhouetteNative ? Math.max(0.18, baseOpacity * 0.76) : baseOpacity;
-  const strokeOpacity = recent ? 'D8' : scanActive ? 'A8' : '82';
-  const motifScale = localTrace ? (recent ? 0.62 : 0.52) : (recent ? 0.78 : 0.64);
-
-  if (site.artifactSceneTreatment && shouldRenderArtifactInfluence(site, scene)) {
-    return (
-      <ArtifactTreatmentInfluenceMark
-        site={site}
-        index={index}
-        scene={scene}
-        scanActive={scanActive}
-        recent={recent}
-      />
-    );
-  }
-
-  if (isRouteTrait(site)) {
-    const startX = Math.max(1, x - 28 * wide);
-    const endX = Math.min(99, x + 34 * wide);
-    const midY = y + (index % 2 === 0 ? -9 : 8);
-    return (
-      <g className="civ-artifact-substructure" opacity={opacity} style={{ color: tone }}>
-        <path
-          d={`M${startX} ${y + 7} C${x - 12 * wide} ${midY}, ${x + 13 * wide} ${midY}, ${endX} ${y - 6}`}
-          fill="none"
-          stroke={`${tone}${strokeOpacity}`}
-          strokeLinecap="round"
-          strokeWidth={recent ? 1.05 : 0.72}
-          className="civ-artifact-substructure-flow"
-        />
-        <path
-          d={`M${Math.max(2, x - 17 * wide)} ${y + 2} C${x - 5 * wide} ${y - 4}, ${x + 7 * wide} ${y + 4}, ${Math.min(98, x + 19 * wide)} ${y - 2}`}
-          fill="none"
-          stroke="rgba(255,255,255,0.28)"
-          strokeLinecap="round"
-          strokeWidth="0.28"
-        />
-        <circle cx={Math.max(3, x - 12 * wide)} cy={y + 1.5} r={recent ? 1.1 : 0.72} fill={`${tone}D8`} />
-        <circle cx={Math.min(97, x + 14 * wide)} cy={y - 1.2} r={recent ? 1 : 0.66} fill="rgba(255,255,255,0.8)" />
-        <ArtifactMotifGlyph site={site} x={x} y={y - 1.2} tone={tone} scale={motifScale} rotation={rotation} emphasis={recent ? 1.08 : 1} />
-      </g>
-    );
-  }
-
-  if (site.trait === 'biosphere') {
-    return (
-      <g className="civ-artifact-substructure" opacity={opacity} style={{ color: tone }}>
-        <path
-          d={`M${Math.max(0, x - 25 * wide)} ${y + 9} C${x - 13 * wide} ${y - 13}, ${x + 6 * wide} ${y + 13}, ${Math.min(100, x + 29 * wide)} ${y - 8}`}
-          fill="none"
-          stroke={`${tone}${strokeOpacity}`}
-          strokeLinecap="round"
-          strokeWidth={recent ? 1.12 : 0.78}
-        />
-        <path
-          d={`M${x - 8 * wide} ${y + 2} C${x - 7 * wide} ${y - 7}, ${x - 2 * wide} ${y - 8}, ${x + 2 * wide} ${y - 3} M${x + 4 * wide} ${y + 4} C${x + 12 * wide} ${y - 1}, ${x + 18 * wide} ${y + 2}, ${x + 20 * wide} ${y + 8}`}
-          fill="none"
-          stroke="rgba(229,255,238,0.34)"
-          strokeLinecap="round"
-          strokeWidth="0.34"
-        />
-        <circle cx={x - 8 * wide} cy={y + 2} r={recent ? 1.05 : 0.68} fill={`${tone}C8`} />
-        <ArtifactMotifGlyph site={site} x={x + 2 * wide} y={y - 0.6} tone={tone} scale={motifScale} rotation={rotation * 0.5} emphasis={recent ? 1.08 : 1} />
-      </g>
-    );
-  }
-
-  if (isFieldTrait(site)) {
-    const rx = localTrace ? 9.5 * wide : 15.5 * wide;
-    const ry = localTrace ? 3.8 * wide : 6 * wide;
-    return (
-      <g className="civ-artifact-substructure" opacity={opacity} style={{ color: tone }}>
-        <ellipse
-          cx={x}
-          cy={y}
-          rx={rx}
-          ry={ry}
-          fill={`${tone}${recent ? '22' : '14'}`}
-          stroke={`${tone}${strokeOpacity}`}
-          strokeWidth={recent ? 0.62 : 0.42}
-          strokeDasharray={site.trait === 'veil' ? '2.2 1.7' : site.trait === 'containment' ? '4 2.3' : undefined}
-          transform={`rotate(${rotation} ${x} ${y})`}
-        />
-        <ellipse
-          cx={x}
-          cy={y}
-          rx={Math.max(4, rx * 0.58)}
-          ry={Math.max(1.4, ry * 0.48)}
-          fill="rgba(0,0,0,0.12)"
-          stroke="rgba(255,255,255,0.22)"
-          strokeWidth="0.2"
-          transform={`rotate(${-rotation} ${x} ${y})`}
-        />
-        {recent && (
-          <path
-            d={`M${Math.max(1, x - rx - 5)} ${y} H${Math.min(99, x + rx + 5)}`}
-            stroke="rgba(255,255,255,0.34)"
-            strokeLinecap="round"
-            strokeWidth="0.18"
-            transform={`rotate(${rotation} ${x} ${y})`}
-          />
-        )}
-        <ArtifactMotifGlyph site={site} x={x} y={y} tone={tone} scale={motifScale} rotation={rotation} emphasis={recent ? 1.08 : 1} />
-      </g>
-    );
-  }
-
-  if (isDistrictTrait(site)) {
-    const cell = localTrace ? 2.4 : 3.2;
-    const cells = [
-      [-8, 3],
-      [-4, -1],
-      [0, 3],
-      [4, -2],
-      [8, 2],
-    ];
-    return (
-      <g className="civ-artifact-substructure" opacity={opacity} style={{ color: tone }} transform={`rotate(${rotation} ${x} ${y})`}>
-        <path
-          d={`M${x - 14 * wide} ${y + 7} C${x - 7 * wide} ${y + 1}, ${x + 7 * wide} ${y + 1}, ${x + 15 * wide} ${y + 7}`}
-          fill="none"
-          stroke={`${tone}${strokeOpacity}`}
-          strokeLinecap="round"
-          strokeWidth={recent ? 0.78 : 0.52}
-        />
-        {cells.map(([dx, dy], cellIndex) => (
-          <rect
-            key={`${dx}:${dy}`}
-            x={x + dx * wide - cell / 2}
-            y={y + dy * wide - cell / 2}
-            width={cell}
-            height={cell}
-            fill={`${tone}${recent || cellIndex === 2 ? '30' : '18'}`}
-            stroke={cellIndex === 2 ? 'rgba(255,255,255,0.44)' : `${tone}92`}
-            strokeWidth="0.24"
-          />
-        ))}
-        <ArtifactMotifGlyph site={site} x={x} y={y + 0.5} tone={tone} scale={motifScale} rotation={-rotation} emphasis={recent ? 1.08 : 1} />
-      </g>
-    );
-  }
-
-  if (localTrace) {
-    return (
-      <g className="civ-artifact-substructure" opacity={opacity} style={{ color: tone }}>
-        <ellipse
-          cx={x}
-          cy={y}
-          rx={recent ? 9.4 : 7}
-          ry={recent ? 3.8 : 2.8}
-          fill={`${tone}${recent ? '20' : '12'}`}
-          stroke={`${tone}${strokeOpacity}`}
-          strokeWidth={recent ? 0.48 : 0.32}
-          strokeDasharray="1.3 1.4"
-          transform={`rotate(${rotation} ${x} ${y})`}
-        />
-        <path
-          d={`M${x - 6} ${y + 2.2} C${x - 2} ${y - 1.5}, ${x + 2} ${y + 2.8}, ${x + 6.8} ${y - 1.6}`}
-          fill="none"
-          stroke="rgba(255,255,255,0.34)"
-          strokeLinecap="round"
-          strokeWidth="0.28"
-        />
-        <circle cx={x} cy={y} r={recent ? 1.08 : 0.68} fill="rgba(255,255,255,0.82)" />
-        <ArtifactMotifGlyph site={site} x={x} y={y} tone={tone} scale={motifScale} rotation={rotation} emphasis={recent ? 1.12 : 1} />
-      </g>
-    );
-  }
-
-  return (
-    <g className="civ-artifact-substructure" opacity={opacity} style={{ color: tone }}>
-      <path
-        d={`M${Math.max(2, x - 18 * wide)} ${y + 6} C${x - 9 * wide} ${y - 7}, ${x + 9 * wide} ${y + 8}, ${Math.min(98, x + 20 * wide)} ${y - 5}`}
-        fill="none"
-        stroke={`${tone}${strokeOpacity}`}
-        strokeLinecap="round"
-        strokeWidth={recent ? 0.9 : 0.62}
-      />
-      <ellipse
-        cx={x}
-        cy={y}
-        rx={9 * wide}
-        ry={3.4 * wide}
-        fill={`${tone}12`}
-        stroke="rgba(255,255,255,0.18)"
-        strokeWidth="0.2"
-        transform={`rotate(${rotation} ${x} ${y})`}
-      />
-      <ArtifactMotifGlyph site={site} x={x} y={y} tone={tone} scale={motifScale} rotation={rotation} emphasis={recent ? 1.08 : 1} />
-    </g>
-  );
-}
-
-function CivilizationArtifactSubstructureLayer({
-  sites,
-  scene,
-  scanActive,
-  recentSiteIds,
-  maxSites,
-}: {
-  sites: readonly CivilizationDeploymentSite[];
-  scene: MarketSceneKind;
-  scanActive: boolean;
-  recentSiteIds: readonly string[];
-  maxSites: number;
-}) {
-  const artifactSites = React.useMemo(() => (
-    selectArtifactSubstructureSites(sites, maxSites, recentSiteIds)
-  ), [sites, maxSites, recentSiteIds]);
-
-  if (artifactSites.length === 0) return null;
-
-  return (
-    <svg
-      className="pointer-events-none absolute inset-0 z-[10] h-full w-full mix-blend-screen"
-      viewBox="0 0 100 100"
-      preserveAspectRatio="none"
-      aria-hidden="true"
-      data-testid="civilization-artifact-substructures"
-    >
-      {artifactSites.map((site, index) => (
-        <ArtifactSubstructureMark
-          key={site.id}
-          site={site}
-          index={index}
-          scene={scene}
-          scanActive={scanActive}
-          recent={recentSiteIds.includes(site.id)}
-        />
-      ))}
-    </svg>
-  );
-}
-
-function shouldRenderMaterializedLocalSite(
-  site: CivilizationDeploymentSite,
-  scene: MarketSceneKind,
-): boolean {
-  if (scene !== 'surface') return false;
-  if (site.kind !== 'artifact') return false;
-  if (!shouldRenderArtifactNative(site, scene)) return false;
-  if (site.scalePresence === 'deployment_site' || site.scalePresence === 'visible_structure') return true;
-  if (site.artifactSceneTreatment && site.depictionScale && isLocalArtifactDepictionScale(site.depictionScale)) return true;
-  return Boolean(site.depictionScale && getArtifactArtworkScalePolicy(site.depictionScale).canRenderAsStructure);
-}
-
-function MaterializedLocalSiteMark({
-  site,
-  index,
-  scanActive,
-  recent,
-  focused = false,
-  compactFocus = false,
-}: {
-  site: CivilizationDeploymentSite;
-  index: number;
-  scanActive: boolean;
-  recent: boolean;
-  focused?: boolean;
-  compactFocus?: boolean;
-}) {
-  const tone = getCivilizationSiteTone(site);
-  const x = focused
-    ? Math.min(84, Math.max(18, site.anchor.x))
-    : Math.min(86, Math.max(16, site.anchor.x + ((index % 3) - 1) * 1.8));
-  const y = focused
-    ? compactFocus
-      ? Math.min(50, Math.max(38, site.anchor.y - 10))
-      : Math.min(72, Math.max(44, site.anchor.y + 2))
-    : Math.min(78, Math.max(48, site.anchor.y + 10 + (index % 2) * 2));
-  const baseY = Math.min(91, y + 8);
-  const opacity = focused ? recent ? 0.86 : 0.74 : recent ? 0.62 : scanActive ? 0.42 : 0.34;
-  const darkFill = scanActive ? 'rgba(4,8,17,0.82)' : 'rgba(4,8,17,0.7)';
-  const deepFill = scanActive ? 'rgba(8,14,26,0.78)' : 'rgba(8,14,26,0.62)';
-  const glowFill = `${tone}${recent ? '24' : scanActive ? '1B' : '15'}`;
-  const stroke = `${tone}${recent ? 'CE' : scanActive ? 'B2' : '86'}`;
-  const softStroke = 'rgba(255,255,255,0.24)';
-  const treatment = site.artifactSceneTreatment;
-  const testId = `civilization-materialized-site-${treatment ?? site.trait ?? 'generic'}`;
-  const scale = focused ? compactFocus ? 0.74 : 0.82 : 0.48;
-
-  if (treatment === 'mantlelift_driver') {
-    return (
-      <g
-        className="civ-materialized-site"
-        data-testid={testId}
-        data-solid-form="local-city-site"
-        data-treatment-label={getArtifactTreatmentLabel(treatment)}
-        data-focus-mode={focused ? 'selected' : undefined}
-        opacity={opacity}
-        transform={`translate(${x} ${baseY}) scale(${scale}) translate(${-x} ${-baseY})`}
-        style={{ color: tone }}
-      >
-        <ellipse cx={x + 2} cy={baseY + 1.4} rx="18.2" ry="5.1" fill={glowFill} stroke={`${tone}44`} strokeWidth="0.24" transform={`rotate(-8 ${x + 2} ${baseY + 1.4})`} />
-        <path d={`M${x - 12.4} ${baseY + 0.3} L${x - 2.2} ${baseY - 6.2} L${x + 13.2} ${baseY - 1.2} L${x + 7.8} ${baseY + 4.7} L${x - 13.2} ${baseY + 3.8} Z`} fill={darkFill} stroke={stroke} strokeLinejoin="round" strokeWidth="0.5" />
-        <path d={`M${x - 7} ${baseY - 1.9} L${x - 0.4} ${baseY - 22.6} L${x + 6.8} ${baseY - 1.7} L${x + 2.6} ${baseY + 0.9} Z`} fill={deepFill} stroke="rgba(255,244,194,0.62)" strokeLinejoin="round" strokeWidth="0.4" />
-        <path d={`M${x - 0.2} ${baseY - 20.8} V${baseY - 31.6} M${x + 4.7} ${baseY - 2.6} V${baseY - 17.2} M${x - 4} ${baseY - 2.9} V${baseY - 13}`} stroke="rgba(255,244,194,0.54)" strokeLinecap="round" strokeWidth="0.32" />
-        <path d={`M${x - 14} ${baseY - 2.1} C${x - 6} ${baseY - 9}, ${x + 6} ${baseY - 1.4}, ${x + 16} ${baseY - 8.2}`} fill="none" stroke={`${tone}78`} strokeLinecap="round" strokeWidth="0.44" />
-        <path d={`M${x - 8} ${baseY - 3.7} C${x - 2.5} ${baseY - 7.4}, ${x + 4.8} ${baseY - 3.3}, ${x + 11} ${baseY - 6.1}`} fill="none" stroke={softStroke} strokeLinecap="round" strokeWidth="0.22" />
-        <circle cx={x + 0.1} cy={baseY - 31} r="0.84" fill="rgba(255,244,194,0.86)" />
-      </g>
-    );
-  }
-
-  if (treatment === 'ignition_kernel' || site.artifactVisualMotif === 'forge') {
-    return (
-      <g
-        className="civ-materialized-site"
-        data-testid={testId}
-        data-solid-form="local-forge-district"
-        data-treatment-label={treatment ? getArtifactTreatmentLabel(treatment) : undefined}
-        opacity={opacity}
-        style={{ color: tone }}
-      >
-        <ellipse cx={x} cy={baseY + 0.8} rx="14.2" ry="4.2" fill={glowFill} stroke={`${tone}52`} strokeWidth="0.25" transform={`rotate(6 ${x} ${baseY + 0.8})`} />
-        <path d={`M${x - 10} ${baseY + 1} L${x - 5} ${baseY - 7} L${x + 4} ${baseY - 8.4} L${x + 11} ${baseY - 0.4} L${x + 5} ${baseY + 4.6} L${x - 9} ${baseY + 4.2} Z`} fill={darkFill} stroke={stroke} strokeLinejoin="round" strokeWidth="0.42" />
-        <path d={`M${x - 2.6} ${baseY - 4.4} C${x - 0.5} ${baseY - 11.5}, ${x + 3.1} ${baseY - 10.2}, ${x + 4.5} ${baseY - 4.4}`} fill="rgba(255,244,194,0.22)" stroke="rgba(255,244,194,0.54)" strokeWidth="0.26" />
-        <circle cx={x + 1.2} cy={baseY - 5.8} r="1.65" fill="rgba(255,244,194,0.7)" />
-        <path d={`M${x - 12.5} ${baseY + 5.2} C${x - 5.3} ${baseY + 0.4}, ${x + 4.4} ${baseY + 0.5}, ${x + 12.8} ${baseY + 4.8}`} fill="none" stroke="rgba(255,255,255,0.22)" strokeLinecap="round" strokeWidth="0.22" />
-      </g>
-    );
-  }
-
-  if (treatment === 'ashroot_recovery' || site.artifactVisualMotif === 'seed' || site.artifactVisualMotif === 'organ') {
-    return (
-      <g
-        className="civ-materialized-site"
-        data-testid={testId}
-        data-solid-form="local-living-district"
-        data-treatment-label={treatment ? getArtifactTreatmentLabel(treatment) : undefined}
-        opacity={opacity}
-        style={{ color: tone }}
-      >
-        <ellipse cx={x} cy={baseY + 1.5} rx="16.4" ry="5" fill={glowFill} stroke={`${tone}4A`} strokeWidth="0.26" transform={`rotate(-5 ${x} ${baseY + 1.5})`} />
-        <path d={`M${x - 13} ${baseY + 1.5} C${x - 8} ${baseY - 5.5}, ${x + 7} ${baseY - 5.5}, ${x + 13} ${baseY + 1.2} C${x + 5} ${baseY + 5.2}, ${x - 5} ${baseY + 5.2}, ${x - 13} ${baseY + 1.5} Z`} fill={darkFill} stroke={stroke} strokeWidth="0.4" />
-        <path d={`M${x - 7.2} ${baseY + 0.8} C${x - 5.8} ${baseY - 7.6}, ${x - 1.6} ${baseY - 12.4}, ${x + 1.2} ${baseY - 17.5} M${x - 0.8} ${baseY - 2} C${x + 3.8} ${baseY - 7.2}, ${x + 7.6} ${baseY - 8.2}, ${x + 10} ${baseY - 5.1}`} fill="none" stroke="rgba(229,255,238,0.46)" strokeLinecap="round" strokeWidth="0.36" />
-        <circle cx={x + 1.2} cy={baseY - 17.5} r="0.74" fill="rgba(229,255,238,0.84)" />
-        <circle cx={x + 10} cy={baseY - 5.1} r="0.58" fill={`${tone}CC`} />
-      </g>
-    );
-  }
-
-  return (
-    <g
-      className="civ-materialized-site"
-      data-testid={testId}
-      data-solid-form="local-city-site"
-      opacity={opacity}
-      style={{ color: tone }}
-    >
-      <ellipse cx={x} cy={baseY + 1.2} rx="13.2" ry="4.1" fill={glowFill} stroke={`${tone}4A`} strokeWidth="0.24" transform={`rotate(-7 ${x} ${baseY + 1.2})`} />
-      <path d={`M${x - 8.8} ${baseY + 2.3} L${x - 5.5} ${baseY - 5.2} L${x + 1.4} ${baseY - 7} L${x + 9.2} ${baseY + 1.2} L${x + 3.6} ${baseY + 4.3} Z`} fill={darkFill} stroke={stroke} strokeLinejoin="round" strokeWidth="0.38" />
-      <path d={`M${x - 4.6} ${baseY} H${x + 5.2} M${x - 1.5} ${baseY - 2.6} H${x + 3.4}`} stroke={softStroke} strokeLinecap="round" strokeWidth="0.2" />
-    </g>
-  );
-}
-
-function CivilizationMaterializedSiteLayer({
-  sites,
-  scene,
-  scanActive,
-  recentSiteIds,
-  maxSites,
-  focusMode = false,
-  compactFocus = false,
-}: {
-  sites: readonly CivilizationDeploymentSite[];
-  scene: MarketSceneKind;
-  scanActive: boolean;
-  recentSiteIds: readonly string[];
-  maxSites: number;
-  focusMode?: boolean;
-  compactFocus?: boolean;
-}) {
-  const materializedSites = React.useMemo(() => (
-    selectArtifactSubstructureSites(
-      sites.filter((site) => shouldRenderMaterializedLocalSite(site, scene)),
-      maxSites,
-      recentSiteIds,
-    )
-  ), [sites, scene, maxSites, recentSiteIds]);
-
-  if (materializedSites.length === 0) return null;
-
-  return (
-    <svg
-      className="pointer-events-none absolute inset-0 z-[8] h-full w-full"
-      viewBox="0 0 100 100"
-      preserveAspectRatio="none"
-      aria-hidden="true"
-      data-testid="civilization-materialized-sites"
-      data-scene={scene}
-      data-render-mode="solid-local-forms"
-    >
-      {materializedSites.map((site, index) => (
-        <MaterializedLocalSiteMark
-          key={site.id}
-          site={site}
-          index={index}
-          scanActive={scanActive}
-          recent={recentSiteIds.includes(site.id)}
-          focused={focusMode}
-          compactFocus={compactFocus}
-        />
-      ))}
-    </svg>
-  );
-}
-
-function NativeWorkMark({
-  site,
-  index,
-  scene,
-  recent,
-  compactFocus = false,
-}: {
-  site: CivilizationDeploymentSite;
-  index: number;
-  scene: MarketSceneKind;
-  recent: boolean;
-  compactFocus?: boolean;
-}) {
-  const tone = getCivilizationSiteTone(site);
-  const x = site.anchor.x;
-  const y = compactFocus && scene === 'surface'
-    ? Math.min(site.anchor.y, 42)
-    : site.anchor.y;
-  const emphasis = recent ? 1.25 : 1;
-  const opacity = recent ? 0.72 : 0.48 - Math.min(index, 3) * 0.05;
-  const rotation = ((index % 5) - 2) * 7;
-  const isRoute = isRouteTrait(site);
-  const isField = isFieldTrait(site);
-  const isDistrict = isDistrictTrait(site) || site.trait === 'biosphere' || site.trait === 'replication';
-  const motifScale = scene === 'surface'
-    ? 0.92
-    : scene === 'orbit'
-      ? 0.78
-      : scene === 'stellar'
-        ? 0.68
-        : 0.62;
-
-  if (scene === 'surface') {
-    const localSurfaceSite = (
-      site.scalePresence === 'artifact_pin' ||
-      site.scalePresence === 'deployment_site' ||
-      site.representationMode === 'local_trace' ||
-      (site.depictionScale ? isLocalArtifactDepictionScale(site.depictionScale) : false)
-    );
-    if (isRoute) {
-      const primarySpan = localSurfaceSite ? 18 : 30;
-      const secondarySpan = localSurfaceSite ? 12 : 22;
-      const primaryYOffset = localSurfaceSite ? 7 : 12;
-      const primaryStroke = localSurfaceSite ? 0.92 : 1.55;
-      return (
-        <g
-          className="civ-native-work"
-          opacity={opacity}
-          style={{ color: tone }}
-          data-native-work-scale={localSurfaceSite ? 'local-site' : 'district-corridor'}
-        >
-          <path
-            className="civ-native-work-flow"
-            d={`M${Math.max(0, x - primarySpan)} ${y + primaryYOffset} C${x - primarySpan * 0.38} ${y - 3.4}, ${x + primarySpan * 0.36} ${y + primaryYOffset * 0.82}, ${Math.min(100, x + primarySpan * 1.06)} ${y - 4.8}`}
-            fill="none"
-            stroke={`${tone}CC`}
-            strokeLinecap="round"
-            strokeWidth={primaryStroke * emphasis}
-          />
-          <path
-            d={`M${Math.max(2, x - secondarySpan)} ${y + 4.4} C${x - secondarySpan * 0.32} ${y - 1.4}, ${x + secondarySpan * 0.36} ${y + 4.8}, ${Math.min(98, x + secondarySpan * 1.08)} ${y - 2.4}`}
-            fill="none"
-            stroke="rgba(255,255,255,0.32)"
-            strokeLinecap="round"
-            strokeWidth={localSurfaceSite ? 0.28 : 0.38}
-          />
-          {localSurfaceSite && (
-            <path
-              d={`M${x - 5.4} ${y + 7.6} H${x + 6.2} M${x - 2.6} ${y + 5.6} V${y + 1.8} M${x + 2.5} ${y + 5.8} V${y + 2.2}`}
-              fill="none"
-              stroke="rgba(255,255,255,0.22)"
-              strokeLinecap="round"
-              strokeWidth="0.2"
-            />
-          )}
-          <ArtifactMotifGlyph site={site} x={x} y={y + 0.5} tone={tone} scale={motifScale * (localSurfaceSite ? 0.82 : 1)} rotation={rotation} emphasis={emphasis} />
-        </g>
-      );
-    }
-
-    if (isField) {
-      return (
-        <g className="civ-native-work" opacity={opacity} style={{ color: tone }}>
-          <ellipse
-            cx={x}
-            cy={y}
-            rx={13 * emphasis}
-            ry={5.4 * emphasis}
-            fill={`${tone}1F`}
-            stroke={`${tone}C2`}
-            strokeWidth="0.72"
-            strokeDasharray={site.trait === 'veil' ? '2.5 1.8' : site.trait === 'containment' ? '4.5 2.4' : undefined}
-            transform={`rotate(${rotation} ${x} ${y})`}
-          />
-          <ellipse
-            cx={x}
-            cy={y}
-            rx={7.2 * emphasis}
-            ry={2.8 * emphasis}
-            fill="rgba(0,0,0,0.18)"
-            stroke="rgba(255,255,255,0.24)"
-            strokeWidth="0.22"
-            transform={`rotate(${-rotation} ${x} ${y})`}
-          />
-          <ArtifactMotifGlyph site={site} x={x} y={y} tone={tone} scale={motifScale} rotation={rotation} emphasis={emphasis} />
-        </g>
-      );
-    }
-
-    if (isDistrict) {
-      const columns = [-7.5, -3.5, 0.5, 4.5, 8];
-      return (
-        <g className="civ-native-work" opacity={opacity} style={{ color: tone }} transform={`rotate(${rotation} ${x} ${y})`}>
-          <path
-            d={`M${x - 15} ${y + 6.5} L${x - 7} ${y - 3} L${x + 5} ${y - 5} L${x + 15} ${y + 5.5} Z`}
-            fill={`${tone}22`}
-            stroke={`${tone}B8`}
-            strokeLinejoin="round"
-            strokeWidth="0.58"
-          />
-          {columns.map((dx, columnIndex) => (
-            <path
-              key={dx}
-              d={`M${x + dx} ${y + 5} V${y - 2 - (columnIndex % 3) * 2.3}`}
-              stroke={columnIndex === 2 ? 'rgba(255,255,255,0.44)' : `${tone}A0`}
-              strokeLinecap="round"
-              strokeWidth={columnIndex === 2 ? 0.42 : 0.34}
-            />
-          ))}
-          <ArtifactMotifGlyph site={site} x={x} y={y} tone={tone} scale={motifScale} rotation={-rotation} emphasis={emphasis} />
-        </g>
-      );
-    }
-
-    return (
-      <g className="civ-native-work" opacity={opacity} style={{ color: tone }}>
-        <rect
-          x={x - 6}
-          y={y - 5}
-          width="12"
-          height="10"
-          rx="1.5"
-          fill={`${tone}20`}
-          stroke={`${tone}A8`}
-          strokeWidth="0.52"
-          transform={`rotate(${rotation} ${x} ${y})`}
-        />
-        <circle cx={x} cy={y} r={1.2 * emphasis} fill="rgba(255,255,255,0.72)" />
-        <ArtifactMotifGlyph site={site} x={x} y={y} tone={tone} scale={motifScale} rotation={rotation} emphasis={emphasis} />
-      </g>
-    );
-  }
-
-  if (scene === 'orbit') {
-    return (
-      <g className="civ-native-work" opacity={opacity} style={{ color: tone }}>
-        <ellipse
-          cx={x}
-          cy={y}
-          rx={18 * emphasis}
-          ry={5.8 * emphasis}
-          fill={`${tone}14`}
-          stroke={`${tone}AC`}
-          strokeWidth="0.64"
-          transform={`rotate(${rotation} ${x} ${y})`}
-        />
-        <path
-          className={isRoute ? 'civ-native-work-flow' : undefined}
-          d={`M${Math.max(2, x - 25)} ${y + 3} C${x - 8} ${y - 5}, ${x + 9} ${y + 6}, ${Math.min(98, x + 27)} ${y - 3}`}
-          fill="none"
-          stroke="rgba(255,255,255,0.28)"
-          strokeLinecap="round"
-          strokeWidth="0.34"
-        />
-        <circle cx={x - 7 * emphasis} cy={y + 1.4} r={1.05 * emphasis} fill={`${tone}C8`} />
-        <circle cx={x + 8 * emphasis} cy={y - 1.5} r={0.78 * emphasis} fill="rgba(255,255,255,0.72)" />
-        <ArtifactMotifGlyph site={site} x={x} y={y} tone={tone} scale={motifScale} rotation={rotation} emphasis={emphasis} />
-      </g>
-    );
-  }
-
-  if (scene === 'stellar') {
-    return (
-      <g className="civ-native-work" opacity={opacity} style={{ color: tone }}>
-        <path
-          className={isRoute ? 'civ-native-work-flow' : undefined}
-          d={`M${Math.max(1, x - 32)} ${y + 10} C${x - 12} ${y - 12}, ${x + 14} ${y + 12}, ${Math.min(99, x + 35)} ${y - 8}`}
-          fill="none"
-          stroke={`${tone}B4`}
-          strokeLinecap="round"
-          strokeWidth={1.1 * emphasis}
-        />
-        {[0, 0.38, 0.7, 1].map((step) => (
-          <circle
-            key={step}
-            cx={Math.max(3, Math.min(97, x - 26 + 54 * step))}
-            cy={y + Math.sin(step * Math.PI * 2 + index) * 5}
-            r={(step === 0.7 ? 1.2 : 0.82) * emphasis}
-            fill={step === 0.7 ? 'rgba(255,255,255,0.78)' : `${tone}C8`}
-          />
-        ))}
-        <ArtifactMotifGlyph site={site} x={x} y={y} tone={tone} scale={motifScale} rotation={rotation} emphasis={emphasis} />
-      </g>
-    );
-  }
-
-  return (
-    <g className="civ-native-work" opacity={opacity} style={{ color: tone }}>
-      <path
-        d={`M${x - 16} ${y - 5} C${x - 5} ${y - 13}, ${x + 6} ${y - 13}, ${x + 17} ${y - 5} C${x + 10} ${y + 8}, ${x - 10} ${y + 8}, ${x - 16} ${y - 5} Z`}
-        fill={`${tone}18`}
-        stroke={`${tone}A8`}
-        strokeWidth="0.44"
-      />
-      <circle cx={x} cy={y - 2} r={1.35 * emphasis} fill="rgba(255,255,255,0.72)" />
-      <circle cx={x - 9} cy={y + 1.5} r="0.76" fill={`${tone}B8`} />
-      <circle cx={x + 9} cy={y + 1.5} r="0.76" fill={`${tone}B8`} />
-      <ArtifactMotifGlyph site={site} x={x} y={y - 0.5} tone={tone} scale={motifScale} rotation={rotation} emphasis={emphasis} />
-    </g>
-  );
-}
-
-function CivilizationNativeWorkLayer({
-  sites,
-  scene,
-  recentSiteIds,
-  maxSites,
-  compactFocus = false,
-}: {
-  sites: readonly CivilizationDeploymentSite[];
-  scene: MarketSceneKind;
-  recentSiteIds: readonly string[];
-  maxSites: number;
-  compactFocus?: boolean;
-}) {
-  const nativeSites = React.useMemo(() => (
-    selectArtifactSubstructureSites(
-      sites.filter((site) => shouldRenderArtifactAsNativeStructure(site, scene)),
-      maxSites,
-      recentSiteIds,
-    )
-  ), [sites, scene, maxSites, recentSiteIds]);
-
-  if (nativeSites.length === 0) return null;
-
-  return (
-    <svg
-      className="pointer-events-none absolute inset-0 z-[10] h-full w-full mix-blend-screen"
-      viewBox="0 0 100 100"
-      preserveAspectRatio="none"
-      aria-hidden="true"
-      data-testid="civilization-native-work-layer"
-    >
-      {nativeSites.map((site, index) => (
-        <NativeWorkMark
-          key={site.id}
-          site={site}
-          index={index}
-          scene={scene}
-          recent={recentSiteIds.includes(site.id)}
-          compactFocus={compactFocus}
-        />
-      ))}
-    </svg>
-  );
-}
-
-function DominantBlueprintMark({
-  site,
-  scene,
-  scanActive,
-  index,
-}: {
-  site: CivilizationDeploymentSite;
-  scene: MarketSceneKind;
-  scanActive: boolean;
-  index: number;
-}) {
-  const x = site.anchor.x;
-  const y = site.anchor.y;
-  const opacity = scanActive ? 0.34 : 0.46 - index * 0.08;
-
-  if (site.blueprintId === 'bp_antimatter_detonator') {
-    const quarantineX = scene === 'surface' ? Math.max(62, x) : x;
-    const quarantineY = scene === 'galaxy' ? Math.min(66, y + 4) : y;
-    const wide = scene === 'galaxy' ? 1.35 : scene === 'stellar' ? 1.18 : 1;
-    const hazardOpacity = scanActive ? 0.34 : 0.24 - index * 0.03;
-    const outerRx = 31 * wide;
-    const outerRy = 10.8 * wide;
-    const innerRx = 17.5 * wide;
-    const innerRy = 5.4 * wide;
-    const warningNodes = [
-      [-0.72, -0.25, 0.72],
-      [-0.34, 0.48, 0.58],
-      [0.08, -0.55, 0.82],
-      [0.46, 0.35, 0.62],
-      [0.78, -0.12, 0.54],
-    ] as const;
-    return (
-      <g
-        className="civ-dominant-blueprint civ-portrait-loom"
-        data-testid="civilization-blueprint-antimatter-native"
-        opacity={hazardOpacity}
-        style={{ color: '#ff6972' }}
-      >
-        <ellipse
-          cx={quarantineX}
-          cy={quarantineY}
-          rx={outerRx}
-          ry={outerRy}
-          fill="rgba(255,105,114,0.14)"
-          stroke="rgba(255,143,150,0.62)"
-          strokeWidth="0.52"
-          strokeDasharray="7 4"
-          transform={`rotate(-11 ${quarantineX} ${quarantineY})`}
-        />
-        <ellipse
-          cx={quarantineX}
-          cy={quarantineY}
-          rx={innerRx}
-          ry={innerRy}
-          fill="rgba(0,0,0,0.2)"
-          stroke="rgba(255,255,255,0.25)"
-          strokeWidth="0.26"
-          strokeDasharray="2.4 2.2"
-          transform={`rotate(-11 ${quarantineX} ${quarantineY})`}
-        />
-        <path
-          d={`M${quarantineX - outerRx * 0.9} ${quarantineY - outerRy * 0.18} C${quarantineX - outerRx * 0.34} ${quarantineY - outerRy * 1.55}, ${quarantineX + outerRx * 0.32} ${quarantineY + outerRy * 1.44}, ${quarantineX + outerRx * 0.92} ${quarantineY + outerRy * 0.08}`}
-          fill="none"
-          stroke="rgba(255,255,255,0.22)"
-          strokeLinecap="round"
-          strokeWidth={0.34 * wide}
-          transform={`rotate(-11 ${quarantineX} ${quarantineY})`}
-        />
-        <path
-          d={`M${quarantineX - innerRx * 0.78} ${quarantineY - innerRy * 0.84} L${quarantineX - innerRx * 0.28} ${quarantineY - innerRy * 0.28} M${quarantineX + innerRx * 0.78} ${quarantineY + innerRy * 0.84} L${quarantineX + innerRx * 0.28} ${quarantineY + innerRy * 0.28} M${quarantineX - innerRx * 0.78} ${quarantineY + innerRy * 0.84} L${quarantineX - innerRx * 0.28} ${quarantineY + innerRy * 0.28} M${quarantineX + innerRx * 0.78} ${quarantineY - innerRy * 0.84} L${quarantineX + innerRx * 0.28} ${quarantineY - innerRy * 0.28}`}
-          fill="none"
-          stroke="rgba(255,214,214,0.44)"
-          strokeLinecap="round"
-          strokeWidth={0.38 * wide}
-          transform={`rotate(-11 ${quarantineX} ${quarantineY})`}
-        />
-        {warningNodes.map(([nx, ny, radius], nodeIndex) => (
-          <circle
-            key={`${nx}:${ny}`}
-            cx={quarantineX + outerRx * nx}
-            cy={quarantineY + outerRy * ny}
-            r={radius * wide}
-            fill={nodeIndex === 2 ? 'rgba(255,255,255,0.72)' : 'rgba(255,105,114,0.68)'}
-            transform={`rotate(-11 ${quarantineX + outerRx * nx} ${quarantineY + outerRy * ny})`}
-          />
-        ))}
-        <circle cx={quarantineX} cy={quarantineY} r={3 * wide} fill="rgba(255,255,255,0.2)" />
-        <circle cx={quarantineX} cy={quarantineY} r={1.55 * wide} fill="#ff6972" />
-        <circle cx={quarantineX} cy={quarantineY} r={0.58 * wide} fill="rgba(255,255,255,0.86)" />
-      </g>
-    );
-  }
-
-  if (site.blueprintId === 'bp_mantle_to_orbit_foundry') {
-    const baseX = scene === 'surface' ? Math.max(50, x - 4) : Math.max(48, x - 18);
-    const baseY = scene === 'surface' ? 92 : scene === 'galaxy' ? 78 : 86;
-    const topX = scene === 'surface' ? Math.min(96, x + 26) : scene === 'galaxy' ? Math.min(96, x + 33) : Math.min(96, x + 24);
-    const topY = scene === 'surface' ? 12 : scene === 'galaxy' ? 22 : 10;
-    const midX = (baseX + topX) / 2 + (scene === 'stellar' ? 5 : 0);
-    const midY = (baseY + topY) / 2 - 8;
-    const d = `M${baseX} ${baseY} C${baseX + 9} ${Math.max(10, y + 14)}, ${midX} ${midY}, ${topX} ${topY}`;
-
-    if (scene === 'galaxy') {
-      const routeD = `M${Math.max(6, x - 36)} ${Math.min(86, y + 12)} C${x - 18} ${y - 3}, ${x + 8} ${y + 11}, ${Math.min(96, x + 38)} ${Math.max(18, y - 18)}`;
-      return (
-        <g
-          className="civ-dominant-blueprint civ-portrait-signal"
-          data-testid="civilization-blueprint-mantle-native"
-          opacity={Math.max(0.22, opacity * 0.62)}
-          style={{ color: '#dfb86b' }}
-        >
-          <path
-            d={routeD}
-            fill="none"
-            stroke="rgba(223,184,107,0.16)"
-            strokeLinecap="round"
-            strokeWidth="4.4"
-          />
-          <path
-            d={routeD}
-            fill="none"
-            stroke="rgba(255,244,194,0.54)"
-            strokeLinecap="round"
-            strokeWidth="0.58"
-            className="civ-portrait-flow"
-          />
-          {[0.08, 0.27, 0.48, 0.7, 0.9].map((step, nodeIndex) => {
-            const nodeX = Math.max(5, Math.min(97, x - 34 + 72 * step));
-            const nodeY = y + 11 - Math.sin(step * Math.PI) * 18 + (nodeIndex % 2 === 0 ? -2 : 2);
-            return (
-              <circle
-                key={step}
-                cx={nodeX}
-                cy={nodeY}
-                r={nodeIndex === 2 ? 1.05 : 0.68}
-                fill={nodeIndex === 2 ? '#fff4c2' : 'rgba(223,184,107,0.76)'}
-              />
-            );
-          })}
-        </g>
-      );
-    }
-
-    if (scene === 'stellar') {
-      const routeD = `M${Math.max(4, x - 32)} ${Math.min(86, y + 13)} C${x - 12} ${y - 9}, ${x + 14} ${y + 12}, ${Math.min(98, x + 34)} ${Math.max(14, y - 15)}`;
-      return (
-        <g
-          className="civ-dominant-blueprint civ-portrait-signal"
-          data-testid="civilization-blueprint-mantle-native"
-          opacity={Math.max(0.24, opacity * 0.74)}
-          style={{ color: '#dfb86b' }}
-        >
-          <path
-            d={routeD}
-            fill="none"
-            stroke="rgba(223,184,107,0.18)"
-            strokeLinecap="round"
-            strokeWidth="4.8"
-          />
-          <path
-            d={routeD}
-            fill="none"
-            stroke="rgba(255,244,194,0.58)"
-            strokeLinecap="round"
-            strokeWidth="0.68"
-            className="civ-portrait-flow"
-          />
-          <ellipse
-            cx={x + 3}
-            cy={y - 1}
-            rx="14"
-            ry="5"
-            fill="rgba(223,184,107,0.08)"
-            stroke="rgba(255,228,163,0.32)"
-            strokeWidth="0.24"
-            transform={`rotate(-12 ${x + 3} ${y - 1})`}
-          />
-          {[0.18, 0.44, 0.68, 0.9].map((step) => (
-            <circle
-              key={step}
-              cx={Math.max(5, Math.min(97, x - 30 + 62 * step))}
-              cy={y + 10 - Math.sin(step * Math.PI) * 19}
-              r={step > 0.8 ? 1.05 : 0.72}
-              fill={step > 0.8 ? '#fff4c2' : 'rgba(223,184,107,0.78)'}
-            />
-          ))}
-        </g>
-      );
-    }
-
-    if (scene === 'orbit') {
-      const liftX = 26;
-      const liftBaseY = 79;
-      const orbitalY = 18;
-      const foundryX = 64;
-      const freightD = `M17 ${orbitalY + 11} C32 ${orbitalY - 4}, 52 ${orbitalY - 3}, 83 ${orbitalY + 5}`;
-      return (
-        <g
-          className="civ-dominant-blueprint civ-portrait-signal"
-          data-testid="civilization-blueprint-mantle-native"
-          opacity={Math.max(0.3, opacity * 0.82)}
-          style={{ color: '#dfb86b' }}
-        >
-          <path
-            d={`M${liftX + 5} ${liftBaseY} C${liftX + 4} 62, ${liftX + 1} 40, ${liftX + 3} ${orbitalY + 3}`}
-            fill="none"
-            stroke="rgba(223,184,107,0.12)"
-            strokeLinecap="round"
-            strokeWidth="3.6"
-          />
-          <path
-            d={`M${liftX + 5} ${liftBaseY} C${liftX + 4} 62, ${liftX + 1} 40, ${liftX + 3} ${orbitalY + 3}`}
-            fill="none"
-            stroke="rgba(255,244,194,0.48)"
-            strokeLinecap="round"
-            strokeWidth="0.5"
-          />
-          <path
-            className="civ-portrait-flow"
-            d={`M${liftX + 5} ${liftBaseY} C${liftX + 4} 62, ${liftX + 1} 40, ${liftX + 3} ${orbitalY + 3}`}
-            fill="none"
-            stroke="rgba(255,255,255,0.36)"
-            strokeLinecap="round"
-            strokeWidth="0.18"
-          />
-          <path
-            d={`M${liftX - 8} ${liftBaseY + 2} L${liftX + 4} ${liftBaseY - 6} L${liftX + 18} ${liftBaseY + 1} L${liftX + 8} ${liftBaseY + 5} Z`}
-            fill="rgba(223,184,107,0.1)"
-            stroke="rgba(255,228,163,0.38)"
-            strokeLinejoin="round"
-            strokeWidth="0.34"
-          />
-          <path
-            d={`M${liftX + 2} ${liftBaseY - 8} V${liftBaseY - 20} M${liftX + 7} ${liftBaseY - 8} V${liftBaseY - 25} M${liftX + 12} ${liftBaseY - 7} V${liftBaseY - 18}`}
-            fill="none"
-            stroke="rgba(255,228,163,0.28)"
-            strokeLinecap="round"
-            strokeWidth="0.28"
-          />
-          <path
-            d={freightD}
-            fill="none"
-            stroke="rgba(223,184,107,0.13)"
-            strokeLinecap="round"
-            strokeWidth="3.2"
-          />
-          <path
-            d={freightD}
-            fill="none"
-            stroke="rgba(255,244,194,0.46)"
-            strokeLinecap="round"
-            strokeWidth="0.42"
-          />
-          <ellipse
-            cx={foundryX}
-            cy={orbitalY + 4}
-            rx="8.8"
-            ry="2.6"
-            fill="rgba(223,184,107,0.09)"
-            stroke="rgba(255,244,194,0.38)"
-            strokeWidth="0.24"
-            transform={`rotate(-8 ${foundryX} ${orbitalY + 4})`}
-          />
-          <path
-            d={`M${foundryX - 7} ${orbitalY + 4} H${foundryX + 7} M${foundryX - 3.5} ${orbitalY + 1.8} L${foundryX} ${orbitalY - 0.8} L${foundryX + 3.5} ${orbitalY + 1.8}`}
-            fill="none"
-            stroke="rgba(255,255,255,0.3)"
-            strokeLinecap="round"
-            strokeLinejoin="round"
-            strokeWidth="0.18"
-          />
-          {[0.18, 0.4, 0.64, 0.86].map((step) => {
-            const nodeX = 17 + 66 * step;
-            const nodeY = orbitalY + 9 - Math.sin(step * Math.PI) * 9;
-            return (
-              <circle
-                key={step}
-                cx={nodeX}
-                cy={nodeY}
-                r={step > 0.8 ? 0.9 : 0.56}
-                fill={step > 0.8 ? 'rgba(255,244,194,0.82)' : 'rgba(223,184,107,0.66)'}
-              />
-            );
-          })}
-        </g>
-      );
-    }
-
-    return (
-      <g
-        className="civ-dominant-blueprint civ-portrait-signal"
-        data-testid="civilization-blueprint-mantle-native"
-        opacity={opacity}
-        style={{ color: '#dfb86b' }}
-      >
-        <path
-          d={d}
-          fill="none"
-          stroke="rgba(223,184,107,0.22)"
-          strokeLinecap="round"
-          strokeWidth="6.2"
-        />
-        <path
-          d={d}
-          fill="none"
-          stroke="rgba(255,244,194,0.62)"
-          strokeLinecap="round"
-          strokeWidth="0.82"
-        />
-        <path
-          className="civ-portrait-flow"
-          d={d}
-          fill="none"
-          stroke="rgba(255,255,255,0.48)"
-          strokeLinecap="round"
-          strokeWidth="0.3"
-        />
-        <path
-          d={`M${baseX - 15} ${baseY + 2} L${baseX + 2} ${baseY - 8} L${baseX + 22} ${baseY + 1} L${baseX + 12} ${baseY + 5} Z`}
-          fill="rgba(223,184,107,0.12)"
-          stroke="rgba(255,228,163,0.46)"
-          strokeLinejoin="round"
-          strokeWidth="0.42"
-        />
-        <path
-          d={`M${baseX - 3} ${baseY - 8} L${baseX + 11} ${baseY - 16} L${baseX + 30} ${baseY - 7} M${baseX + 3} ${baseY - 11} V${baseY - 30} M${baseX + 11} ${baseY - 16} V${baseY - 35} M${baseX + 19} ${baseY - 12} V${baseY - 28}`}
-          fill="none"
-          stroke="rgba(255,228,163,0.42)"
-          strokeLinecap="round"
-          strokeLinejoin="round"
-          strokeWidth="0.46"
-        />
-        <ellipse
-          cx={topX}
-          cy={topY}
-          rx="9.5"
-          ry="3.3"
-          fill="rgba(223,184,107,0.1)"
-          stroke="rgba(255,244,194,0.5)"
-          strokeWidth="0.32"
-          transform={`rotate(-12 ${topX} ${topY})`}
-        />
-        <path
-          d={`M${topX - 9} ${topY + 0.2} H${topX + 9} M${topX - 5} ${topY - 2.6} L${topX} ${topY - 5.2} L${topX + 5} ${topY - 2.6}`}
-          fill="none"
-          stroke="rgba(255,255,255,0.38)"
-          strokeLinecap="round"
-          strokeLinejoin="round"
-          strokeWidth="0.24"
-        />
-        {[0.2, 0.48, 0.73, 0.94].map((step) => {
-          const nodeX = baseX + (topX - baseX) * step + Math.sin(step * Math.PI) * 5;
-          const nodeY = baseY + (topY - baseY) * step - Math.sin(step * Math.PI) * 10;
-          return (
-            <circle
-              key={step}
-              cx={nodeX}
-              cy={nodeY}
-              r={step > 0.9 ? 1.35 : 0.82}
-              fill={step > 0.9 ? '#fff4c2' : 'rgba(223,184,107,0.78)'}
-            />
-          );
-        })}
-      </g>
-    );
-  }
-
-  if (site.blueprintId === 'bp_worldshield_covenant') {
-    const shieldX = x;
-    const shieldY = Math.min(76, y + 4);
-    const wide = scene === 'galaxy' ? 1.3 : scene === 'stellar' ? 1.14 : 1;
-    return (
-      <g className="civ-dominant-blueprint civ-portrait-loom" opacity={opacity} style={{ color: '#ffe4a3' }}>
-        <path
-          d={`M${Math.max(0, shieldX - 42 * wide)} ${shieldY + 12} C${shieldX - 22} ${shieldY - 24 * wide}, ${shieldX + 22} ${shieldY - 24 * wide}, ${Math.min(100, shieldX + 42 * wide)} ${shieldY + 12}`}
-          fill="rgba(255,228,163,0.08)"
-          stroke="rgba(255,228,163,0.56)"
-          strokeLinecap="round"
-          strokeWidth="0.74"
-        />
-        <path
-          d={`M${Math.max(0, shieldX - 32 * wide)} ${shieldY + 14} C${shieldX - 12} ${shieldY - 9 * wide}, ${shieldX + 12} ${shieldY - 9 * wide}, ${Math.min(100, shieldX + 32 * wide)} ${shieldY + 14}`}
-          fill="none"
-          stroke="rgba(255,255,255,0.26)"
-          strokeLinecap="round"
-          strokeWidth="0.32"
-        />
-      </g>
-    );
-  }
-
-  return null;
-}
-
-function CivilizationDominantBlueprintLayer({
-  sites,
-  scene,
-  scanActive,
-}: {
-  sites: readonly CivilizationDeploymentSite[];
-  scene: MarketSceneKind;
-  scanActive: boolean;
-}) {
-  const blueprints = sites
-    .filter((site) => site.kind === 'blueprint')
-    .slice(0, scanActive ? 2 : 1);
-  if (blueprints.length === 0) return null;
-
-  return (
-    <svg
-      className="pointer-events-none absolute inset-0 z-[9] h-full w-full mix-blend-screen"
-      viewBox="0 0 100 100"
-      preserveAspectRatio="none"
-      aria-hidden="true"
-      data-testid="civilization-dominant-blueprints"
-    >
-      {blueprints.map((site, index) => (
-        <DominantBlueprintMark
-          key={site.id}
-          site={site}
-          scene={scene}
-          scanActive={scanActive}
-          index={index}
-        />
-      ))}
-    </svg>
-  );
-}
-
-function IntegratedConsequenceMark({
-  site,
-  scene,
-  scanActive,
-  recent,
-  index,
-}: {
-  site: CivilizationDeploymentSite;
-  scene: MarketSceneKind;
-  scanActive: boolean;
-  recent: boolean;
-  index: number;
-}) {
-  const tone = getCivilizationSiteTone(site);
-  const nativeScene = getNativeSceneForSite(site);
-  const relationDistance = Math.max(0, getSceneIndex(scene) - getSceneIndex(nativeScene));
-  const scale = scene === 'surface' ? 1 : scene === 'orbit' ? 1.1 : scene === 'stellar' ? 1.22 : 1.34;
-  const local = relationDistance === 0;
-  const x = Math.min(86, Math.max(14, site.anchor.x + (index % 2 === 0 ? -1.8 : 1.8)));
-  const y = Math.min(scene === 'surface' ? 74 : 78, Math.max(scene === 'surface' ? 22 : 18, site.anchor.y + (index % 3 - 1) * 1.6));
-  const opacity = scanActive
-    ? recent ? 0.46 : 0.28
-    : recent ? 0.62 : Math.max(0.22, 0.38 - index * 0.06);
-  const rotation = ((index % 5) - 2) * 7;
-  const rx = (local ? 13 : 22 + relationDistance * 5) * scale;
-  const ry = (local ? 5.6 : 8.2 + relationDistance * 2) * scale;
-  const white = 'rgba(255,255,255,0.48)';
-  const softFill = `${tone}${recent ? '2A' : '18'}`;
-  const strongStroke = `${tone}${recent ? 'E2' : 'A8'}`;
-
-  if (site.kind === 'luminary') {
-    const auroraWidth = scene === 'galaxy' ? 36 : scene === 'stellar' ? 30 : 24;
-    const deepSpace = scene === 'stellar' || scene === 'galaxy';
-    if (deepSpace) {
-      return (
-        <g
-          className="civ-integrated-consequence"
-          opacity={opacity * (scanActive ? 0.72 : 0.58)}
-          style={{ color: tone }}
-          data-testid="civilization-integrated-luminary"
-        >
-          <ellipse
-            cx={x}
-            cy={y + 4}
-            rx={auroraWidth * (scene === 'galaxy' ? 1.04 : 0.94)}
-            ry={scene === 'galaxy' ? 10.5 : 8.2}
-            fill={`${tone}18`}
-            stroke={`${tone}44`}
-            strokeWidth="0.28"
-            transform={`rotate(-8 ${x} ${y + 4})`}
-          />
-          <ellipse
-            cx={x + 4}
-            cy={y + 1}
-            rx={auroraWidth * 0.62}
-            ry={scene === 'galaxy' ? 5.2 : 4.4}
-            fill="none"
-            stroke="rgba(255,255,255,0.13)"
-            strokeWidth="0.18"
-            transform={`rotate(11 ${x + 4} ${y + 1})`}
-          />
-          <path
-            d={`M${Math.max(2, x - auroraWidth * 0.68)} ${y + 8} C${x - 9} ${y - 1}, ${x + 12} ${y - 2}, ${Math.min(98, x + auroraWidth * 0.7)} ${y + 7}`}
-            fill="none"
-            stroke={`${tone}68`}
-            strokeLinecap="round"
-            strokeWidth="0.32"
-          />
-          <circle cx={x} cy={y + 2} r="1.05" fill="rgba(255,255,255,0.5)" />
-        </g>
-      );
-    }
-    return (
-      <g className="civ-integrated-consequence" opacity={opacity} style={{ color: tone }} data-testid="civilization-integrated-luminary">
-        <path
-          d={`M${Math.max(0, x - auroraWidth)} ${y + 12} C${x - 16} ${y - 9}, ${x - 8} ${y - 13}, ${x} ${y - 2} C${x + 8} ${y + 9}, ${x + 17} ${y - 10}, ${Math.min(100, x + auroraWidth)} ${y + 9}`}
-          fill="none"
-          stroke={`${tone}C8`}
-          strokeLinecap="round"
-          strokeWidth={1.05 * scale}
-        />
-        <path
-          d={`M${Math.max(0, x - auroraWidth * 0.72)} ${y + 16} C${x - 10} ${y + 1}, ${x + 6} ${y + 4}, ${Math.min(100, x + auroraWidth * 0.74)} ${y - 2}`}
-          fill="none"
-          stroke="rgba(255,255,255,0.24)"
-          strokeLinecap="round"
-          strokeWidth="0.36"
-        />
-      </g>
-    );
-  }
-
-  if (site.kind === 'protocol') {
-    return (
-      <g className="civ-integrated-consequence" opacity={opacity} style={{ color: tone }} data-testid="civilization-integrated-protocol" transform={`rotate(${rotation} ${x} ${y})`}>
-        <rect x={x - rx * 0.62} y={y - ry * 0.85} width={rx * 1.24} height={ry * 1.7} rx="1.5" fill="rgba(0,0,0,0.42)" stroke={`${tone}8E`} strokeWidth="0.36" />
-        <path d={`M${x - rx * 0.46} ${y - ry * 0.36} H${x + rx * 0.44} M${x - rx * 0.36} ${y + ry * 0.1} H${x + rx * 0.52} M${x - rx * 0.5} ${y + ry * 0.52} H${x + rx * 0.28}`} stroke={`${tone}C8`} strokeLinecap="round" strokeWidth="0.72" />
-      </g>
-    );
-  }
-
-  const isAntimatter = site.blueprintId === 'bp_antimatter_detonator';
-  const isMantleFoundry = site.blueprintId === 'bp_mantle_to_orbit_foundry' || site.artifactSceneTreatment === 'mantlelift_driver';
-  const treatment = site.artifactSceneTreatment;
-
-  if (!local) {
-    const aggregateOpacity = scanActive
-      ? recent ? 0.38 : 0.22
-      : recent ? 0.52 : Math.max(0.18, 0.3 - index * 0.04);
-    const aggregateWidth = scene === 'galaxy' ? 27 : scene === 'stellar' ? 22 : 16;
-    const aggregateHeight = scene === 'galaxy' ? 9 : scene === 'stellar' ? 7 : 4.8;
-    const pathD = scene === 'orbit'
-      ? `M${Math.max(4, x - aggregateWidth)} ${y + 5} C${x - 7} ${y - 3}, ${x + 8} ${y + 6}, ${Math.min(96, x + aggregateWidth)} ${y - 4}`
-      : scene === 'stellar'
-        ? `M${Math.max(3, x - aggregateWidth)} ${y + 7} C${x - 9} ${y - 9}, ${x + 10} ${y + 9}, ${Math.min(97, x + aggregateWidth)} ${y - 7}`
-        : `M${Math.max(2, x - aggregateWidth)} ${y + 6} C${x - 12} ${y - 10}, ${x + 12} ${y + 10}, ${Math.min(98, x + aggregateWidth)} ${y - 6}`;
-    return (
-      <g
-        className="civ-integrated-consequence"
-        opacity={aggregateOpacity}
-        style={{ color: tone }}
-        data-testid="civilization-integrated-aggregate"
-        data-native-scene={nativeScene}
-      >
-        <path
-          className="civ-portrait-flow"
-          d={pathD}
-          fill="none"
-          stroke={`${tone}8C`}
-          strokeLinecap="round"
-          strokeWidth={scene === 'galaxy' ? 0.82 : scene === 'stellar' ? 0.68 : 0.48}
-        />
-        <ellipse
-          cx={x}
-          cy={y}
-          rx={aggregateWidth * 0.34}
-          ry={aggregateHeight * 0.44}
-          fill={`${tone}12`}
-          stroke={`${tone}62`}
-          strokeWidth="0.24"
-          transform={`rotate(${rotation} ${x} ${y})`}
-        />
-        <circle cx={x - aggregateWidth * 0.18} cy={y + 1} r="0.54" fill={`${tone}B8`} />
-        <circle cx={x + aggregateWidth * 0.08} cy={y - 0.7} r="0.64" fill="rgba(255,255,255,0.68)" />
-        <circle cx={x + aggregateWidth * 0.25} cy={y + 1.4} r="0.46" fill={`${tone}92`} />
-      </g>
-    );
-  }
-
-  if (isAntimatter || treatment === 'horizon_extractor') {
-    const dark = isAntimatter ? 'rgba(56,7,18,0.48)' : 'rgba(2,6,18,0.48)';
-    return (
-      <g className="civ-integrated-consequence" opacity={opacity} style={{ color: tone }} data-testid="civilization-integrated-horizon">
-        <ellipse cx={x} cy={y} rx={rx * 1.05} ry={ry * 1.08} fill={dark} stroke={strongStroke} strokeWidth={0.72 * scale} strokeDasharray={isAntimatter ? '4 2.4' : undefined} transform={`rotate(${rotation} ${x} ${y})`} />
-        <path d={`M${x - rx * 0.76} ${y + ry * 0.12} C${x - rx * 0.28} ${y - ry * 0.72}, ${x + rx * 0.3} ${y - ry * 0.72}, ${x + rx * 0.78} ${y + ry * 0.1}`} fill="none" stroke="rgba(255,255,255,0.34)" strokeLinecap="round" strokeWidth="0.38" />
-        <path d={`M${x - rx * 0.42} ${y} H${x + rx * 0.42}`} stroke={`${tone}D8`} strokeLinecap="round" strokeWidth={isAntimatter ? 0.82 : 0.5} />
-        <ArtifactMotifGlyph site={site} x={x} y={y} tone={tone} scale={0.58 * scale} emphasis={recent ? 1.14 : 1} />
-      </g>
-    );
-  }
-
-  if (isMantleFoundry) {
-    const baseY = Math.min(92, y + 13 * scale);
-    const apexY = Math.max(10, y - 16 * scale);
-    return (
-      <g className="civ-integrated-consequence" opacity={opacity} style={{ color: tone }} data-testid="civilization-integrated-lift">
-        <path d={`M${x - 3.4 * scale} ${baseY} L${x} ${apexY} L${x + 3.4 * scale} ${baseY} Z`} fill={softFill} stroke={strongStroke} strokeLinejoin="round" strokeWidth="0.5" />
-        <path d={`M${x} ${baseY} V${apexY - 4} M${x - 7 * scale} ${baseY - 3} C${x - 3 * scale} ${y}, ${x + 4 * scale} ${y}, ${x + 10 * scale} ${apexY + 6}`} stroke={white} strokeLinecap="round" strokeWidth="0.34" fill="none" />
-        <ellipse cx={x} cy={apexY - 1.2} rx={9.5 * scale} ry={2.8 * scale} fill={`${tone}16`} stroke={`${tone}A8`} strokeWidth="0.34" />
-        <ArtifactMotifGlyph site={site} x={x} y={y} tone={tone} scale={0.62 * scale} emphasis={recent ? 1.12 : 1} />
-      </g>
-    );
-  }
-
-  if (treatment === 'ashroot_recovery') {
-    return (
-      <g className="civ-integrated-consequence" opacity={opacity} style={{ color: tone }} data-testid="civilization-integrated-recovery">
-        <path
-          d={`M${x - rx * 0.95} ${y + ry * 0.35} C${x - rx * 0.62} ${y - ry * 0.68}, ${x - rx * 0.12} ${y - ry * 0.9}, ${x + rx * 0.22} ${y - ry * 0.18} C${x + rx * 0.46} ${y + ry * 0.34}, ${x + rx * 0.76} ${y - ry * 0.22}, ${x + rx} ${y + ry * 0.42} C${x + rx * 0.34} ${y + ry}, ${x - rx * 0.4} ${y + ry * 0.94}, ${x - rx * 0.95} ${y + ry * 0.35} Z`}
-          fill={softFill}
-          stroke={strongStroke}
-          strokeLinejoin="round"
-          strokeWidth="0.45"
-          transform={`rotate(${rotation} ${x} ${y})`}
-        />
-        <path d={`M${x - rx * 0.76} ${y + ry * 0.62} C${x - rx * 0.26} ${y + ry * 0.18}, ${x - rx * 0.1} ${y - ry * 0.16}, ${x + rx * 0.12} ${y - ry * 0.66} M${x - rx * 0.14} ${y + ry * 0.38} C${x + rx * 0.1} ${y + ry * 0.02}, ${x + rx * 0.42} ${y + ry * 0.14}, ${x + rx * 0.72} ${y - ry * 0.28}`} fill="none" stroke={white} strokeLinecap="round" strokeWidth="0.32" />
-        <ArtifactMotifGlyph site={site} x={x} y={y} tone={tone} scale={0.62 * scale} emphasis={recent ? 1.1 : 1} />
-      </g>
-    );
-  }
-
-  if (treatment === 'magnetic_bottle' || site.trait === 'containment') {
-    return (
-      <g className="civ-integrated-consequence" opacity={opacity} style={{ color: tone }} data-testid="civilization-integrated-containment">
-        <ellipse cx={x} cy={y} rx={rx} ry={ry} fill={`${tone}12`} stroke={strongStroke} strokeWidth="0.58" transform={`rotate(${rotation} ${x} ${y})`} />
-        <ellipse cx={x} cy={y} rx={rx * 0.56} ry={ry * 1.36} fill="none" stroke="rgba(255,255,255,0.26)" strokeWidth="0.32" transform={`rotate(${-rotation} ${x} ${y})`} />
-        <path d={`M${x - rx * 0.82} ${y + ry * 0.74} C${x - rx * 0.28} ${y + ry * 1.2}, ${x + rx * 0.34} ${y + ry * 1.18}, ${x + rx * 0.84} ${y + ry * 0.72}`} fill="none" stroke={`${tone}96`} strokeLinecap="round" strokeWidth="0.42" />
-        <ArtifactMotifGlyph site={site} x={x} y={y} tone={tone} scale={0.58 * scale} emphasis={recent ? 1.12 : 1} />
-      </g>
-    );
-  }
-
-  if (treatment === 'ignition_kernel' || treatment === 'entropy_baffle' || site.trait === 'ignition' || site.trait === 'entropy') {
-    const finCount = treatment === 'entropy_baffle' ? 5 : 3;
-    return (
-      <g className="civ-integrated-consequence" opacity={opacity} style={{ color: tone }} data-testid="civilization-integrated-forge" transform={`rotate(${rotation} ${x} ${y})`}>
-        <path d={`M${x - rx * 0.68} ${y + ry * 0.74} L${x - rx * 0.22} ${y - ry * 0.62} L${x + rx * 0.28} ${y - ry * 0.72} L${x + rx * 0.72} ${y + ry * 0.68} Z`} fill={softFill} stroke={strongStroke} strokeLinejoin="round" strokeWidth="0.5" />
-        {Array.from({ length: finCount }, (_, finIndex) => {
-          const dx = (finIndex - (finCount - 1) / 2) * (rx / (finCount + 0.4));
-          return <path key={finIndex} d={`M${x + dx} ${y + ry * 0.55} V${y - ry * (0.18 + (finIndex % 2) * 0.2)}`} stroke={finIndex === Math.floor(finCount / 2) ? white : `${tone}9C`} strokeLinecap="round" strokeWidth="0.34" />;
-        })}
-        <ArtifactMotifGlyph site={site} x={x} y={y} tone={tone} scale={0.56 * scale} emphasis={recent ? 1.12 : 1} />
-      </g>
-    );
-  }
-
-  return (
-    <g className="civ-integrated-consequence" opacity={opacity} style={{ color: tone }} data-testid="civilization-integrated-generic" transform={`rotate(${rotation} ${x} ${y})`}>
-      <path d={`M${x - rx * 0.6} ${y + ry * 0.42} L${x - rx * 0.16} ${y - ry * 0.5} L${x + rx * 0.54} ${y - ry * 0.2} L${x + rx * 0.38} ${y + ry * 0.54} Z`} fill={softFill} stroke={strongStroke} strokeLinejoin="round" strokeWidth="0.42" />
-      <ArtifactMotifGlyph site={site} x={x} y={y} tone={tone} scale={0.58 * scale} emphasis={recent ? 1.1 : 1} />
-    </g>
-  );
-}
-
-function CivilizationIntegratedConsequenceLayer({
-  sites,
-  scene,
-  scanActive,
-  recentSiteIds,
-  maxSites,
-}: {
-  sites: readonly CivilizationDeploymentSite[];
-  scene: MarketSceneKind;
-  scanActive: boolean;
-  recentSiteIds: readonly string[];
-  maxSites: number;
-}) {
-  const integratedSites = React.useMemo(() => (
-    selectIntegratedConsequenceSites(sites, scene, maxSites, recentSiteIds)
-  ), [sites, scene, maxSites, recentSiteIds]);
-
-  if (integratedSites.length === 0) return null;
-
-  return (
-    <svg
-      className="pointer-events-none absolute inset-0 z-[8] h-full w-full mix-blend-screen"
-      viewBox="0 0 100 100"
-      preserveAspectRatio="none"
-      aria-hidden="true"
-      data-testid="civilization-integrated-consequences"
-    >
-      {integratedSites.map((site, index) => (
-        <IntegratedConsequenceMark
-          key={site.id}
-          site={site}
-          scene={scene}
-          scanActive={scanActive}
-          recent={recentSiteIds.includes(site.id)}
-          index={index}
-        />
-      ))}
-    </svg>
-  );
-}
-
-function LuminaryPortraitMark({
-  site,
-  scene,
-  opacity,
-}: {
-  site: CivilizationDeploymentSite;
-  scene: MarketSceneKind;
-  opacity: number;
-}) {
-  const meta = AFFINITY_META[site.affinity];
-  const x = site.anchor.x;
-  const y = site.anchor.y;
-  const spread = scene === 'galaxy' ? 30 : scene === 'stellar' ? 24 : 19;
-  const deepSpace = scene === 'stellar' || scene === 'galaxy';
-  if (deepSpace) {
-    return (
-      <g
-        className="civ-portrait-mark civ-portrait-haze"
-        opacity={opacity * 0.74}
-        style={{ color: meta.hex }}
-      >
-        <ellipse
-          cx={x}
-          cy={y + 2}
-          rx={spread * 1.12}
-          ry={scene === 'galaxy' ? 7.4 : 6.1}
-          fill={`${meta.hex}16`}
-          stroke={`${meta.hex}4E`}
-          strokeWidth="0.24"
-          transform={`rotate(-7 ${x} ${y + 2})`}
-        />
-        <path
-          d={`M${Math.max(4, x - spread * 0.76)} ${y + 5} C${x - 8} ${y - 3}, ${x + 8} ${y - 3}, ${Math.min(96, x + spread * 0.78)} ${y + 4}`}
-          fill="none"
-          stroke={`${meta.hex}76`}
-          strokeLinecap="round"
-          strokeWidth="0.34"
-        />
-        <circle cx={x} cy={y} r="1.1" fill="rgba(255,255,255,0.58)" />
-        <circle cx={x - 6} cy={y + 2} r="0.42" fill={`${meta.hex}B8`} />
-        <circle cx={x + 6} cy={y + 2} r="0.42" fill={`${meta.hex}B8`} />
-      </g>
-    );
-  }
-  return (
-    <g className="civ-portrait-mark civ-portrait-haze" opacity={opacity} style={{ color: meta.hex }}>
-      <path
-        d={`M${Math.max(2, x - spread)} ${y + 2} C${x - 10} ${y - 13}, ${x + 9} ${y - 13}, ${Math.min(98, x + spread)} ${y + 1}`}
-        fill="none"
-        stroke={`${meta.hex}B0`}
-        strokeLinecap="round"
-        strokeWidth="0.72"
-      />
-      <path
-        d={`M${Math.max(4, x - spread + 4)} ${y + 7} C${x - 6} ${y - 3}, ${x + 6} ${y - 3}, ${Math.min(96, x + spread - 4)} ${y + 6}`}
-        fill="none"
-        stroke="rgba(255,255,255,0.28)"
-        strokeLinecap="round"
-        strokeWidth="0.24"
-      />
-      <circle cx={x} cy={y - 2} r="1.35" fill="#fff" />
-      <circle cx={x - 7} cy={y + 1} r="0.55" fill={`${meta.hex}DD`} />
-      <circle cx={x + 7} cy={y + 1} r="0.55" fill={`${meta.hex}DD`} />
-    </g>
-  );
-}
-
-function ArtifactPortraitMark({
-  site,
-  index,
-  opacity,
-}: {
-  site: CivilizationDeploymentSite;
-  index: number;
-  opacity: number;
-}) {
-  const meta = AFFINITY_META[site.affinity];
-  const x = site.anchor.x;
-  const y = site.anchor.y;
-  const rotation = index % 2 === 0 ? -8 : 9;
-
-  if (site.representationMode === 'local_trace') {
-    return (
-      <g className="civ-portrait-mark civ-portrait-signal" opacity={Math.min(opacity, 0.42)} style={{ color: meta.hex }}>
-        <ellipse
-          cx={x}
-          cy={y}
-          rx="5.8"
-          ry="2.2"
-          fill={`${meta.hex}18`}
-          stroke={`${meta.hex}86`}
-          strokeWidth="0.3"
-          strokeDasharray="1.2 1"
-          transform={`rotate(${rotation} ${x} ${y})`}
-        />
-        <circle cx={x} cy={y} r="0.72" fill="rgba(255,255,255,0.76)" />
-        <path
-          d={`M${x - 3.4} ${y + 1.7} C${x - 1.1} ${y + 0.4}, ${x + 1.1} ${y + 0.4}, ${x + 3.6} ${y + 1.7}`}
-          fill="none"
-          stroke={`${meta.hex}78`}
-          strokeLinecap="round"
-          strokeWidth="0.22"
-        />
-      </g>
-    );
-  }
-
-  if (site.trait === 'biosphere') {
-    return (
-      <g className="civ-portrait-mark civ-portrait-signal" opacity={opacity} style={{ color: meta.hex }}>
-        <path
-          d={`M${Math.max(3, x - 18)} ${y + 4} C${x - 8} ${y - 7}, ${x + 9} ${y + 9}, ${Math.min(97, x + 20)} ${y - 5}`}
-          fill="none"
-          stroke={`${meta.hex}B8`}
-          strokeLinecap="round"
-          strokeWidth="0.64"
-        />
-        <path
-          d={`M${x - 5} ${y} C${x - 2} ${y - 5}, ${x + 3} ${y - 5}, ${x + 5} ${y - 1} M${x + 4} ${y + 2} C${x + 8} ${y - 1}, ${x + 11} ${y}, ${x + 13} ${y + 4}`}
-          fill="none"
-          stroke="rgba(229,255,238,0.58)"
-          strokeLinecap="round"
-          strokeWidth="0.25"
-        />
-      </g>
-    );
-  }
-
-  if (isRouteTrait(site)) {
-    return (
-      <g className="civ-portrait-mark" opacity={opacity} style={{ color: meta.hex }}>
-        <path
-          className="civ-portrait-flow"
-          d={`M${Math.max(3, x - 22)} ${y + 4} C${x - 10} ${y - 10}, ${x + 11} ${y + 10}, ${Math.min(97, x + 24)} ${y - 4}`}
-          fill="none"
-          stroke={`${meta.hex}B8`}
-          strokeLinecap="round"
-          strokeWidth="0.62"
-        />
-        <path
-          d={`M${Math.max(5, x - 15)} ${y + 8} C${x - 4} ${y + 2}, ${x + 5} ${y + 6}, ${Math.min(95, x + 17)} ${y}`}
-          fill="none"
-          stroke="rgba(255,255,255,0.3)"
-          strokeLinecap="round"
-          strokeWidth="0.22"
-        />
-      </g>
-    );
-  }
-
-  if (isDistrictTrait(site)) {
-    return (
-      <g className="civ-portrait-mark" opacity={opacity} style={{ color: meta.hex }}>
-        <rect
-          x={x - 4.8}
-          y={y - 3.6}
-          width="9.6"
-          height="7.2"
-          fill={`${meta.hex}24`}
-          stroke={`${meta.hex}9A`}
-          strokeWidth="0.32"
-          transform={`rotate(${rotation} ${x} ${y})`}
-        />
-        <path
-          d={`M${x - 7.2} ${y + 4.8} H${x + 7.6} M${x - 4.2} ${y + 2.1} V${y - 4.2} M${x} ${y + 2.2} V${y - 5.1} M${x + 4.2} ${y + 2.1} V${y - 3.6}`}
-          fill="none"
-          stroke="rgba(255,244,194,0.52)"
-          strokeLinecap="round"
-          strokeWidth="0.28"
-        />
-      </g>
-    );
-  }
-
-  if (isFieldTrait(site)) {
-    return (
-      <g className="civ-portrait-mark civ-portrait-loom" opacity={opacity} style={{ color: meta.hex }}>
-        <ellipse
-          cx={x}
-          cy={y}
-          rx="8.8"
-          ry="3.7"
-          fill={`${meta.hex}20`}
-          stroke={`${meta.hex}A8`}
-          strokeWidth="0.42"
-          strokeDasharray={site.trait === 'veil' ? '1.8 1.4' : undefined}
-          transform={`rotate(${rotation} ${x} ${y})`}
-        />
-        <ellipse
-          cx={x}
-          cy={y}
-          rx="5.3"
-          ry="1.8"
-          fill="none"
-          stroke="rgba(255,255,255,0.24)"
-          strokeWidth="0.2"
-          transform={`rotate(${-rotation} ${x} ${y})`}
-        />
-      </g>
-    );
-  }
-
-  return (
-    <g className="civ-portrait-mark civ-portrait-signal" opacity={opacity} style={{ color: meta.hex }}>
-      <ellipse
-        cx={x}
-        cy={y}
-        rx="6.4"
-        ry="2.6"
-        fill={`${meta.hex}2C`}
-        stroke={`${meta.hex}92`}
-        strokeWidth="0.32"
-        transform={`rotate(${rotation} ${x} ${y})`}
-      />
-      <circle cx={x} cy={y} r="0.62" fill="rgba(255,255,255,0.76)" />
-    </g>
-  );
-}
-
-function BlueprintProjectZone({
-  site,
-  scene,
-  opacity,
-}: {
-  site: CivilizationDeploymentSite;
-  scene: MarketSceneKind;
-  opacity: number;
-}) {
-  const tone = getCivilizationSiteTone(site);
-  const x = site.anchor.x;
-  const y = site.anchor.y;
-  const wideScale = scene === 'galaxy' ? 1.35 : scene === 'stellar' ? 1.18 : 1;
-
-  if (site.blueprintId === 'bp_antimatter_detonator') {
-    return (
-      <g className="civ-project-zone" opacity={opacity} style={{ color: tone }}>
-        <ellipse
-          cx={x}
-          cy={y}
-          rx={18 * wideScale}
-          ry={6.2 * wideScale}
-          fill={`${tone}12`}
-          stroke={`${tone}58`}
-          strokeWidth="0.34"
-          strokeDasharray="3 2.8"
-          transform={`rotate(-9 ${x} ${y})`}
-        />
-        <ellipse
-          cx={x}
-          cy={y}
-          rx={10 * wideScale}
-          ry={3.2 * wideScale}
-          fill="rgba(255,255,255,0.06)"
-          stroke="rgba(255,255,255,0.16)"
-          strokeWidth="0.16"
-          transform={`rotate(-9 ${x} ${y})`}
-        />
-        <path
-          d={`M${Math.max(0, x - 31 * wideScale)} ${y + 8} C${x - 12} ${y + 2}, ${x + 10} ${y + 9}, ${Math.min(100, x + 32 * wideScale)} ${y + 1}`}
-          fill="none"
-          stroke={`${tone}45`}
-          strokeLinecap="round"
-          strokeWidth="0.28"
-        />
-      </g>
-    );
-  }
-
-  if (site.blueprintId === 'bp_mantle_to_orbit_foundry') {
-    const foundryColor = '#dfb86b';
-    if (scene === 'galaxy' || scene === 'stellar') {
-      const routeD = `M${Math.max(2, x - 30 * wideScale)} ${y + 8} C${x - 12} ${y - 8}, ${x + 12} ${y + 10}, ${Math.min(98, x + 32 * wideScale)} ${y - 7}`;
-      return (
-        <g className="civ-project-zone" opacity={opacity} style={{ color: foundryColor }}>
-          <path
-            d={routeD}
-            fill="none"
-            stroke="rgba(223,184,107,0.18)"
-            strokeLinecap="round"
-            strokeWidth="2.1"
-          />
-          <path
-            className="civ-portrait-flow"
-            d={routeD}
-            fill="none"
-            stroke="rgba(255,228,163,0.58)"
-            strokeLinecap="round"
-            strokeWidth="0.42"
-          />
-          <circle cx={x - 7} cy={y + 1.2} r="0.74" fill="rgba(223,184,107,0.8)" />
-          <circle cx={x + 11} cy={y - 2.2} r="0.9" fill="rgba(255,244,194,0.76)" />
-        </g>
-      );
-    }
-    const baseY = Math.min(95, y + 19 * wideScale);
-    const topY = Math.max(5, y - 28 * wideScale);
-    return (
-      <g className="civ-project-zone" opacity={opacity} style={{ color: foundryColor }}>
-        <path
-          d={`M${x - 7} ${baseY} C${x - 3} ${y + 3}, ${x + 4} ${y - 7}, ${x + 14} ${topY}`}
-          fill="none"
-          stroke="rgba(223,184,107,0.22)"
-          strokeLinecap="round"
-          strokeWidth="1.55"
-        />
-        <path
-          className="civ-portrait-flow"
-          d={`M${x - 7} ${baseY} C${x - 3} ${y + 3}, ${x + 4} ${y - 7}, ${x + 14} ${topY}`}
-          fill="none"
-          stroke="rgba(255,228,163,0.56)"
-          strokeLinecap="round"
-          strokeWidth="0.38"
-        />
-        <path
-          d={`M${x - 14} ${baseY + 1} L${x + 1} ${baseY - 4} L${x + 15} ${baseY + 2} Z`}
-          fill="rgba(223,184,107,0.08)"
-          stroke="rgba(223,184,107,0.28)"
-          strokeWidth="0.3"
-        />
-      </g>
-    );
-  }
-
-  if (site.blueprintId === 'bp_worldshield_covenant') {
-    return (
-      <g className="civ-project-zone" opacity={opacity} style={{ color: tone }}>
-        <path
-          d={`M${Math.max(0, x - 30 * wideScale)} ${y + 6} C${x - 13} ${y - 18 * wideScale}, ${x + 13} ${y - 18 * wideScale}, ${Math.min(100, x + 31 * wideScale)} ${y + 5}`}
-          fill="none"
-          stroke={`${tone}9A`}
-          strokeLinecap="round"
-          strokeWidth="0.76"
-        />
-        <path
-          d={`M${Math.max(0, x - 23 * wideScale)} ${y + 8} C${x - 8} ${y - 7 * wideScale}, ${x + 8} ${y - 7 * wideScale}, ${Math.min(100, x + 24 * wideScale)} ${y + 7}`}
-          fill="none"
-          stroke="rgba(255,255,255,0.22)"
-          strokeLinecap="round"
-          strokeWidth="0.34"
-        />
-      </g>
-    );
-  }
-
-  return (
-    <g className="civ-project-zone" opacity={opacity} style={{ color: tone }}>
-      <ellipse
-        cx={x}
-        cy={y}
-        rx={14 * wideScale}
-        ry={5 * wideScale}
-        fill={`${tone}18`}
-        stroke={`${tone}70`}
-        strokeWidth="0.4"
-      />
-    </g>
-  );
-}
-
-function LuminaryProjectZone({
-  site,
-  scene,
-  opacity,
-}: {
-  site: CivilizationDeploymentSite;
-  scene: MarketSceneKind;
-  opacity: number;
-}) {
-  const meta = AFFINITY_META[site.affinity];
-  const x = site.anchor.x;
-  const y = site.anchor.y;
-  const spread = scene === 'galaxy' ? 38 : scene === 'stellar' ? 30 : 24;
-  const deepSpace = scene === 'stellar' || scene === 'galaxy';
-  if (deepSpace) {
-    return (
-      <g className="civ-project-zone" opacity={opacity * 0.72} style={{ color: meta.hex }}>
-        <ellipse
-          cx={x}
-          cy={y + 7}
-          rx={spread * 0.96}
-          ry={scene === 'galaxy' ? 11 : 8.5}
-          fill={`${meta.hex}12`}
-          stroke={`${meta.hex}42`}
-          strokeWidth="0.32"
-          transform={`rotate(-9 ${x} ${y + 7})`}
-        />
-        <ellipse
-          cx={x + 5}
-          cy={y + 5}
-          rx={spread * 0.58}
-          ry={scene === 'galaxy' ? 5.4 : 4.2}
-          fill="none"
-          stroke="rgba(255,255,255,0.11)"
-          strokeWidth="0.2"
-          transform={`rotate(10 ${x + 5} ${y + 5})`}
-        />
-      </g>
-    );
-  }
-  return (
-    <g className="civ-project-zone" opacity={opacity} style={{ color: meta.hex }}>
-      <path
-        d={`M${Math.max(0, x - spread)} ${y + 8} C${x - 18} ${y - 9}, ${x + 16} ${y - 10}, ${Math.min(100, x + spread)} ${y + 6}`}
-        fill="none"
-        stroke={`${meta.hex}78`}
-        strokeLinecap="round"
-        strokeWidth="1.2"
-      />
-      <path
-        d={`M${Math.max(0, x - spread + 5)} ${y + 13} C${x - 10} ${y + 1}, ${x + 10} ${y + 1}, ${Math.min(100, x + spread - 5)} ${y + 12}`}
-        fill="none"
-        stroke="rgba(255,255,255,0.18)"
-        strokeLinecap="round"
-        strokeWidth="0.32"
-      />
-    </g>
-  );
-}
-
-function ArtifactProjectZone({
-  site,
-  index,
-  opacity,
-}: {
-  site: CivilizationDeploymentSite;
-  index: number;
-  opacity: number;
-}) {
-  const meta = AFFINITY_META[site.affinity];
-  const x = site.anchor.x;
-  const y = site.anchor.y;
-  const rotation = index % 2 === 0 ? -8 : 10;
-
-  if (site.representationMode === 'local_trace') {
-    return (
-      <g className="civ-project-zone" opacity={Math.max(0.22, opacity)} style={{ color: meta.hex }}>
-        <path
-          d={`M${x - 3.2} ${y + 1.6} C${x - 1.3} ${y - 1.3}, ${x + 1.2} ${y + 2}, ${x + 3.7} ${y - 1.1}`}
-          fill="none"
-          stroke={`${meta.hex}94`}
-          strokeLinecap="round"
-          strokeWidth="0.34"
-        />
-        <circle cx={x - 3.2} cy={y + 1.6} r="0.46" fill={`${meta.hex}CC`} />
-        <circle cx={x + 0.1} cy={y + 0.1} r="0.56" fill="rgba(255,255,255,0.7)" />
-        <circle cx={x + 3.7} cy={y - 1.1} r="0.46" fill={`${meta.hex}B8`} />
-      </g>
-    );
-  }
-
-  if (isRouteTrait(site)) {
-    const deepSpace = site.scaleBand !== 'planetary';
-    if (deepSpace) {
-      const routeRx = site.scaleBand === 'galactic' ? 24 : 19;
-      return (
-        <g className="civ-project-zone" opacity={opacity * 0.68} style={{ color: meta.hex }}>
-          <ellipse
-            cx={x}
-            cy={y + 2}
-            rx={routeRx}
-            ry={site.scaleBand === 'galactic' ? 7.2 : 5.6}
-            fill={`${meta.hex}12`}
-            stroke={`${meta.hex}42`}
-            strokeWidth="0.3"
-            transform={`rotate(${rotation} ${x} ${y + 2})`}
-          />
-          <path
-            d={`M${Math.max(3, x - routeRx * 0.78)} ${y + 4} C${x - 8} ${y - 1}, ${x + 8} ${y + 5}, ${Math.min(97, x + routeRx * 0.8)} ${y + 1}`}
-            fill="none"
-            stroke={`${meta.hex}58`}
-            strokeLinecap="round"
-            strokeWidth="0.3"
-          />
-        </g>
-      );
-    }
-    return (
-      <g className="civ-project-zone" opacity={opacity} style={{ color: meta.hex }}>
-        <path
-          d={`M${Math.max(0, x - 28)} ${y + 8} C${x - 12} ${y - 8}, ${x + 10} ${y + 12}, ${Math.min(100, x + 30)} ${y - 5}`}
-          fill="none"
-          stroke={`${meta.hex}70`}
-          strokeLinecap="round"
-          strokeWidth="0.76"
-        />
-        <path
-          d={`M${Math.max(0, x - 21)} ${y + 3.4} C${x - 8} ${y - 4.4}, ${x + 7} ${y + 5.8}, ${Math.min(100, x + 23)} ${y - 2}`}
-          fill="none"
-          stroke="rgba(255,255,255,0.18)"
-          strokeLinecap="round"
-          strokeWidth="0.26"
-        />
-      </g>
-    );
-  }
-
-  if (isFieldTrait(site)) {
-    return (
-      <g className="civ-project-zone" opacity={opacity} style={{ color: meta.hex }}>
-        <ellipse
-          cx={x}
-          cy={y}
-          rx="10"
-          ry="3.7"
-          fill={`${meta.hex}16`}
-          stroke={`${meta.hex}66`}
-          strokeWidth="0.36"
-          strokeDasharray={site.trait === 'veil' ? '2 1.6' : undefined}
-          transform={`rotate(${rotation} ${x} ${y})`}
-        />
-      </g>
-    );
-  }
-
-  if (isDistrictTrait(site)) {
-    return (
-      <g className="civ-project-zone" opacity={opacity} style={{ color: meta.hex }}>
-        <path
-          d={`M${x - 7} ${y + 3} L${x - 3} ${y - 2.6} L${x + 3.5} ${y - 3.5} L${x + 7.2} ${y + 2.5} Z`}
-          fill={`${meta.hex}14`}
-          stroke={`${meta.hex}66`}
-          strokeLinejoin="round"
-          strokeWidth="0.32"
-          transform={`rotate(${rotation} ${x} ${y})`}
-        />
-        <path
-          d={`M${x - 4.5} ${y + 1.6} H${x + 4.4} M${x - 1.8} ${y - 0.5} H${x + 3.2} M${x + 0.8} ${y - 2.4} H${x + 5.4}`}
-          stroke={`${meta.hex}8C`}
-          strokeLinecap="round"
-          strokeWidth="0.3"
-          transform={`rotate(${rotation} ${x} ${y})`}
-        />
-      </g>
-    );
-  }
-
-  return (
-    <g className="civ-project-zone" opacity={opacity} style={{ color: meta.hex }}>
-      <rect
-        x={x - 6}
-        y={y - 4}
-        width="12"
-        height="8"
-        fill={`${meta.hex}12`}
-        stroke={`${meta.hex}58`}
-        strokeWidth="0.3"
-        transform={`rotate(${rotation} ${x} ${y})`}
-      />
-    </g>
-  );
-}
-
-function TraitSignatureMark({
-  descriptor,
-  index,
-  scene,
-  opacity,
-}: {
-  descriptor: CivilizationVisualSignatureDescriptor;
-  index: number;
-  scene: MarketSceneKind;
-  opacity: number;
-}) {
-  const { site, kind } = descriptor;
-  const meta = AFFINITY_META[site.affinity];
-  const tone = getCivilizationSiteTone(site);
-  const x = site.anchor.x;
-  const y = site.anchor.y;
-  const wideScale = scene === 'galaxy' ? 1.28 : scene === 'stellar' ? 1.12 : 1;
-  const rotation = index % 2 === 0 ? -9 : 12;
-
-  if (kind === 'reactor') {
-    return (
-      <g className="civ-portrait-mark civ-portrait-signal" opacity={opacity} style={{ color: meta.hex }}>
-        <path d={`M${x} ${y + 10} L${x - 3.2} ${y + 1.8} L${x} ${y - 9} L${x + 3.2} ${y + 1.8} Z`} fill={`${meta.hex}20`} stroke={`${meta.hex}A8`} strokeWidth="0.36" />
-        <path d={`M${x - 9} ${y + 5} C${x - 4} ${y}, ${x - 3} ${y - 5}, ${x} ${y - 10} M${x + 9} ${y + 5} C${x + 4} ${y}, ${x + 3} ${y - 5}, ${x} ${y - 10}`} fill="none" stroke="rgba(255,244,194,0.42)" strokeLinecap="round" strokeWidth="0.28" />
-      </g>
-    );
-  }
-
-  if (kind === 'biosphere') {
-    return (
-      <g className="civ-portrait-mark civ-portrait-signal" opacity={opacity} style={{ color: meta.hex }}>
-        <path d={`M${Math.max(2, x - 22 * wideScale)} ${y + 7} C${x - 12} ${y - 9}, ${x + 9} ${y + 11}, ${Math.min(98, x + 24 * wideScale)} ${y - 7}`} fill="none" stroke={`${meta.hex}A8`} strokeLinecap="round" strokeWidth="0.62" />
-        <path d={`M${x - 7} ${y + 1} C${x - 5} ${y - 5}, ${x - 1} ${y - 6}, ${x + 2} ${y - 2} M${x + 4} ${y + 3} C${x + 9} ${y - 2}, ${x + 13} ${y}, ${x + 15} ${y + 5}`} fill="none" stroke="rgba(229,255,238,0.46)" strokeLinecap="round" strokeWidth="0.24" />
-        <circle cx={x - 7} cy={y + 1} r="0.7" fill={`${meta.hex}CC`} />
-        <circle cx={x + 15} cy={y + 5} r="0.55" fill="rgba(229,255,238,0.72)" />
-      </g>
-    );
-  }
-
-  if (kind === 'clock') {
-    return (
-      <g className="civ-portrait-mark" opacity={opacity} style={{ color: meta.hex }}>
-        <ellipse cx={x} cy={y} rx={10 * wideScale} ry={4.2 * wideScale} fill="none" stroke={`${meta.hex}96`} strokeWidth="0.36" strokeDasharray="1.2 2" transform={`rotate(${rotation} ${x} ${y})`} />
-        <ellipse cx={x} cy={y} rx={5.8 * wideScale} ry={2.2 * wideScale} fill={`${meta.hex}10`} stroke="rgba(255,255,255,0.28)" strokeWidth="0.18" transform={`rotate(${-rotation} ${x} ${y})`} />
-        <path d={`M${x} ${y - 6.5} V${y - 9.2} M${x + 7.5} ${y} H${x + 10.5} M${x} ${y + 6.5} V${y + 9.2} M${x - 7.5} ${y} H${x - 10.5}`} stroke={`${meta.hex}9A`} strokeLinecap="round" strokeWidth="0.22" />
-      </g>
-    );
-  }
-
-  if (kind === 'transit') {
-    return (
-      <g className="civ-portrait-mark" opacity={opacity} style={{ color: meta.hex }}>
-        <path className="civ-portrait-flow" d={`M${Math.max(1, x - 29 * wideScale)} ${y + 8} C${x - 12} ${y - 9}, ${x + 13} ${y + 11}, ${Math.min(99, x + 32 * wideScale)} ${y - 6}`} fill="none" stroke={`${meta.hex}B2`} strokeLinecap="round" strokeWidth="0.58" />
-        <path d={`M${Math.max(3, x - 21 * wideScale)} ${y + 2.8} C${x - 6} ${y - 3}, ${x + 7} ${y + 5}, ${Math.min(97, x + 23 * wideScale)} ${y - 1.5}`} fill="none" stroke="rgba(255,255,255,0.28)" strokeLinecap="round" strokeWidth="0.24" />
-        <circle cx={Math.max(4, x - 11 * wideScale)} cy={y + 1} r="0.72" fill={`${meta.hex}CC`} />
-        <circle cx={Math.min(96, x + 13 * wideScale)} cy={y - 0.8} r="0.62" fill="rgba(255,255,255,0.76)" />
-      </g>
-    );
-  }
-
-  if (kind === 'archive') {
-    return (
-      <g className="civ-portrait-mark civ-portrait-signal" opacity={opacity} style={{ color: meta.hex }}>
-        <path d={`M${x - 8} ${y + 7} V${y - 3} M${x - 2.8} ${y + 8} V${y - 9} M${x + 2.8} ${y + 8} V${y - 6} M${x + 8} ${y + 7} V${y - 1}`} stroke={`${meta.hex}9E`} strokeLinecap="round" strokeWidth="0.46" />
-        <path d={`M${x - 11} ${y + 8} H${x + 11} M${x - 7} ${y - 3} H${x + 7} M${x - 3} ${y - 9} H${x + 3}`} stroke="rgba(255,255,255,0.24)" strokeLinecap="round" strokeWidth="0.22" />
-      </g>
-    );
-  }
-
-  if (kind === 'lattice') {
-    return (
-      <g className="civ-portrait-mark" opacity={opacity} style={{ color: meta.hex }}>
-        <path d={`M${x - 10} ${y} L${x - 4} ${y - 6} L${x + 4} ${y - 6} L${x + 10} ${y} L${x + 4} ${y + 6} L${x - 4} ${y + 6} Z M${x - 4} ${y - 6} L${x + 4} ${y + 6} M${x + 4} ${y - 6} L${x - 4} ${y + 6}`} fill={`${meta.hex}10`} stroke={`${meta.hex}82`} strokeLinejoin="round" strokeWidth="0.28" transform={`rotate(${rotation} ${x} ${y})`} />
-        <circle cx={x - 10} cy={y} r="0.5" fill={`${meta.hex}CC`} />
-        <circle cx={x + 10} cy={y} r="0.5" fill={`${meta.hex}CC`} />
-      </g>
-    );
-  }
-
-  if (kind === 'veil') {
-    return (
-      <g className="civ-portrait-mark" opacity={opacity} style={{ color: meta.hex }}>
-        <path d={`M${x - 18} ${y - 6} H${x + 16} M${x - 22} ${y} H${x + 12} M${x - 14} ${y + 6} H${x + 20}`} stroke={`${meta.hex}8F`} strokeLinecap="round" strokeWidth="0.72" strokeDasharray="3 3" transform={`rotate(${rotation} ${x} ${y})`} />
-        <path d={`M${x - 18} ${y - 6} H${x + 16} M${x - 22} ${y} H${x + 12} M${x - 14} ${y + 6} H${x + 20}`} stroke="rgba(0,0,0,0.64)" strokeLinecap="round" strokeWidth="0.24" strokeDasharray="1 4" transform={`rotate(${rotation} ${x} ${y})`} />
-      </g>
-    );
-  }
-
-  if (kind === 'containment') {
-    return (
-      <g className="civ-portrait-mark civ-portrait-loom" opacity={opacity} style={{ color: meta.hex }}>
-        <ellipse cx={x} cy={y} rx={11 * wideScale} ry={4.4 * wideScale} fill={`${meta.hex}12`} stroke={`${meta.hex}98`} strokeWidth="0.38" strokeDasharray="2.2 1.8" transform={`rotate(${rotation} ${x} ${y})`} />
-        <path d={`M${x - 12} ${y - 5} L${x - 8} ${y - 8} M${x + 12} ${y + 5} L${x + 8} ${y + 8} M${x - 12} ${y + 5} L${x - 8} ${y + 8} M${x + 12} ${y - 5} L${x + 8} ${y - 8}`} stroke="rgba(255,255,255,0.22)" strokeLinecap="round" strokeWidth="0.24" />
-      </g>
-    );
-  }
-
-  if (kind === 'replication') {
-    return (
-      <g className="civ-portrait-mark civ-portrait-signal" opacity={opacity} style={{ color: meta.hex }}>
-        {[0, 1, 2, 3].map((step) => (
-          <rect
-            key={step}
-            x={x - 10 + step * 5.4}
-            y={y - 4 + (step % 2) * 3.2}
-            width="3.6"
-            height="3.6"
-            fill={`${meta.hex}20`}
-            stroke={`${meta.hex}8E`}
-            strokeWidth="0.22"
-            transform={`rotate(${rotation} ${x} ${y})`}
-          />
-        ))}
-        <path d={`M${x - 11} ${y + 6} C${x - 4} ${y + 2}, ${x + 5} ${y + 7}, ${x + 12} ${y + 2}`} fill="none" stroke="rgba(255,255,255,0.22)" strokeLinecap="round" strokeWidth="0.24" />
-      </g>
-    );
-  }
-
-  if (kind === 'accord') {
-    return (
-      <g className="civ-portrait-mark civ-portrait-signal" opacity={opacity} style={{ color: meta.hex }}>
-        <circle cx={x - 5.5} cy={y} r="3.8" fill={`${meta.hex}12`} stroke={`${meta.hex}88`} strokeWidth="0.28" />
-        <circle cx={x + 5.5} cy={y} r="3.8" fill={`${meta.hex}12`} stroke={`${meta.hex}88`} strokeWidth="0.28" />
-        <path d={`M${x - 1.5} ${y} H${x + 1.5} M${x - 9.5} ${y + 5.8} C${x - 3} ${y + 10}, ${x + 3} ${y + 10}, ${x + 9.5} ${y + 5.8}`} stroke="rgba(255,255,255,0.24)" strokeLinecap="round" strokeWidth="0.24" fill="none" />
-      </g>
-    );
-  }
-
-  if (kind === 'entropy') {
-    return (
-      <g className="civ-portrait-mark" opacity={opacity} style={{ color: meta.hex }}>
-        <path d={`M${Math.max(2, x - 20)} ${y + 4} C${x - 12} ${y - 5}, ${x - 4} ${y + 12}, ${x + 4} ${y + 2} S${Math.min(98, x + 22)} ${y + 1}, ${Math.min(98, x + 25)} ${y - 7}`} fill="none" stroke={`${meta.hex}9F`} strokeLinecap="round" strokeWidth="0.58" />
-        <path d={`M${x - 13} ${y + 9} C${x - 4} ${y + 4}, ${x + 6} ${y + 10}, ${x + 15} ${y + 4}`} fill="none" stroke="rgba(255,255,255,0.2)" strokeLinecap="round" strokeWidth="0.22" />
-      </g>
-    );
-  }
-
-  if (kind === 'quarantine') {
-    return (
-      <g className="civ-portrait-mark civ-portrait-loom" opacity={opacity} style={{ color: tone }}>
-        <ellipse cx={x} cy={y} rx={15 * wideScale} ry={5.2 * wideScale} fill={`${tone}12`} stroke={`${tone}A8`} strokeWidth="0.42" strokeDasharray="2 1.3" transform={`rotate(${rotation} ${x} ${y})`} />
-        <path d={`M${x - 18} ${y - 7} L${x + 18} ${y + 7} M${x - 18} ${y + 7} L${x + 18} ${y - 7}`} stroke="rgba(255,255,255,0.24)" strokeLinecap="round" strokeWidth="0.26" transform={`rotate(${rotation} ${x} ${y})`} />
-        <circle cx={x} cy={y} r="2.1" fill={`${tone}24`} stroke="rgba(255,255,255,0.34)" strokeWidth="0.2" />
-      </g>
-    );
-  }
-
-  if (kind === 'foundry') {
-    const foundryColor = '#dfb86b';
-    return (
-      <g className="civ-portrait-mark civ-portrait-signal" opacity={opacity} style={{ color: foundryColor }}>
-        <path d={`M${x - 12} ${y + 10} C${x - 5} ${y + 2}, ${x - 3} ${y - 5}, ${x} ${y - 12} C${x + 3} ${y - 5}, ${x + 5} ${y + 2}, ${x + 12} ${y + 10}`} fill="none" stroke="rgba(255,228,163,0.62)" strokeLinecap="round" strokeWidth="0.46" />
-        <path d={`M${x - 5} ${y + 9} V${y - 8} M${x + 5} ${y + 9} V${y - 8} M${x - 8} ${y + 5} H${x + 8}`} stroke="rgba(255,244,194,0.36)" strokeLinecap="round" strokeWidth="0.28" />
-        <circle cx={x} cy={y - 10.4} r="0.8" fill="rgba(255,244,194,0.78)" />
-      </g>
-    );
-  }
-
-  if (kind === 'shield') {
-    return (
-      <g className="civ-portrait-mark civ-portrait-loom" opacity={opacity} style={{ color: tone }}>
-        <path d={`M${x - 15} ${y - 1} C${x - 11} ${y - 10}, ${x + 11} ${y - 10}, ${x + 15} ${y - 1} C${x + 10} ${y + 10}, ${x - 10} ${y + 10}, ${x - 15} ${y - 1} Z`} fill={`${tone}0F`} stroke={`${tone}94`} strokeWidth="0.34" />
-        <path d={`M${x - 9} ${y - 1} C${x - 4} ${y - 4}, ${x + 4} ${y - 4}, ${x + 9} ${y - 1} M${x - 8} ${y + 4} C${x - 3} ${y + 7}, ${x + 3} ${y + 7}, ${x + 8} ${y + 4}`} fill="none" stroke="rgba(255,255,255,0.26)" strokeLinecap="round" strokeWidth="0.22" />
-      </g>
-    );
-  }
-
-  if (kind === 'luminary') {
-    const nodes = [
-      [0, -7.5],
-      [6.5, -3],
-      [6, 4.8],
-      [0, 8],
-      [-6, 4.8],
-      [-6.5, -3],
-    ];
-    return (
-      <g className="civ-portrait-mark civ-portrait-signal" opacity={opacity} style={{ color: meta.hex }}>
-        <path d={nodes.map(([dx, dy], nodeIndex) => `${nodeIndex === 0 ? 'M' : 'L'}${x + dx} ${y + dy}`).join(' ') + ' Z'} fill={`${meta.hex}10`} stroke={`${meta.hex}8F`} strokeWidth="0.26" />
-        {nodes.map(([dx, dy], nodeIndex) => (
-          <circle key={`${dx}:${dy}:${nodeIndex}`} cx={x + dx} cy={y + dy} r={nodeIndex === 0 ? 1.05 : 0.74} fill={`${meta.hex}C8`} />
-        ))}
-        <circle cx={x} cy={y} r="1.8" fill="rgba(255,255,255,0.44)" />
-      </g>
-    );
-  }
-
-  if (kind === 'sealed') {
-    return (
-      <g className="civ-portrait-mark" opacity={opacity} style={{ color: tone }}>
-        <rect x={x - 12} y={y - 6} width="24" height="12" fill="rgba(0,0,0,0.2)" stroke={`${tone}78`} strokeWidth="0.28" strokeDasharray="2 2" transform={`rotate(${rotation} ${x} ${y})`} />
-        <path d={`M${x - 8} ${y - 2} H${x + 8} M${x - 9} ${y + 2} H${x + 5}`} stroke="rgba(255,255,255,0.22)" strokeLinecap="round" strokeWidth="0.24" transform={`rotate(${rotation} ${x} ${y})`} />
-      </g>
-    );
-  }
-
-  return (
-    <g className="civ-portrait-mark civ-portrait-signal" opacity={opacity} style={{ color: meta.hex }}>
-      <path d={`M${x - 13} ${y + 8} L${x - 5} ${y} L${x - 13} ${y - 8} M${x + 13} ${y + 8} L${x + 5} ${y} L${x + 13} ${y - 8}`} fill="none" stroke={`${meta.hex}9E`} strokeLinecap="round" strokeLinejoin="round" strokeWidth="0.5" />
-      <ellipse cx={x} cy={y} rx={5.8 * wideScale} ry={2.4 * wideScale} fill={`${meta.hex}14`} stroke="rgba(255,255,255,0.22)" strokeWidth="0.18" />
-    </g>
-  );
-}
-
-function CivilizationTraitSignatureLayer({
-  sites,
-  scene,
-  scanActive,
-  maxSites,
-}: {
-  sites: readonly CivilizationDeploymentSite[];
-  scene: MarketSceneKind;
-  scanActive: boolean;
-  maxSites: number;
-}) {
-  const signatures = React.useMemo(() => (
-    selectCivilizationVisualSignatures(sites, {
-      limit: maxSites,
-      includeSealed: scanActive,
-    }).filter((descriptor) => !(
-      descriptor.sourceKind === 'artifact' &&
-      Boolean(descriptor.site.artifactSceneTreatment)
-    ))
-  ), [sites, maxSites, scanActive]);
-
-  if (signatures.length === 0) return null;
-
-  return (
-    <svg
-      className="pointer-events-none absolute inset-0 z-[10] h-full w-full mix-blend-screen"
-      viewBox="0 0 100 100"
-      preserveAspectRatio="none"
-      aria-hidden="true"
-      data-testid="civilization-trait-signatures"
-    >
-      {signatures.map((descriptor, index) => (
-        <TraitSignatureMark
-          key={descriptor.site.id}
-          descriptor={descriptor}
-          index={index}
-          scene={scene}
-          opacity={Math.max(scanActive ? 0.18 : 0.09, (scanActive ? 0.42 : 0.22) - index * 0.04)}
-        />
-      ))}
-    </svg>
-  );
-}
-
-function CivilizationProjectZoneLayer({
-  sites,
-  scene,
-  scanActive,
-}: {
-  sites: readonly CivilizationDeploymentSite[];
-  scene: MarketSceneKind;
-  scanActive: boolean;
-}) {
-  if (sites.length === 0) return null;
-  const renderedSites = scanActive
-    ? sites
-    : sites.filter((site) => site.kind !== 'protocol').slice(0, 4);
-  if (renderedSites.length === 0) return null;
-  const baseOpacity = scanActive ? 0.22 : 0.28;
-  return (
-    <svg
-      className="pointer-events-none absolute inset-0 z-[9] h-full w-full mix-blend-screen"
-      viewBox="0 0 100 100"
-      preserveAspectRatio="none"
-      aria-hidden="true"
-      data-testid="civilization-project-zones"
-    >
-      {renderedSites.map((site, index) => {
-        const opacity = Math.max(scanActive ? 0.14 : 0.11, baseOpacity - Math.max(0, index - 1) * 0.04);
-        if (site.kind === 'blueprint') {
-          return <BlueprintProjectZone key={site.id} site={site} scene={scene} opacity={scanActive ? opacity : opacity * 1.18} />;
-        }
-        if (site.kind === 'luminary') {
-          return <LuminaryProjectZone key={site.id} site={site} scene={scene} opacity={opacity * (scanActive ? 0.86 : 0.72)} />;
-        }
-        if (site.kind === 'protocol') {
-          return scanActive ? <ProtocolPortraitMark key={site.id} site={site} opacity={opacity * 0.72} /> : null;
-        }
-        if (site.kind === 'artifact' && site.artifactSceneTreatment) {
-          return null;
-        }
-        return <ArtifactProjectZone key={site.id} site={site} index={index} opacity={opacity * (scanActive ? 0.68 : 0.54)} />;
-      })}
-    </svg>
-  );
-}
-
-function CivilizationConsequenceLayer({
-  sites,
-  scene,
-  scanActive,
-}: {
-  sites: readonly CivilizationDeploymentSite[];
-  scene: MarketSceneKind;
-  scanActive: boolean;
-}) {
-  if (sites.length === 0) return null;
-
-  return (
-    <svg
-      className="pointer-events-none absolute inset-0 z-[10] h-full w-full mix-blend-screen"
-      viewBox="0 0 100 100"
-      preserveAspectRatio="none"
-      aria-hidden="true"
-      data-testid="civilization-consequence-layer"
-    >
-      {sites.map((site, index) => {
-        const opacity = getPortraitOpacity(site, index, scanActive);
-        if (!scanActive && site.kind === 'protocol') {
-          return null;
-        }
-        if (site.kind === 'blueprint') {
-          if (!scanActive && hasDominantBlueprintMark(site)) return null;
-          return <BlueprintPortraitMark key={site.id} site={site} scene={scene} opacity={opacity} />;
-        }
-        if (site.kind === 'protocol') {
-          return <ProtocolPortraitMark key={site.id} site={site} opacity={opacity} />;
-        }
-        if (site.kind === 'luminary') {
-          return <LuminaryPortraitMark key={site.id} site={site} scene={scene} opacity={opacity} />;
-        }
-        return <ArtifactPortraitMark key={site.id} site={site} index={index} opacity={opacity} />;
-      })}
-    </svg>
-  );
-}
 
 function DossierSignalEmblem({
   site,
@@ -8198,22 +2402,91 @@ function DossierSignalEmblem({
   );
 }
 
+const REPAIR_BUTTON_CLIP = 'polygon(10px 0, calc(100% - 10px) 0, 100% 10px, 100% calc(100% - 10px), calc(100% - 10px) 100%, 10px 100%, 0 calc(100% - 10px), 0 10px)';
+
+function RepairActionButton({
+  count,
+  pending = false,
+  disabled = false,
+  compact = false,
+  onClick,
+}: {
+  count: number;
+  pending?: boolean;
+  disabled?: boolean;
+  compact?: boolean;
+  onClick: () => void;
+}) {
+  const label = count === 0
+    ? 'No damaged Artifacts selected'
+    : count === 1
+      ? 'Repair Artifact'
+      : `Repair ${count} Artifacts`;
+  return (
+    <button
+      type="button"
+      className={`relative flex w-full items-center overflow-hidden text-left transition-[filter,transform,opacity] enabled:hover:brightness-110 enabled:active:translate-y-px disabled:cursor-not-allowed focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[#82ddff]/80 ${compact ? 'h-10' : 'h-12'}`}
+      style={{
+        clipPath: REPAIR_BUTTON_CLIP,
+        background: pending
+          ? 'radial-gradient(circle at 30% 20%, rgba(130,221,255,0.24), transparent 55%), linear-gradient(155deg, #111b25, #071019)'
+          : 'radial-gradient(circle at 24% 8%, rgba(130,221,255,0.28), transparent 52%), linear-gradient(155deg, #14212b, #071017)',
+        boxShadow: pending
+          ? 'inset 0 0 0 1px rgba(185,239,255,0.72), inset 0 0 0 3px rgba(14,42,55,0.94), inset 0 0 20px rgba(130,221,255,0.16)'
+          : 'inset 0 0 0 1px rgba(202,241,255,0.58), inset 0 0 0 3px rgba(17,52,67,0.96), inset 0 0 0 4px rgba(130,221,255,0.42), 0 0 16px rgba(56,189,248,0.12)',
+        opacity: disabled ? 0.38 : 1,
+      }}
+      disabled={disabled}
+      onClick={onClick}
+      aria-label={pending ? `${label}, queued for end of turn` : `${label}, free repair`}
+      data-testid="civilization-repair-action"
+      data-repair-state={pending ? 'queued' : disabled ? 'unavailable' : 'ready'}
+    >
+      <span className={`grid shrink-0 place-items-center border-r border-[#82ddff]/18 text-[#b9efff] ${compact ? 'h-10 w-10' : 'h-12 w-12'}`}>
+        <Wrench className={compact ? 'h-4 w-4' : 'h-5 w-5'} aria-hidden="true" />
+      </span>
+      <span className="min-w-0 px-3">
+        <strong className={`block truncate font-black uppercase tracking-[0.12em] text-white ${compact ? 'text-[9px]' : 'text-[10px]'}`}>
+          {pending ? 'Repair queued' : label}
+        </strong>
+        {!compact && (
+          <span className="mt-0.5 block truncate text-[8px] font-semibold uppercase tracking-[0.08em] text-[#b9efff]/58">
+            Free repair / resolves at turn end
+          </span>
+        )}
+      </span>
+    </button>
+  );
+}
+
 function SiteDossier({
   site,
   forgedArtifacts,
+  civilization,
   currentScene,
   preferredSide,
+  preferredVerticalSide,
+  districtLabel,
   isRecent,
   onZoomToNative,
+  repairPending,
+  repairSubmitting,
+  onRepair,
   onOpenArtifact,
   onClose,
 }: {
   site: CivilizationDeploymentSite;
   forgedArtifacts: readonly ArtifactCard[];
+  civilization?: CivilizationPublicState | null;
   currentScene: MarketSceneKind;
   preferredSide: 'left' | 'right';
+  preferredVerticalSide: 'top' | 'bottom';
+  districtLabel: string | null;
   isRecent: boolean;
   onZoomToNative: (scene: MarketSceneKind) => void;
+  repairPending: boolean;
+  repairSubmitting: boolean;
+  onRepair?: (artifactId: string) => void;
   onOpenArtifact: (card: ArtifactCard) => void;
   onClose: () => void;
 }) {
@@ -8238,14 +2511,27 @@ function SiteDossier({
       ? site.activeCapabilityIds.includes(capabilityId)
       : isCivilizationSiteOperational(site),
   }));
+  const repairArtifactId = site.kind === 'artifact' ? site.artifactId : undefined;
+  const repairableArtifactId = repairArtifactId &&
+    site.implementationState === 'damaged'
+    ? repairArtifactId
+    : null;
+  const primaryGameplayReadout = site.gameplayEffect ?? capabilityReadouts[0]?.description ?? site.summary;
+  const districtId = site.kind === 'artifact' && site.artifactId
+    ? civilization?.districtIdentity?.artifactAssignments[site.artifactId]
+    : undefined;
+  const district = districtId ? civilization?.districtIdentity?.districts[districtId] : undefined;
 
   return (
     <aside
-      className={`pointer-events-auto absolute bottom-2 z-40 max-h-[min(15.25rem,32vh)] w-[min(20rem,82%)] overflow-hidden border border-white/14 bg-[#050914]/88 p-1.5 shadow-2xl backdrop-blur-md sm:inset-x-auto sm:bottom-3 sm:top-auto sm:max-h-[min(27rem,calc(100%-1.5rem))] sm:w-[min(24rem,calc(100%-1.5rem))] sm:overflow-y-auto sm:p-2.5 lg:max-h-[min(31rem,calc(100%-1.5rem))] lg:w-[min(26rem,calc(100%-2rem))] ${
+      className={`pointer-events-auto absolute z-40 max-h-[min(13.5rem,44%)] w-[min(17rem,calc(100%-1rem))] overflow-y-auto border border-white/14 bg-[#050914]/84 p-2 shadow-2xl backdrop-blur-md [scrollbar-width:none] [&::-webkit-scrollbar]:hidden sm:max-h-[min(19rem,calc(100%-1.5rem))] sm:w-[min(19rem,calc(100%-1.5rem))] sm:p-2.5 ${
         preferredSide === 'left' ? 'left-3 right-auto sm:left-3 sm:right-auto' : 'left-auto right-3 sm:right-3'
+      } ${
+        preferredVerticalSide === 'top' ? 'bottom-auto top-2 sm:top-3' : 'bottom-2 top-auto sm:bottom-3'
       }`}
       aria-label={`${site.title} dossier`}
       data-dossier-side={preferredSide}
+      data-dossier-vertical-side={preferredVerticalSide}
       data-recent-trace={isRecent ? 'true' : undefined}
       data-operational-state={site.implementationState ?? site.projectState ?? 'operational'}
       style={isRecent ? {
@@ -8253,7 +2539,7 @@ function SiteDossier({
         boxShadow: `0 18px 46px rgba(0,0,0,0.58), 0 0 32px ${tone}24, inset 0 0 0 1px ${tone}14`,
       } : undefined}
     >
-      <div className="grid grid-cols-[2.75rem_minmax(0,1fr)_auto] items-start gap-2 sm:grid-cols-[3.5rem_minmax(0,1fr)_auto] sm:gap-3">
+      <div className="grid grid-cols-[2.75rem_minmax(0,1fr)_auto] items-start gap-2">
         <DossierSignalEmblem site={site} tone={tone} />
         <div className="min-w-0">
             <p
@@ -8267,25 +2553,9 @@ function SiteDossier({
               {getDossierScaleKicker(site, currentScene, nativeScene)}
             </p>
             <h3 className="mt-1 line-clamp-2 text-[13px] font-semibold leading-tight text-white sm:text-sm">{site.title}</h3>
-            <p className="mt-1 hidden text-[9px] font-semibold uppercase tracking-wider text-white/42 sm:block">
-              {site.laneLabel}
+            <p className="mt-1 truncate text-[8px] font-semibold uppercase tracking-wider text-white/42">
+              {sourceLabel}
             </p>
-            {scaleContext && (
-              <div
-                className="mt-1 hidden flex-wrap gap-1 sm:flex"
-                data-testid="civilization-dossier-scale-context"
-                aria-label={`${scaleContext.native}${scaleContext.influence ? `; ${scaleContext.influence}` : ''}`}
-              >
-                <span className="border border-white/10 bg-white/[0.035] px-1.5 py-0.5 text-[7px] font-black uppercase tracking-[0.12em] text-white/44">
-                  {scaleContext.native}
-                </span>
-                {scaleContext.influence && (
-                  <span className="border border-white/10 bg-white/[0.035] px-1.5 py-0.5 text-[7px] font-black uppercase tracking-[0.12em] text-white/44">
-                    {scaleContext.influence}
-                  </span>
-                )}
-              </div>
-            )}
         </div>
         <div className="flex shrink-0 items-center gap-1.5">
           {isRecent && (
@@ -8322,15 +2592,23 @@ function SiteDossier({
       </div>
 
       <div
-        className="mt-1.5 grid gap-1 border border-white/12 bg-black/22 p-1.5 sm:mt-3 sm:gap-1.5 sm:p-2.5"
+        className="mt-2 grid gap-1.5 border border-white/12 bg-black/22 p-2"
         data-testid="civilization-dossier-site-report"
         style={{
           borderColor: `${tone}38`,
           boxShadow: `inset 0 0 0 1px ${tone}0F`,
         }}
       >
-        <div className="flex min-w-0 items-center justify-between gap-2">
-          <span className="text-[8px] font-black uppercase tracking-[0.18em] text-white/34">Site report</span>
+        <div className="flex min-w-0 flex-wrap items-center gap-1">
+          {districtLabel && !district && (
+            <span
+              className="max-w-full truncate rounded-full border px-1.5 py-0.5 text-[7px] font-black uppercase tracking-[0.12em] text-white/72"
+              data-testid="civilization-dossier-district"
+              style={{ borderColor: `${tone}55`, background: `${tone}10` }}
+            >
+              {districtLabel} district
+            </span>
+          )}
           <span className="flex min-w-0 items-center gap-1">
             <span
               className="max-w-[8.5rem] truncate rounded-full border px-1.5 py-0.5 text-[7px] font-black uppercase tracking-[0.12em]"
@@ -8351,203 +2629,130 @@ function SiteDossier({
             </span>
           </span>
         </div>
-        <p className="line-clamp-2 text-[9px] font-semibold uppercase tracking-[0.08em] text-white/72 sm:line-clamp-none sm:text-[10px]">
-          {traceScaleLine}
+        <p className="line-clamp-2 text-[9px] leading-relaxed text-white/66 sm:text-[10px]">
+          {primaryGameplayReadout}
         </p>
-        <p className="hidden text-[10px] leading-relaxed text-white/54 sm:block">
-          {site.visibleAs}.
-        </p>
-        {capabilityReadouts[0] && (
-          <p className="line-clamp-2 text-[9px] leading-relaxed text-white/52 sm:hidden">
-            <span className="font-black uppercase tracking-[0.12em] text-white/34">Capability </span>
-            <span className="font-semibold text-white/72">{capabilityReadouts[0].label}:</span>
-            {' '}{capabilityReadouts[0].description}
-            {!capabilityReadouts[0].active ? ' Inactive.' : ''}
-            {capabilityReadouts.length > 1 ? ` +${capabilityReadouts.length - 1} more.` : ''}
-          </p>
+        {site.kind === 'artifact' && site.artifactId && (
+          <ArtifactFunctionTags artifactId={site.artifactId} compact />
         )}
       </div>
 
-      <div className="mt-1.5 grid grid-cols-[minmax(0,1fr)_auto] items-stretch gap-1.5 sm:hidden">
-        <span
-          className="min-w-0 border border-white/10 bg-white/[0.04] px-2 py-1 text-[7px] font-black uppercase tracking-[0.12em] text-white/42"
-          title={sourceLabel}
-        >
-          <span className="block text-white/30">Source</span>
-          <span className="block truncate text-white/66">{sourceLabel}</span>
-        </span>
-        <span className="border border-white/10 bg-white/[0.04] px-2 py-1 text-[7px] font-black uppercase tracking-[0.12em] text-white/42">
-          <span className="block text-white/30">Readout</span>
-          <span className="block text-white/66">{getDossierReadoutLabel(site)}</span>
-        </span>
+      {district && <CivilizationDistrictReadout
+        district={district}
+        forgedArtifacts={forgedArtifacts}
+        artifacts={civilization?.artifacts ?? []}
+      />}
+
+      <div className="mt-2 grid grid-cols-2 gap-1.5">
+        {repairArtifactId && onRepair && (
+          <div className={primaryRelatedCard ? '' : 'col-span-2'}>
+            <RepairActionButton
+              count={1}
+              compact
+              pending={repairPending}
+              disabled={!repairableArtifactId || repairPending || repairSubmitting}
+              onClick={() => {
+                if (repairableArtifactId) onRepair(repairableArtifactId);
+              }}
+            />
+          </div>
+        )}
+        {primaryRelatedCard && (
+          <button
+            type="button"
+            className={`flex min-h-10 items-center justify-between gap-2 border border-white/12 bg-white/[0.04] px-2 py-1.5 text-left text-[8px] font-black uppercase tracking-[0.1em] text-white/62 transition-colors hover:border-white/24 hover:bg-white/[0.075] focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-white/60 ${repairArtifactId && onRepair ? '' : 'col-span-2'}`}
+            onClick={() => onOpenArtifact(primaryRelatedCard)}
+            aria-label={`Inspect ${primaryRelatedCard.name} artifact record`}
+            data-testid="civilization-dossier-inspect-artifact"
+          >
+            <span className="min-w-0 truncate">Artifact record</span>
+            <ZoomIn className="h-3.5 w-3.5 shrink-0" style={{ color: tone }} aria-hidden="true" />
+          </button>
+        )}
+        {canZoomToNative && (
+          <button
+            type="button"
+            className="col-span-2 flex min-h-9 items-center justify-between gap-2 border border-white/12 bg-white/[0.035] px-2 py-1.5 text-left text-[8px] font-black uppercase tracking-[0.1em] text-white/60 transition-colors hover:border-white/24 hover:bg-white/[0.075] focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-white/60"
+            style={{ borderColor: `${tone}45` }}
+            onClick={() => onZoomToNative(nativeScene)}
+          >
+            <span>View at {SCENE_UI[nativeScene].zoomLabel}</span>
+            <ZoomIn className="h-3.5 w-3.5 shrink-0" style={{ color: tone }} aria-hidden="true" />
+          </button>
+        )}
       </div>
 
-      <div
-        className="mt-2 hidden border border-white/12 bg-white/[0.045] p-2 sm:mt-3 sm:block sm:p-2.5"
-        data-testid="civilization-dossier-intelligence"
-        style={{
-          borderColor: `${tone}3d`,
-          boxShadow: `inset 0 0 0 1px ${tone}10, 0 0 22px ${tone}10`,
-        }}
+      <details
+        className="mt-2 border-t border-white/10 pt-1.5 text-white/56"
+        data-testid="civilization-dossier-details"
       >
-        <div className="flex gap-2">
-          <span
-            className="mt-0.5 inline-flex h-7 w-7 shrink-0 items-center justify-center border border-white/12 bg-black/20"
-            style={{ color: tone, borderColor: `${tone}4d` }}
-            aria-hidden="true"
-          >
-            <ScanLine className="h-3.5 w-3.5" />
-          </span>
-          <div className="min-w-0">
-            <p className="text-[8px] font-black uppercase tracking-[0.16em] text-white/38">
-              Civilization scan
-            </p>
-            <p className="mt-0.5 text-[11px] font-semibold leading-snug text-white/86">
-              {registrationTitle}
-            </p>
-            <p className="mt-1 text-[10px] leading-relaxed text-white/60">
-              {getDossierRegistrationBody(site, nativeScene)}
-            </p>
+        <summary className="cursor-pointer select-none text-[8px] font-black uppercase tracking-[0.14em] text-white/44 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-white/60">
+          Details
+        </summary>
+        <div
+          className="mt-2 border border-white/12 bg-white/[0.035] p-2"
+          data-testid="civilization-dossier-intelligence"
+          style={{ borderColor: `${tone}3d` }}
+        >
+          <div className="flex gap-2">
+            <ScanLine className="mt-0.5 h-3.5 w-3.5 shrink-0" style={{ color: tone }} aria-hidden="true" />
+            <div className="min-w-0">
+              <p className="text-[9px] font-semibold leading-snug text-white/80">{registrationTitle}</p>
+              <p className="mt-1 text-[9px] leading-relaxed text-white/52">{getDossierRegistrationBody(site, nativeScene)}</p>
+            </div>
+          </div>
+          <div className="mt-2 grid grid-cols-2 gap-1 text-[7px] font-black uppercase tracking-[0.1em] text-white/38">
+            <span className="col-span-2 min-w-0 border border-white/10 bg-black/18 px-2 py-1" data-testid="civilization-dossier-source-label">
+              Source <span className="ml-1 text-white/62">{sourceLabel}</span>
+            </span>
+            <span className="border border-white/10 bg-black/18 px-2 py-1">{traceScaleLine}</span>
+            <span className="border border-white/10 bg-black/18 px-2 py-1" data-testid="civilization-dossier-readout-label">{getDossierReadoutLabel(site)}</span>
+            <span className="border border-white/10 bg-black/18 px-2 py-1">{getDossierEvidenceLabel(site)}</span>
+            <span className="border border-white/10 bg-black/18 px-2 py-1">{getDossierScaleReading(site)}</span>
           </div>
         </div>
-        <div className="mt-2 grid grid-cols-2 gap-1.5 text-[8px] font-black uppercase tracking-[0.12em] text-white/42">
-          <span
-            className="col-span-2 min-w-0 border border-white/10 bg-black/18 px-2 py-1"
-            data-testid="civilization-dossier-source-label"
-            title={sourceLabel}
-          >
-            <span className="block text-white/30">Source</span>
-            <span className="block truncate text-white/62">{sourceLabel}</span>
-          </span>
-          <span className="min-w-0 border border-white/10 bg-black/18 px-2 py-1">
-            <span className="block text-white/30">Native layer</span>
-            <span className="block truncate text-white/62">{SCENE_UI[nativeScene].zoomLabel}</span>
-          </span>
-          <span
-            className="min-w-0 border border-white/10 bg-black/18 px-2 py-1"
-            data-testid="civilization-dossier-readout-label"
-          >
-            <span className="block text-white/30">Readout</span>
-            <span className="block truncate text-white/62">{getDossierReadoutLabel(site)}</span>
-          </span>
-          <span className="min-w-0 border border-white/10 bg-black/18 px-2 py-1">
-            <span className="block text-white/30">Evidence</span>
-            <span className="block truncate text-white/62">{getDossierEvidenceLabel(site)}</span>
-          </span>
-          <span className="min-w-0 border border-white/10 bg-black/18 px-2 py-1">
-            <span className="block text-white/30">Operation</span>
-            <span className="block truncate" style={{ color: operationalPresentation.tone }}>
-              {operationalPresentation.label}
-            </span>
-          </span>
-        </div>
-      </div>
-
-      {canZoomToNative && (
-        <button
-          type="button"
-          className="mt-1.5 flex w-full items-center justify-between gap-2 border border-white/12 bg-white/[0.045] px-2.5 py-2 text-left text-[9px] font-black uppercase tracking-[0.14em] text-white/70 transition-colors hover:border-white/24 hover:bg-white/[0.075] focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-white/60 sm:mt-2"
-          style={{
-            borderColor: `${tone}45`,
-            boxShadow: `inset 0 0 0 1px ${tone}10`,
-          }}
-          onClick={() => onZoomToNative(nativeScene)}
-        >
-          <span className="min-w-0">
-            <span className="block text-white/44">Show true artifact scale</span>
-            <span className="mt-0.5 block truncate text-white/82">
-              View in {SCENE_UI[nativeScene].zoomLabel}
-            </span>
-          </span>
-          <ZoomIn className="h-4 w-4 shrink-0" style={{ color: tone }} aria-hidden="true" />
-        </button>
-      )}
-      {primaryRelatedCard && (
-        <button
-          type="button"
-          className="mt-1.5 flex w-full items-center justify-between gap-2 border border-white/12 bg-white/[0.04] px-2 py-1.5 text-left text-[8px] font-black uppercase tracking-[0.12em] text-white/62 transition-colors hover:border-white/24 hover:bg-white/[0.075] focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-white/60 sm:hidden"
-          onClick={() => onOpenArtifact(primaryRelatedCard)}
-        >
-          <span className="min-w-0 truncate">Inspect artifact record</span>
-          <ZoomIn className="h-3.5 w-3.5 shrink-0" style={{ color: tone }} aria-hidden="true" />
-        </button>
-      )}
-      <div className="mt-2 hidden gap-1.5 text-[10px] leading-relaxed text-white/62 sm:grid">
-        <p className="border-l pl-2" style={{ borderColor: `${tone}66` }}>
-          <span className="font-black uppercase tracking-widest text-white/38">Scene cue </span>
-          {site.visualCue}.
-        </p>
-        {site.synergySummary && (
-          <p className="border-l border-white/12 pl-2">
-            <span className="font-black uppercase tracking-widest text-white/38">Interaction </span>
-            {site.synergySummary}
+        {scaleContext && (
+          <p className="mt-2 text-[9px] leading-relaxed text-white/48" data-testid="civilization-dossier-scale-context">
+            {scaleContext.native}{scaleContext.influence ? `; ${scaleContext.influence}` : ''}
           </p>
         )}
-      </div>
-      {capabilityReadouts.length > 0 && (
-        <div
-          className="mt-2 hidden gap-1.5 border-l pl-2 sm:grid"
-          data-testid="civilization-dossier-capabilities"
-          style={{ borderColor: `${operationalPresentation.tone}66` }}
-        >
-          <p className="text-[8px] font-black uppercase tracking-[0.16em] text-white/38">
-            Civilization capabilities
-          </p>
-          {capabilityReadouts.map((capability) => (
-            <div key={capability.id} className="grid grid-cols-[auto_minmax(0,1fr)] items-start gap-1.5">
-              <span
-                className="mt-1 h-1.5 w-1.5 rounded-full"
-                style={{
-                  backgroundColor: capability.active ? operationalPresentation.tone : 'rgba(255,255,255,0.18)',
-                  boxShadow: capability.active ? `0 0 8px ${operationalPresentation.tone}88` : 'none',
-                }}
-                aria-hidden="true"
-              />
-              <p className="text-[9px] leading-relaxed text-white/52">
-                <span className="font-semibold text-white/76">{capability.label}</span>
-                {' — '}{capability.description}
-                {!capability.active && (
-                  <span className="font-semibold uppercase text-white/34"> Inactive.</span>
-                )}
+        <p className="mt-2 text-[9px] leading-relaxed text-white/52">{site.visibleAs}. {site.visualCue}.</p>
+        {site.kind !== 'artifact' && site.synergySummary && <p className="mt-1 text-[9px] leading-relaxed text-white/46">{site.synergySummary}</p>}
+        {capabilityReadouts.length > 0 && (
+          <div className="mt-2 grid gap-1" data-testid="civilization-dossier-capabilities">
+            {capabilityReadouts.map((capability) => (
+              <p key={capability.id} className="text-[9px] leading-relaxed text-white/50">
+                <span className="font-semibold text-white/72">{capability.label}:</span> {capability.description}
+                {!capability.active ? ' Inactive.' : ''}
               </p>
-            </div>
-          ))}
-          <p className="text-[9px] leading-relaxed text-white/42">
-            {operationalPresentation.detail}
-            {(site.masteryCount ?? 1) > 1 ? ` Mastered ${site.masteryCount} times.` : ''}
+            ))}
+            <p className="text-[8px] text-white/38">{operationalPresentation.detail}</p>
+          </div>
+        )}
+        {site.componentSummary && (
+          <p className="mt-2 text-[9px] leading-relaxed text-white/50">
+            <span className="font-black uppercase tracking-widest text-white/38">Components </span>
+            {site.componentSummary}
           </p>
-        </div>
-      )}
-      <p className="mt-1.5 hidden text-[10px] leading-relaxed text-white/58 line-clamp-3 sm:block">
-        {site.summary}
-      </p>
-      <p className="mt-2 hidden border-l border-white/12 pl-2 text-[10px] leading-relaxed text-white/62 sm:block">
-        {getDossierScaleReading(site)}
-      </p>
-      {site.componentSummary && (
-        <p className="mt-2 hidden text-[9px] leading-relaxed text-white/50 sm:block">
-          <span className="font-black uppercase tracking-widest text-white/38">Components </span>
-          {site.componentSummary}
-        </p>
-      )}
-      {site.supportingArtifactNames && site.supportingArtifactNames.length > 0 && (
-        <div className="mt-2 hidden flex-wrap gap-1 sm:flex">
-          {site.supportingArtifactNames.slice(0, 4).map((name) => (
-            <span
-              key={name}
-              className="border border-white/10 bg-white/[0.035] px-1.5 py-0.5 text-[8px] font-semibold uppercase tracking-wider text-white/44"
-            >
-              {name}
-            </span>
-          ))}
-        </div>
-      )}
-      {site.gameplayEffect && (
-        <p className="mt-1 hidden text-[9px] leading-relaxed text-white/50 sm:block">
-          <span className="font-black uppercase tracking-widest text-white/38">Effect </span>
-          {site.gameplayEffect}
-        </p>
-      )}
+        )}
+        {site.kind !== 'artifact' && site.supportingArtifactNames && site.supportingArtifactNames.length > 0 && (
+          <p className="mt-2 text-[9px] leading-relaxed text-white/46">
+            <span className="font-black uppercase tracking-widest text-white/38">Supporting </span>
+            {site.supportingArtifactNames.slice(0, 4).join(', ')}
+          </p>
+        )}
+        {site.gameplayEffect && site.gameplayEffect !== primaryGameplayReadout && (
+          <p className="mt-2 text-[9px] leading-relaxed text-white/50">
+            <span className="font-black uppercase tracking-widest text-white/38">Effect </span>
+            {site.gameplayEffect}
+          </p>
+        )}
+        {relatedCards.length > 0 && (
+          <div className="mt-2 sr-only" data-testid="civilization-dossier-source-artifacts">
+            Inspect artifact record: {relatedCards.map((card) => card.name).join(', ')}
+          </div>
+        )}
+      </details>
 
       {artSlot && (
         <span
@@ -8560,30 +2765,6 @@ function SiteDossier({
         </span>
       )}
 
-      {relatedCards.length > 0 && (
-        <div className="mt-3 hidden gap-1.5 sm:grid" data-testid="civilization-dossier-source-artifacts">
-          <p className="text-[8px] font-black uppercase tracking-[0.16em] text-white/34">
-            Source artifact record
-          </p>
-          {relatedCards.slice(0, 4).map((card) => (
-            <button
-              key={card.id}
-              type="button"
-              className="flex items-center justify-between gap-2 border border-white/12 bg-white/[0.045] px-2.5 py-2 text-left text-[9px] font-semibold text-white/72 transition-colors hover:border-white/25 hover:bg-white/[0.08] focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-white/60"
-              onClick={() => onOpenArtifact(card)}
-              data-testid="civilization-dossier-inspect-artifact"
-            >
-              <span className="min-w-0">
-                <span className="block truncate text-white/82">{card.name}</span>
-                <span className="mt-0.5 block text-[7px] font-black uppercase tracking-[0.14em] text-white/36">
-                  Inspect artifact record
-                </span>
-              </span>
-              <ZoomIn className="h-3.5 w-3.5 shrink-0" style={{ color: tone }} aria-hidden="true" />
-            </button>
-          ))}
-        </div>
-      )}
     </aside>
   );
 }
@@ -8595,6 +2776,7 @@ function InfluenceTray({
   clusterGroups,
   recentSiteIds,
   onSelect,
+  horizontal = false,
 }: {
   sites: readonly CivilizationDeploymentSite[];
   selectedSiteId: string | null;
@@ -8602,9 +2784,16 @@ function InfluenceTray({
   clusterGroups: ReturnType<typeof getClusterGroups>;
   recentSiteIds: readonly string[];
   onSelect: (siteId: string) => void;
+  horizontal?: boolean;
 }) {
   return (
-    <div className="pointer-events-auto grid grid-cols-2 gap-2 max-[390px]:grid-cols-1" aria-label="Scene influences">
+    <div
+      className={horizontal
+        ? 'pointer-events-auto flex snap-x snap-mandatory gap-1.5 overflow-x-auto [scrollbar-width:thin]'
+        : 'pointer-events-auto grid grid-cols-2 gap-2 max-[390px]:grid-cols-1'}
+      aria-label={horizontal ? 'Artifact index' : 'Scene influences'}
+      data-testid={horizontal ? 'civilization-artifact-index' : undefined}
+    >
       {sites.map((site) => {
         const tone = getCivilizationSiteTone(site);
         const isRecent = recentSiteIds.includes(site.id);
@@ -8615,6 +2804,8 @@ function InfluenceTray({
             aria-label={`Inspect ${site.title}`}
             aria-pressed={site.id === selectedSiteId}
             className={`min-w-0 rounded-[7px] border border-white/14 bg-[#050914]/58 px-2.5 py-1.5 text-left shadow-lg backdrop-blur transition-colors hover:border-white/26 hover:bg-white/[0.08] focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-white/60 ${
+              horizontal ? 'w-[11rem] shrink-0 snap-start' : ''
+            } ${
               isRecent ? 'civ-site-recent' : ''
             }`}
             style={site.id === selectedSiteId ? {
@@ -8684,88 +2875,6 @@ function InfluenceTray({
   );
 }
 
-function MobileInfluenceRail({
-  sites,
-  selectedSiteId,
-  overflowCount,
-  recentSiteIds,
-  onSelect,
-}: {
-  sites: readonly CivilizationDeploymentSite[];
-  selectedSiteId: string | null;
-  overflowCount: number;
-  recentSiteIds: readonly string[];
-  onSelect: (siteId: string) => void;
-}) {
-  if (sites.length === 0) return null;
-
-  return (
-    <div
-      className="pointer-events-auto absolute inset-x-2 top-2 z-[35] flex snap-x snap-mandatory gap-1 overflow-x-auto border border-white/10 bg-[#050914]/72 p-1 shadow-[0_14px_34px_rgba(0,0,0,0.52)] backdrop-blur-md [scrollbar-width:none] [&::-webkit-scrollbar]:hidden"
-      data-testid="civilization-mobile-scan-rail"
-      aria-label="Mobile scan sites"
-    >
-      {sites.map((site, index) => {
-        const tone = getCivilizationSiteTone(site);
-        const selected = site.id === selectedSiteId;
-        const isRecent = recentSiteIds.includes(site.id);
-        return (
-          <button
-            key={site.id}
-            type="button"
-            aria-label={`Inspect scan site ${index + 1}`}
-            aria-pressed={selected}
-            className={`flex min-w-[8.25rem] max-w-[9rem] shrink-0 snap-start items-center gap-1.5 border bg-[#050914]/72 px-1.5 py-1.5 text-left shadow-lg transition-colors focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-white/60 ${
-              isRecent ? 'civ-site-recent' : ''
-            }`}
-            style={{
-              borderColor: selected ? `${tone}9C` : isRecent ? `${tone}78` : 'rgba(255,255,255,0.12)',
-              boxShadow: selected || isRecent ? `0 0 20px ${tone}24` : undefined,
-            }}
-            onClick={() => onSelect(site.id)}
-          >
-            <span
-              className="flex h-5 w-5 shrink-0 items-center justify-center border border-white/10 bg-white/[0.04]"
-              style={{ color: tone }}
-              aria-hidden="true"
-            >
-              {site.kind === 'artifact' && site.artifactVisualMotif ? (
-                <svg className="h-3.5 w-3.5 overflow-visible" viewBox="-8 -8 16 16">
-                  <ArtifactMotifGlyph site={site} x={0} y={0} tone={tone} scale={0.76} />
-                </svg>
-              ) : (
-                <span
-                  className="h-2 w-2 rounded-full"
-                  style={{ backgroundColor: tone, boxShadow: `0 0 12px ${tone}` }}
-                />
-              )}
-            </span>
-            <span className="min-w-0">
-              <span
-                className="mb-0.5 block truncate text-[6.5px] font-black uppercase tracking-[0.13em]"
-                style={{ color: tone }}
-              >
-                {getTraceScaleBadge(site)}
-              </span>
-              <strong className="block truncate text-[8px] font-semibold text-white/90">
-                {site.title.replace(/\s+Trace$/i, '')}
-              </strong>
-              <span className="mt-0.5 block truncate text-[7px] text-white/48">
-                {getTraceScaleLine(site)}
-              </span>
-            </span>
-          </button>
-        );
-      })}
-      {overflowCount > 0 && (
-        <div className="flex min-w-[4.75rem] shrink-0 snap-start items-center border border-white/10 bg-white/[0.035] px-1.5 py-1 text-[7px] font-black uppercase tracking-widest text-white/46">
-          +{overflowCount} more
-        </div>
-      )}
-    </div>
-  );
-}
-
 function MobileScanPrimaryReadout({
   site,
   isRecent,
@@ -8780,11 +2889,16 @@ function MobileScanPrimaryReadout({
   const tone = getCivilizationSiteTone(site);
   const impactKind = getCivilizationImpactKind(site);
   const nativeScene = getNativeSceneForSite(site);
+  const markerArtwork = site.kind === 'artifact' && site.artifactId
+    ? CARD_RUNTIME_ART[site.artifactId] ?? null
+    : site.kind === 'blueprint'
+      ? getCivilizationBlueprintManifestationArt(site.blueprintId)
+      : null;
 
   return (
     <button
       type="button"
-      className="pointer-events-auto absolute inset-x-2 bottom-2 z-[36] grid grid-cols-[2rem_minmax(0,1fr)_auto] items-center gap-2 border border-white/12 bg-[#050914]/82 px-2 py-1.5 text-left shadow-[0_16px_38px_rgba(0,0,0,0.56)] backdrop-blur-md focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-white/65 sm:hidden"
+      className="pointer-events-auto relative z-[36] grid w-full grid-cols-[2.5rem_minmax(0,1fr)_1.25rem] items-center gap-2 border border-white/12 bg-[#050914]/82 px-2 py-1.5 text-left shadow-[0_10px_24px_rgba(0,0,0,0.34)] focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-white/65"
       style={{
         borderColor: `${tone}66`,
         boxShadow: `0 16px 38px rgba(0,0,0,0.56), inset 0 0 0 1px ${tone}12, 0 0 22px ${tone}18`,
@@ -8797,11 +2911,25 @@ function MobileScanPrimaryReadout({
       onClick={() => onSelect(site.id)}
     >
       <span
-        className="flex h-8 w-8 items-center justify-center border border-white/12 bg-black/28"
-        style={{ color: tone, borderColor: `${tone}55` }}
+        className="relative flex h-10 w-9 items-center justify-center overflow-hidden border border-white/12 bg-black/28"
+        style={{
+          color: tone,
+          borderColor: `${tone}88`,
+          clipPath: markerArtwork
+            ? 'polygon(14% 0, 86% 0, 100% 10%, 100% 80%, 50% 100%, 0 80%, 0 10%)'
+            : undefined,
+        }}
         aria-hidden="true"
       >
-        {site.kind === 'artifact' && site.artifactVisualMotif ? (
+        {markerArtwork ? (
+          <img
+            src={markerArtwork}
+            alt=""
+            className="h-full w-full object-cover"
+            decoding="async"
+            draggable={false}
+          />
+        ) : site.kind === 'artifact' && site.artifactVisualMotif ? (
           <svg className="h-5 w-5 overflow-visible" viewBox="-8 -8 16 16">
             <ArtifactMotifGlyph site={site} x={0} y={0} tone={tone} scale={0.88} />
           </svg>
@@ -8822,7 +2950,7 @@ function MobileScanPrimaryReadout({
               background: `${tone}10`,
             }}
           >
-            {getCivilizationImpactBadge(impactKind)}
+            <CivilizationImpactBadgeContent kind={impactKind} />
           </span>
           {isRecent && (
             <span
@@ -8847,1232 +2975,725 @@ function MobileScanPrimaryReadout({
           {getInfluenceSubtitle(site)}
         </span>
       </span>
-      <span className="min-w-0 max-w-[4.75rem] truncate text-right text-[7px] font-black uppercase tracking-[0.1em] text-white/36">
-        Tap
-      </span>
-      <span className="col-span-3 truncate text-[8px] leading-relaxed text-white/52">
-        {site.visibleAs}.
+      <span className="grid h-7 w-5 place-items-center text-white/42" aria-hidden="true">
+        <ChevronRight className="h-4 w-4" />
       </span>
     </button>
   );
 }
 
-function CivilizationSceneDeploymentLedger({
-  sites,
-  recentSiteIds,
-  limit = 3,
-  compact = false,
-  onSelect,
-}: {
-  sites: readonly CivilizationDeploymentSite[];
-  recentSiteIds: readonly string[];
-  limit?: number;
-  compact?: boolean;
-  onSelect: (siteId: string) => void;
-}) {
-  const works = React.useMemo(() => (
-    compact
-      ? selectCompactSummaryWorks(sites, limit, recentSiteIds)
-      : selectSummaryWorks(sites, limit, recentSiteIds)
-  ), [compact, sites, limit, recentSiteIds]);
 
-  if (works.length === 0) return null;
 
-  return (
-    <div
-      className="pointer-events-auto relative ml-auto grid w-full max-w-[23.5rem] gap-1.5 overflow-hidden border border-white/12 bg-[#050914]/64 p-2 shadow-[0_18px_46px_rgba(0,0,0,0.42)] backdrop-blur-md"
-      data-testid="civilization-scene-deployment-ledger"
-      aria-label="Registered civilization deployments"
-    >
-      <span
-        className="pointer-events-none absolute inset-x-0 top-0 h-px"
-        style={{ background: 'linear-gradient(90deg, transparent, rgba(255,244,194,0.6), rgba(130,221,255,0.42), transparent)' }}
-        aria-hidden="true"
-      />
-      <div className="flex items-center justify-between gap-2">
-        <span className="text-[8px] font-black uppercase tracking-[0.18em] text-[#dff7ff]/58">
-          Active deployments
-        </span>
-        <span className="rounded-full border border-[#82ddff]/18 bg-[#82ddff]/8 px-1.5 py-0.5 text-[7px] font-black uppercase tracking-[0.12em] text-[#dff7ff]/52">
-          Scan index
-        </span>
-      </div>
-      <div className="grid gap-1.5">
-        {works.map((site) => {
-          const tone = getCivilizationSiteTone(site);
-          const isRecent = recentSiteIds.includes(site.id);
-          const impactKind = getCivilizationImpactKind(site);
-          const impactLabel = getCivilizationImpactShortLabel(impactKind);
-          return (
-            <button
-              key={site.id}
-              type="button"
-              className={`relative grid min-w-0 grid-cols-[1.8rem_minmax(0,1fr)_auto] items-center gap-2 overflow-hidden border px-2 py-1.5 text-left transition-colors hover:border-white/28 hover:bg-white/[0.075] focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-white/65 ${
-                isRecent ? 'civ-site-recent' : ''
-              }`}
-              style={{
-                borderColor: isRecent ? `${tone}8C` : `${tone}3D`,
-                background: `linear-gradient(100deg, rgba(5,9,20,0.7), ${tone}${isRecent ? '24' : '0D'} 58%, rgba(255,255,255,0.025))`,
-                boxShadow: isRecent ? `0 0 20px ${tone}24` : undefined,
-              }}
-              data-testid="civilization-scene-deployment-ledger-item"
-              data-impact-kind={impactKind}
-              data-recent={isRecent ? 'true' : undefined}
-              aria-label={`Focus deployment ${site.title}`}
-              onClick={() => onSelect(site.id)}
-            >
-              <span
-                className="pointer-events-none absolute inset-y-1 left-0 w-px"
-                style={{ background: `linear-gradient(180deg, transparent, ${tone}A0, transparent)` }}
-                aria-hidden="true"
-              />
-              <span
-                className="flex h-7 w-7 items-center justify-center border border-white/12 bg-black/28"
-                style={{
-                  color: tone,
-                  borderColor: `${tone}5E`,
-                  boxShadow: `inset 0 0 0 1px ${tone}12, 0 0 14px ${tone}14`,
-                }}
-                aria-hidden="true"
-              >
-                {site.kind === 'artifact' && site.artifactVisualMotif ? (
-                  <svg className="h-[1.05rem] w-[1.05rem] overflow-visible" viewBox="-8 -8 16 16">
-                    <ArtifactMotifGlyph site={site} x={0} y={0} tone={tone} scale={0.78} />
-                  </svg>
-                ) : (
-                  <span
-                    className="h-2 w-2 rounded-full"
-                    style={{ backgroundColor: tone, boxShadow: `0 0 10px ${tone}` }}
-                  />
-                )}
-              </span>
-              <span className="min-w-0">
-                <span
-                  className="block truncate text-[10px] font-semibold uppercase tracking-[0.06em] text-white/88"
-                  title={site.title}
-                >
-                  {getWorkSummaryTitle(site, recentSiteIds)}
-                </span>
-                <span className="mt-0.5 block truncate text-[8px] font-semibold uppercase tracking-[0.08em] text-white/46">
-                  {impactLabel} // {getInfluenceSubtitle(site)}
-                </span>
-              </span>
-              <span className="flex shrink-0 flex-col items-end gap-0.5">
-                <span
-                  className="rounded-full border px-1.5 py-0.5 text-[7px] font-black uppercase leading-none tracking-[0.1em]"
-                  style={{
-                    borderColor: `${tone}58`,
-                    color: tone,
-                    background: `${tone}10`,
-                  }}
-                >
-                  {getCivilizationImpactBadge(impactKind)}
-                </span>
-                <span className="max-w-[5.5rem] truncate text-[7px] font-black uppercase tracking-[0.09em] text-white/34">
-                  {getTraceScaleBadge(site)}
-                </span>
-              </span>
-            </button>
-          );
-        })}
-      </div>
-    </div>
-  );
-}
 
-function CivilizationScanScaleContext({
-  sites,
-  focusSite,
-  currentScene,
-  recentSiteIds,
-  limit = 3,
-  onSelect,
-  onFocusNative,
-}: {
-  sites: readonly CivilizationDeploymentSite[];
-  focusSite: CivilizationDeploymentSite | null;
-  currentScene: MarketSceneKind;
-  recentSiteIds: readonly string[];
-  limit?: number;
-  onSelect: (siteId: string) => void;
-  onFocusNative: (site: CivilizationDeploymentSite) => void;
-}) {
-  const works = React.useMemo(() => (
-    selectSummaryWorks(sites, limit, recentSiteIds)
-  ), [sites, limit, recentSiteIds]);
 
-  if (!focusSite && works.length === 0) return null;
 
-  const focusTone = focusSite ? getCivilizationSiteTone(focusSite) : '#82ddff';
-  const focusImpactKind = focusSite ? getCivilizationImpactKind(focusSite) : null;
-  const focusNativeScene = focusSite ? getNativeSceneForSite(focusSite) : currentScene;
-  const focusMeta = focusSite ? AFFINITY_META[focusSite.affinity] : null;
-  const focusRecent = Boolean(focusSite && recentSiteIds.includes(focusSite.id));
 
-  return (
-    <aside
-      className="pointer-events-auto absolute right-3 top-3 z-[34] hidden w-[min(22.5rem,calc(100%-1.5rem))] overflow-hidden border border-white/12 bg-[#050914]/82 p-2.5 shadow-[0_20px_54px_rgba(0,0,0,0.54)] backdrop-blur-md sm:block"
-      data-testid="civilization-scan-scale-context"
-      aria-label="Civilization scan command"
-      style={{
-        borderColor: `${focusTone}40`,
-        boxShadow: `0 20px 54px rgba(0,0,0,0.54), inset 0 0 0 1px ${focusTone}10, 0 0 28px ${focusTone}12`,
-      }}
-    >
-      <span
-        className="pointer-events-none absolute inset-x-0 top-0 h-px"
-        style={{ background: `linear-gradient(90deg, transparent, ${focusTone}88, rgba(255,255,255,0.46), transparent)` }}
-        aria-hidden="true"
-      />
-      <div className="mb-2 flex items-center justify-between gap-2">
-        <span className="text-[8px] font-black uppercase tracking-[0.2em] text-[#82ddff]/72">
-          Scan response
-        </span>
-        <span className="rounded-full border border-white/12 bg-white/[0.045] px-1.5 py-0.5 text-[7px] font-black uppercase tracking-[0.1em] text-white/44">
-          {SCENE_UI[currentScene].zoomLabel}
-        </span>
-      </div>
 
-      {focusSite && focusImpactKind && (
-        <button
-          type="button"
-          className="grid w-full min-w-0 grid-cols-[3rem_minmax(0,1fr)] gap-2 border border-white/12 bg-black/24 p-2 text-left transition-colors hover:border-white/28 hover:bg-white/[0.07] focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-white/65"
-          style={{
-            borderColor: `${focusTone}55`,
-            background: `linear-gradient(135deg, rgba(0,0,0,0.32), ${focusTone}12 56%, rgba(255,255,255,0.035))`,
-            boxShadow: `inset 0 0 0 1px ${focusTone}10`,
-          }}
-          data-testid="civilization-scan-command-primary"
-          data-impact-kind={focusImpactKind}
-          data-native-scene={focusNativeScene}
-          data-recent-trace={focusRecent ? 'true' : undefined}
-          onClick={() => onSelect(focusSite.id)}
-          aria-label="Inspect primary scan readout"
-        >
-          <DossierSignalEmblem site={focusSite} tone={focusTone} />
-          <span className="min-w-0">
-            <span className="flex min-w-0 items-center justify-between gap-2">
-              <span className="truncate text-[8px] font-black uppercase tracking-[0.16em] text-white/42">
-                {focusRecent ? 'New trace' : 'Primary readout'}
-              </span>
-              <span className="flex shrink-0 items-center gap-1">
-                {focusRecent && (
-                  <span
-                    className="rounded-full border px-1.5 py-0.5 text-[7px] font-black uppercase leading-none tracking-[0.1em] text-[#fff3bd]"
-                    style={{
-                      borderColor: `${focusTone}72`,
-                      background: `${focusTone}16`,
-                      boxShadow: `0 0 12px ${focusTone}24`,
-                    }}
-                  >
-                    New
-                  </span>
-                )}
-                <span
-                  className="rounded-full border px-1.5 py-0.5 text-[7px] font-black uppercase leading-none tracking-[0.1em]"
-                  style={{
-                    borderColor: `${focusTone}58`,
-                    color: focusTone,
-                    background: `${focusTone}10`,
-                  }}
-                >
-                  {getCivilizationImpactBadge(focusImpactKind)}
-                </span>
-              </span>
-            </span>
-            <strong className="mt-1 block truncate text-[12px] font-semibold uppercase tracking-[0.04em] text-white/94">
-              {focusSite.title}
-            </strong>
-            <span className="mt-0.5 block truncate text-[9px] font-semibold uppercase tracking-[0.08em] text-white/48">
-              {getInfluenceSubtitle(focusSite)}
-            </span>
-            <span className="mt-1.5 grid grid-cols-3 gap-1 text-[7px] font-black uppercase tracking-[0.1em] text-white/42">
-              <span className="min-w-0 border border-white/10 bg-white/[0.035] px-1.5 py-1">
-                <span className="block truncate text-white/30">Native</span>
-                <span className="block truncate text-white/66">{SCENE_UI[focusNativeScene].label}</span>
-              </span>
-              <span className="min-w-0 border border-white/10 bg-white/[0.035] px-1.5 py-1">
-                <span className="block truncate text-white/30">Scale</span>
-                <span className="block truncate text-white/66">{getTraceScaleBadge(focusSite)}</span>
-              </span>
-              <span className="min-w-0 border border-white/10 bg-white/[0.035] px-1.5 py-1">
-                <span className="block truncate text-white/30">Affinity</span>
-                <span className="block truncate text-white/66">{focusMeta?.shortName ?? focusSite.affinity}</span>
-              </span>
-            </span>
-          </span>
-          <span className="col-span-2 mt-1.5 line-clamp-2 text-[10px] leading-relaxed text-white/58">
-            {focusSite.visibleAs}.
-          </span>
-        </button>
-      )}
 
-      {works.length > 0 && (
-        <div className="mt-2 border-t border-white/10 pt-2">
-          <div className="mb-1.5 flex items-center justify-between gap-2">
-            <span className="text-[8px] font-black uppercase tracking-[0.18em] text-white/42">
-              Native layers
-            </span>
-            <span className="rounded-full border border-[#82ddff]/22 bg-[#82ddff]/10 px-1.5 py-0.5 text-[7px] font-black uppercase tracking-[0.1em] text-[#dff7ff]/68">
-              Deployment map
-            </span>
-          </div>
-          <div className="grid gap-1.5">
-            {works.map((site) => {
-              const tone = getCivilizationSiteTone(site);
-              const nativeScene = getNativeSceneForSite(site);
-              const impactKind = getCivilizationImpactKind(site);
-              const recent = recentSiteIds.includes(site.id);
-              return (
-                <button
-                  key={site.id}
-                  type="button"
-                  className={`relative grid min-w-0 grid-cols-[1.35rem_minmax(0,1fr)_auto] items-center gap-2 overflow-hidden border bg-black/22 px-2 py-1.5 text-left transition-colors hover:border-white/28 hover:bg-white/[0.075] focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-white/65 ${
-                    recent ? 'civ-site-recent' : ''
-                  }`}
-                  style={{
-                    borderColor: recent ? `${tone}8C` : `${tone}3D`,
-                    background: `linear-gradient(100deg, rgba(0,0,0,0.24), ${tone}${recent ? '18' : '08'} 62%, rgba(255,255,255,0.025))`,
-                    boxShadow: recent ? `0 0 18px ${tone}24` : undefined,
-                  }}
-                  data-testid="civilization-scan-scale-context-item"
-                  data-impact-kind={impactKind}
-                  data-native-scene={nativeScene}
-                  onClick={() => onFocusNative(site)}
-                >
-                  <span
-                    className="h-3 w-3 rotate-45 border"
-                    style={{
-                      borderColor: tone,
-                      backgroundColor: `${tone}1C`,
-                      boxShadow: `0 0 12px ${tone}`,
-                    }}
-                    aria-hidden="true"
-                  />
-                  <span className="min-w-0">
-                    <span className="block truncate text-[9px] font-semibold uppercase tracking-[0.06em] text-white/86">
-                      {site.title}
-                    </span>
-                    <span className="mt-0.5 block truncate text-[7.5px] font-black uppercase tracking-[0.1em] text-white/38">
-                      Native layer // {SCENE_UI[nativeScene].zoomLabel}
-                    </span>
-                  </span>
-                  <span
-                    className="rounded-full border px-1.5 py-0.5 text-[7px] font-black uppercase leading-none tracking-[0.1em]"
-                    style={{
-                      borderColor: `${tone}58`,
-                      color: tone,
-                      background: `${tone}10`,
-                    }}
-                  >
-                    {getCivilizationImpactBadge(impactKind)}
-                  </span>
-                </button>
-              );
-            })}
-          </div>
-        </div>
-      )}
-    </aside>
-  );
-}
 
-function MiniatureWorkLedger({
-  sites,
-  recentSiteIds,
-}: {
-  sites: readonly CivilizationDeploymentSite[];
-  recentSiteIds: readonly string[];
-}) {
-  const works = React.useMemo(() => (
-    selectSummaryWorks(sites, 2, recentSiteIds)
-  ), [sites, recentSiteIds]);
-
-  if (works.length === 0) return null;
-
-  return (
-    <div
-      className="pointer-events-none absolute inset-x-2 bottom-2 z-30 grid gap-1"
-      data-testid="civilization-miniature-work-ledger"
-      aria-hidden="true"
-    >
-      {works.map((site) => {
-        const tone = getCivilizationSiteTone(site);
-        const isRecent = recentSiteIds.includes(site.id);
-        return (
-          <span
-            key={site.id}
-            className="flex min-w-0 items-center gap-1.5 border border-white/10 bg-[#050914]/62 px-1.5 py-1 text-[7px] font-semibold uppercase tracking-[0.11em] text-white/78 shadow-[0_8px_18px_rgba(0,0,0,0.42)] backdrop-blur-sm"
-            style={{
-              borderColor: isRecent ? `${tone}86` : `${tone}30`,
-              background: `linear-gradient(90deg, rgba(5,9,20,0.72), ${tone}${isRecent ? '20' : '0D'})`,
-            }}
-          >
-            <i
-              className="h-2 w-2 shrink-0 rounded-full"
-              style={{ backgroundColor: tone, boxShadow: `0 0 10px ${tone}` }}
-              aria-hidden="true"
-            />
-            <span className="truncate">{getWorkSummaryTitle(site, recentSiteIds)}</span>
-          </span>
-        );
-      })}
-    </div>
-  );
-}
-
-function ScanTraceFields({
-  sites,
-  selectedSiteId,
-  focusedSiteId,
-  recentSiteIds,
-}: {
-  sites: readonly CivilizationDeploymentSite[];
-  selectedSiteId: string | null;
-  focusedSiteId: string | null;
-  recentSiteIds: readonly string[];
-}) {
-  return (
-    <svg
-      className="pointer-events-none absolute inset-0 z-10 h-full w-full mix-blend-screen"
-      viewBox="0 0 100 100"
-      preserveAspectRatio="none"
-      aria-hidden="true"
-    >
-      {sites.map((site) => {
-        const tone = getCivilizationSiteTone(site);
-        const selected = site.id === selectedSiteId;
-        const focused = site.id === focusedSiteId;
-        const isRecent = recentSiteIds.includes(site.id);
-        if (!selected && !focused && !isRecent) return null;
-        const motifScale = selected ? 0.78 : focused || isRecent ? 0.68 : 0.5;
-        const opacity = selected ? 0.88 : focused || isRecent ? 0.68 : 0.14;
-        const strokeAlpha = selected ? 'CC' : focused || isRecent ? '7A' : '42';
-        const fillAlpha = selected ? '1F' : focused || isRecent ? '10' : '08';
-        return (
-          <g key={site.id} opacity={opacity}>
-            <ellipse
-              cx={site.anchor.x}
-              cy={site.anchor.y}
-              rx={selected ? 9 : focused || isRecent ? 7.8 : 5.4}
-              ry={selected ? 4.6 : focused || isRecent ? 4 : 2.8}
-              fill={`${tone}${fillAlpha}`}
-              stroke={`${tone}${strokeAlpha}`}
-              strokeWidth={selected ? 0.42 : 0.28}
-              strokeDasharray="0.9 1.3"
-            />
-            <ellipse
-              cx={site.anchor.x}
-              cy={site.anchor.y}
-              rx={selected ? 15 : 10}
-              ry={selected ? 7.4 : 5}
-              fill="none"
-              stroke={`${tone}${selected ? '66' : '38'}`}
-              strokeWidth="0.18"
-            />
-            {site.kind === 'artifact' && (
-              <ArtifactMotifGlyph
-                site={site}
-                x={site.anchor.x}
-                y={site.anchor.y}
-                tone={tone}
-                scale={motifScale}
-                rotation={selected ? -6 : 8}
-                emphasis={selected ? 1.08 : 1}
-              />
-            )}
-          </g>
-        );
-      })}
-    </svg>
-  );
-}
-
-function FocusedProjectionSymbol({
-  site,
-  x,
-  y,
-  tone,
-  scale,
-}: {
-  site: CivilizationDeploymentSite;
+interface CivilizationScanMarkerAnchor {
   x: number;
   y: number;
-  tone: string;
-  scale: number;
-}) {
-  const treatment = site.artifactSceneTreatment;
-  const white = 'rgba(255,255,255,0.72)';
-  const softWhite = 'rgba(255,255,255,0.28)';
+}
 
-  if (site.kind === 'blueprint') {
-    if (site.blueprintId === 'bp_antimatter_detonator') {
-      return (
-        <g transform={`translate(${x} ${y}) scale(${scale})`} data-testid="civilization-focused-blueprint-antimatter">
-          <ellipse cx="0" cy="0" rx="14" ry="5.4" fill={`${tone}16`} stroke={`${tone}D0`} strokeWidth="0.55" />
-          <circle cx="0" cy="0" r="3.1" fill="rgba(0,0,0,0.58)" stroke={white} strokeWidth="0.28" />
-          <path d="M-11 -3.8 C-5 -10.2, 5 -10.2, 11 -3.8 M-11 3.8 C-5 10.2, 5 10.2, 11 3.8" fill="none" stroke={`${tone}9C`} strokeLinecap="round" strokeWidth="0.48" />
-          <path d="M-17 0 H-9 M9 0 H17 M0 -8 V-4.2 M0 4.2 V8" stroke={softWhite} strokeLinecap="round" strokeWidth="0.3" />
-        </g>
+export function resolveCivilizationScanMarkerAnchors(
+  sites: readonly CivilizationDeploymentSite[],
+  artifactWorldAnchors?: ReadonlyMap<string, CivilizationArtifactWorldAnchor>,
+  compact = false,
+  expandedFocus = false,
+  canvasSize?: { width: number; height: number; hitSize: number },
+): ReadonlyMap<string, CivilizationScanMarkerAnchor> {
+  const occupied: CivilizationScanMarkerAnchor[] = [];
+  const resolved = new Map<string, CivilizationScanMarkerAnchor>();
+  const dense = sites.length > 20;
+  const mediumDensity = sites.length > 12;
+  const minimumXGap = compact
+    ? dense
+      ? 13.2
+      : mediumDensity
+        ? 13.5
+        : 14
+    : dense
+      ? 5.8
+      : mediumDensity
+        ? 6.4
+        : 7;
+  const minimumYGap = compact
+    ? dense
+      ? 10.5
+      : mediumDensity
+        ? 11
+        : 12
+    : dense
+      ? 10
+      : mediumDensity
+        ? 11
+        : 12;
+  const columnSteps = expandedFocus
+    ? [-9, -8, -7, -6, -5, -4, -3, -2, -1, 0, 1, 2, 3, 4, 5, 6, 7, 8, 9]
+    : [-8, -7, -6, -5, -4, -3, -2, -1, 0, 1, 2, 3, 4, 5, 6, 7, 8];
+  const rowSteps = expandedFocus
+    ? [-6, -5, -4, -3, -2, -1, 0, 1, 2, 3, 4, 5, 6]
+    : [-5, -4, -3, -2, -1, 0, 1, 2, 3, 4, 5];
+  const offsets = rowSteps
+    .flatMap((row) => columnSteps.map((column) => ({
+      x: column * minimumXGap,
+      y: row * minimumYGap,
+    })))
+    .sort((left, right) => (
+      Math.hypot(left.x, left.y) - Math.hypot(right.x, right.y) ||
+      left.y - right.y ||
+      left.x - right.x
+    ));
+  const orderedSites = [...sites].sort((left, right) => (
+    right.priority - left.priority || left.id.localeCompare(right.id)
+  ));
+
+  if (canvasSize && canvasSize.width > 0 && canvasSize.height > 0) {
+    // Reserve the selected marker's largest hit rectangle, in actual CSS pixels.
+    // Percent-only spacing collides when the game fits the city above the Well.
+    const gap = canvasSize.hitSize * 1.16 + 4;
+    const columns = Math.floor((canvasSize.width - 4) / gap);
+    const rows = Math.floor((canvasSize.height - 4) / gap);
+    if (columns * rows >= sites.length) {
+      const slots = Array.from({ length: rows * columns }, (_, index) => ({
+        x: (canvasSize.width - (columns - 1) * gap) / 2 + (index % columns) * gap,
+        y: (canvasSize.height - (rows - 1) * gap) / 2 + Math.floor(index / columns) * gap,
+      }));
+      const targets = orderedSites.map(site => {
+        const host = artifactWorldAnchors?.get(site.id);
+        return {
+          x: (host?.scanX ?? host?.x ?? site.anchor.x) * canvasSize.width / 100,
+          y: (host?.scanY ?? (host ? Math.max(5, host.y - 5.4) : site.anchor.y)) * canvasSize.height / 100,
+        };
+      });
+      const distance = (point: CivilizationScanMarkerAnchor, target: CivilizationScanMarkerAnchor) => (
+        (point.x - target.x) ** 2 + (point.y - target.y) ** 2
       );
+      const chosen = targets.map(target => {
+        let nearest = 0;
+        slots.forEach((slot, index) => {
+          if (distance(slot, target) < distance(slots[nearest], target)) nearest = index;
+        });
+        return slots.splice(nearest, 1)[0];
+      });
+      // Exchange occupied slots when both assignments together become closer.
+      // This reduces the displacement of later residents without moving the city.
+      for (let pass = 0; pass < 2; pass++) {
+        for (let left = 0; left < chosen.length; left++) {
+          for (let right = left + 1; right < chosen.length; right++) {
+            if (distance(chosen[right], targets[left]) + distance(chosen[left], targets[right])
+              < distance(chosen[left], targets[left]) + distance(chosen[right], targets[right])) {
+              [chosen[left], chosen[right]] = [chosen[right], chosen[left]];
+            }
+          }
+        }
+      }
+      orderedSites.forEach((site, index) => resolved.set(site.id, {
+        x: chosen[index].x / canvasSize.width * 100,
+        y: chosen[index].y / canvasSize.height * 100,
+      }));
+      return resolved;
     }
-    return (
-      <g transform={`translate(${x} ${y}) scale(${scale})`} data-testid="civilization-focused-blueprint-project">
-        <path d="M-10 7 C-3 0, 5 2, 12 -6" fill="none" stroke={`${tone}D0`} strokeLinecap="round" strokeWidth="1.35" />
-        <path d="M-14 8 L-3 4 L10 8 M4 -3 L12 -7 L16 -4" fill="none" stroke={white} strokeLinecap="round" strokeLinejoin="round" strokeWidth="0.38" />
-        <circle cx="-10" cy="7" r="1.7" fill={`${tone}D8`} />
-        <circle cx="12" cy="-6" r="1.2" fill={white} />
-      </g>
-    );
   }
 
-  if (site.kind === 'luminary') {
-    return (
-      <g transform={`translate(${x} ${y}) scale(${scale})`} data-testid="civilization-focused-luminary-pressure">
-        <path d="M0 -9 L8 -4.2 L8 4.2 L0 9 L-8 4.2 L-8 -4.2 Z" fill={`${tone}14`} stroke={`${tone}B8`} strokeWidth="0.38" />
-        {[0, 60, 120, 180, 240, 300].map((angle) => {
-          const radians = (angle * Math.PI) / 180;
-          return (
-            <circle
-              key={angle}
-              cx={Math.cos(radians) * 8}
-              cy={Math.sin(radians) * 8}
-              r="0.86"
-              fill={angle === 0 ? white : `${tone}CC`}
-            />
-          );
-        })}
-        <circle cx="0" cy="0" r="2" fill={white} opacity="0.72" />
-      </g>
-    );
+  if (compact && dense) {
+    const lattice: CivilizationScanMarkerAnchor[] = [];
+    for (let y = 8; y <= 93; y += 10.6) {
+      for (let x = 5; x <= 95; x += 12.8) lattice.push({ x, y });
+    }
+    const available = new Set(lattice.map((_, index) => index));
+    for (const site of orderedSites) {
+      const worldAnchor = artifactWorldAnchors?.get(site.id);
+      const base = {
+        x: worldAnchor?.scanX ?? worldAnchor?.x ?? site.anchor.x,
+        y: worldAnchor?.scanY ?? (worldAnchor
+          ? Math.max(5, worldAnchor.y - (site.kind === 'blueprint' ? 6.2 : 5.4))
+          : site.anchor.y),
+      };
+      const selectedIndex = [...available].sort((left, right) => {
+        const leftAnchor = lattice[left]!;
+        const rightAnchor = lattice[right]!;
+        return Math.hypot(leftAnchor.x - base.x, leftAnchor.y - base.y) -
+          Math.hypot(rightAnchor.x - base.x, rightAnchor.y - base.y) ||
+          left - right;
+      })[0];
+      if (selectedIndex === undefined) break;
+      available.delete(selectedIndex);
+      resolved.set(site.id, lattice[selectedIndex]!);
+    }
+    return resolved;
   }
 
-  if (site.kind === 'protocol') {
-    return (
-      <g transform={`translate(${x} ${y}) scale(${scale})`} data-testid="civilization-focused-sealed-protocol">
-        <path d="M-14 -5 H14 M-18 0 H10 M-10 5 H18" stroke={`${tone}D0`} strokeLinecap="round" strokeWidth="1.25" strokeDasharray="5 2" />
-        <path d="M-14 -5 H14 M-18 0 H10 M-10 5 H18" stroke="rgba(0,0,0,0.72)" strokeLinecap="round" strokeWidth="0.36" strokeDasharray="1.2 2.2" />
-      </g>
-    );
-  }
-
-  if (site.kind === 'chronicle') {
-    return (
-      <g transform={`translate(${x} ${y}) scale(${scale})`} data-testid="civilization-focused-chronicle-thread">
-        <path d="M-11 -7 H9 C12 -7 13 -5.5 13 -3 V8 H-9 C-12 8 -13 6.5 -13 4 V-4 C-13 -5.8 -12.4 -7 -11 -7 Z" fill={`${tone}16`} stroke={`${tone}C8`} strokeWidth="0.62" />
-        <path d="M-8 -3 H8 M-8 0.5 H7 M-8 4 H4" stroke={white} strokeLinecap="round" strokeWidth="0.46" opacity="0.76" />
-        <path d="M-13 -3.8 C-8 -8, 2 -8, 13 -3.6" fill="none" stroke={`${tone}9C`} strokeLinecap="round" strokeWidth="0.44" />
-      </g>
-    );
-  }
-
-  if (treatment === 'ashroot_recovery') {
-    return (
-      <g transform={`translate(${x} ${y}) scale(${scale})`} data-testid="civilization-focused-artifact-ashroot_recovery">
-        <path d="M-13 7 C-8 -4, -2 3, 0 -8 C3 -1, 9 -4, 13 6" fill={`${tone}18`} stroke={`${tone}CC`} strokeLinecap="round" strokeLinejoin="round" strokeWidth="0.62" />
-        <path d="M-10 5 C-4 1, -1 2, 2 -2 M1 2 C5 -1, 8 1, 11 5" fill="none" stroke={white} strokeLinecap="round" strokeWidth="0.28" />
-        <ArtifactMotifGlyph site={site} x={0} y={1} tone={tone} scale={0.72} />
-      </g>
-    );
-  }
-
-  if (treatment === 'mantlelift_driver') {
-    return (
-      <g transform={`translate(${x} ${y}) scale(${scale})`} data-testid="civilization-focused-artifact-mantlelift_driver">
-        <path d="M-2 12 C-1 4, 1 -4, 3 -14" fill="none" stroke={`${tone}2E`} strokeLinecap="round" strokeWidth="5.4" />
-        <path d="M-2 12 C-1 4, 1 -4, 3 -14" fill="none" stroke={white} strokeLinecap="round" strokeWidth="0.5" />
-        <path d="M-12 12 L-2 7 L11 11 L7 15 L-9 15 Z" fill={`${tone}20`} stroke={`${tone}B8`} strokeLinejoin="round" strokeWidth="0.44" />
-        <path d="M-15 2 C-6 -7, 6 9, 15 -4" fill="none" stroke={`${tone}A8`} strokeLinecap="round" strokeWidth="0.78" />
-        <ArtifactMotifGlyph site={site} x={2} y={-2} tone={tone} scale={0.58} />
-      </g>
-    );
-  }
-
-  if (treatment === 'ignition_kernel') {
-    return (
-      <g transform={`translate(${x} ${y}) scale(${scale})`} data-testid="civilization-focused-artifact-ignition_kernel">
-        <path d="M0 -12 L10 -4 L8 9 L0 14 L-8 9 L-10 -4 Z" fill={`${tone}1E`} stroke={`${tone}C8`} strokeLinejoin="round" strokeWidth="0.58" />
-        <circle cx="0" cy="0" r="4" fill="rgba(255,244,194,0.74)" />
-        <circle cx="0" cy="0" r="1.4" fill="#fff" />
-        <path d="M-12 11 C-6 5, 6 5, 12 11" fill="none" stroke={softWhite} strokeLinecap="round" strokeWidth="0.34" />
-      </g>
-    );
-  }
-
-  if (treatment === 'magnetic_bottle') {
-    return (
-      <g transform={`translate(${x} ${y}) scale(${scale})`} data-testid="civilization-focused-artifact-magnetic_bottle">
-        <ellipse cx="0" cy="0" rx="13" ry="6" fill={`${tone}18`} stroke={`${tone}D0`} strokeWidth="0.58" />
-        <ellipse cx="0" cy="0" rx="6" ry="10" fill="rgba(0,0,0,0.32)" stroke={`${tone}7A`} strokeWidth="0.36" />
-        <rect x="-2.4" y="-7" width="4.8" height="14" rx="1.2" fill="rgba(0,0,0,0.42)" stroke={white} strokeWidth="0.24" />
-        <path d="M-16 0 H-7 M7 0 H16 M-8 -6 C-3 -10, 3 -10, 8 -6 M-8 6 C-3 10, 3 10, 8 6" fill="none" stroke={softWhite} strokeLinecap="round" strokeWidth="0.28" />
-      </g>
-    );
-  }
-
-  if (treatment === 'horizon_extractor') {
-    return (
-      <g transform={`translate(${x} ${y}) scale(${scale})`} data-testid="civilization-focused-artifact-horizon_extractor">
-        <path d="M-15 2 C-9 -8, 9 -8, 15 2" fill="none" stroke={`${tone}D0`} strokeLinecap="round" strokeWidth="0.78" />
-        <path d="M-10 6 C-4 0, 4 0, 10 6" fill="none" stroke={`${tone}76`} strokeLinecap="round" strokeWidth="0.42" />
-        <circle cx="0" cy="2.2" r="4.3" fill="rgba(0,0,0,0.72)" stroke={white} strokeWidth="0.26" />
-        <path d="M0 -10 V-3 M-7 -8 L-3 -2.4 M7 -8 L3 -2.4" stroke={softWhite} strokeLinecap="round" strokeWidth="0.28" />
-        <ArtifactMotifGlyph site={site} x={0} y={1.4} tone={tone} scale={0.56} />
-      </g>
-    );
-  }
-
-  if (treatment === 'entropy_baffle') {
-    return (
-      <g transform={`translate(${x} ${y}) scale(${scale})`} data-testid="civilization-focused-artifact-entropy_baffle">
-        <path d="M-13 8 L-8 -8 H8 L13 8 Z" fill={`${tone}18`} stroke={`${tone}C8`} strokeLinejoin="round" strokeWidth="0.48" />
-        {[-8, -4, 0, 4, 8].map((dx) => (
-          <path key={dx} d={`M${dx} 7 V${dx === 0 ? -7 : -4}`} stroke={dx === 0 ? white : `${tone}A0`} strokeLinecap="round" strokeWidth={dx === 0 ? 0.38 : 0.28} />
-        ))}
-        <path d="M-15 10 C-8 5, -2 11, 3 7 S10 5, 15 10" fill="none" stroke="rgba(255,148,93,0.48)" strokeLinecap="round" strokeWidth="0.28" />
-      </g>
-    );
-  }
-
-  return (
-    <g transform={`translate(${x} ${y}) scale(${scale})`} data-testid="civilization-focused-artifact-generic">
-      <rect x="-8" y="-7" width="16" height="14" rx="2" fill={`${tone}1C`} stroke={`${tone}BC`} strokeWidth="0.48" />
-      <circle cx="0" cy="0" r="2.1" fill={white} />
-      <ArtifactMotifGlyph site={site} x={0} y={0} tone={tone} scale={0.66} />
-    </g>
-  );
-}
-
-function FocusedDeploymentProjectionLayer({
-  site,
-  scene,
-  selected,
-  recent,
-  compactFocus = false,
-}: {
-  site: CivilizationDeploymentSite | null;
-  scene: MarketSceneKind;
-  selected: boolean;
-  recent: boolean;
-  compactFocus?: boolean;
-}) {
-  if (!site) return null;
-
-  const tone = getCivilizationSiteTone(site);
-  const nativeScene = getNativeSceneForSite(site);
-  const sceneIndex = getSceneIndex(scene);
-  const nativeIndex = getSceneIndex(nativeScene);
-  const relation = nativeScene === scene
-    ? 'native'
-    : nativeIndex < sceneIndex
-      ? 'magnified'
-      : 'remote';
-  const x = Math.min(84, Math.max(16, site.anchor.x));
-  const y = Math.min(76, Math.max(18, site.anchor.y));
-  const isNativeSurface = relation === 'native' && nativeScene === 'surface';
-  const baseProjectionX = relation === 'native'
-    ? x
-    : Math.min(82, Math.max(18, x + (x > 55 ? -18 : 18)));
-  const baseProjectionY = relation === 'native'
-    ? isNativeSurface
-      ? compactFocus && selected
-        ? Math.min(46, Math.max(38, y - 16))
-        : Math.min(82, Math.max(55, y + 8))
-      : y
-    : Math.min(76, Math.max(18, y - (relation === 'remote' ? 12 : 10)));
-  const projectionAnchor = selected && relation === 'native'
-    ? { x: baseProjectionX, y: baseProjectionY }
-    : avoidScanTrayZone({ x: baseProjectionX, y: baseProjectionY });
-  const projectionX = projectionAnchor.x;
-  const projectionY = projectionAnchor.y;
-  const projectionMoved = Math.abs(projectionX - baseProjectionX) > 0.1 || Math.abs(projectionY - baseProjectionY) > 0.1;
-  const rx = isNativeSurface ? 6.2 : relation === 'native' ? 18 : 12;
-  const ry = isNativeSurface ? 2.8 : relation === 'native' ? 8.6 : 6.4;
-  const opacity = isNativeSurface
-    ? selected ? 0.36 : recent ? 0.5 : 0.42
-    : selected ? 0.9 : recent ? 0.82 : 0.76;
-  const symbolScale = isNativeSurface ? 0.36 : relation === 'native' ? 1.02 : 0.78;
-  const showConnector = relation !== 'native' || projectionMoved;
-
-  return (
-    <svg
-      className="pointer-events-none absolute inset-0 z-[19] h-full w-full mix-blend-screen"
-      viewBox="0 0 100 100"
-      preserveAspectRatio="none"
-      aria-hidden="true"
-      data-testid="civilization-focused-deployment-projection"
-      data-native-scene={nativeScene}
-      data-scale-relation={relation}
-      data-scale-presence={site.scalePresence ?? 'unspecified'}
-      data-site-id={site.id}
-      data-native-presentation={isNativeSurface ? 'local-site' : relation === 'native' ? 'full-scale' : undefined}
-      data-layout-zone={projectionMoved ? 'scene-reserved' : 'scene-anchor'}
-    >
-      {showConnector && (
-        <g opacity="0.62">
-          <path
-            d={`M${x} ${y} C${(x + projectionX) / 2} ${Math.min(y, projectionY) - 5}, ${(x + projectionX) / 2} ${Math.min(y, projectionY) - 5}, ${projectionX} ${projectionY}`}
-            fill="none"
-            stroke={`${tone}72`}
-            strokeLinecap="round"
-            strokeWidth="0.34"
-            strokeDasharray={relation === 'remote' ? '3 2.2' : relation === 'native' ? '2 1.8' : '1.4 1.8'}
-          />
-          <circle cx={x} cy={y} r="1.2" fill={`${tone}C8`} />
-        </g>
-      )}
-      <g
-        className={isNativeSurface ? 'civ-focused-projection civ-focused-projection-local-site' : 'civ-focused-projection'}
-        opacity={opacity}
-        style={{ color: tone }}
-      >
-        {relation === 'native' ? (
-          <>
-            <ellipse
-              cx={projectionX}
-              cy={projectionY + (isNativeSurface ? 4.2 : 5.8)}
-              rx={rx * (isNativeSurface ? 1.52 : 1.04)}
-              ry={isNativeSurface ? 2.6 : 3.8}
-              fill={`${tone}${isNativeSurface ? '10' : '14'}`}
-              stroke={`${tone}${isNativeSurface ? '32' : '54'}`}
-              strokeWidth={isNativeSurface ? 0.18 : 0.28}
-            />
-            {isNativeSurface && (
-              <path
-                d={`M${projectionX - rx * 1.42} ${projectionY + 4.1} C${projectionX - rx * 0.48} ${projectionY + 2.7}, ${projectionX + rx * 0.48} ${projectionY + 2.7}, ${projectionX + rx * 1.42} ${projectionY + 4.1}`}
-                fill="none"
-                stroke="rgba(255,255,255,0.11)"
-                strokeLinecap="round"
-                strokeWidth="0.18"
-              />
-            )}
-          </>
-        ) : (
-          <>
-            <rect
-              x={projectionX - rx}
-              y={projectionY - ry}
-              width={rx * 2}
-              height={ry * 2}
-              rx="2.2"
-              fill="rgba(3,7,17,0.56)"
-              stroke={`${tone}7A`}
-              strokeWidth="0.32"
-            />
-            <path
-              d={`M${projectionX - rx + 2} ${projectionY + ry - 2} H${projectionX + rx - 2} M${projectionX - rx + 2} ${projectionY - ry + 2} H${projectionX + rx - 2}`}
-              stroke="rgba(255,255,255,0.16)"
-              strokeLinecap="round"
-              strokeWidth="0.2"
-            />
-          </>
-        )}
-        <ellipse
-          cx={projectionX}
-          cy={projectionY}
-          rx={rx}
-          ry={ry}
-          fill={`${tone}${relation === 'native' ? '12' : '0E'}`}
-          stroke={`${tone}${isNativeSurface ? selected ? '82' : '64' : selected ? 'C8' : '8F'}`}
-          strokeWidth={isNativeSurface ? selected ? 0.32 : 0.24 : selected ? 0.5 : 0.36}
-          strokeDasharray={relation === 'native' ? undefined : '2.2 1.7'}
-          transform={`rotate(${isNativeSurface ? -3 : -7} ${projectionX} ${projectionY})`}
-        />
-        <FocusedProjectionSymbol
-          site={site}
-          x={projectionX}
-          y={projectionY}
-          tone={tone}
-          scale={symbolScale}
-        />
-      </g>
-    </svg>
-  );
-}
-
-function avoidScanTrayZone(point: CivilizationDeploymentAnchor): CivilizationDeploymentAnchor {
-  if (point.x > 52 && point.y > 36) {
-    return {
-      x: Math.max(22, Math.min(50, point.x - 20)),
-      y: Math.max(20, Math.min(44, point.y - 10)),
+  for (const site of orderedSites) {
+    const worldAnchor = artifactWorldAnchors?.get(site.id);
+    const base = {
+      x: worldAnchor?.scanX ?? worldAnchor?.x ?? site.anchor.x,
+      y: worldAnchor?.scanY ?? (worldAnchor
+        ? Math.max(5, worldAnchor.y - (site.kind === 'blueprint' ? 6.2 : 5.4))
+        : site.anchor.y),
     };
+    const candidates = offsets
+      .map((offset, index) => {
+        const x = Math.min(95, Math.max(5, base.x + offset.x));
+        const y = Math.min(92, Math.max(8, base.y + offset.y));
+        const overlapPenalty = occupied.reduce((score, prior) => {
+          const xOverlap = Math.max(0, minimumXGap - Math.abs(prior.x - x));
+          const yOverlap = Math.max(0, minimumYGap - Math.abs(prior.y - y));
+          return score + (xOverlap > 0 && yOverlap > 0 ? 1_000_000 + xOverlap * yOverlap * 1_000 : 0);
+        }, 0);
+        return {
+          x,
+          y,
+          score: overlapPenalty + Math.hypot(offset.x, offset.y) * 1.2 + index * 0.02,
+        };
+      })
+      .filter((candidate, index, allCandidates) => (
+        allCandidates.findIndex((other) => other.x === candidate.x && other.y === candidate.y) === index
+      ));
+    const candidate = candidates.sort((left, right) => left.score - right.score)[0]!;
+    occupied.push(candidate);
+    resolved.set(site.id, { x: candidate.x, y: candidate.y });
   }
-  if (point.x > 58 && point.y > 48) {
-    return {
-      x: Math.max(18, Math.min(58, point.x - 18)),
-      y: Math.max(18, Math.min(46, point.y - 16)),
-    };
-  }
-  if (point.x > 66 && point.y > 38) {
-    return {
-      x: Math.max(18, point.x - 14),
-      y: Math.max(18, point.y - 8),
-    };
-  }
-  return point;
+
+  return resolved;
 }
 
-function ScanFocusLayer({
-  site,
-  selected,
-  recent,
-}: {
-  site: CivilizationDeploymentSite | null;
-  selected: boolean;
-  recent: boolean;
-}) {
-  if (!site) return null;
-  const tone = getCivilizationSiteTone(site);
-  const focusState = selected ? 'selected' : recent ? 'recent' : 'steady';
+function resolveCivilizationScanClusterAnchors(
+  clusters: readonly CivilizationScanMarkerCluster[],
+  individualAnchors: ReadonlyMap<string, CivilizationScanMarkerAnchor>,
+  compact: boolean,
+): ReadonlyMap<string, CivilizationScanMarkerAnchor> {
+  const occupied = [...individualAnchors.values()];
+  const resolved = new Map<string, CivilizationScanMarkerAnchor>();
+  const xStep = compact ? 6.4 : 4.2;
+  const yStep = compact ? 5.4 : 5;
+  const minimumXGap = compact ? 14 : 4.6;
+  const minimumYGap = compact ? 11 : 8.4;
+  const offsetSteps = [-4, -3, -2, -1, 0, 1, 2, 3, 4];
+  const offsets = offsetSteps
+    .flatMap((row) => offsetSteps.map((column) => ({
+      x: column * xStep,
+      y: row * yStep,
+    })))
+    .sort((left, right) => Math.hypot(left.x, left.y) - Math.hypot(right.x, right.y));
 
-  return (
-    <div
-      className="pointer-events-none absolute inset-0 z-[21]"
-      data-testid="civilization-scan-focus"
-      data-focus-state={focusState}
-      aria-hidden="true"
-    >
-      <svg
-        className="absolute inset-0 h-full w-full mix-blend-screen"
-        viewBox="0 0 100 100"
-        preserveAspectRatio="none"
-      >
-        <ellipse
-          cx={site.anchor.x}
-          cy={site.anchor.y}
-          rx={selected ? 10 : 8.4}
-          ry={selected ? 4.8 : 3.8}
-          fill={`${tone}${selected ? '16' : '0F'}`}
-          stroke={`${tone}${selected ? 'D6' : 'A8'}`}
-          strokeWidth={selected ? 0.42 : 0.3}
-          strokeDasharray={selected ? undefined : '2.2 1.8'}
-          transform={`rotate(-8 ${site.anchor.x} ${site.anchor.y})`}
-        />
-        <ellipse
-          cx={site.anchor.x}
-          cy={site.anchor.y}
-          rx={selected ? 16 : 13}
-          ry={selected ? 7.2 : 5.8}
-          fill="none"
-          stroke={`${tone}42`}
-          strokeWidth="0.2"
-          transform={`rotate(-8 ${site.anchor.x} ${site.anchor.y})`}
-        />
-        {site.kind === 'artifact' && (
-          <ArtifactMotifGlyph
-            site={site}
-            x={site.anchor.x}
-            y={site.anchor.y}
-            tone={tone}
-            scale={selected ? 0.62 : 0.52}
-            rotation={-6}
-            emphasis={selected ? 1.1 : 1}
-          />
-        )}
-      </svg>
-    </div>
-  );
+  [...clusters]
+    .sort((left, right) => right.sites.length - left.sites.length || left.id.localeCompare(right.id))
+    .forEach((cluster) => {
+      const candidate = offsets
+        .map((offset, index) => {
+          const x = Math.min(95, Math.max(5, cluster.anchor.x + offset.x));
+          const y = Math.min(93, Math.max(7, cluster.anchor.y + offset.y));
+          const overlapPenalty = occupied.reduce((score, prior) => {
+            const xOverlap = Math.max(0, minimumXGap - Math.abs(prior.x - x));
+            const yOverlap = Math.max(0, minimumYGap - Math.abs(prior.y - y));
+            return score + (xOverlap > 0 && yOverlap > 0 ? xOverlap * yOverlap * 140 : 0);
+          }, 0);
+          return {
+            x,
+            y,
+            score: overlapPenalty + Math.hypot(offset.x, offset.y) * 0.7 + index * 0.01,
+          };
+        })
+        .sort((left, right) => left.score - right.score)[0]!;
+      occupied.push(candidate);
+      resolved.set(cluster.id, { x: candidate.x, y: candidate.y });
+    });
+
+  return resolved;
 }
 
-function EnvironmentalTraceGlows({
+interface CivilizationScanMarkerCluster {
+  id: string;
+  label: string;
+  sites: CivilizationDeploymentSite[];
+  anchor: CivilizationScanMarkerAnchor;
+}
+
+function formatScanDistrictLabel(value: string): string {
+  return value
+    .split(/[_-]/g)
+    .filter(Boolean)
+    .map((part) => `${part.charAt(0).toUpperCase()}${part.slice(1)}`)
+    .join(' ');
+}
+
+function getScanMarkerBaseAnchor(
+  site: CivilizationDeploymentSite,
+  artifactWorldAnchors?: ReadonlyMap<string, CivilizationArtifactWorldAnchor>,
+): CivilizationScanMarkerAnchor {
+  const worldAnchor = artifactWorldAnchors?.get(site.id);
+  return {
+    x: worldAnchor?.scanX ?? worldAnchor?.x ?? site.anchor.x,
+    y: worldAnchor?.scanY ?? (worldAnchor
+      ? Math.max(5, worldAnchor.y - (site.kind === 'blueprint' ? 6.2 : 5.4))
+      : site.anchor.y),
+  };
+}
+
+function buildScanMarkerPresentation({
   sites,
-  scanActive,
+  artifactWorldAnchors,
+  prioritySiteIds,
+  compact,
+  forceAll,
 }: {
   sites: readonly CivilizationDeploymentSite[];
-  scanActive: boolean;
-}) {
-  if (sites.length === 0) return null;
-  return (
-    <svg
-      data-testid="civilization-trace-glows"
-      className="pointer-events-none absolute inset-0 z-[11] h-full w-full mix-blend-screen"
-      viewBox="0 0 100 100"
-      preserveAspectRatio="none"
-      aria-hidden="true"
-    >
-      {sites.map((site, index) => {
-        const tone = getCivilizationSiteTone(site);
-        const isBlueprint = site.kind === 'blueprint' || site.kind === 'protocol' || site.kind === 'chronicle';
-        const isLuminary = site.kind === 'luminary';
-        if (!scanActive && site.kind === 'protocol') return null;
-        if (!scanActive && site.kind === 'blueprint' && hasDominantBlueprintMark(site)) return null;
-        const opacity = scanActive ? 0.16 : site.kind === 'blueprint' ? 0.055 : isLuminary ? 0.05 : 0.035;
-        const rotation = index % 2 === 0 ? -10 : 12;
-        const routeStartX = Math.max(3, site.anchor.x - 15);
-        const routeEndX = Math.min(97, site.anchor.x + 17);
-        const routeMidY = site.anchor.y + (index % 2 === 0 ? -2.5 : 2.2);
-        return (
-          <g key={site.id} opacity={opacity}>
-            {isRouteTrait(site) && (
-              <>
-                <path
-                  d={`M${routeStartX} ${site.anchor.y + 2} C ${site.anchor.x - 7} ${routeMidY}, ${site.anchor.x + 6} ${routeMidY}, ${routeEndX} ${site.anchor.y - 1.4}`}
-                  fill="none"
-                  stroke={`${tone}9A`}
-                  strokeLinecap="round"
-                  strokeWidth={isBlueprint ? 0.72 : 0.48}
-                  strokeDasharray={site.trait === 'chronology' ? '1.2 2' : '4 2.2'}
-                />
-                <path
-                  d={`M${routeStartX + 3} ${site.anchor.y + 4.6} C ${site.anchor.x - 4} ${site.anchor.y + 1.4}, ${site.anchor.x + 4} ${site.anchor.y + 4.2}, ${routeEndX - 2} ${site.anchor.y + 1}`}
-                  fill="none"
-                  stroke={`${tone}54`}
-                  strokeLinecap="round"
-                  strokeWidth="0.32"
-                />
-              </>
-            )}
-            {isDistrictTrait(site) && (
-              <>
-                <rect
-                  x={site.anchor.x - 4.2}
-                  y={site.anchor.y - 2.8}
-                  width="8.4"
-                  height="5.6"
-                  fill={`${tone}24`}
-                  stroke={`${tone}76`}
-                  strokeWidth="0.34"
-                  transform={`rotate(${rotation} ${site.anchor.x} ${site.anchor.y})`}
-                />
-                <path
-                  d={`M${site.anchor.x - 5.8} ${site.anchor.y + 3.4} H${site.anchor.x + 5.8} M${site.anchor.x - 3.6} ${site.anchor.y + 1.1} V${site.anchor.y - 3.5} M${site.anchor.x} ${site.anchor.y + 1.2} V${site.anchor.y - 4.3} M${site.anchor.x + 3.7} ${site.anchor.y + 1.1} V${site.anchor.y - 2.7}`}
-                  fill="none"
-                  stroke={`${tone}88`}
-                  strokeLinecap="round"
-                  strokeWidth="0.34"
-                />
-              </>
-            )}
-            {isFieldTrait(site) && (
-              <>
-                <ellipse
-                  cx={site.anchor.x}
-                  cy={site.anchor.y}
-                  rx={isBlueprint ? 9.4 : 6.8}
-                  ry={isBlueprint ? 3.7 : 2.7}
-                  fill={`${tone}28`}
-                  stroke={`${tone}86`}
-                  strokeWidth={isBlueprint ? 0.46 : 0.32}
-                  strokeDasharray={site.trait === 'veil' ? '2 1.5' : undefined}
-                  transform={`rotate(${rotation} ${site.anchor.x} ${site.anchor.y})`}
-                />
-                <ellipse
-                  cx={site.anchor.x}
-                  cy={site.anchor.y}
-                  rx={isBlueprint ? 5.6 : 3.8}
-                  ry={isBlueprint ? 2 : 1.4}
-                  fill="none"
-                  stroke={`${tone}50`}
-                  strokeWidth="0.22"
-                  transform={`rotate(${-rotation} ${site.anchor.x} ${site.anchor.y})`}
-                />
-              </>
-            )}
-            {!isRouteTrait(site) && !isDistrictTrait(site) && !isFieldTrait(site) && (
-              <>
-                <ellipse
-                  cx={site.anchor.x}
-                  cy={site.anchor.y}
-                  rx={isBlueprint ? 8.8 : isLuminary ? 7.2 : 5.4}
-                  ry={isBlueprint ? 3.3 : isLuminary ? 2.8 : 2.2}
-                  fill={`${tone}42`}
-                  transform={`rotate(${rotation} ${site.anchor.x} ${site.anchor.y})`}
-                />
-                <path
-                  d={`M${Math.max(3, site.anchor.x - 11)} ${site.anchor.y + 1.4} C ${site.anchor.x - 4} ${site.anchor.y - 2.2}, ${site.anchor.x + 4} ${site.anchor.y + 3.2}, ${Math.min(97, site.anchor.x + 12)} ${site.anchor.y - 0.8}`}
-                  fill="none"
-                  stroke={`${tone}8A`}
-                  strokeLinecap="round"
-                  strokeWidth={isBlueprint ? 0.58 : 0.38}
-                  strokeDasharray={isBlueprint ? '2.5 1.4' : undefined}
-                />
-              </>
-            )}
-            {site.representationMode === 'local_trace' && (
-              <circle cx={site.anchor.x} cy={site.anchor.y} r="0.55" fill="#ffffff" opacity="0.72" />
-            )}
-          </g>
-        );
-      })}
-    </svg>
-  );
+  artifactWorldAnchors?: ReadonlyMap<string, CivilizationArtifactWorldAnchor>;
+  prioritySiteIds: ReadonlySet<string>;
+  compact: boolean;
+  forceAll: boolean;
+}): {
+  individualSites: CivilizationDeploymentSite[];
+  clusters: CivilizationScanMarkerCluster[];
+} {
+  const individualLimit = compact ? 11 : 20;
+  if (forceAll || sites.length <= individualLimit) {
+    return { individualSites: [...sites], clusters: [] };
+  }
+
+  const prioritySites = sites.filter((site) => (
+    site.kind !== 'artifact' || prioritySiteIds.has(site.id)
+  ));
+  const ordinarySites = sites
+    .filter((site) => site.kind === 'artifact' && !prioritySiteIds.has(site.id))
+    .sort((left, right) => right.priority - left.priority || left.id.localeCompare(right.id));
+  const ordinarySlots = Math.max(3, individualLimit - prioritySites.length);
+  const individualSites = [...prioritySites, ...ordinarySites.slice(0, ordinarySlots)];
+  const clusteredSites = ordinarySites.slice(ordinarySlots);
+  const byDistrict = new Map<string, CivilizationDeploymentSite[]>();
+
+  clusteredSites.forEach((site) => {
+    const anchor = getScanMarkerBaseAnchor(site, artifactWorldAnchors);
+    const horizontal = anchor.x < 34 ? 'West' : anchor.x < 67 ? 'Central' : 'East';
+    const vertical = anchor.y < 50 ? 'North' : 'South';
+    const district = `${vertical}-${horizontal}`.toLowerCase();
+    const group = byDistrict.get(district) ?? [];
+    group.push(site);
+    byDistrict.set(district, group);
+  });
+
+  const clusters = [...byDistrict.entries()].map(([district, members]) => {
+    const memberAnchors = members.map((site) => getScanMarkerBaseAnchor(site, artifactWorldAnchors));
+    const anchor = memberAnchors.reduce((total, item) => ({
+      x: total.x + item.x / memberAnchors.length,
+      y: total.y + item.y / memberAnchors.length,
+    }), { x: 0, y: 0 });
+    return {
+      id: `district:${district}`,
+      label: formatScanDistrictLabel(district),
+      sites: members,
+      anchor,
+    };
+  });
+
+  return { individualSites, clusters };
 }
 
-function RecentTraceReveal({
+function ArtifactStructureScanMarkers({
   sites,
-  showLabel = true,
-}: {
-  sites: readonly CivilizationDeploymentSite[];
-  showLabel?: boolean;
-}) {
-  if (sites.length === 0) return null;
-  const primary = sites[0]!;
-  const tone = getCivilizationSiteTone(primary);
-  const labelTop = primary.anchor.y > 42
-    ? Math.max(16, primary.anchor.y - 24)
-    : Math.min(78, primary.anchor.y + 24);
-  const primaryTitle = primary.title.replace(/\s+Trace$/i, '');
-  const title = sites.length > 1 ? `${primaryTitle} +${sites.length - 1}` : primaryTitle;
-  const subtitle = getInfluenceSubtitle(primary);
-  const nativeScene = getNativeSceneForSite(primary);
-  const scaleLabel = SCENE_UI[nativeScene].zoomLabel;
-  const impactKind = getCivilizationImpactKind(primary);
-  const impactBadge = getCivilizationImpactBadge(impactKind);
-  const impactLabel = getCivilizationImpactLabel(impactKind);
-  const labelLeft = primary.anchor.x < 50
-    ? 'clamp(10.5rem, 24%, calc(100% - 10.5rem))'
-    : 'clamp(10.5rem, 76%, calc(100% - 10.5rem))';
-
-  return (
-    <div
-      data-testid="civilization-trace-reveal"
-      className="pointer-events-none absolute inset-0 z-30"
-      data-impact-kind={impactKind}
-      data-primary-title={title}
-      aria-hidden="true"
-    >
-      <svg
-        className="absolute inset-0 h-full w-full mix-blend-screen"
-        viewBox="0 0 100 100"
-        preserveAspectRatio="none"
-      >
-        <path
-          className="civ-trace-reveal-vector"
-          d={`M${Math.max(2, primary.anchor.x - 24)} ${primary.anchor.y + 9} C${primary.anchor.x - 9} ${primary.anchor.y - 8}, ${primary.anchor.x + 12} ${primary.anchor.y + 10}, ${Math.min(98, primary.anchor.x + 27)} ${primary.anchor.y - 6}`}
-          fill="none"
-          stroke={tone}
-          strokeLinecap="round"
-          strokeWidth="0.72"
-        />
-        <path
-          className="civ-trace-reveal-vector"
-          d={`M${Math.max(3, primary.anchor.x - 14)} ${primary.anchor.y - 5} H${Math.min(97, primary.anchor.x + 16)} M${primary.anchor.x} ${Math.max(5, primary.anchor.y - 12)} V${Math.min(95, primary.anchor.y + 11)}`}
-          fill="none"
-          stroke="rgba(255,255,255,0.52)"
-          strokeLinecap="round"
-          strokeWidth="0.22"
-          style={{ animationDelay: '0.08s' }}
-        />
-        <ellipse
-          className="civ-trace-reveal-vector"
-          cx={primary.anchor.x}
-          cy={primary.anchor.y}
-          rx="16"
-          ry="6.8"
-          fill={`${tone}20`}
-          stroke={`${tone}D8`}
-          strokeWidth="0.44"
-          style={{ animationDelay: '0.14s' }}
-        />
-        <path
-          className="civ-trace-reveal-vector"
-          d={`M${Math.max(3, primary.anchor.x - 18)} ${primary.anchor.y + 2} C${primary.anchor.x - 8} ${primary.anchor.y - 5}, ${primary.anchor.x + 9} ${primary.anchor.y + 4}, ${Math.min(97, primary.anchor.x + 21)} ${primary.anchor.y - 3}`}
-          fill="none"
-          stroke="rgba(255,255,255,0.72)"
-          strokeLinecap="round"
-          strokeWidth="0.3"
-          style={{ animationDelay: '0.22s' }}
-        />
-      </svg>
-      <div
-        className="absolute h-20 w-20 -translate-x-1/2 -translate-y-1/2"
-        style={{ left: `${primary.anchor.x}%`, top: `${primary.anchor.y}%` }}
-      >
-        <span
-          className="civ-trace-recorded-ring absolute inset-0 rounded-full border"
-          style={{
-            borderColor: `${tone}BB`,
-            boxShadow: `0 0 30px ${tone}55`,
-          }}
-        />
-        <span
-          className="civ-trace-recorded-ring absolute inset-3 rounded-full border"
-          style={{
-            animationDelay: '0.34s',
-            borderColor: `${tone}80`,
-            boxShadow: `0 0 22px ${tone}44`,
-          }}
-        />
-      </div>
-      {showLabel && (
-        <div
-          className="absolute max-w-[min(21rem,calc(100%-2rem))] -translate-x-1/2 -translate-y-1/2"
-          style={{
-            left: labelLeft,
-            top: `${labelTop}%`,
-          }}
-        >
-          <div
-            className="civ-trace-recorded-label flex items-center gap-2.5 border border-white/16 bg-[#050914]/90 px-3 py-2.5 text-left shadow-[0_14px_36px_rgba(0,0,0,0.55)] backdrop-blur-md"
-            style={{
-              borderColor: `${tone}72`,
-              boxShadow: `0 14px 36px rgba(0,0,0,0.55), 0 0 30px ${tone}28`,
-            }}
-          >
-            <svg
-              className="h-9 w-9 shrink-0"
-              viewBox="0 0 24 24"
-              aria-hidden="true"
-              style={{ color: tone, filter: `drop-shadow(0 0 10px ${tone}88)` }}
-            >
-              <circle cx="12" cy="12" r="10" fill={`${tone}16`} stroke={`${tone}82`} strokeWidth="0.8" />
-              {impactKind === 'artifact' && primary.artifactVisualMotif ? (
-                <ArtifactMotifGlyph site={primary} x={12} y={12} tone={tone} scale={1.06} />
-              ) : impactKind === 'blueprint' ? (
-                <g>
-                  <path d="M12 5.1 L18.6 12 L12 18.9 L5.4 12 Z" fill={`${tone}22`} stroke={`${tone}D2`} strokeWidth="0.72" />
-                  <path d="M8.7 10.2 H15.3 M8.7 12 H15.3 M8.7 13.8 H15.3" stroke="rgba(255,255,255,0.72)" strokeLinecap="round" strokeWidth="0.42" />
-                </g>
-              ) : impactKind === 'luminary' ? (
-                <g>
-                  {[0, 60, 120, 180, 240, 300].map((angle) => {
-                    const radians = (angle * Math.PI) / 180;
-                    return (
-                      <circle
-                        key={angle}
-                        cx={12 + Math.cos(radians) * 5.6}
-                        cy={12 + Math.sin(radians) * 5.6}
-                        r="0.9"
-                        fill={angle === 0 ? 'rgba(255,255,255,0.86)' : `${tone}C8`}
-                      />
-                    );
-                  })}
-                  <circle cx="12" cy="12" r="2.25" fill="rgba(255,255,255,0.72)" stroke={`${tone}D8`} strokeWidth="0.44" />
-                </g>
-              ) : impactKind === 'chronicle' ? (
-                <g>
-                  <path d="M7.2 6.8 H15.2 C16.3 6.8 16.8 7.5 16.8 8.5 V17.2 H8.6 C7.5 17.2 7.2 16.5 7.2 15.6 Z" fill={`${tone}18`} stroke={`${tone}CC`} strokeWidth="0.58" />
-                  <path d="M9.3 10 H14.8 M9.3 12.1 H14.2 M9.3 14.2 H12.7" stroke="rgba(255,255,255,0.72)" strokeLinecap="round" strokeWidth="0.42" />
-                  <path d="M7.2 9 C9.2 6.6 13.4 6.4 16.8 8.4" fill="none" stroke={`${tone}92`} strokeLinecap="round" strokeWidth="0.38" />
-                </g>
-              ) : (
-                <g>
-                  <rect x="7.2" y="7.2" width="9.6" height="9.6" fill={`${tone}18`} stroke={`${tone}C8`} strokeDasharray="1.3 1" strokeWidth="0.58" />
-                  <path d="M8.8 12 H15.2 M12 8.8 V15.2" stroke="rgba(255,255,255,0.68)" strokeLinecap="round" strokeWidth="0.42" />
-                </g>
-              )}
-            </svg>
-            <div className="min-w-0">
-              <p className="flex min-w-0 items-center gap-1.5 text-[8px] font-black uppercase tracking-[0.2em]" style={{ color: tone }}>
-                <span className="min-w-0 truncate">{impactLabel}</span>
-                <span
-                  className="shrink-0 border px-1.5 py-0.5 text-[7px] leading-none tracking-[0.12em] text-white/82"
-                  style={{
-                    borderColor: `${tone}68`,
-                    background: `${tone}18`,
-                    borderRadius: impactKind === 'blueprint' || impactKind === 'chronicle' ? '3px' : impactKind === 'protocol' ? '2px' : '999px',
-                    borderStyle: impactKind === 'protocol' ? 'dashed' : 'solid',
-                    boxShadow: `0 0 10px ${tone}1F`,
-                  }}
-                >
-                  {impactBadge}
-                </span>
-              </p>
-              <p className="mt-0.5 truncate text-xs font-semibold text-white/94" data-testid="civilization-trace-reveal-title">
-                {title}
-              </p>
-              <p className="mt-0.5 truncate text-[9px] font-semibold uppercase tracking-[0.14em] text-white/52">
-                {scaleLabel} // {subtitle}
-              </p>
-            </div>
-          </div>
-        </div>
-      )}
-    </div>
-  );
-}
-
-function ScanMapPins({
-  sites,
-  selectedSiteId,
+  artifactWorldAnchors,
+  selectedSiteIds,
   focusedSiteId,
   recentSiteIds,
+  pendingRepairArtifactIds,
+  repairedSiteIds,
+  focusedClusterId,
+  forceAll,
+  compact,
   onSelect,
+  onInspect,
+  onFocusCluster,
+  onHover,
 }: {
   sites: readonly CivilizationDeploymentSite[];
-  selectedSiteId: string | null;
+  artifactWorldAnchors?: ReadonlyMap<string, CivilizationArtifactWorldAnchor>;
+  selectedSiteIds: ReadonlySet<string>;
   focusedSiteId: string | null;
   recentSiteIds: readonly string[];
+  pendingRepairArtifactIds: ReadonlySet<string>;
+  repairedSiteIds: ReadonlySet<string>;
+  focusedClusterId: string | null;
+  forceAll: boolean;
+  compact: boolean;
   onSelect: (siteId: string) => void;
+  onInspect: (siteId: string) => void;
+  onFocusCluster: (cluster: CivilizationScanMarkerCluster) => void;
+  onHover: (siteId: string | null) => void;
 }) {
+  const markerRootRef = React.useRef<HTMLDivElement>(null);
+  const [canvasSize, setCanvasSize] = React.useState<{ width: number; height: number }>();
+  React.useLayoutEffect(() => {
+    const root = markerRootRef.current;
+    if (!root) return;
+    const measure = () => {
+      const width = root.clientWidth;
+      const height = root.clientHeight;
+      if (width <= 0 || height <= 0) return;
+      setCanvasSize(previous => previous?.width === width && previous.height === height
+        ? previous : { width, height });
+    };
+    measure();
+    const observer = typeof ResizeObserver === 'undefined' ? null : new ResizeObserver(measure);
+    observer?.observe(root);
+    return () => observer?.disconnect();
+  }, []);
+  const clickTimersRef = React.useRef(new Map<string, number>());
+  React.useEffect(() => () => {
+    clickTimersRef.current.forEach((timerId) => window.clearTimeout(timerId));
+    clickTimersRef.current.clear();
+  }, []);
+  const prioritySiteIds = React.useMemo(() => new Set(sites
+    .filter((site) => (
+      selectedSiteIds.has(site.id) ||
+      site.id === focusedSiteId ||
+      recentSiteIds.includes(site.id) ||
+      repairedSiteIds.has(site.id) ||
+      site.implementationState === 'damaged' ||
+      Boolean(site.artifactId && pendingRepairArtifactIds.has(site.artifactId))
+    ))
+    .map((site) => site.id)), [
+    focusedSiteId,
+    pendingRepairArtifactIds,
+    recentSiteIds,
+    repairedSiteIds,
+    selectedSiteIds,
+    sites,
+  ]);
+  const markerPresentation = React.useMemo(() => buildScanMarkerPresentation({
+    sites,
+    artifactWorldAnchors,
+    prioritySiteIds,
+    compact,
+    forceAll,
+  }), [artifactWorldAnchors, compact, forceAll, prioritySiteIds, sites]);
+  const focusedCluster = focusedClusterId
+    ? markerPresentation.clusters.find((cluster) => cluster.id === focusedClusterId) ?? null
+    : null;
+  const visibleSites = React.useMemo(() => {
+    if (!focusedCluster) return markerPresentation.individualSites;
+    const visibleIds = new Set([
+      ...markerPresentation.individualSites
+        .filter((site) => site.kind !== 'artifact' || prioritySiteIds.has(site.id))
+        .map((site) => site.id),
+      ...focusedCluster.sites.map((site) => site.id),
+    ]);
+    return sites.filter((site) => visibleIds.has(site.id));
+  }, [focusedCluster, markerPresentation.individualSites, prioritySiteIds, sites]);
+  const smallHitTargets = visibleSites.length > 20 && (compact || (canvasSize?.width ?? Infinity) < 640);
+  const hitSize = smallHitTargets ? 32 : 44;
+  const markerAnchors = React.useMemo(
+    () => resolveCivilizationScanMarkerAnchors(
+      visibleSites,
+      artifactWorldAnchors,
+      compact,
+      Boolean(focusedCluster),
+      canvasSize ? { ...canvasSize, hitSize } : undefined,
+    ),
+    [artifactWorldAnchors, canvasSize, compact, focusedCluster, hitSize, visibleSites],
+  );
+  const clusterAnchors = React.useMemo(
+    () => resolveCivilizationScanClusterAnchors(
+      focusedCluster ? [] : markerPresentation.clusters,
+      markerAnchors,
+      compact,
+    ),
+    [compact, focusedCluster, markerAnchors, markerPresentation.clusters],
+  );
+  const fallbackSelectedId = [...selectedSiteIds].at(-1) ?? null;
+  const linkedSiteId = focusedSiteId ?? fallbackSelectedId;
+  const linkedSite = linkedSiteId
+    ? sites.find((site) => site.id === linkedSiteId) ?? null
+    : null;
+  const linkedWorldAnchor = linkedSite
+    ? artifactWorldAnchors?.get(linkedSite.id)
+    : undefined;
+  const linkedMarkerAnchor = linkedSite ? markerAnchors.get(linkedSite.id) : undefined;
+  const linkedTone = linkedSite ? getCivilizationSiteTone(linkedSite) : null;
+  const hasSelection = selectedSiteIds.size > 0;
+  const cameraScaleCompensation = focusedCluster ? 1 / (compact ? 1.38 : 1.28) : 1;
+
+  const selectAfterClick = React.useCallback((siteId: string, clickCount: number) => {
+    const pendingTimer = clickTimersRef.current.get(siteId);
+    if (pendingTimer !== undefined) {
+      window.clearTimeout(pendingTimer);
+      clickTimersRef.current.delete(siteId);
+    }
+    if (clickCount === 0) {
+      onSelect(siteId);
+      return;
+    }
+    if (clickCount > 1) return;
+    const timerId = window.setTimeout(() => {
+      clickTimersRef.current.delete(siteId);
+      onSelect(siteId);
+    }, 220);
+    clickTimersRef.current.set(siteId, timerId);
+  }, [onSelect]);
+
+  const inspectAfterDoubleClick = React.useCallback((siteId: string) => {
+    const pendingTimer = clickTimersRef.current.get(siteId);
+    if (pendingTimer !== undefined) window.clearTimeout(pendingTimer);
+    clickTimersRef.current.delete(siteId);
+    onInspect(siteId);
+  }, [onInspect]);
+
   return (
-    <div className="pointer-events-none absolute inset-0 z-20" aria-hidden={false}>
-      {sites.map((site, index) => {
-        const tone = getCivilizationSiteTone(site);
-        const selected = site.id === selectedSiteId;
+    <div
+      ref={markerRootRef}
+      className="pointer-events-none absolute inset-0 z-20"
+      data-testid="civilization-artifact-structure-markers"
+      aria-hidden={false}
+    >
+      {linkedSite && linkedWorldAnchor && linkedMarkerAnchor && linkedTone && (
+        <svg
+          className="pointer-events-none absolute inset-0 h-full w-full overflow-visible"
+          viewBox="0 0 100 100"
+          preserveAspectRatio="none"
+          aria-hidden="true"
+          data-testid="civilization-artifact-pin-host-links"
+        >
+          <path
+            d={`M ${linkedMarkerAnchor.x} ${linkedMarkerAnchor.y} Q ${(linkedMarkerAnchor.x + linkedWorldAnchor.x) / 2} ${Math.min(linkedMarkerAnchor.y, linkedWorldAnchor.y) - 1.5} ${linkedWorldAnchor.x} ${linkedWorldAnchor.y}`}
+            fill="none"
+            stroke={linkedTone}
+            strokeOpacity="0.92"
+            strokeWidth="0.34"
+            vectorEffect="non-scaling-stroke"
+            data-testid="civilization-artifact-pin-host-link"
+            data-site-id={linkedSite.id}
+            data-world-host-key={linkedWorldAnchor.hostKey}
+          />
+          <circle
+            cx={linkedWorldAnchor.x}
+            cy={linkedWorldAnchor.y}
+            r="0.72"
+            fill={linkedTone}
+            fillOpacity="0.76"
+            stroke="rgba(255,255,255,0.76)"
+            strokeWidth="0.12"
+            vectorEffect="non-scaling-stroke"
+          />
+        </svg>
+      )}
+
+      {visibleSites.map((site, index) => {
+        const worldAnchor = artifactWorldAnchors?.get(site.id);
+        const markerAnchor = markerAnchors.get(site.id) ?? site.anchor;
+        const markerX = markerAnchor.x;
+        const markerY = markerAnchor.y;
+        const markerOffset = worldAnchor ? Math.max(0, worldAnchor.y - markerY) : 0;
+        const selected = selectedSiteIds.has(site.id);
         const focused = site.id === focusedSiteId;
         const isRecent = recentSiteIds.includes(site.id);
+        const isDamaged = site.implementationState === 'damaged';
+        const repairQueued = Boolean(site.artifactId && pendingRepairArtifactIds.has(site.artifactId));
+        const wasRepaired = repairedSiteIds.has(site.id);
+        const active = selected || focused || repairQueued || wasRepaired || (!hasSelection && isRecent);
+        const tone = getCivilizationSiteTone(site);
+        const markerArtwork = site.kind === 'artifact' && site.artifactId
+          ? CARD_RUNTIME_ART[site.artifactId] ?? null
+          : site.kind === 'blueprint'
+            ? getCivilizationBlueprintManifestationArt(site.blueprintId)
+            : null;
+        const restingScale = hasSelection ? 0.9 : 1;
+        const portraitSize = compact
+          ? visibleSites.length > 20
+            ? 'h-5 w-5'
+            : visibleSites.length > 12
+              ? 'h-6 w-6'
+              : 'h-8 w-8'
+          : visibleSites.length > 24
+            ? 'h-7 w-7'
+            : visibleSites.length > 16
+              ? 'h-8 w-8'
+              : 'h-9 w-9';
+        const pinHitSize = smallHitTargets ? 'h-8 w-8' : 'h-11 w-11';
+        const isBlueprint = site.kind === 'blueprint';
+
         return (
           <button
             key={site.id}
             type="button"
-            aria-label={selectedSiteId ? `Map marker ${index + 1}: ${site.title}` : `Map marker ${index + 1}`}
-            className={`civ-map-pin pointer-events-auto absolute h-16 w-11 text-white transition-[filter,opacity,transform] hover:opacity-100 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-white/70 sm:h-20 sm:w-12 ${
-              selected || focused || isRecent ? 'opacity-100' : 'opacity-70'
-            }`}
+            aria-label={isBlueprint
+              ? `Inspect Blueprint ${site.title}`
+              : `${site.title}. Click or Space to select; double-click or Enter to inspect`}
+            aria-pressed={site.kind === 'artifact' ? selected : undefined}
+            className={`civ-map-pin pointer-events-auto absolute ${pinHitSize} opacity-100 text-white transition-[filter,transform] duration-200 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-white/70`}
             style={{
-              left: `${site.anchor.x}%`,
-              top: `${site.anchor.y}%`,
-              transform: `translate(-50%, -97%) scale(${selected ? 1.08 : focused || isRecent ? 1.03 : 1})`,
-              filter: selected || focused || isRecent
-                ? `drop-shadow(0 0 22px ${tone}8A)`
-                : `drop-shadow(0 0 14px ${tone}42)`,
+              left: `${markerX}%`,
+              top: `${markerY}%`,
+              transform: `translate(-50%, -50%) scale(${cameraScaleCompensation * (selected ? 1.16 : focused ? 1.1 : active ? 1.04 : restingScale)})`,
+              filter: active
+                ? `drop-shadow(0 0 12px ${tone}86)`
+                : `drop-shadow(0 3px 6px rgba(0,0,0,0.88)) drop-shadow(0 0 5px ${tone}52)`,
               ['--pin-color' as string]: tone,
             }}
-            onClick={() => onSelect(site.id)}
+            data-pin-state={selected ? 'selected' : focused || isRecent ? 'focused' : 'resting'}
+            data-testid="civilization-scan-map-pin"
+            data-marker-mode="artifact-structure"
+            data-site-id={site.id}
+            data-artifact-id={site.artifactId ?? undefined}
+            data-pin-presentation="artifact-structure"
+            data-pin-link-state={selected || focused ? 'linked' : 'available'}
+            data-operational-state={isDamaged ? 'damaged' : 'operational'}
+            data-repair-state={repairQueued ? 'queued' : wasRepaired ? 'restored' : 'idle'}
+            data-world-anchor={`${worldAnchor?.x ?? markerX},${worldAnchor?.y ?? markerY}`}
+            data-world-host-key={worldAnchor?.hostKey}
+            data-pin-offset={worldAnchor ? markerOffset : undefined}
+            onClick={(event) => {
+              if (site.kind === 'artifact') {
+                selectAfterClick(site.id, event.detail);
+                return;
+              }
+              onInspect(site.id);
+            }}
+            onKeyDown={(event) => {
+              if (site.kind !== 'artifact') return;
+              if (event.key === ' ') {
+                event.preventDefault();
+                onSelect(site.id);
+              }
+              if (event.key === 'Enter') {
+                event.preventDefault();
+                onInspect(site.id);
+              }
+            }}
+            onDoubleClick={(event) => {
+              event.preventDefault();
+              if (site.kind === 'artifact') inspectAfterDoubleClick(site.id);
+            }}
+            onPointerEnter={() => onHover(site.id)}
+            onPointerLeave={() => onHover(null)}
+            onFocus={() => onHover(site.id)}
+            onBlur={() => onHover(null)}
             title={site.title}
           >
             <span
-              className="absolute bottom-0 left-1/2 h-4 w-10 -translate-x-1/2 rounded-full border"
+              className={`absolute left-1/2 top-1/2 grid -translate-x-1/2 -translate-y-1/2 place-items-center overflow-hidden border bg-[#050914] transition-[width,height,border-radius] duration-200 ${portraitSize} ${isBlueprint ? 'rounded-[5px] [clip-path:polygon(50%_0,100%_28%,100%_72%,50%_100%,0_72%,0_28%)]' : 'rounded-full'}`}
               style={{
-                borderColor: selected ? `${tone}CC` : focused || isRecent ? `${tone}90` : `${tone}62`,
-                background: `radial-gradient(ellipse at center, ${tone}2E, transparent 68%)`,
-                boxShadow: selected || focused || isRecent ? `0 0 18px ${tone}44` : undefined,
-              }}
-              aria-hidden="true"
-            />
-            <span
-              className="absolute bottom-3 left-1/2 h-9 w-px -translate-x-1/2 sm:h-14"
-              style={{
-                background: `linear-gradient(180deg, rgba(255,255,255,0.92), ${tone}E8 36%, ${tone}00)`,
-                boxShadow: `0 0 16px ${tone}78`,
-              }}
-              aria-hidden="true"
-            />
-            <span
-              className="absolute bottom-[1.05rem] left-1/2 h-6 w-[1.5px] -translate-x-1/2 sm:h-10"
-              style={{
-                background: 'linear-gradient(180deg, rgba(255,255,255,0.72), rgba(255,255,255,0))',
-              }}
-              aria-hidden="true"
-            />
-            <span
-              className="civ-map-pin-core absolute bottom-[2.35rem] left-1/2 z-10 flex h-8 w-8 -translate-x-1/2 rotate-45 items-center justify-center border bg-[#050914]/86 shadow-[0_0_18px_rgba(0,0,0,0.82)] backdrop-blur-sm sm:bottom-[3.5rem] sm:h-9 sm:w-9"
-              style={{
-                borderColor: selected ? `${tone}F0` : focused || isRecent ? `${tone}C8` : `${tone}86`,
-                background: selected || focused || isRecent
-                  ? `radial-gradient(circle, rgba(255,255,255,0.78), ${tone}74 38%, rgba(5,9,20,0.88) 72%)`
-                  : `radial-gradient(circle, rgba(255,255,255,0.46), ${tone}52 42%, rgba(5,9,20,0.9) 72%)`,
-                color: '#fff',
-                boxShadow: selected || focused || isRecent
-                  ? `inset 0 0 0 1px rgba(255,255,255,0.18), 0 0 26px ${tone}82, 0 0 42px ${tone}30`
-                  : `inset 0 0 0 1px rgba(255,255,255,0.1), 0 0 20px ${tone}4A`,
-                textShadow: `0 0 8px ${tone}`,
+                borderColor: active ? `${tone}FF` : `${tone}E8`,
+                background: `radial-gradient(circle, ${tone}42, rgb(5,9,20) 72%)`,
+                boxShadow: active
+                  ? `inset 0 0 0 1px rgba(255,255,255,0.22), 0 0 15px ${tone}72`
+                  : `inset 0 0 0 1px rgba(255,255,255,0.16), 0 3px 10px rgba(0,0,0,0.88), 0 0 7px ${tone}42`,
               }}
               aria-hidden="true"
             >
-              <span className="flex h-full w-full -rotate-45 items-center justify-center">
-                {site.kind === 'artifact' && site.artifactVisualMotif ? (
-                  <svg className="h-[1.125rem] w-[1.125rem] overflow-visible" viewBox="-8 -8 16 16">
-                    <ArtifactMotifGlyph site={site} x={0} y={0} tone="#fff" scale={0.72} />
-                  </svg>
+              {markerArtwork ? (
+                <img
+                  src={markerArtwork}
+                  alt=""
+                  className="h-full w-full object-cover"
+                  style={{ filter: 'saturate(1.12) contrast(1.16) brightness(1.06)' }}
+                  decoding="async"
+                  draggable={false}
+                  data-testid={isBlueprint
+                    ? 'civilization-blueprint-map-pin-art'
+                    : 'civilization-artifact-map-pin-art'}
+                  data-artifact-id={site.artifactId}
+                  data-blueprint-id={site.blueprintId}
+                />
+              ) : (
+                <span
+                  className="h-1.5 w-1.5 rounded-full"
+                  style={{ backgroundColor: tone, boxShadow: `0 0 8px ${tone}` }}
+                />
+              )}
+              <span
+                className={`pointer-events-none absolute inset-0 ${isBlueprint ? 'rounded-[5px]' : 'rounded-full'}`}
+                style={{ boxShadow: 'inset 0 0 7px rgba(0,0,0,0.32), inset 0 0 0 1px rgba(255,255,255,0.2)' }}
+              />
+            </span>
+            {isBlueprint && (
+              <span
+                className="absolute -bottom-0.5 -right-0.5 grid h-4 w-4 place-items-center rounded-[3px] border border-[#82ddff]/80 bg-[#061927]/96 text-[#b9efff] shadow-[0_0_9px_rgba(130,221,255,0.48)]"
+                aria-hidden="true"
+                data-testid="civilization-blueprint-paper-badge"
+              >
+                <FileText className="h-3 w-3" strokeWidth={2.1} />
+              </span>
+            )}
+            {isDamaged && !repairQueued && (
+              <span
+                className="absolute -right-0.5 -top-0.5 grid h-4 w-4 place-items-center rounded-full border border-[#ff857f]/80 bg-[#2a090b] text-[#ffd4cf] shadow-[0_0_9px_rgba(255,93,86,0.55)]"
+                aria-hidden="true"
+                data-testid="civilization-artifact-damaged-badge"
+              >
+                <Wrench className="h-2.5 w-2.5" />
+              </span>
+            )}
+            {repairQueued && (
+              <span
+                className="absolute -right-0.5 -top-0.5 grid h-4 w-4 place-items-center rounded-full border border-[#82ddff]/85 bg-[#071923] text-[#d7f7ff] shadow-[0_0_9px_rgba(130,221,255,0.58)]"
+                aria-hidden="true"
+                data-testid="civilization-artifact-repair-queued-badge"
+              >
+                <Wrench className="h-2.5 w-2.5" />
+              </span>
+            )}
+            {wasRepaired && (
+              <span
+                className="absolute -right-0.5 -top-0.5 grid h-4 w-4 place-items-center rounded-full border border-[#9af0c1]/85 bg-[#071c15] text-[#d9ffe9] shadow-[0_0_10px_rgba(110,231,167,0.62)]"
+                aria-hidden="true"
+                data-testid="civilization-artifact-restored-badge"
+              >
+                <Check className="h-2.5 w-2.5" />
+              </span>
+            )}
+            <span className="sr-only">Map marker {index + 1}</span>
+          </button>
+        );
+      })}
+      {!focusedCluster && markerPresentation.clusters.map((cluster) => {
+        const clusterAnchor = clusterAnchors.get(cluster.id) ?? cluster.anchor;
+        const tone = getCivilizationSiteTone(cluster.sites[0]!);
+        const previews = cluster.sites.slice(0, 3).map((site) => (
+          site.artifactId ? CARD_RUNTIME_ART[site.artifactId] ?? null : null
+        ));
+        return (
+          <button
+            key={cluster.id}
+            type="button"
+            className="pointer-events-auto absolute grid h-12 w-12 place-items-center text-white transition-[filter,transform] duration-200 hover:scale-105 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-white/75"
+            style={{
+              left: `${clusterAnchor.x}%`,
+              top: `${clusterAnchor.y}%`,
+              transform: 'translate(-50%, -50%)',
+              filter: `drop-shadow(0 4px 7px rgba(0,0,0,0.78)) drop-shadow(0 0 7px ${tone}42)`,
+            }}
+            aria-label={`Open ${cluster.label} district with ${cluster.sites.length} ${cluster.sites.length === 1 ? 'Artifact' : 'Artifacts'}`}
+            onClick={() => onFocusCluster({ ...cluster, anchor: clusterAnchor })}
+            data-testid="civilization-scan-district-stack"
+            data-cluster-id={cluster.id}
+            data-cluster-count={cluster.sites.length}
+          >
+            <span
+              className="absolute inset-1 rounded-full border bg-[#050914]/94"
+              style={{ borderColor: `${tone}B8`, boxShadow: `inset 0 0 0 1px rgba(255,255,255,0.08), 0 0 15px ${tone}34` }}
+              aria-hidden="true"
+            />
+            {previews.map((artwork, previewIndex) => (
+              <span
+                key={`${cluster.id}:preview:${previewIndex}`}
+                className="absolute h-6 w-6 overflow-hidden rounded-full border border-white/28 bg-[#09111d]"
+                style={{
+                  left: `${8 + previewIndex * 7}px`,
+                  top: `${8 + (previewIndex % 2) * 7}px`,
+                  zIndex: previewIndex + 1,
+                }}
+                aria-hidden="true"
+              >
+                {artwork ? (
+                  <img src={artwork} alt="" className="h-full w-full object-cover" decoding="async" draggable={false} />
                 ) : (
-                  <span
-                    className="h-2.5 w-2.5 rounded-full"
-                    style={{ backgroundColor: '#fff', boxShadow: `0 0 10px ${tone}` }}
-                  />
+                  <Layers3 className="m-1 h-4 w-4" style={{ color: tone }} />
                 )}
               </span>
+            ))}
+            <span className="absolute -bottom-1 -right-1 z-10 min-w-5 rounded-full border border-white/28 bg-[#07101b] px-1 text-[7px] font-black text-white shadow-lg">
+              +{cluster.sites.length}
             </span>
           </button>
         );
@@ -10081,66 +3702,284 @@ function ScanMapPins({
   );
 }
 
-function CivilizationZoomHotspot({
-  scene,
-  childScene,
-  palette,
-  highlight = false,
-  hintLabel,
+function ScanMapPins({
+  sites,
+  artifactWorldAnchors,
+  annotationOnly = false,
+  selectedSiteIds,
+  focusedSiteId,
+  recentSiteIds,
+  pendingRepairArtifactIds,
+  repairedSiteIds,
+  focusedClusterId,
+  forceAll = false,
   compact = false,
-  onZoom,
+  onSelect,
+  onInspect,
+  onFocusCluster,
+  onHover,
 }: {
-  scene: MarketSceneKind;
-  childScene: MarketSceneKind;
-  palette: AffinityPalette;
-  highlight?: boolean;
-  hintLabel?: string;
+  sites: readonly CivilizationDeploymentSite[];
+  artifactWorldAnchors?: ReadonlyMap<string, CivilizationArtifactWorldAnchor>;
+  annotationOnly?: boolean;
+  selectedSiteIds: ReadonlySet<string>;
+  focusedSiteId: string | null;
+  recentSiteIds: readonly string[];
+  pendingRepairArtifactIds: ReadonlySet<string>;
+  repairedSiteIds: ReadonlySet<string>;
+  focusedClusterId: string | null;
+  forceAll?: boolean;
   compact?: boolean;
-  onZoom: (scene: MarketSceneKind) => void;
+  onSelect: (siteId: string) => void;
+  onInspect: (siteId: string) => void;
+  onFocusCluster: (cluster: CivilizationScanMarkerCluster) => void;
+  onHover: (siteId: string | null) => void;
 }) {
-  const anchor = SCENE_UI[scene].hotspotAnchor;
-  const y = compact ? Math.min(anchor.y, 46) : anchor.y;
-  const childLabel = SCENE_UI[childScene].zoomLabel;
+  const selectedSiteId = [...selectedSiteIds].at(-1) ?? null;
+  if (annotationOnly) {
+    return (
+      <ArtifactStructureScanMarkers
+        sites={sites}
+        artifactWorldAnchors={artifactWorldAnchors}
+        selectedSiteIds={selectedSiteIds}
+        focusedSiteId={focusedSiteId}
+        recentSiteIds={recentSiteIds}
+        pendingRepairArtifactIds={pendingRepairArtifactIds}
+        repairedSiteIds={repairedSiteIds}
+        focusedClusterId={focusedClusterId}
+        forceAll={forceAll}
+        compact={compact}
+        onSelect={onSelect}
+        onInspect={onInspect}
+        onFocusCluster={onFocusCluster}
+        onHover={onHover}
+      />
+    );
+  }
+
   return (
-    <button
-      type="button"
-      className={`group pointer-events-auto absolute z-30 flex -translate-x-1/2 -translate-y-1/2 items-center gap-2 rounded-full border border-white/18 bg-[#050914]/68 px-2.5 py-2 text-left text-white shadow-[0_12px_34px_rgba(0,0,0,0.48)] backdrop-blur-md transition-[border-color,background-color,box-shadow,transform] hover:border-white/38 hover:bg-[#07111f]/82 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-white/70 ${
-        highlight ? 'civ-scan-attention' : ''
-      }`}
-      style={{
-        left: `${anchor.x}%`,
-        top: `${y}%`,
-        boxShadow: `0 0 0 1px ${palette.primary}1F, 0 12px 34px rgba(0,0,0,0.48), 0 0 24px ${palette.primary}24`,
-      }}
-      data-testid="civilization-zoom-hotspot"
-      aria-label={`${SCENE_UI[scene].hotspotLabel}: ${childLabel}`}
-      onClick={() => onZoom(childScene)}
-    >
-      <span
-        className="relative flex h-7 w-7 shrink-0 items-center justify-center rounded-full border text-[10px] font-black"
-        style={{
-          borderColor: `${palette.primary}88`,
-          background: `radial-gradient(circle, ${palette.primary}38, rgba(5,9,20,0.9) 70%)`,
-          color: '#ffffff',
-          textShadow: `0 0 10px ${palette.primary}`,
-        }}
-        aria-hidden="true"
-      >
-        +
-        <span
-          className="absolute -inset-2 rounded-full border opacity-55 group-hover:opacity-80"
-          style={{ borderColor: `${palette.primary}66` }}
-        />
-      </span>
-      <span className="hidden min-w-0 sm:block">
-        <span className="block text-[8px] font-black uppercase tracking-[0.2em] text-white/44">
-          Zoom in
-        </span>
-        <span className="block text-[10px] font-semibold uppercase tracking-[0.08em] text-white/86">
-          {hintLabel ?? childLabel}
-        </span>
-      </span>
-    </button>
+    <div className="pointer-events-none absolute inset-0 z-20" aria-hidden={false}>
+      {annotationOnly && (
+        <svg
+          className="pointer-events-none absolute inset-0 h-full w-full overflow-visible"
+          viewBox="0 0 100 100"
+          preserveAspectRatio="none"
+          aria-hidden="true"
+          data-testid="civilization-artifact-pin-host-links"
+        >
+          {sites.map((site) => {
+            const worldAnchor = site.kind === 'artifact'
+              ? artifactWorldAnchors?.get(site.id)
+              : undefined;
+            if (!worldAnchor) return null;
+            const tone = getCivilizationSiteTone(site);
+            const active = site.id === selectedSiteId || site.id === focusedSiteId;
+            const bendY = Math.min(worldAnchor.y, worldAnchor.hostY) - 1.4;
+            return (
+              <g key={`world-link:${site.id}`}>
+                <path
+                  d={`M ${worldAnchor.x} ${worldAnchor.y} Q ${(worldAnchor.x + worldAnchor.hostX) / 2} ${bendY} ${worldAnchor.hostX} ${worldAnchor.hostY}`}
+                  fill="none"
+                  stroke={tone}
+                  strokeOpacity={active ? 0.88 : 0.28}
+                  strokeWidth={active ? 0.34 : 0.18}
+                  vectorEffect="non-scaling-stroke"
+                  data-testid="civilization-artifact-pin-host-link"
+                  data-site-id={site.id}
+                  data-world-host-key={worldAnchor.hostKey}
+                />
+                <circle
+                  cx={worldAnchor.hostX}
+                  cy={worldAnchor.hostY}
+                  r={active ? 0.72 : 0.45}
+                  fill={tone}
+                  fillOpacity={active ? 0.72 : 0.26}
+                  stroke="rgba(255,255,255,0.72)"
+                  strokeOpacity={active ? 0.72 : 0.2}
+                  strokeWidth="0.12"
+                  vectorEffect="non-scaling-stroke"
+                />
+              </g>
+            );
+          })}
+        </svg>
+      )}
+      {sites.map((site, index) => {
+        const tone = getCivilizationSiteTone(site);
+        const isArtifactPin = site.kind === 'artifact' && Boolean(site.artifactId);
+        const artifactArtwork = isArtifactPin && site.artifactId
+          ? CARD_RUNTIME_ART[site.artifactId] ?? null
+          : null;
+        const selected = site.id === selectedSiteId;
+        const focused = site.id === focusedSiteId;
+        const isRecent = recentSiteIds.includes(site.id);
+        const worldAnchor = isArtifactPin ? artifactWorldAnchors?.get(site.id) : undefined;
+        const markerAnchor = worldAnchor ?? site.anchor;
+        return (
+          <button
+            key={site.id}
+            type="button"
+            aria-label={selectedSiteId ? `Map marker ${index + 1}: ${site.title}` : `Map marker ${index + 1}`}
+            className={`civ-map-pin pointer-events-auto absolute opacity-100 text-white transition-[filter,transform] focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-white/70 ${
+              annotationOnly ? 'h-12 w-8 sm:h-14 sm:w-9' : 'h-16 w-11 sm:h-20 sm:w-12'
+            }`}
+            style={{
+              left: `${markerAnchor.x}%`,
+              top: `${markerAnchor.y}%`,
+              transform: `translate(-50%, -97%) scale(${selected ? (annotationOnly ? 1.18 : 1.3) : focused || isRecent ? (annotationOnly ? 1.08 : 1.12) : 1})`,
+              filter: selected || focused || isRecent
+                ? `drop-shadow(0 0 22px ${tone}8A)`
+                : `drop-shadow(0 0 14px ${tone}42)`,
+              ['--pin-color' as string]: tone,
+            }}
+            data-pin-state={selected ? 'selected' : focused || isRecent ? 'focused' : 'resting'}
+            data-testid="civilization-scan-map-pin"
+            data-pin-link-state={isArtifactPin ? (selected || focused ? 'linked' : 'available') : undefined}
+            data-world-anchor={worldAnchor ? `${worldAnchor.x},${worldAnchor.y}` : undefined}
+            data-world-host-key={worldAnchor?.hostKey}
+            onClick={() => onSelect(site.id)}
+            onPointerEnter={() => onHover(site.id)}
+            onPointerLeave={() => onHover(null)}
+            onFocus={() => onHover(site.id)}
+            onBlur={() => onHover(null)}
+            title={site.title}
+          >
+            {isArtifactPin && (
+              <span
+                className={`civ-map-pin-link-aura pointer-events-none absolute left-1/2 -translate-x-1/2 rounded-[50%] transition-[opacity,transform] duration-300 ${
+                  annotationOnly ? 'bottom-[-0.45rem] h-8 w-14 sm:h-9 sm:w-16' : 'bottom-[-1rem] h-12 w-20 sm:h-14 sm:w-24'
+                } ${
+                  selected || focused ? 'civ-artifact-identity-glow opacity-100' : 'opacity-0'
+                }`}
+                style={{
+                  background: `radial-gradient(ellipse at center, ${tone}${selected || focused ? '62' : '2A'} 0%, ${tone}${selected || focused ? '28' : '10'} 42%, transparent 72%)`,
+                  boxShadow: selected || focused ? `0 0 26px ${tone}4A` : undefined,
+                  transform: `translateX(-50%) scale(${selected || focused ? 1.06 : 0.9})`,
+                }}
+                data-testid="civilization-artifact-pin-link-aura"
+                data-artifact-id={site.artifactId}
+                aria-hidden="true"
+              />
+            )}
+            <span
+              className={`absolute bottom-0 left-1/2 -translate-x-1/2 rounded-full border ${
+                annotationOnly ? 'h-2.5 w-7' : 'h-4 w-10'
+              }`}
+              style={{
+                borderColor: selected ? `${tone}CC` : focused || isRecent ? `${tone}90` : `${tone}62`,
+                background: `radial-gradient(ellipse at center, ${tone}2E, transparent 68%)`,
+                boxShadow: selected || focused || isRecent ? `0 0 18px ${tone}44` : undefined,
+              }}
+              aria-hidden="true"
+            />
+            <span
+              className={`absolute left-1/2 w-px -translate-x-1/2 ${
+                annotationOnly ? 'bottom-2 h-7 sm:h-8' : 'bottom-3 h-9 sm:h-14'
+              }`}
+              style={{
+                background: `linear-gradient(180deg, rgba(255,255,255,0.92), ${tone}E8 36%, ${tone}00)`,
+                boxShadow: `0 0 16px ${tone}78`,
+              }}
+              aria-hidden="true"
+            />
+            <span
+              className={`absolute left-1/2 w-[1.5px] -translate-x-1/2 ${
+                annotationOnly ? 'bottom-[0.65rem] h-5 sm:h-6' : 'bottom-[1.05rem] h-6 sm:h-10'
+              }`}
+              style={{
+                background: 'linear-gradient(180deg, rgba(255,255,255,0.72), rgba(255,255,255,0))',
+              }}
+              aria-hidden="true"
+            />
+            <span
+              className={`civ-map-pin-core absolute left-1/2 z-10 flex -translate-x-1/2 items-center justify-center ${
+                artifactArtwork
+                  ? annotationOnly
+                    ? 'bottom-[1.55rem] h-9 w-7 overflow-hidden sm:bottom-[1.75rem] sm:h-10 sm:w-8'
+                    : 'bottom-[2.15rem] h-12 w-9 overflow-hidden sm:bottom-[3.25rem] sm:h-14 sm:w-10'
+                  : annotationOnly
+                    ? 'bottom-[1.55rem] h-6 w-6 rotate-45 border bg-[#050914]/86 shadow-[0_0_14px_rgba(0,0,0,0.8)] sm:bottom-[1.8rem] sm:h-7 sm:w-7'
+                    : 'bottom-[2.35rem] h-8 w-8 rotate-45 border bg-[#050914]/86 shadow-[0_0_18px_rgba(0,0,0,0.82)] backdrop-blur-sm sm:bottom-[3.5rem] sm:h-9 sm:w-9'
+              }`}
+              style={{
+                borderColor: selected ? `${tone}F0` : focused || isRecent ? `${tone}C8` : `${tone}86`,
+                background: artifactArtwork
+                  ? `linear-gradient(145deg, rgba(255,255,255,0.92) 0%, ${tone}F0 14%, rgba(16,22,31,0.98) 40%, ${tone}A8 74%, rgba(2,5,12,0.98) 100%)`
+                  : selected || focused || isRecent
+                    ? `radial-gradient(circle, rgba(255,255,255,0.78), ${tone}74 38%, rgba(5,9,20,0.88) 72%)`
+                    : `radial-gradient(circle, rgba(255,255,255,0.46), ${tone}52 42%, rgba(5,9,20,0.9) 72%)`,
+                color: '#fff',
+                boxShadow: artifactArtwork
+                  ? undefined
+                  : selected || focused || isRecent
+                    ? `inset 0 0 0 1px rgba(255,255,255,0.18), 0 0 26px ${tone}82, 0 0 42px ${tone}30`
+                    : `inset 0 0 0 1px rgba(255,255,255,0.1), 0 0 20px ${tone}4A`,
+                clipPath: artifactArtwork
+                  ? 'polygon(15% 0, 85% 0, 100% 10%, 100% 76%, 50% 100%, 0 76%, 0 10%)'
+                  : undefined,
+                textShadow: `0 0 8px ${tone}`,
+              }}
+              data-pin-presentation={artifactArtwork ? 'artifact-relic' : 'signal'}
+              aria-hidden="true"
+            >
+              {artifactArtwork ? (
+                <span
+                  className="absolute inset-[2px] overflow-hidden bg-[#030712]"
+                  style={{
+                    clipPath: 'polygon(15% 0, 85% 0, 100% 10%, 100% 75%, 50% 100%, 0 75%, 0 10%)',
+                  }}
+                  data-testid="civilization-artifact-map-pin-art"
+                  data-artifact-id={site.artifactId}
+                >
+                  <img
+                    src={artifactArtwork}
+                    alt=""
+                    className="h-full w-full object-cover"
+                    decoding="async"
+                    draggable={false}
+                  />
+                  <span
+                    className="pointer-events-none absolute inset-0"
+                    style={{
+                      background: `linear-gradient(180deg, rgba(255,255,255,0.18), transparent 22%, transparent 58%, rgba(1,4,11,0.42) 78%, ${tone}4A 100%)`,
+                      boxShadow: 'inset 0 0 0 1px rgba(255,255,255,0.16), inset 0 -10px 14px rgba(0,0,0,0.25)',
+                    }}
+                  />
+                  <span
+                    className="pointer-events-none absolute left-[19%] right-[19%] top-px h-px"
+                    style={{
+                      background: 'linear-gradient(90deg, transparent, rgba(255,255,255,0.9), transparent)',
+                      boxShadow: `0 0 5px ${tone}B8`,
+                    }}
+                  />
+                  <span
+                    className="pointer-events-none absolute bottom-[3px] left-1/2 h-1.5 w-1.5 -translate-x-1/2 rotate-45 border"
+                    style={{
+                      borderColor: `${tone}E8`,
+                      background: 'rgba(255,255,255,0.84)',
+                      boxShadow: `0 0 7px ${tone}`,
+                    }}
+                  />
+                </span>
+              ) : (
+                <span className="flex h-full w-full -rotate-45 items-center justify-center">
+                  {site.kind === 'artifact' && site.artifactVisualMotif ? (
+                  <svg className="h-[1.125rem] w-[1.125rem] overflow-visible" viewBox="-8 -8 16 16">
+                    <ArtifactMotifGlyph site={site} x={0} y={0} tone="#fff" scale={0.72} />
+                  </svg>
+                  ) : (
+                    <span
+                      className="h-2.5 w-2.5 rounded-full"
+                      style={{ backgroundColor: '#fff', boxShadow: `0 0 10px ${tone}` }}
+                    />
+                  )}
+                </span>
+              )}
+            </span>
+          </button>
+        );
+      })}
+    </div>
   );
 }
 
@@ -10284,14 +4123,28 @@ export function CivilizationMiniatureScene({
   progressFraction,
   paused,
   deploymentSites,
+  civilization,
   recentSiteIds = [],
   showRecentCard = true,
   presentation = 'standard',
   className = '',
 }: CivilizationMiniatureSceneProps) {
   void progressFraction;
+  void palette;
+  const sceneRootRef = React.useRef<HTMLDivElement>(null);
+  const compactPlate = useIsMobile();
+  const documentVisible = useDocumentVisible();
+  const inViewport = useElementInViewport(sceneRootRef);
+  const motionPaused = paused || !documentVisible || !inViewport;
   const isThumbnail = presentation === 'thumbnail';
+  const environmentIdentity = civilization?.environmentIdentity ?? FALLBACK_CIVILIZATION_ENVIRONMENT;
   const rootScene = getSceneKind(tier);
+  const visualState = React.useMemo(() => deriveCivilizationVisualState({
+    civilization,
+    deploymentSites,
+    profile,
+    fallbackTier: tier,
+  }), [civilization, deploymentSites, profile, tier]);
   const orderedRecentSites = React.useMemo(() => (
     selectSitesByIdOrder(deploymentSites, recentSiteIds)
   ), [deploymentSites, recentSiteIds]);
@@ -10302,6 +4155,7 @@ export function CivilizationMiniatureScene({
   const scene = recentFocusSite
     ? normalizeSceneForTier(getNativeSceneForSite(recentFocusSite), tier)
     : rootScene;
+  const visualIdentity = visualState.identities[scene];
   const sceneSites = React.useMemo(() => (
     deploymentSites.filter((site) => isSiteAvailableInScene(site, scene))
   ), [deploymentSites, scene]);
@@ -10309,43 +4163,34 @@ export function CivilizationMiniatureScene({
     sceneSites.filter(isCivilizationSiteOperational)
   ), [sceneSites]);
   const sceneSignals = React.useMemo(() => buildSceneSignals(sceneSites), [sceneSites]);
-  const sceneIdentity = React.useMemo(() => buildSceneIdentity(sceneSites), [sceneSites]);
+  const sceneIdentity = React.useMemo(() => applyCanonicalAffinityIdentity(
+    buildSceneIdentity(sceneSites),
+    visualIdentity.primaryAffinity,
+    visualIdentity.secondaryAffinity,
+  ), [sceneSites, visualIdentity.primaryAffinity, visualIdentity.secondaryAffinity]);
   const sceneArchetype = React.useMemo(() => (
-    getCivilizationSceneArchetype(profile, sceneIdentity, sceneSignals)
-  ), [profile, sceneIdentity, sceneSignals]);
+    civilization
+      ? visualIdentity.plateArchetype
+      : getCivilizationSceneArchetype(profile, sceneIdentity, sceneSignals)
+  ), [civilization, profile, sceneIdentity, sceneSignals, visualIdentity.plateArchetype]);
   const miniatureSiteLimit = isThumbnail
     ? 1
     : recentSiteIds.length > 0
       ? 3
       : 2;
-  const cinematicVisualSites = React.useMemo(() => (
-    selectCinematicVisualSites(operationalSceneSites, miniatureSiteLimit, recentSiteIds)
-  ), [miniatureSiteLimit, operationalSceneSites, recentSiteIds]);
   const cinematicHeroSites = React.useMemo(() => (
     selectCinematicHeroSites(operationalSceneSites, miniatureSiteLimit, recentSiteIds)
   ), [miniatureSiteLimit, operationalSceneSites, recentSiteIds]);
-  const cinematicSignatureSites = React.useMemo(() => (
-    selectCinematicSignatureSites(cinematicHeroSites)
-  ), [cinematicHeroSites]);
-  const sceneRenderSites = React.useMemo(() => (
-    selectCinematicSites(cinematicHeroSites, 2)
-  ), [cinematicHeroSites]);
   const recentSite = React.useMemo(() => (
     selectSitesByIdOrder(sceneSites, recentSiteIds)[0] ?? null
   ), [sceneSites, recentSiteIds]);
-  const hasCinematicHeroBlueprint = cinematicHeroSites.some((site) => site.kind === 'blueprint');
   const cinematicStructuralSites = React.useMemo(() => (
     cinematicHeroSites.filter((site) => site.kind !== 'luminary')
   ), [cinematicHeroSites]);
-  const miniatureArtifactInfluenceSites = React.useMemo(() => (
-    (hasCinematicHeroBlueprint
-      ? cinematicVisualSites.filter((site) => recentSiteIds.includes(site.id))
-      : cinematicVisualSites
-    ).filter((site) => shouldRenderArtifactInfluence(site, scene))
-  ), [cinematicVisualSites, hasCinematicHeroBlueprint, recentSiteIds, scene]);
 
   return (
     <div
+      ref={sceneRootRef}
       className={`relative h-full w-full overflow-hidden bg-[#030711] ${className}`}
       role="img"
       aria-label="Civilization preview showing recent artifact, Blueprint, and Luminary consequences."
@@ -10355,106 +4200,72 @@ export function CivilizationMiniatureScene({
       data-recent-focus-site={recentFocusSite?.id ?? undefined}
       data-presentation={presentation}
       data-archetype={sceneArchetype ?? undefined}
-      data-civilization-motion={paused ? 'paused' : 'active'}
+      data-visual-identity={visualIdentity.morphologyId}
+      data-identity-layer={visualIdentity.layer ?? undefined}
+      data-identity-status={visualIdentity.status}
+      data-complexity={visualState.scenes[scene].stage}
+      data-global-complexity={visualState.globalComplexity}
+      data-city-development-stage={visualState.cityDevelopmentStage}
+      data-city-development-label={visualState.cityDevelopmentLabel}
+      data-current-reach={visualState.scenes[scene].reach}
+      data-civilization-motion={motionPaused ? 'paused' : 'active'}
+      data-civilization-visibility={inViewport ? 'visible' : 'offscreen'}
     >
       <MarketSceneStyles />
+      <CivilizationMorphologyStyles />
       <CinematicCivilizationPlate
         scene={scene}
-        palette={palette}
-        identity={sceneIdentity}
         signals={sceneSignals}
         archetype={sceneArchetype}
+        dyad={visualIdentity.dyad}
+        environmentIdentity={environmentIdentity}
+        evolutionStage={scene === 'surface'
+          ? visualState.cityDevelopmentStage >= 8
+            ? 3
+            : visualState.cityDevelopmentStage >= 6
+              ? 2
+              : visualState.cityDevelopmentStage >= 5
+                ? 1
+                : 0
+          : visualState.scenes[scene].stage}
+        civilizationMaturity={visualState.historicalMaturity}
+        settlementPhase={visualState.settlementPhase}
+        cityDevelopmentStage={visualState.cityDevelopmentStage}
         scanActive={false}
+        compact={compactPlate}
       />
-      <CivilizationEvolvedPlateStateLayer
+      <CivilizationIdentityContinuityLayer
         scene={scene}
-        palette={palette}
-        identity={sceneIdentity}
-        signals={sceneSignals}
-        scanActive={false}
+        identities={visualState.identities}
+        progress={visualState.scenes[scene]}
+        maturity={visualState.historicalMaturity}
+        compact={compactPlate}
+        environmentVariantId={environmentIdentity.variantId}
+        districtInstances={Object.values(civilization?.districtIdentity?.districts ?? {})}
+        residentSites={sceneSites}
       />
-      <CivilizationArchetypeAtmosphereLayer
-        profile={profile}
+      <CivilizationLivingWorldLayer
         scene={scene}
-        identity={sceneIdentity}
-        signals={sceneSignals}
-        scanActive={false}
+        dyad={visualIdentity.dyad}
+        operationalShares={civilization?.affinityIdentity.normalizedOperationalShares}
       />
-      {!isThumbnail && (
-        <>
-          <CivilizationArchetypeCompositionLayer
-            profile={profile}
-            scene={scene}
-            identity={sceneIdentity}
-            signals={sceneSignals}
-            scanActive={false}
-          />
-          <CivilizationPlateDialectLayer
-            scene={scene}
-            identity={sceneIdentity}
-            signals={sceneSignals}
-            scanActive={false}
-          />
-          <CivilizationSignatureAtmosphereLayer
-            sites={cinematicSignatureSites}
-            scene={scene}
-            scanActive={false}
-            maxSites={2}
-          />
-          <CivilizationEnvironmentalSignatureLayer
-            sites={cinematicSignatureSites}
-            scene={scene}
-            scanActive={false}
-            maxSites={2}
-          />
-          <CivilizationArtifactSubstructureLayer
-            sites={miniatureArtifactInfluenceSites}
-            scene={scene}
-            scanActive={false}
-            recentSiteIds={recentSiteIds}
-            maxSites={recentSite ? 3 : 2}
-          />
-        </>
-      )}
-      <CivilizationMaterializedSiteLayer
-        sites={recentFocusSite ? [recentFocusSite] : []}
+      <CivilizationArtifactManifestationLayer
+        sites={sceneSites}
         scene={scene}
+        dyad={visualIdentity.dyad}
+        environmentVariantId={environmentIdentity.variantId}
+        identityEpochs={[]}
         scanActive={false}
+        compact
         recentSiteIds={recentSiteIds}
-        maxSites={1}
-        focusMode={Boolean(recentFocusSite)}
-        compactFocus={Boolean(recentFocusSite)}
+        districtInstances={Object.values(civilization?.districtIdentity?.districts ?? {})}
       />
-      {!isThumbnail && (
-        <CivilizationNativeWorkLayer
-          sites={cinematicStructuralSites}
-          scene={scene}
-          recentSiteIds={recentSiteIds}
-          maxSites={recentSite ? 3 : 2}
-        />
-      )}
-      <CivilizationIntegratedConsequenceLayer
-        sites={cinematicStructuralSites}
+      <CivilizationBlueprintManifestationLayer
+        sites={cinematicStructuralSites.filter((site) => shouldRenderDominantBlueprint(site, scene))}
         scene={scene}
-        scanActive={false}
-        recentSiteIds={recentSiteIds}
-        maxSites={isThumbnail ? 1 : recentSite ? 3 : 2}
+        compact
+        environmentVariantId={environmentIdentity.variantId}
       />
-      {!isThumbnail && (
-        <>
-          <CivilizationDominantBlueprintLayer
-            sites={cinematicStructuralSites.filter((site) => shouldRenderDominantBlueprint(site, scene))}
-            scene={scene}
-            scanActive={false}
-          />
-          <CivilizationConsequenceLayer
-            sites={sceneRenderSites}
-            scene={scene}
-            scanActive={false}
-          />
-          <EnvironmentalTraceGlows sites={sceneRenderSites} scanActive={false} />
-        </>
-      )}
       {recentSite && !isThumbnail && (
         <MiniatureRecentTracePulse
           site={recentSite}
@@ -10462,7 +4273,6 @@ export function CivilizationMiniatureScene({
           showCard={showRecentCard}
         />
       )}
-      {!isThumbnail && <MiniatureWorkLedger sites={sceneSites} recentSiteIds={recentSiteIds} />}
       <div
         className="pointer-events-none absolute inset-0 bg-[radial-gradient(circle_at_50%_45%,transparent_28%,rgba(0,0,0,0.46)_100%),linear-gradient(180deg,rgba(0,0,0,0.08),transparent_32%,rgba(0,0,0,0.5))]"
         style={{
@@ -10478,229 +4288,6 @@ export function CivilizationMiniatureScene({
   );
 }
 
-function CivilizationCommandFrame({
-  palette,
-  scanActive,
-  scene,
-  traceCount,
-}: {
-  palette: AffinityPalette;
-  scanActive: boolean;
-  scene: MarketSceneKind;
-  traceCount: number;
-}) {
-  const cornerStyle = {
-    borderColor: `${palette.primary}72`,
-    boxShadow: `0 0 18px ${palette.primary}18`,
-  };
-  const edgeStyle = {
-    background: `linear-gradient(90deg, transparent, ${palette.primary}78, rgba(255,255,255,0.36), transparent)`,
-  };
-  const routePath = scene === 'surface'
-    ? 'M3 82 C18 68, 31 75, 45 63 C59 51, 73 61, 97 45'
-    : scene === 'orbit'
-      ? 'M4 69 C20 55, 36 57, 53 64 C68 71, 82 69, 97 55'
-      : scene === 'stellar'
-        ? 'M8 62 C25 45, 42 65, 58 52 C72 41, 84 49, 96 38'
-        : 'M8 63 C24 44, 43 48, 58 53 C75 59, 86 49, 96 31';
-  const contourPath = scene === 'surface'
-    ? 'M7 91 C24 82, 41 87, 59 75 C76 64, 88 71, 98 60'
-    : scene === 'orbit'
-      ? 'M13 74 C30 63, 47 64, 63 70 C77 76, 88 73, 97 65'
-      : scene === 'stellar'
-        ? 'M18 70 C35 59, 49 71, 67 58 C80 49, 90 52, 98 45'
-        : 'M13 44 C29 55, 45 58, 61 46 C74 37, 85 42, 98 58';
-  const orbitGuide = scene === 'surface'
-    ? { cx: 56, cy: 75, rx: 26, ry: 7, rotation: -8 }
-    : scene === 'orbit'
-      ? { cx: 53, cy: 61, rx: 39, ry: 11, rotation: -10 }
-      : scene === 'stellar'
-        ? { cx: 56, cy: 51, rx: 42, ry: 14, rotation: -8 }
-        : { cx: 55, cy: 51, rx: 30, ry: 9, rotation: -14 };
-  const activeMeterCount = Math.min(6, Math.max(2, traceCount));
-
-  return (
-    <div
-      className="pointer-events-none absolute inset-0 z-[24]"
-      aria-hidden="true"
-      data-testid="civilization-command-frame"
-      data-frame-scene={scene}
-      data-scan-active={scanActive ? 'true' : 'false'}
-    >
-      <div
-        className="absolute inset-3 border border-white/10 opacity-80"
-        style={{
-          boxShadow: `inset 0 0 28px ${palette.primary}12, inset 0 0 0 1px rgba(255,255,255,0.035)`,
-        }}
-      />
-      <svg
-        className="absolute inset-0 h-full w-full mix-blend-screen"
-        viewBox="0 0 100 100"
-        preserveAspectRatio="none"
-      >
-        <path
-          d="M4 14 L8 9 H31 L35 13 H65 L69 9 H92 L96 14 M4 86 L8 91 H31 L35 87 H65 L69 91 H92 L96 86"
-          fill="none"
-          stroke="rgba(255,255,255,0.14)"
-          strokeWidth="0.26"
-        />
-        <path
-          d={routePath}
-          fill="none"
-          stroke={`${palette.primary}${scanActive ? '8E' : '54'}`}
-          strokeLinecap="round"
-          strokeWidth={scanActive ? 0.46 : 0.34}
-          className={scanActive ? 'civ-command-frame-flow' : undefined}
-        />
-        <path
-          d={contourPath}
-          fill="none"
-          stroke={`${palette.accent}${scanActive ? '5C' : '32'}`}
-          strokeLinecap="round"
-          strokeWidth="0.26"
-          strokeDasharray="1.6 2.4"
-        />
-        <ellipse
-          cx={orbitGuide.cx}
-          cy={orbitGuide.cy}
-          rx={orbitGuide.rx}
-          ry={orbitGuide.ry}
-          fill="none"
-          stroke={`${palette.secondary}${scanActive ? '66' : '34'}`}
-          strokeWidth="0.24"
-          strokeDasharray="2.8 2.4"
-          transform={`rotate(${orbitGuide.rotation} ${orbitGuide.cx} ${orbitGuide.cy})`}
-        />
-        <ellipse
-          cx={orbitGuide.cx}
-          cy={orbitGuide.cy}
-          rx={orbitGuide.rx * 0.56}
-          ry={orbitGuide.ry * 0.48}
-          fill="none"
-          stroke="rgba(255,255,255,0.14)"
-          strokeWidth="0.16"
-          transform={`rotate(${orbitGuide.rotation} ${orbitGuide.cx} ${orbitGuide.cy})`}
-        />
-        {[18, 32, 47, 63, 79].map((x, index) => (
-          <circle
-            key={x}
-            cx={x}
-            cy={index % 2 === 0 ? 16 : 88}
-            r={index < activeMeterCount ? 0.34 : 0.22}
-            fill={index < activeMeterCount ? palette.primary : 'rgba(255,255,255,0.18)'}
-            opacity={index < activeMeterCount ? 0.72 : 0.32}
-            className={scanActive && index < activeMeterCount ? 'civ-command-frame-beacon' : undefined}
-          />
-        ))}
-        {scanActive && (
-          <g opacity="0.72">
-            <path
-              d="M12 22 H22 M12 26 H18 M78 22 H88 M82 26 H88 M13 76 H24 M16 80 H26 M75 76 H88 M79 80 H88"
-              stroke="rgba(255,255,255,0.18)"
-              strokeLinecap="round"
-              strokeWidth="0.24"
-            />
-            <path
-              d="M50 8 L52.6 10.6 L50 13.2 L47.4 10.6 Z"
-              fill={`${palette.primary}16`}
-              stroke={`${palette.primary}9A`}
-              strokeWidth="0.28"
-            />
-          </g>
-        )}
-      </svg>
-
-      <span className="absolute left-3 top-3 h-10 w-10 border-l border-t" style={cornerStyle} />
-      <span className="absolute right-3 top-3 h-10 w-10 border-r border-t" style={cornerStyle} />
-      <span className="absolute bottom-3 left-3 h-10 w-10 border-b border-l" style={cornerStyle} />
-      <span className="absolute bottom-3 right-3 h-10 w-10 border-b border-r" style={cornerStyle} />
-
-      <span className="absolute left-[12%] right-[12%] top-3 h-px opacity-70" style={edgeStyle} />
-      <span className="absolute bottom-3 left-[14%] right-[14%] h-px opacity-45" style={edgeStyle} />
-
-      <span
-        className="absolute left-5 top-5 h-8 w-28 border border-white/10 bg-[#030711]/18 opacity-70"
-        style={{
-          clipPath: 'polygon(0 0, 88% 0, 100% 50%, 88% 100%, 0 100%)',
-          boxShadow: `inset 0 0 18px ${palette.primary}0F`,
-        }}
-      />
-      <span
-        className="absolute right-5 top-5 h-8 w-28 border border-white/10 bg-[#030711]/18 opacity-70"
-        style={{
-          clipPath: 'polygon(12% 0, 100% 0, 100% 100%, 12% 100%, 0 50%)',
-          boxShadow: `inset 0 0 18px ${palette.primary}0F`,
-        }}
-      />
-      <span
-        className="absolute left-1/2 top-3 h-7 w-7 -translate-x-1/2 rotate-45 border"
-        style={{
-          borderColor: `${palette.primary}7A`,
-          background: `radial-gradient(circle, ${palette.primary}20, rgba(3,7,17,0.18) 68%)`,
-          boxShadow: `0 0 18px ${palette.primary}20`,
-        }}
-      />
-
-      <span className="absolute left-3 top-[28%] h-14 w-px bg-white/18" />
-      <span className="absolute left-3 top-[46%] h-8 w-px bg-white/12" />
-      <span className="absolute right-3 top-[30%] h-10 w-px bg-white/14" />
-      <span className="absolute right-3 top-[54%] h-16 w-px bg-white/18" />
-
-      <span className="absolute left-4 top-1/2 hidden -translate-y-1/2 flex-col gap-2 sm:flex">
-        {Array.from({ length: 4 }).map((_, index) => (
-          <span
-            key={index}
-            className="h-7 w-7 rotate-45 border border-white/12 bg-[#030711]/28"
-            style={index === 1 || (scanActive && index < 3) ? {
-              borderColor: `${palette.primary}72`,
-              background: `${palette.primary}10`,
-              boxShadow: `0 0 16px ${palette.primary}18`,
-            } : undefined}
-          />
-        ))}
-      </span>
-
-      <span className="absolute left-5 top-5 flex gap-1.5">
-        {Array.from({ length: 4 }).map((_, index) => (
-          <span
-            key={index}
-            className="h-1 w-5 bg-white/18"
-            style={index < (scanActive ? 4 : 2) ? {
-              background: `linear-gradient(90deg, ${palette.primary}, rgba(255,255,255,0.34))`,
-              boxShadow: `0 0 12px ${palette.primary}20`,
-            } : undefined}
-          />
-        ))}
-      </span>
-      <span className="absolute bottom-5 right-5 hidden gap-1 sm:flex">
-        {Array.from({ length: 4 }).map((_, index) => (
-          <span
-            key={`tile-${index}`}
-            className="h-6 w-10 border border-white/12 bg-[#030711]/34"
-            style={index < Math.min(4, Math.max(1, traceCount)) ? {
-              borderColor: `${palette.secondary}58`,
-              background: `linear-gradient(135deg, ${palette.secondary}12, rgba(255,255,255,0.035))`,
-              boxShadow: `inset 0 0 14px ${palette.secondary}10`,
-            } : undefined}
-          />
-        ))}
-      </span>
-      <span className="absolute bottom-5 right-5 flex gap-1 sm:bottom-14">
-        {Array.from({ length: 5 }).map((_, index) => (
-          <span
-            key={index}
-            className="h-1.5 w-1.5 rotate-45 border border-white/22"
-            style={index === 0 || (scanActive && index < 3) ? {
-              borderColor: `${palette.accent}A0`,
-              background: `${palette.primary}1C`,
-              boxShadow: `0 0 10px ${palette.primary}24`,
-            } : undefined}
-          />
-        ))}
-      </span>
-    </div>
-  );
-}
 
 export function CivilizationScenePanel({
   tier,
@@ -10708,83 +4295,202 @@ export function CivilizationScenePanel({
   profile,
   progressFraction,
   paused,
+  civilizationName,
+  permanentAffinities,
+  presentationMode = false,
+  fitViewport = false,
   defaultScanActive = false,
   defaultScene,
+  placementProof = false,
   deploymentSites,
   forgedArtifacts,
-  guidanceEnabled = true,
+  civilization,
+  environmentIdentity,
   stabilityBand = 'stable',
   activeConditions = [],
   externalRecentSiteIds = [],
+  artifactRenderingIds,
+  pendingRepairArtifactIds = [],
   onRecentSiteIdsSeen,
+  onRepairArtifacts,
   onOpenArtifact,
 }: CivilizationScenePanelProps) {
   void progressFraction;
+  const sceneRootRef = React.useRef<HTMLElement>(null);
   const isMobile = useIsMobile();
+  const documentVisible = useDocumentVisible();
+  const inViewport = useElementInViewport(sceneRootRef);
+  const motionPaused = paused || !documentVisible || !inViewport;
   const [compactViewport, setCompactViewport] = React.useState(false);
   const compactScanLayout = isMobile || compactViewport;
-  const visibleLimit = compactScanLayout ? 4 : 6;
+  const fittedCanvasWidth = useCivilizationViewportFit(
+    sceneRootRef, fitViewport && !presentationMode, compactScanLayout,
+  );
   const [scanActive, setScanActive] = React.useState(defaultScanActive);
-  const [portraitGuideVisible, setPortraitGuideVisible] = React.useState(false);
-  const [scanGuideVisible, setScanGuideVisible] = React.useState(false);
   const [selectedSiteId, setSelectedSiteId] = React.useState<string | null>(null);
+  const [selectedArtifactSiteIds, setSelectedArtifactSiteIds] = React.useState<Set<string>>(() => new Set());
+  const [inspectedSiteId, setInspectedSiteId] = React.useState<string | null>(null);
+  const [zoomedSiteId, setZoomedSiteId] = React.useState<string | null>(null);
+  const [inspectionOriginScene, setInspectionOriginScene] = React.useState<MarketSceneKind | null>(null);
+  const [scanClusterFocus, setScanClusterFocus] = React.useState<CivilizationScanMarkerCluster | null>(null);
+  const [scanIndexOpen, setScanIndexOpen] = React.useState(false);
+  const [repairSubmitting, setRepairSubmitting] = React.useState(false);
+  const [repairedSiteIds, setRepairedSiteIds] = React.useState<string[]>([]);
+  const [hoveredSiteId, setHoveredSiteId] = React.useState<string | null>(null);
   const [sceneOverride, setSceneOverride] = React.useState<MarketSceneKind>(() => (
     getInitialSceneOverride({ defaultScene, defaultScanActive, deploymentSites, tier })
   ));
   const [recentSiteIds, setRecentSiteIds] = React.useState<string[]>([]);
+  const resolvedEnvironmentIdentity = civilization?.environmentIdentity
+    ?? environmentIdentity
+    ?? FALLBACK_CIVILIZATION_ENVIRONMENT;
+  const visualState = React.useMemo(() => deriveCivilizationVisualState({
+    civilization,
+    deploymentSites,
+    profile,
+    fallbackTier: tier,
+  }), [civilization, deploymentSites, profile, tier]);
   const previousSiteIdsRef = React.useRef<Set<string> | null>(null);
+  const previousPendingRepairIdsRef = React.useRef<Set<string> | null>(null);
   const hasInitializedScanSelectionRef = React.useRef(false);
-  const scene = normalizeSceneForTier(sceneOverride, tier);
-  const availableScenes = React.useMemo(() => getAvailableScenePath(tier), [tier]);
-  const childScene = getChildScene(scene, tier);
+  const scene = normalizeSceneForTier(sceneOverride, tier, deploymentSites);
+  const visualIdentity = visualState.identities[scene];
+  const scenePalette = getCivilizationScenePalette(visualIdentity, palette);
+  const activePresentationDyad = civilization?.districtIdentity?.presentationDyad
+    ?? civilization?.affinityIdentity?.presentationDyad
+    ?? null;
+  const activePresentationCommittedTurnCount =
+    civilization?.districtIdentity?.presentationCommittedTurnCount
+    ?? civilization?.affinityIdentity?.identityEpochs?.at(-1)?.startedTurnCount
+    ?? null;
+  const previousSceneRef = React.useRef<CivilizationSceneKind>(scene);
+  const previousMaturityRef = React.useRef(visualState.historicalMaturity);
+  const [sceneTransition, setSceneTransition] = React.useState<{
+    from: CivilizationSceneKind;
+    to: CivilizationSceneKind;
+  } | null>(null);
+  const [maturityTransition, setMaturityTransition] = React.useState<typeof visualState.historicalMaturity | null>(null);
+  const [identityTransitionDyad, setIdentityTransitionDyad] = React.useState<CivilizationDyadId | null>(null);
+  const availableScenes = React.useMemo(
+    () => getAvailableScenePath(tier, deploymentSites),
+    [deploymentSites, tier],
+  );
   const sceneSites = React.useMemo(() => (
     deploymentSites.filter((site) => isSiteAvailableInScene(site, scene))
   ), [deploymentSites, scene]);
   const operationalSceneSites = React.useMemo(() => (
     sceneSites.filter(isCivilizationSiteOperational)
   ), [sceneSites]);
-  const scaleContextSites = React.useMemo(() => (
-    deploymentSites.filter((site) => !isSiteAvailableInScene(site, scene))
-  ), [deploymentSites, scene]);
-  const visibleSites = React.useMemo(
-    () => selectVisibleSites(
+  const hasDominantBlueprintInScene = operationalSceneSites.some((site) => (
+    shouldRenderDominantBlueprint(site, scene)
+  ));
+  const showPersistentLivingLayer = !compactScanLayout || !hasDominantBlueprintInScene;
+  const artifactWorldAnchors = React.useMemo(() => (
+    buildCivilizationArtifactWorldAnchors(
       sceneSites,
-      visibleLimit,
-      selectedSiteId ? [...recentSiteIds, selectedSiteId] : recentSiteIds,
-    ),
-    [sceneSites, recentSiteIds, selectedSiteId, visibleLimit],
-  );
-  const cinematicVisualSites = React.useMemo(
-    () => selectCinematicVisualSites(operationalSceneSites, isMobile ? 2 : 3, recentSiteIds),
-    [operationalSceneSites, recentSiteIds, isMobile],
-  );
-  const cinematicHeroSites = React.useMemo(
-    () => selectCinematicHeroSites(operationalSceneSites, recentSiteIds.length > 0 ? (isMobile ? 2 : 3) : (isMobile ? 1 : 2), recentSiteIds),
-    [operationalSceneSites, recentSiteIds, isMobile],
-  );
-  const cinematicSites = React.useMemo(
-    () => selectCinematicSites(cinematicHeroSites, isMobile ? 1 : 2),
-    [cinematicHeroSites, isMobile],
-  );
-  const overflowSites = React.useMemo(
-    () => sceneSites.filter((site) => !visibleSites.some((visible) => visible.id === site.id)),
-    [sceneSites, visibleSites],
-  );
-  const overflowCount = overflowSites.length;
-  const clusterGroups = React.useMemo(() => (
-    getClusterGroups(overflowSites)
-  ), [overflowSites]);
-  const sceneCopy = SCENE_COPY[scene];
+      scene,
+      visualIdentity.dyad,
+      resolvedEnvironmentIdentity?.variantId,
+      [],
+      compactScanLayout,
+      Object.values(civilization?.districtIdentity?.districts ?? {}),
+    )
+  ), [
+    resolvedEnvironmentIdentity?.variantId,
+    compactScanLayout,
+    sceneSites,
+    scene,
+    visualIdentity.dyad,
+    civilization?.districtIdentity?.districts,
+  ]);
+  const blueprintWorldAnchors = React.useMemo(() => (
+    buildCivilizationBlueprintWorldAnchors(
+      sceneSites,
+      scene,
+      resolvedEnvironmentIdentity?.variantId,
+      compactScanLayout,
+    )
+  ), [compactScanLayout, resolvedEnvironmentIdentity?.variantId, scene, sceneSites]);
+  const manifestationWorldAnchors = React.useMemo(() => new Map([
+    ...artifactWorldAnchors,
+    ...blueprintWorldAnchors,
+  ]), [artifactWorldAnchors, blueprintWorldAnchors]);
+  const settlementAnchors = React.useMemo(() => (
+    [...artifactWorldAnchors.values()].map(({ x, y }) => ({ x, y }))
+  ), [artifactWorldAnchors]);
+  const districtAffinityAccents = React.useMemo(() => {
+    const affinityCounts = new Map<ArtifactPlacementFamily, Map<string, {
+      count: number;
+      tone: string;
+    }>>();
+
+    sceneSites.forEach((site) => {
+      if (site.kind !== 'artifact') return;
+      const placement = artifactWorldAnchors.get(site.id)?.placement;
+      if (!placement) return;
+      const districtCounts = affinityCounts.get(placement) ?? new Map();
+      const current = districtCounts.get(site.affinity) ?? {
+        count: 0,
+        tone: getCivilizationSiteTone(site),
+      };
+      districtCounts.set(site.affinity, { ...current, count: current.count + 1 });
+      affinityCounts.set(placement, districtCounts);
+    });
+
+    const accents: Partial<Record<ArtifactPlacementFamily, CivilizationDistrictAffinityAccent>> = {};
+    affinityCounts.forEach((counts, placement) => {
+      const ranked = [...counts.entries()].sort((left, right) => (
+        right[1].count - left[1].count || left[0].localeCompare(right[0])
+      ));
+      const primary = ranked[0];
+      if (!primary) return;
+      const secondary = ranked[1] ?? primary;
+      accents[placement] = {
+        primaryTone: primary[1].tone,
+        secondaryTone: secondary[1].tone,
+        composition: ranked.map(([affinity, value]) => `${affinity}:${value.count}`).join('|'),
+      };
+    });
+    return accents;
+  }, [artifactWorldAnchors, sceneSites]);
+  const districtOccupancyCounts = React.useMemo(() => {
+    const counts: Partial<Record<ArtifactPlacementFamily, number>> = {};
+    sceneSites.forEach((site) => {
+      if (site.kind !== 'artifact') return;
+      const placement = artifactWorldAnchors.get(site.id)?.placement;
+      if (!placement) return;
+      counts[placement] = (counts[placement] ?? 0) + 1;
+    });
+    return counts;
+  }, [artifactWorldAnchors, sceneSites]);
+  const districtParcelOccupancyCounts = React.useMemo(() => {
+    const counts: Record<string, number> = {};
+    artifactWorldAnchors.forEach((anchor) => {
+      if (!anchor.districtParcelId) return;
+      counts[anchor.districtParcelId] = (counts[anchor.districtParcelId] ?? 0) + 1;
+    });
+    return counts;
+  }, [artifactWorldAnchors]);
+  // Catalog coverage must fail if a physical host is missing; never revive the
+  // retired trace renderer as a visual fallback.
+  const scanEligibleSites = React.useMemo(() => (
+    sceneSites.filter((site) => (
+      (site.kind !== 'artifact' && site.kind !== 'blueprint') || manifestationWorldAnchors.has(site.id)
+    ))
+  ), [manifestationWorldAnchors, sceneSites]);
+  const scanSites = scanEligibleSites;
   const sceneSignals = React.useMemo(() => buildSceneSignals(sceneSites), [sceneSites]);
-  const sceneIdentity = React.useMemo(() => buildSceneIdentity(sceneSites), [sceneSites]);
+  const sceneIdentity = React.useMemo(() => applyCanonicalAffinityIdentity(
+    buildSceneIdentity(sceneSites),
+    visualIdentity.primaryAffinity,
+    visualIdentity.secondaryAffinity,
+  ), [sceneSites, visualIdentity.primaryAffinity, visualIdentity.secondaryAffinity]);
   const sceneArchetype = React.useMemo(() => (
-    getCivilizationSceneArchetype(profile, sceneIdentity, sceneSignals)
-  ), [profile, sceneIdentity, sceneSignals]);
-  const sceneArchetypeVisual = sceneArchetype ? CIVILIZATION_ARCHETYPE_VISUALS[sceneArchetype] : null;
-  const traceCount = sceneSites.length;
-  const smallArtifactTraceSummary = React.useMemo(() => (
-    formatSmallArtifactTraceSummary(getSmallArtifactTraceLabels(sceneSites, forgedArtifacts))
-  ), [sceneSites, forgedArtifacts]);
+    civilization
+      ? visualIdentity.plateArchetype
+      : getCivilizationSceneArchetype(profile, sceneIdentity, sceneSignals)
+  ), [civilization, profile, sceneIdentity, sceneSignals, visualIdentity.plateArchetype]);
+  const scanLedgerSites = scanEligibleSites;
   const recentSites = React.useMemo(() => (
     selectSitesByIdOrder(deploymentSites, recentSiteIds)
   ), [deploymentSites, recentSiteIds]);
@@ -10807,29 +4513,9 @@ export function CivilizationScenePanel({
       : null
   ), [recentNativeTargetScene, recentSites]);
   const visibleRecentSites = React.useMemo(() => (
-    selectSitesByIdOrder(visibleSites, recentSiteIds)
-  ), [recentSiteIds, visibleSites]);
-  const revealRecentSites = React.useMemo(() => (
-    visibleRecentSites.length > 0
-      ? visibleRecentSites
-      : recentSites.slice(0, compactScanLayout ? 1 : 2)
-  ), [compactScanLayout, recentSites, visibleRecentSites]);
+    selectSitesByIdOrder(scanSites, recentSiteIds)
+  ), [recentSiteIds, scanSites]);
   const recentTraceSummary = React.useMemo(() => formatTraceNames(recentSites), [recentSites]);
-  const cinematicSignatureSites = React.useMemo(() => (
-    selectCinematicSignatureSites(cinematicHeroSites)
-  ), [cinematicHeroSites]);
-  React.useEffect(() => {
-    if (!guidanceEnabled || forgedArtifacts.length === 0) {
-      setPortraitGuideVisible(false);
-      return;
-    }
-    try {
-      setPortraitGuideVisible(!localStorage.getItem('luminae_civilization_portrait_hint_seen'));
-    } catch {
-      setPortraitGuideVisible(true);
-    }
-  }, [forgedArtifacts.length, guidanceEnabled]);
-
   React.useEffect(() => {
     const check = () => setCompactViewport(window.innerWidth < 640);
     if (typeof window.matchMedia !== 'function') {
@@ -10843,11 +4529,67 @@ export function CivilizationScenePanel({
   }, []);
 
   React.useEffect(() => {
-    setSceneOverride((current) => normalizeSceneForTier(current, tier));
-  }, [tier]);
+    setSceneOverride((current) => normalizeSceneForTier(current, tier, deploymentSites));
+  }, [deploymentSites, tier]);
+
+  React.useEffect(() => {
+    const previousScene = previousSceneRef.current;
+    if (previousScene === scene) return undefined;
+    previousSceneRef.current = scene;
+    setSceneTransition({ from: previousScene, to: scene });
+    const timeoutId = window.setTimeout(() => setSceneTransition(null), 1100);
+    return () => window.clearTimeout(timeoutId);
+  }, [scene]);
+
+  React.useEffect(() => {
+    const previousMaturity = previousMaturityRef.current;
+    if (previousMaturity === visualState.historicalMaturity) return undefined;
+    previousMaturityRef.current = visualState.historicalMaturity;
+    setMaturityTransition(visualState.historicalMaturity);
+    const timeoutId = window.setTimeout(() => setMaturityTransition(null), 2300);
+    return () => window.clearTimeout(timeoutId);
+  }, [visualState.historicalMaturity]);
+
+  React.useEffect(() => {
+    setIdentityTransitionDyad(null);
+    if (!activePresentationDyad || activePresentationCommittedTurnCount === null) {
+      return undefined;
+    }
+    const environmentSeed = resolvedEnvironmentIdentity?.matchScopedSeed ?? 0;
+    const seenKey = [
+      'luminae_civilization_identity_seen',
+      environmentSeed,
+      CIVILIZATION_DISTRICT_IDENTITY_POLICY_ID,
+      activePresentationDyad,
+      activePresentationCommittedTurnCount,
+    ].join(':');
+    try {
+      if (sessionStorage.getItem(seenKey)) return undefined;
+      sessionStorage.setItem(seenKey, '1');
+    } catch {
+      // A private browsing policy should not suppress the presentation.
+    }
+    setIdentityTransitionDyad(activePresentationDyad);
+    const timeoutId = window.setTimeout(() => setIdentityTransitionDyad(null), 2600);
+    return () => {
+      window.clearTimeout(timeoutId);
+      setIdentityTransitionDyad(null);
+    };
+  }, [
+    activePresentationCommittedTurnCount,
+    activePresentationDyad,
+    resolvedEnvironmentIdentity?.matchScopedSeed,
+  ]);
 
   React.useEffect(() => {
     if (!scanActive) {
+      setHoveredSiteId(null);
+      setInspectedSiteId(null);
+      setZoomedSiteId(null);
+      setInspectionOriginScene(null);
+      setScanClusterFocus(null);
+      setScanIndexOpen(false);
+      setSelectedArtifactSiteIds(new Set());
       if (hasInitializedScanSelectionRef.current) {
         setSelectedSiteId(null);
       } else {
@@ -10856,10 +4598,22 @@ export function CivilizationScenePanel({
       return;
     }
     hasInitializedScanSelectionRef.current = true;
+    if (hoveredSiteId && !scanSites.some((site) => site.id === hoveredSiteId)) {
+      setHoveredSiteId(null);
+    }
+    const availableSiteIds = new Set(scanSites.map((site) => site.id));
+    setSelectedArtifactSiteIds((current) => {
+      const next = new Set([...current].filter((siteId) => availableSiteIds.has(siteId)));
+      return next.size === current.size ? current : next;
+    });
+    if (zoomedSiteId && !availableSiteIds.has(zoomedSiteId)) setZoomedSiteId(null);
     if (!selectedSiteId) return;
-    if (visibleSites.some((site) => site.id === selectedSiteId)) return;
+    if (scanSites.some((site) => site.id === selectedSiteId)) return;
     setSelectedSiteId(null);
-  }, [scanActive, selectedSiteId, visibleSites]);
+    setInspectedSiteId(null);
+    setZoomedSiteId(null);
+    setInspectionOriginScene(null);
+  }, [hoveredSiteId, scanActive, scanSites, selectedSiteId, zoomedSiteId]);
 
   React.useEffect(() => {
     const nextIds = new Set(deploymentSites.map((site) => site.id));
@@ -10876,13 +4630,17 @@ export function CivilizationScenePanel({
 
     const primaryNewSite = deploymentSites.find((site) => site.id === newlyVisibleIds[0]);
     setRecentSiteIds(newlyVisibleIds);
-    setScanActive(true);
     if (primaryNewSite) {
-      setSceneOverride(normalizeSceneForTier(getNativeSceneForSite(primaryNewSite), tier));
+      setSceneOverride(normalizeSceneForTier(getNativeSceneForSite(primaryNewSite), tier, deploymentSites));
+      if (primaryNewSite.kind !== 'artifact') setScanActive(true);
     }
-    setSelectedSiteId((current) => (
-      current && newlyVisibleIds.includes(current) ? current : newlyVisibleIds[0] ?? null
-    ));
+    // Let the reveal breathe before the player opens the detailed dossier.
+    setSelectedSiteId(null);
+    setInspectedSiteId(null);
+    setZoomedSiteId(null);
+    setInspectionOriginScene(null);
+    setScanClusterFocus(null);
+    setSelectedArtifactSiteIds(new Set());
     const timeoutId = window.setTimeout(() => {
       setRecentSiteIds((current) => current.filter((siteId) => !newlyVisibleIds.includes(siteId)));
     }, RECENT_TRACE_VISIBLE_MS);
@@ -10890,19 +4648,47 @@ export function CivilizationScenePanel({
     return () => window.clearTimeout(timeoutId);
   }, [deploymentSites, tier]);
 
+  React.useEffect(() => {
+    const currentPendingIds = new Set(pendingRepairArtifactIds);
+    const trackedIds = previousPendingRepairIdsRef.current ?? new Set<string>();
+    currentPendingIds.forEach((artifactId) => trackedIds.add(artifactId));
+    previousPendingRepairIdsRef.current = trackedIds;
+
+    const completedArtifactIds = [...trackedIds].filter((artifactId) => (
+      !currentPendingIds.has(artifactId) && deploymentSites.some((site) => (
+        site.artifactId === artifactId && site.implementationState !== 'damaged'
+      ))
+    ));
+    if (completedArtifactIds.length === 0) return;
+
+    completedArtifactIds.forEach((artifactId) => trackedIds.delete(artifactId));
+    setRepairedSiteIds(deploymentSites
+      .filter((site) => Boolean(site.artifactId && completedArtifactIds.includes(site.artifactId)))
+      .map((site) => site.id));
+  }, [deploymentSites, pendingRepairArtifactIds]);
+
+  React.useEffect(() => {
+    if (repairedSiteIds.length === 0) return undefined;
+    const timeoutId = window.setTimeout(() => setRepairedSiteIds([]), 2800);
+    return () => window.clearTimeout(timeoutId);
+  }, [repairedSiteIds]);
+
   const toggleScan = React.useCallback(() => {
     setScanActive((current) => {
       const next = !current;
-      if (next && guidanceEnabled) {
-        try {
-          setScanGuideVisible(!localStorage.getItem('luminae_civilization_scan_hint_seen'));
-        } catch {
-          setScanGuideVisible(true);
-        }
+      if (!next) {
+        setSelectedSiteId(null);
+        setInspectedSiteId(null);
+        setZoomedSiteId(null);
+        setInspectionOriginScene(null);
+        setScanClusterFocus(null);
+        setScanIndexOpen(false);
+        setSelectedArtifactSiteIds(new Set());
+        setHoveredSiteId(null);
       }
       return next;
     });
-  }, [guidanceEnabled]);
+  }, []);
 
   React.useEffect(() => {
     const displayableIds = externalRecentSiteIds.filter((siteId) => (
@@ -10912,13 +4698,17 @@ export function CivilizationScenePanel({
 
     const primaryRecentSite = deploymentSites.find((site) => site.id === displayableIds[0]);
     setRecentSiteIds((current) => prioritizeRecentCivilizationSiteIds(displayableIds, current));
-    setScanActive(true);
     if (primaryRecentSite) {
-      setSceneOverride(normalizeSceneForTier(getNativeSceneForSite(primaryRecentSite), tier));
+      setSceneOverride(normalizeSceneForTier(getNativeSceneForSite(primaryRecentSite), tier, deploymentSites));
+      if (primaryRecentSite.kind !== 'artifact') setScanActive(true);
     }
-    setSelectedSiteId((current) => (
-      current && displayableIds.includes(current) ? current : displayableIds[0] ?? null
-    ));
+    // Keep the new trace visible without covering its first presentation with details.
+    setSelectedSiteId(null);
+    setInspectedSiteId(null);
+    setZoomedSiteId(null);
+    setInspectionOriginScene(null);
+    setScanClusterFocus(null);
+    setSelectedArtifactSiteIds(new Set());
 
     const timeoutId = window.setTimeout(() => {
       setRecentSiteIds((current) => current.filter((siteId) => !displayableIds.includes(siteId)));
@@ -10927,123 +4717,196 @@ export function CivilizationScenePanel({
 
     return () => window.clearTimeout(timeoutId);
   }, [deploymentSites, externalRecentSiteIds, onRecentSiteIdsSeen, tier]);
+  const selectedArtifactFocusId = [...selectedArtifactSiteIds].at(-1) ?? null;
   const selectedSite = React.useMemo(() => (
-    scanActive ? visibleSites.find((site) => site.id === selectedSiteId) ?? null : null
-  ), [scanActive, selectedSiteId, visibleSites]);
-  const focusedSite = scanActive ? selectedSite ?? visibleRecentSites[0] ?? visibleSites[0] ?? null : null;
-  const focusedSiteId = focusedSite?.id ?? null;
-  const dossierSite = selectedSite;
-  const selectedScanPresentationActive = scanActive && Boolean(dossierSite);
-  const dossierPreferredSide = dossierSite && dossierSite.anchor.x > 55 ? 'left' : 'right';
-  const sceneOverlaySites = React.useMemo(() => (
-    selectedScanPresentationActive && dossierSite ? [dossierSite] : sceneSites
-  ), [selectedScanPresentationActive, dossierSite, sceneSites]);
-  const sceneOverlaySignals = React.useMemo(() => buildSceneSignals(sceneOverlaySites), [sceneOverlaySites]);
-  const sceneOverlayIdentity = React.useMemo(() => buildSceneIdentity(sceneOverlaySites), [sceneOverlaySites]);
-  const sceneOverlayArchetype = React.useMemo(() => (
-    getCivilizationSceneArchetype(profile, sceneOverlayIdentity, sceneOverlaySignals)
-  ), [profile, sceneOverlayIdentity, sceneOverlaySignals]);
-  const scanContextSites = React.useMemo(() => (
     scanActive
-      ? selectScanFocusSites(visibleSites, focusedSiteId, 1, recentSiteIds)
-          .filter(isCivilizationSiteOperational)
-      : []
-  ), [scanActive, visibleSites, focusedSiteId, recentSiteIds]);
-  const scanPrimarySites = React.useMemo(() => (
-    scanActive && focusedSite && isCivilizationSiteOperational(focusedSite) ? [focusedSite] : []
-  ), [scanActive, focusedSite]);
-  const hasCinematicHeroBlueprint = cinematicHeroSites.some((site) => site.kind === 'blueprint');
-  const cinematicArtifactInfluenceSites = React.useMemo(() => (
-    (hasCinematicHeroBlueprint
-      ? cinematicVisualSites.filter((site) => recentSiteIds.includes(site.id))
-      : cinematicVisualSites
-    ).filter((site) => shouldRenderArtifactInfluence(site, scene))
-  ), [cinematicVisualSites, hasCinematicHeroBlueprint, recentSiteIds, scene]);
-  const heavyRenderSites = scanActive ? scanPrimarySites : cinematicHeroSites;
-  const scanPresentationSites = selectedScanPresentationActive ? [] : heavyRenderSites;
-  const structuralRenderSites = scanActive
-    ? scanPresentationSites
-    : heavyRenderSites.filter((site) => site.kind !== 'luminary');
-  const selectedNativeWorkSites = selectedScanPresentationActive && focusedSite && isCivilizationSiteOperational(focusedSite) && getNativeSceneForSite(focusedSite) === scene
-    ? [focusedSite]
-    : structuralRenderSites;
-  const sceneRenderSites = scanActive ? scanPresentationSites : cinematicSites;
-  const signatureRenderSites = scanActive && selectedScanPresentationActive ? [] : scanActive ? scanContextSites : cinematicSignatureSites;
+      ? scanSites.find((site) => site.id === (selectedSiteId ?? selectedArtifactFocusId)) ?? null
+      : null
+  ), [scanActive, scanSites, selectedArtifactFocusId, selectedSiteId]);
+  const focusedSite = scanActive
+    ? selectedSite ?? visibleRecentSites[0] ?? null
+    : null;
+  const focusedSiteId = focusedSite?.id ?? null;
+  const linkedSiteId = scanActive ? hoveredSiteId ?? zoomedSiteId ?? selectedSiteId ?? focusedSiteId : null;
+  const scanMapSites = scanSites;
+  const dossierSite = scanActive
+    ? scanSites.find((site) => site.id === inspectedSiteId) ?? null
+    : null;
+  const dossierAnchor = dossierSite ? manifestationWorldAnchors.get(dossierSite.id) : undefined;
+  const dossierPreferredSide = dossierSite && (dossierAnchor?.x ?? dossierSite.anchor.x) > 55 ? 'left' : 'right';
+  const dossierPreferredVerticalSide = dossierSite && (dossierAnchor?.y ?? dossierSite.anchor.y) > 50
+    ? 'top'
+    : 'bottom';
+  const dossierDistrictLabel = dossierAnchor?.district
+    ? formatScanDistrictLabel(dossierAnchor.district)
+    : null;
+  const zoomAnchor = zoomedSiteId ? manifestationWorldAnchors.get(zoomedSiteId) : undefined;
+  const cameraFocusOffset = zoomedSiteId && zoomAnchor
+    ? {
+        x: Math.max(-28, Math.min(
+          28,
+          (dossierPreferredSide === 'left'
+            ? compactScanLayout ? 76 : 72
+            : compactScanLayout ? 24 : 28) - zoomAnchor.x,
+        )),
+        y: Math.max(-24, Math.min(
+          24,
+          (dossierPreferredVerticalSide === 'top'
+            ? compactScanLayout ? 74 : 68
+            : compactScanLayout ? 26 : 32) - zoomAnchor.y,
+        )),
+      }
+    : { x: 0, y: 0 };
+  const pendingRepairIdSet = React.useMemo(
+    () => new Set(pendingRepairArtifactIds),
+    [pendingRepairArtifactIds],
+  );
+  const repairedSiteIdSet = React.useMemo(() => new Set(repairedSiteIds), [repairedSiteIds]);
+  const selectedArtifactSites = React.useMemo(() => scanSites.filter((site) => (
+    site.kind === 'artifact' && selectedArtifactSiteIds.has(site.id)
+  )), [scanSites, selectedArtifactSiteIds]);
+  const selectedRepairableArtifactIds = React.useMemo(() => [...new Set(
+    selectedArtifactSites
+      .filter((site) => site.implementationState === 'damaged' && site.artifactId)
+      .map((site) => site.artifactId!)
+      .filter((artifactId) => !pendingRepairIdSet.has(artifactId)),
+  )], [pendingRepairIdSet, selectedArtifactSites]);
+  const selectedPendingRepairCount = React.useMemo(() => selectedArtifactSites.filter((site) => (
+    Boolean(site.artifactId && pendingRepairIdSet.has(site.artifactId))
+  )).length, [pendingRepairIdSet, selectedArtifactSites]);
+  const sceneOverlaySites = sceneSites;
+  const sceneOverlaySignals = React.useMemo(() => buildSceneSignals(sceneOverlaySites), [sceneOverlaySites]);
+  const sceneOverlayIdentity = React.useMemo(() => applyCanonicalAffinityIdentity(
+    buildSceneIdentity(sceneOverlaySites),
+    visualIdentity.primaryAffinity,
+    visualIdentity.secondaryAffinity,
+  ), [sceneOverlaySites, visualIdentity.primaryAffinity, visualIdentity.secondaryAffinity]);
+  const sceneOverlayArchetype = React.useMemo(() => (
+    civilization
+      ? sceneArchetype
+      : getCivilizationSceneArchetype(profile, sceneOverlayIdentity, sceneOverlaySignals)
+  ), [civilization, profile, sceneArchetype, sceneOverlayIdentity, sceneOverlaySignals]);
   const focusScanSite = React.useCallback((siteId: string) => {
     const site = deploymentSites.find((entry) => entry.id === siteId);
-    setSelectedSiteId(siteId);
-    setScanActive(true);
-    if (site) {
-      setSceneOverride(normalizeSceneForTier(getNativeSceneForSite(site), tier));
+    if (!site) return;
+    if (site.kind === 'artifact') {
+      setSelectedArtifactSiteIds((current) => {
+        const next = new Set(current);
+        if (next.has(siteId)) next.delete(siteId);
+        else next.add(siteId);
+        return next;
+      });
+      setSelectedSiteId(null);
+    } else {
+      setSelectedSiteId(siteId);
     }
-  }, [deploymentSites, tier]);
+    setInspectedSiteId(null);
+    setZoomedSiteId(null);
+    setScanActive(true);
+  }, [deploymentSites]);
+  const openScanDossier = React.useCallback((siteId: string) => {
+    const site = deploymentSites.find((entry) => entry.id === siteId);
+    if (!site) return;
+    setSelectedSiteId(siteId);
+    if (site.kind === 'artifact') {
+      setSelectedArtifactSiteIds((current) => new Set(current).add(siteId));
+    }
+    setInspectedSiteId(siteId);
+    setZoomedSiteId(siteId);
+    setInspectionOriginScene((current) => current ?? scene);
+    setScanClusterFocus(null);
+    setScanActive(true);
+    setSceneOverride(normalizeSceneForTier(getNativeSceneForSite(site), tier, deploymentSites));
+  }, [deploymentSites, scene, tier]);
+  const focusScanCluster = React.useCallback((cluster: CivilizationScanMarkerCluster) => {
+    setScanClusterFocus(cluster);
+    setInspectedSiteId(null);
+    setZoomedSiteId(null);
+    setSelectedSiteId(null);
+    setScanActive(true);
+  }, []);
+  const returnToOverview = React.useCallback(() => {
+    if (inspectionOriginScene) {
+      setSceneOverride(normalizeSceneForTier(inspectionOriginScene, tier, deploymentSites));
+    }
+    setZoomedSiteId(null);
+    setInspectedSiteId(null);
+    setInspectionOriginScene(null);
+    setScanClusterFocus(null);
+  }, [deploymentSites, inspectionOriginScene, tier]);
+  const queueArtifactRepairs = React.useCallback(async (artifactIds: readonly string[]) => {
+    if (!onRepairArtifacts || artifactIds.length === 0 || repairSubmitting) return;
+    setRepairSubmitting(true);
+    try {
+      await onRepairArtifacts(artifactIds);
+    } finally {
+      setRepairSubmitting(false);
+    }
+  }, [onRepairArtifacts, repairSubmitting]);
 
   return (
     <section
-      className="relative overflow-hidden rounded-[10px] border border-white/14 bg-[#050914] shadow-[inset_0_0_0_1px_rgba(255,255,255,0.035),0_22px_62px_rgba(0,0,0,0.28)]"
+      ref={sceneRootRef}
+      className={`civilization-scene-panel relative overflow-hidden bg-[#050914] ${presentationMode
+        ? 'h-full border-0'
+        : 'rounded-[10px] border border-white/14 shadow-[inset_0_0_0_1px_rgba(255,255,255,0.035),0_22px_62px_rgba(0,0,0,0.28)]'}`}
       aria-label="Civilization scene"
       data-testid="civilization-scene-panel"
+      data-scene={scene}
       data-archetype={sceneArchetype ?? undefined}
+      data-visual-identity={visualIdentity.morphologyId}
+      data-identity-layer={visualIdentity.layer ?? undefined}
+      data-identity-status={visualIdentity.status}
+      data-complexity={visualState.scenes[scene].stage}
+      data-global-complexity={visualState.globalComplexity}
+      data-city-development-stage={visualState.cityDevelopmentStage}
+      data-city-development-label={visualState.cityDevelopmentLabel}
+      data-current-reach={visualState.scenes[scene].reach}
+      data-civilization-performance={compactScanLayout ? 'mobile' : 'full'}
+      data-render-generation="authored-world"
+      data-placement-proof={placementProof ? 'active' : undefined}
       data-stability={stabilityBand}
-      data-civilization-motion={paused ? 'paused' : 'active'}
+      data-civilization-motion={motionPaused ? 'paused' : 'active'}
+      data-civilization-visibility={inViewport ? 'visible' : 'offscreen'}
       style={{
-        borderColor: `${palette.primary}33`,
-        boxShadow: `inset 0 0 0 1px rgba(255,255,255,0.035), 0 22px 62px rgba(0,0,0,0.28), 0 0 34px ${palette.primary}12`,
+        borderColor: `${scenePalette.primary}33`,
+        boxShadow: `inset 0 0 0 1px rgba(255,255,255,0.035), 0 22px 62px rgba(0,0,0,0.28), 0 0 34px ${scenePalette.primary}12`,
       }}
     >
       <MarketSceneStyles />
-      <header
-        className="relative z-20 flex flex-col gap-2 border-b border-white/12 bg-[#050914]/72 px-3 py-2.5 backdrop-blur-md sm:flex-row sm:items-start sm:justify-between sm:gap-3 sm:px-3.5 sm:py-3"
+      <CivilizationMorphologyStyles />
+      {!presentationMode && <header
+        className="civilization-scene-header relative z-20 flex flex-col gap-2 border-b border-white/12 bg-[#050914]/72 px-3 py-2.5 backdrop-blur-md sm:px-3.5 sm:py-3"
         style={{
-          background: `linear-gradient(135deg, rgba(5,9,20,0.76), ${palette.primary}12)`,
+          background: `linear-gradient(135deg, rgba(5,9,20,0.76), ${scenePalette.primary}12)`,
         }}
       >
+        {permanentAffinities}
         <div className="min-w-0">
-          <h2 className="text-sm font-medium text-white sm:text-base">Civilization Portrait</h2>
-          <p className="mt-0.5 text-[11px] leading-relaxed text-white/54 sm:text-xs">
-            {sceneCopy.label} // {traceCount} trace{traceCount === 1 ? '' : 's'} recorded
-          </p>
-          {sceneArchetypeVisual && (
-            <p
-              className="mt-0.5 truncate text-[9px] font-semibold uppercase tracking-[0.14em] text-[#dfb86b]/76 sm:mt-1 sm:text-[10px] sm:tracking-[0.16em]"
-              data-testid="civilization-archetype-label"
-            >
-              Visual identity // {sceneArchetypeVisual.label}
-            </p>
-          )}
-          {smallArtifactTraceSummary && (
-            <p className="mt-0.5 line-clamp-2 text-[9px] font-semibold uppercase tracking-[0.14em] text-[#82ddff]/72 sm:mt-1 sm:truncate sm:text-[10px] sm:tracking-[0.16em]">
-              Local artifact traces // {smallArtifactTraceSummary}
-            </p>
-          )}
+          <div className="flex items-start justify-between gap-3">
+            <h2 className="min-w-0 truncate text-base font-semibold text-white sm:text-lg">
+              {civilizationName ?? getCivilizationSceneTitle(visualIdentity)}
+            </h2>
+            {(stabilityBand !== 'stable' || activeConditions.length > 0) && (
+              <span
+                className="inline-flex min-h-6 shrink-0 items-center gap-1.5 rounded-[6px] border border-[#e78d62]/35 bg-[#e78d62]/10 px-2 text-[8px] font-black uppercase tracking-[0.12em] text-[#ffc3a9] sm:text-[9px]"
+                data-testid="civilization-attention-state"
+              >
+                <span className="h-1.5 w-1.5 rounded-full bg-[#e78d62] shadow-[0_0_8px_rgba(231,141,98,0.72)]" aria-hidden="true" />
+                {activeConditions.length > 0
+                  ? `${activeConditions.length} active condition${activeConditions.length === 1 ? '' : 's'}`
+                  : CIVILIZATION_STABILITY_LABELS[stabilityBand]}
+              </span>
+            )}
+          </div>
           {recentTraceSummary && (
             <p className="mt-0.5 line-clamp-2 text-[9px] font-black uppercase tracking-[0.16em] text-[#dfb86b] sm:mt-1 sm:truncate sm:text-[10px] sm:tracking-[0.18em]" aria-live="polite">
-              New trace recorded // {recentTraceSummary}
+              New work realized // {recentTraceSummary}
               {recentZoomHint ? ` // ${recentZoomHint}` : ''}
             </p>
           )}
-          <p
-            className="mt-1 inline-flex items-center gap-1.5 text-[9px] font-semibold uppercase tracking-[0.14em] text-white/62"
-            data-testid="civilization-system-state-label"
-          >
-            <span
-              className="h-1.5 w-1.5 rounded-full"
-              style={{
-                backgroundColor: stabilityBand === 'stable'
-                  ? '#8ed3aa'
-                  : stabilityBand === 'strained'
-                    ? '#dfb86b'
-                    : stabilityBand === 'unstable'
-                      ? '#e78d62'
-                      : '#ef665f',
-              }}
-              aria-hidden="true"
-            />
-            Stability // {CIVILIZATION_STABILITY_LABELS[stabilityBand]}
-            {activeConditions.length > 0 ? ` // ${activeConditions.length} active condition${activeConditions.length === 1 ? '' : 's'}` : ''}
-          </p>
         </div>
-        <div className="flex flex-wrap items-center gap-1 sm:justify-end sm:gap-1.5" aria-label="Civilization scale path">
+        <div className="civilization-scene-scale-path flex flex-wrap items-center gap-1 sm:gap-1.5" aria-label="Civilization scale path">
           {availableScenes.map((item, index) => {
             const activeScale = scene === item;
             const suggestedScale = Boolean(recentNativeTargetScene && recentNativeTargetScene === item && !activeScale);
@@ -11079,7 +4942,10 @@ export function CivilizationScenePanel({
                     backgroundColor: 'rgba(255, 255, 255, 0.06)',
                     color: 'rgba(255, 255, 255, 0.68)',
                   }}
-                  onClick={() => setSceneOverride(item)}
+                  onClick={() => {
+                    returnToOverview();
+                    setSceneOverride(item);
+                  }}
                 >
                   {(activeScale || suggestedScale) && (
                     <span
@@ -11097,14 +4963,16 @@ export function CivilizationScenePanel({
                   {SCENE_UI[item].label}
                   {suggestedScaleChip && (
                     <span className="rounded-full border border-[#82ddff]/38 bg-[#82ddff]/14 px-1 py-0.5 text-[7px] font-black uppercase leading-none tracking-[0.1em] text-[#dff7ff]">
-                      {suggestedScaleChip}
+                      {getCivilizationImpactKind(recentNativeTargetSite ?? undefined) === 'blueprint'
+                        ? <FileText className="h-2.5 w-2.5" aria-hidden="true" />
+                        : suggestedScaleChip}
                     </span>
                   )}
                 </button>
               </React.Fragment>
             );
           })}
-          {sceneSites.length > 0 && (
+          {deploymentSites.length > 0 && (
             <button
               type="button"
               aria-pressed={scanActive}
@@ -11123,231 +4991,210 @@ export function CivilizationScenePanel({
             </button>
           )}
         </div>
-      </header>
+      </header>}
 
       <div
-        className="relative h-[clamp(320px,54dvh,500px)] overflow-hidden bg-[#030711] sm:h-[560px]"
-        role="img"
+        className={`civilization-scene-canvas relative overflow-hidden bg-[#030711] ${presentationMode
+          ? 'h-full min-h-0'
+          : compactScanLayout
+            ? 'aspect-[4/5] h-auto'
+            : 'aspect-video h-auto'}`}
+        role="group"
         aria-label="Civilization portrait where artifacts, Blueprints, and allied Luminaries are represented as environmental changes at believable scale."
-        style={{
-          background: `radial-gradient(circle at 50% 34%, ${palette.primary}13, transparent 44%), #030711`,
-        }}
+          style={{
+            background: `radial-gradient(circle at 50% 34%, ${scenePalette.primary}13, transparent 44%), #030711`,
+            ...(fittedCanvasWidth === undefined ? {} : {
+              width: '100%',
+              maxWidth: fittedCanvasWidth,
+              marginInline: 'auto',
+            }),
+          }}
       >
-        {(portraitGuideVisible || scanGuideVisible) && (
-          <aside
-            className="absolute inset-x-3 top-3 z-[90] flex items-start justify-between gap-2 border border-[#82ddff]/30 bg-[#04101a]/96 px-3 py-2 text-left shadow-[0_10px_26px_rgba(0,0,0,0.36)] sm:left-auto sm:max-w-[420px] sm:gap-3 sm:py-2.5 sm:backdrop-blur-md"
-            aria-live="polite"
-            data-testid={scanGuideVisible ? 'civilization-scan-guide' : 'civilization-portrait-guide'}
-          >
-            <div>
-              <strong className="block text-xs font-semibold text-white">
-                {scanGuideVisible ? 'Read the causal record' : 'Your first historical trace'}
-              </strong>
-              <span className="mt-1 block text-[10px] leading-snug text-white/70 sm:hidden">
-                {scanGuideVisible
-                  ? 'Select a deployment to inspect its role, location, and present condition.'
-                  : 'Forged technology now alters this civilization. Open Scan to inspect the cause.'}
-              </span>
-              <span className="mt-1 hidden text-[11px] leading-relaxed text-white/68 sm:block">
-                {scanGuideVisible
-                  ? 'Select a deployment site to see what it does, where it operates, and whether its capability is currently active. Stability and Conditions describe the civilization now; the historical imprint remains.'
-                  : 'A Forged Artifact is implemented capability. Its plausible deployment and wider consequences now alter this portrait permanently.'}
-              </span>
-            </div>
+        {identityTransitionDyad && (
+          <>
+            <div
+              className="pointer-events-none absolute inset-[8%] z-[70] border border-[#dfb86b]/25"
+              style={{
+                animation: 'civIdentityMetamorphosis 2.5s ease-out both',
+                background: `radial-gradient(ellipse at 50% 58%, ${visualIdentity.primaryTone}38 0%, ${visualIdentity.secondaryTone}1E 34%, transparent 70%)`,
+              }}
+              aria-hidden="true"
+            />
             <button
               type="button"
-              className="grid h-8 w-8 shrink-0 place-items-center rounded-full border border-white/12 text-white/65 hover:bg-white/10 hover:text-white focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-white/70"
-              aria-label="Dismiss Civilization guidance"
-              onClick={() => {
-                if (scanGuideVisible) {
-                  markHintSeen('luminae_civilization_scan_hint_seen');
-                  setScanGuideVisible(false);
-                }
-                if (portraitGuideVisible) {
-                  markHintSeen('luminae_civilization_portrait_hint_seen');
-                  setPortraitGuideVisible(false);
-                }
-              }}
+              className="absolute inset-x-0 top-3 z-[95] mx-auto w-fit max-w-[calc(100%-24px)] border border-[#dfb86b]/35 bg-[#030711]/88 px-4 py-2 text-center shadow-[0_10px_32px_rgba(0,0,0,0.55)] backdrop-blur-sm"
+              onClick={() => setIdentityTransitionDyad(null)}
+              data-testid="civilization-identity-transition"
+              aria-label="Dismiss civilization evolution notice"
             >
-              <X className="h-4 w-4" aria-hidden="true" />
+              <span className="block text-[9px] font-black uppercase tracking-[0.2em] text-[#dfb86b]">
+                Civilization evolved
+              </span>
+              <span className="mt-0.5 block text-sm font-semibold text-white">
+                {CIVILIZATION_DYAD_DEFINITIONS.find((definition) => definition.id === identityTransitionDyad)?.name ?? identityTransitionDyad}
+                {' '}architecture now leads
+              </span>
+              <span className="mt-0.5 block text-[10px] text-white/58">Earlier districts remain</span>
             </button>
-          </aside>
+          </>
+        )}
+        {repairedSiteIds.length > 0 && (
+          <div
+            className="pointer-events-none absolute left-1/2 top-2 z-[92] flex -translate-x-1/2 items-center gap-2 border border-[#9af0c1]/48 bg-[#06140f]/94 px-3 py-2 text-[#d9ffe9] shadow-[0_12px_32px_rgba(0,0,0,0.58),0_0_22px_rgba(110,231,167,0.2)] backdrop-blur-md"
+            role="status"
+            aria-live="polite"
+            data-testid="civilization-repair-complete-notice"
+          >
+            <span className="grid h-6 w-6 place-items-center rounded-full border border-[#9af0c1]/60 bg-[#9af0c1]/10">
+              <Check className="h-3.5 w-3.5" aria-hidden="true" />
+            </span>
+            <span className="text-[9px] font-black uppercase tracking-[0.14em]">
+              {repairedSiteIds.length} {repairedSiteIds.length === 1 ? 'Artifact' : 'Artifacts'} restored
+            </span>
+          </div>
+        )}
+        {(zoomedSiteId || scanClusterFocus) && (
+          <button
+            type="button"
+            className="absolute left-2 top-2 z-[90] inline-flex min-h-9 items-center gap-2 border border-[#82ddff]/38 bg-[#050914]/92 px-3 text-[9px] font-black uppercase tracking-[0.14em] text-white shadow-[0_10px_28px_rgba(0,0,0,0.56)] backdrop-blur-md transition-colors hover:border-[#82ddff]/72 hover:bg-[#0a1724]/96 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[#82ddff]/80 sm:left-3 sm:top-3"
+            onClick={returnToOverview}
+            data-testid="civilization-return-overview"
+          >
+            <ZoomOut className="h-4 w-4 text-[#b9efff]" aria-hidden="true" />
+            Overview
+          </button>
+        )}
+        {scanActive && !dossierSite && selectedArtifactSites.length > 0 && (
+          <div
+            className="absolute right-2 top-2 z-[88] w-[min(15rem,calc(100%-1rem))] border border-white/14 bg-[#050914]/92 p-1.5 shadow-[0_14px_34px_rgba(0,0,0,0.58)] backdrop-blur-md sm:right-3 sm:top-3 sm:w-64 sm:p-2"
+            data-testid="civilization-artifact-selection-toolbar"
+          >
+            <div className="mb-1.5 flex items-center justify-between gap-2 px-1">
+              <span className="text-[8px] font-black uppercase tracking-[0.16em] text-white/58">
+                {selectedArtifactSites.length} selected
+                {' · '}{selectedRepairableArtifactIds.length} repairable
+                {selectedPendingRepairCount > 0 ? ` · ${selectedPendingRepairCount} queued` : ''}
+              </span>
+              <button
+                type="button"
+                className="grid h-6 w-6 place-items-center rounded-full text-white/48 transition-colors hover:bg-white/10 hover:text-white focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-white/60"
+                aria-label="Clear Artifact selection"
+                onClick={() => {
+                  setSelectedArtifactSiteIds(new Set());
+                  setSelectedSiteId(null);
+                }}
+              >
+                <X className="h-3.5 w-3.5" aria-hidden="true" />
+              </button>
+            </div>
+            <RepairActionButton
+              count={selectedRepairableArtifactIds.length || selectedPendingRepairCount}
+              compact
+              pending={selectedRepairableArtifactIds.length === 0 && selectedPendingRepairCount > 0}
+              disabled={!onRepairArtifacts || repairSubmitting || selectedRepairableArtifactIds.length === 0}
+              onClick={() => void queueArtifactRepairs(selectedRepairableArtifactIds)}
+            />
+          </div>
         )}
         <div
-          className="absolute inset-0 opacity-[0.82]"
+          className="absolute inset-0 transition-transform duration-700 ease-[cubic-bezier(0.2,0.72,0.18,1)] motion-reduce:transition-none"
+          data-testid="civilization-scene-camera"
+          data-camera-shift={zoomedSiteId && zoomAnchor
+            ? 'artifact-focus'
+            : scanClusterFocus
+              ? 'district-focus'
+              : 'resting'}
+          data-camera-focus-offset={`${cameraFocusOffset.x},${cameraFocusOffset.y}`}
           style={{
-            backgroundImage: [
-              'radial-gradient(circle at 7% 17%, rgba(255,255,255,0.8) 0 1px, transparent 1.5px)',
-              'radial-gradient(circle at 14% 46%, rgba(255,255,255,0.38) 0 1px, transparent 1.5px)',
-              'radial-gradient(circle at 28% 12%, rgba(255,255,255,0.42) 0 1px, transparent 1.5px)',
-              'radial-gradient(circle at 41% 32%, rgba(255,255,255,0.55) 0 1px, transparent 1.5px)',
-              'radial-gradient(circle at 59% 15%, rgba(255,255,255,0.44) 0 1px, transparent 1.5px)',
-              'radial-gradient(circle at 75% 31%, rgba(255,255,255,0.62) 0 1px, transparent 1.5px)',
-              'radial-gradient(circle at 88% 61%, rgba(255,255,255,0.36) 0 1px, transparent 1.5px)',
-              'radial-gradient(circle at 63% 83%, rgba(255,255,255,0.4) 0 1px, transparent 1.5px)',
-            ].join(','),
+            transformOrigin: zoomedSiteId && zoomAnchor
+              ? `${zoomAnchor.x}% ${zoomAnchor.y}%`
+              : scanClusterFocus
+                ? `${scanClusterFocus.anchor.x}% ${scanClusterFocus.anchor.y}%`
+              : '50% 50%',
+            transform: zoomedSiteId && zoomAnchor
+              ? `translate(${cameraFocusOffset.x}%, ${cameraFocusOffset.y}%) scale(${compactScanLayout ? 1.62 : 1.92})`
+              : scanClusterFocus
+                ? `scale(${compactScanLayout ? 1.38 : 1.28})`
+                : 'scale(1)',
           }}
-          aria-hidden="true"
-        />
-        <div
-          className="absolute inset-0 bg-[radial-gradient(circle_at_50%_42%,rgba(130,221,255,0.07),transparent_45%)]"
-          aria-hidden="true"
-        />
-        <div className="hidden" aria-hidden="true">
-          <MarketCivilizationScene scene={scene} signals={sceneSignals} />
-        </div>
+        >
         <CinematicCivilizationPlate
           scene={scene}
-          palette={palette}
-          identity={sceneOverlayIdentity}
           signals={sceneOverlaySignals}
           archetype={sceneOverlayArchetype}
-          scanActive={scanActive}
+          dyad={visualIdentity.dyad}
+          environmentIdentity={resolvedEnvironmentIdentity}
+          evolutionStage={scene === 'surface'
+            ? visualState.cityDevelopmentStage >= 8
+              ? 3
+              : visualState.cityDevelopmentStage >= 6
+                ? 2
+                : visualState.cityDevelopmentStage >= 5
+                  ? 1
+                  : 0
+            : visualState.scenes[scene].stage}
+          civilizationMaturity={visualState.historicalMaturity}
+          settlementPhase={visualState.settlementPhase}
+          cityDevelopmentStage={visualState.cityDevelopmentStage}
+          scanActive={false}
+          compact={compactScanLayout}
         />
-        <CivilizationEvolvedPlateStateLayer
+        {placementProof && scene === 'surface' && visualIdentity.dyad === 'chrysalis' && (
+          <CivilizationDistrictPlacementProof
+            compact={compactScanLayout}
+            environmentVariantId={resolvedEnvironmentIdentity.variantId}
+            occupancyCounts={districtParcelOccupancyCounts}
+          />
+        )}
+        <CivilizationIdentityContinuityLayer
           scene={scene}
-          palette={palette}
-          identity={sceneOverlayIdentity}
-          signals={sceneOverlaySignals}
-          scanActive={scanActive}
-        />
-        <CivilizationArchetypeAtmosphereLayer
-          profile={profile}
-          scene={scene}
-          identity={sceneOverlayIdentity}
-          signals={sceneOverlaySignals}
-          scanActive={scanActive}
+          identities={visualState.identities}
+          progress={visualState.scenes[scene]}
+          maturity={visualState.historicalMaturity}
+          compact={compactScanLayout}
+          environmentVariantId={resolvedEnvironmentIdentity?.variantId}
+          settlementAnchors={settlementAnchors}
+          districtAffinityAccents={districtAffinityAccents}
+          districtOccupancyCounts={districtOccupancyCounts}
+          districtInstances={Object.values(civilization?.districtIdentity?.districts ?? {})}
+          residentSites={sceneSites}
+          placementProof={placementProof}
         />
         <CivilizationSystemStateLayer
+          scene={scene}
           stabilityBand={stabilityBand}
           activeConditions={activeConditions}
         />
-        {!selectedScanPresentationActive && (
-          <CivilizationArchetypeCompositionLayer
-            profile={profile}
+        {showPersistentLivingLayer && (
+          <CivilizationLivingWorldLayer
             scene={scene}
-            identity={sceneOverlayIdentity}
-            signals={sceneOverlaySignals}
-            scanActive={scanActive}
+            dyad={visualIdentity.dyad}
+            operationalShares={civilization?.affinityIdentity.normalizedOperationalShares}
+            activeConditions={activeConditions}
           />
         )}
-        {!scanActive && (
-          <>
-            <CivilizationScaleFrameLayer scene={scene} palette={palette} scanActive={scanActive} />
-            <CivilizationPlateDialectLayer
-              scene={scene}
-              identity={sceneIdentity}
-              signals={sceneSignals}
-              scanActive={scanActive}
-            />
-            <CivilizationScaleContextLayer scene={scene} palette={palette} scanActive={scanActive} />
-            <CivilizationSceneDepthCompositionLayer
-              scene={scene}
-              palette={palette}
-              identity={sceneIdentity}
-              signals={sceneSignals}
-              scanActive={scanActive}
-            />
-          </>
-        )}
-        <CivilizationScaleTheaterLayer
-          sites={structuralRenderSites}
-          scene={scene}
-          scanActive={scanActive}
-          recentSiteIds={recentSiteIds}
-          maxSites={scanActive ? 1 : isMobile ? 2 : 4}
-        />
-        <CivilizationMaterializedSiteLayer
-          sites={selectedNativeWorkSites}
-          scene={scene}
-          scanActive={scanActive}
-          recentSiteIds={recentSiteIds}
-          maxSites={scanActive ? 1 : isMobile ? 2 : 3}
-          focusMode={selectedScanPresentationActive}
-          compactFocus={compactScanLayout && selectedScanPresentationActive}
-        />
-        {!selectedScanPresentationActive && (
-          <CivilizationTraitDialectLayer profile={profile} scene={scene} compact={isMobile} />
-        )}
-        <CivilizationSignatureAtmosphereLayer
-          sites={signatureRenderSites}
-          scene={scene}
-          scanActive={scanActive}
-          maxSites={scanActive ? (isMobile ? 1 : 2) : isMobile ? 2 : 3}
-        />
-        <CivilizationIdentityAtmosphereLayer identity={sceneIdentity} palette={palette} />
-        <CivilizationEnvironmentalSignatureLayer
-          sites={signatureRenderSites}
-          scene={scene}
-          scanActive={scanActive}
-          maxSites={scanActive ? (isMobile ? 1 : 2) : isMobile ? 2 : 3}
-        />
-        <CivilizationArtifactSubstructureLayer
-          sites={scanActive ? scanPresentationSites : cinematicArtifactInfluenceSites}
-          scene={scene}
-          scanActive={scanActive}
-          recentSiteIds={recentSiteIds}
-          maxSites={scanActive ? 1 : isMobile ? 2 : 3}
-        />
-        <CivilizationArtifactDeploymentLayer
-          sites={structuralRenderSites}
-          scene={scene}
-          scanActive={scanActive}
-          recentSiteIds={recentSiteIds}
-          maxSites={scanActive ? 1 : isMobile ? 1 : 2}
-        />
-        <CivilizationNativeWorkLayer
-          sites={selectedNativeWorkSites}
-          scene={scene}
-          recentSiteIds={recentSiteIds}
-          maxSites={scanActive ? 1 : isMobile ? 2 : 3}
-          compactFocus={compactScanLayout && selectedScanPresentationActive}
-        />
-        <CivilizationIntegratedConsequenceLayer
-          sites={structuralRenderSites}
-          scene={scene}
-          scanActive={scanActive}
-          recentSiteIds={recentSiteIds}
-          maxSites={scanActive ? 1 : isMobile ? 2 : 3}
-        />
-        <CivilizationDominantBlueprintLayer
-          sites={structuralRenderSites.filter((site) => shouldRenderDominantBlueprint(site, scene))}
-          scene={scene}
-          scanActive={scanActive}
-        />
-        {scanActive && (
-          <CivilizationProjectWashLayer
-            sites={scanPresentationSites}
-            scene={scene}
-            scanActive={scanActive}
-          />
-        )}
-        {scanActive && (
-          <>
-            <CivilizationProjectZoneLayer
-              sites={scanPresentationSites}
-              scene={scene}
-              scanActive={scanActive}
-            />
-            <CivilizationTraitSignatureLayer
-              sites={scanPresentationSites}
-              scene={scene}
-              scanActive={scanActive}
-              maxSites={1}
-            />
-          </>
-        )}
-        <CivilizationConsequenceLayer
-          sites={sceneRenderSites}
-          scene={scene}
-          scanActive={scanActive}
-        />
-        <EnvironmentalTraceGlows sites={sceneRenderSites} scanActive={scanActive} />
-        <CivilizationArtifactLifecycleScarLayer
+        <CivilizationArtifactManifestationLayer
           sites={sceneSites}
-          focusedSiteId={focusedSiteId}
+          scene={scene}
+          dyad={visualIdentity.dyad}
+          environmentVariantId={resolvedEnvironmentIdentity?.variantId}
+          identityEpochs={[]}
+          scanActive={scanActive}
+          compact={compactScanLayout}
+          focusedSiteId={linkedSiteId}
+          recentSiteIds={recentSiteIds}
+          repairedSiteIds={repairedSiteIds}
+          activeConditions={activeConditions}
+          artifactRenderingIds={artifactRenderingIds}
+          districtInstances={Object.values(civilization?.districtIdentity?.districts ?? {})}
+          onHoverSite={setHoveredSiteId}
         />
-        <RecentTraceReveal sites={revealRecentSites} showLabel={!dossierSite} />
+        <CivilizationBlueprintManifestationLayer
+          sites={operationalSceneSites.filter((site) => shouldRenderDominantBlueprint(site, scene))}
+          scene={scene}
+          compact={compactScanLayout}
+          environmentVariantId={resolvedEnvironmentIdentity?.variantId}
+        />
         <div
           className="pointer-events-none absolute inset-0 bg-[radial-gradient(circle_at_50%_45%,transparent_42%,rgba(0,0,0,0.3)_100%),linear-gradient(180deg,rgba(0,0,0,0.07),transparent_30%,rgba(0,0,0,0.4))]"
           style={{
@@ -11359,147 +5206,128 @@ export function CivilizationScenePanel({
           }}
           aria-hidden="true"
         />
-        <div
-          className={`pointer-events-none absolute inset-0 bg-[linear-gradient(rgba(130,221,255,0.09)_1px,transparent_1px),linear-gradient(90deg,rgba(130,221,255,0.09)_1px,transparent_1px)] bg-[size:54px_54px] mix-blend-screen transition-opacity duration-200 ${
-            scanActive ? 'opacity-[0.22]' : 'opacity-0'
-          }`}
-          aria-hidden="true"
-        />
-        <CivilizationCommandFrame
-          palette={palette}
-          scanActive={scanActive}
-          scene={scene}
-          traceCount={traceCount}
-        />
         {scanActive && (
-          <>
-            <ScanTraceFields
-              sites={visibleSites}
-              selectedSiteId={selectedSiteId}
-              focusedSiteId={focusedSiteId}
-              recentSiteIds={recentSiteIds}
-            />
-            {isCivilizationSiteOperational(focusedSite) && (
-              <FocusedDeploymentProjectionLayer
-                site={focusedSite}
-                scene={scene}
-                selected={Boolean(dossierSite)}
-                recent={Boolean(focusedSite && recentSiteIds.includes(focusedSite.id))}
-                compactFocus={compactScanLayout && selectedScanPresentationActive}
-              />
-            )}
-            <ScanFocusLayer
-              site={focusedSite}
-              selected={Boolean(dossierSite)}
-              recent={Boolean(focusedSite && recentSiteIds.includes(focusedSite.id))}
-            />
-            <ScanMapPins
-              sites={visibleSites}
-              selectedSiteId={selectedSiteId}
-              focusedSiteId={focusedSiteId}
-              recentSiteIds={recentSiteIds}
-              onSelect={focusScanSite}
-            />
-            {compactScanLayout && !selectedSite && (
-              <MobileInfluenceRail
-                sites={visibleSites}
-                selectedSiteId={selectedSiteId}
-                overflowCount={overflowCount}
-                recentSiteIds={recentSiteIds}
-                onSelect={focusScanSite}
-              />
-            )}
-            {compactScanLayout && !selectedSite && (
-              <MobileScanPrimaryReadout
-                site={focusedSite}
-                isRecent={Boolean(focusedSite && recentSiteIds.includes(focusedSite.id))}
-                onSelect={focusScanSite}
-              />
-            )}
-            {!compactScanLayout && !dossierSite && (
-              <CivilizationScanScaleContext
-                sites={scaleContextSites}
-                focusSite={focusedSite}
-                currentScene={scene}
-                recentSiteIds={recentSiteIds}
-                limit={3}
-                onSelect={focusScanSite}
-                onFocusNative={(site) => {
-                  setSelectedSiteId(site.id);
-                  setSceneOverride(getNativeSceneForSite(site));
-                  setScanActive(true);
-                }}
-              />
-            )}
-          </>
-        )}
-        {!scanActive && childScene && (
-          <CivilizationZoomHotspot
-            scene={scene}
-            childScene={childScene}
-            palette={palette}
-            highlight={Boolean(recentZoomHint)}
-            hintLabel={recentZoomHint ?? undefined}
+          <ScanMapPins
+            sites={scanMapSites}
+            artifactWorldAnchors={manifestationWorldAnchors}
+            annotationOnly
+            selectedSiteIds={selectedArtifactSiteIds}
+            focusedSiteId={linkedSiteId}
+            recentSiteIds={recentSiteIds}
+            pendingRepairArtifactIds={pendingRepairIdSet}
+            repairedSiteIds={repairedSiteIdSet}
+            focusedClusterId={scanClusterFocus?.id ?? null}
+            forceAll
             compact={compactScanLayout}
-            onZoom={setSceneOverride}
+            onSelect={focusScanSite}
+            onInspect={openScanDossier}
+            onFocusCluster={focusScanCluster}
+            onHover={setHoveredSiteId}
           />
         )}
-
-        {!scanActive && (
-          <div className="pointer-events-none absolute inset-x-3 bottom-3 z-30 grid gap-2 text-white drop-shadow-[0_1px_12px_rgba(0,0,0,0.82)] sm:grid-cols-[minmax(0,1fr)_minmax(240px,0.62fr)] sm:items-end">
-            <div className="max-w-2xl">
-              <strong className="block text-sm font-medium text-white/94">{sceneCopy.title}</strong>
-              <span className="mt-1 block text-[12px] leading-relaxed text-white/74 max-sm:line-clamp-2">
-                {sceneCopy.copy}
-              </span>
-            </div>
-            <CivilizationSceneDeploymentLedger
-              sites={sceneSites}
-              recentSiteIds={recentSiteIds}
-              limit={compactScanLayout ? 2 : 3}
-              compact={compactScanLayout}
-              onSelect={focusScanSite}
-            />
-          </div>
-        )}
+        </div>
 
         {dossierSite && (
           <SiteDossier
             site={dossierSite}
             forgedArtifacts={forgedArtifacts}
+            civilization={civilization}
             currentScene={scene}
             preferredSide={dossierPreferredSide}
+            preferredVerticalSide={dossierPreferredVerticalSide}
+            districtLabel={dossierDistrictLabel}
             onZoomToNative={(nativeScene) => {
               setSelectedSiteId(dossierSite.id);
+              setInspectedSiteId(dossierSite.id);
+              setZoomedSiteId(dossierSite.id);
               setSceneOverride(nativeScene);
               setScanActive(true);
             }}
+            repairPending={Boolean(dossierSite.artifactId && pendingRepairIdSet.has(dossierSite.artifactId))}
+            repairSubmitting={repairSubmitting}
+            onRepair={onRepairArtifacts
+              ? (artifactId) => void queueArtifactRepairs([artifactId])
+              : undefined}
             onOpenArtifact={onOpenArtifact}
             onClose={() => {
-              if (selectedSite) {
-                setSelectedSiteId(null);
-                return;
-              }
-              setScanActive(false);
+              returnToOverview();
             }}
             isRecent={recentSiteIds.includes(dossierSite.id)}
           />
         )}
+        {sceneTransition && (
+          <CivilizationScaleTransition
+            from={sceneTransition.from}
+            to={sceneTransition.to}
+            primaryTone={visualIdentity.primaryTone}
+          />
+        )}
+        {maturityTransition && (
+          <CivilizationMaturityCinematic
+            maturity={maturityTransition}
+            tone={visualIdentity.primaryTone}
+          />
+        )}
       </div>
-      {scanActive && !dossierSite && (
+      {scanActive && !dossierSite && compactScanLayout && focusedSite && (
         <div
-          className="hidden border-t border-white/10 bg-[#050914]/88 p-2 shadow-[inset_0_1px_0_rgba(255,255,255,0.035)] sm:block"
-          data-testid="civilization-desktop-scan-rail"
+          className="civilization-mobile-scan-dock border-t border-white/10 bg-[#050914]/94 p-1.5 shadow-[inset_0_1px_0_rgba(255,255,255,0.035)]"
+          data-testid="civilization-mobile-scan-dock"
         >
-          <InfluenceTray
-            sites={visibleSites}
-            selectedSiteId={selectedSiteId}
-            overflowCount={overflowCount}
-            clusterGroups={clusterGroups}
-            recentSiteIds={recentSiteIds}
-            onSelect={focusScanSite}
+          <MobileScanPrimaryReadout
+            site={focusedSite}
+            isRecent={Boolean(focusedSite && recentSiteIds.includes(focusedSite.id))}
+            onSelect={openScanDossier}
           />
         </div>
+      )}
+      {scanActive && !dossierSite && !compactScanLayout && (
+        <div
+          className="civilization-desktop-scan-rail hidden border-t border-white/10 bg-[#050914]/88 shadow-[inset_0_1px_0_rgba(255,255,255,0.035)] sm:block"
+          data-testid="civilization-desktop-scan-rail"
+        >
+          <button
+            type="button"
+            className="flex min-h-9 w-full items-center justify-between gap-3 px-3 py-2 text-[8px] font-black uppercase tracking-[0.16em] text-white/58 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-inset focus-visible:ring-white/55"
+            aria-expanded={scanIndexOpen}
+            onClick={() => setScanIndexOpen((current) => !current)}
+          >
+            <span className="inline-flex items-center gap-1.5">
+              <ChevronRight className={`h-3 w-3 transition-transform ${scanIndexOpen ? 'rotate-90' : ''}`} aria-hidden="true" />
+              Artifact index
+            </span>
+            <span className="text-white/38">{scanLedgerSites.length} records</span>
+          </button>
+          {scanIndexOpen && (
+            <div className="border-t border-white/8 p-2">
+              <InfluenceTray
+                sites={scanLedgerSites}
+                selectedSiteId={selectedSiteId ?? selectedArtifactFocusId}
+                overflowCount={0}
+                clusterGroups={[]}
+                recentSiteIds={recentSiteIds}
+                onSelect={focusScanSite}
+                horizontal
+              />
+            </div>
+          )}
+        </div>
+      )}
+      {scanActive && (
+        <CivilizationHistoryRibbon
+          visualState={visualState}
+          currentScene={scene}
+          onFocusMilestone={(milestone) => {
+            if (milestone.scene) {
+              setSceneOverride(normalizeSceneForTier(milestone.scene, tier, deploymentSites));
+            }
+            if (milestone.siteId) {
+              setSelectedSiteId(milestone.siteId);
+              setInspectedSiteId(milestone.siteId);
+              setScanActive(true);
+            }
+          }}
+        />
       )}
     </section>
   );

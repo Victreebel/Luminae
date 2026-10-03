@@ -1,0 +1,36 @@
+{
+  "status": "Two examples only; awaiting direction before extending the set.",
+  "generator": "built-in image_gen",
+  "items": [
+    {
+      "name": "Eclipse",
+      "family": "dyad",
+      "affinities": [
+        "Radiance",
+        "Abyss"
+      ],
+      "file": "eclipse.png",
+      "source": "/Users/chaoscalligraphy/.codex/generated_images/01a0f23c-8e30-7ba2-875e-316cd0496d67/exec-4dbc5d05-74c6-40d0-b79e-5625ccb4838d.png",
+      "references": [
+        "/Users/chaoscalligraphy/Documents/Lumiane/attached_assets/luminae_radiance_emblem_v2.png",
+        "/Users/chaoscalligraphy/Documents/Lumiane/attached_assets/generated_images/affinity_abyss.png"
+      ]
+    },
+    {
+      "name": "Ouroboros",
+      "family": "triad",
+      "affinities": [
+        "Flare",
+        "Continuum",
+        "Abyss"
+      ],
+      "file": "ouroboros.png",
+      "source": "/Users/chaoscalligraphy/.codex/generated_images/01a0f23c-8e30-7ba2-875e-316cd0496d67/exec-6fcef80c-7da8-4ecb-98c6-80c25bd50f94.png",
+      "references": [
+        "/Users/chaoscalligraphy/Documents/Lumiane/attached_assets/generated_images/affinity_continuum.png",
+        "/Users/chaoscalligraphy/Documents/Lumiane/attached_assets/generated_images/affinity_flare.png",
+        "/Users/chaoscalligraphy/Documents/Lumiane/attached_assets/generated_images/affinity_abyss.png"
+      ]
+    }
+  ]
+}

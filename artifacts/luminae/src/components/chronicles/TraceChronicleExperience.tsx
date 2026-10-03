@@ -5,6 +5,7 @@ import type { ArchitectFirstContactStance } from '@workspace/game-types';
 import { ArrowLeft, Check, GitBranch, LockKeyhole, RadioTower } from 'lucide-react';
 import { gameAudio } from '@/lib/audio';
 import { useFocusTrap } from '@/hooks/use-focus-trap';
+import { useChroniclePresentationGate, type ChroniclePresentationGateProps } from '@/hooks/use-chronicle-presentation-gate';
 import routePlate from '@/assets/civilization/civilization-plate-stellar-route-v1.jpg';
 import './TraceChronicleExperience.css';
 
@@ -86,7 +87,7 @@ const OUTCOMES: Record<NonNullable<TraceScenarioState['outcomeId']>, {
   },
 };
 
-type TraceChronicleExperienceProps = {
+type TraceChronicleExperienceProps = ChroniclePresentationGateProps & {
   state: TraceScenarioState;
   gameStatus: 'lobby' | 'playing' | 'finished';
   localPlayerId: string;
@@ -134,6 +135,8 @@ export function TraceChronicleExperience({
   reduceMotion,
   disableFocusTrap = false,
   firstContactStance = null,
+  presentationEnabled,
+  onPresentationActiveChange,
   onChoose,
   onReturn,
 }: TraceChronicleExperienceProps) {
@@ -146,6 +149,13 @@ export function TraceChronicleExperience({
   const isArchitect = localPlayerId === state.architectPlayerId;
   const guidanceOpen = state.phase === 'awaiting_guidance';
   const outcome = state.outcomeId ? OUTCOMES[state.outcomeId] : null;
+  const { presentationVisible, completePresentationExit, holdPresentationForSound } = useChroniclePresentationGate({
+    requested: guidanceOpen || (gameStatus === 'finished' && !!outcome),
+    presentationEnabled,
+    onPresentationActiveChange,
+  });
+  const guidanceVisible = presentationVisible && guidanceOpen;
+  const outcomeVisible = presentationVisible && gameStatus === 'finished' && !!outcome;
   const actionCount = Math.min(state.architectCoreActionCount, state.guidanceDueAfterCoreActions);
   const setupLines = useMemo(
     () => state.runKind === 'primary' && firstContactStance
@@ -154,19 +164,23 @@ export function TraceChronicleExperience({
     [firstContactStance, state.runKind],
   );
 
-  useFocusTrap(guidanceRef, guidanceOpen && !disableFocusTrap, () => undefined);
-  useFocusTrap(outcomeRef, gameStatus === 'finished' && !!outcome && !disableFocusTrap, () => undefined);
+  useFocusTrap(guidanceRef, guidanceVisible && !disableFocusTrap, () => undefined);
+  useFocusTrap(outcomeRef, outcomeVisible && !disableFocusTrap, () => undefined);
 
   useEffect(() => {
-    if (!guidanceOpen) return;
+    if (!guidanceVisible) return;
     setLineIndex(0);
     setSelectedMethod(null);
+    holdPresentationForSound(1_300);
     gameAudio.playTraceSignal('presence');
-  }, [guidanceOpen]);
+  }, [guidanceVisible, holdPresentationForSound]);
 
   useEffect(() => {
-    if (state.phase === 'finished') gameAudio.playTraceSignal('closure');
-  }, [state.phase]);
+    if (outcomeVisible) {
+      holdPresentationForSound(1_300);
+      gameAudio.playTraceSignal('closure');
+    }
+  }, [outcomeVisible, holdPresentationForSound]);
 
   const selectedChoice = selectedMethod ? CHOICES[selectedMethod] : null;
   const setupComplete = lineIndex >= setupLines.length - 1;
@@ -177,6 +191,7 @@ export function TraceChronicleExperience({
 
   const confirmChoice = async () => {
     if (!selectedMethod || submitting) return;
+    holdPresentationForSound(1_300);
     gameAudio.playTraceSignal(CHOICES[selectedMethod].tone);
     await onChoose(selectedMethod);
   };
@@ -215,8 +230,8 @@ export function TraceChronicleExperience({
         </section>
       )}
 
-      <AnimatePresence>
-        {guidanceOpen && (
+      <AnimatePresence onExitComplete={completePresentationExit}>
+        {guidanceVisible && (
           <motion.div
             ref={guidanceRef}
             className="trace-interruption"
@@ -297,8 +312,8 @@ export function TraceChronicleExperience({
         )}
       </AnimatePresence>
 
-      <AnimatePresence>
-        {gameStatus === 'finished' && outcome && (
+      <AnimatePresence onExitComplete={completePresentationExit}>
+        {outcomeVisible && outcome && (
           <motion.div
             ref={outcomeRef}
             className="trace-outcome"

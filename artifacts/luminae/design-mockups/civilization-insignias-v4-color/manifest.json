@@ -1,0 +1,1030 @@
+{
+  "version": 4,
+  "status": "concept review",
+  "generator": "built-in image_gen",
+  "direction": "Name-mnemonic imagery, actual affinity-token references, balanced constituent colors, abstract faces and anatomy.",
+  "builtAt": "2026-10-02T23:55:13.467Z",
+  "sourceSpecification": "prompts.json",
+  "sourceImagesModified": false,
+  "reviewColors": "Original image colors; no monochrome filters.",
+  "palette": {
+    "Flare": "#FF5A3C",
+    "Radiance": "#DFC878",
+    "Continuum": "#3D6BFF",
+    "Verdance": "#2ECC71",
+    "Abyss": "#A832D4"
+  },
+  "assets": [
+    {
+      "id": "vortex",
+      "name": "Vortex",
+      "family": "dyad",
+      "affinities": [
+        "Flare",
+        "Radiance"
+      ],
+      "meaning": "A red-and-gold whirlpool converges into one deep funnel.",
+      "subject": "An unmistakable deep WHIRLPOOL / VORTEX, seen obliquely from above so its broad circular mouth and narrowing twisting funnel have visible depth. THREE broad incandescent red currents interleave with THREE equally broad golden streams following the same spiral course. The funnel turns downward toward a small dark central throat; its outer spiral fills the interior. Large simple spiraling flows first, fine energy texture second. Gold tracks guide and coordinate the red moving material without becoming a rigid separate wheel. No snake, fan blades, gears, orbiting planets, flower or flat pinwheel. The red and gold currents must have equal width and visual prominence; red also occupies half the metal rim, gold the other half. Do not turn the entire hot interior yellow-white; maintain true scarlet red alongside distinct gold.",
+      "references": [
+        "/Users/chaoscalligraphy/Documents/Lumiane/attached_assets/generated_images/affinity_flare.png",
+        "/Users/chaoscalligraphy/Documents/Lumiane/attached_assets/luminae_radiance_emblem_v2.png"
+      ],
+      "prompt": "Use case: style-preserving design edit / logo-brand.\nTransform the supplied Affinity token references into ONE new civilization insignia. Image 1 is the token being transformed; other inputs supply the additional parent Affinities' material and color. Replace the central image completely with the name-recalling subject described below. Preserve the shared game-token design language: centered front-facing round medallion, high-quality raised engraved metal rim, luminous saturated Affinity colors, polished cosmic/fantasy craftsmanship, a strong large iconic central subject, generous transparent margin. This must belong to the same family as the input assets.\n\nThe central motif should help a person recall the NAME immediately. It is an abstract archetypal insignia rendered in rich materials, not an animal portrait or a scenery illustration. No eyes, realistic faces, human figures, anatomy-heavy creatures, mundane landscape, separate mini affinity icons, extra emblems, letters, readable words, numbers, labels or watermark.\nColor is a PRIMARY identity cue. Every parent Affinity must occupy a large visible share of both subject and rim. Balance luminous area and saturation, not only tiny accents. Match each rim sector's edge light and engraving to its own color; NEVER wrap all colors in one parent's blue/gold/green framework. Use only the specified parent color families, with neutral dark negative space and limited white highlights. Internal darkness should frame the subject, not replace it with an empty void. No unrequested central galaxy.\nOne token only, square output, full outer silhouette visible, genuinely transparent exterior. No background panel or baked checkerboard. Match the supplied tokens' level of finish.\n\nINTERNAL NAME (not printed): Vortex.\nPARENT PALETTE: Flare = vivid coral-red #FF5A3C, incandescent red flame and molten material; Radiance = radiant solar gold #DFC878, structured golden metal and warm golden light.\n\nCENTRAL SUBJECT AND COLOR ALLOCATION:\nAn unmistakable deep WHIRLPOOL / VORTEX, seen obliquely from above so its broad circular mouth and narrowing twisting funnel have visible depth. THREE broad incandescent red currents interleave with THREE equally broad golden streams following the same spiral course. The funnel turns downward toward a small dark central throat; its outer spiral fills the interior. Large simple spiraling flows first, fine energy texture second. Gold tracks guide and coordinate the red moving material without becoming a rigid separate wheel. No snake, fan blades, gears, orbiting planets, flower or flat pinwheel. The red and gold currents must have equal width and visual prominence; red also occupies half the metal rim, gold the other half. Do not turn the entire hot interior yellow-white; maintain true scarlet red alongside distinct gold.",
+      "file": "vortex.png",
+      "width": 1254,
+      "height": 1254,
+      "bytes": 2360423,
+      "sha256": "fc178e0e3feaed1935fc5b64ab7717eafc323374b2276bd123e85421571f66e6",
+      "alpha": {
+        "hasAlpha": true,
+        "fullyTransparentPixels": 603950,
+        "translucentPixels": 968188,
+        "opaquePixels": 378,
+        "transparentFraction": 0.38407,
+        "translucentFraction": 0.61569,
+        "edgeAlphaMax": 1
+      },
+      "bounds": {
+        "nontransparent": {
+          "minX": 0,
+          "minY": 37,
+          "maxX": 1197,
+          "maxY": 1181,
+          "width": 1198,
+          "height": 1145
+        },
+        "visible": {
+          "minX": 60,
+          "minY": 41,
+          "maxX": 1189,
+          "maxY": 1160,
+          "width": 1130,
+          "height": 1120
+        },
+        "visibleThreshold": "alpha > 128"
+      },
+      "warnings": []
+    },
+    {
+      "id": "flux",
+      "name": "Flux",
+      "family": "dyad",
+      "affinities": [
+        "Flare",
+        "Continuum"
+      ],
+      "meaning": "One flowing wave changes between molten red and crystalline blue.",
+      "subject": "ONE enormous flowing S-shaped crest, broad and horizontal, forming a continuous stream visibly changing material. The left half is turbulent scarlet molten energy/flame; the right half resolves into flowing translucent sapphire crystal, its crest bending into a blue wave. Exactly one unbroken transforming wave, no central galaxy, infinity sign, circle loop or frozen mountain. A few detached transition fragments close to the midline can show change, but keep the main wave clear. Both halves must have the same mass and luminosity, a short red-to-blue transition without introducing a substantial violet third color. Token rim and engraved details likewise alternate two equally broad red and blue semicircular domains. The name cue is continuous changing FLOW, instantly visible without a label.",
+      "references": [
+        "/Users/chaoscalligraphy/Documents/Lumiane/attached_assets/generated_images/affinity_flare.png",
+        "/Users/chaoscalligraphy/Documents/Lumiane/attached_assets/generated_images/affinity_continuum.png"
+      ],
+      "prompt": "Use case: style-preserving design edit / logo-brand.\nTransform the supplied Affinity token references into ONE new civilization insignia. Image 1 is the token being transformed; other inputs supply the additional parent Affinities' material and color. Replace the central image completely with the name-recalling subject described below. Preserve the shared game-token design language: centered front-facing round medallion, high-quality raised engraved metal rim, luminous saturated Affinity colors, polished cosmic/fantasy craftsmanship, a strong large iconic central subject, generous transparent margin. This must belong to the same family as the input assets.\n\nThe central motif should help a person recall the NAME immediately. It is an abstract archetypal insignia rendered in rich materials, not an animal portrait or a scenery illustration. No eyes, realistic faces, human figures, anatomy-heavy creatures, mundane landscape, separate mini affinity icons, extra emblems, letters, readable words, numbers, labels or watermark.\nColor is a PRIMARY identity cue. Every parent Affinity must occupy a large visible share of both subject and rim. Balance luminous area and saturation, not only tiny accents. Match each rim sector's edge light and engraving to its own color; NEVER wrap all colors in one parent's blue/gold/green framework. Use only the specified parent color families, with neutral dark negative space and limited white highlights. Internal darkness should frame the subject, not replace it with an empty void. No unrequested central galaxy.\nOne token only, square output, full outer silhouette visible, genuinely transparent exterior. No background panel or baked checkerboard. Match the supplied tokens' level of finish.\n\nINTERNAL NAME (not printed): Flux.\nPARENT PALETTE: Flare = vivid coral-red #FF5A3C, incandescent red flame and molten material; Continuum = luminous cobalt/sapphire blue #3D6BFF, crystalline material and continuous blue connections.\n\nCENTRAL SUBJECT AND COLOR ALLOCATION:\nONE enormous flowing S-shaped crest, broad and horizontal, forming a continuous stream visibly changing material. The left half is turbulent scarlet molten energy/flame; the right half resolves into flowing translucent sapphire crystal, its crest bending into a blue wave. Exactly one unbroken transforming wave, no central galaxy, infinity sign, circle loop or frozen mountain. A few detached transition fragments close to the midline can show change, but keep the main wave clear. Both halves must have the same mass and luminosity, a short red-to-blue transition without introducing a substantial violet third color. Token rim and engraved details likewise alternate two equally broad red and blue semicircular domains. The name cue is continuous changing FLOW, instantly visible without a label.",
+      "file": "flux.png",
+      "width": 1254,
+      "height": 1254,
+      "bytes": 2259352,
+      "sha256": "bb48d8c39264ee6e1dd681da6dd33f461cb2dcd86bdea75aa52922ac529ee258",
+      "alpha": {
+        "hasAlpha": true,
+        "fullyTransparentPixels": 583243,
+        "translucentPixels": 988288,
+        "opaquePixels": 985,
+        "transparentFraction": 0.3709,
+        "translucentFraction": 0.62848,
+        "edgeAlphaMax": 1
+      },
+      "bounds": {
+        "nontransparent": {
+          "minX": 61,
+          "minY": 21,
+          "maxX": 1191,
+          "maxY": 1253,
+          "width": 1131,
+          "height": 1233
+        },
+        "visible": {
+          "minX": 64,
+          "minY": 57,
+          "maxX": 1188,
+          "maxY": 1169,
+          "width": 1125,
+          "height": 1113
+        },
+        "visibleThreshold": "alpha > 128"
+      },
+      "warnings": []
+    },
+    {
+      "id": "bloom",
+      "name": "Bloom",
+      "family": "dyad",
+      "affinities": [
+        "Flare",
+        "Verdance"
+      ],
+      "meaning": "A large flower opens in flame-red and emerald petals.",
+      "subject": "ONE magnificent opening FLOWER fills the center of the token. Broad emerald outer petals unfold outward around equally substantial flame-red inner petals, with a small luminous center that is not the main color mass. About seven to nine sculptural petals, recognizable as a blossom from its silhouette, no naturalistic botanical illustration scene. The red petal forms themselves curl and ignite, while the green outer ones look like translucent living emerald; both interleave across the opening flower. Keep green and red each about half the visible bloom and half the engraved metal border. No plain green flower with a tiny red center, no white/gold flower, leaf-only sprout, bouquet, separate flame symbol, face or eye. The flower is the emblem.",
+      "references": [
+        "/Users/chaoscalligraphy/Documents/Lumiane/attached_assets/generated_images/affinity_flare.png",
+        "/Users/chaoscalligraphy/Documents/Lumiane/attached_assets/generated_images/affinity_verdance.png"
+      ],
+      "prompt": "Use case: style-preserving design edit / logo-brand.\nTransform the supplied Affinity token references into ONE new civilization insignia. Image 1 is the token being transformed; other inputs supply the additional parent Affinities' material and color. Replace the central image completely with the name-recalling subject described below. Preserve the shared game-token design language: centered front-facing round medallion, high-quality raised engraved metal rim, luminous saturated Affinity colors, polished cosmic/fantasy craftsmanship, a strong large iconic central subject, generous transparent margin. This must belong to the same family as the input assets.\n\nThe central motif should help a person recall the NAME immediately. It is an abstract archetypal insignia rendered in rich materials, not an animal portrait or a scenery illustration. No eyes, realistic faces, human figures, anatomy-heavy creatures, mundane landscape, separate mini affinity icons, extra emblems, letters, readable words, numbers, labels or watermark.\nColor is a PRIMARY identity cue. Every parent Affinity must occupy a large visible share of both subject and rim. Balance luminous area and saturation, not only tiny accents. Match each rim sector's edge light and engraving to its own color; NEVER wrap all colors in one parent's blue/gold/green framework. Use only the specified parent color families, with neutral dark negative space and limited white highlights. Internal darkness should frame the subject, not replace it with an empty void. No unrequested central galaxy.\nOne token only, square output, full outer silhouette visible, genuinely transparent exterior. No background panel or baked checkerboard. Match the supplied tokens' level of finish.\n\nINTERNAL NAME (not printed): Bloom.\nPARENT PALETTE: Flare = vivid coral-red #FF5A3C, incandescent red flame and molten material; Verdance = saturated emerald green #2ECC71, luminous organic growth and green glass.\n\nCENTRAL SUBJECT AND COLOR ALLOCATION:\nONE magnificent opening FLOWER fills the center of the token. Broad emerald outer petals unfold outward around equally substantial flame-red inner petals, with a small luminous center that is not the main color mass. About seven to nine sculptural petals, recognizable as a blossom from its silhouette, no naturalistic botanical illustration scene. The red petal forms themselves curl and ignite, while the green outer ones look like translucent living emerald; both interleave across the opening flower. Keep green and red each about half the visible bloom and half the engraved metal border. No plain green flower with a tiny red center, no white/gold flower, leaf-only sprout, bouquet, separate flame symbol, face or eye. The flower is the emblem.",
+      "file": "bloom.png",
+      "width": 1254,
+      "height": 1254,
+      "bytes": 2260546,
+      "sha256": "a2f051796386bd916806e136c16dec58febc84aa611e05826b4bffad3e7101d9",
+      "alpha": {
+        "hasAlpha": true,
+        "fullyTransparentPixels": 652952,
+        "translucentPixels": 918822,
+        "opaquePixels": 742,
+        "transparentFraction": 0.41523,
+        "translucentFraction": 0.5843,
+        "edgeAlphaMax": 1
+      },
+      "bounds": {
+        "nontransparent": {
+          "minX": 0,
+          "minY": 76,
+          "maxX": 1237,
+          "maxY": 1253,
+          "width": 1238,
+          "height": 1178
+        },
+        "visible": {
+          "minX": 86,
+          "minY": 79,
+          "maxX": 1164,
+          "maxY": 1152,
+          "width": 1079,
+          "height": 1074
+        },
+        "visibleThreshold": "alpha > 128"
+      },
+      "warnings": []
+    },
+    {
+      "id": "chrysalis",
+      "name": "Chrysalis",
+      "family": "dyad",
+      "affinities": [
+        "Flare",
+        "Abyss"
+      ],
+      "meaning": "A violet cocoon opens around a fiery red emerging form.",
+      "subject": "A large upright hanging CHRYSALIS / COCOON, with two broad rich-violet shell halves splitting around an equally substantial incandescent red emerging folded wing-form. The enclosing cocoon remains the dominant recognizable outline, broad in its lower half and tapering to a small attachment above. The red emerging form is abstract: two unfolding winglike folds of fire, no insect face, eyes, body anatomy or full butterfly outside. The shell's material is translucent amethyst with opaque hidden depths. The red interior visibly remakes itself as the enclosure opens. Purple shell and red unfolding form occupy comparable area; same equal purple/red treatment in the frame. No blue, gold, green or brown colors. No mushroom or cluster of seeds.",
+      "references": [
+        "/Users/chaoscalligraphy/Documents/Lumiane/attached_assets/generated_images/affinity_flare.png",
+        "/Users/chaoscalligraphy/Documents/Lumiane/attached_assets/generated_images/affinity_abyss.png"
+      ],
+      "prompt": "Use case: style-preserving design edit / logo-brand.\nTransform the supplied Affinity token references into ONE new civilization insignia. Image 1 is the token being transformed; other inputs supply the additional parent Affinities' material and color. Replace the central image completely with the name-recalling subject described below. Preserve the shared game-token design language: centered front-facing round medallion, high-quality raised engraved metal rim, luminous saturated Affinity colors, polished cosmic/fantasy craftsmanship, a strong large iconic central subject, generous transparent margin. This must belong to the same family as the input assets.\n\nThe central motif should help a person recall the NAME immediately. It is an abstract archetypal insignia rendered in rich materials, not an animal portrait or a scenery illustration. No eyes, realistic faces, human figures, anatomy-heavy creatures, mundane landscape, separate mini affinity icons, extra emblems, letters, readable words, numbers, labels or watermark.\nColor is a PRIMARY identity cue. Every parent Affinity must occupy a large visible share of both subject and rim. Balance luminous area and saturation, not only tiny accents. Match each rim sector's edge light and engraving to its own color; NEVER wrap all colors in one parent's blue/gold/green framework. Use only the specified parent color families, with neutral dark negative space and limited white highlights. Internal darkness should frame the subject, not replace it with an empty void. No unrequested central galaxy.\nOne token only, square output, full outer silhouette visible, genuinely transparent exterior. No background panel or baked checkerboard. Match the supplied tokens' level of finish.\n\nINTERNAL NAME (not printed): Chrysalis.\nPARENT PALETTE: Flare = vivid coral-red #FF5A3C, incandescent red flame and molten material; Abyss = rich vivid violet #A832D4, purple translucent shells and violet veils.\n\nCENTRAL SUBJECT AND COLOR ALLOCATION:\nA large upright hanging CHRYSALIS / COCOON, with two broad rich-violet shell halves splitting around an equally substantial incandescent red emerging folded wing-form. The enclosing cocoon remains the dominant recognizable outline, broad in its lower half and tapering to a small attachment above. The red emerging form is abstract: two unfolding winglike folds of fire, no insect face, eyes, body anatomy or full butterfly outside. The shell's material is translucent amethyst with opaque hidden depths. The red interior visibly remakes itself as the enclosure opens. Purple shell and red unfolding form occupy comparable area; same equal purple/red treatment in the frame. No blue, gold, green or brown colors. No mushroom or cluster of seeds.",
+      "file": "chrysalis.png",
+      "width": 1254,
+      "height": 1254,
+      "bytes": 2494522,
+      "sha256": "fb4c04d147d0f0afaa3127bf0bfaca6e870a822f509d6fab5e5a2c7aa25f7dca",
+      "alpha": {
+        "hasAlpha": true,
+        "fullyTransparentPixels": 465890,
+        "translucentPixels": 1105820,
+        "opaquePixels": 806,
+        "transparentFraction": 0.29627,
+        "translucentFraction": 0.70322,
+        "edgeAlphaMax": 1
+      },
+      "bounds": {
+        "nontransparent": {
+          "minX": 0,
+          "minY": 23,
+          "maxX": 1223,
+          "maxY": 1208,
+          "width": 1224,
+          "height": 1186
+        },
+        "visible": {
+          "minX": 32,
+          "minY": 26,
+          "maxX": 1219,
+          "maxY": 1204,
+          "width": 1188,
+          "height": 1179
+        },
+        "visibleThreshold": "alpha > 128"
+      },
+      "warnings": []
+    },
+    {
+      "id": "orbit",
+      "name": "Orbit",
+      "family": "dyad",
+      "affinities": [
+        "Radiance",
+        "Continuum"
+      ],
+      "meaning": "A sapphire globe is held inside broad golden orbital paths.",
+      "subject": "An unmistakable ORBIT emblem: one substantial blue sapphire celestial globe held inside TWO broad, elegant, intersecting gold orbital bands. The gold bands visibly pass in front of and behind the globe, with one smaller blue satellite attached to a band; globe and satellite stay distinct. Rings are deliberately thick and sculptural, making gold as prominent as blue. Broad empty gaps inside the orbits preserve legibility. No galaxy swirl, nebula, occulting dark disc, sunburst, atomic microdetail or green continents. Balance blue globe/crystal highlights with rich gold paths and a half-gold half-blue metal rim. This is celestial ordered motion, not a generic blue planet token.",
+      "references": [
+        "/Users/chaoscalligraphy/Documents/Lumiane/attached_assets/luminae_radiance_emblem_v2.png",
+        "/Users/chaoscalligraphy/Documents/Lumiane/attached_assets/generated_images/affinity_continuum.png"
+      ],
+      "prompt": "Use case: style-preserving design edit / logo-brand.\nTransform the supplied Affinity token references into ONE new civilization insignia. Image 1 is the token being transformed; other inputs supply the additional parent Affinities' material and color. Replace the central image completely with the name-recalling subject described below. Preserve the shared game-token design language: centered front-facing round medallion, high-quality raised engraved metal rim, luminous saturated Affinity colors, polished cosmic/fantasy craftsmanship, a strong large iconic central subject, generous transparent margin. This must belong to the same family as the input assets.\n\nThe central motif should help a person recall the NAME immediately. It is an abstract archetypal insignia rendered in rich materials, not an animal portrait or a scenery illustration. No eyes, realistic faces, human figures, anatomy-heavy creatures, mundane landscape, separate mini affinity icons, extra emblems, letters, readable words, numbers, labels or watermark.\nColor is a PRIMARY identity cue. Every parent Affinity must occupy a large visible share of both subject and rim. Balance luminous area and saturation, not only tiny accents. Match each rim sector's edge light and engraving to its own color; NEVER wrap all colors in one parent's blue/gold/green framework. Use only the specified parent color families, with neutral dark negative space and limited white highlights. Internal darkness should frame the subject, not replace it with an empty void. No unrequested central galaxy.\nOne token only, square output, full outer silhouette visible, genuinely transparent exterior. No background panel or baked checkerboard. Match the supplied tokens' level of finish.\n\nINTERNAL NAME (not printed): Orbit.\nPARENT PALETTE: Radiance = radiant solar gold #DFC878, structured golden metal and warm golden light; Continuum = luminous cobalt/sapphire blue #3D6BFF, crystalline material and continuous blue connections.\n\nCENTRAL SUBJECT AND COLOR ALLOCATION:\nAn unmistakable ORBIT emblem: one substantial blue sapphire celestial globe held inside TWO broad, elegant, intersecting gold orbital bands. The gold bands visibly pass in front of and behind the globe, with one smaller blue satellite attached to a band; globe and satellite stay distinct. Rings are deliberately thick and sculptural, making gold as prominent as blue. Broad empty gaps inside the orbits preserve legibility. No galaxy swirl, nebula, occulting dark disc, sunburst, atomic microdetail or green continents. Balance blue globe/crystal highlights with rich gold paths and a half-gold half-blue metal rim. This is celestial ordered motion, not a generic blue planet token.",
+      "file": "orbit.png",
+      "width": 1254,
+      "height": 1254,
+      "bytes": 2352550,
+      "sha256": "8e151289e37746bbbf3437d381a26df868671439f401571b0872be6351ce72bb",
+      "alpha": {
+        "hasAlpha": true,
+        "fullyTransparentPixels": 593252,
+        "translucentPixels": 978658,
+        "opaquePixels": 606,
+        "transparentFraction": 0.37726,
+        "translucentFraction": 0.62235,
+        "edgeAlphaMax": 1
+      },
+      "bounds": {
+        "nontransparent": {
+          "minX": 0,
+          "minY": 21,
+          "maxX": 1233,
+          "maxY": 1253,
+          "width": 1234,
+          "height": 1233
+        },
+        "visible": {
+          "minX": 53,
+          "minY": 33,
+          "maxX": 1200,
+          "maxY": 1168,
+          "width": 1148,
+          "height": 1136
+        },
+        "visibleThreshold": "alpha > 128"
+      },
+      "warnings": []
+    },
+    {
+      "id": "canopy",
+      "name": "Canopy",
+      "family": "dyad",
+      "affinities": [
+        "Radiance",
+        "Verdance"
+      ],
+      "meaning": "A wide gold-and-green leaf crown forms a sheltering canopy.",
+      "subject": "ONE broad umbrella-shaped TREE CANOPY, supported by three short elegantly branching boughs. Its crown is formed from a few large overlapping emerald-green and radiant-gold leaf masses, both colors equally substantial throughout the canopy rather than gold only in thin branches. Strong wide sheltering roof-like silhouette with spacious openings below the crown, sturdy short trunk, no sprawling root network. The golden boughs visibly organize the spreading emerald growth. Green and gold each occupy large connected zones in the subject and half of the engraved frame. No scenic forest, single tiny leaf, monarchy crown, blossoms, blue sky or brown bark. All botanical material is stylized luminous emerald and gold.",
+      "references": [
+        "/Users/chaoscalligraphy/Documents/Lumiane/attached_assets/luminae_radiance_emblem_v2.png",
+        "/Users/chaoscalligraphy/Documents/Lumiane/attached_assets/generated_images/affinity_verdance.png"
+      ],
+      "prompt": "Use case: style-preserving design edit / logo-brand.\nTransform the supplied Affinity token references into ONE new civilization insignia. Image 1 is the token being transformed; other inputs supply the additional parent Affinities' material and color. Replace the central image completely with the name-recalling subject described below. Preserve the shared game-token design language: centered front-facing round medallion, high-quality raised engraved metal rim, luminous saturated Affinity colors, polished cosmic/fantasy craftsmanship, a strong large iconic central subject, generous transparent margin. This must belong to the same family as the input assets.\n\nThe central motif should help a person recall the NAME immediately. It is an abstract archetypal insignia rendered in rich materials, not an animal portrait or a scenery illustration. No eyes, realistic faces, human figures, anatomy-heavy creatures, mundane landscape, separate mini affinity icons, extra emblems, letters, readable words, numbers, labels or watermark.\nColor is a PRIMARY identity cue. Every parent Affinity must occupy a large visible share of both subject and rim. Balance luminous area and saturation, not only tiny accents. Match each rim sector's edge light and engraving to its own color; NEVER wrap all colors in one parent's blue/gold/green framework. Use only the specified parent color families, with neutral dark negative space and limited white highlights. Internal darkness should frame the subject, not replace it with an empty void. No unrequested central galaxy.\nOne token only, square output, full outer silhouette visible, genuinely transparent exterior. No background panel or baked checkerboard. Match the supplied tokens' level of finish.\n\nINTERNAL NAME (not printed): Canopy.\nPARENT PALETTE: Radiance = radiant solar gold #DFC878, structured golden metal and warm golden light; Verdance = saturated emerald green #2ECC71, luminous organic growth and green glass.\n\nCENTRAL SUBJECT AND COLOR ALLOCATION:\nONE broad umbrella-shaped TREE CANOPY, supported by three short elegantly branching boughs. Its crown is formed from a few large overlapping emerald-green and radiant-gold leaf masses, both colors equally substantial throughout the canopy rather than gold only in thin branches. Strong wide sheltering roof-like silhouette with spacious openings below the crown, sturdy short trunk, no sprawling root network. The golden boughs visibly organize the spreading emerald growth. Green and gold each occupy large connected zones in the subject and half of the engraved frame. No scenic forest, single tiny leaf, monarchy crown, blossoms, blue sky or brown bark. All botanical material is stylized luminous emerald and gold.",
+      "file": "canopy.png",
+      "width": 1254,
+      "height": 1254,
+      "bytes": 2489772,
+      "sha256": "42a2ea99d1635c133549e6ef97608e9a7a448fc34b4d6f423c20eee2903d8e1e",
+      "alpha": {
+        "hasAlpha": true,
+        "fullyTransparentPixels": 559857,
+        "translucentPixels": 1011796,
+        "opaquePixels": 863,
+        "transparentFraction": 0.35603,
+        "translucentFraction": 0.64342,
+        "edgeAlphaMax": 1
+      },
+      "bounds": {
+        "nontransparent": {
+          "minX": 0,
+          "minY": 17,
+          "maxX": 1247,
+          "maxY": 1219,
+          "width": 1248,
+          "height": 1203
+        },
+        "visible": {
+          "minX": 41,
+          "minY": 21,
+          "maxX": 1210,
+          "maxY": 1178,
+          "width": 1170,
+          "height": 1158
+        },
+        "visibleThreshold": "alpha > 128"
+      },
+      "warnings": []
+    },
+    {
+      "id": "eclipse",
+      "name": "Eclipse",
+      "family": "dyad",
+      "affinities": [
+        "Radiance",
+        "Abyss"
+      ],
+      "meaning": "A violet disc eclipses a radiant golden sun.",
+      "source": "/Users/chaoscalligraphy/Documents/Lumiane/artifacts/luminae/design-mockups/civilization-insignias-v3-examples/eclipse.png",
+      "status": "approved reference; reused unchanged",
+      "file": "eclipse.png",
+      "width": 1254,
+      "height": 1254,
+      "bytes": 2091261,
+      "sha256": "87d32625e0536a883c56d283641c8d9c8161720c11e117d019579c058175dfc6",
+      "alpha": {
+        "hasAlpha": true,
+        "fullyTransparentPixels": 637710,
+        "translucentPixels": 933990,
+        "opaquePixels": 816,
+        "transparentFraction": 0.40553,
+        "translucentFraction": 0.59395,
+        "edgeAlphaMax": 1
+      },
+      "bounds": {
+        "nontransparent": {
+          "minX": 65,
+          "minY": 44,
+          "maxX": 1187,
+          "maxY": 1253,
+          "width": 1123,
+          "height": 1210
+        },
+        "visible": {
+          "minX": 68,
+          "minY": 47,
+          "maxX": 1183,
+          "maxY": 1157,
+          "width": 1116,
+          "height": 1111
+        },
+        "visibleThreshold": "alpha > 128"
+      },
+      "warnings": []
+    },
+    {
+      "id": "lineage",
+      "name": "Lineage",
+      "family": "dyad",
+      "affinities": [
+        "Continuum",
+        "Verdance"
+      ],
+      "meaning": "Blue and emerald strands transmit a repeating inherited pattern.",
+      "subject": "ONE large upright DOUBLE HELIX, unmistakable as inherited genetic lineage, rendered as a symbolic sculpted ribbon rather than a scientific diagram. Exactly two substantial intertwined strands: one sapphire-blue crystalline ribbon, one emerald-green living ribbon, equal thickness and brightness. Four or five bold repeated paired cross-links transmit the same pattern along the complete helix. Keep the central structure large, clear and uncluttered, no little text, labels, atoms or individual molecular dots. A subtle branching fork at its upper end may suggest transmission but do not turn it into a tree or feather. Equal blue and green main subject and equal blue/green engraved rim, using leaf and constellation motifs subtly in the frame only. No flower, changing leaf generations, red, purple or gold palette.",
+      "references": [
+        "/Users/chaoscalligraphy/Documents/Lumiane/attached_assets/generated_images/affinity_continuum.png",
+        "/Users/chaoscalligraphy/Documents/Lumiane/attached_assets/generated_images/affinity_verdance.png"
+      ],
+      "prompt": "Use case: style-preserving design edit / logo-brand.\nTransform the supplied Affinity token references into ONE new civilization insignia. Image 1 is the token being transformed; other inputs supply the additional parent Affinities' material and color. Replace the central image completely with the name-recalling subject described below. Preserve the shared game-token design language: centered front-facing round medallion, high-quality raised engraved metal rim, luminous saturated Affinity colors, polished cosmic/fantasy craftsmanship, a strong large iconic central subject, generous transparent margin. This must belong to the same family as the input assets.\n\nThe central motif should help a person recall the NAME immediately. It is an abstract archetypal insignia rendered in rich materials, not an animal portrait or a scenery illustration. No eyes, realistic faces, human figures, anatomy-heavy creatures, mundane landscape, separate mini affinity icons, extra emblems, letters, readable words, numbers, labels or watermark.\nColor is a PRIMARY identity cue. Every parent Affinity must occupy a large visible share of both subject and rim. Balance luminous area and saturation, not only tiny accents. Match each rim sector's edge light and engraving to its own color; NEVER wrap all colors in one parent's blue/gold/green framework. Use only the specified parent color families, with neutral dark negative space and limited white highlights. Internal darkness should frame the subject, not replace it with an empty void. No unrequested central galaxy.\nOne token only, square output, full outer silhouette visible, genuinely transparent exterior. No background panel or baked checkerboard. Match the supplied tokens' level of finish.\n\nINTERNAL NAME (not printed): Lineage.\nPARENT PALETTE: Continuum = luminous cobalt/sapphire blue #3D6BFF, crystalline material and continuous blue connections; Verdance = saturated emerald green #2ECC71, luminous organic growth and green glass.\n\nCENTRAL SUBJECT AND COLOR ALLOCATION:\nONE large upright DOUBLE HELIX, unmistakable as inherited genetic lineage, rendered as a symbolic sculpted ribbon rather than a scientific diagram. Exactly two substantial intertwined strands: one sapphire-blue crystalline ribbon, one emerald-green living ribbon, equal thickness and brightness. Four or five bold repeated paired cross-links transmit the same pattern along the complete helix. Keep the central structure large, clear and uncluttered, no little text, labels, atoms or individual molecular dots. A subtle branching fork at its upper end may suggest transmission but do not turn it into a tree or feather. Equal blue and green main subject and equal blue/green engraved rim, using leaf and constellation motifs subtly in the frame only. No flower, changing leaf generations, red, purple or gold palette.",
+      "file": "lineage.png",
+      "width": 1254,
+      "height": 1254,
+      "bytes": 1860411,
+      "sha256": "13676fed1ea9b3a2873977c943a5f090e1c99e6fc42f01a620160fe661435691",
+      "alpha": {
+        "hasAlpha": true,
+        "fullyTransparentPixels": 737510,
+        "translucentPixels": 834316,
+        "opaquePixels": 690,
+        "transparentFraction": 0.469,
+        "translucentFraction": 0.53056,
+        "edgeAlphaMax": 1
+      },
+      "bounds": {
+        "nontransparent": {
+          "minX": 19,
+          "minY": 9,
+          "maxX": 1201,
+          "maxY": 1253,
+          "width": 1183,
+          "height": 1245
+        },
+        "visible": {
+          "minX": 112,
+          "minY": 108,
+          "maxX": 1139,
+          "maxY": 1133,
+          "width": 1028,
+          "height": 1026
+        },
+        "visibleThreshold": "alpha > 128"
+      },
+      "warnings": []
+    },
+    {
+      "id": "echo",
+      "name": "Echo",
+      "family": "dyad",
+      "affinities": [
+        "Continuum",
+        "Abyss"
+      ],
+      "meaning": "Blue and violet ripples persist around an absent source.",
+      "subject": "THREE broad nested sound-wave crescent contours, each larger than the previous, propagating across the center from a conspicuously EMPTY source position. The three crescents are slightly irregular luminous sculpted ribbons. Each carries a substantial blue outer face and violet inner face, about equal total color area and brightness. The gaps and missing origin are dark violet-black; do not draw a source dot, speaker, mouth or instrument. The crescents stay open on one side, clearly showing a receding ECHO, not a closed target or a galaxy. Make the contours broad enough to read at a thumbnail. Half-blue half-violet engraved rim; no cyan framework around everything and no central planet, eye or gold.",
+      "references": [
+        "/Users/chaoscalligraphy/Documents/Lumiane/attached_assets/generated_images/affinity_continuum.png",
+        "/Users/chaoscalligraphy/Documents/Lumiane/attached_assets/generated_images/affinity_abyss.png"
+      ],
+      "prompt": "Use case: style-preserving design edit / logo-brand.\nTransform the supplied Affinity token references into ONE new civilization insignia. Image 1 is the token being transformed; other inputs supply the additional parent Affinities' material and color. Replace the central image completely with the name-recalling subject described below. Preserve the shared game-token design language: centered front-facing round medallion, high-quality raised engraved metal rim, luminous saturated Affinity colors, polished cosmic/fantasy craftsmanship, a strong large iconic central subject, generous transparent margin. This must belong to the same family as the input assets.\n\nThe central motif should help a person recall the NAME immediately. It is an abstract archetypal insignia rendered in rich materials, not an animal portrait or a scenery illustration. No eyes, realistic faces, human figures, anatomy-heavy creatures, mundane landscape, separate mini affinity icons, extra emblems, letters, readable words, numbers, labels or watermark.\nColor is a PRIMARY identity cue. Every parent Affinity must occupy a large visible share of both subject and rim. Balance luminous area and saturation, not only tiny accents. Match each rim sector's edge light and engraving to its own color; NEVER wrap all colors in one parent's blue/gold/green framework. Use only the specified parent color families, with neutral dark negative space and limited white highlights. Internal darkness should frame the subject, not replace it with an empty void. No unrequested central galaxy.\nOne token only, square output, full outer silhouette visible, genuinely transparent exterior. No background panel or baked checkerboard. Match the supplied tokens' level of finish.\n\nINTERNAL NAME (not printed): Echo.\nPARENT PALETTE: Continuum = luminous cobalt/sapphire blue #3D6BFF, crystalline material and continuous blue connections; Abyss = rich vivid violet #A832D4, purple translucent shells and violet veils.\n\nCENTRAL SUBJECT AND COLOR ALLOCATION:\nTHREE broad nested sound-wave crescent contours, each larger than the previous, propagating across the center from a conspicuously EMPTY source position. The three crescents are slightly irregular luminous sculpted ribbons. Each carries a substantial blue outer face and violet inner face, about equal total color area and brightness. The gaps and missing origin are dark violet-black; do not draw a source dot, speaker, mouth or instrument. The crescents stay open on one side, clearly showing a receding ECHO, not a closed target or a galaxy. Make the contours broad enough to read at a thumbnail. Half-blue half-violet engraved rim; no cyan framework around everything and no central planet, eye or gold.",
+      "file": "echo.png",
+      "width": 1254,
+      "height": 1254,
+      "bytes": 1974155,
+      "sha256": "f5327ea2fa6f870f5745ae2be4966af81d760e38e311ee705ee0bf85f724edad",
+      "alpha": {
+        "hasAlpha": true,
+        "fullyTransparentPixels": 642559,
+        "translucentPixels": 929018,
+        "opaquePixels": 939,
+        "transparentFraction": 0.40862,
+        "translucentFraction": 0.59078,
+        "edgeAlphaMax": 1
+      },
+      "bounds": {
+        "nontransparent": {
+          "minX": 0,
+          "minY": 21,
+          "maxX": 1197,
+          "maxY": 1211,
+          "width": 1198,
+          "height": 1191
+        },
+        "visible": {
+          "minX": 85,
+          "minY": 76,
+          "maxX": 1169,
+          "maxY": 1161,
+          "width": 1085,
+          "height": 1086
+        },
+        "visibleThreshold": "alpha > 128"
+      },
+      "warnings": []
+    },
+    {
+      "id": "spore",
+      "name": "Spore",
+      "family": "dyad",
+      "affinities": [
+        "Verdance",
+        "Abyss"
+      ],
+      "meaning": "A violet capsule releases luminous green spores.",
+      "subject": "ONE large organic SPORE CAPSULE floats near center, with a translucent rich-violet protective envelope split just enough to reveal a substantial bright emerald reproductive interior. THREE small rounded spores escape from one modest opening, each repeating an emerald core and violet shell, visibly related to the big parent. Rounded seedlike pores and soft capsular folds, no spikes, virus geometry, hazardous icon or insect. Keep the single parent capsule dominant, compact and recognizable, with the three offspring arranged in a short outward arc. Green contents and purple enclosure should be equally visible, not a purple orb with a tiny green dot. Equal emerald/violet metal rim. No mushroom forest, leafy plant or connected chain of three equally large hosts.",
+      "references": [
+        "/Users/chaoscalligraphy/Documents/Lumiane/attached_assets/generated_images/affinity_verdance.png",
+        "/Users/chaoscalligraphy/Documents/Lumiane/attached_assets/generated_images/affinity_abyss.png"
+      ],
+      "prompt": "Use case: style-preserving design edit / logo-brand.\nTransform the supplied Affinity token references into ONE new civilization insignia. Image 1 is the token being transformed; other inputs supply the additional parent Affinities' material and color. Replace the central image completely with the name-recalling subject described below. Preserve the shared game-token design language: centered front-facing round medallion, high-quality raised engraved metal rim, luminous saturated Affinity colors, polished cosmic/fantasy craftsmanship, a strong large iconic central subject, generous transparent margin. This must belong to the same family as the input assets.\n\nThe central motif should help a person recall the NAME immediately. It is an abstract archetypal insignia rendered in rich materials, not an animal portrait or a scenery illustration. No eyes, realistic faces, human figures, anatomy-heavy creatures, mundane landscape, separate mini affinity icons, extra emblems, letters, readable words, numbers, labels or watermark.\nColor is a PRIMARY identity cue. Every parent Affinity must occupy a large visible share of both subject and rim. Balance luminous area and saturation, not only tiny accents. Match each rim sector's edge light and engraving to its own color; NEVER wrap all colors in one parent's blue/gold/green framework. Use only the specified parent color families, with neutral dark negative space and limited white highlights. Internal darkness should frame the subject, not replace it with an empty void. No unrequested central galaxy.\nOne token only, square output, full outer silhouette visible, genuinely transparent exterior. No background panel or baked checkerboard. Match the supplied tokens' level of finish.\n\nINTERNAL NAME (not printed): Spore.\nPARENT PALETTE: Verdance = saturated emerald green #2ECC71, luminous organic growth and green glass; Abyss = rich vivid violet #A832D4, purple translucent shells and violet veils.\n\nCENTRAL SUBJECT AND COLOR ALLOCATION:\nONE large organic SPORE CAPSULE floats near center, with a translucent rich-violet protective envelope split just enough to reveal a substantial bright emerald reproductive interior. THREE small rounded spores escape from one modest opening, each repeating an emerald core and violet shell, visibly related to the big parent. Rounded seedlike pores and soft capsular folds, no spikes, virus geometry, hazardous icon or insect. Keep the single parent capsule dominant, compact and recognizable, with the three offspring arranged in a short outward arc. Green contents and purple enclosure should be equally visible, not a purple orb with a tiny green dot. Equal emerald/violet metal rim. No mushroom forest, leafy plant or connected chain of three equally large hosts.",
+      "file": "spore.png",
+      "width": 1254,
+      "height": 1254,
+      "bytes": 1971721,
+      "sha256": "0a377f4f0c200cab7765629d7ff1992c3c74a68e3e78a46b4ad00c4ac85cec73",
+      "alpha": {
+        "hasAlpha": true,
+        "fullyTransparentPixels": 683290,
+        "translucentPixels": 888097,
+        "opaquePixels": 1129,
+        "transparentFraction": 0.43452,
+        "translucentFraction": 0.56476,
+        "edgeAlphaMax": 1
+      },
+      "bounds": {
+        "nontransparent": {
+          "minX": 0,
+          "minY": 18,
+          "maxX": 1197,
+          "maxY": 1253,
+          "width": 1198,
+          "height": 1236
+        },
+        "visible": {
+          "minX": 97,
+          "minY": 83,
+          "maxX": 1156,
+          "maxY": 1140,
+          "width": 1060,
+          "height": 1058
+        },
+        "visibleThreshold": "alpha > 128"
+      },
+      "warnings": []
+    },
+    {
+      "id": "homeostasis",
+      "name": "Homeostasis",
+      "family": "triad",
+      "affinities": [
+        "Flare",
+        "Radiance",
+        "Continuum"
+      ],
+      "meaning": "A steady flame is held between heating and cooling currents.",
+      "subject": "A symbolic HOMEOSTATIC BALANCE: one steady upright scarlet flame cradled at the center of a broad golden regulating cradle, opposed by a substantial blue crystalline cooling wave curving inward around the other side. A broad red warm current and an equally broad blue cool current curl toward the same protected stable center, while the gold cradle visibly coordinates and holds their balance. The image should resemble a self-regulating sacred hearth, compact and symmetrical in overall balance, not a scene. The steady red flame, blue cooling crescent and golden curved cradle must each occupy about one third of the main subject. Give all three equal rim sectors and locally matching engraved lines. Keep warm red separate from gold. No scales of justice, thermometer, numbers, generic concentric reactor rings, heart anatomy, face or galaxy.",
+      "references": [
+        "/Users/chaoscalligraphy/Documents/Lumiane/attached_assets/generated_images/affinity_flare.png",
+        "/Users/chaoscalligraphy/Documents/Lumiane/attached_assets/luminae_radiance_emblem_v2.png",
+        "/Users/chaoscalligraphy/Documents/Lumiane/attached_assets/generated_images/affinity_continuum.png"
+      ],
+      "prompt": "Use case: style-preserving design edit / logo-brand.\nTransform the supplied Affinity token references into ONE new civilization insignia. Image 1 is the token being transformed; other inputs supply the additional parent Affinities' material and color. Replace the central image completely with the name-recalling subject described below. Preserve the shared game-token design language: centered front-facing round medallion, high-quality raised engraved metal rim, luminous saturated Affinity colors, polished cosmic/fantasy craftsmanship, a strong large iconic central subject, generous transparent margin. This must belong to the same family as the input assets.\n\nThe central motif should help a person recall the NAME immediately. It is an abstract archetypal insignia rendered in rich materials, not an animal portrait or a scenery illustration. No eyes, realistic faces, human figures, anatomy-heavy creatures, mundane landscape, separate mini affinity icons, extra emblems, letters, readable words, numbers, labels or watermark.\nColor is a PRIMARY identity cue. Every parent Affinity must occupy a large visible share of both subject and rim. Balance luminous area and saturation, not only tiny accents. Match each rim sector's edge light and engraving to its own color; NEVER wrap all colors in one parent's blue/gold/green framework. Use only the specified parent color families, with neutral dark negative space and limited white highlights. Internal darkness should frame the subject, not replace it with an empty void. No unrequested central galaxy.\nOne token only, square output, full outer silhouette visible, genuinely transparent exterior. No background panel or baked checkerboard. Match the supplied tokens' level of finish.\n\nINTERNAL NAME (not printed): Homeostasis.\nPARENT PALETTE: Flare = vivid coral-red #FF5A3C, incandescent red flame and molten material; Radiance = radiant solar gold #DFC878, structured golden metal and warm golden light; Continuum = luminous cobalt/sapphire blue #3D6BFF, crystalline material and continuous blue connections.\n\nCENTRAL SUBJECT AND COLOR ALLOCATION:\nA symbolic HOMEOSTATIC BALANCE: one steady upright scarlet flame cradled at the center of a broad golden regulating cradle, opposed by a substantial blue crystalline cooling wave curving inward around the other side. A broad red warm current and an equally broad blue cool current curl toward the same protected stable center, while the gold cradle visibly coordinates and holds their balance. The image should resemble a self-regulating sacred hearth, compact and symmetrical in overall balance, not a scene. The steady red flame, blue cooling crescent and golden curved cradle must each occupy about one third of the main subject. Give all three equal rim sectors and locally matching engraved lines. Keep warm red separate from gold. No scales of justice, thermometer, numbers, generic concentric reactor rings, heart anatomy, face or galaxy.",
+      "file": "homeostasis.png",
+      "width": 1254,
+      "height": 1254,
+      "bytes": 2152004,
+      "sha256": "9589a3eecd2055c5a9ec3bdacf6db47c72d48bb46dc545d7ecd5e87a4ec2015b",
+      "alpha": {
+        "hasAlpha": true,
+        "fullyTransparentPixels": 651198,
+        "translucentPixels": 920511,
+        "opaquePixels": 807,
+        "transparentFraction": 0.41411,
+        "translucentFraction": 0.58537,
+        "edgeAlphaMax": 0
+      },
+      "bounds": {
+        "nontransparent": {
+          "minX": 70,
+          "minY": 61,
+          "maxX": 1185,
+          "maxY": 1181,
+          "width": 1116,
+          "height": 1121
+        },
+        "visible": {
+          "minX": 73,
+          "minY": 64,
+          "maxX": 1180,
+          "maxY": 1160,
+          "width": 1108,
+          "height": 1097
+        },
+        "visibleThreshold": "alpha > 128"
+      },
+      "warnings": []
+    },
+    {
+      "id": "cascade",
+      "name": "Cascade",
+      "family": "triad",
+      "affinities": [
+        "Flare",
+        "Radiance",
+        "Verdance"
+      ],
+      "meaning": "A governed waterfall branches into successive flowing tiers.",
+      "subject": "ONE bold three-tier branching WATERFALL / CASCADE as a sculpted elemental emblem. A broad scarlet-red upper fall spills into gold middle ledges and broad golden sheets, then divides into three substantial emerald-green lower streams. Water must visibly flow and spill from one tier into the next, branching further downstream, not three disconnected horizontal stripes. Two broad golden channel walls or ledges direct the flow without becoming a separate building. Red, gold, green each take a full substantial tier with similar area and glow. The overall silhouette is a widening descending cascade with clear open channels between streams. No landscape, tiny spray cloud, blue water, tree, crystals, pyramid of gems, ordinary flame or abstract circuit chart. Three equal parent-colored frame sectors, no single-color border.",
+      "references": [
+        "/Users/chaoscalligraphy/Documents/Lumiane/attached_assets/generated_images/affinity_flare.png",
+        "/Users/chaoscalligraphy/Documents/Lumiane/attached_assets/luminae_radiance_emblem_v2.png",
+        "/Users/chaoscalligraphy/Documents/Lumiane/attached_assets/generated_images/affinity_verdance.png"
+      ],
+      "prompt": "Use case: style-preserving design edit / logo-brand.\nTransform the supplied Affinity token references into ONE new civilization insignia. Image 1 is the token being transformed; other inputs supply the additional parent Affinities' material and color. Replace the central image completely with the name-recalling subject described below. Preserve the shared game-token design language: centered front-facing round medallion, high-quality raised engraved metal rim, luminous saturated Affinity colors, polished cosmic/fantasy craftsmanship, a strong large iconic central subject, generous transparent margin. This must belong to the same family as the input assets.\n\nThe central motif should help a person recall the NAME immediately. It is an abstract archetypal insignia rendered in rich materials, not an animal portrait or a scenery illustration. No eyes, realistic faces, human figures, anatomy-heavy creatures, mundane landscape, separate mini affinity icons, extra emblems, letters, readable words, numbers, labels or watermark.\nColor is a PRIMARY identity cue. Every parent Affinity must occupy a large visible share of both subject and rim. Balance luminous area and saturation, not only tiny accents. Match each rim sector's edge light and engraving to its own color; NEVER wrap all colors in one parent's blue/gold/green framework. Use only the specified parent color families, with neutral dark negative space and limited white highlights. Internal darkness should frame the subject, not replace it with an empty void. No unrequested central galaxy.\nOne token only, square output, full outer silhouette visible, genuinely transparent exterior. No background panel or baked checkerboard. Match the supplied tokens' level of finish.\n\nINTERNAL NAME (not printed): Cascade.\nPARENT PALETTE: Flare = vivid coral-red #FF5A3C, incandescent red flame and molten material; Radiance = radiant solar gold #DFC878, structured golden metal and warm golden light; Verdance = saturated emerald green #2ECC71, luminous organic growth and green glass.\n\nCENTRAL SUBJECT AND COLOR ALLOCATION:\nONE bold three-tier branching WATERFALL / CASCADE as a sculpted elemental emblem. A broad scarlet-red upper fall spills into gold middle ledges and broad golden sheets, then divides into three substantial emerald-green lower streams. Water must visibly flow and spill from one tier into the next, branching further downstream, not three disconnected horizontal stripes. Two broad golden channel walls or ledges direct the flow without becoming a separate building. Red, gold, green each take a full substantial tier with similar area and glow. The overall silhouette is a widening descending cascade with clear open channels between streams. No landscape, tiny spray cloud, blue water, tree, crystals, pyramid of gems, ordinary flame or abstract circuit chart. Three equal parent-colored frame sectors, no single-color border.",
+      "file": "cascade.png",
+      "width": 1254,
+      "height": 1254,
+      "bytes": 2578777,
+      "sha256": "e89ad5471ffb2b920a76f7ee80f137d806c55a5d28f3f4105c480527baec5afb",
+      "alpha": {
+        "hasAlpha": true,
+        "fullyTransparentPixels": 492412,
+        "translucentPixels": 1079489,
+        "opaquePixels": 615,
+        "transparentFraction": 0.31314,
+        "translucentFraction": 0.68647,
+        "edgeAlphaMax": 1
+      },
+      "bounds": {
+        "nontransparent": {
+          "minX": 0,
+          "minY": 21,
+          "maxX": 1221,
+          "maxY": 1206,
+          "width": 1222,
+          "height": 1186
+        },
+        "visible": {
+          "minX": 43,
+          "minY": 24,
+          "maxX": 1209,
+          "maxY": 1202,
+          "width": 1167,
+          "height": 1179
+        },
+        "visibleThreshold": "alpha > 128"
+      },
+      "warnings": []
+    },
+    {
+      "id": "alchemy",
+      "name": "Alchemy",
+      "family": "triad",
+      "affinities": [
+        "Flare",
+        "Radiance",
+        "Abyss"
+      ],
+      "meaning": "A violet crucible turns red molten matter into gold.",
+      "subject": "ONE unmistakable ALCHEMICAL TRANSMUTATION: a broad amethyst-violet crucible holds scarlet-red molten matter; ONE thick red liquid ribbon rises from it, bends across the center and visibly transforms into a substantial golden crystalline ingot or faceted drop at its other end. The vessel, molten ribbon and gold product form one connected compact emblem; their shapes are simple enough to identify at small size. Purple enclosing vessel and deep violet vapor, red changing material, and radiant gold finished form each occupy about one third of the center. Keep gold distinct from the red fire. No laboratory scene, many bottles, chemical lettering, existing alchemical glyphs, diagram, eye, hands or tiny ingredients. Three balanced purple/red/gold metal frame sectors. No blue or green.",
+      "references": [
+        "/Users/chaoscalligraphy/Documents/Lumiane/attached_assets/generated_images/affinity_flare.png",
+        "/Users/chaoscalligraphy/Documents/Lumiane/attached_assets/luminae_radiance_emblem_v2.png",
+        "/Users/chaoscalligraphy/Documents/Lumiane/attached_assets/generated_images/affinity_abyss.png"
+      ],
+      "prompt": "Use case: style-preserving design edit / logo-brand.\nTransform the supplied Affinity token references into ONE new civilization insignia. Image 1 is the token being transformed; other inputs supply the additional parent Affinities' material and color. Replace the central image completely with the name-recalling subject described below. Preserve the shared game-token design language: centered front-facing round medallion, high-quality raised engraved metal rim, luminous saturated Affinity colors, polished cosmic/fantasy craftsmanship, a strong large iconic central subject, generous transparent margin. This must belong to the same family as the input assets.\n\nThe central motif should help a person recall the NAME immediately. It is an abstract archetypal insignia rendered in rich materials, not an animal portrait or a scenery illustration. No eyes, realistic faces, human figures, anatomy-heavy creatures, mundane landscape, separate mini affinity icons, extra emblems, letters, readable words, numbers, labels or watermark.\nColor is a PRIMARY identity cue. Every parent Affinity must occupy a large visible share of both subject and rim. Balance luminous area and saturation, not only tiny accents. Match each rim sector's edge light and engraving to its own color; NEVER wrap all colors in one parent's blue/gold/green framework. Use only the specified parent color families, with neutral dark negative space and limited white highlights. Internal darkness should frame the subject, not replace it with an empty void. No unrequested central galaxy.\nOne token only, square output, full outer silhouette visible, genuinely transparent exterior. No background panel or baked checkerboard. Match the supplied tokens' level of finish.\n\nINTERNAL NAME (not printed): Alchemy.\nPARENT PALETTE: Flare = vivid coral-red #FF5A3C, incandescent red flame and molten material; Radiance = radiant solar gold #DFC878, structured golden metal and warm golden light; Abyss = rich vivid violet #A832D4, purple translucent shells and violet veils.\n\nCENTRAL SUBJECT AND COLOR ALLOCATION:\nONE unmistakable ALCHEMICAL TRANSMUTATION: a broad amethyst-violet crucible holds scarlet-red molten matter; ONE thick red liquid ribbon rises from it, bends across the center and visibly transforms into a substantial golden crystalline ingot or faceted drop at its other end. The vessel, molten ribbon and gold product form one connected compact emblem; their shapes are simple enough to identify at small size. Purple enclosing vessel and deep violet vapor, red changing material, and radiant gold finished form each occupy about one third of the center. Keep gold distinct from the red fire. No laboratory scene, many bottles, chemical lettering, existing alchemical glyphs, diagram, eye, hands or tiny ingredients. Three balanced purple/red/gold metal frame sectors. No blue or green.",
+      "file": "alchemy.png",
+      "width": 1254,
+      "height": 1254,
+      "bytes": 2216522,
+      "sha256": "3017f0a931a39591e93ab37eb96664738a5de54c2fb879938633c9662a6888ca",
+      "alpha": {
+        "hasAlpha": true,
+        "fullyTransparentPixels": 633769,
+        "translucentPixels": 937688,
+        "opaquePixels": 1059,
+        "transparentFraction": 0.40303,
+        "translucentFraction": 0.5963,
+        "edgeAlphaMax": 1
+      },
+      "bounds": {
+        "nontransparent": {
+          "minX": 0,
+          "minY": 49,
+          "maxX": 1189,
+          "maxY": 1253,
+          "width": 1190,
+          "height": 1205
+        },
+        "visible": {
+          "minX": 73,
+          "minY": 52,
+          "maxX": 1175,
+          "maxY": 1147,
+          "width": 1103,
+          "height": 1096
+        },
+        "visibleThreshold": "alpha > 128"
+      },
+      "warnings": []
+    },
+    {
+      "id": "evolution",
+      "name": "Evolution",
+      "family": "triad",
+      "affinities": [
+        "Flare",
+        "Continuum",
+        "Verdance"
+      ],
+      "meaning": "Inherited forms visibly branch and change across generations.",
+      "subject": "ONE stylized evolving frond arranged on a continuous curved sapphire-blue backbone: low on the stem a simple broad blade, midway a conspicuously changing forked scarlet-red blade, at the top a fuller emerald branching fan which still retains the inherited fork. Show THREE clearly related but visibly modified successive forms within one living structure, not a normal unchanged fern. The large blue continuous crystalline stem/root structure, broad red transitional forks, and large green branching canopy should have comparable total visual mass. Make the successive modification instantly visible in the main silhouette, like a compact emblem of descent with change. No human evolution march, animal faces, eyes, ladder of primates, separate small pictograms or DNA double helix. Frame uses equal red, blue and green sectors with matching local highlights.",
+      "references": [
+        "/Users/chaoscalligraphy/Documents/Lumiane/attached_assets/generated_images/affinity_flare.png",
+        "/Users/chaoscalligraphy/Documents/Lumiane/attached_assets/generated_images/affinity_continuum.png",
+        "/Users/chaoscalligraphy/Documents/Lumiane/attached_assets/generated_images/affinity_verdance.png"
+      ],
+      "prompt": "Use case: style-preserving design edit / logo-brand.\nTransform the supplied Affinity token references into ONE new civilization insignia. Image 1 is the token being transformed; other inputs supply the additional parent Affinities' material and color. Replace the central image completely with the name-recalling subject described below. Preserve the shared game-token design language: centered front-facing round medallion, high-quality raised engraved metal rim, luminous saturated Affinity colors, polished cosmic/fantasy craftsmanship, a strong large iconic central subject, generous transparent margin. This must belong to the same family as the input assets.\n\nThe central motif should help a person recall the NAME immediately. It is an abstract archetypal insignia rendered in rich materials, not an animal portrait or a scenery illustration. No eyes, realistic faces, human figures, anatomy-heavy creatures, mundane landscape, separate mini affinity icons, extra emblems, letters, readable words, numbers, labels or watermark.\nColor is a PRIMARY identity cue. Every parent Affinity must occupy a large visible share of both subject and rim. Balance luminous area and saturation, not only tiny accents. Match each rim sector's edge light and engraving to its own color; NEVER wrap all colors in one parent's blue/gold/green framework. Use only the specified parent color families, with neutral dark negative space and limited white highlights. Internal darkness should frame the subject, not replace it with an empty void. No unrequested central galaxy.\nOne token only, square output, full outer silhouette visible, genuinely transparent exterior. No background panel or baked checkerboard. Match the supplied tokens' level of finish.\n\nINTERNAL NAME (not printed): Evolution.\nPARENT PALETTE: Flare = vivid coral-red #FF5A3C, incandescent red flame and molten material; Continuum = luminous cobalt/sapphire blue #3D6BFF, crystalline material and continuous blue connections; Verdance = saturated emerald green #2ECC71, luminous organic growth and green glass.\n\nCENTRAL SUBJECT AND COLOR ALLOCATION:\nONE stylized evolving frond arranged on a continuous curved sapphire-blue backbone: low on the stem a simple broad blade, midway a conspicuously changing forked scarlet-red blade, at the top a fuller emerald branching fan which still retains the inherited fork. Show THREE clearly related but visibly modified successive forms within one living structure, not a normal unchanged fern. The large blue continuous crystalline stem/root structure, broad red transitional forks, and large green branching canopy should have comparable total visual mass. Make the successive modification instantly visible in the main silhouette, like a compact emblem of descent with change. No human evolution march, animal faces, eyes, ladder of primates, separate small pictograms or DNA double helix. Frame uses equal red, blue and green sectors with matching local highlights.",
+      "file": "evolution.png",
+      "width": 1254,
+      "height": 1254,
+      "bytes": 2467899,
+      "sha256": "80cc3328787d8e8e17352b303f1385a2eecf7885811c4d2ca042a4357bec7cfd",
+      "alpha": {
+        "hasAlpha": true,
+        "fullyTransparentPixels": 503070,
+        "translucentPixels": 1069041,
+        "opaquePixels": 405,
+        "transparentFraction": 0.31991,
+        "translucentFraction": 0.67983,
+        "edgeAlphaMax": 0
+      },
+      "bounds": {
+        "nontransparent": {
+          "minX": 39,
+          "minY": 29,
+          "maxX": 1221,
+          "maxY": 1223,
+          "width": 1183,
+          "height": 1195
+        },
+        "visible": {
+          "minX": 46,
+          "minY": 42,
+          "maxX": 1206,
+          "maxY": 1198,
+          "width": 1161,
+          "height": 1157
+        },
+        "visibleThreshold": "alpha > 128"
+      },
+      "warnings": []
+    },
+    {
+      "id": "ouroboros",
+      "name": "Ouroboros",
+      "family": "triad",
+      "affinities": [
+        "Flare",
+        "Continuum",
+        "Abyss"
+      ],
+      "meaning": "An abstract serpent renews itself through fire, violet transition, and blue crystal.",
+      "source": "/Users/chaoscalligraphy/Documents/Lumiane/artifacts/luminae/design-mockups/civilization-insignias-v3-examples/ouroboros-abstract-v4.png",
+      "status": "latest user-directed reference; reused unchanged",
+      "file": "ouroboros.png",
+      "width": 1254,
+      "height": 1254,
+      "bytes": 2346699,
+      "sha256": "a003d7b4e8781cd1f96531b40190721c46f476bdc23a32694108d6abfc5a4b47",
+      "alpha": {
+        "hasAlpha": true,
+        "fullyTransparentPixels": 515025,
+        "translucentPixels": 1056895,
+        "opaquePixels": 596,
+        "transparentFraction": 0.32752,
+        "translucentFraction": 0.6721,
+        "edgeAlphaMax": 0
+      },
+      "bounds": {
+        "nontransparent": {
+          "minX": 46,
+          "minY": 33,
+          "maxX": 1218,
+          "maxY": 1221,
+          "width": 1173,
+          "height": 1189
+        },
+        "visible": {
+          "minX": 49,
+          "minY": 38,
+          "maxX": 1206,
+          "maxY": 1193,
+          "width": 1158,
+          "height": 1156
+        },
+        "visibleThreshold": "alpha > 128"
+      },
+      "warnings": []
+    },
+    {
+      "id": "contagion",
+      "name": "Contagion",
+      "family": "triad",
+      "affinities": [
+        "Flare",
+        "Verdance",
+        "Abyss"
+      ],
+      "meaning": "A hidden connection carries the same transforming pattern between hosts.",
+      "subject": "A symbolic contagious SPREAD connecting THREE substantial organic host forms in a rising diagonal chain. Each host is a broad translucent violet capsule with a hidden inner region; an emerald branching tendril passes BEHIND each opaque purple membrane and reappears between hosts, transmitting the same unmistakable hooked scarlet-red transforming mark into each. The first host has a small red mark, the second has a broader red changing cleft, the third is opening with a red transformative burst. Keep the connecting green tendril and its local branches thick and substantial, purple shells broad, red changes broad enough that all three colors have comparable visual weight. Three hosts are similarly large, in contrast with a single spore shedding small offspring. The name cue is one transforming pattern visibly spreading from host to host. No specific virus shape, biohazard symbol, illness scene, faces, eyes or exposed network of tiny scientific nodes. Equal red, green and violet rim sectors.",
+      "references": [
+        "/Users/chaoscalligraphy/Documents/Lumiane/attached_assets/generated_images/affinity_flare.png",
+        "/Users/chaoscalligraphy/Documents/Lumiane/attached_assets/generated_images/affinity_verdance.png",
+        "/Users/chaoscalligraphy/Documents/Lumiane/attached_assets/generated_images/affinity_abyss.png"
+      ],
+      "prompt": "Use case: style-preserving design edit / logo-brand.\nTransform the supplied Affinity token references into ONE new civilization insignia. Image 1 is the token being transformed; other inputs supply the additional parent Affinities' material and color. Replace the central image completely with the name-recalling subject described below. Preserve the shared game-token design language: centered front-facing round medallion, high-quality raised engraved metal rim, luminous saturated Affinity colors, polished cosmic/fantasy craftsmanship, a strong large iconic central subject, generous transparent margin. This must belong to the same family as the input assets.\n\nThe central motif should help a person recall the NAME immediately. It is an abstract archetypal insignia rendered in rich materials, not an animal portrait or a scenery illustration. No eyes, realistic faces, human figures, anatomy-heavy creatures, mundane landscape, separate mini affinity icons, extra emblems, letters, readable words, numbers, labels or watermark.\nColor is a PRIMARY identity cue. Every parent Affinity must occupy a large visible share of both subject and rim. Balance luminous area and saturation, not only tiny accents. Match each rim sector's edge light and engraving to its own color; NEVER wrap all colors in one parent's blue/gold/green framework. Use only the specified parent color families, with neutral dark negative space and limited white highlights. Internal darkness should frame the subject, not replace it with an empty void. No unrequested central galaxy.\nOne token only, square output, full outer silhouette visible, genuinely transparent exterior. No background panel or baked checkerboard. Match the supplied tokens' level of finish.\n\nINTERNAL NAME (not printed): Contagion.\nPARENT PALETTE: Flare = vivid coral-red #FF5A3C, incandescent red flame and molten material; Verdance = saturated emerald green #2ECC71, luminous organic growth and green glass; Abyss = rich vivid violet #A832D4, purple translucent shells and violet veils.\n\nCENTRAL SUBJECT AND COLOR ALLOCATION:\nA symbolic contagious SPREAD connecting THREE substantial organic host forms in a rising diagonal chain. Each host is a broad translucent violet capsule with a hidden inner region; an emerald branching tendril passes BEHIND each opaque purple membrane and reappears between hosts, transmitting the same unmistakable hooked scarlet-red transforming mark into each. The first host has a small red mark, the second has a broader red changing cleft, the third is opening with a red transformative burst. Keep the connecting green tendril and its local branches thick and substantial, purple shells broad, red changes broad enough that all three colors have comparable visual weight. Three hosts are similarly large, in contrast with a single spore shedding small offspring. The name cue is one transforming pattern visibly spreading from host to host. No specific virus shape, biohazard symbol, illness scene, faces, eyes or exposed network of tiny scientific nodes. Equal red, green and violet rim sectors.",
+      "file": "contagion.png",
+      "width": 1254,
+      "height": 1254,
+      "bytes": 2154043,
+      "sha256": "b76ab54e8bae6dc488d629fb42a16e29a37e60007070a08b66b011b7c4d1ab74",
+      "alpha": {
+        "hasAlpha": true,
+        "fullyTransparentPixels": 536528,
+        "translucentPixels": 1035468,
+        "opaquePixels": 520,
+        "transparentFraction": 0.34119,
+        "translucentFraction": 0.65848,
+        "edgeAlphaMax": 1
+      },
+      "bounds": {
+        "nontransparent": {
+          "minX": 0,
+          "minY": 0,
+          "maxX": 1231,
+          "maxY": 1245,
+          "width": 1232,
+          "height": 1246
+        },
+        "visible": {
+          "minX": 50,
+          "minY": 34,
+          "maxX": 1201,
+          "maxY": 1170,
+          "width": 1152,
+          "height": 1137
+        },
+        "visibleThreshold": "alpha > 128"
+      },
+      "warnings": []
+    },
+    {
+      "id": "dynasty",
+      "name": "Dynasty",
+      "family": "triad",
+      "affinities": [
+        "Radiance",
+        "Continuum",
+        "Verdance"
+      ],
+      "meaning": "The same crown passes through a connected family tree.",
+      "subject": "ONE iconic crowned GENEALOGICAL TREE. Its substantial blue crystalline trunk and deep binding roots divide into three emerald-green branches ending at three successive heights; each bears the SAME broad radiant-gold three-pointed crown. Three related crowns at ascending levels make inherited rulership immediately visible. The repeated crowns together form roughly one third of the motif, the thick blue trunk/root structure one third, green leaf-bearing branches one third. A strong readable family-tree silhouette, not a leafy ordinary tree or isolated royal crown. No human portraits, animal heraldry, shields, faces, buildings or text. Three equal gold/blue/green engraved rim sectors, no brown bark or plain gold border.",
+      "references": [
+        "/Users/chaoscalligraphy/Documents/Lumiane/attached_assets/luminae_radiance_emblem_v2.png",
+        "/Users/chaoscalligraphy/Documents/Lumiane/attached_assets/generated_images/affinity_continuum.png",
+        "/Users/chaoscalligraphy/Documents/Lumiane/attached_assets/generated_images/affinity_verdance.png"
+      ],
+      "prompt": "Use case: style-preserving design edit / logo-brand.\nTransform the supplied Affinity token references into ONE new civilization insignia. Image 1 is the token being transformed; other inputs supply the additional parent Affinities' material and color. Replace the central image completely with the name-recalling subject described below. Preserve the shared game-token design language: centered front-facing round medallion, high-quality raised engraved metal rim, luminous saturated Affinity colors, polished cosmic/fantasy craftsmanship, a strong large iconic central subject, generous transparent margin. This must belong to the same family as the input assets.\n\nThe central motif should help a person recall the NAME immediately. It is an abstract archetypal insignia rendered in rich materials, not an animal portrait or a scenery illustration. No eyes, realistic faces, human figures, anatomy-heavy creatures, mundane landscape, separate mini affinity icons, extra emblems, letters, readable words, numbers, labels or watermark.\nColor is a PRIMARY identity cue. Every parent Affinity must occupy a large visible share of both subject and rim. Balance luminous area and saturation, not only tiny accents. Match each rim sector's edge light and engraving to its own color; NEVER wrap all colors in one parent's blue/gold/green framework. Use only the specified parent color families, with neutral dark negative space and limited white highlights. Internal darkness should frame the subject, not replace it with an empty void. No unrequested central galaxy.\nOne token only, square output, full outer silhouette visible, genuinely transparent exterior. No background panel or baked checkerboard. Match the supplied tokens' level of finish.\n\nINTERNAL NAME (not printed): Dynasty.\nPARENT PALETTE: Radiance = radiant solar gold #DFC878, structured golden metal and warm golden light; Continuum = luminous cobalt/sapphire blue #3D6BFF, crystalline material and continuous blue connections; Verdance = saturated emerald green #2ECC71, luminous organic growth and green glass.\n\nCENTRAL SUBJECT AND COLOR ALLOCATION:\nONE iconic crowned GENEALOGICAL TREE. Its substantial blue crystalline trunk and deep binding roots divide into three emerald-green branches ending at three successive heights; each bears the SAME broad radiant-gold three-pointed crown. Three related crowns at ascending levels make inherited rulership immediately visible. The repeated crowns together form roughly one third of the motif, the thick blue trunk/root structure one third, green leaf-bearing branches one third. A strong readable family-tree silhouette, not a leafy ordinary tree or isolated royal crown. No human portraits, animal heraldry, shields, faces, buildings or text. Three equal gold/blue/green engraved rim sectors, no brown bark or plain gold border.",
+      "file": "dynasty.png",
+      "width": 1254,
+      "height": 1254,
+      "bytes": 2502604,
+      "sha256": "c50164faad010a277f7712354651dd067126444a75616d76df57cdcaac458b90",
+      "alpha": {
+        "hasAlpha": true,
+        "fullyTransparentPixels": 548078,
+        "translucentPixels": 1023552,
+        "opaquePixels": 886,
+        "transparentFraction": 0.34854,
+        "translucentFraction": 0.6509,
+        "edgeAlphaMax": 1
+      },
+      "bounds": {
+        "nontransparent": {
+          "minX": 0,
+          "minY": 29,
+          "maxX": 1215,
+          "maxY": 1201,
+          "width": 1216,
+          "height": 1173
+        },
+        "visible": {
+          "minX": 61,
+          "minY": 32,
+          "maxX": 1191,
+          "maxY": 1193,
+          "width": 1131,
+          "height": 1162
+        },
+        "visibleThreshold": "alpha > 128"
+      },
+      "warnings": []
+    },
+    {
+      "id": "testament",
+      "name": "Testament",
+      "family": "triad",
+      "affinities": [
+        "Radiance",
+        "Continuum",
+        "Abyss"
+      ],
+      "meaning": "A sealed directive remains bound and preserved.",
+      "subject": "ONE monumental sealed TESTAMENT SCROLL, partially unfurled vertically, rendered as a stylized sculptural document. A rich sapphire-blue continuous scroll ribbon with two generous rolled ends; one broad rich-violet folded inner sheet conceals its contents. A large radiant-gold circular seal and thick gold binding ribbon cross the scroll and secure the folded directive. Blue outer document, purple hidden folds, gold seal and binding each occupy a substantial roughly equal area. The main silhouette instantly says solemn sealed document or last will, not a letter envelope, book, machine or cracked rock. NO readable writing, invented runes, words, letters, numbers or religious cross. Surface marks may be sparse purely abstract engraved grooves, subordinate to the seal. Equal blue/violet/gold rim sectors; no blank white parchment dominating the palette.",
+      "references": [
+        "/Users/chaoscalligraphy/Documents/Lumiane/attached_assets/luminae_radiance_emblem_v2.png",
+        "/Users/chaoscalligraphy/Documents/Lumiane/attached_assets/generated_images/affinity_continuum.png",
+        "/Users/chaoscalligraphy/Documents/Lumiane/attached_assets/generated_images/affinity_abyss.png"
+      ],
+      "prompt": "Use case: style-preserving design edit / logo-brand.\nTransform the supplied Affinity token references into ONE new civilization insignia. Image 1 is the token being transformed; other inputs supply the additional parent Affinities' material and color. Replace the central image completely with the name-recalling subject described below. Preserve the shared game-token design language: centered front-facing round medallion, high-quality raised engraved metal rim, luminous saturated Affinity colors, polished cosmic/fantasy craftsmanship, a strong large iconic central subject, generous transparent margin. This must belong to the same family as the input assets.\n\nThe central motif should help a person recall the NAME immediately. It is an abstract archetypal insignia rendered in rich materials, not an animal portrait or a scenery illustration. No eyes, realistic faces, human figures, anatomy-heavy creatures, mundane landscape, separate mini affinity icons, extra emblems, letters, readable words, numbers, labels or watermark.\nColor is a PRIMARY identity cue. Every parent Affinity must occupy a large visible share of both subject and rim. Balance luminous area and saturation, not only tiny accents. Match each rim sector's edge light and engraving to its own color; NEVER wrap all colors in one parent's blue/gold/green framework. Use only the specified parent color families, with neutral dark negative space and limited white highlights. Internal darkness should frame the subject, not replace it with an empty void. No unrequested central galaxy.\nOne token only, square output, full outer silhouette visible, genuinely transparent exterior. No background panel or baked checkerboard. Match the supplied tokens' level of finish.\n\nINTERNAL NAME (not printed): Testament.\nPARENT PALETTE: Radiance = radiant solar gold #DFC878, structured golden metal and warm golden light; Continuum = luminous cobalt/sapphire blue #3D6BFF, crystalline material and continuous blue connections; Abyss = rich vivid violet #A832D4, purple translucent shells and violet veils.\n\nCENTRAL SUBJECT AND COLOR ALLOCATION:\nONE monumental sealed TESTAMENT SCROLL, partially unfurled vertically, rendered as a stylized sculptural document. A rich sapphire-blue continuous scroll ribbon with two generous rolled ends; one broad rich-violet folded inner sheet conceals its contents. A large radiant-gold circular seal and thick gold binding ribbon cross the scroll and secure the folded directive. Blue outer document, purple hidden folds, gold seal and binding each occupy a substantial roughly equal area. The main silhouette instantly says solemn sealed document or last will, not a letter envelope, book, machine or cracked rock. NO readable writing, invented runes, words, letters, numbers or religious cross. Surface marks may be sparse purely abstract engraved grooves, subordinate to the seal. Equal blue/violet/gold rim sectors; no blank white parchment dominating the palette.",
+      "file": "testament.png",
+      "width": 1254,
+      "height": 1254,
+      "bytes": 2436209,
+      "sha256": "d172470f4b1d07e3fbd6b16423f25a8d3b9f6b9b1cac8e18334ba3629eec6b44",
+      "alpha": {
+        "hasAlpha": true,
+        "fullyTransparentPixels": 562288,
+        "translucentPixels": 1009148,
+        "opaquePixels": 1080,
+        "transparentFraction": 0.35757,
+        "translucentFraction": 0.64174,
+        "edgeAlphaMax": 1
+      },
+      "bounds": {
+        "nontransparent": {
+          "minX": 0,
+          "minY": 25,
+          "maxX": 1205,
+          "maxY": 1189,
+          "width": 1206,
+          "height": 1165
+        },
+        "visible": {
+          "minX": 64,
+          "minY": 28,
+          "maxX": 1189,
+          "maxY": 1181,
+          "width": 1126,
+          "height": 1154
+        },
+        "visibleThreshold": "alpha > 128"
+      },
+      "warnings": []
+    },
+    {
+      "id": "mycelium",
+      "name": "Mycelium",
+      "family": "triad",
+      "affinities": [
+        "Radiance",
+        "Verdance",
+        "Abyss"
+      ],
+      "meaning": "A concealed fungal mesh grows through coordinated branching.",
+      "subject": "ONE unmistakable living MYCELIAL NETWORK fills the token: thick leafless fungal hyphae branch, merge, and reconnect into a wide tangled mesh with several large open cells. Green living strands, gold coordinating junctions and entire gold branch fans, and rich-violet partly concealed branch fans each occupy about one third of the network. Strands disappear beneath opaque violet root-knots and reappear as connected mesh. Include ONE small unmistakable stylized violet-and-green mushroom fruiting cap at an upper edge, subordinate to the large spreading mycelium below; this supplies a clear fungal mnemonic while the network is the true subject. Main hyphae thick and readable, limited fine secondary branches. No tree trunk, leaves, neuron/brain, eyes, circuit board, spider, radial starburst or forest scene. Equal gold/green/violet frame sectors and locally matching highlights; no blue or red.",
+      "references": [
+        "/Users/chaoscalligraphy/Documents/Lumiane/attached_assets/luminae_radiance_emblem_v2.png",
+        "/Users/chaoscalligraphy/Documents/Lumiane/attached_assets/generated_images/affinity_verdance.png",
+        "/Users/chaoscalligraphy/Documents/Lumiane/attached_assets/generated_images/affinity_abyss.png"
+      ],
+      "prompt": "Use case: style-preserving design edit / logo-brand.\nTransform the supplied Affinity token references into ONE new civilization insignia. Image 1 is the token being transformed; other inputs supply the additional parent Affinities' material and color. Replace the central image completely with the name-recalling subject described below. Preserve the shared game-token design language: centered front-facing round medallion, high-quality raised engraved metal rim, luminous saturated Affinity colors, polished cosmic/fantasy craftsmanship, a strong large iconic central subject, generous transparent margin. This must belong to the same family as the input assets.\n\nThe central motif should help a person recall the NAME immediately. It is an abstract archetypal insignia rendered in rich materials, not an animal portrait or a scenery illustration. No eyes, realistic faces, human figures, anatomy-heavy creatures, mundane landscape, separate mini affinity icons, extra emblems, letters, readable words, numbers, labels or watermark.\nColor is a PRIMARY identity cue. Every parent Affinity must occupy a large visible share of both subject and rim. Balance luminous area and saturation, not only tiny accents. Match each rim sector's edge light and engraving to its own color; NEVER wrap all colors in one parent's blue/gold/green framework. Use only the specified parent color families, with neutral dark negative space and limited white highlights. Internal darkness should frame the subject, not replace it with an empty void. No unrequested central galaxy.\nOne token only, square output, full outer silhouette visible, genuinely transparent exterior. No background panel or baked checkerboard. Match the supplied tokens' level of finish.\n\nINTERNAL NAME (not printed): Mycelium.\nPARENT PALETTE: Radiance = radiant solar gold #DFC878, structured golden metal and warm golden light; Verdance = saturated emerald green #2ECC71, luminous organic growth and green glass; Abyss = rich vivid violet #A832D4, purple translucent shells and violet veils.\n\nCENTRAL SUBJECT AND COLOR ALLOCATION:\nONE unmistakable living MYCELIAL NETWORK fills the token: thick leafless fungal hyphae branch, merge, and reconnect into a wide tangled mesh with several large open cells. Green living strands, gold coordinating junctions and entire gold branch fans, and rich-violet partly concealed branch fans each occupy about one third of the network. Strands disappear beneath opaque violet root-knots and reappear as connected mesh. Include ONE small unmistakable stylized violet-and-green mushroom fruiting cap at an upper edge, subordinate to the large spreading mycelium below; this supplies a clear fungal mnemonic while the network is the true subject. Main hyphae thick and readable, limited fine secondary branches. No tree trunk, leaves, neuron/brain, eyes, circuit board, spider, radial starburst or forest scene. Equal gold/green/violet frame sectors and locally matching highlights; no blue or red.",
+      "file": "mycelium.png",
+      "width": 1254,
+      "height": 1254,
+      "bytes": 2466803,
+      "sha256": "580c0ff57779f19550d7a1eba30fa3d5ca5e5c98f0e2c8fb946b9c7fa3d8e73f",
+      "alpha": {
+        "hasAlpha": true,
+        "fullyTransparentPixels": 572599,
+        "translucentPixels": 999661,
+        "opaquePixels": 256,
+        "transparentFraction": 0.36413,
+        "translucentFraction": 0.63571,
+        "edgeAlphaMax": 1
+      },
+      "bounds": {
+        "nontransparent": {
+          "minX": 0,
+          "minY": 29,
+          "maxX": 1237,
+          "maxY": 1253,
+          "width": 1238,
+          "height": 1225
+        },
+        "visible": {
+          "minX": 49,
+          "minY": 32,
+          "maxX": 1203,
+          "maxY": 1182,
+          "width": 1155,
+          "height": 1151
+        },
+        "visibleThreshold": "alpha > 128"
+      },
+      "warnings": []
+    },
+    {
+      "id": "atavism",
+      "name": "Atavism",
+      "family": "triad",
+      "affinities": [
+        "Continuum",
+        "Verdance",
+        "Abyss"
+      ],
+      "meaning": "A living form repeats an ancestral fossil pattern.",
+      "subject": "ONE striking ancestral RETURN emblem: a large luminous emerald living frond emerges from a partly concealed violet fossil bed, directly beside its matching sapphire-blue ancestral fossil imprint. The SAME bold three-fork leaf/frond pattern is clearly visible in the living green form and the blue fossil impression, aligned so their shared identity is immediately recognized. The violet broken stone/veiled seed bed partly hides the lower connection, while the recovered ancestral pattern is exposed above it. Use two main frond-shaped forms and one broad enclosing broken fossil bed, no crowded scene. Green living form, blue ancestral imprint, and purple enclosing bed each carry roughly equal visual area. Distinguish this from a normal plant growing from a pot: make the fossil impression unmistakable as a preserved matching ancestral form in stone. No dinosaur, skull, animal face, eye, DNA helix, crown or flower. Equal blue/green/violet rim sectors, no brown stone or red highlights.",
+      "references": [
+        "/Users/chaoscalligraphy/Documents/Lumiane/attached_assets/generated_images/affinity_continuum.png",
+        "/Users/chaoscalligraphy/Documents/Lumiane/attached_assets/generated_images/affinity_verdance.png",
+        "/Users/chaoscalligraphy/Documents/Lumiane/attached_assets/generated_images/affinity_abyss.png"
+      ],
+      "prompt": "Use case: style-preserving design edit / logo-brand.\nTransform the supplied Affinity token references into ONE new civilization insignia. Image 1 is the token being transformed; other inputs supply the additional parent Affinities' material and color. Replace the central image completely with the name-recalling subject described below. Preserve the shared game-token design language: centered front-facing round medallion, high-quality raised engraved metal rim, luminous saturated Affinity colors, polished cosmic/fantasy craftsmanship, a strong large iconic central subject, generous transparent margin. This must belong to the same family as the input assets.\n\nThe central motif should help a person recall the NAME immediately. It is an abstract archetypal insignia rendered in rich materials, not an animal portrait or a scenery illustration. No eyes, realistic faces, human figures, anatomy-heavy creatures, mundane landscape, separate mini affinity icons, extra emblems, letters, readable words, numbers, labels or watermark.\nColor is a PRIMARY identity cue. Every parent Affinity must occupy a large visible share of both subject and rim. Balance luminous area and saturation, not only tiny accents. Match each rim sector's edge light and engraving to its own color; NEVER wrap all colors in one parent's blue/gold/green framework. Use only the specified parent color families, with neutral dark negative space and limited white highlights. Internal darkness should frame the subject, not replace it with an empty void. No unrequested central galaxy.\nOne token only, square output, full outer silhouette visible, genuinely transparent exterior. No background panel or baked checkerboard. Match the supplied tokens' level of finish.\n\nINTERNAL NAME (not printed): Atavism.\nPARENT PALETTE: Continuum = luminous cobalt/sapphire blue #3D6BFF, crystalline material and continuous blue connections; Verdance = saturated emerald green #2ECC71, luminous organic growth and green glass; Abyss = rich vivid violet #A832D4, purple translucent shells and violet veils.\n\nCENTRAL SUBJECT AND COLOR ALLOCATION:\nONE striking ancestral RETURN emblem: a large luminous emerald living frond emerges from a partly concealed violet fossil bed, directly beside its matching sapphire-blue ancestral fossil imprint. The SAME bold three-fork leaf/frond pattern is clearly visible in the living green form and the blue fossil impression, aligned so their shared identity is immediately recognized. The violet broken stone/veiled seed bed partly hides the lower connection, while the recovered ancestral pattern is exposed above it. Use two main frond-shaped forms and one broad enclosing broken fossil bed, no crowded scene. Green living form, blue ancestral imprint, and purple enclosing bed each carry roughly equal visual area. Distinguish this from a normal plant growing from a pot: make the fossil impression unmistakable as a preserved matching ancestral form in stone. No dinosaur, skull, animal face, eye, DNA helix, crown or flower. Equal blue/green/violet rim sectors, no brown stone or red highlights.",
+      "file": "atavism.png",
+      "width": 1254,
+      "height": 1254,
+      "bytes": 2269537,
+      "sha256": "458ebbf41d69e7fb77221f7fb69e25e7292b3b226f56d19e591dab9df189b370",
+      "alpha": {
+        "hasAlpha": true,
+        "fullyTransparentPixels": 599317,
+        "translucentPixels": 972576,
+        "opaquePixels": 623,
+        "transparentFraction": 0.38112,
+        "translucentFraction": 0.61848,
+        "edgeAlphaMax": 1
+      },
+      "bounds": {
+        "nontransparent": {
+          "minX": 0,
+          "minY": 21,
+          "maxX": 1223,
+          "maxY": 1181,
+          "width": 1224,
+          "height": 1161
+        },
+        "visible": {
+          "minX": 71,
+          "minY": 57,
+          "maxX": 1179,
+          "maxY": 1161,
+          "width": 1109,
+          "height": 1105
+        },
+        "visibleThreshold": "alpha > 128"
+      },
+      "warnings": []
+    }
+  ]
+}

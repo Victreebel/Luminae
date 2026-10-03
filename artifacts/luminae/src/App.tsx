@@ -3,8 +3,6 @@ import { Switch, Route, Router as WouterRouter } from "wouter";
 import { QueryClient, QueryClientProvider } from "@tanstack/react-query";
 import { Toaster } from "@/components/ui/toaster";
 import { TooltipProvider } from "@/components/ui/tooltip";
-import NotFound from "@/pages/not-found";
-import Home from "@/pages/home";
 import { PwaUpdatePrompt } from "@/components/PwaUpdatePrompt";
 import { AccountProvider } from "@/contexts/AccountContext";
 import { CosmeticsProvider } from "@/contexts/CosmeticsContext";
@@ -17,11 +15,13 @@ import {
 import { AlertTriangle, RotateCcw } from "lucide-react";
 
 const Lobby = lazy(() => import("@/pages/lobby"));
+const Home = lazy(() => import("@/pages/home"));
 const Game = lazy(() => import("@/pages/game"));
 const Dashboard = lazy(() => import("@/pages/dashboard"));
 const ResetPassword = lazy(() => import("@/pages/reset-password"));
 const Tutorial = lazy(() => import("@/pages/tutorial"));
 const Legal = lazy(() => import("@/pages/legal"));
+const NotFound = lazy(() => import("@/pages/not-found"));
 // Every development import sits behind a compile-time false branch in release
 // builds, so Vite omits both the route and its assets from production output.
 const FontPreview = import.meta.env.DEV ? lazy(() => import("@/pages/font-preview")) : null;
@@ -36,9 +36,11 @@ const DevFoundryStorage = import.meta.env.DEV ? lazy(() => import("@/pages/dev-f
 const DevBlueprintVault = import.meta.env.DEV ? lazy(() => import("@/pages/dev-blueprint-vault")) : null;
 const DevLumiiVaultEncounter = import.meta.env.DEV ? lazy(() => import("@/pages/dev-lumii-vault-encounter")) : null;
 const DevCivilizationScene = import.meta.env.DEV ? lazy(() => import("@/pages/dev-civilization-scene")) : null;
+const DevCivilizationTab = import.meta.env.DEV ? lazy(() => import("@/pages/dev-civilization-tab")) : null;
 const DevTraceChronicle = import.meta.env.DEV ? lazy(() => import("@/pages/dev-trace-chronicle")) : null;
 const DevRecurrenceChronicle = import.meta.env.DEV ? lazy(() => import("@/pages/dev-recurrence-chronicle")) : null;
 const DevTriangulationChronicle = import.meta.env.DEV ? lazy(() => import("@/pages/dev-triangulation-chronicle")) : null;
+const DevEvents = import.meta.env.DEV ? lazy(() => import("@/pages/dev-events")) : null;
 const DevReleaseJourney = import.meta.env.DEV ? lazy(() => import("@/pages/dev-release-journey")) : null;
 const DevUxReviewBridge = import.meta.env.DEV
   ? lazy(() => import("@/components/dev/DevUxReviewBridge"))
@@ -149,6 +151,9 @@ function Router() {
         {DevCivilizationScene && (
           <Route path="/dev/civilization-scene" component={DevCivilizationScene} />
         )}
+        {DevCivilizationTab && (
+          <Route path="/dev/civilization-tab" component={DevCivilizationTab} />
+        )}
         {DevTraceChronicle && (
           <Route path="/dev/trace-chronicle" component={DevTraceChronicle} />
         )}
@@ -158,6 +163,7 @@ function Router() {
         {DevTriangulationChronicle && (
           <Route path="/dev/triangulation-chronicle" component={DevTriangulationChronicle} />
         )}
+        {DevEvents && <Route path="/dev/events" component={DevEvents} />}
         {DevReleaseJourney && (
           <Route path="/dev/release-journey" component={DevReleaseJourney} />
         )}

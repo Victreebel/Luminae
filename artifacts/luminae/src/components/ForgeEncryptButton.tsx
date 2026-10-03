@@ -190,6 +190,7 @@ export function ForgeButton({
   return (
     <motion.button
       type="button"
+      aria-label={`${label} — ${isPending ? 'Confirming…' : subtitle} —`}
       onClick={onClick}
       disabled={disabled}
       className="relative w-full flex items-center overflow-hidden btn-forge-idle"
@@ -420,6 +421,7 @@ export function EncryptButton({
   return (
     <motion.button
       type="button"
+      aria-label={`${label} — ${isPending ? 'Confirming…' : subtitle} —`}
       onClick={onClick}
       disabled={disabled}
       className="relative w-full flex items-center overflow-hidden btn-encrypt-idle"

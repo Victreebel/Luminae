@@ -9,6 +9,15 @@
  */
 
 import { ARTIFACT_DEFINITION_BY_ID } from './artifacts';
+import type { ArtifactEventFactId } from './artifact-event-facts';
+import {
+  ARTIFACT_MANIFESTATION_PROFILE_BY_ID,
+  getArtifactPlacementPhysicalContract,
+  type ArtifactDistrictPlacementStrength,
+  type ArtifactManifestationProfile,
+  type ArtifactPlacementFamily,
+  type CivilizationCameraScale,
+} from './artifact-manifestations';
 import {
   ARTIFACT_CIVILIZATION_CAPABILITY_BY_ID,
   ARTIFACT_CIVILIZATION_CAPABILITY_DOMAIN_BY_ID,
@@ -25,6 +34,11 @@ import { ARTIFACT_TECHNOLOGY_METADATA_BY_ID } from './technology';
 import type { CampaignContentState, CampaignProgressProjection } from './chronicles';
 
 export * from './artifacts';
+export * from './artifact-canon';
+export * from './artifact-tier-audit';
+export * from './artifact-event-facts';
+export * from './artifact-functions';
+export * from './artifact-manifestations';
 export * from './civilization-capabilities';
 export * from './civilization-pressure';
 export * from './chronicles';
@@ -32,6 +46,7 @@ export * from './recurrenceChronicle';
 export * from './traceChronicle';
 export * from './triangulationChronicle';
 export * from './technology';
+export * from './tutorialInvestigation';
 
 /** Duration of the opening first-player selector shared by client and server. */
 export const OPENING_TURN_ORDER_PRESENTATION_MS = 3400;
@@ -83,6 +98,34 @@ export const LUMINARY_IDS = [
 ] as const;
 
 export type LuminaryId = (typeof LUMINARY_IDS)[number];
+
+/** Arrival rewards only; Eminence granted by abilities is accounted for separately. */
+export type LuminaryNativeEminence = 0 | 1 | 2 | 3;
+
+/**
+ * Shared by gameplay, tutorial, and animation previews. Three compensates for
+ * modest, shared, or unreliable effects relative to the alliance requirements;
+ * recurring scoring and engine growth receive smaller arrival rewards.
+ */
+export const LUMINARY_NATIVE_EMINENCE = {
+  lum_moth: 3, // One shared Tier III refresh; its benefit depends on the market.
+  lum_tide: 2, // Persistent Archive information and one alternative Forge source.
+  lum_verdant: 3, // Only one held token after building five permanent Verdance.
+  lum_void: 2, // A substantial, shared change to the victory threshold.
+  lum_radiant: 1, // Two later Eminence milestones reward the same specialization.
+  lum_astral: 3, // Conditional recycling benefits both players.
+  lum_bloom: 1, // Recurring Eminence can accumulate from any player's burns.
+  lum_forge: 3, // One shared market reset after building eight Affinities.
+  lum_compass: 1, // Recurring suppression plus exclusive Encryption access.
+  lum_seed: 2, // Repeatable permanent Affinities from opponents' Seeded Forges.
+  lum_orchard: 3, // Just one extra permanent Affinity after an eight-Affinity setup.
+  lum_pale: 3, // Symmetric, threshold-dependent token removal may have no benefit.
+  lum_ember: 3, // Nine-Affinity setup for a delayed, conditional market disruption.
+  lum_hunger: 2, // A free choice of Artifact can complete a valuable Blueprint.
+  lum_null: 0, // Retains its existing zero-point reward for Tier III suppression.
+  lum_oracle: 3, // Deferred; no implemented ability supplements its arrival reward.
+  lum_scholar: 2, // Deferred; a free Artifact would supply additional engine value.
+} as const satisfies Readonly<Record<LuminaryId, LuminaryNativeEminence>>;
 
 /**
  * Canonical set of aura animation style keys recognised by the frontend aura
@@ -160,7 +203,65 @@ export const AFFINITY_NAMES: Record<AffinityKey, string> = {
  * implementation. An implementation may be damaged or annihilated without
  * erasing the fact that the civilization mastered the Artifact.
  */
-export const CIVILIZATION_STATE_VERSION = 2 as const;
+export const CIVILIZATION_STATE_VERSION = 5 as const;
+
+export const CIVILIZATION_ENVIRONMENT_POLICY_ID = 'persistent-world-v1' as const;
+
+/**
+ * Every player begins on the same authored Surface construction topology.
+ * Environment identity may change atmosphere and material treatment, but it
+ * may not move terrain, cameras, districts, or manifestation sockets.
+ */
+export const CIVILIZATION_SURFACE_CONSTRUCTION_PLAN_ID = 'shared-basin-v1' as const;
+export type CivilizationSurfaceConstructionPlanId =
+  typeof CIVILIZATION_SURFACE_CONSTRUCTION_PLAN_ID;
+
+export const CIVILIZATION_ENVIRONMENT_VARIANTS = [
+  {
+    id: 'aurora_basin',
+    terrain: 'terraced_basin',
+    celestial: 'near_ringed_world',
+    atmosphere: 'auroral_twilight',
+  },
+  {
+    id: 'terminator_reach',
+    terrain: 'terminator_highlands',
+    celestial: 'binary_dawn',
+    atmosphere: 'copper_haze',
+  },
+  {
+    id: 'oceanic_scar',
+    terrain: 'archipelago_scar',
+    celestial: 'tidal_moon',
+    atmosphere: 'storm_blue',
+  },
+  {
+    id: 'obsidian_steppe',
+    terrain: 'volcanic_steppe',
+    celestial: 'distant_giant',
+    atmosphere: 'clear_violet',
+  },
+] as const;
+
+export type CivilizationEnvironmentVariantId =
+  (typeof CIVILIZATION_ENVIRONMENT_VARIANTS)[number]['id'];
+export type CivilizationEnvironmentTerrain =
+  (typeof CIVILIZATION_ENVIRONMENT_VARIANTS)[number]['terrain'];
+export type CivilizationEnvironmentCelestial =
+  (typeof CIVILIZATION_ENVIRONMENT_VARIANTS)[number]['celestial'];
+export type CivilizationEnvironmentAtmosphere =
+  (typeof CIVILIZATION_ENVIRONMENT_VARIANTS)[number]['atmosphere'];
+
+export interface CivilizationEnvironmentIdentity {
+  policyId: typeof CIVILIZATION_ENVIRONMENT_POLICY_ID;
+  /** Stable inside one match. A rematch deliberately receives a fresh seed. */
+  matchScopedSeed: number;
+  variantId: CivilizationEnvironmentVariantId;
+  terrain: CivilizationEnvironmentTerrain;
+  celestial: CivilizationEnvironmentCelestial;
+  atmosphere: CivilizationEnvironmentAtmosphere;
+  historyEvidence: CivilizationHistoryEvidence;
+}
 
 export const CIVILIZATION_ARTIFACT_IMPLEMENTATION_STATES = [
   'operational',
@@ -173,6 +274,63 @@ export type CivilizationArtifactImplementationState =
   (typeof CIVILIZATION_ARTIFACT_IMPLEMENTATION_STATES)[number];
 
 export type CivilizationHistoryEvidence = 'recorded' | 'legacy_inferred';
+
+function hashCivilizationIdentitySeed(value: string): number {
+  let hash = 0x811c9dc5;
+  for (let index = 0; index < value.length; index += 1) {
+    hash ^= value.charCodeAt(index);
+    hash = Math.imul(hash, 0x01000193);
+  }
+  return hash >>> 0;
+}
+
+function nextCivilizationSeed(seed: number): number {
+  let value = seed || 0x6d2b79f5;
+  value ^= value << 13;
+  value ^= value >>> 17;
+  value ^= value << 5;
+  return value >>> 0;
+}
+
+export function createCivilizationEnvironmentIdentity(
+  matchSeed: string | number,
+  variantId: CivilizationEnvironmentVariantId = CIVILIZATION_ENVIRONMENT_VARIANTS[0].id,
+  historyEvidence: CivilizationHistoryEvidence = 'recorded',
+): CivilizationEnvironmentIdentity {
+  const variant = CIVILIZATION_ENVIRONMENT_VARIANTS.find((candidate) => candidate.id === variantId)
+    ?? CIVILIZATION_ENVIRONMENT_VARIANTS[0];
+  return {
+    policyId: CIVILIZATION_ENVIRONMENT_POLICY_ID,
+    matchScopedSeed: hashCivilizationIdentitySeed(String(matchSeed)),
+    variantId: variant.id,
+    terrain: variant.terrain,
+    celestial: variant.celestial,
+    atmosphere: variant.atmosphere,
+    historyEvidence,
+  };
+}
+
+/** Assigns every seat a visibly distinct environment without replacement. */
+export function createCivilizationEnvironmentSet(
+  matchSeed: string | number,
+  playerIds: readonly string[],
+  historyEvidence: CivilizationHistoryEvidence = 'recorded',
+): Record<string, CivilizationEnvironmentIdentity> {
+  const variants = [...CIVILIZATION_ENVIRONMENT_VARIANTS];
+  let seed = hashCivilizationIdentitySeed(String(matchSeed));
+  for (let index = variants.length - 1; index > 0; index -= 1) {
+    seed = nextCivilizationSeed(seed);
+    const swapIndex = seed % (index + 1);
+    [variants[index], variants[swapIndex]] = [variants[swapIndex]!, variants[index]!];
+  }
+  return Object.fromEntries(playerIds.map((playerId, seatIndex) => {
+    const variant = variants[seatIndex % variants.length]!;
+    return [
+      playerId,
+      createCivilizationEnvironmentIdentity(`${matchSeed}:${playerId}:${seatIndex}`, variant.id, historyEvidence),
+    ];
+  }));
+}
 
 export interface CivilizationArtifactChangeSource {
   sourceType: 'artifact' | 'blueprint' | 'chronicle' | 'scenario' | 'system';
@@ -214,6 +372,56 @@ export const CIVILIZATION_DYAD_DEFINITIONS = [
 
 export type CivilizationDyadId = (typeof CIVILIZATION_DYAD_DEFINITIONS)[number]['id'];
 
+export const CIVILIZATION_DISTRICT_IDENTITY_POLICY_ID = 'district-dyad-v1' as const;
+export const CIVILIZATION_DISTRICT_SOFT_CAPACITY = 2 as const;
+export const CIVILIZATION_DISTRICT_HARD_CAPACITY = 3 as const;
+export const CIVILIZATION_DISTRICT_DYAD_REPLACEMENT_MARGIN = 0.15 as const;
+
+export const CIVILIZATION_SURFACE_DISTRICT_FAMILIES = [
+  'industrial_district',
+  'civic_core',
+  'habitat_district',
+  'wilderness_margin',
+  'subsurface_works',
+  'observatory_ridge',
+  'transit_terminus',
+  'archive_quarter',
+  'coastal_margin',
+  'containment_zone',
+] as const satisfies readonly ArtifactPlacementFamily[];
+
+export type CivilizationSurfaceDistrictFamily =
+  (typeof CIVILIZATION_SURFACE_DISTRICT_FAMILIES)[number];
+
+export interface CivilizationDistrictInstance {
+  districtId: string;
+  family: CivilizationSurfaceDistrictFamily;
+  instance: number;
+  residentArtifactIds: string[];
+  residentAffinities: StandardAffinityKey[];
+  foundingAffinities: [] | [StandardAffinityKey] | [StandardAffinityKey, StandardAffinityKey];
+  permanentDyad: CivilizationDyadId | null;
+  softCapacity: typeof CIVILIZATION_DISTRICT_SOFT_CAPACITY;
+  hardCapacity: typeof CIVILIZATION_DISTRICT_HARD_CAPACITY;
+  influence: number;
+  establishedTurnCount: number | null;
+  committedTurnCount: number | null;
+  historyEvidence: CivilizationHistoryEvidence;
+}
+
+export interface CivilizationDistrictIdentityState {
+  policyId: typeof CIVILIZATION_DISTRICT_IDENTITY_POLICY_ID;
+  districts: Record<string, CivilizationDistrictInstance>;
+  artifactAssignments: Record<string, string>;
+  influenceByDyad: Record<CivilizationDyadId, number>;
+  totalInfluence: number;
+  rawDominantDyad: CivilizationDyadId | null;
+  presentationDyad: CivilizationDyadId | null;
+  calculatedTurnCount: number | null;
+  presentationCommittedTurnCount: number | null;
+  historyEvidence: CivilizationHistoryEvidence;
+}
+
 export type CivilizationAffinityIdentityForm =
   | 'unformed'
   | 'singular'
@@ -226,6 +434,15 @@ export interface CivilizationRankedAffinity {
   operationalWeight: number;
 }
 
+export interface CivilizationIdentityEpoch {
+  epochIndex: number;
+  dyad: CivilizationDyadId;
+  startedTurnCount: number | null;
+  endedTurnCount: number | null;
+  historicalSharesAtStart: CivilizationNaturalAffinityCounts;
+  historyEvidence: CivilizationHistoryEvidence;
+}
+
 export interface CivilizationAffinityIdentity {
   /** Centralized compatibility policy; final confidence calibration is deferred. */
   policyId: 'provisional-ratio-v1';
@@ -235,10 +452,88 @@ export interface CivilizationAffinityIdentity {
   rankedAffinities: CivilizationRankedAffinity[];
   dominantAffinity: StandardAffinityKey | null;
   dominantDyad: CivilizationDyadId | null;
+  /** First stable dyad expressed by this civilization. It is never rewritten. */
+  foundingDyad: CivilizationDyadId | null;
+  /** Hysteretic architectural identity currently presented by the portrait. */
+  presentationDyad: CivilizationDyadId | null;
+  identityEpochs: CivilizationIdentityEpoch[];
+  normalizedHistoricalShares: CivilizationNaturalAffinityCounts;
+  normalizedOperationalShares: CivilizationNaturalAffinityCounts;
   thirdAffinity: StandardAffinityKey | null;
   dominantShare: number;
   secondaryToPrimaryRatio: number;
   thirdToPrimaryRatio: number;
+}
+
+/**
+ * Architectural identity is committed independently at each visible scale.
+ * Evidence earned after one layer commits belongs exclusively to the next.
+ */
+export const CIVILIZATION_IDENTITY_LAYERS = [
+  'city',
+  'planet',
+  'system',
+  'galaxy',
+] as const;
+
+export type CivilizationIdentityLayer = (typeof CIVILIZATION_IDENTITY_LAYERS)[number];
+
+export const CIVILIZATION_IDENTITY_STATUSES = [
+  'plain',
+  'forming',
+  'committed',
+] as const;
+
+export type CivilizationIdentityStatus = (typeof CIVILIZATION_IDENTITY_STATUSES)[number];
+
+export const CIVILIZATION_NESTED_IDENTITY_POLICY_ID = 'nested-milestone-v1' as const;
+
+/** City, Planet, and System need a meaningful body of era evidence before commitment. */
+export const CIVILIZATION_IDENTITY_COMMITMENT_EVIDENCE = {
+  city: 4,
+  planet: 4,
+  system: 4,
+  galaxy: 0,
+} as const satisfies Record<CivilizationIdentityLayer, number>;
+
+export interface CivilizationIdentityEvidence {
+  evidenceId: string;
+  artifactId: string;
+  masteryOrdinal: number;
+  affinity: StandardAffinityKey;
+  routedTurnCount: number | null;
+  historyEvidence: CivilizationHistoryEvidence;
+}
+
+export interface CivilizationIdentityRankedAffinity {
+  affinity: StandardAffinityKey;
+  weight: number;
+}
+
+export interface CivilizationIdentityLayerState {
+  policyId: typeof CIVILIZATION_NESTED_IDENTITY_POLICY_ID;
+  layer: CivilizationIdentityLayer;
+  status: CivilizationIdentityStatus;
+  eraStartedTurnCount: number | null;
+  affinityCounts: CivilizationNaturalAffinityCounts;
+  normalizedShares: CivilizationNaturalAffinityCounts;
+  rankedAffinities: CivilizationIdentityRankedAffinity[];
+  dominantAffinity: StandardAffinityKey | null;
+  candidateDyad: CivilizationDyadId | null;
+  committedDyad: CivilizationDyadId | null;
+  committedTurnCount: number | null;
+  evidence: CivilizationIdentityEvidence[];
+  historyEvidence: CivilizationHistoryEvidence;
+}
+
+export type CivilizationNestedIdentityState = Record<
+  CivilizationIdentityLayer,
+  CivilizationIdentityLayerState
+>;
+
+export interface CivilizationLegacyState {
+  completedTurnCount: number | null;
+  historyEvidence: CivilizationHistoryEvidence;
 }
 
 export const CIVILIZATION_MATURITY_LEVELS = [
@@ -500,6 +795,9 @@ export interface CivilizationAdversityEvidence {
 
 export interface CivilizationEventHistoryEntry {
   eventId: string;
+  definitionId?: CivilizationEventCardId;
+  rulesVersion?: string;
+  targetEvidence?: CivilizationEventTargetEvidence[];
   source: CivilizationArtifactChangeSource;
   turnCount: number | null;
   form: CivilizationResolutionForm;
@@ -549,17 +847,43 @@ export const CIVILIZATION_STABILITY_IMPACT_MAGNITUDES = {
 export type CivilizationStabilityImpact =
   keyof typeof CIVILIZATION_STABILITY_IMPACT_MAGNITUDES;
 
+export type CivilizationManifestationSourceType = 'artifact' | 'blueprint';
+
+export interface CivilizationManifestationAssignment {
+  sourceId: string;
+  sourceType: CivilizationManifestationSourceType;
+  nativeScene: CivilizationCameraScale;
+  placementFamily: ArtifactPlacementFamily;
+  socketId: string;
+  assignmentTurnCount: number | null;
+  historyEvidence: CivilizationHistoryEvidence;
+}
+
+export const CIVILIZATION_MANIFESTATION_SOCKET_RESERVE_RATIO = 1.25 as const;
+
 export interface CivilizationState {
   version: typeof CIVILIZATION_STATE_VERSION;
+  environmentIdentity: CivilizationEnvironmentIdentity;
   artifacts: Record<string, CivilizationArtifactLifecycleState>;
+  /** Backend-owned Blueprint projects, including private assembly progress. */
+  projects: Record<string, CivilizationProjectLifecycleState>;
+  /**
+   * Compatibility summary of all lifetime Affinity development. Its dyad
+   * fields mirror `districtIdentity`, which is authoritative for presentation.
+   */
   affinityIdentity: CivilizationAffinityIdentity;
+  districtIdentity: CivilizationDistrictIdentityState;
+  /** Deprecated scale history retained for save compatibility and inspection. */
+  identityScales: CivilizationNestedIdentityState;
   scale: CivilizationScaleState;
   homeworldId: string;
   worlds: Record<string, CivilizationWorld>;
   entities: Record<string, CivilizationEntity>;
   conditions: Record<string, CivilizationCondition>;
   stability: CivilizationStabilityState;
+  manifestationAssignments: Record<string, CivilizationManifestationAssignment>;
   events: CivilizationEventHistoryEntry[];
+  legacy: CivilizationLegacyState;
 }
 
 /**
@@ -602,6 +926,9 @@ export interface CivilizationPublicStabilityContributor {
 
 export interface CivilizationPublicEventHistoryEntry {
   eventId: string;
+  definitionId?: CivilizationEventCardId;
+  rulesVersion?: string;
+  targetEvidence?: CivilizationEventTargetEvidence[];
   sourceType: CivilizationArtifactChangeSource['sourceType'];
   turnCount: number | null;
   form: CivilizationResolutionForm;
@@ -611,10 +938,26 @@ export interface CivilizationPublicEventHistoryEntry {
   historyEvidence: CivilizationHistoryEvidence;
 }
 
+export interface CivilizationPublicProjectState {
+  projectId: string;
+  blueprintId: BlueprintId;
+  slotIndex: number;
+  status: 'manifested';
+  deviceState: BlueprintDeviceState;
+  presentationVariant: BlueprintPresentationVariant;
+  manifestedTurnCount: number | null;
+  stateChangedTurnCount: number | null;
+  activeCapabilityIds: CivilizationCapabilityId[];
+  historyEvidence: CivilizationHistoryEvidence;
+}
+
 export interface CivilizationPublicState {
   version: typeof CIVILIZATION_STATE_VERSION;
+  environmentIdentity: CivilizationEnvironmentIdentity;
   artifacts: CivilizationPublicArtifactState[];
   affinityIdentity: CivilizationAffinityIdentity;
+  districtIdentity: CivilizationDistrictIdentityState;
+  identityScales: CivilizationNestedIdentityState;
   scale: Pick<
     CivilizationScaleState,
     | 'historicalMaturity'
@@ -632,8 +975,14 @@ export interface CivilizationPublicState {
     historyEvidence: CivilizationHistoryEvidence;
   };
   activeConditions: CivilizationPublicConditionState[];
+  /** Manifested projects only. Assembly remains private to the owner. */
+  projects?: CivilizationPublicProjectState[];
   activeCapabilityIds: CivilizationCapabilityId[];
+  manifestationAssignments: CivilizationManifestationAssignment[];
   events: CivilizationPublicEventHistoryEntry[];
+  legacy: CivilizationLegacyState;
+  /** Current Legacy qualification without contributions from damaged Artifacts. */
+  legacyArtifactEligibility?: CivilizationLegacyArtifactEligibility;
 }
 
 const CIVILIZATION_AFFINITY_INDEX = Object.fromEntries(
@@ -661,6 +1010,448 @@ export function getCivilizationDyad(
     .sort((a, b) => CIVILIZATION_AFFINITY_INDEX[a] - CIVILIZATION_AFFINITY_INDEX[b])
     .join(':');
   return CIVILIZATION_DYAD_BY_PAIR[key] ?? null;
+}
+
+function emptyCivilizationDyadInfluence(): Record<CivilizationDyadId, number> {
+  return Object.fromEntries(
+    CIVILIZATION_DYAD_DEFINITIONS.map((definition) => [definition.id, 0]),
+  ) as Record<CivilizationDyadId, number>;
+}
+
+export function createInitialCivilizationDistrictIdentityState(
+  historyEvidence: CivilizationHistoryEvidence = 'recorded',
+): CivilizationDistrictIdentityState {
+  return {
+    policyId: CIVILIZATION_DISTRICT_IDENTITY_POLICY_ID,
+    districts: {},
+    artifactAssignments: {},
+    influenceByDyad: emptyCivilizationDyadInfluence(),
+    totalInfluence: 0,
+    rawDominantDyad: null,
+    presentationDyad: null,
+    calculatedTurnCount: historyEvidence === 'recorded' ? 0 : null,
+    presentationCommittedTurnCount: historyEvidence === 'recorded' ? 0 : null,
+    historyEvidence,
+  };
+}
+
+function isCivilizationSurfaceDistrictFamily(
+  placement: ArtifactPlacementFamily,
+): placement is CivilizationSurfaceDistrictFamily {
+  return (CIVILIZATION_SURFACE_DISTRICT_FAMILIES as readonly ArtifactPlacementFamily[])
+    .includes(placement);
+}
+
+function civilizationDistrictId(
+  family: CivilizationSurfaceDistrictFamily,
+  instance: number,
+): string {
+  return `district:${family}:${instance}`;
+}
+
+function nextCivilizationDistrictInstance(
+  districts: Readonly<Record<string, CivilizationDistrictInstance>>,
+  family: CivilizationSurfaceDistrictFamily,
+): number {
+  return Object.values(districts)
+    .filter((district) => district.family === family)
+    .reduce((highest, district) => Math.max(highest, district.instance + 1), 0);
+}
+
+function createCivilizationDistrictInstance(
+  family: CivilizationSurfaceDistrictFamily,
+  instance: number,
+  turnCount: number | null,
+  historyEvidence: CivilizationHistoryEvidence,
+): CivilizationDistrictInstance {
+  return {
+    districtId: civilizationDistrictId(family, instance),
+    family,
+    instance,
+    residentArtifactIds: [],
+    residentAffinities: [],
+    foundingAffinities: [],
+    permanentDyad: null,
+    softCapacity: CIVILIZATION_DISTRICT_SOFT_CAPACITY,
+    hardCapacity: CIVILIZATION_DISTRICT_HARD_CAPACITY,
+    influence: 0,
+    establishedTurnCount: turnCount,
+    committedTurnCount: null,
+    historyEvidence,
+  };
+}
+
+function districtFamilyPreference(
+  families: readonly CivilizationSurfaceDistrictFamily[],
+  family: CivilizationSurfaceDistrictFamily,
+): number {
+  const index = families.indexOf(family);
+  return index < 0 ? Number.MAX_SAFE_INTEGER : index;
+}
+
+const CIVILIZATION_DISTRICT_PLACEMENT_STRENGTH_RANK = {
+  native: 0,
+  natural: 1,
+  adaptable: 2,
+} as const satisfies Record<ArtifactDistrictPlacementStrength, number>;
+
+interface CivilizationDistrictPlacementPolicy {
+  strengthByFamily?: Partial<
+    Record<CivilizationSurfaceDistrictFamily, ArtifactDistrictPlacementStrength>
+  >;
+  anchorFamily?: CivilizationSurfaceDistrictFamily | null;
+}
+
+function selectCivilizationDistrictForArtifact(
+  districts: Record<string, CivilizationDistrictInstance>,
+  compatibleFamilies: readonly CivilizationSurfaceDistrictFamily[],
+  affinity: StandardAffinityKey,
+  turnCount: number | null,
+  historyEvidence: CivilizationHistoryEvidence,
+  policy: CivilizationDistrictPlacementPolicy = {},
+): CivilizationDistrictInstance {
+  if (
+    policy.anchorFamily &&
+    compatibleFamilies.includes(policy.anchorFamily) &&
+    !Object.values(districts).some((district) => district.family === policy.anchorFamily)
+  ) {
+    const anchored = createCivilizationDistrictInstance(
+      policy.anchorFamily,
+      nextCivilizationDistrictInstance(districts, policy.anchorFamily),
+      turnCount,
+      historyEvidence,
+    );
+    districts[anchored.districtId] = anchored;
+    return anchored;
+  }
+  const compatibleDistricts = Object.values(districts)
+    .filter((district) => compatibleFamilies.includes(district.family));
+  const familyOccupancy = new Map(compatibleFamilies.map((family) => [
+    family,
+    compatibleDistricts.filter((district) => district.family === family)
+      .reduce((total, district) => total + district.residentArtifactIds.length, 0),
+  ]));
+  const candidates: {
+    district: CivilizationDistrictInstance;
+    fit: number;
+    isNew: boolean;
+    strength: number;
+  }[] = [];
+
+  const placementStrength = (family: CivilizationSurfaceDistrictFamily) => (
+    CIVILIZATION_DISTRICT_PLACEMENT_STRENGTH_RANK[
+      policy.strengthByFamily?.[family] ?? (
+        districtFamilyPreference(compatibleFamilies, family) === 0 ? 'native' : 'natural'
+      )
+    ]
+  );
+
+  for (const district of compatibleDistricts) {
+    const occupancy = district.residentArtifactIds.length;
+    if (occupancy >= district.hardCapacity) continue;
+    const matchesPair = district.permanentDyad !== null &&
+      (district.foundingAffinities as readonly StandardAffinityKey[]).includes(affinity);
+    const establishesPair = district.permanentDyad === null &&
+      district.residentAffinities.length === 1 &&
+      district.residentAffinities[0] !== affinity;
+    // The third slot is reserved for establishing or reinforcing a pair.
+    if (occupancy >= district.softCapacity && !matchesPair && !establishesPair) continue;
+    const matchesAffinity = district.permanentDyad !== null
+      ? matchesPair
+      : district.residentAffinities.includes(affinity);
+    const fit = occupancy === 0 ? 2 : matchesAffinity ? 0 : establishesPair ? 1 : null;
+    if (fit !== null) candidates.push({
+      district,
+      fit,
+      isNew: false,
+      strength: placementStrength(district.family),
+    });
+  }
+
+  for (const family of compatibleFamilies) {
+    candidates.push({
+      district: createCivilizationDistrictInstance(
+        family, nextCivilizationDistrictInstance(districts, family), turnCount, historyEvidence,
+      ),
+      fit: 2,
+      isNew: true,
+      strength: placementStrength(family),
+    });
+  }
+
+  candidates.sort((left, right) => (
+    left.fit - right.fit ||
+    familyOccupancy.get(left.district.family)! - familyOccupancy.get(right.district.family)! ||
+    right.district.residentArtifactIds.length - left.district.residentArtifactIds.length ||
+    // Reuse an equivalent empty district instead of opening a new one.
+    Number(left.isNew) - Number(right.isNew) ||
+    (left.district.establishedTurnCount ?? Number.MAX_SAFE_INTEGER) -
+      (right.district.establishedTurnCount ?? Number.MAX_SAFE_INTEGER) ||
+    left.strength - right.strength ||
+    districtFamilyPreference(compatibleFamilies, left.district.family) -
+      districtFamilyPreference(compatibleFamilies, right.district.family) ||
+    left.district.instance - right.district.instance ||
+    left.district.districtId.localeCompare(right.district.districtId)
+  ));
+  const selected = candidates[0]!;
+  if (selected.isNew) districts[selected.district.districtId] = selected.district;
+  return selected.district;
+}
+
+export function getCivilizationRawDominantDistrictDyad(
+  influenceByDyad: Readonly<Record<CivilizationDyadId, number>>,
+): CivilizationDyadId | null {
+  const rankedInfluence = CIVILIZATION_DYAD_DEFINITIONS
+    .map((definition) => ({ dyad: definition.id, influence: influenceByDyad[definition.id] }))
+    .sort((left, right) => right.influence - left.influence);
+  const leadingInfluence = rankedInfluence[0]?.influence ?? 0;
+  return leadingInfluence > 0 &&
+    rankedInfluence.filter((entry) => entry.influence === leadingInfluence).length === 1
+    ? rankedInfluence[0]!.dyad
+    : null;
+}
+
+export function resolveCivilizationDistrictPresentationDyad(
+  influenceByDyad: Readonly<Record<CivilizationDyadId, number>>,
+  incumbent: CivilizationDyadId | null,
+): CivilizationDyadId | null {
+  const challenger = getCivilizationRawDominantDistrictDyad(influenceByDyad);
+  if (!incumbent) return challenger;
+  if (!challenger || challenger === incumbent) return incumbent;
+  const totalInfluence = Object.values(influenceByDyad).reduce(
+    (total, influence) => total + influence,
+    0,
+  );
+  if (totalInfluence <= 0) return incumbent;
+  const challengerShare = influenceByDyad[challenger] / totalInfluence;
+  const incumbentShare = influenceByDyad[incumbent] / totalInfluence;
+  return challengerShare > incumbentShare + CIVILIZATION_DISTRICT_DYAD_REPLACEMENT_MARGIN
+    ? challenger
+    : incumbent;
+}
+
+export interface ReconcileCivilizationDistrictIdentityOptions {
+  /** Civilization-wide presentation changes are committed only at turn end. */
+  commitPresentation?: boolean;
+  historyEvidence?: CivilizationHistoryEvidence;
+}
+
+/**
+ * Rebuilds the deterministic Surface district model while preserving every
+ * established assignment and permanent district dyad.
+ */
+export function reconcileCivilizationDistrictIdentityState(
+  state: Pick<
+    CivilizationState,
+    'artifacts' | 'manifestationAssignments' | 'districtIdentity' | 'affinityIdentity'
+  >,
+  turnCount: number | null,
+  options: ReconcileCivilizationDistrictIdentityOptions = {},
+): CivilizationDistrictIdentityState {
+  const previous = state.districtIdentity?.policyId === CIVILIZATION_DISTRICT_IDENTITY_POLICY_ID
+    ? state.districtIdentity
+    : createInitialCivilizationDistrictIdentityState('legacy_inferred');
+  const defaultHistoryEvidence = options.historyEvidence ?? previous.historyEvidence;
+  const districts = Object.fromEntries(
+    Object.values(previous.districts ?? {})
+      .filter((district) => (
+        (CIVILIZATION_SURFACE_DISTRICT_FAMILIES as readonly string[]).includes(district.family) &&
+        Number.isInteger(district.instance) &&
+        district.instance >= 0
+      ))
+      .map((district) => [district.districtId, {
+        ...district,
+        residentArtifactIds: [],
+        residentAffinities: [],
+        foundingAffinities: district.permanentDyad ? [...district.foundingAffinities] : [],
+        softCapacity: CIVILIZATION_DISTRICT_SOFT_CAPACITY,
+        hardCapacity: CIVILIZATION_DISTRICT_HARD_CAPACITY,
+        influence: 0,
+      }]),
+  ) as Record<string, CivilizationDistrictInstance>;
+  const artifactAssignments: Record<string, string> = {};
+  const artifactProfiles = ARTIFACT_MANIFESTATION_PROFILE_BY_ID as Readonly<
+    Record<string, ArtifactManifestationProfile>
+  >;
+
+  const artifacts = Object.values(state.artifacts)
+    .filter((artifact) => artifact.masteryCount > 0)
+    .sort((left, right) => (
+      (left.firstMasteredTurnCount ?? Number.MAX_SAFE_INTEGER) -
+        (right.firstMasteredTurnCount ?? Number.MAX_SAFE_INTEGER) ||
+      left.artifactId.localeCompare(right.artifactId)
+    ))
+    .flatMap((artifact) => {
+      const profile = artifactProfiles[artifact.artifactId];
+      if (!profile || profile.nativeCameraScale !== 'surface') return [];
+      const definition = ARTIFACT_DEFINITION_BY_ID[
+        artifact.artifactId as keyof typeof ARTIFACT_DEFINITION_BY_ID
+      ];
+      if (!definition) return [];
+      const compatibleFamilies = profile.compatiblePlacementFamilies.filter(
+        isCivilizationSurfaceDistrictFamily,
+      );
+      if (compatibleFamilies.length === 0) return [];
+      const placementStrengthByFamily = Object.fromEntries(
+        compatibleFamilies.map((family) => [
+          family,
+          profile.districtPlacementStrengthByFamily[family] ?? 'natural',
+        ]),
+      ) as Partial<
+        Record<CivilizationSurfaceDistrictFamily, ArtifactDistrictPlacementStrength>
+      >;
+      const anchorFamily = profile.districtAnchorFamily &&
+        isCivilizationSurfaceDistrictFamily(profile.districtAnchorFamily)
+        ? profile.districtAnchorFamily
+        : null;
+      const migrationPlacement = state.manifestationAssignments?.[`artifact:${artifact.artifactId}`]
+        ?.placementFamily;
+      const migrationFamily = migrationPlacement && isCivilizationSurfaceDistrictFamily(migrationPlacement) &&
+        compatibleFamilies.includes(migrationPlacement) ? migrationPlacement : null;
+      return [{
+        artifact,
+        affinity: definition.bonusAffinity,
+        compatibleFamilies,
+        placementStrengthByFamily,
+        anchorFamily,
+        migrationFamily,
+        historyEvidence: artifact.historyEvidence === 'legacy_inferred'
+          ? 'legacy_inferred' as const
+          : defaultHistoryEvidence,
+      }];
+    });
+
+  const assign = (entry: (typeof artifacts)[number], district: CivilizationDistrictInstance) => {
+    const { artifact, affinity, historyEvidence } = entry;
+    district.residentArtifactIds.push(artifact.artifactId);
+    if (!district.residentAffinities.includes(affinity)) district.residentAffinities.push(affinity);
+    if (!district.permanentDyad) {
+      const firstAffinity = district.foundingAffinities[0] ?? affinity;
+      if (district.foundingAffinities.length === 0) {
+        district.foundingAffinities = [firstAffinity];
+      } else if (affinity !== firstAffinity) {
+        const dyad = getCivilizationDyad(firstAffinity, affinity);
+        if (dyad) {
+          district.foundingAffinities = [firstAffinity, affinity];
+          district.permanentDyad = dyad.id;
+          district.committedTurnCount = artifact.firstMasteredTurnCount ?? turnCount;
+        }
+      }
+    }
+    if (historyEvidence === 'legacy_inferred') district.historyEvidence = 'legacy_inferred';
+    artifactAssignments[artifact.artifactId] = district.districtId;
+  };
+
+  // Reserve established residents first, including those with unknown Forge dates.
+  // A newly dated Artifact must never take a saved resident's last slot.
+  for (const entry of artifacts) {
+    const districtId = previous.artifactAssignments?.[entry.artifact.artifactId];
+    const district = districtId ? districts[districtId] : undefined;
+    if (district && entry.compatibleFamilies.includes(district.family) &&
+      district.residentArtifactIds.length < district.hardCapacity) assign(entry, district);
+  }
+
+  // Legacy physical placements are also fixed. Reconstruct their districts before
+  // scoring genuinely unassigned works, without moving an existing manifestation.
+  for (const entry of artifacts.filter((entry) => entry.migrationFamily !== null)) {
+    if (artifactAssignments[entry.artifact.artifactId]) continue;
+    assign(entry, selectCivilizationDistrictForArtifact(
+      districts, [entry.migrationFamily!], entry.affinity,
+      entry.artifact.firstMasteredTurnCount, entry.historyEvidence,
+    ));
+  }
+  for (const entry of artifacts) {
+    if (artifactAssignments[entry.artifact.artifactId]) continue;
+    assign(entry, selectCivilizationDistrictForArtifact(
+      districts, entry.compatibleFamilies, entry.affinity,
+      entry.artifact.firstMasteredTurnCount, entry.historyEvidence,
+      {
+        strengthByFamily: entry.placementStrengthByFamily,
+        anchorFamily: entry.anchorFamily,
+      },
+    ));
+  }
+
+  const influenceByDyad = emptyCivilizationDyadInfluence();
+  Object.values(districts).forEach((district) => {
+    district.influence = district.permanentDyad ? district.residentArtifactIds.length : 0;
+    if (district.permanentDyad) {
+      influenceByDyad[district.permanentDyad] += district.influence;
+    }
+  });
+  const totalInfluence = Object.values(influenceByDyad).reduce((total, value) => total + value, 0);
+  const rawDominantDyad = getCivilizationRawDominantDistrictDyad(influenceByDyad);
+
+  const reconstructingLegacyDistricts = previous.historyEvidence === 'legacy_inferred' &&
+    Object.keys(previous.artifactAssignments).length === 0;
+  let presentationDyad = reconstructingLegacyDistricts
+    ? rawDominantDyad
+    : previous.presentationDyad;
+  let presentationCommittedTurnCount = previous.presentationCommittedTurnCount;
+  if (options.commitPresentation) {
+    presentationDyad = resolveCivilizationDistrictPresentationDyad(
+      influenceByDyad,
+      presentationDyad,
+    );
+    presentationCommittedTurnCount = turnCount;
+  }
+
+  return {
+    policyId: CIVILIZATION_DISTRICT_IDENTITY_POLICY_ID,
+    districts,
+    artifactAssignments,
+    influenceByDyad,
+    totalInfluence,
+    rawDominantDyad,
+    presentationDyad,
+    calculatedTurnCount: turnCount,
+    presentationCommittedTurnCount,
+    historyEvidence: Object.values(districts).some(
+      (district) => district.historyEvidence === 'legacy_inferred',
+    ) ? 'legacy_inferred' : defaultHistoryEvidence,
+  };
+}
+
+function applyCivilizationDistrictDirectionToAffinityIdentity(
+  derived: CivilizationAffinityIdentity,
+  districtIdentity: CivilizationDistrictIdentityState,
+  previous: CivilizationAffinityIdentity | null | undefined,
+  turnCount: number | null,
+): CivilizationAffinityIdentity {
+  const presentationDyad = districtIdentity.presentationDyad;
+  const epochs = previous?.identityEpochs?.map((epoch) => ({ ...epoch })) ?? [];
+  const activeEpoch = epochs.at(-1);
+  if (presentationDyad && activeEpoch?.dyad !== presentationDyad) {
+    if (activeEpoch?.endedTurnCount === null) {
+      epochs[epochs.length - 1] = { ...activeEpoch, endedTurnCount: turnCount };
+    }
+    epochs.push({
+      epochIndex: epochs.length,
+      dyad: presentationDyad,
+      startedTurnCount: turnCount,
+      endedTurnCount: null,
+      historicalSharesAtStart: derived.normalizedHistoricalShares,
+      historyEvidence: districtIdentity.historyEvidence,
+    });
+  } else if (presentationDyad && epochs.length === 0) {
+    epochs.push({
+      epochIndex: 0,
+      dyad: presentationDyad,
+      startedTurnCount: turnCount,
+      endedTurnCount: null,
+      historicalSharesAtStart: derived.normalizedHistoricalShares,
+      historyEvidence: districtIdentity.historyEvidence,
+    });
+  }
+
+  return {
+    ...derived,
+    form: presentationDyad || districtIdentity.rawDominantDyad ? 'dyad' : derived.form,
+    dominantDyad: districtIdentity.rawDominantDyad,
+    foundingDyad: previous?.foundingDyad ?? epochs[0]?.dyad ?? presentationDyad,
+    presentationDyad,
+    identityEpochs: epochs,
+  };
 }
 
 /**
@@ -707,6 +1498,22 @@ export function deriveCivilizationAffinityIdentity(
   const dyad = !plural && secondaryRatio >= 0.45
     ? getCivilizationDyad(primary.affinity, secondary.affinity)
     : null;
+  const operationalTotal = STANDARD_AFFINITY_KEYS.reduce(
+    (sum, affinity) => sum + operationalCounts[affinity],
+    0,
+  );
+  const normalizedHistoricalShares = Object.fromEntries(
+    STANDARD_AFFINITY_KEYS.map((affinity) => [
+      affinity,
+      total > 0 ? historicalCounts[affinity] / total : 0,
+    ]),
+  ) as CivilizationNaturalAffinityCounts;
+  const normalizedOperationalShares = Object.fromEntries(
+    STANDARD_AFFINITY_KEYS.map((affinity) => [
+      affinity,
+      operationalTotal > 0 ? operationalCounts[affinity] / operationalTotal : 0,
+    ]),
+  ) as CivilizationNaturalAffinityCounts;
 
   return {
     policyId: 'provisional-ratio-v1',
@@ -716,6 +1523,18 @@ export function deriveCivilizationAffinityIdentity(
     rankedAffinities,
     dominantAffinity: topTieCount === 1 ? primary.affinity : null,
     dominantDyad: dyad?.id ?? null,
+    foundingDyad: dyad?.id ?? null,
+    presentationDyad: dyad?.id ?? null,
+    identityEpochs: dyad ? [{
+      epochIndex: 0,
+      dyad: dyad.id,
+      startedTurnCount: null,
+      endedTurnCount: null,
+      historicalSharesAtStart: normalizedHistoricalShares,
+      historyEvidence: 'recorded',
+    }] : [],
+    normalizedHistoricalShares,
+    normalizedOperationalShares,
     thirdAffinity: dyad && thirdRatio >= 0.45 ? third.affinity : null,
     dominantShare: total > 0 ? primaryWeight / total : 0,
     secondaryToPrimaryRatio: secondaryRatio,
@@ -723,12 +1542,314 @@ export function deriveCivilizationAffinityIdentity(
   };
 }
 
-export function createInitialCivilizationState(): CivilizationState {
+const CIVILIZATION_DYAD_REPLACEMENT_MARGIN = 0.15;
+const CIVILIZATION_DYAD_MINIMUM_AFFINITY_SHARE = 0.15;
+
+function dyadCombinedShare(
+  dyadId: CivilizationDyadId | null,
+  shares: CivilizationNaturalAffinityCounts,
+): number {
+  if (!dyadId) return 0;
+  const dyad = CIVILIZATION_DYAD_DEFINITIONS.find((candidate) => candidate.id === dyadId);
+  if (!dyad) return 0;
+  return shares[dyad.affinities[0]] + shares[dyad.affinities[1]];
+}
+
+/**
+ * Preserves architectural history while allowing a decisively stronger dyad
+ * to become the presented identity. Raw affinity dominance remains available
+ * through `dominantDyad`; only presentation uses the hysteretic result.
+ */
+export function evolveCivilizationAffinityIdentity(
+  derived: CivilizationAffinityIdentity,
+  previous: CivilizationAffinityIdentity | null | undefined,
+  turnCount: number | null,
+  historyEvidence: CivilizationHistoryEvidence = 'recorded',
+): CivilizationAffinityIdentity {
+  const previousPresentation = previous?.presentationDyad ?? previous?.dominantDyad ?? null;
+  const challenger = derived.dominantDyad;
+  let presentationDyad = previousPresentation;
+
+  if (!presentationDyad) {
+    presentationDyad = challenger;
+  } else if (challenger && challenger !== presentationDyad) {
+    const challengerDefinition = CIVILIZATION_DYAD_DEFINITIONS.find(
+      (candidate) => candidate.id === challenger,
+    );
+    const candidateEligible = Boolean(challengerDefinition) && challengerDefinition!.affinities.every(
+      (affinity) => derived.normalizedHistoricalShares[affinity] >= CIVILIZATION_DYAD_MINIMUM_AFFINITY_SHARE,
+    );
+    const challengerShare = dyadCombinedShare(challenger, derived.normalizedHistoricalShares);
+    const incumbentShare = dyadCombinedShare(presentationDyad, derived.normalizedHistoricalShares);
+    if (candidateEligible && challengerShare > incumbentShare + CIVILIZATION_DYAD_REPLACEMENT_MARGIN) {
+      presentationDyad = challenger;
+    }
+  }
+
+  const previousEpochs = previous?.identityEpochs?.length
+    ? previous.identityEpochs.map((epoch) => ({ ...epoch }))
+    : previousPresentation
+      ? [{
+          epochIndex: 0,
+          dyad: previousPresentation,
+          startedTurnCount: null,
+          endedTurnCount: null,
+          historicalSharesAtStart: previous?.normalizedHistoricalShares
+            ?? derived.normalizedHistoricalShares,
+          historyEvidence: 'legacy_inferred' as const,
+        }]
+      : [];
+  const activeEpoch = previousEpochs[previousEpochs.length - 1];
+  if (presentationDyad && activeEpoch?.dyad !== presentationDyad) {
+    if (activeEpoch && activeEpoch.endedTurnCount === null) {
+      previousEpochs[previousEpochs.length - 1] = {
+        ...activeEpoch,
+        endedTurnCount: turnCount,
+      };
+    }
+    previousEpochs.push({
+      epochIndex: previousEpochs.length,
+      dyad: presentationDyad,
+      startedTurnCount: turnCount,
+      endedTurnCount: null,
+      historicalSharesAtStart: derived.normalizedHistoricalShares,
+      historyEvidence,
+    });
+  }
+
+  return {
+    ...derived,
+    foundingDyad: previous?.foundingDyad ?? previousEpochs[0]?.dyad ?? presentationDyad,
+    presentationDyad,
+    identityEpochs: previousEpochs,
+  };
+}
+
+function createCivilizationIdentityLayerState(
+  layer: CivilizationIdentityLayer,
+  historyEvidence: CivilizationHistoryEvidence,
+): CivilizationIdentityLayerState {
+  return {
+    policyId: CIVILIZATION_NESTED_IDENTITY_POLICY_ID,
+    layer,
+    status: 'plain',
+    eraStartedTurnCount: layer === 'city' && historyEvidence === 'recorded' ? 0 : null,
+    affinityCounts: emptyCivilizationNaturalAffinityCounts(),
+    normalizedShares: emptyCivilizationNaturalAffinityCounts(),
+    rankedAffinities: STANDARD_AFFINITY_KEYS.map((affinity) => ({ affinity, weight: 0 })),
+    dominantAffinity: null,
+    candidateDyad: null,
+    committedDyad: null,
+    committedTurnCount: null,
+    evidence: [],
+    historyEvidence,
+  };
+}
+
+export function createInitialCivilizationNestedIdentityState(
+  historyEvidence: CivilizationHistoryEvidence = 'recorded',
+): CivilizationNestedIdentityState {
+  return Object.fromEntries(
+    CIVILIZATION_IDENTITY_LAYERS.map((layer) => [
+      layer,
+      createCivilizationIdentityLayerState(layer, historyEvidence),
+    ]),
+  ) as CivilizationNestedIdentityState;
+}
+
+function summarizeCivilizationIdentityEvidence(
+  evidence: readonly CivilizationIdentityEvidence[],
+): Pick<
+  CivilizationIdentityLayerState,
+  | 'affinityCounts'
+  | 'normalizedShares'
+  | 'rankedAffinities'
+  | 'dominantAffinity'
+  | 'candidateDyad'
+> {
+  const affinityCounts = emptyCivilizationNaturalAffinityCounts();
+  for (const entry of evidence) affinityCounts[entry.affinity] += 1;
+  const rankedAffinities = STANDARD_AFFINITY_KEYS
+    .map((affinity) => ({ affinity, weight: affinityCounts[affinity] }))
+    .sort((left, right) => (
+      right.weight - left.weight ||
+      CIVILIZATION_AFFINITY_INDEX[left.affinity] - CIVILIZATION_AFFINITY_INDEX[right.affinity]
+    ));
+  const total = evidence.length;
+  const primary = rankedAffinities[0];
+  const secondary = rankedAffinities[1];
+  const primaryWeight = primary?.weight ?? 0;
+  const topTieCount = primaryWeight > 0
+    ? rankedAffinities.filter((entry) => entry.weight === primaryWeight).length
+    : 0;
+  const secondaryRatio = primaryWeight > 0 ? (secondary?.weight ?? 0) / primaryWeight : 0;
+  const candidateDyad = topTieCount < 3 && secondaryRatio >= 0.45 && primary && secondary
+    ? getCivilizationDyad(primary.affinity, secondary.affinity)?.id ?? null
+    : null;
+  return {
+    affinityCounts,
+    normalizedShares: Object.fromEntries(
+      STANDARD_AFFINITY_KEYS.map((affinity) => [
+        affinity,
+        total > 0 ? affinityCounts[affinity] / total : 0,
+      ]),
+    ) as CivilizationNaturalAffinityCounts,
+    rankedAffinities,
+    dominantAffinity: topTieCount === 1 ? primary?.affinity ?? null : null,
+    candidateDyad,
+  };
+}
+
+function rebuildCivilizationIdentityLayer(
+  layerState: CivilizationIdentityLayerState,
+  turnCount: number | null,
+  legacyCompleted: boolean,
+): CivilizationIdentityLayerState {
+  const summary = summarizeCivilizationIdentityEvidence(layerState.evidence);
+  const minimumEvidence = CIVILIZATION_IDENTITY_COMMITMENT_EVIDENCE[layerState.layer];
+  const commitmentWindowOpen = layerState.layer === 'galaxy'
+    ? legacyCompleted
+    : layerState.evidence.length >= minimumEvidence;
+  const canCommit = commitmentWindowOpen && summary.candidateDyad !== null;
+  const committedDyad = layerState.committedDyad ?? (canCommit ? summary.candidateDyad : null);
+  const historyEvidence = layerState.historyEvidence === 'legacy_inferred' ||
+    layerState.evidence.some((entry) => entry.historyEvidence === 'legacy_inferred')
+    ? 'legacy_inferred'
+    : 'recorded';
+  const latestEvidenceTurn = layerState.evidence.reduce<number | null>((latest, entry) => (
+    entry.routedTurnCount === null
+      ? latest
+      : latest === null
+        ? entry.routedTurnCount
+        : Math.max(latest, entry.routedTurnCount)
+  ), null);
+  return {
+    ...layerState,
+    ...summary,
+    status: committedDyad
+      ? 'committed'
+      : layerState.evidence.length > 0
+        ? 'forming'
+        : 'plain',
+    committedDyad,
+    committedTurnCount: layerState.committedDyad
+      ? layerState.committedTurnCount
+      : committedDyad && historyEvidence === 'recorded'
+        ? turnCount ?? latestEvidenceTurn
+        : null,
+    historyEvidence,
+  };
+}
+
+export interface ReconcileCivilizationNestedIdentityOptions {
+  /** Used exactly once while reconstructing saves that predate scale ledgers. */
+  missingEvidenceHistory?: CivilizationHistoryEvidence;
+}
+
+/**
+ * Routes every Artifact mastery ordinal exactly once. A committed layer is
+ * immutable; later evidence advances into the next architectural era.
+ */
+export function reconcileCivilizationNestedIdentityState(
+  state: Pick<CivilizationState, 'artifacts' | 'identityScales' | 'legacy'>,
+  turnCount: number | null,
+  options: ReconcileCivilizationNestedIdentityOptions = {},
+): CivilizationNestedIdentityState {
+  const layers = Object.fromEntries(CIVILIZATION_IDENTITY_LAYERS.map((layer) => {
+    const existing = state.identityScales?.[layer]
+      ?? createCivilizationIdentityLayerState(layer, options.missingEvidenceHistory ?? 'legacy_inferred');
+    return [layer, {
+      ...existing,
+      affinityCounts: { ...existing.affinityCounts },
+      normalizedShares: { ...existing.normalizedShares },
+      rankedAffinities: existing.rankedAffinities.map((entry) => ({ ...entry })),
+      evidence: existing.evidence.map((entry) => ({ ...entry })),
+    }];
+  })) as CivilizationNestedIdentityState;
+  const legacyCompleted = state.legacy.completedTurnCount !== null;
+  const routedEvidenceIds = new Set(
+    CIVILIZATION_IDENTITY_LAYERS.flatMap((layer) => (
+      layers[layer].evidence.map((entry) => entry.evidenceId)
+    )),
+  );
+  const contributions = Object.values(state.artifacts)
+    .flatMap((artifact) => {
+      const definition = ARTIFACT_DEFINITION_BY_ID[
+        artifact.artifactId as keyof typeof ARTIFACT_DEFINITION_BY_ID
+      ];
+      if (!definition) return [];
+      return Array.from({ length: Math.max(0, artifact.masteryCount) }, (_, index) => ({
+        evidenceId: `artifact:${artifact.artifactId}:mastery:${index + 1}`,
+        artifactId: artifact.artifactId,
+        masteryOrdinal: index + 1,
+        affinity: definition.bonusAffinity,
+        firstMasteredTurnCount: artifact.firstMasteredTurnCount,
+        historyEvidence: options.missingEvidenceHistory ?? artifact.historyEvidence,
+      }));
+    })
+    .sort((left, right) => (
+      (left.firstMasteredTurnCount ?? Number.MAX_SAFE_INTEGER) -
+        (right.firstMasteredTurnCount ?? Number.MAX_SAFE_INTEGER) ||
+      left.artifactId.localeCompare(right.artifactId) ||
+      left.masteryOrdinal - right.masteryOrdinal
+    ));
+
+  for (const contribution of contributions) {
+    if (routedEvidenceIds.has(contribution.evidenceId)) continue;
+    const activeLayer = CIVILIZATION_IDENTITY_LAYERS.find((layer) => (
+      layers[layer].committedDyad === null
+    )) ?? 'galaxy';
+    const active = layers[activeLayer];
+    active.evidence.push({
+      evidenceId: contribution.evidenceId,
+      artifactId: contribution.artifactId,
+      masteryOrdinal: contribution.masteryOrdinal,
+      affinity: contribution.affinity,
+      routedTurnCount: contribution.historyEvidence === 'legacy_inferred'
+        ? contribution.firstMasteredTurnCount
+        : turnCount ?? contribution.firstMasteredTurnCount,
+      historyEvidence: contribution.historyEvidence,
+    });
+    routedEvidenceIds.add(contribution.evidenceId);
+    layers[activeLayer] = rebuildCivilizationIdentityLayer(active, turnCount, legacyCompleted);
+    const activeIndex = CIVILIZATION_IDENTITY_LAYERS.indexOf(activeLayer);
+    const nextLayer = CIVILIZATION_IDENTITY_LAYERS[activeIndex + 1];
+    if (layers[activeLayer].committedDyad && nextLayer && layers[nextLayer].eraStartedTurnCount === null) {
+      layers[nextLayer] = {
+        ...layers[nextLayer],
+        eraStartedTurnCount: layers[activeLayer].committedTurnCount,
+      };
+    }
+  }
+
+  for (const [index, layer] of CIVILIZATION_IDENTITY_LAYERS.entries()) {
+    layers[layer] = rebuildCivilizationIdentityLayer(layers[layer], turnCount, legacyCompleted);
+    const nextLayer = CIVILIZATION_IDENTITY_LAYERS[index + 1];
+    if (layers[layer].committedDyad && nextLayer && layers[nextLayer].eraStartedTurnCount === null) {
+      layers[nextLayer] = {
+        ...layers[nextLayer],
+        eraStartedTurnCount: layers[layer].committedTurnCount,
+      };
+    }
+  }
+  return layers;
+}
+
+export function createInitialCivilizationState(
+  environmentIdentity: CivilizationEnvironmentIdentity = createCivilizationEnvironmentIdentity(
+    'unassigned',
+    CIVILIZATION_ENVIRONMENT_VARIANTS[0].id,
+  ),
+): CivilizationState {
   const homeworldId = 'world:home';
   return {
     version: CIVILIZATION_STATE_VERSION,
+    environmentIdentity,
     artifacts: {},
+    projects: {},
     affinityIdentity: deriveCivilizationAffinityIdentity({}),
+    districtIdentity: createInitialCivilizationDistrictIdentityState(),
+    identityScales: createInitialCivilizationNestedIdentityState(),
     scale: {
       historicalMaturity: 'planetary',
       historicalMaturityEvidence: [],
@@ -761,7 +1882,12 @@ export function createInitialCivilizationState(): CivilizationState {
       calculatedTurnCount: 0,
       historyEvidence: 'recorded',
     },
+    manifestationAssignments: {},
     events: [],
+    legacy: {
+      completedTurnCount: null,
+      historyEvidence: 'recorded',
+    },
   };
 }
 
@@ -1158,11 +2284,17 @@ export function buildCivilizationResolutionSnapshot(
   additionalCapabilityIds: readonly CivilizationCapabilityId[] = [],
   manifestedDevices: readonly ManifestedDevicePublicState[] = [],
 ): CivilizationResolutionSnapshot {
+  const authoritativeProjectCapabilities = deriveOperationalCivilizationProjectCapabilityIds(
+    state.projects,
+  );
+  const projectCapabilityIds = Object.keys(state.projects ?? {}).length > 0
+    ? authoritativeProjectCapabilities
+    : deriveOperationalProjectCapabilityIds(manifestedDevices);
   return {
     activeCapabilityIds: [
       ...new Set([
         ...deriveOperationalArtifactCapabilityIds(state),
-        ...deriveOperationalProjectCapabilityIds(manifestedDevices),
+        ...projectCapabilityIds,
         ...additionalCapabilityIds,
       ]),
     ].sort(),
@@ -1642,10 +2774,6 @@ export function applyCivilizationConsequences(
             },
           },
         };
-        state = {
-          ...state,
-          affinityIdentity: deriveCivilizationAffinityIdentity(state.artifacts),
-        };
         break;
       }
       case 'set_entity_state': {
@@ -1725,10 +2853,7 @@ export function applyCivilizationConsequences(
   const calculatedTurnCount = consequenceTurns.length > 0
     ? Math.max(...consequenceTurns)
     : state.stability.calculatedTurnCount;
-  state = {
-    ...state,
-    affinityIdentity: deriveCivilizationAffinityIdentity(state.artifacts),
-  };
+  state = reconcileCivilizationDerivedState(state, [], calculatedTurnCount);
   state = {
     ...state,
     stability: recalculateCivilizationStabilityFromState(
@@ -1935,6 +3060,40 @@ export type BlueprintDeviceState =
   | 'vigilant'
   | 'spent';
 
+export const CIVILIZATION_PROJECT_STATUSES = [
+  'assembling',
+  'ready_to_manifest',
+  'manifested',
+] as const;
+
+export type CivilizationProjectStatus =
+  (typeof CIVILIZATION_PROJECT_STATUSES)[number];
+
+/**
+ * Authoritative lifecycle for a Blueprint inside its owner's Civilization.
+ * The former public-device list is retained as a compatibility projection,
+ * but project completion, capability state, and Legacy credit derive here.
+ */
+export interface CivilizationProjectLifecycleState {
+  projectId: string;
+  blueprintId: BlueprintId;
+  slotIndex: number;
+  status: CivilizationProjectStatus;
+  matchedComponentIds: string[];
+  deviceState: BlueprintDeviceState | null;
+  presentationVariant: BlueprintPresentationVariant;
+  manifestedTurnCount: number | null;
+  stateChangedTurnCount: number | null;
+  historyEvidence: CivilizationHistoryEvidence;
+}
+
+export function civilizationProjectId(
+  blueprintId: BlueprintId,
+  slotIndex: number,
+): string {
+  return `project:${slotIndex}:${blueprintId}`;
+}
+
 export interface BlueprintComponentDefinition {
   artifactId: string;
   stage: string;
@@ -1960,9 +3119,32 @@ export const BLUEPRINT_CIVILIZATION_TRIGGER_WINDOWS = [
 export type BlueprintCivilizationTriggerWindow =
   (typeof BLUEPRINT_CIVILIZATION_TRIGGER_WINDOWS)[number];
 
+export const BLUEPRINT_MANIFESTATION_SCALES = [
+  'installation',
+  'satellite',
+  'planetary',
+  'stellar',
+  'distributed',
+] as const;
+
+export type BlueprintManifestationScale =
+  (typeof BLUEPRINT_MANIFESTATION_SCALES)[number];
+
+export const BLUEPRINT_MANIFESTATION_MOTIONS = [
+  'gimbaled_orbit',
+  'industrial_transit',
+  'signal_constellation',
+  'shield_breath',
+] as const;
+
+export type BlueprintManifestationMotion =
+  (typeof BLUEPRINT_MANIFESTATION_MOTIONS)[number];
+
 export interface BlueprintCivilizationMetadata {
   projectForm: string;
   scaleBand: 'planetary' | 'stellar' | 'galactic';
+  manifestationScale: BlueprintManifestationScale;
+  manifestationMotion: BlueprintManifestationMotion;
   affinity: StandardAffinityKey;
   siteTitle: string;
   visibleAs: string;
@@ -2033,6 +3215,8 @@ export const BLUEPRINT_DEFINITIONS: Record<BlueprintId, BlueprintDefinition> = {
     civilization: {
       projectForm: 'Stellar Device',
       scaleBand: 'stellar',
+      manifestationScale: 'satellite',
+      manifestationMotion: 'gimbaled_orbit',
       affinity: 'abyss',
       siteTitle: 'Antimatter Quarantine Orbit',
       visibleAs: 'a cold red exclusion path around the inhabited system',
@@ -2082,6 +3266,8 @@ export const BLUEPRINT_DEFINITIONS: Record<BlueprintId, BlueprintDefinition> = {
     civilization: {
       projectForm: 'Planetary Infrastructure',
       scaleBand: 'planetary',
+      manifestationScale: 'planetary',
+      manifestationMotion: 'industrial_transit',
       affinity: 'flare',
       siteTitle: 'Mantle-to-Orbit Freight Lane',
       visibleAs: 'a forged ascent corridor connecting deep crust to orbital industry',
@@ -2131,6 +3317,8 @@ export const BLUEPRINT_DEFINITIONS: Record<BlueprintId, BlueprintDefinition> = {
     civilization: {
       projectForm: 'Stellar Institution',
       scaleBand: 'stellar',
+      manifestationScale: 'distributed',
+      manifestationMotion: 'signal_constellation',
       affinity: 'radiance',
       siteTitle: 'Ascension Registry Beacon',
       visibleAs: 'a public stellar readiness ledger carried across civic signal lanes',
@@ -2180,6 +3368,8 @@ export const BLUEPRINT_DEFINITIONS: Record<BlueprintId, BlueprintDefinition> = {
     civilization: {
       projectForm: 'Planetary Network',
       scaleBand: 'planetary',
+      manifestationScale: 'planetary',
+      manifestationMotion: 'shield_breath',
       affinity: 'radiance',
       siteTitle: 'Worldshield Covenant Veil',
       visibleAs: 'a treaty-lit defense envelope wrapped around the civilization',
@@ -2298,6 +3488,225 @@ export interface ManifestedDevicePublicState {
   foundryTier3Ready?: boolean;
 }
 
+/** A normal Blueprint loadout contributes two Great Works to the Legacy Path. */
+export const LEGACY_BLUEPRINT_REQUIREMENT = 2;
+
+export interface LegacyBlueprintProgress {
+  completedBlueprintIds: BlueprintId[];
+  completedProjectCount: number;
+  requiredProjectCount: number;
+  achieved: boolean;
+}
+
+export const CIVILIZATION_LEGACY_TRIAL_REQUIREMENT = 1;
+
+export type CivilizationLegacyCriterionId =
+  | 'great_works'
+  | 'galactic_identity'
+  | 'continuity'
+  | 'defining_trial';
+
+export interface CivilizationLegacyCriterionProgress {
+  id: CivilizationLegacyCriterionId;
+  label: string;
+  current: number;
+  required: number;
+  achieved: boolean;
+  detail: string;
+}
+
+export interface CivilizationLegacyProgress extends LegacyBlueprintProgress {
+  consequentialEventCount: number;
+  galacticIdentityReady: boolean;
+  continuitySecured: boolean;
+  criteria: CivilizationLegacyCriterionProgress[];
+  completedCriterionCount: number;
+  requiredCriterionCount: number;
+}
+
+export interface CivilizationLegacyArtifactEligibility {
+  qualifyingMaturity: CivilizationMaturity;
+  galacticIdentityReady: boolean;
+  excludedDamagedArtifactIds: string[];
+}
+
+type CivilizationLegacyProjectLike = Pick<
+  CivilizationProjectLifecycleState,
+  'blueprintId' | 'status'
+>;
+
+type CivilizationLegacyEventLike = Pick<
+  CivilizationEventHistoryEntry,
+  'eventId' | 'outcome'
+> & {
+  pressureTags: readonly CivilizationPressureTag[];
+  /** Authoritative state carries the full source; public projections expose its type. */
+  source?: Pick<CivilizationArtifactChangeSource, 'sourceType'>;
+  sourceType?: CivilizationArtifactChangeSource['sourceType'];
+};
+
+export interface CivilizationLegacySource {
+  projects?: Readonly<Record<string, CivilizationLegacyProjectLike>> |
+    readonly CivilizationLegacyProjectLike[];
+  scale?: Pick<CivilizationScaleState, 'historicalMaturity'>;
+  stability?: Pick<CivilizationStabilityState, 'band'>;
+  identityScales?: {
+    galaxy?: Pick<
+      CivilizationIdentityLayerState,
+      'status' | 'candidateDyad' | 'committedDyad'
+    >;
+  };
+  events?: readonly CivilizationLegacyEventLike[];
+  legacyArtifactEligibility?: CivilizationLegacyArtifactEligibility;
+}
+
+/**
+ * Reassesses only Legacy qualification. Historical mastery, identity routing,
+ * demonstrated Maturity, and already manifested Projects remain unchanged.
+ */
+export function deriveCivilizationLegacyArtifactEligibility(
+  state: CivilizationState,
+): CivilizationLegacyArtifactEligibility {
+  const excludedDamagedArtifactIds = Object.values(state.artifacts)
+    .filter((artifact) => artifact.implementationState === 'damaged')
+    .map((artifact) => artifact.artifactId)
+    .sort();
+  const galaxyIdentity = state.identityScales.galaxy;
+  const identityFormed = galaxyIdentity.status === 'forming' ||
+    galaxyIdentity.status === 'committed';
+  if (excludedDamagedArtifactIds.length === 0) {
+    return {
+      qualifyingMaturity: state.scale.historicalMaturity,
+      galacticIdentityReady: state.scale.historicalMaturity === 'galactic' &&
+        identityFormed && Boolean(galaxyIdentity.candidateDyad || galaxyIdentity.committedDyad),
+      excludedDamagedArtifactIds,
+    };
+  }
+
+  const excludedIds = new Set(excludedDamagedArtifactIds);
+  const qualifyingState = {
+    ...state,
+    artifacts: Object.fromEntries(Object.entries(state.artifacts)
+      .filter(([, artifact]) => !excludedIds.has(artifact.artifactId))),
+  };
+  const qualifyingMaturity = assessCivilizationMaturity(
+    qualifyingState,
+    civilizationProjectMaturityInputs(state),
+    'historical',
+  ).candidateMaturity;
+  const qualifyingIdentity = summarizeCivilizationIdentityEvidence(
+    galaxyIdentity.evidence.filter((evidence) => !excludedIds.has(evidence.artifactId)),
+  );
+  return {
+    qualifyingMaturity,
+    galacticIdentityReady: qualifyingMaturity === 'galactic' && identityFormed &&
+      qualifyingIdentity.candidateDyad !== null,
+    excludedDamagedArtifactIds,
+  };
+}
+
+export function getLegacyBlueprintProgress(
+  devices: readonly Pick<ManifestedDevicePublicState, 'blueprintId'>[] | null | undefined,
+  requiredProjectCount = LEGACY_BLUEPRINT_REQUIREMENT,
+): LegacyBlueprintProgress {
+  const completedBlueprintIds = [...new Set(
+    (devices ?? [])
+      .map((device) => device.blueprintId)
+      .filter((blueprintId): blueprintId is BlueprintId => BLUEPRINT_IDS.includes(blueprintId)),
+  )];
+  const normalizedRequirement = Math.max(1, Math.floor(requiredProjectCount));
+  return {
+    completedBlueprintIds,
+    completedProjectCount: completedBlueprintIds.length,
+    requiredProjectCount: normalizedRequirement,
+    achieved: completedBlueprintIds.length >= normalizedRequirement,
+  };
+}
+
+/**
+ * Authoritative callers must supply freshly derived Artifact eligibility.
+ * Public callers read its projected counterpart; older projections retain the
+ * previous historical-only behavior until refreshed by the server.
+ */
+export function getCivilizationLegacyProgress(
+  civilization: CivilizationLegacySource | null | undefined,
+  requiredProjectCount = LEGACY_BLUEPRINT_REQUIREMENT,
+  artifactEligibility?: CivilizationLegacyArtifactEligibility,
+): CivilizationLegacyProgress {
+  const projects = Array.isArray(civilization?.projects)
+    ? civilization.projects
+    : Object.values(civilization?.projects ?? {});
+  const projectProgress = getLegacyBlueprintProgress(
+    projects.filter((project) => project.status === 'manifested'),
+    requiredProjectCount,
+  );
+  const consequentialEventCount = new Set(
+    (civilization?.events ?? [])
+      .filter((event) => {
+        const sourceType = event.source?.sourceType ?? event.sourceType;
+        return event.pressureTags.length > 0 &&
+          (sourceType === 'chronicle' || sourceType === 'scenario');
+      })
+      .map((event) => event.eventId),
+  ).size;
+  const galaxyIdentity = civilization?.identityScales?.galaxy;
+  const eligibility = artifactEligibility ?? civilization?.legacyArtifactEligibility;
+  const galacticIdentityReady = eligibility?.galacticIdentityReady ??
+    (civilization?.scale?.historicalMaturity === 'galactic' && Boolean(
+    galaxyIdentity &&
+    (galaxyIdentity.status === 'forming' || galaxyIdentity.status === 'committed') &&
+    (galaxyIdentity.candidateDyad || galaxyIdentity.committedDyad),
+  ));
+  const continuitySecured = civilization?.stability?.band === 'stable' ||
+    civilization?.stability?.band === 'strained';
+  const criteria: CivilizationLegacyCriterionProgress[] = [
+    {
+      id: 'great_works',
+      label: 'Great Works',
+      current: projectProgress.completedProjectCount,
+      required: projectProgress.requiredProjectCount,
+      achieved: projectProgress.achieved,
+      detail: 'Manifest civilization-scale Blueprint projects.',
+    },
+    {
+      id: 'galactic_identity',
+      label: 'Galactic Identity',
+      current: galacticIdentityReady ? 1 : 0,
+      required: 1,
+      achieved: galacticIdentityReady,
+      detail: 'Reach Galactic scale and form a final civilizational identity; damaged Artifacts do not contribute.',
+    },
+    {
+      id: 'continuity',
+      label: 'Continuity',
+      current: continuitySecured ? 1 : 0,
+      required: 1,
+      achieved: continuitySecured,
+      detail: 'Remain Stable or Strained when the Legacy is completed.',
+    },
+    {
+      id: 'defining_trial',
+      label: 'Defining Trial',
+      current: consequentialEventCount,
+      required: CIVILIZATION_LEGACY_TRIAL_REQUIREMENT,
+      achieved: consequentialEventCount >= CIVILIZATION_LEGACY_TRIAL_REQUIREMENT,
+      detail: 'Resolve a consequential Civilization Event.',
+    },
+  ];
+  const completedCriterionCount = criteria.filter((criterion) => criterion.achieved).length;
+
+  return {
+    ...projectProgress,
+    consequentialEventCount,
+    galacticIdentityReady,
+    continuitySecured,
+    criteria,
+    completedCriterionCount,
+    requiredCriterionCount: criteria.length,
+    achieved: completedCriterionCount === criteria.length,
+  };
+}
+
 /**
  * Projects provide their authored capabilities only while their public device
  * is operational. Recovery preserves the Project's history but suspends its
@@ -2315,6 +3724,38 @@ export function deriveOperationalProjectCapabilityIds(
     }
   }
   return [...capabilityIds].sort();
+}
+
+export function deriveOperationalCivilizationProjectCapabilityIds(
+  projects: Readonly<Record<string, CivilizationProjectLifecycleState>> | null | undefined,
+): CivilizationCapabilityId[] {
+  const capabilityIds = new Set<CivilizationCapabilityId>();
+  for (const project of Object.values(projects ?? {})) {
+    if (
+      project.status !== 'manifested' ||
+      project.deviceState === null ||
+      project.deviceState === 'spent' ||
+      project.deviceState === 'recovering'
+    ) {
+      continue;
+    }
+    const definition = BLUEPRINT_DEFINITIONS[project.blueprintId];
+    for (const capabilityId of definition?.civilization.providedCapabilityIds ?? []) {
+      capabilityIds.add(capabilityId);
+    }
+  }
+  return [...capabilityIds].sort();
+}
+
+function civilizationProjectMaturityInputs(
+  state: CivilizationState,
+): Array<Pick<ManifestedDevicePublicState, 'blueprintId' | 'state'>> {
+  return Object.values(state.projects ?? {})
+    .filter((project) => project.status === 'manifested' && project.deviceState !== null)
+    .map((project) => ({
+      blueprintId: project.blueprintId,
+      state: project.deviceState!,
+    }));
 }
 
 export const CIVILIZATION_MATURITY_POLICY_ID = 'civilization-maturity-v1' as const;
@@ -2394,7 +3835,7 @@ function criterion(
  */
 export function assessCivilizationMaturity(
   state: CivilizationState,
-  manifestedDevices: readonly ManifestedDevicePublicState[] = [],
+  manifestedDevices: readonly Pick<ManifestedDevicePublicState, 'blueprintId' | 'state'>[] = [],
   mode: CivilizationMaturityAssessment['mode'] = 'historical',
 ): CivilizationMaturityAssessment {
   const historical = mode === 'historical';
@@ -2524,7 +3965,7 @@ function deriveReachCondition(
 
 export function deriveCivilizationScaleState(
   state: CivilizationState,
-  manifestedDevices: readonly ManifestedDevicePublicState[] = [],
+  manifestedDevices: readonly Pick<ManifestedDevicePublicState, 'blueprintId' | 'state'>[] = [],
   turnCount: number | null = null,
 ): CivilizationScaleState {
   const historicalAssessment = assessCivilizationMaturity(state, manifestedDevices, 'historical');
@@ -2578,17 +4019,294 @@ export function deriveCivilizationScaleState(
   };
 }
 
+export interface CivilizationBlueprintManifestationProfile {
+  blueprintId: BlueprintId;
+  nativeScene: CivilizationCameraScale;
+  physicalFootprint: BlueprintManifestationScale;
+  validSocketClasses: readonly ArtifactPlacementFamily[];
+  environmentalConstraints: readonly string[];
+  motionBehavior: BlueprintManifestationMotion;
+  nonNativeRepresentationPolicy: 'connected_locator';
+}
+
+export const CIVILIZATION_BLUEPRINT_MANIFESTATION_PROFILES: Record<
+  BlueprintId,
+  CivilizationBlueprintManifestationProfile
+> = {
+  bp_antimatter_detonator: {
+    blueprintId: 'bp_antimatter_detonator',
+    nativeScene: 'stellar',
+    physicalFootprint: 'satellite',
+    validSocketClasses: ['outer_system', 'lagrange_network'],
+    environmentalConstraints: ['vacuum', 'inhabited-system exclusion orbit'],
+    motionBehavior: 'gimbaled_orbit',
+    nonNativeRepresentationPolicy: 'connected_locator',
+  },
+  bp_mantle_to_orbit_foundry: {
+    blueprintId: 'bp_mantle_to_orbit_foundry',
+    nativeScene: 'orbit',
+    physicalFootprint: 'installation',
+    validSocketClasses: ['orbital_yard', 'atmosphere_edge'],
+    environmentalConstraints: ['planetary mantle access', 'stable cargo orbit'],
+    motionBehavior: 'industrial_transit',
+    nonNativeRepresentationPolicy: 'connected_locator',
+  },
+  bp_ascension_registry: {
+    blueprintId: 'bp_ascension_registry',
+    nativeScene: 'stellar',
+    physicalFootprint: 'distributed',
+    validSocketClasses: ['distributed_systems', 'lagrange_network'],
+    environmentalConstraints: ['multiple civic nodes', 'line-of-sight relay'],
+    motionBehavior: 'signal_constellation',
+    nonNativeRepresentationPolicy: 'connected_locator',
+  },
+  bp_worldshield_covenant: {
+    blueprintId: 'bp_worldshield_covenant',
+    nativeScene: 'orbit',
+    physicalFootprint: 'planetary',
+    validSocketClasses: ['atmosphere_edge', 'high_orbit'],
+    environmentalConstraints: ['continuous planetary envelope', 'synchronous shield nodes'],
+    motionBehavior: 'shield_breath',
+    nonNativeRepresentationPolicy: 'connected_locator',
+  },
+};
+
+export interface CivilizationManifestationSocketCapacity {
+  nativeScene: CivilizationCameraScale;
+  placementFamily: ArtifactPlacementFamily;
+  currentCompatibleSourceCount: number;
+  authoredCapacity: number;
+}
+
+/** Production contract: every compatible template carries 25% spare capacity. */
+export function getCivilizationManifestationSocketCapacities(): CivilizationManifestationSocketCapacity[] {
+  const demand = new Map<string, {
+    nativeScene: CivilizationCameraScale;
+    placementFamily: ArtifactPlacementFamily;
+    count: number;
+  }>();
+  const addDemand = (
+    nativeScene: CivilizationCameraScale,
+    placementFamily: ArtifactPlacementFamily,
+  ) => {
+    const key = `${nativeScene}:${placementFamily}`;
+    const current = demand.get(key);
+    demand.set(key, {
+      nativeScene,
+      placementFamily,
+      count: (current?.count ?? 0) + 1,
+    });
+  };
+  for (const profile of Object.values(ARTIFACT_MANIFESTATION_PROFILE_BY_ID)) {
+    for (const placement of profile.compatiblePlacementFamilies) {
+      addDemand(profile.nativeCameraScale, placement);
+    }
+  }
+  for (const profile of Object.values(CIVILIZATION_BLUEPRINT_MANIFESTATION_PROFILES)) {
+    for (const placement of profile.validSocketClasses) {
+      addDemand(profile.nativeScene, placement);
+    }
+  }
+  return [...demand.values()].map((entry) => ({
+    nativeScene: entry.nativeScene,
+    placementFamily: entry.placementFamily,
+    currentCompatibleSourceCount: entry.count,
+    authoredCapacity: Math.ceil(entry.count * CIVILIZATION_MANIFESTATION_SOCKET_RESERVE_RATIO),
+  }));
+}
+
+function manifestationAssignmentKey(
+  sourceType: CivilizationManifestationSourceType,
+  sourceId: string,
+): string {
+  return `${sourceType}:${sourceId}`;
+}
+
+function nextAvailableManifestationSocket(
+  scene: CivilizationCameraScale,
+  placements: readonly ArtifactPlacementFamily[],
+  occupiedSocketIds: ReadonlySet<string>,
+): { placementFamily: ArtifactPlacementFamily; socketId: string } {
+  const candidates = placements.map((placementFamily, preferenceIndex) => {
+    let ordinal = 0;
+    while (occupiedSocketIds.has(`${scene}:${placementFamily}:${ordinal}`)) ordinal += 1;
+    return {
+      placementFamily,
+      socketId: `${scene}:${placementFamily}:${ordinal}`,
+      ordinal,
+      score: ordinal * 2 + preferenceIndex * 0.72,
+    };
+  });
+  const selected = candidates.sort((left, right) => left.score - right.score)[0];
+  if (selected) return selected;
+  const fallback = scene === 'surface'
+    ? 'civic_core'
+    : scene === 'orbit'
+      ? 'low_orbit'
+      : scene === 'stellar'
+        ? 'distributed_systems'
+        : 'distributed_clusters';
+  let ordinal = 0;
+  while (occupiedSocketIds.has(`${scene}:${fallback}:${ordinal}`)) ordinal += 1;
+  return { placementFamily: fallback, socketId: `${scene}:${fallback}:${ordinal}` };
+}
+
+export function isCivilizationManifestationAssignmentCompatible(
+  assignment: CivilizationManifestationAssignment,
+): boolean {
+  const physical = getArtifactPlacementPhysicalContract(assignment.placementFamily);
+  if (physical.nativeScene !== assignment.nativeScene) return false;
+  if (!assignment.socketId.startsWith(
+    `${assignment.nativeScene}:${assignment.placementFamily}:`,
+  )) return false;
+  const ordinal = Number.parseInt(assignment.socketId.split(':').at(-1) ?? '', 10);
+  if (!Number.isFinite(ordinal) || ordinal < 0) return false;
+
+  if (assignment.sourceType === 'artifact') {
+    const profile = ARTIFACT_MANIFESTATION_PROFILE_BY_ID[
+      assignment.sourceId as keyof typeof ARTIFACT_MANIFESTATION_PROFILE_BY_ID
+    ];
+    return Boolean(
+      profile &&
+      profile.nativeCameraScale === assignment.nativeScene &&
+      profile.compatiblePlacementFamilies.includes(assignment.placementFamily) &&
+      profile.validSubstrates.includes(physical.substrate) &&
+      profile.requiredSupportModes.includes(physical.requiredSupport),
+    );
+  }
+
+  const profile = CIVILIZATION_BLUEPRINT_MANIFESTATION_PROFILES[assignment.sourceId as BlueprintId];
+  return Boolean(
+    profile &&
+    profile.nativeScene === assignment.nativeScene &&
+    profile.validSocketClasses.includes(assignment.placementFamily),
+  );
+}
+
+/**
+ * Allocates each unique physical work exactly once. Existing assignments are
+ * immutable: new construction fills a compatible empty socket around it.
+ */
+export function reconcileCivilizationManifestationAssignments(
+  state: CivilizationState,
+  turnCount: number | null,
+): Record<string, CivilizationManifestationAssignment> {
+  const assignments = Object.fromEntries(
+    Object.entries(state.manifestationAssignments ?? {}).filter(([, assignment]) => (
+      isCivilizationManifestationAssignmentCompatible(assignment)
+    )),
+  ) as Record<string, CivilizationManifestationAssignment>;
+  const occupied = new Set(Object.values(assignments).map((assignment) => assignment.socketId));
+  const artifactProfiles = ARTIFACT_MANIFESTATION_PROFILE_BY_ID as Readonly<
+    Record<string, ArtifactManifestationProfile>
+  >;
+
+  Object.values(state.artifacts)
+    .sort((left, right) => (
+      (left.firstMasteredTurnCount ?? Number.MAX_SAFE_INTEGER) -
+        (right.firstMasteredTurnCount ?? Number.MAX_SAFE_INTEGER) ||
+      left.artifactId.localeCompare(right.artifactId)
+    ))
+    .forEach((artifact) => {
+      const key = manifestationAssignmentKey('artifact', artifact.artifactId);
+      if (assignments[key]) return;
+      const profile = artifactProfiles[artifact.artifactId];
+      if (!profile) return;
+      const districtId = profile.nativeCameraScale === 'surface'
+        ? state.districtIdentity?.artifactAssignments?.[artifact.artifactId]
+        : undefined;
+      const districtFamily = districtId
+        ? state.districtIdentity?.districts?.[districtId]?.family
+        : undefined;
+      const socket = nextAvailableManifestationSocket(
+        profile.nativeCameraScale,
+        districtFamily ? [districtFamily] : profile.compatiblePlacementFamilies,
+        occupied,
+      );
+      assignments[key] = {
+        sourceId: artifact.artifactId,
+        sourceType: 'artifact',
+        nativeScene: profile.nativeCameraScale,
+        placementFamily: socket.placementFamily,
+        socketId: socket.socketId,
+        assignmentTurnCount: artifact.firstMasteredTurnCount ?? turnCount,
+        historyEvidence: artifact.historyEvidence,
+      };
+      occupied.add(socket.socketId);
+    });
+
+  Object.values(state.projects ?? {})
+    .filter((project) => project.status === 'manifested')
+    .sort((left, right) => (
+      (left.manifestedTurnCount ?? Number.MAX_SAFE_INTEGER) -
+        (right.manifestedTurnCount ?? Number.MAX_SAFE_INTEGER) ||
+      left.blueprintId.localeCompare(right.blueprintId)
+    ))
+    .forEach((project) => {
+      const key = manifestationAssignmentKey('blueprint', project.blueprintId);
+      if (assignments[key]) return;
+      const profile = CIVILIZATION_BLUEPRINT_MANIFESTATION_PROFILES[project.blueprintId];
+      const socket = nextAvailableManifestationSocket(
+        profile.nativeScene,
+        profile.validSocketClasses,
+        occupied,
+      );
+      assignments[key] = {
+        sourceId: project.blueprintId,
+        sourceType: 'blueprint',
+        nativeScene: profile.nativeScene,
+        placementFamily: socket.placementFamily,
+        socketId: socket.socketId,
+        assignmentTurnCount: project.manifestedTurnCount ?? turnCount,
+        historyEvidence: project.historyEvidence,
+      };
+      occupied.add(socket.socketId);
+    });
+
+  return assignments;
+}
+
 /** Reconciles every deterministic Civilization view of the same causal state. */
 export function reconcileCivilizationDerivedState(
   state: CivilizationState,
   manifestedDevices: readonly ManifestedDevicePublicState[] = [],
   turnCount: number | null = null,
+  nestedIdentityOptions: ReconcileCivilizationNestedIdentityOptions = {},
+  districtIdentityOptions: ReconcileCivilizationDistrictIdentityOptions = {},
 ): CivilizationState {
-  const affinityIdentity = deriveCivilizationAffinityIdentity(state.artifacts);
-  const withIdentity = { ...state, affinityIdentity };
+  const authoritativeProjects = civilizationProjectMaturityInputs(state);
+  const maturityProjects = Object.keys(state.projects ?? {}).length > 0
+    ? authoritativeProjects
+    : manifestedDevices;
+  const districtIdentity = reconcileCivilizationDistrictIdentityState(
+    state,
+    turnCount,
+    districtIdentityOptions,
+  );
+  const stateWithDistrictIdentity = { ...state, districtIdentity };
+  const affinityIdentity = applyCivilizationDistrictDirectionToAffinityIdentity(
+    deriveCivilizationAffinityIdentity(state.artifacts),
+    districtIdentity,
+    state.affinityIdentity,
+    turnCount,
+  );
+  const withIdentity: CivilizationState = {
+    ...state,
+    affinityIdentity,
+    districtIdentity,
+    identityScales: reconcileCivilizationNestedIdentityState(
+      stateWithDistrictIdentity,
+      turnCount,
+      nestedIdentityOptions,
+    ),
+    manifestationAssignments: reconcileCivilizationManifestationAssignments(
+      stateWithDistrictIdentity,
+      turnCount,
+    ),
+  };
   const withScale = {
     ...withIdentity,
-    scale: deriveCivilizationScaleState(withIdentity, manifestedDevices, turnCount),
+    scale: deriveCivilizationScaleState(withIdentity, maturityProjects, turnCount),
   };
   return {
     ...withScale,
@@ -2629,6 +4347,312 @@ export interface BlueprintDetonationEvent {
   interceptedByBlueprintId?: BlueprintId;
   presentationVariant: BlueprintPresentationVariant;
   createdAt: number;
+}
+
+export const EVENT_FREQUENCIES = ['off', 'standard', 'frequent'] as const;
+export type EventFrequency = (typeof EVENT_FREQUENCIES)[number];
+export type EventDelivery = 'archive_v1' | 'scheduled_forge_v1';
+export const EVENT_FREQUENCY_LABELS: Record<EventFrequency, string> = {
+  off: 'Off',
+  standard: 'Standard',
+  frequent: 'Frequent',
+};
+
+/** Historical pool retained for existing games and exact-board replays. */
+export const GENERAL_CIVILIZATION_EVENT_CARD_IDS = [
+  'event_planetary_affinity_bloom',
+  'event_planetary_forge_drift',
+  'event_stellar_containment_cascade',
+  'event_stellar_affinity_inversion',
+  'event_stellar_system_shock',
+  'event_galactic_entropy_storm',
+  'event_galactic_terminus_tide',
+  'event_galactic_fracture_wave',
+] as const;
+
+/** Regular games use this reviewed pool; Containment Cascade awaits recovery rules. */
+export const REGULAR_CIVILIZATION_EVENT_CARD_IDS = [
+  'event_planetary_affinity_bloom',
+  'event_planetary_forge_drift',
+  'event_stellar_affinity_inversion',
+  'event_stellar_system_shock',
+  'event_galactic_entropy_storm',
+  'event_galactic_terminus_tide',
+  'event_galactic_fracture_wave',
+] as const;
+
+/** Unpublished pilot content. Never infer availability from a player's account. */
+export const LORE_PILOT_CIVILIZATION_EVENT_CARD_IDS = [
+  'event_planetary_signal_clarity',
+  'event_stellar_synchronization_shear',
+] as const;
+
+export const CIVILIZATION_EVENT_CARD_IDS = [
+  ...GENERAL_CIVILIZATION_EVENT_CARD_IDS,
+  ...LORE_PILOT_CIVILIZATION_EVENT_CARD_IDS,
+] as const;
+
+export type CivilizationEventCardId =
+  (typeof CIVILIZATION_EVENT_CARD_IDS)[number];
+
+export type CivilizationEventContentProfile = 'general_v1' | 'general_v2' | 'lore_pilot_v1';
+
+/** Fixed at match creation; the pilot is an explicit internal test/encounter pool. */
+export const CIVILIZATION_EVENT_POOLS = {
+  general_v1: GENERAL_CIVILIZATION_EVENT_CARD_IDS,
+  general_v2: REGULAR_CIVILIZATION_EVENT_CARD_IDS,
+  lore_pilot_v1: LORE_PILOT_CIVILIZATION_EVENT_CARD_IDS,
+} as const satisfies Record<CivilizationEventContentProfile, readonly CivilizationEventCardId[]>;
+
+export type CivilizationEventArtifactSelector =
+  | { kind: 'capability'; id: ArtifactCivilizationCapabilityId }
+  | { kind: 'event_fact'; id: ArtifactEventFactId };
+
+/** Explicit public-state contract, independent of names, artwork and Affinity. */
+export interface CivilizationEventTargetingRule {
+  rulesVersion: 'lore-events-v1';
+  zone: 'forged';
+  lifecycle: 'operational';
+  selector: CivilizationEventArtifactSelector;
+  perPlayerLimit: 1;
+  selectionOrder: 'newest_forged';
+  protectedByOwnCapability?: ArtifactCivilizationCapabilityId;
+}
+
+export interface CivilizationEventTargetEvidence {
+  artifactId: string;
+  match: CivilizationEventArtifactSelector;
+  role: 'responder' | 'target' | 'mitigator';
+  reason: string;
+}
+
+export const CIVILIZATION_EVENT_WINDOWS = [
+  'deck_reveal',
+  // Retained for saved receipts from the milestone prototype.
+  'first_contact',
+  'late_pressure',
+  'authored',
+] as const;
+
+export type CivilizationEventWindow =
+  (typeof CIVILIZATION_EVENT_WINDOWS)[number];
+
+export type CivilizationEventEffectProfile =
+  | 'affinity_bloom'
+  | 'forge_drift'
+  | 'containment_cascade'
+  | 'affinity_inversion'
+  | 'system_shock'
+  | 'entropy_storm'
+  | 'terminus_tide'
+  | 'fracture_wave'
+  | 'signal_clarity'
+  | 'synchronization_shear';
+
+export interface CivilizationEventCardDefinition {
+  id: CivilizationEventCardId;
+  title: string;
+  rulesText: string;
+  tier: 1 | 2 | 3;
+  effectProfile: CivilizationEventEffectProfile;
+  timing: CivilizationEventWindow;
+  pressureTags: readonly CivilizationPressureTag[];
+  affectedPlayers: 'all' | 'leader' | 'trailing' | 'qualified';
+  fallbackOutcomeId: CivilizationEventOutcomeId;
+  targeting?: CivilizationEventTargetingRule;
+  presentation: {
+    scale: CivilizationCameraScale;
+    accent: 'disruption' | 'opportunity' | 'crisis';
+  };
+}
+
+/** Mechanical rules are draft content; authored Chronicle dialogue is independent. */
+export const CIVILIZATION_EVENT_CARD_DEFINITIONS = {
+  event_planetary_affinity_bloom: {
+    id: 'event_planetary_affinity_bloom', title: 'Affinity Bloom', tier: 1,
+    effectProfile: 'affinity_bloom', timing: 'deck_reveal',
+    rulesText: 'Each player gains 1 of their least-held standard Affinities available in the Well, up to the 10-Affinity limit. Ties follow Well order.',
+    pressureTags: [], affectedPlayers: 'all', fallbackOutcomeId: 'protected',
+    presentation: { scale: 'orbit', accent: 'opportunity' },
+  },
+  event_planetary_forge_drift: {
+    id: 'event_planetary_forge_drift', title: 'Orbital Drift', tier: 1,
+    effectProfile: 'forge_drift', timing: 'deck_reveal',
+    rulesText: 'The leftmost unmarked Planetary Artifact returns to the bottom of its Archive. Reveal its replacement in the Forge.',
+    pressureTags: ['transformation'], affectedPlayers: 'all', fallbackOutcomeId: 'partial',
+    presentation: { scale: 'orbit', accent: 'disruption' },
+  },
+  event_stellar_containment_cascade: {
+    id: 'event_stellar_containment_cascade', title: 'Stellar Containment Cascade', tier: 2,
+    effectProfile: 'containment_cascade', timing: 'deck_reveal',
+    rulesText: 'Each civilization answers Disruption with its operational technologies.',
+    pressureTags: ['disruption'], affectedPlayers: 'all', fallbackOutcomeId: 'exposed',
+    presentation: { scale: 'stellar', accent: 'disruption' },
+  },
+  event_stellar_affinity_inversion: {
+    id: 'event_stellar_affinity_inversion', title: 'Affinity Inversion', tier: 2,
+    effectProfile: 'affinity_inversion', timing: 'deck_reveal',
+    rulesText: 'Each player holding 3 or more of one standard Affinity returns 2 of their most-held Affinity to the Well. Other players gain 1 of their least-held available standard Affinities, up to the hand limit. Ties follow Well order.',
+    pressureTags: ['disruption'], affectedPlayers: 'all', fallbackOutcomeId: 'partial',
+    presentation: { scale: 'stellar', accent: 'disruption' },
+  },
+  event_galactic_entropy_storm: {
+    id: 'event_galactic_entropy_storm', title: 'Entropy Storm', tier: 3,
+    effectProfile: 'entropy_storm', timing: 'deck_reveal',
+    rulesText: 'Each player returns up to 3 of their most-held standard Affinity to the Well and their oldest ordinary Encrypted Artifact to the bottom of its Archive. Foundry storage is unaffected. Ties follow Well order.',
+    pressureTags: ['attrition'], affectedPlayers: 'all', fallbackOutcomeId: 'exposed',
+    presentation: { scale: 'galaxy', accent: 'crisis' },
+  },
+  event_stellar_system_shock: {
+    id: 'event_stellar_system_shock', title: 'System Shock', tier: 2,
+    effectProfile: 'system_shock', timing: 'deck_reveal',
+    rulesText: 'Damage each player\'s most recently Forged operational Artifact. Damaged Artifacts keep their Affinity bonuses but cannot contribute to new Blueprints or Legacy Victory until repaired.',
+    pressureTags: ['disruption'], affectedPlayers: 'all', fallbackOutcomeId: 'exposed',
+    presentation: { scale: 'stellar', accent: 'disruption' },
+  },
+  event_galactic_terminus_tide: {
+    id: 'event_galactic_terminus_tide', title: 'Cosmic Reflux', tier: 3,
+    effectProfile: 'terminus_tide', timing: 'deck_reveal',
+    rulesText: 'Return the oldest Burned Artifact of each tier from the Burn Pile to its Forge, replacing its leftmost unmarked Artifact if needed. Each player gains 1 Singularity from the Well, up to the hand limit.',
+    pressureTags: ['transformation'], affectedPlayers: 'all', fallbackOutcomeId: 'protected',
+    presentation: { scale: 'galaxy', accent: 'opportunity' },
+  },
+  event_galactic_fracture_wave: {
+    id: 'event_galactic_fracture_wave', title: 'Fracture Wave', tier: 3,
+    effectProfile: 'fracture_wave', timing: 'deck_reveal',
+    rulesText: 'Damage up to 2 of each player\'s highest-tier operational Artifacts, choosing the most recently Forged first within a tier. Damaged Artifacts keep their Affinity bonuses but cannot contribute to new Blueprints or Legacy Victory until repaired.',
+    pressureTags: ['attrition'], affectedPlayers: 'all', fallbackOutcomeId: 'exposed',
+    presentation: { scale: 'galaxy', accent: 'crisis' },
+  },
+  event_planetary_signal_clarity: {
+    id: 'event_planetary_signal_clarity', title: 'Signal Clarity', tier: 1,
+    effectProfile: 'signal_clarity', timing: 'deck_reveal',
+    rulesText: 'Interference subsides. Each player with an operational signal-interpreting Artifact gains 1 of their least-held standard Affinities available in the Well, up to the hand limit. Each Artifact reads only its established domain. Resolve players in seating order; Affinity ties follow Well order.',
+    pressureTags: [], affectedPlayers: 'all', fallbackOutcomeId: 'protected',
+    targeting: {
+      rulesVersion: 'lore-events-v1', zone: 'forged', lifecycle: 'operational',
+      selector: { kind: 'capability', id: 'artifact:signal_interpretation' },
+      perPlayerLimit: 1, selectionOrder: 'newest_forged',
+    },
+    presentation: { scale: 'orbit', accent: 'opportunity' },
+  },
+  event_stellar_synchronization_shear: {
+    id: 'event_stellar_synchronization_shear', title: 'Synchronization Shear', tier: 2,
+    effectProfile: 'synchronization_shear', timing: 'deck_reveal',
+    rulesText: 'Damage each player\'s most recently Forged unprotected operational Artifact that depends on coordination between separated active systems. An Artifact with its own resilient computation protects only itself and is skipped when selecting a target. If none qualifies, nothing is damaged. Damaged Artifacts retain Affinity bonuses but cannot contribute to new Blueprints or Legacy Victory until repaired.',
+    pressureTags: ['coordination'], affectedPlayers: 'all', fallbackOutcomeId: 'protected',
+    targeting: {
+      rulesVersion: 'lore-events-v1', zone: 'forged', lifecycle: 'operational',
+      selector: { kind: 'event_fact', id: 'dependency:distributed_synchronization' },
+      protectedByOwnCapability: 'artifact:resilient_computation',
+      perPlayerLimit: 1, selectionOrder: 'newest_forged',
+    },
+    presentation: { scale: 'stellar', accent: 'disruption' },
+  },
+} as const satisfies Record<CivilizationEventCardId, CivilizationEventCardDefinition>;
+
+export function isCivilizationEventCardId(id: string): id is CivilizationEventCardId {
+  return (CIVILIZATION_EVENT_CARD_IDS as readonly string[]).includes(id);
+}
+
+export const CIVILIZATION_EVENT_OUTCOME_IDS = [
+  'protected',
+  'partial',
+  'exposed',
+] as const;
+
+export type CivilizationEventOutcomeId =
+  (typeof CIVILIZATION_EVENT_OUTCOME_IDS)[number];
+
+export interface CivilizationEventRespondingManifestation {
+  sourceType: CivilizationManifestationSourceType;
+  sourceId: string;
+  capabilityIds: CivilizationCapabilityId[];
+}
+
+export interface CivilizationEventPlayerOutcome {
+  playerId: string;
+  outcomeId: CivilizationEventOutcomeId;
+  capabilityCoverage: CivilizationPressureCapabilityCoverage;
+  respondingCapabilityIds: CivilizationCapabilityId[];
+  respondingManifestations: CivilizationEventRespondingManifestation[];
+  /** Public forged implementations disabled by this Event; absent in older receipts. */
+  damagedArtifactIds?: string[];
+  targetEvidence?: CivilizationEventTargetEvidence[];
+  appliedConditionType: CivilizationConditionType | null;
+  stabilityPressure: number;
+  summary: string;
+}
+
+export const CIVILIZATION_EVENT_INSTANCE_PHASES = [
+  'reveal',
+  'awaiting_choice',
+  'resolving',
+  'receipt',
+  'complete',
+] as const;
+
+export type CivilizationEventInstancePhase =
+  (typeof CIVILIZATION_EVENT_INSTANCE_PHASES)[number];
+
+/**
+ * Public, reconnect-safe presentation receipt. New `reveal` receipts contain
+ * deterministic previews; consequences commit when presentation is acknowledged.
+ * Legacy `receipt` instances already committed and must not be applied again.
+ */
+export interface CivilizationEventInstance {
+  eventId: string;
+  rulesVersion?: string;
+  /** Frozen explanation for versioned receipts, independent of later catalog edits. */
+  rulesText?: string;
+  definitionId: CivilizationEventCardId;
+  triggerWindow: CivilizationEventWindow;
+  triggerTurnCount: number;
+  /** Forge slot remains occupied until this receipt is acknowledged. */
+  sourceCard?: {
+    id: CivilizationEventCardId;
+    tier: 1 | 2 | 3;
+    /** Scheduled Events fill a vacated Forge mold from the separate Event deck. */
+    origin?: 'forge' | 'archive' | 'scheduled';
+    /** Physical source mold; null retains blind Archive and legacy scheduled temporary reveals. */
+    forgeSlotIndex: number | null;
+  };
+  phase: CivilizationEventInstancePhase;
+  affectedPlayerIds: string[];
+  outcomesByPlayerId: Record<string, CivilizationEventPlayerOutcome>;
+  createdAt: number;
+}
+
+/** Public timing information. Selected Event identities and queue order stay private. */
+export interface EventForecast {
+  status: 'off' | 'countdown' | 'armed' | 'resolving' | 'complete' | 'closed';
+  tier: 1 | 2 | 3 | null;
+  roundsRemaining: number | null;
+  /** Number of this player's ordinary turns remaining before the countdown is armed. */
+  turnsRemainingByPlayerId: Record<string, number>;
+}
+
+/** Private, replayable separate Event deck and activation cursor. */
+export interface CivilizationEventScheduleState {
+  queue: CivilizationEventCardId[];
+  roundFloors: number[];
+  nextQueueIndex: number;
+  dueAfterTurnCount: number;
+  lastEventTurnCount: number | null;
+  readyCardId: CivilizationEventCardId | null;
+}
+
+/** Private catalog and resolution cursor; legacy games keep Events in Artifact Archives. */
+export interface CivilizationEventDeckState {
+  contentProfile?: CivilizationEventContentProfile;
+  eventFrequency?: EventFrequency;
+  delivery?: EventDelivery;
+  scheduled?: CivilizationEventScheduleState;
+  rulesVersion?: string;
+  definitionIds: CivilizationEventCardId[];
+  nextIndex: number;
+  firedWindows: CivilizationEventWindow[];
+  completedEventIds: string[];
 }
 
 export type ScenarioProtocolId =

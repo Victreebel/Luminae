@@ -12,7 +12,11 @@ import {
   type AccountSession,
 } from "@/lib/accountSession";
 import { syncAccountPreferences, setPreferencesSyncToken, type AccountPreferences } from "@/lib/cinematicPrefs";
-import { setTutorialToken } from "@/lib/tutorialProgress";
+import {
+  claimPendingTutorialInvestigation,
+  hasPendingTutorialCompletion,
+  setTutorialToken,
+} from "@/lib/tutorialProgress";
 
 const PREFS_POLL_INTERVAL_MS = 30_000;
 
@@ -54,8 +58,11 @@ export function AccountProvider({ children }: { children: ReactNode }) {
       setPreferencesSyncToken(_currentToken);
       setTutorialToken(_currentToken);
       if (stored) {
+        await claimPendingTutorialInvestigation(stored.token).catch(() => null);
         const [p, hydrated] = await Promise.all([
-          syncAccountPreferences(stored.token, stored.account.id).catch(() => null),
+          syncAccountPreferences(stored.token, stored.account.id, {
+            preservePendingTutorial: hasPendingTutorialCompletion(),
+          }).catch(() => null),
           hydrateAccount(stored).catch(() => stored),
         ]);
         if (p) setPrefs(p);
@@ -78,32 +85,42 @@ export function AccountProvider({ children }: { children: ReactNode }) {
         setPrefs(null);
         return;
       }
-      void Promise.all([
-        syncAccountPreferences(stored.token, stored.account.id).catch(() => null),
-        hydrateAccount(stored).catch(() => stored),
-      ]).then(([nextPrefs, hydrated]) => {
+      void (async () => {
+        await claimPendingTutorialInvestigation(stored.token).catch(() => null);
+        const [nextPrefs, hydrated] = await Promise.all([
+          syncAccountPreferences(stored.token, stored.account.id, {
+            preservePendingTutorial: hasPendingTutorialCompletion(),
+          }).catch(() => null),
+          hydrateAccount(stored).catch(() => stored),
+        ]);
         if (nextPrefs) setPrefs(nextPrefs);
         setSession(hydrated);
-      });
+      })();
     };
     window.addEventListener("luminae:account-session-changed", handleSessionChange);
     return () => window.removeEventListener("luminae:account-session-changed", handleSessionChange);
   }, [hydrateAccount]);
 
   // Poll preferences every 30 s while logged in so other open sessions stay current.
+  const pollingToken = session?.token ?? null;
+  const pollingAccountId = session?.account?.id ?? null;
   useEffect(() => {
-    if (!session?.token || !session?.account?.id) return;
-    const { token, account } = session;
+    if (!pollingToken || !pollingAccountId) return;
     const id = setInterval(async () => {
       try {
-        const p = await syncAccountPreferences(token, account.id);
+        if (hasPendingTutorialCompletion()) {
+          await claimPendingTutorialInvestigation(pollingToken);
+        }
+        const p = await syncAccountPreferences(pollingToken, pollingAccountId, {
+          preservePendingTutorial: hasPendingTutorialCompletion(),
+        });
         setPrefs(p);
       } catch {
         // network errors are non-fatal; next poll will retry
       }
     }, PREFS_POLL_INTERVAL_MS);
     return () => clearInterval(id);
-  }, [session?.token, session?.account?.id]);
+  }, [pollingToken, pollingAccountId]);
 
   const login = useCallback(async (username: string, password: string) => {
     const s = await apiLogin({ username, password });
@@ -111,7 +128,10 @@ export function AccountProvider({ children }: { children: ReactNode }) {
     _currentToken = s.token;
     setPreferencesSyncToken(s.token);
     setTutorialToken(s.token);
-    const p = await syncAccountPreferences(s.token, s.account.id).catch(() => null);
+    await claimPendingTutorialInvestigation(s.token).catch(() => null);
+    const p = await syncAccountPreferences(s.token, s.account.id, {
+      preservePendingTutorial: hasPendingTutorialCompletion(),
+    }).catch(() => null);
     if (p) setPrefs(p);
     setSession(await hydrateAccount(s).catch(() => s));
   }, [hydrateAccount]);
@@ -122,7 +142,10 @@ export function AccountProvider({ children }: { children: ReactNode }) {
     _currentToken = s.token;
     setPreferencesSyncToken(s.token);
     setTutorialToken(s.token);
-    const p = await syncAccountPreferences(s.token, s.account.id).catch(() => null);
+    await claimPendingTutorialInvestigation(s.token).catch(() => null);
+    const p = await syncAccountPreferences(s.token, s.account.id, {
+      preservePendingTutorial: hasPendingTutorialCompletion(),
+    }).catch(() => null);
     if (p) setPrefs(p);
     setSession(await hydrateAccount(s).catch(() => s));
   }, [hydrateAccount]);

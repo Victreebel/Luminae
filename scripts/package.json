@@ -20,6 +20,9 @@
     "test:dialog-keyboard": "playwright test --config=dialog-keyboard.config.ts",
     "test:prepublication": "playwright test --config=prepublication.config.ts",
     "test:ws-keepalive": "playwright test --config=connection-stability.config.ts",
+    "test:rematch-lifecycle": "playwright test --config=lifecycle.config.ts",
+    "test:vertical-slice-evidence": "playwright test --config=evidence.config.ts",
+    "test:civilization-evidence": "playwright test --config=evidence.config.ts civilization-contract-evidence.spec.ts",
     "probe:ws-external": "tsx ./src/ws-external-probe.ts"
   },
   "devDependencies": {

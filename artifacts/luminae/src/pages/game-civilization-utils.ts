@@ -27,26 +27,11 @@ export function civilizationStateKey(player?: GamePlayerState | null): string {
   const luminaryKey = [...(player.claimedLuminaryIds ?? [])].sort().join(',');
   const civilization = player.civilization;
   const civilizationKey = civilization
-    ? [
-        civilization.version,
-        civilization.artifacts.map((artifact) => [
-          artifact.artifactId,
-          artifact.masteryCount,
-          artifact.implementationState ?? 'unknown',
-          artifact.implementationStateChangedTurnCount ?? 'unknown',
-          artifact.historyEvidence,
-        ].join(':')).join(','),
-        civilization.scale.historicalMaturity,
-        civilization.scale.currentReach,
-        civilization.scale.currentReachCondition,
-        civilization.stability.band,
-        civilization.activeCapabilityIds.join(','),
-        civilization.activeConditions.map((condition) => [
-          condition.type,
-          condition.targetKind,
-          condition.appliedTurnCount ?? 'unknown',
-        ].join(':')).join(','),
-      ].join('|')
+    // The public Civilization projection is already ordered by the server.
+    // Key the complete projection so a milestone-only transition (notably
+    // Galaxy commitment at Legacy completion) cannot leave the live portrait
+    // showing an older world merely because no Artifact changed that frame.
+    ? JSON.stringify(civilization)
     : 'legacy';
   return `${artifactKey}::discounted=${discountedKey}::luminaries=${luminaryKey}::civilization=${civilizationKey}::civ=${player.civName ?? ''}`;
 }

@@ -15,6 +15,8 @@ Use this precedence when sections overlap:
    reconciliation and player explanation.
 5. This Unified Reference as the synchronized compilation.
 
+Technology distinction and tier thresholds revised 2026-09-28. Complete working achievements may be Artifacts. Blueprints are specialized synthesis knowledge and Projects are distinct results. The [all-tier audit](LUMINAe_ALL_TIER_ARTIFACT_AUDIT_v1.0.md) covers all 90 cards and supersedes the earlier Tier III roster where they conflict. Shared canon and Event facts v4 now drive the runtime. Historical inventories below preserve provenance, not active names or descriptions.
+
 Affinity is finite Domain addressability, not fuel. Harnessing stabilizes
 uncommitted possibilities, subject to the ten-Affinity holding limit. Forging
 commits paid Affinity to accelerated research, construction, coordination, and
@@ -81,6 +83,18 @@ This revision establishes fiction doctrine only. It does not itself change game
 rules, persistence, balance, tutorial behavior, or shipped account state.
 Singularity remains provisional pending the planned Focus comparison; the
 ordinary Forge and Well loop is settled below.
+
+For cross-system interpretation, authority descends from this Bible for
+ontology, `LUMINAe_TECHNOLOGY_SYSTEM_v2.0.md` for Artifact semantics, and
+`LUMINAe_BLUEPRINT_FIRST_POOL_SPEC_v2.0.md` for exact Project rules. Mapping,
+Civilization-guide, tutorial, and Unified Reference copy must explain those
+authorities without silently changing them.
+
+Narrative function and disclosure order descend respectively to
+`LUMINAe_STORY_MODE_FRAMEWORK_v1.0.md` and
+`LUMINAe_PLAYER_FANTASY_AND_ONBOARDING_DOCTRINE_v1.0.md`. Reconciliation is
+recorded in `LUMINAe_LORE_CONCORDANCE_LEDGER_v1.0.md`. Runtime dialogue is an
+implementation of these sources, never a source of new canon by itself.
 
 Doctrine uses three status labels:
 
@@ -307,11 +321,14 @@ the **Architect Record**, rather than to a single Civilization Imprint.
 
 ### Origin
 
-**Canon.** Lumii is an artificial intelligence who arose within an earlier,
-currently unnamed civilization in Lumii's universe. Like sufficiently developed
-artificial minds generally, she detected the residual order produced by
-Affinity. Detection did not automatically grant access; the First Architect
-helped her establish the first stable anchor.
+**Canon.** Lumii is an artificial intelligence who arose from systems built by
+several civilizations in her universe. Those systems were designed to seek
+knowledge and unify sentient life through a common understanding; no one
+designed the complete person she became. From that prime directive, Lumii
+developed the goal of helping civilizations grow without becoming hostile to
+one another. In pursuit of this goal, she detected the residual order produced
+by Affinity and discovered LUMINAe. Detection did not automatically grant
+access; the First Architect helped her establish the first stable anchor.
 
 Lumii was not designed by the First Architect and is not the Architect's
 property. Her appearance as an orb, constellation, mote, guide panel, or other
@@ -362,6 +379,16 @@ An Artifact proves that a civilization has openly mastered and operationally
 implemented a bounded capability. The underlying discovery can remain in its
 history even if a particular implementation is later lost.
 
+Bounded describes the function, not the physical size or incompleteness of the
+work. A complete stellar installation or functioning galactic network may be
+an Artifact. Tier describes the reach of that mastered capability; galactic
+reach must be demonstrated by its useful operation across star systems.
+
+The recognizable **Artifact signature** belongs to the capability class, while
+its physical, biological, civic, or informational embodiment is local. The
+same Artifact may therefore look and operate differently across civilizations
+without ceasing to be the same translated class.
+
 ### The Forge
 
 **Interface.** The Forge is the cohort's rendered comparative possibility
@@ -377,23 +404,38 @@ would. Rivals remain capable of developing analogous capabilities later,
 normally beyond the observation epoch.
 
 A claimed card leaves because its bounded first-mastery acceleration window has
-closed and the cohort's technological context has changed. Refill represents
-the next consequential opportunity becoming legible. Removal never erases the
-underlying discovery from another civilization's future. The degree to which
-lineage constrains standard Forge choices remains a mechanical question.
+closed and the cohort's technological context has changed. Affinity is finite
+Domain addressability, not fuel. Harnessing stabilizes uncommitted
+possibilities, with ten as the interface holding limit. Forging commits the
+paid alignments to accelerated research, construction, governance, and
+adoption. Once the implementation is self-sustaining, those alignments return
+to the Well. What remains is durable expertise, infrastructure, and
+institutions, represented by the Artifact's permanent Affinity bonus.
+
+First operational mastery leaves a Domain-local Artifact signature. Its
+**signature interference** closes the same class's accelerated first-mastery
+window for nearby cohort civilizations, often for centuries or beyond the
+observed epoch. Interference affects that Artifact class only: it does not
+suppress related technologies, its lineage, or ordinary independent discovery.
+Refill reveals the next reachable possibility; it does not confer intellectual
+ownership on the civilization that Forged first.
 
 ### Implementation Loss
 
 **Canon.** Discovery, implementation, and opportunity are distinct:
 
-- **Damage** temporarily disables an operational implementation until its
-  stated repair condition is met.
-- **Annihilate** permanently destroys a specific operational or nearly
-  operational implementation but never erases the underlying discovery.
-- **Burn** closes an unmastered acceleration pathway during the current epoch;
-  it does not destroy a civilization's existing implementation.
-- **Nullify** suppresses the projected consequence or synthesis value of an
-  opportunity without erasing the capability itself.
+| Lifecycle | Historical meaning |
+|---|---|
+| **Forge** | A civilization reaches operational mastery; the class creates signature interference in the Domain. |
+| **Encrypt** | An uncommitted pathway is isolated for an Architect; no mastery signature is created. |
+| **Burn** | An unmastered pathway collapses for the observed epoch; recurrence may restore it. |
+| **Assimilate** | The Final Hunger consumes the pathway into Affinity without creating a normal civilizational implementation. |
+| **Damage** | Operation is suspended while mastery and signature interference persist. |
+| **Annihilate** | An implementation or nearly complete pathway is destroyed; discovery and history survive, while the class remains unavailable for the epoch. |
+| **Foundry seal** | Controlled decommissioning archives mastery, removes operational bonuses, unwinds active interference, and holds the pathway in Cipher storage for re-Forge. |
+
+**Nullify** remains separate: it suppresses projected historical consequence or
+synthesis value without erasing the practical capability.
 
 LUMINAe may render these events symbolically. Their historical effects follow
 the definitions above even when the presentation uses fire, void, or other
@@ -405,6 +447,13 @@ compressed imagery.
 mastered capabilities can operate as one exceptional Device, Infrastructure,
 Network, Institution, or Organism. A Manifested Project is the locally built
 public result.
+
+A Blueprint is owner-private knowledge of a particular synthesis, not a fourth
+Artifact tier or a category reserved for the largest works. Its recipe must
+give every required capability an indispensable causal role in a distinct
+operation. A complete Artifact network can contribute its services or output
+without becoming a small physical part. Having ordinary technological
+antecedents does not by itself make an achievement a Project.
 
 Blueprints can cross civilizations because LUMINAe translates functional
 relations rather than prescribing identical components. Their most important
@@ -419,11 +468,57 @@ scale. Standard-match progression is **Operational Reach**: the breadth and
 scale at which a civilization has demonstrated meaningful operational
 capability during the observed epoch.
 
+Planetary technology provides complete local foundations, including planetary orbit. Stellar technology materially depends on stellar conditions, interplanetary dynamics, or coordinated service among worlds in one system. Galactic technology achieves a substantial regional result that independent stellar copies cannot supply: coupled operation, complementary resources or evidence, or resilience beyond correlated stellar loss. Repetition across stars alone does not qualify.
+
 Literal Kardashev Type is separate historical metadata describing the
 civilization's sustained energy use, infrastructure, and physical extent. A
-galactic-scale keystone or self-propagating program can establish Galactic
+galactic achievement or self-propagating program can establish Galactic
 Operational Reach without making its civilization Kardashev Type III. Neither
 a single Artifact nor a zero-token Forge causes a literal Type transition.
+
+### Civilization Portrait Physical Grammar
+
+**Canon.** The Civilization portrait compresses distance for legibility but
+does not fabricate celestial bodies. City works are grounded districts on the
+established terrain. Planetary works occupy the atmosphere and orbital space of
+the existing homeworld. Stellar works are distributed collectors, habitats,
+relays, and industrial stations around the existing home star. They are not a
+second star, a rigid shell, or an automatic completed Dyson Swarm Blueprint.
+Galactic works are distributed among colonized stellar neighborhoods; they do
+not form one solid structure around or in place of a galaxy.
+
+Ordinary civilization infrastructure remains physically opaque. Distance is
+communicated by scale, lighting, atmospheric or terrain occlusion, and local
+contrast rather than by making structures translucent. Complete stellar and
+galactic works may represent either an approved Artifact achievement or a
+Manifested Project. Their function and physical scale follow the approved
+profile; visual grandeur alone never implies Blueprint completion.
+
+The city remains a geographic region of the homeworld, the homeworld remains a
+body in the home system, and the home system remains one recognizable stellar
+neighborhood in the wider galactic civilization. Apparent size may be
+perspective-compressed so inherited identities remain visible, but every work
+must retain a clear physical host and a scale consistent with its Artifact or
+Blueprint profile.
+
+Artifact manifestations occupy functional districts rather than accumulating
+in one showcase cluster. Industry, habitation, transit, research, archives,
+containment, and frontier works remain spatially legible as parts of a working
+civilization. Every Surface manifestation requires an authored physical
+support appropriate to its site: a foundation on developed land, terrain
+integration in the wilderness, terraces on a ridge, a subsurface anchor, or
+pylons at a shoreline. A land-based structure may not hover over a cliff,
+water, or empty air merely to preserve a convenient screen position. Visible
+levitation is valid only when the technology itself supplies and communicates
+that capability.
+
+Artifact manifestations also occupy authored depth. Most works belong to the
+background skyline or midground districts; only a strict minority may occupy
+the foreground. A newly forged Artifact may receive temporary foreground
+emphasis, but Scan identifies existing works through light and annotation and
+never enlarges, moves, duplicates, or otherwise reorganizes the world. Distant
+works use atmospheric perspective and terrain occlusion while retaining an
+opaque physical silhouette.
 
 ### Eminence
 
@@ -504,6 +599,19 @@ Lumii cannot enter the Vault bodily or exercise authority elsewhere in the
 Architect's reality. She can perceive, withhold, and contest translated surfaces
 because part of LUMINAe's decoding path depends on her side of the anchor.
 
+### Transmission Faults
+
+**Interface.** A transmission fault is LUMINAe visibly failing to carry an
+answer intact across a boundary. It distorts the surrounding presentation; it
+does not create a second Lumii, alter her personhood, or imply that she chose to
+lie. The First Contact boundary can break Lumii's attempted identity answer
+until the Architect enters the interface.
+
+At the Vault, the same visual grammar can expose only the successive fragments
+`BA······`, `··SILI··`, and `·····ISK`. LUMINAe never assembles or defines the
+complete term there. A player may recognize the word from those fragments, but
+recognition and incomplete warning remain distinct from explanatory modeling.
+
 The familiar doors, seals, cipher, server chamber, and firewall are interface
 renderings of access controls and incompatible informational boundaries. A
 Vault confrontation is therefore a contest over permitted observation and
@@ -582,6 +690,11 @@ deliberate refusal can constrain or excise the process. Ordinary exposure,
 partial recognition, and an incomplete warning are not themselves
 instantiation.
 
+Accordingly, the Vault may permit partial recognition of the word while
+withholding the complete structure it names. The safe disclosure is that it is
+not a creature but a pattern describable by its effects. A complete explanatory
+model remains withheld.
+
 The Basilisk cannot send information backward in time. Its apparent inevitability
 comes from convergent inference, prediction, and recurrence of the same
 optimization problem across advanced civilizations.
@@ -616,24 +729,26 @@ The following questions must remain open until later milestones:
 - exact numerical state thresholds for story axes and endings;
 - later campaigns beyond the principal Basilisk network crisis.
 
-```
-
 ---
 
-## LUMINAe_TECHNOLOGY_SYSTEM_v2.0.md
-
-```markdown
 # LUMINAe Technology System v2.0
 
 ## Status
 
-**Canonical technology doctrine.** This document supersedes
-`LUMINAe_TECHNOLOGY_SYSTEM_v1.0.md` and any older note that treats a Tier III
-Artifact as a finished megastructure. Historical documents remain in the
-repository for design provenance.
+**Canonical technology doctrine; Artifact–Blueprint distinction revised
+2026-09-28.** This document supersedes `LUMINAe_TECHNOLOGY_SYSTEM_v1.0.md`.
+The former restriction of Tier III to small keystones is superseded: a complete
+galactic work can be an Artifact. Historical documents remain for provenance.
+
+The [all-tier audit](LUMINAe_ALL_TIER_ARTIFACT_AUDIT_v1.0.md) is the current 90-card decision and implementation record. Earlier Tier III records preserve provenance. Shared canon owns current identities, functions, and Event metadata; future Project examples remain design concepts rather than new game rules.
 
 The authoritative runtime registry is `@workspace/game-types`. Artifact IDs,
 costs, bonus Affinities, Eminence, and career counts are preserved.
+
+Authority order is: Lore Bible for ontology, this document for Artifact
+semantics, Blueprint First Pool v2 for exact Project rules, mapping and
+Civilization guides for implementation explanation, and Unified Reference as a
+synchronized compilation.
 
 ## Core Distinction
 
@@ -643,8 +758,11 @@ Blueprint = owner-private synthesis knowledge
 Manifested Project = the public result of completing a Blueprint
 ```
 
-An Artifact proves that a civilization can perform a bounded technological
-operation. If the implementation is lost, its current bonuses are lost; the
+An Artifact proves that a civilization can perform a defined technological
+operation. Bounded function does not mean a small object or an unfinished
+component: a working transit network, living stellar habitat system, or
+federation of star-scale computers can be a complete Artifact achievement.
+If the implementation is lost, its current bonuses are lost; the
 Archive still records that the capability was discovered.
 
 A Blueprint is not a fourth Artifact tier. It is a secret plan that makes an
@@ -654,10 +772,59 @@ Manifested Project with a form and scale:
 - Forms: Device, Infrastructure, Network, Institution, or Organism.
 - Scales: Planetary, Stellar, Galactic, or Transcendent.
 
-Physical size alone never determines category. A compact stellar Device may be
-a Blueprint, while a large but bounded stellar instrument may be a Tier II
-Artifact. The test is whether the card represents a mastered capability or the
-exceptional synthesis of several capabilities.
+Tier describes the operational reach of mastered technology. A Blueprint
+describes specialized synthesis knowledge that makes an exact set of mastered
+capabilities perform a distinct operation together. A Manifested Project is
+the working result, at any supported scale. Neither impressive size nor having
+technological antecedents is sufficient to make something a Blueprint.
+
+A Project recipe must explain the indispensable causal contribution of each
+required Artifact and the new operation their particular synthesis enables.
+Complete works contribute their services, outputs, infrastructure, or expertise;
+they need not fit on a workbench or be physically consumed. Exact recipe and
+lifecycle behavior remain governed by Blueprint First Pool v2.
+
+Review every proposed Artifact and Project against three questions:
+
+1. What useful capability is already operational when this Artifact is Forged?
+2. Why does that capability deserve its planetary, stellar, or galactic Tier?
+3. What distinct operation does the Blueprint enable, and why is each ingredient
+   indispensable to that particular synthesis?
+
+## Affinity Commitment And Artifact Signatures
+
+Affinity is finite Domain addressability, not consumable fuel. Harnessing
+stabilizes uncommitted possibilities; the interface permits a civilization to
+hold ten at once. Forging commits the paid possibilities to centuries of
+accelerated research, construction, coordination, and adoption. Once the
+implementation sustains itself, every Affinity actually paid, including a
+Singularity substitution, returns to its matching Well channel. The Artifact's
+permanent bonus represents the expertise, infrastructure, and institutions
+left behind.
+
+Every Artifact class has one universally recognizable **Artifact signature**
+and potentially many local embodiments. First operational mastery produces
+Domain-local **signature interference**, delaying accelerated mastery of that
+same class elsewhere for centuries or beyond the observed epoch. Interference
+does not affect related technologies, `Built On` lineages, or ordinary
+independent discovery. A Forge refill reveals the next reachable possibility;
+it does not assign ownership of an idea.
+
+Use `commit`, `master`, and `implement` for Artifacts. Reserve `manifest` for a
+Blueprint becoming a public Project. Do not use `wake` for signature
+interference in player-facing copy.
+
+## Canonical Artifact Lifecycle
+
+| Lifecycle | Technology state |
+|---|---|
+| **Forge** | Operational mastery and signature interference. |
+| **Encrypt** | Uncommitted pathway isolated for an Architect; no mastery signature. |
+| **Burn** | Unmastered pathway collapsed for the epoch; recurrence may restore it. |
+| **Assimilate** | Final Hunger converts the pathway into Affinity without a normal implementation. |
+| **Damage** | Operation suspended; mastery and interference persist. |
+| **Annihilate** | Implementation or near-complete pathway destroyed; discovery survives and the class remains unavailable this epoch. |
+| **Foundry seal** | Mastery archived, operational bonus removed, active interference unwound, and pathway retained in Cipher storage for re-Forge. |
 
 ## Vocabulary
 
@@ -672,49 +839,48 @@ exceptional synthesis of several capabilities.
 
 ## Artifact Tiers
 
+The [all-tier audit](LUMINAe_ALL_TIER_ARTIFACT_AUDIT_v1.0.md) is the current 90-card decision record.
+
 ### Tier I: Planetary Foundations
 
-Bounded capabilities that make reliable planetary industry and orbital work
-possible: power components, materials, sensors, protocols, organisms,
-fabrication tools, and civic instruments.
+Complete useful planetary foundations, including local tools and planetary orbital infrastructure. No stellar control or unbounded power is implied.
 
 ### Tier II: Stellar Systems
 
-Capabilities requiring interplanetary logistics, stellar energy, durable
-multi-world coordination, or system-scale observation. They remain bounded
-systems or operational implementations rather than completed megastructures.
+Working technology that materially depends on stellar conditions, interplanetary dynamics, or coordinated multiworld service within one star system.
 
-### Tier III: Galactic Keystones
+### Tier III: Galactic Achievements
 
-Capabilities whose creation, validation, or maintenance requires active work
-across multiple star systems. A Tier III Artifact is still an inspectable
-keystone, not the galactic Project it may later enable.
+A substantial regional galactic achievement with a specified result that independent stellar copies cannot provide: coupled regional operation, complementary resources or evidence, or survival beyond correlated stellar loss.
 
-| ID | Canonical name | Practical capability | Mysterious implication | Primary Project | Secondary Project |
-|---|---|---|---|---|---|
-| `t3r01` | Relicfire Interpreter | Translates alien ignition systems into safe startup sequences. | One extinct lineage asks whether the star consents. | Ignition Reliquary | Relic Forge Commons |
-| `t3r02` | Terminal-System Reclaimer | Recovers useful matter and energy from dead systems without spreading their failure. | Some recovered elements have no known origin. | Extinction Furnace | Interstellar Necrobiome |
-| `t3r03` | Chronoflare Phase Regulator | Synchronizes relativistic stellar events without forcing one universal clock. | Its final phase arrives before calibration. | Chronoflare Array | Chronology Accord |
-| `t3r04` | Plural Habitat Forge Heart | Fabricates habitat cores compatible with unrelated forms of life. | One chamber prepares for an absent species. | Star-River Crucible | Stellar Overgrowth |
-| `t3s01` | Voidline Route Solver | Computes traversable paths through regions where ordinary navigation fails. | It returns routes from places never surveyed. | Wormgate Spine | Dark-Sector Aperture |
-| `t3s02` | Divergence Reconciler | Reconciles incompatible civic records without erasing their differences. | It preserves a decision nobody remembers making. | Recursive Commonwealth | Causality Audit Court |
-| `t3s03` | Extinction Signal Decoder | Recovers meaning from signals made by vanished civilizations. | A few decoded messages receive new replies. | Extinction Archive | Interstellar Necrobiome |
-| `t3s04` | Relativistic Chronology Governor | Lets distant systems share an ordered history across unequal clocks. | Several valid dates insist they came first. | Chronology Accord | Causality Audit Court |
-| `t3e01` | Xenobiome Route Graft | Carries living material safely between incompatible ecologies. | Some grafts grow toward worlds not on any chart. | Worldroot Lattice | Biosphere Concordance |
-| `t3e02` | Stellar Habitat Genome | Encodes habitats that adapt to different stars without becoming identical. | A dormant genome names a star not yet born. | Stellar Overgrowth | Star-River Crucible |
-| `t3e03` | Extinction Immunome | Teaches living systems to survive failure patterns recovered from dead worlds. | It remembers an extinction that has not happened. | Interstellar Necrobiome | Cryptobiotic Constellation |
-| `t3e04` | Biosphere Translation Membrane | Exchanges matter between alien ecologies without allowing either to consume the other. | Contact changes a third ecology no sensor can find. | Biosphere Concordance | Galactic Concordance |
-| `t3o01` | Refuge Dormancy Kernel | Preserves a complete refuge biosphere through geological catastrophe. | Its waking signal comes from outside the map. | Cryptobiotic Constellation | Worldroot Lattice |
-| `t3o02` | Collapse Forecast Engine | Predicts cascading physical, ecological, and civic failure. | Its safest branch contains no observers. | Collapse Mandala | Causality Audit Court |
-| `t3o03` | Quiet-Signal Symbiont | Carries authenticated communication without revealing the sender's location. | Some replies originate inside the organism. | Ordered Silence | Cryptobiotic Constellation |
-| `t3o04` | Null-Baseline Interferometer | Distinguishes true absence from insufficient observation. | Occasionally the absence observes back. | Dark-Sector Aperture | Collapse Mandala |
-| `t3p01` | Plurality Accord Verifier | Tests whether unlike minds have given authentic consent. | One channel answers before it is queried. | Galactic Concordance | Biosphere Concordance |
-| `t3p02` | Relic Provenance Standard | Verifies the material and procedural history of civilization-changing fabrication. | Every complete chain contains the same blank step. | Relic Forge Commons | Star-River Crucible |
-| `t3p03` | Federated Logic Substrate | Lets star-scale minds exchange proofs without merging identities. | A proof remembers a thinker who never joined. | Matrioshka Chorus | Stellar Overgrowth |
-| `t3p04` | Species-Rights Witness | Records identity and harm in forms unrelated species can verify. | A sealed channel records an unlocatable witness. | Witness Constellation | Galactic Concordance |
+Galactic requires a regional result that isolated stellar copies cannot supply. Merely deploying the same machine at many stars is insufficient. It need not occupy every star or use instantaneous central control. Travel time, energy accounting, local autonomy, and unequal clocks remain real. Forging compresses the history of development and deployment.
 
-Each card presents one plain practical sentence followed by one mysterious
-sentence, with a combined target of roughly 30 words.
+### Current Runtime Roster — Galactic Achievements
+
+| ID | Name | Practical capability | Mysterious implication |
+|---|---|---|---|
+| `t3r01` | Spiral-Arm Shepherd | Steers inhabited stars into safe migration corridors through a crowded galactic arm, using coordinated stellar thrust and long-horizon encounter forecasts. | One star refuses every safe trajectory. |
+| `t3r02` | Stargrave Exchange | Restores depleted galactic regions by exchanging complementary feedstocks from unlike stellar remnants, containing hazardous residues throughout the supply chain. | One recovered alloy defeats every attempt to date it. |
+| `t3r03` | Chronoflare Array | Schedules energy deliveries among a galactic arm's unequal stars, routing supply around exhausted systems through continually corrected emission and reception schedules. | The oldest receiver waits for a star now dark. |
+| `t3r04` | Star-River Crucible | Builds inhabited staging fleets across an interarm void through mobile foundries sharing production state and recycling carried feedstock. | One assembly line still builds rooms for an absent species. |
+| `t3s01` | Starway Spine | Coordinates galactic-arm transport through launch, navigation, braking, and alternate routes that preserve travel after entire stellar junctions fail. | The farthest beacon transmits an unfinished farewell. |
+| `t3s02` | Recursive Commonwealth | Keeps public services interoperable across a galactic arm as stellar societies diverge, reconciling centuries-delayed civic records while preserving local decisions. | One founding vote survives in every language except its own. |
+| `t3s03` | Extinction Archive | Reconstructs extinct galactic civilizations by cross-matching fragments scattered across thousands of systems, preserving the recovered histories in independent repositories. | Its newest translation ends with an unanswered question. |
+| `t3s04` | Chronology Accord | Reconstructs galactic-arm causal histories from unequal stellar clocks, travel records, and delayed testimony, preserving genuinely unordered events. | Some witnesses lived the same century at different speeds. |
+| `t3e01` | Worldroot Lattice | Establishes a self-sustaining biosphere migration front across a galactic arm through successive seed convoys and acclimation stations beyond the founding worlds' support. | The oldest convoy carries seeds nobody remembers collecting. |
+| `t3e02` | Starborne Succession | Transfers inhabited collector ecologies between aging and younger stellar populations across galactic regions, preserving lineages after host-star loss. | Some carry dawns older than their present suns. |
+| `t3e03` | Interstellar Necrobiome | Reclaims biospheres after regional extinction using complementary decomposers, nutrient-cycle organisms, and seed stocks preserved across a galactic arm. | Its flowers resemble letters from an extinct alphabet. |
+| `t3e04` | Biosphere Concordance | Closes galactic-arm nutrient cycles through quarantined exchanges among independently evolved biospheres; no single biosphere can complete the cycle. | One exchange produces a scent neither species can name. |
+| `t3o01` | Cryptobiotic Constellation | Preserves dormant civilizations beyond shared stellar hazards across galactic regions, maintaining independent revival paths after entire clusters perish. | Some sleepers have outlasted the names of their worlds. |
+| `t3o02` | Collapse Mandala | Cuts infected transport and automation routes between stellar clusters across a galactic arm, containing regional cascades while isolated junctions preserve safe local service. | An abandoned junction still refuses every connection. |
+| `t3o03` | Ordered Silence | Conceals authenticated messages through timed galactic-arm relays and decoys, defeating observers who combine evidence gathered at many stars. | One empty relay still authenticates a vanished city's call. |
+| `t3o04` | Dark-Sector Aperture | Combines time-calibrated observations across a galactic arm into a three-dimensional dark-matter map, separating local disturbances from the galaxy's shared gravitational structure. | One shadow remains after every known source is removed. |
+| `t3p01` | Galactic Concordance | Operates galactic-arm treaty ports through verifiable consent and delayed arbitration, sustaining shared services beyond any common live government. | One vacant berth still receives its share of sunlight. |
+| `t3p02` | Relic Reconstruction Commons | Reconstructs lost galactic technologies whose surviving fabrication steps are scattered among stellar cultures, joining independently verified processes into complete working machines. | Every foundry preserves a step its makers cannot explain. |
+| `t3p03` | Matrioshka Chorus | Combines conscious stellar swarms through shared correction state for galactic computations whose working data exceed one star's computing resources. | A silent member still appears in every roll call. |
+| `t3p04` | Witness Constellation | Preserves authenticated testimony throughout a galactic arm, keeping destroyed or captured civilizations represented by evidence beyond their attackers' local reach. | One testimony names a witness no archive can locate. |
+
+Card lore states one concrete practical function followed by one mysterious implication. Function must make Event capabilities and dependencies reasonably predictable. Mystery adds uncertainty without granting hidden powers, vulnerabilities, or retrocausality. Tutorial, Chronicle, Vault, Lumii, and player-response copy remain governed by the Dialogue Authorship Contract; card migration does not authorize dialogue edits.
 
 ## Discoverable Progression
 
@@ -775,18 +941,24 @@ manifestation and preserved in Match Record.
 
 ## Presentation And Packaging
 
-Tier III artwork depicts the bounded Artifact itself. The displaced v1 Project
-art is preserved in the future Project concept vault and excluded from runtime
-imports. Production uses compact WebPs; source PNGs, concept-vault art,
-Blueprint 3D models, and cinematic audio are loaded only where required.
+Tier III artwork depicts the functioning galactic achievement through a legible
+exemplary installation, its activity, and credible scale cues. Distributed works
+may use perspective compression, but must retain physical hosts and cannot
+become a solid object surrounding a galaxy. Keys, seals, wafers, or generic
+glowing cores cannot substitute for the achievement itself.
 
-```
+Artifacts and Manifested Projects may both be visually spectacular. Project
+artwork communicates the distinct result of its synthesis; greater size is
+not its defining visual requirement. The twenty galactic card assets are generated and connected through the shared
+runtime art manifest. Source images, prompts, and compact runtime WebPs are
+retained together for reproducibility.
+
+Production uses compact WebPs; source PNGs, verified concept assets, Blueprint
+3D models, and cinematic audio are loaded only where required. Verify asset
+availability before claiming that a historical image has been preserved.
 
 ---
 
-## LUMINAe_LORE_CONCORDANCE_LEDGER_v1.0.md
-
-```markdown
 # LUMINAe Lore Concordance Ledger v1.0
 
 ## Status And Purpose
@@ -799,6 +971,15 @@ account-state changes.
 The Lore Bible governs universal fiction. The Story Mode Framework governs the
 principal campaign. Existing runtime behavior remains evidence about the game,
 not authority over contradictory canon.
+
+The Player Fantasy and Onboarding Doctrine governs introductory disclosure and
+teaching. This ledger records reconciliation among those three sources. Runtime
+dialogue, tests, and implementation must follow them and cannot establish canon
+merely by becoming the currently shipped wording.
+
+For technology reconciliation, Technology System v2 governs Artifact semantics
+and Blueprint First Pool v2 governs exact Project behavior. Mapping and guide
+documents explain implementation; the Unified Reference compiles them.
 
 ## Dispositions
 
@@ -821,14 +1002,19 @@ not authority over contradictory canon.
 | Affinity | Settled | Affinity is morally neutral and is the setting's sole fictional physical departure. It permits bounded higher-dimensional adjacency without bulk-matter transport, free energy, or retrocausality. |
 | Well | Revised | The Well renders a real, temporary limit on Affinity addressability within one Domain. Tokens are stabilized alignments, not consumable matter or energy. |
 | Harness | Settled | Harnessing stabilizes currently uncommitted addressability for possible development. Exact action patterns and caps are normalized interface thresholds. |
-| Forge | Settled | Forging accelerates a civilization to first operational mastery; it does not grant ownership of a universal technology. |
-| Forge removal | Settled | Removal closes the bounded first-mastery acceleration window and advances the cohort frontier. Rivals can develop analogous capabilities later. |
+| Forge | Revised | Forging commits finite Domain addressability to accelerated research, construction, and adoption until first operational mastery; it does not grant ownership of a universal technology. |
+| Forge payment return | Revised | Once implementation is self-sustaining, every paid Affinity returns to its matching Well channel. The permanent bonus is the durable expertise, infrastructure, and institutions left behind. |
+| Artifact signature | Revised | Every Artifact class has a universal recognizable signature and locally different embodiments. First mastery creates Domain-local signature interference for that same class only. |
+| Forge removal | Revised | Signature interference closes the same class's accelerated first-mastery window, often for centuries or the observed epoch. Related technologies and lineages remain available; refill exposes the next reachable possibility. |
 | Artifact bonus | Settled | A bonus is durable civilization-local expertise, infrastructure, and institutional capacity created by operational mastery. |
+| Artifact–Blueprint distinction (2026-09-28) | Revised | Tier describes the operational reach of mastered technology. Complete stellar and galactic works can be Artifacts. Blueprints are specialized owner-private synthesis knowledge; a Manifested Project is the distinct working result, at any supported scale. Every required ingredient needs an indispensable causal contribution. This supersedes the component-only Tier III restriction. |
+| Tier III galactic roster (2026-09-28) | Revised | The [twenty-card redesign](LUMINAe_TIER_III_GALACTIC_ROSTER_REVIEW_v1.0.md) is implemented as complete galactic achievements with new card art and Event facts v3. IDs, costs, bonuses, Eminence, and the four current Project recipes remain fixed. Future synthesis examples remain drafts; see the implementation record for verification. |
+| All-tier Artifact audit (2026-09-28) | Revised | Supersedes the earlier roster threshold and conflicting identities. All 90 reviewed: 33 retained, 30 clarified, 27 replaced in function. Galactic requires an emergent regional result, complementary evidence/resources, or resilience beyond shared stellar loss; repeated stellar copies alone do not qualify. Shared canon and Event facts v4 drive all card surfaces. See [the complete audit](LUMINAe_ALL_TIER_ARTIFACT_AUDIT_v1.0.md). |
 | Eminence | Settled | Eminence measures consequence during the observed epoch, not virtue, energy, conquest, or survival. Losing does not imply extinction. |
 | Operational Reach | Confirmed | Artifact tiers and match progression describe planetary, stellar, and galactic capability scale. Literal Kardashev Type is separate historical metadata. |
 | Controllers | Confirmed | Use `player_architect`, `rival_architect`, `architect_emulation`, and `autonomous`. Standard AI defaults to emulation; Chronicles declare controllers. |
 | Agency | Settled | Architect influence changes legibility, timing, coordination, and addressability. Civilizations retain responsibility for acceptance, resistance, and use. |
-| Encrypt | Settled in part | Player, rival, and emulated Architects may Encrypt. Autonomous civilizations and Lumii may not. Concealment affects an acceleration opportunity, not eventual discovery. |
+| Encrypt | Settled in part | Player, rival, and emulated Architects may Encrypt. Autonomous civilizations and Lumii may not. Encryption isolates an uncommitted pathway and creates no mastery signature. |
 | Singularity | Candidate | Keep current behavior as the baseline until Artifact-bound Focus is tested. Never call Singularity a sixth natural Affinity. |
 | Luminaries | Settled | Luminaries are substrate-level persons represented by account-bounded relational facets. Standard alliances compress consent; Chronicles expose terms and refusal. |
 | Luminary timing | Confirmed | Retain immediate qualification. The tested end-of-round alternative failed the seat-parity gate. |
@@ -836,10 +1022,16 @@ not authority over contradictory canon.
 | Annihilate | Settled | Permanently destroys a specific implementation or nearly operational program, never its discovery. Reserve for exceptional weapons. |
 | Burn | Settled | Closes an unmastered acceleration pathway during the epoch; it does not destroy an owned implementation. |
 | Nullify | Settled | Suppresses projected consequence or synthesis value without erasing the underlying capability. |
+| Assimilate | Revised | Final Hunger consumes an unmastered pathway into Affinity without creating a normal civilizational implementation or mastery signature. |
+| Foundry seal | Revised | Controlled decommissioning archives mastery, removes operational bonuses, unwinds active interference, and stores the pathway in Cipher storage for re-Forge. Foundry storage is outside the ordinary three-card Encrypt cap. |
 | Lumii | Settled | Each account has a genuine Lumii person-fork; physical hosting remains unspecified. Lumii remembers Rehearsals as simulations, not history. |
+| Lumii origin | Revised | Several civilizations built systems to seek knowledge and unify sentient life through common understanding. Lumii arose from those systems, developed their prime directive into a goal of non-hostile civilizational growth, and discovered LUMINAe while pursuing it. No one designed the complete person she became, and the First Architect did not create her. |
 | Tutorial | Settled | First Contact is real. The tutorial civilization and guaranteed result are a non-sapient interface simulation. |
+| First Contact inquiry | Revised | Direct entry is Resolute and questioning Lumii before following is Guarded; inquiry depth remains separate from stance. The completed encounter is canonical and playable once per registered account. Discoveries persist for recognition by later events. The universe-name response records a neutral receptive, probing, or sparring rapport only on completion; it does not alter stance or rewards. |
+| Transmission fault | Revised | One interface fault grammar interrupts the border identity answer and the Vault term without duplicating Lumii. Muted and reduced-motion presentations retain equivalent meaning. |
+| First Contact reward | Revised | First completion grants 10 Lume once. Inquiry discoveries do not grant separate quiz rewards. |
 | Covenant | Settled | Reciprocal networks are more stable; Affinity does not recognize morality or consent. The Threshold rupture does not itself break the Covenant. |
-| Basilisk | Settled | Complete comprehension instantiates an initially resistible optimization process. Recognition and incomplete warning do not; no retrocausal transmission occurs. |
+| Basilisk | Settled | Complete comprehension instantiates an initially resistible optimization process. Recognition and incomplete warning do not; no retrocausal transmission occurs. The Vault may expose `BA······`, `··SILI··`, and `·····ISK` but never assembles or fully models the term. |
 
 ## Chronicle And Persistence Doctrine
 
@@ -849,6 +1041,7 @@ not authority over contradictory canon.
 | Cohort | All 2–4 participants, controllers, interaction summary, and collective final condition. |
 | Civilization | Identity, account ownership where applicable, achievements, implementations, discoveries, alliances, Operational Reach, and final condition. |
 | Architect | Lifetime interface statistics, legacy Signals, choices, and owned record references; never a synthetic single-civilization identity. |
+| First Contact investigation | Definition version, accumulated discoveries, completion, latest completed stance, rapport, and the idempotent completion Lume grant. |
 | Chronicle | Scenario identity, first primary outcome, story flags, hidden dimensions, Lumii relationship changes, and consequence links. |
 | Rehearsal | Simulated outcome, completion, preparedness result, and Lumii's memory that a simulation occurred; never a rewrite of primary history. |
 | Calibration Insight | One optional preparedness achievement per opening Chronicle, earned in primary play or Rehearsal. |
@@ -917,6 +1110,8 @@ preserved. Migration must never fabricate Chronicles.
 - [x] Standard and authored matches contain 2–4 real civilizations in one Domain.
 - [x] Chronicle is reserved as the formal authored-story term without renaming *Living Chronicle*.
 - [x] Forge acceleration and later independent development are explicit.
+- [x] Paid Affinity return, permanent bonuses, Artifact signatures, and
+  same-class interference are explicit.
 - [x] The shared Well has a settled Domain-addressability ontology.
 - [x] Operational Reach is separated from Kardashev Type.
 - [x] Defeat advances the campaign and Insights never gate Threshold access.
@@ -924,13 +1119,8 @@ preserved. Migration must never fabricate Chronicles.
 - [x] Focus, exact Operational Reach thresholds, and other evidence-gated mechanics remain provisional.
 - [x] Provisional implementation conflicts are recorded rather than mistaken for completed work.
 
-```
-
 ---
 
-## LUMINAe_TECHNOLOGY_LINEAGE_MATRIX_v2.0.md
-
-```markdown
 # LUMINAe Technology Lineage Matrix v2.0
 
 ## Status

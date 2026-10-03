@@ -22,6 +22,7 @@ import type { ArtifactCard } from '@workspace/api-client-react';
 import { DEFAULT_VICTORY_REQUIREMENT } from '@workspace/game-types';
 import { ArtifactCardView, EminenceSigil } from './game-card';
 import { CompactForgeCardReadout } from './game-board-forge-card-slot';
+import { getVisibleElementRect } from './game-dom-utils';
 import { AFFINITY_META, type AffinityKey } from '@/lib/affinityMeta';
 import { artifactFrameUsesArtCrop } from '@/lib/artifactFramePresentation';
 import { gameAudio } from '@/lib/audio';
@@ -78,9 +79,8 @@ function readViewportRect(selector?: string | null): ViewportRect | null {
   if (!selector || typeof document === 'undefined') return null;
   const selectors = selector.split(',').map(part => part.trim()).filter(Boolean);
   for (const item of selectors) {
-    const el = document.querySelector<HTMLElement>(item);
-    const r = el?.getBoundingClientRect();
-    if (r && r.width > 0 && r.height > 0) return { x: r.left, y: r.top, w: r.width, h: r.height };
+    const r = getVisibleElementRect(item)?.rect;
+    if (r) return { x: r.left, y: r.top, w: r.width, h: r.height };
   }
   return null;
 }
@@ -446,9 +446,8 @@ export function ForgeAnimation({
     for (const color of spentColors) {
       if (seen.has(color) || color === 'singularity') continue;
       seen.add(color);
-      const el = document.querySelector(`[data-affinity-well="${color}"]`);
-      if (el) {
-        const r = el.getBoundingClientRect();
+      const r = getVisibleElementRect(`[data-affinity-well="${color}"]`)?.rect;
+      if (r) {
         result.push({ color, d: arcPath(r.left + r.width / 2, r.top + r.height / 2, midX, midY, sign) });
         sign *= -1;
       }

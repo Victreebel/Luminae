@@ -1,4 +1,4 @@
-import { cleanup, fireEvent, render, screen } from "@testing-library/react";
+import { cleanup, fireEvent, render, screen, waitFor } from "@testing-library/react";
 import { afterEach, describe, expect, it, vi } from "vitest";
 import { BLUEPRINT_DEFINITIONS, buildCampaignProgressProjection } from "@workspace/game-types";
 import type { BlueprintVaultState, PlayerStats } from "@/lib/accountSession";
@@ -156,6 +156,11 @@ describe("Account Archive", () => {
     expect(screen.getByText("Historical outcome: enduring.")).toBeInTheDocument();
     expect(screen.getByText(/Viable settled worlds preserve multiple futures/)).toBeInTheDocument();
     expect(screen.getByText("2 matches recorded / 6 Lume")).toBeInTheDocument();
+    expect(screen.getByRole("region", { name: "Flux Dyad record" })).toBeInTheDocument();
+    expect(screen.getByText("Flux Dyad")).toBeInTheDocument();
+    expect(screen.getByText("Present Reach")).toBeInTheDocument();
+    expect(screen.getByText("Planetary / Degraded")).toBeInTheDocument();
+    expect(screen.getByRole("button", { name: "Copy Civilization Record" })).toBeInTheDocument();
   });
 
   it("presents the Archive destinations and permanent Civilization reference", () => {
@@ -562,6 +567,28 @@ describe("Account Archive", () => {
     expect(forgedOrder).toEqual(["Zeta Engine", "Alpha Engine"]);
     expect(screen.getByText("Signature technology")).toBeInTheDocument();
     expect(screen.getByText("2 of 90 encountered")).toBeInTheDocument();
+  });
+
+  it("shows Function tags beneath the lore of encountered Artifacts", async () => {
+    const withArtifacts: PlayerStats = {
+      ...baseStats,
+      archive: {
+        ...baseStats.archive!,
+        artifacts: {
+          ...baseStats.archive!.artifacts,
+          discovered: [
+            { id: "t1r01", name: "Ignition Kernel", flavor: "A caged spark.", tier: 1, bonusAffinity: "flare", eminence: 0, forgeCount: 1 },
+          ],
+          discoveredByTier: { 1: 1, 2: 0, 3: 0 },
+        },
+      },
+    };
+
+    render(<AccountArchive stats={withArtifacts} isLoading={false} page="artifacts" />);
+
+    await waitFor(() => expect(screen.getByText("A caged spark.")).toBeVisible());
+    expect(screen.getByText("Functions")).toBeVisible();
+    expect(screen.getByText("Energy")).toBeVisible();
   });
 
   it("sorts a concealed Luminary after named Luminaries alphabetically", () => {

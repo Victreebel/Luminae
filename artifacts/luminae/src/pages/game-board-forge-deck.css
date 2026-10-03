@@ -1,0 +1,65 @@
+/* A real unit leaves the reservoir as the Artifact emerges from the liquid. */
+.archive-vessel__release {
+  position: absolute;
+  z-index: 1;
+  left: 0;
+  right: 0;
+  bottom: var(--archive-fill);
+  height: var(--archive-depleted-fill);
+  min-height: 2px;
+  pointer-events: none;
+  background: var(--archive-core);
+  box-shadow: 0 0 9px 2px var(--archive-energy);
+  transform-origin: bottom;
+  animation: archive-charge-release 620ms ease-out both;
+}
+
+.archive-draw-amount {
+  position: absolute;
+  z-index: 25;
+  top: 18%;
+  left: 0;
+  right: 0;
+  pointer-events: none;
+  color: #f0f8ff;
+  text-align: center;
+  font-size: 13px;
+  line-height: 1;
+  font-weight: 800;
+  font-variant-numeric: tabular-nums;
+  text-shadow: 0 1px 3px #000, 0 0 8px #b9e9ff;
+  animation: archive-draw-amount 760ms ease-out both;
+}
+
+.archive-count-settle {
+  display: inline-block;
+  animation: archive-count-settle 420ms cubic-bezier(.22, 1, .36, 1) both;
+}
+
+@keyframes archive-charge-release {
+  0% { opacity: .95; transform: scaleY(1); }
+  35% { opacity: .6; }
+  100% { opacity: 0; transform: scaleY(0); }
+}
+
+@keyframes archive-draw-amount {
+  0% { opacity: 0; transform: translateY(4px); }
+  15%, 55% { opacity: 1; }
+  100% { opacity: 0; transform: translateY(-9px); }
+}
+
+@keyframes archive-count-settle {
+  0% { transform: translateY(-3px) scale(1.24); filter: brightness(1.7); }
+  100% { transform: none; filter: none; }
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .archive-vessel .archive-vessel__charge { transition-duration: 80ms; }
+  .archive-vessel__release, .archive-count-settle { animation: none; }
+  .archive-vessel__release { display: none; }
+  .archive-draw-amount { animation-name: archive-draw-amount-reduced; }
+  @keyframes archive-draw-amount-reduced {
+    0%, 70% { opacity: 1; }
+    100% { opacity: 0; }
+  }
+}

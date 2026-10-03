@@ -2,8 +2,15 @@ import { useState, useEffect, useCallback } from "react";
 import { useEscapeToClose } from "@/hooks/use-escape-to-close";
 import { useLocation } from "wouter";
 import { apiUrl } from "@/lib/network";
-import { loadTutorialProgress, clearTutorialProgress, hasTutorialBeenCompleted, getIntroSeenBeat, clearIntroSeen } from "@/lib/tutorialProgress";
-import { TUTORIAL_BEATS } from "@/lib/tutorialData";
+import {
+  clearIntroSeen,
+  clearTutorialProgress,
+  getIntroSeenBeat,
+  hasPendingTutorialCompletion,
+  hasTutorialBeenCompleted,
+  loadTutorialProgress,
+} from "@/lib/tutorialProgress";
+import { BEAT_INDEX, TUTORIAL_BEATS } from "@/lib/tutorialData";
 import { setPendingStartBeat } from "@/lib/tutorialStartBeat";
 import { TutorialStartModal } from "@/components/tutorial/TutorialStartModal";
 import { ThresholdCinematic } from "@/components/tutorial/ThresholdCinematic";
@@ -26,7 +33,9 @@ import {
   DEFAULT_VICTORY_REQUIREMENT,
   VICTORY_REQUIREMENT_OPTIONS,
   type VictoryRequirementOption,
+  type EventFrequency,
 } from "@workspace/game-types";
+import { EventFrequencySetting } from "@/components/EventFrequencySetting";
 import { getSavedAvatarId, saveAvatarId, getAvatarForPlayer } from "@/lib/avatars";
 import { AvatarPicker } from "@/components/AvatarPicker";
 import { LoginRegisterForm } from "@/components/LoginRegisterForm";
@@ -136,10 +145,11 @@ function MatchIdentitySelector({
 export default function Home() {
   const [, setLocation] = useLocation();
   const { toast } = useToast();
-  const { account, token, isLoading: accountLoading, logout } = useAccount();
+  const { account, token, prefs, isLoading: accountLoading, logout } = useAccount();
   const [confirmLogout, setConfirmLogout] = useState(false);
-  const [tutorialSeen] = useState(() => !!localStorage.getItem("luminae_tutorial_seen"));
-  const [tutorialCompleted] = useState(() => hasTutorialBeenCompleted());
+  const tutorialSeen = !!localStorage.getItem("luminae_tutorial_seen") || prefs?.tutorialSeen === true;
+  const tutorialCompleted = hasTutorialBeenCompleted() || prefs?.tutorialCompleted === true;
+  const tutorialCompletionPending = hasPendingTutorialCompletion();
   const [showTutorialModal, setShowTutorialModal] = useState(false);
   const [tutorialHasProgress, setTutorialHasProgress] = useState(false);
   const [tutorialSavedBeat, setTutorialSavedBeat] = useState<number | null>(null);
@@ -151,6 +161,7 @@ export default function Home() {
   const [hostName, setHostName] = useState("");
   const [maxPlayers, setMaxPlayers] = useState(2);
   const [matchMode, setMatchMode] = useState<"standard" | "custom">("standard");
+  const [eventFrequency, setEventFrequency] = useState<EventFrequency>("standard");
   const [victoryRequirement, setVictoryRequirement] = useState<VictoryRequirementOption>(
     DEFAULT_VICTORY_REQUIREMENT,
   );
@@ -183,7 +194,7 @@ export default function Home() {
       const introSkipBeat = getIntroSeenBeat();
       setPendingStartBeat(introSkipBeat ?? 0);
     } else {
-      const saved = loadTutorialProgress();
+      const saved = loadTutorialProgress((id) => BEAT_INDEX[id]);
       setPendingStartBeat(saved ?? 0);
     }
     setShowCinematic(true);
@@ -301,6 +312,7 @@ export default function Home() {
           avatarId,
           gameMode: matchMode,
           blueprintPolicy: matchMode === "custom" ? "owned" : "none",
+          eventFrequency,
         },
         ...(accountToken ? { headers: { Authorization: `Bearer ${accountToken}` } } : {}),
       });
@@ -388,7 +400,8 @@ export default function Home() {
   }
 
   const openTutorial = () => {
-    const saved = loadTutorialProgress();
+    if (tutorialCompleted) return;
+    const saved = loadTutorialProgress((id) => BEAT_INDEX[id]);
     const hasMidProgress = saved !== null && saved > 0 && saved < TUTORIAL_BEATS.length - 1;
     setTutorialHasProgress(hasMidProgress);
     setTutorialSavedBeat(hasMidProgress ? saved : null);
@@ -538,24 +551,54 @@ export default function Home() {
 
                   <div className="oom-divider" />
 
-                  <button
-                    type="button"
-                    onClick={openTutorial}
-                    className="oom-home-tutorial-action flex w-full items-center gap-3 rounded-lg px-2 py-2 text-left transition-colors hover:bg-white/[0.04]"
-                  >
-                    <span className="flex h-9 w-9 shrink-0 items-center justify-center rounded-md border border-primary/25 bg-primary/10 text-primary">
-                      <BookOpen className="h-4 w-4" />
-                    </span>
-                    <span className="min-w-0 flex-1">
-                      <span className="block text-sm font-semibold text-foreground">
-                        {tutorialCompleted ? "Replay Tutorial" : tutorialSeen ? "Continue Tutorial" : "Learn with Lumii"}
+                  {!tutorialCompleted ? (
+                    <button
+                      type="button"
+                      onClick={openTutorial}
+                      className="oom-home-tutorial-action flex w-full items-center gap-3 rounded-lg px-2 py-2 text-left transition-colors hover:bg-white/[0.04]"
+                    >
+                      <span className="flex h-9 w-9 shrink-0 items-center justify-center rounded-md border border-primary/25 bg-primary/10 text-primary">
+                        <BookOpen className="h-4 w-4" />
                       </span>
-                      <span className="oom-home-action-detail mt-0.5 block text-xs text-muted-foreground">
-                        {tutorialCompleted ? "Practice the four core actions again" : tutorialSeen ? "Pick up where you left off" : "Practice the four core actions with Lumii"}
+                      <span className="min-w-0 flex-1">
+                        <span className="block text-sm font-semibold text-foreground">
+                          {tutorialSeen ? "Continue First Contact" : "Meet Lumii"}
+                        </span>
+                        <span className="oom-home-action-detail mt-0.5 block text-xs text-muted-foreground">
+                          {tutorialSeen ? "Pick up where you left off" : "Begin First Contact and learn the four core actions"}
+                        </span>
                       </span>
-                    </span>
-                    <ArrowRight className="h-4 w-4 shrink-0 text-muted-foreground" />
-                  </button>
+                      <ArrowRight className="h-4 w-4 shrink-0 text-muted-foreground" />
+                    </button>
+                  ) : account ? (
+                    <div className="oom-home-tutorial-action flex w-full items-center gap-3 rounded-lg px-2 py-2 text-left">
+                      <span className="flex h-9 w-9 shrink-0 items-center justify-center rounded-md border border-emerald-300/25 bg-emerald-300/[0.08] text-emerald-200">
+                        <ShieldCheck className="h-4 w-4" />
+                      </span>
+                      <span className="min-w-0 flex-1">
+                        <span className="block text-sm font-semibold text-foreground">First Contact Complete</span>
+                        <span className="oom-home-action-detail mt-0.5 block text-xs text-muted-foreground">
+                          {tutorialCompletionPending ? "Waiting to sync with this Architect account" : "Recorded to this Architect account"}
+                        </span>
+                      </span>
+                    </div>
+                  ) : (
+                    <button
+                      type="button"
+                      onClick={() => setMode("auth")}
+                      className="oom-home-tutorial-action flex w-full items-center gap-3 rounded-lg px-2 py-2 text-left transition-colors hover:bg-white/[0.04]"
+                    >
+                      <span className="flex h-9 w-9 shrink-0 items-center justify-center rounded-md border border-amber-200/25 bg-amber-200/[0.08] text-amber-200">
+                        <UserPlus className="h-4 w-4" />
+                      </span>
+                      <span className="min-w-0 flex-1">
+                        <span className="block text-sm font-semibold text-foreground">Establish Artifact Record</span>
+                        <span className="oom-home-action-detail mt-0.5 block text-xs text-muted-foreground">Save Progress and claim 10 Lume</span>
+                      </span>
+                      <ArrowRight className="h-4 w-4 shrink-0 text-muted-foreground" />
+                    </button>
+                  )}
+
 
                   <div className="oom-divider" />
 
@@ -687,6 +730,8 @@ export default function Home() {
                     )}
                   </div>
 
+                  <EventFrequencySetting value={eventFrequency} onChange={setEventFrequency} />
+
                   <div className="space-y-2">
                     <Label htmlFor="turnTimer" className="flex items-center gap-1.5"><Clock className="h-3.5 w-3.5" /> Turn timer</Label>
                     <Select value={turnTimer} onValueChange={setTurnTimer}>
@@ -783,7 +828,7 @@ export default function Home() {
         </nav>
       </main>
 
-      {showTutorialModal && (
+      {showTutorialModal && !tutorialCompleted && (
         <TutorialStartModal hasProgress={tutorialHasProgress} savedBeat={tutorialSavedBeat ?? undefined} totalBeats={TUTORIAL_BEATS.length} onChoice={handleTutorialChoice} />
       )}
       {showCinematic && <ThresholdCinematic onComplete={handleCinematicComplete} />}

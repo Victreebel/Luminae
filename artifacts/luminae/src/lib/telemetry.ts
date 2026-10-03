@@ -12,7 +12,10 @@ export type TelemetryEventName =
   | "purchase_started"
   | "purchase_pending"
   | "purchase_completed"
-  | "purchase_failed";
+  | "purchase_failed"
+  | "tutorial_discovery"
+  | "tutorial_reward_claimed"
+  | "transmission_fault_presented";
 
 type Detail = Record<string, string | number | boolean | null>;
 interface QueuedEvent {

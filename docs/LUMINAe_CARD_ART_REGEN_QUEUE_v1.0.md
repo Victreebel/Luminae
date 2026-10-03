@@ -2,42 +2,16 @@
 
 ## Status
 
-**Canonical visual follow-up for the optimized technology system.**
+Historical queue superseded by the [all-tier audit](LUMINAe_ALL_TIER_ARTIFACT_AUDIT_v1.0.md). The current manifest includes 24 new card images: two Tier I, twenty Tier II, and two Tier III, in addition to the retained 18 galactic images from the previous pass.
 
-Runtime art remains usable while these assets are regenerated, but the dev
-card browser should treat every entry below as provisional.
+Mantlelift Driver Coil and Blackglass Forge Die now depict their actual working functions. The prior "overscaled" corrections are retired: a functioning planetary installation may illustrate a planetary Artifact, and Stellar Artifacts may show stellar infrastructure. Camera scale does not decide tier. Use current canonical functions and the generation manifests for future work; the briefs below are provenance only.
 
-## Priority 1: Renamed Tier I Components
+## Completed: Tier III Galactic Works (Historical Briefs)
 
-| ID | Canonical name | Required image |
-|---|---|---|
-| t1s02 | Mantlelift Driver Coil | One room-scale induction coil segment accelerating a sealed feedstock capsule; no complete launch tower |
-| t1o05 | Blackglass Forge Die | One inspectable vacuum-stable blackglass forming die; no seal or redaction glyph |
-
-These two assets should be regenerated before the Foundry card is considered
-visually final because the current component art depicts their former concepts.
-
-## Priority 2: Overscaled Tier I and II Art
-
-| ID | Artifact | Correction |
-|---|---|---|
-| t1r07 | Entropy Pyre Baffle | Building facade to modular heat-routing baffle |
-| t1s04 | Time-Crystal Scaffold | Warehouse lattice to inspectable crystal substrate |
-| t1e07 | Lichen Vein | Entire wall colony to hand-sized repair specimen |
-| t1p08 | Petrified Bloom | Cliff-sized fossil to preserved sample |
-| t2r06 | Entropy Sink Crucible | Planetary tower complex to bounded thermal module |
-| t2s03 | Simulation Loom | Warehouse installation to console-sized computation loom |
-| t2s06 | Convergence Lens | Planet-spanning array to bounded inspection instrument |
-| t2e05 | Epoch Graft Ledger | Civic wall to living ledger strip |
-| t2e06 | Crystal Biome Seedplate | Architectural slab to hand-sized seedplate cutaway |
-| t2o06 | Dimensional Shear Gauge | Hemispheric array to room-scale gauge |
-| t2p01 | Containment Lattice | Multi-story facade to modular transparent containment cell grid |
-| t2p05 | Error-Correcting Core | Building-height facility to console-sized core |
-
-## Priority 3: Tier III Galactic Works
-
-All twenty Tier III images require regeneration because the prior pass often
+All twenty Tier III images have been regenerated because the prior pass often
 depicted a local key, seal, lens, or wafer instead of the complete achievement.
+The following table preserves the old brief; the implemented roster and saved
+generation manifest supersede it.
 
 | ID | Canonical name | Visual center |
 |---|---|---|

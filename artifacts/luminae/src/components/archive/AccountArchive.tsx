@@ -16,6 +16,8 @@ import {
   Archive,
   BookOpen,
   Clock,
+  Check,
+  Copy,
   Eye,
   FileClock,
   Globe2,
@@ -45,6 +47,9 @@ import type {
 import { CARD_ART } from "@/lib/cardArtManifest";
 import { LUMINARY_RUNTIME_ART } from "@/lib/luminaryArtManifest";
 import { recordProgressionOnce } from "@/lib/telemetry";
+import { AFFINITY_META } from "@/lib/affinityMeta";
+import { ArtifactFunctionTags } from "@/components/ArtifactFunctionTags";
+import { CIVILIZATION_DYAD_VISUALS } from "@/lib/civilizationVisualState";
 import {
   LumiiVaultEncounter,
   VaultThreshold,
@@ -332,6 +337,100 @@ function dimensionLabel(dimension: (typeof OUTCOME_DIMENSIONS)[number]): string 
   return dimension.charAt(0).toUpperCase() + dimension.slice(1);
 }
 
+function recordLabel(value: string | null | undefined, fallback = "Unrecorded"): string {
+  if (!value) return fallback;
+  return value.charAt(0).toUpperCase() + value.slice(1).replaceAll("_", " ");
+}
+
+function CivilizationMatchSnapshot({ game }: { game: GameHistoryEntry }) {
+  const record = game.civilizationRecord;
+  const [copied, setCopied] = useState(false);
+  if (!record || record.evidence === "legacy_unavailable") return null;
+
+  const dyad = record.dominantDyad ? CIVILIZATION_DYAD_VISUALS[record.dominantDyad] : null;
+  const primaryAffinity = record.dominantAffinity ?? dyad?.affinities[0] ?? null;
+  const secondaryAffinity = dyad?.affinities.find((affinity) => affinity !== primaryAffinity) ?? primaryAffinity;
+  const primaryTone = primaryAffinity ? AFFINITY_META[primaryAffinity].hex : "#82ddff";
+  const secondaryTone = secondaryAffinity ? AFFINITY_META[secondaryAffinity].hex : "#dfb86b";
+  const identityLabel = dyad
+    ? `${dyad.label} Dyad`
+    : record.affinityForm === "plural"
+      ? "Plural Civilization"
+      : primaryAffinity
+        ? `${recordLabel(primaryAffinity)} Civilization`
+        : "Unformed Civilization";
+  const reachDetail = record.currentReach
+    ? `${recordLabel(record.currentReach)}${record.currentReachCondition && record.currentReachCondition !== "intact" ? ` / ${recordLabel(record.currentReachCondition)}` : ""}`
+    : "Unrecorded";
+  const metrics = [
+    [record.masteredArtifactCount, "Mastered"],
+    [record.operationalArtifactCount, "Operational"],
+    [record.manifestedProjectCount, "Projects"],
+    [record.civilizationEventCount, "Events"],
+  ] as const;
+  const shareText = [
+    `LUMINAe Civilization Record | ${identityLabel}`,
+    `${recordLabel(record.historicalMaturity)} maturity | ${reachDetail} Reach | ${recordLabel(record.stabilityBand)} stability`,
+    metrics.filter(([value]) => value !== null).map(([value, label]) => `${value} ${label}`).join(" | "),
+    `${game.eminenceEarned} Eminence | ${recordLabel(game.result)}`,
+  ].filter(Boolean).join("\n");
+
+  return (
+    <section
+      className="account-archive__civilization-snapshot"
+      style={{
+        "--civ-record-primary": primaryTone,
+        "--civ-record-secondary": secondaryTone,
+      } as CSSProperties}
+      aria-label={`${identityLabel} record`}
+    >
+      <span className="account-archive__civilization-mark" aria-hidden="true">
+        <i />
+      </span>
+      <div className="account-archive__civilization-heading">
+        <small>Civilization Record</small>
+        <strong>{identityLabel}</strong>
+      </div>
+      <dl className="account-archive__civilization-state">
+        <div>
+          <dt>Maturity</dt>
+          <dd>{recordLabel(record.historicalMaturity)}</dd>
+        </div>
+        <div>
+          <dt>Present Reach</dt>
+          <dd>{reachDetail}</dd>
+        </div>
+        <div>
+          <dt>Stability</dt>
+          <dd>{recordLabel(record.stabilityBand)}</dd>
+        </div>
+      </dl>
+      <dl className="account-archive__civilization-metrics">
+        {metrics.map(([value, label]) => value !== null && (
+          <div key={label}>
+            <dt>{label}</dt>
+            <dd>{value}</dd>
+          </div>
+        ))}
+      </dl>
+      <button
+        type="button"
+        className="account-archive__civilization-copy"
+        title="Copy Civilization Record"
+        aria-label="Copy Civilization Record"
+        onClick={() => {
+          void navigator.clipboard?.writeText(shareText).then(() => {
+            setCopied(true);
+            window.setTimeout(() => setCopied(false), 1600);
+          });
+        }}
+      >
+        {copied ? <Check aria-hidden="true" /> : <Copy aria-hidden="true" />}
+      </button>
+    </section>
+  );
+}
+
 function MatchRecord({ stats, sort }: { stats: PlayerStats; sort: MatchSort }) {
   const matchHistory = stats.matchHistory ?? stats.recentGames;
   const games = useMemo(
@@ -439,6 +538,7 @@ function MatchRecord({ stats, sort }: { stats: PlayerStats; sort: MatchSort }) {
               </div>
             )}
           </div>
+          <CivilizationMatchSnapshot game={game} />
         </motion.article>
       ))}
     </div>
@@ -592,6 +692,7 @@ function ArtifactRecord({
           {isSignature && <strong>Signature technology</strong>}
         </div>
         <span>{artifact.flavor}</span>
+        <ArtifactFunctionTags artifactId={artifact.id} compact className="mt-2" />
       </div>
       {artifact.eminence > 0 && (
         <div

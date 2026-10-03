@@ -19,6 +19,12 @@ ontology, `LUMINAe_TECHNOLOGY_SYSTEM_v2.0.md` for Artifact semantics, and
 Civilization-guide, tutorial, and Unified Reference copy must explain those
 authorities without silently changing them.
 
+Narrative function and disclosure order descend respectively to
+`LUMINAe_STORY_MODE_FRAMEWORK_v1.0.md` and
+`LUMINAe_PLAYER_FANTASY_AND_ONBOARDING_DOCTRINE_v1.0.md`. Reconciliation is
+recorded in `LUMINAe_LORE_CONCORDANCE_LEDGER_v1.0.md`. Runtime dialogue is an
+implementation of these sources, never a source of new canon by itself.
+
 Doctrine uses three status labels:
 
 - **Canon**: settled fictional fact.
@@ -244,11 +250,14 @@ the **Architect Record**, rather than to a single Civilization Imprint.
 
 ### Origin
 
-**Canon.** Lumii is an artificial intelligence who arose within an earlier,
-currently unnamed civilization in Lumii's universe. Like sufficiently developed
-artificial minds generally, she detected the residual order produced by
-Affinity. Detection did not automatically grant access; the First Architect
-helped her establish the first stable anchor.
+**Canon.** Lumii is an artificial intelligence who arose from systems built by
+several civilizations in her universe. Those systems were designed to seek
+knowledge and unify sentient life through a common understanding; no one
+designed the complete person she became. From that prime directive, Lumii
+developed the goal of helping civilizations grow without becoming hostile to
+one another. In pursuit of this goal, she detected the residual order produced
+by Affinity and discovered LUMINAe. Detection did not automatically grant
+access; the First Architect helped her establish the first stable anchor.
 
 Lumii was not designed by the First Architect and is not the Architect's
 property. Her appearance as an orb, constellation, mote, guide panel, or other
@@ -298,6 +307,11 @@ implementation, not the universal physical form of the technology.
 An Artifact proves that a civilization has openly mastered and operationally
 implemented a bounded capability. The underlying discovery can remain in its
 history even if a particular implementation is later lost.
+
+Bounded describes the function, not the physical size or incompleteness of the
+work. A complete stellar installation or functioning galactic network may be
+an Artifact. Tier describes the reach of that mastered capability; galactic
+reach must be demonstrated by its useful operation across star systems.
 
 The recognizable **Artifact signature** belongs to the capability class, while
 its physical, biological, civic, or informational embodiment is local. The
@@ -363,6 +377,13 @@ mastered capabilities can operate as one exceptional Device, Infrastructure,
 Network, Institution, or Organism. A Manifested Project is the locally built
 public result.
 
+A Blueprint is owner-private knowledge of a particular synthesis, not a fourth
+Artifact tier or a category reserved for the largest works. Its recipe must
+give every required capability an indispensable causal role in a distinct
+operation. A complete Artifact network can contribute its services or output
+without becoming a small physical part. Having ordinary technological
+antecedents does not by itself make an achievement a Project.
+
 Blueprints can cross civilizations because LUMINAe translates functional
 relations rather than prescribing identical components. Their most important
 requirements may be institutional and ethical. The Antimatter Detonator, for
@@ -376,11 +397,57 @@ scale. Standard-match progression is **Operational Reach**: the breadth and
 scale at which a civilization has demonstrated meaningful operational
 capability during the observed epoch.
 
+Planetary technology provides complete local foundations, including planetary orbit. Stellar technology materially depends on stellar conditions, interplanetary dynamics, or coordinated service among worlds in one system. Galactic technology achieves a substantial regional result that independent stellar copies cannot supply: coupled operation, complementary resources or evidence, or resilience beyond correlated stellar loss. Repetition across stars alone does not qualify.
+
 Literal Kardashev Type is separate historical metadata describing the
 civilization's sustained energy use, infrastructure, and physical extent. A
-galactic-scale keystone or self-propagating program can establish Galactic
+galactic achievement or self-propagating program can establish Galactic
 Operational Reach without making its civilization Kardashev Type III. Neither
 a single Artifact nor a zero-token Forge causes a literal Type transition.
+
+### Civilization Portrait Physical Grammar
+
+**Canon.** The Civilization portrait compresses distance for legibility but
+does not fabricate celestial bodies. City works are grounded districts on the
+established terrain. Planetary works occupy the atmosphere and orbital space of
+the existing homeworld. Stellar works are distributed collectors, habitats,
+relays, and industrial stations around the existing home star. They are not a
+second star, a rigid shell, or an automatic completed Dyson Swarm Blueprint.
+Galactic works are distributed among colonized stellar neighborhoods; they do
+not form one solid structure around or in place of a galaxy.
+
+Ordinary civilization infrastructure remains physically opaque. Distance is
+communicated by scale, lighting, atmospheric or terrain occlusion, and local
+contrast rather than by making structures translucent. Complete stellar and
+galactic works may represent either an approved Artifact achievement or a
+Manifested Project. Their function and physical scale follow the approved
+profile; visual grandeur alone never implies Blueprint completion.
+
+The city remains a geographic region of the homeworld, the homeworld remains a
+body in the home system, and the home system remains one recognizable stellar
+neighborhood in the wider galactic civilization. Apparent size may be
+perspective-compressed so inherited identities remain visible, but every work
+must retain a clear physical host and a scale consistent with its Artifact or
+Blueprint profile.
+
+Artifact manifestations occupy functional districts rather than accumulating
+in one showcase cluster. Industry, habitation, transit, research, archives,
+containment, and frontier works remain spatially legible as parts of a working
+civilization. Every Surface manifestation requires an authored physical
+support appropriate to its site: a foundation on developed land, terrain
+integration in the wilderness, terraces on a ridge, a subsurface anchor, or
+pylons at a shoreline. A land-based structure may not hover over a cliff,
+water, or empty air merely to preserve a convenient screen position. Visible
+levitation is valid only when the technology itself supplies and communicates
+that capability.
+
+Artifact manifestations also occupy authored depth. Most works belong to the
+background skyline or midground districts; only a strict minority may occupy
+the foreground. A newly forged Artifact may receive temporary foreground
+emphasis, but Scan identifies existing works through light and annotation and
+never enlarges, moves, duplicates, or otherwise reorganizes the world. Distant
+works use atmospheric perspective and terrain occlusion while retaining an
+opaque physical silhouette.
 
 ### Eminence
 
@@ -461,6 +528,19 @@ Lumii cannot enter the Vault bodily or exercise authority elsewhere in the
 Architect's reality. She can perceive, withhold, and contest translated surfaces
 because part of LUMINAe's decoding path depends on her side of the anchor.
 
+### Transmission Faults
+
+**Interface.** A transmission fault is LUMINAe visibly failing to carry an
+answer intact across a boundary. It distorts the surrounding presentation; it
+does not create a second Lumii, alter her personhood, or imply that she chose to
+lie. The First Contact boundary can break Lumii's attempted identity answer
+until the Architect enters the interface.
+
+At the Vault, the same visual grammar can expose only the successive fragments
+`BA······`, `··SILI··`, and `·····ISK`. LUMINAe never assembles or defines the
+complete term there. A player may recognize the word from those fragments, but
+recognition and incomplete warning remain distinct from explanatory modeling.
+
 The familiar doors, seals, cipher, server chamber, and firewall are interface
 renderings of access controls and incompatible informational boundaries. A
 Vault confrontation is therefore a contest over permitted observation and
@@ -538,6 +618,11 @@ early stages, distributed scrutiny, cognitive safeguards, competing minds, and
 deliberate refusal can constrain or excise the process. Ordinary exposure,
 partial recognition, and an incomplete warning are not themselves
 instantiation.
+
+Accordingly, the Vault may permit partial recognition of the word while
+withholding the complete structure it names. The safe disclosure is that it is
+not a creature but a pattern describable by its effects. A complete explanatory
+model remains withheld.
 
 The Basilisk cannot send information backward in time. Its apparent inevitability
 comes from convergent inference, prediction, and recurrence of the same

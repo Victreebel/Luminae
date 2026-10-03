@@ -36,6 +36,7 @@ import type {
   ChallengeActionBody,
   ChallengeCreatedResponse,
   ChallengesResponse,
+  CompleteTutorialInvestigationBody,
   CosmeticLoadoutBody,
   CosmeticLoadoutResponse,
   CreateChallengeBody,
@@ -76,6 +77,7 @@ import type {
   TelemetryBatch,
   TraceChronicleSession,
   TriangulationChronicleSession,
+  TutorialInvestigationProgress,
   WithdrawBlueprintClearanceChallenge200,
   WithdrawBlueprintClearanceChallengeBody,
 } from "./api.schemas";
@@ -1618,6 +1620,175 @@ export const useDeleteMyAccount = <
   TContext
 > => {
   return useMutation(getDeleteMyAccountMutationOptions(options));
+};
+
+/**
+ * @summary Get account-backed First Contact progress
+ */
+export const getGetTutorialInvestigationUrl = () => {
+  return `/api/onboarding/tutorial`;
+};
+
+export const getTutorialInvestigation = async (
+  options?: RequestInit,
+): Promise<TutorialInvestigationProgress> => {
+  return customFetch<TutorialInvestigationProgress>(
+    getGetTutorialInvestigationUrl(),
+    {
+      ...options,
+      method: "GET",
+    },
+  );
+};
+
+export const getGetTutorialInvestigationQueryKey = () => {
+  return [`/api/onboarding/tutorial`] as const;
+};
+
+export const getGetTutorialInvestigationQueryOptions = <
+  TData = Awaited<ReturnType<typeof getTutorialInvestigation>>,
+  TError = ErrorType<void>,
+>(options?: {
+  query?: UseQueryOptions<
+    Awaited<ReturnType<typeof getTutorialInvestigation>>,
+    TError,
+    TData
+  >;
+  request?: SecondParameter<typeof customFetch>;
+}) => {
+  const { query: queryOptions, request: requestOptions } = options ?? {};
+
+  const queryKey =
+    queryOptions?.queryKey ?? getGetTutorialInvestigationQueryKey();
+
+  const queryFn: QueryFunction<
+    Awaited<ReturnType<typeof getTutorialInvestigation>>
+  > = ({ signal }) => getTutorialInvestigation({ signal, ...requestOptions });
+
+  return { queryKey, queryFn, ...queryOptions } as UseQueryOptions<
+    Awaited<ReturnType<typeof getTutorialInvestigation>>,
+    TError,
+    TData
+  > & { queryKey: QueryKey };
+};
+
+export type GetTutorialInvestigationQueryResult = NonNullable<
+  Awaited<ReturnType<typeof getTutorialInvestigation>>
+>;
+export type GetTutorialInvestigationQueryError = ErrorType<void>;
+
+/**
+ * @summary Get account-backed First Contact progress
+ */
+
+export function useGetTutorialInvestigation<
+  TData = Awaited<ReturnType<typeof getTutorialInvestigation>>,
+  TError = ErrorType<void>,
+>(options?: {
+  query?: UseQueryOptions<
+    Awaited<ReturnType<typeof getTutorialInvestigation>>,
+    TError,
+    TData
+  >;
+  request?: SecondParameter<typeof customFetch>;
+}): UseQueryResult<TData, TError> & { queryKey: QueryKey } {
+  const queryOptions = getGetTutorialInvestigationQueryOptions(options);
+
+  const query = useQuery(queryOptions) as UseQueryResult<TData, TError> & {
+    queryKey: QueryKey;
+  };
+
+  return { ...query, queryKey: queryOptions.queryKey };
+}
+
+/**
+ * @summary Record the account's one canonical First Contact completion and base Lume grant
+ */
+export const getCompleteTutorialInvestigationUrl = () => {
+  return `/api/onboarding/tutorial/complete`;
+};
+
+export const completeTutorialInvestigation = async (
+  completeTutorialInvestigationBody: CompleteTutorialInvestigationBody,
+  options?: RequestInit,
+): Promise<TutorialInvestigationProgress> => {
+  return customFetch<TutorialInvestigationProgress>(
+    getCompleteTutorialInvestigationUrl(),
+    {
+      ...options,
+      method: "POST",
+      headers: { "Content-Type": "application/json", ...options?.headers },
+      body: JSON.stringify(completeTutorialInvestigationBody),
+    },
+  );
+};
+
+export const getCompleteTutorialInvestigationMutationOptions = <
+  TError = ErrorType<void>,
+  TContext = unknown,
+>(options?: {
+  mutation?: UseMutationOptions<
+    Awaited<ReturnType<typeof completeTutorialInvestigation>>,
+    TError,
+    { data: BodyType<CompleteTutorialInvestigationBody> },
+    TContext
+  >;
+  request?: SecondParameter<typeof customFetch>;
+}): UseMutationOptions<
+  Awaited<ReturnType<typeof completeTutorialInvestigation>>,
+  TError,
+  { data: BodyType<CompleteTutorialInvestigationBody> },
+  TContext
+> => {
+  const mutationKey = ["completeTutorialInvestigation"];
+  const { mutation: mutationOptions, request: requestOptions } = options
+    ? options.mutation &&
+      "mutationKey" in options.mutation &&
+      options.mutation.mutationKey
+      ? options
+      : { ...options, mutation: { ...options.mutation, mutationKey } }
+    : { mutation: { mutationKey }, request: undefined };
+
+  const mutationFn: MutationFunction<
+    Awaited<ReturnType<typeof completeTutorialInvestigation>>,
+    { data: BodyType<CompleteTutorialInvestigationBody> }
+  > = (props) => {
+    const { data } = props ?? {};
+
+    return completeTutorialInvestigation(data, requestOptions);
+  };
+
+  return { mutationFn, ...mutationOptions };
+};
+
+export type CompleteTutorialInvestigationMutationResult = NonNullable<
+  Awaited<ReturnType<typeof completeTutorialInvestigation>>
+>;
+export type CompleteTutorialInvestigationMutationBody =
+  BodyType<CompleteTutorialInvestigationBody>;
+export type CompleteTutorialInvestigationMutationError = ErrorType<void>;
+
+/**
+ * @summary Record the account's one canonical First Contact completion and base Lume grant
+ */
+export const useCompleteTutorialInvestigation = <
+  TError = ErrorType<void>,
+  TContext = unknown,
+>(options?: {
+  mutation?: UseMutationOptions<
+    Awaited<ReturnType<typeof completeTutorialInvestigation>>,
+    TError,
+    { data: BodyType<CompleteTutorialInvestigationBody> },
+    TContext
+  >;
+  request?: SecondParameter<typeof customFetch>;
+}): UseMutationResult<
+  Awaited<ReturnType<typeof completeTutorialInvestigation>>,
+  TError,
+  { data: BodyType<CompleteTutorialInvestigationBody> },
+  TContext
+> => {
+  return useMutation(getCompleteTutorialInvestigationMutationOptions(options));
 };
 
 /**

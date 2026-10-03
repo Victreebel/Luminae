@@ -36,7 +36,7 @@ describe('civilization profiles', () => {
       artifact('t2e01', 2, 'verdance', 'Solar Immune Organ'),
     )).toBe('biosphere');
     expect(getArtifactCivilizationTrait(
-      artifact('t3s01', 3, 'continuum', 'Voidline Route Solver'),
+      artifact('t3s01', 3, 'continuum', 'Starway Spine'),
     )).toBe('transit');
     expect(getArtifactCivilizationTrait(
       artifact('t2p01', 2, 'radiance', 'Containment Lattice'),
@@ -86,11 +86,41 @@ describe('civilization profiles', () => {
     const profile = buildCivilizationProfile([
       artifact('t1e01', 1, 'verdance'),
       artifact('t1e05', 1, 'verdance'),
-      artifact('t3s01', 3, 'continuum', 'Voidline Route Solver', 5),
+      artifact('t3s01', 3, 'continuum', 'Starway Spine', 5),
     ]);
 
     expect(profile.dominantTraits[0]).toBe('transit');
     expect(profile.traitCounts.replication).toBe(2);
     expect(profile.traitCounts.transit).toBe(1);
+  });
+
+  it('records when unique Artifacts first unlock each Kardashev era', () => {
+    const tierOne = artifact('t1r01', 1, 'flare');
+    const tierTwo = artifact('t2r01', 2, 'flare');
+    const tierThree = artifact('t3r01', 3, 'flare');
+    const discountedTierThree = {
+      ...tierThree,
+      bonusesAtForge: { ...tierThree.cost },
+    };
+    const profile = buildCivilizationProfile([
+      tierOne,
+      tierTwo,
+      tierThree,
+      tierThree,
+      discountedTierThree,
+    ]);
+
+    expect(profile.kardashevArrivalArtifactCounts).toEqual({
+      1: 2,
+      2: 3,
+      3: null,
+    });
+
+    const galacticProfile = buildCivilizationProfile([
+      tierOne,
+      tierTwo,
+      discountedTierThree,
+    ]);
+    expect(galacticProfile.kardashevArrivalArtifactCounts[3]).toBe(3);
   });
 });

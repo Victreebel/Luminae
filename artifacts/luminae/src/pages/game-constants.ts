@@ -1,4 +1,5 @@
 import { AFFINITY_KEYS, type AffinityKey } from "@/lib/affinityMeta";
+import { FORGE_REFILL_LOCK_MS } from "@/lib/forgeRefillTiming";
 import cardTier1Bg from "@assets/generated_images/card_tier1.png";
 import cardTier3Bg from "@assets/generated_images/card_tier3.png";
 export { CARD_ART, CARD_RUNTIME_ART } from "@/lib/cardArtManifest";
@@ -71,16 +72,8 @@ export const localTurnVariants = {
   },
 };
 
-/** Duration of the deal-from-deck (card fly + flip) animation in ms.
- *  Used by setAnimEndTime in both the initial guard and the deck-found branch
- *  so both call sites derive from the same source. */
-export const DEAL_ANIM_MS = 1700;
-
-/** Delay (ms) after a card begins its deal-from-deck flight before the
- *  Card draw.mp3 flip SFX fires. Times the sound to the visual edge-flip:
- *  the deal animation runs 1.5 s with rotateY hitting 90° at its midpoint
- *  (~750 ms), so a slight lead lands the flip sound on the card turning over. */
-export const DEAL_FLIP_SOUND_MS = 600;
+/** Hold gameplay until the refill can complete, including its event fallback. */
+export const DEAL_ANIM_MS = FORGE_REFILL_LOCK_MS;
 
 /** Brief animation lock fired on the initial turn announcement (ms). */
 export const INITIAL_TURN_GUARD_MS = 1200;
@@ -96,9 +89,8 @@ export const ANIM_LOCK_BUFFER_MS = 270;
  *  (reserved-card forge, deck reserve, local forge from hand) (ms). */
 export const ABRIDGED_ACTION_MS = 780;
 
-/** Full animation duration when forging a face-up Artifact.
- *  (stamp + fly + deal + settling buffer) (ms). */
-export const FORGE_FULL_MS = 3000;
+/** Full face-up Forge: departure (1300 ms), then the complete refill. */
+export const FORGE_FULL_MS = 1300 + DEAL_ANIM_MS;
 
 /** Full reserved-card forge animation duration — no replacement deal needed (ms). */
 export const RESERVED_FORGE_FULL_MS = 1600;
@@ -127,7 +119,7 @@ export const AFFINITY_BURST_BASE_MS = 760;
 export const AFFINITY_BURST_SETTLE_MS = 180;
 
 /** Abridged forge animation lock when a replacement card is dealt from the deck (ms).
- *  Covers the card shrink, the deal-from-deck fly/flip, and the trailing settle buffer.
+ *  Covers the card shrink, cosmic refill, and the trailing settle buffer.
  *  = ABRIDGED_SHRINK_MS + DEAL_ANIM_MS + ANIM_LOCK_BUFFER_MS */
 export const ABRIDGED_FORGE_LOCK_MS =
   ABRIDGED_SHRINK_MS + DEAL_ANIM_MS + ANIM_LOCK_BUFFER_MS;

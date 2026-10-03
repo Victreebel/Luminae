@@ -23,6 +23,8 @@ export type LuminaryPresentationRuntimeSignals = Omit<
 
 interface UseLuminaryPresentationEngineOptions<TState extends VersionedState> {
   signals: LuminaryPresentationRuntimeSignals;
+  /** Event/Chronicle leases share ingress without becoming Luminary camera work. */
+  externalPresentationActive?: boolean;
   getProcessedVersion: () => number | null | undefined;
   processAuthoritativeState: (
     state: TState,
@@ -49,6 +51,7 @@ export interface LuminaryPresentationEngine<TState extends VersionedState> {
  */
 export function useLuminaryPresentationEngine<TState extends VersionedState>({
   signals: runtimeSignals,
+  externalPresentationActive = false,
   getProcessedVersion,
   processAuthoritativeState,
   beginCameraSequence,
@@ -61,7 +64,7 @@ export function useLuminaryPresentationEngine<TState extends VersionedState>({
   };
   const status = deriveLuminarySequenceStatus(signals);
   const ingress = useAuthoritativeStateIngress<TState>({
-    blocked: status.presentationActive,
+    blocked: status.presentationActive || externalPresentationActive,
     getProcessedVersion,
     process: processAuthoritativeState,
   });

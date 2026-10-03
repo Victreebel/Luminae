@@ -1,0 +1,37 @@
+{
+  "status": "two examples for user review",
+  "generator": "built-in image_gen",
+  "direction": "Name recall first; actual affinity token design references; constituent colors dominant.",
+  "examples": [
+    {
+      "id": "eclipse",
+      "name": "Eclipse",
+      "family": "dyad",
+      "affinities": [
+        "Radiance",
+        "Abyss"
+      ],
+      "references": [
+        "/Users/chaoscalligraphy/Documents/Lumiane/attached_assets/luminae_radiance_emblem_v2.png",
+        "/Users/chaoscalligraphy/Documents/Lumiane/attached_assets/generated_images/affinity_abyss.png"
+      ],
+      "prompt": "Use case: style-preserving design edit / logo-brand.\nEDIT TARGET: Image 1, the existing golden Radiance affinity token.\nSUPPORTING DESIGN REFERENCE: Image 2, the existing purple Abyss affinity token.\nCreate a new Eclipse civilization token by transforming the Radiance token using the Abyss token's color, material, and concealment imagery. Keep a clear family resemblance to these exact supplied game assets: frontal circular coin, richly colored engraved metal rim, luminous otherworldly center, four cardinal inset studs, high polish. Preserve the visual weight and layout of the reference token, with crisp silhouette and detailed but subordinate rim. Output one centered square transparent-background token, fully visible with comfortable margins.\n\nCRITICAL NAME-RECALL IMAGE: A TOTAL SOLAR ECLIPSE. One large dark violet-black occluding disc passes in front of a golden sun, visibly hiding its central light. Show a strong vivid solar-gold corona around the occluding body, wider on the upper-right side, with one bright gold diamond of exposed sun at that edge. The dark disc is visibly a foreground occluder, with a saturated violet edge and subtle purple internal reflection. Even at thumbnail size the unmistakable image must be 'a sun being eclipsed', not a generic portal or galaxy. NO accretion stripe across the face; this would confuse it with an ordinary Abyss token.\n\nCOLOR IS PRIMARY: Radiance's solar gold (#DFC878 with hotter luminous gold) and Abyss's rich violet (#A832D4 with purple-black shadow) are both dominant and unmistakable. Broad gold corona against a violet-black eclipsing disc. Carry gold and purple into the metal rim and opposing cardinal studs so the parent Affinities can be identified from the whole token, not tiny accents. Maintain saturated separated color areas; avoid muddy mixing. No blue, green, silver-dominant or red palette.\nKeep the main eclipse image large and simple. Original rim engraving can inform decorative detail, but do not introduce extra pictograms, words, labels, lettering or readable text. No scene or objects outside the token. Preserve genuine transparency outside the circular asset. Only one token."
+    },
+    {
+      "id": "ouroboros",
+      "name": "Ouroboros",
+      "family": "triad",
+      "affinities": [
+        "Flare",
+        "Continuum",
+        "Abyss"
+      ],
+      "references": [
+        "/Users/chaoscalligraphy/Documents/Lumiane/attached_assets/generated_images/affinity_continuum.png",
+        "/Users/chaoscalligraphy/Documents/Lumiane/attached_assets/generated_images/affinity_flare.png",
+        "/Users/chaoscalligraphy/Documents/Lumiane/attached_assets/generated_images/affinity_abyss.png"
+      ],
+      "prompt": "Use case: style-preserving design edit / logo-brand.\nEDIT TARGET: Image 1, the existing blue Continuum affinity token.\nSUPPORTING DESIGN REFERENCES: Image 2 is the red Flare token; Image 3 is the purple Abyss token.\nTransform the Continuum token into the Ouroboros civilization token. Preserve unmistakable visual kinship with these exact supplied assets: frontal circular engraved metal rim, concentrated saturated Affinity colors, luminous magical interior, handcrafted cosmic token finish. Keep the token's circular footprint with comfortable transparent margins, but replace the central galaxy with the explicit mnemonic subject below. One centered square image, transparent outside the token.\n\nCRITICAL NAME-RECALL IMAGE: ONE SERPENT BITING AND SWALLOWING ITS OWN TAIL. The serpent forms one closed circle. Its large unmistakable snake head is at upper right, turned inward/down to bite the visibly tapering end of its own body. The tail must visibly enter its mouth; make that bite broad and readable, never merely two disconnected curve tips. A visible eye, strong snout and clearly shaped open jaws establish the animal instantly. The thick continuous body coils around a generous dark center. This serpent occupies most of the interior, with very simple bold anatomy and restrained large scales. It must recall 'Ouroboros' before any ornament is noticed. Not an abstract ring, galaxy spiral, dragon, infinity knot or recycling symbol.\n\nCOLOR IS PRIMARY AND EXPLAINS THE TRIAD: most of the continuous coiled body is luminous cobalt/azure blue from Continuum (#3D6BFF); the substantial tapering tail being consumed is vivid Flare coral-red (#FF5A3C), with hot red light along its scales; the broad snake head, inward-facing body band and consuming mouth are saturated Abyss violet (#A832D4) deepening into purple-black. Give red and purple substantial clearly separate areas, rather than tiny accents. The blue body continues visibly into the red tail and violet head so it is ONE serpent. The dark interior makes these three colors vivid. Use a blue metal outer rim with broad red and violet inlaid sectors related to the reference metals; preserve sparse constellation-like engraving from the Continuum reference. No gold or green dominance, no rainbow, no white silhouette, no pale silver body.\nOuter framing must remain subordinate to the large recognizable serpent and its bite. Do not add floating particles that obscure anatomy, extra animals, disconnected mini affinity icons, words, labels, lettering or readable text. No backdrop or scenery outside the token. Output only one complete transparent-background asset."
+    }
+  ]
+}

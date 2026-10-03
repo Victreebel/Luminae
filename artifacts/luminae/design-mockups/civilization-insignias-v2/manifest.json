@@ -1,0 +1,458 @@
+{
+  "version": 2,
+  "status": "concept draft",
+  "generator": "built-in image_gen",
+  "direction": "Name-led pictograms; bold single-color silhouettes; carved and organic outlines.",
+  "assets": [
+    {
+      "id": "vortex",
+      "name": "Vortex",
+      "family": "dyad",
+      "affinities": [
+        "Flare",
+        "Radiance"
+      ],
+      "meaning": "Three sweeping currents drawn into one tightly turning spiral.",
+      "file": "vortex.png",
+      "width": 1254,
+      "height": 1254,
+      "bytes": 526384,
+      "sha256": "490c1503b57a4d0a44320fddb20a4f2a5d8866ca6e6dafc67662fea20c71e8fc",
+      "clearPixelFraction": 0.6615,
+      "visibleBounds": {
+        "minX": 101,
+        "minY": 113,
+        "maxX": 1151,
+        "maxY": 1128
+      }
+    },
+    {
+      "id": "flux",
+      "name": "Flux",
+      "family": "dyad",
+      "affinities": [
+        "Flare",
+        "Continuum"
+      ],
+      "meaning": "An unbroken wave changes from an angular crest into a flowing curl.",
+      "file": "flux.png",
+      "width": 1774,
+      "height": 887,
+      "bytes": 353282,
+      "sha256": "e132aae434712871f792d23971e39c4538d87c1b4f18fcaa6b53b4ca3f5694de",
+      "clearPixelFraction": 0.7772,
+      "visibleBounds": {
+        "minX": 82,
+        "minY": 187,
+        "maxX": 1691,
+        "maxY": 703
+      }
+    },
+    {
+      "id": "bloom",
+      "name": "Bloom",
+      "family": "dyad",
+      "affinities": [
+        "Flare",
+        "Verdance"
+      ],
+      "meaning": "Two opening blossoms emerge from one branching shoot.",
+      "file": "bloom.png",
+      "width": 1254,
+      "height": 1254,
+      "bytes": 492711,
+      "sha256": "8de33a1d30bbb91b97130b17f46621e4a1c112197df8ea76c09e4e69c7457fcf",
+      "clearPixelFraction": 0.7285,
+      "visibleBounds": {
+        "minX": 106,
+        "minY": 123,
+        "maxX": 1184,
+        "maxY": 1149
+      }
+    },
+    {
+      "id": "chrysalis",
+      "name": "Chrysalis",
+      "family": "dyad",
+      "affinities": [
+        "Flare",
+        "Abyss"
+      ],
+      "meaning": "A hanging cocoon splitting around an emerging wing.",
+      "file": "chrysalis.png",
+      "width": 1254,
+      "height": 1254,
+      "bytes": 400523,
+      "sha256": "dffc60f23fa5d389c373217d4f2c6415cd05918504a38c29023f205c8dbcdce2",
+      "clearPixelFraction": 0.7881,
+      "visibleBounds": {
+        "minX": 372,
+        "minY": 91,
+        "maxX": 975,
+        "maxY": 1137
+      }
+    },
+    {
+      "id": "orbit",
+      "name": "Orbit",
+      "family": "dyad",
+      "affinities": [
+        "Radiance",
+        "Continuum"
+      ],
+      "meaning": "Two unequal bodies remain bound to one sweeping orbital track.",
+      "file": "orbit.png",
+      "width": 1254,
+      "height": 1254,
+      "bytes": 303712,
+      "sha256": "fdf1f9995ebe52c9110ad74142016a21bf4cf5e507469ced8f7fdb661f46a665",
+      "clearPixelFraction": 0.8455,
+      "visibleBounds": {
+        "minX": 128,
+        "minY": 250,
+        "maxX": 1168,
+        "maxY": 1042
+      }
+    },
+    {
+      "id": "canopy",
+      "name": "Canopy",
+      "family": "dyad",
+      "affinities": [
+        "Radiance",
+        "Verdance"
+      ],
+      "meaning": "A broad sheltering tree crown rests on branching limbs.",
+      "file": "canopy.png",
+      "width": 1254,
+      "height": 1254,
+      "bytes": 398482,
+      "sha256": "f539da5d10c62d31c0ace1843c5aa7650ad3968839d5f1274be0a36af6c1d8ae",
+      "clearPixelFraction": 0.7492,
+      "visibleBounds": {
+        "minX": 42,
+        "minY": 296,
+        "maxX": 1213,
+        "maxY": 1016
+      }
+    },
+    {
+      "id": "eclipse",
+      "name": "Eclipse",
+      "family": "dyad",
+      "affinities": [
+        "Radiance",
+        "Abyss"
+      ],
+      "meaning": "An occluding disc conceals the source of an exposed radiant rim.",
+      "file": "eclipse.png",
+      "width": 1254,
+      "height": 1254,
+      "bytes": 280310,
+      "sha256": "547102ec3d81713593c8c292167e69f682b312255c2810902c8ba744d52e3b2d",
+      "clearPixelFraction": 0.8632,
+      "visibleBounds": {
+        "minX": 359,
+        "minY": 105,
+        "maxX": 1155,
+        "maxY": 1151
+      }
+    },
+    {
+      "id": "lineage",
+      "name": "Lineage",
+      "family": "dyad",
+      "affinities": [
+        "Continuum",
+        "Verdance"
+      ],
+      "meaning": "A continuous stem transmits the same leaf form through successive branches.",
+      "file": "lineage.png",
+      "width": 1254,
+      "height": 1254,
+      "bytes": 407776,
+      "sha256": "b086346fd24152c560356f7150cdd7917da1eaf2aa59249febee70f9653b1e6f",
+      "clearPixelFraction": 0.7762,
+      "visibleBounds": {
+        "minX": 290,
+        "minY": 150,
+        "maxX": 963,
+        "maxY": 1161
+      }
+    },
+    {
+      "id": "echo",
+      "name": "Echo",
+      "family": "dyad",
+      "affinities": [
+        "Continuum",
+        "Abyss"
+      ],
+      "meaning": "Expanding ripples preserve the influence of an empty origin.",
+      "file": "echo.png",
+      "width": 1536,
+      "height": 1024,
+      "bytes": 1044274,
+      "sha256": "b9681e8664eb37bd5ca654dfff279bf75d662e33872e58315bd4583c7eb5046a",
+      "clearPixelFraction": 0.8721,
+      "visibleBounds": {
+        "minX": 448,
+        "minY": 71,
+        "maxX": 1157,
+        "maxY": 948
+      }
+    },
+    {
+      "id": "spore",
+      "name": "Spore",
+      "family": "dyad",
+      "affinities": [
+        "Verdance",
+        "Abyss"
+      ],
+      "meaning": "A protective capsule encloses dormant reproductive kernels.",
+      "file": "spore.png",
+      "width": 1774,
+      "height": 887,
+      "bytes": 343754,
+      "sha256": "605e6886dc8f7bba26dbda721edfce10774fc85dc877e02619ddc3cf4443e673",
+      "clearPixelFraction": 0.7955,
+      "visibleBounds": {
+        "minX": 323,
+        "minY": 147,
+        "maxX": 1450,
+        "maxY": 738
+      }
+    },
+    {
+      "id": "homeostasis",
+      "name": "Homeostasis",
+      "family": "triad",
+      "affinities": [
+        "Flare",
+        "Radiance",
+        "Continuum"
+      ],
+      "meaning": "A vessel preserves a level interior between opposing waves.",
+      "file": "homeostasis.png",
+      "width": 1254,
+      "height": 1254,
+      "bytes": 339012,
+      "sha256": "71780f5eff49d86f4dbee1faaf907a3579406426fe62d39d60dc614e897713b5",
+      "clearPixelFraction": 0.8003,
+      "visibleBounds": {
+        "minX": 77,
+        "minY": 345,
+        "maxX": 1175,
+        "maxY": 968
+      }
+    },
+    {
+      "id": "cascade",
+      "name": "Cascade",
+      "family": "triad",
+      "affinities": [
+        "Flare",
+        "Radiance",
+        "Verdance"
+      ],
+      "meaning": "A branching waterfall follows a shared directing channel.",
+      "file": "cascade.png",
+      "width": 1254,
+      "height": 1254,
+      "bytes": 559236,
+      "sha256": "ba072c2b8e14612f48e871805ef6db23398ebb3b6ff1d7a302c736df7cc206fe",
+      "clearPixelFraction": 0.6697,
+      "visibleBounds": {
+        "minX": 63,
+        "minY": 107,
+        "maxX": 1191,
+        "maxY": 1143
+      }
+    },
+    {
+      "id": "alchemy",
+      "name": "Alchemy",
+      "family": "triad",
+      "affinities": [
+        "Flare",
+        "Radiance",
+        "Abyss"
+      ],
+      "meaning": "An enclosed vessel directs a hidden transformation into a new form.",
+      "file": "alchemy.png",
+      "width": 1254,
+      "height": 1254,
+      "bytes": 367804,
+      "sha256": "ae341582196baffbd3cddb54aea4113976f31577bd061eeb27e2d98c7e46ee6c",
+      "clearPixelFraction": 0.7806,
+      "visibleBounds": {
+        "minX": 289,
+        "minY": 203,
+        "maxX": 1056,
+        "maxY": 1105
+      }
+    },
+    {
+      "id": "evolution",
+      "name": "Evolution",
+      "family": "triad",
+      "affinities": [
+        "Flare",
+        "Continuum",
+        "Verdance"
+      ],
+      "meaning": "An inherited branching form diversifies through successive offshoots.",
+      "file": "evolution.png",
+      "width": 1254,
+      "height": 1254,
+      "bytes": 453649,
+      "sha256": "b7d96ec0919009143003e4f4f4e29c1b2aca1da78940b01f2ea7bd0f40c6cf2b",
+      "clearPixelFraction": 0.7569,
+      "visibleBounds": {
+        "minX": 272,
+        "minY": 137,
+        "maxX": 982,
+        "maxY": 1152
+      }
+    },
+    {
+      "id": "ouroboros",
+      "name": "Ouroboros",
+      "family": "triad",
+      "affinities": [
+        "Flare",
+        "Continuum",
+        "Abyss"
+      ],
+      "meaning": "A serpent visibly consuming its own tail.",
+      "file": "ouroboros.png",
+      "width": 1254,
+      "height": 1254,
+      "bytes": 417381,
+      "sha256": "47732cfd02b0cdea3c32c6ac0eb92d383b83a7b585b0858ffcb4ceeb8a4017fc",
+      "clearPixelFraction": 0.763,
+      "visibleBounds": {
+        "minX": 119,
+        "minY": 136,
+        "maxX": 1135,
+        "maxY": 1144
+      }
+    },
+    {
+      "id": "contagion",
+      "name": "Contagion",
+      "family": "triad",
+      "affinities": [
+        "Flare",
+        "Verdance",
+        "Abyss"
+      ],
+      "meaning": "A hidden tendril transforms successive hosts with a repeated mark.",
+      "file": "contagion.png",
+      "width": 1536,
+      "height": 1024,
+      "bytes": 1125674,
+      "sha256": "caff970d1f3c66d6674b5536933403af4db2f5439a643988b635b81bef68168e",
+      "clearPixelFraction": 0.7905,
+      "visibleBounds": {
+        "minX": 102,
+        "minY": 259,
+        "maxX": 1439,
+        "maxY": 772
+      }
+    },
+    {
+      "id": "dynasty",
+      "name": "Dynasty",
+      "family": "triad",
+      "affinities": [
+        "Radiance",
+        "Continuum",
+        "Verdance"
+      ],
+      "meaning": "The same crown is passed through a connected branching line.",
+      "file": "dynasty.png",
+      "width": 1254,
+      "height": 1254,
+      "bytes": 361711,
+      "sha256": "16ce5dbd0d59454230eaad52f8d7518fdf07c111e777592923a86e51cec5c02e",
+      "clearPixelFraction": 0.8285,
+      "visibleBounds": {
+        "minX": 153,
+        "minY": 161,
+        "maxX": 1112,
+        "maxY": 1128
+      }
+    },
+    {
+      "id": "testament",
+      "name": "Testament",
+      "family": "triad",
+      "affinities": [
+        "Radiance",
+        "Continuum",
+        "Abyss"
+      ],
+      "meaning": "An intact seal binds the surviving fragments of a broken directive.",
+      "file": "testament.png",
+      "width": 1254,
+      "height": 1254,
+      "bytes": 449134,
+      "sha256": "91012912f1d71acd7b774cb338a8f064f1b87367478fc063406194b70450b39d",
+      "clearPixelFraction": 0.6998,
+      "visibleBounds": {
+        "minX": 315,
+        "minY": 177,
+        "maxX": 941,
+        "maxY": 1070
+      }
+    },
+    {
+      "id": "mycelium",
+      "name": "Mycelium",
+      "family": "triad",
+      "affinities": [
+        "Radiance",
+        "Verdance",
+        "Abyss"
+      ],
+      "meaning": "A branching fungal network reconnects around a concealed center.",
+      "file": "mycelium.png",
+      "width": 1254,
+      "height": 1254,
+      "bytes": 436828,
+      "sha256": "204469ce697b74fa1ddc05c13c1eb459a25acbe794dcd73dc805bba5bc73a5c6",
+      "clearPixelFraction": 0.8047,
+      "visibleBounds": {
+        "minX": 38,
+        "minY": 156,
+        "maxX": 1215,
+        "maxY": 1092
+      }
+    },
+    {
+      "id": "atavism",
+      "name": "Atavism",
+      "family": "triad",
+      "affinities": [
+        "Continuum",
+        "Verdance",
+        "Abyss"
+      ],
+      "meaning": "A younger leaf reveals an ancestral pattern held in a concealed form at its root.",
+      "file": "atavism.png",
+      "width": 1254,
+      "height": 1254,
+      "bytes": 382347,
+      "sha256": "91f81455dc614d9d995cad92724c4d69f10e40f3fc1ee233f5b0b71ae6ade289",
+      "clearPixelFraction": 0.8025,
+      "visibleBounds": {
+        "minX": 379,
+        "minY": 79,
+        "maxX": 951,
+        "maxY": 1193
+      }
+    }
+  ]
+}

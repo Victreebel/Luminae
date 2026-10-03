@@ -2,9 +2,7 @@ import { Router, type IRouter } from "express";
 import { eq, and, isNull, ne } from "drizzle-orm";
 import { z } from "zod";
 import { db, roomsTable, playersTable, gameStatesTable } from "@workspace/db";
-import { DEFAULT_VICTORY_REQUIREMENT } from "@workspace/game-types";
 import {
-  CreateRoomBody,
   JoinRoomBody,
   RejoinRoomBody,
   StartGameBody,
@@ -12,6 +10,8 @@ import {
   AddAiPlayerBody,
 } from "@workspace/api-zod";
 import { optionalAccountAuth } from "../lib/accountAuth";
+import { canCustomizeRoomEvents, getRoomEventFrequency } from "../lib/roomEventSettings";
+import { PublicCreateRoomBody, UpdateRoomSettingsBody } from "./roomSettingsContract";
 import { randomBytes } from "crypto";
 import {
   initializeGame,
@@ -66,6 +66,7 @@ function serializeRoomBase(room: DbRoom) {
     maxPlayers: room.maxPlayers,
     victoryRequirement: room.victoryRequirement,
     cinematicMode: room.cinematicMode,
+    eventFrequency: getRoomEventFrequency(room),
     turnTimerSeconds: room.turnTimerSeconds,
     gameMode: room.gameMode,
     scenarioId: room.scenarioId,
@@ -123,39 +124,6 @@ async function ensureUniquePlayerAvatars(players: DbPlayer[]): Promise<DbPlayer[
 
 const MAX_ACTIVE_GAMES = 5;
 
-const UpdateRoomSettingsBody = z.object({
-  sessionToken: z.string(),
-  cinematicMode: z.union([z.literal("standard"), z.literal("epic")]).optional(),
-  gameMode: z.union([z.literal("standard"), z.literal("custom")]).optional(),
-  blueprintPolicy: z.union([z.literal("none"), z.literal("owned")]).optional(),
-});
-
-const PublicCreateRoomBody = CreateRoomBody.extend({
-  victoryRequirement: z.union([z.literal(15), z.literal(20), z.literal(25)])
-    .default(DEFAULT_VICTORY_REQUIREMENT),
-  gameMode: z.union([z.literal("standard"), z.literal("custom")]).default("standard"),
-  blueprintPolicy: z.union([z.literal("none"), z.literal("owned")]).optional(),
-}).superRefine((value, context) => {
-  const policy = value.blueprintPolicy ?? (value.gameMode === "custom" ? "owned" : "none");
-  if (value.gameMode === "standard" && policy !== "none") {
-    context.addIssue({
-      code: z.ZodIssueCode.custom,
-      path: ["blueprintPolicy"],
-      message: "Standard rooms cannot enable Blueprints",
-    });
-  }
-  if (
-    value.gameMode === "standard" &&
-    value.victoryRequirement !== DEFAULT_VICTORY_REQUIREMENT
-  ) {
-    context.addIssue({
-      code: z.ZodIssueCode.custom,
-      path: ["victoryRequirement"],
-      message: `Standard rooms require ${DEFAULT_VICTORY_REQUIREMENT} Eminence; use a custom room for a shorter match`,
-    });
-  }
-});
-
 const RematchBody = StartGameBody.extend({
   action: z.enum(["join", "decline", "withdraw"]).optional(),
   sameBoard: z.boolean().optional(),
@@ -189,6 +157,7 @@ router.post("/rooms", optionalAccountAuth, async (req, res): Promise<void> => {
     maxPlayers,
     victoryRequirement,
     cinematicMode,
+    eventFrequency,
     turnTimerSeconds,
     avatarId: hostAvatarId,
     gameMode,
@@ -226,6 +195,7 @@ router.post("/rooms", optionalAccountAuth, async (req, res): Promise<void> => {
       maxPlayers,
       victoryRequirement,
       cinematicMode,
+      eventFrequency,
       status: "lobby",
       turnTimerSeconds: turnTimerSeconds ?? null,
       gameMode,
@@ -605,6 +575,11 @@ router.patch("/rooms/:roomId/settings", async (req, res): Promise<void> => {
     return;
   }
 
+  if (parsed.data.eventFrequency !== undefined && !canCustomizeRoomEvents(room)) {
+    res.status(400).json({ error: "Story scenarios control their own Events" });
+    return;
+  }
+
   const modeSettingsTouched =
     parsed.data.gameMode !== undefined || parsed.data.blueprintPolicy !== undefined;
   const nextGameMode = parsed.data.gameMode ?? room.gameMode;
@@ -662,6 +637,7 @@ router.patch("/rooms/:roomId/settings", async (req, res): Promise<void> => {
     .update(roomsTable)
     .set({
       cinematicMode: parsed.data.cinematicMode ?? room.cinematicMode,
+      eventFrequency: parsed.data.eventFrequency ?? getRoomEventFrequency(room),
       gameMode: nextGameMode,
       blueprintPolicy: nextBlueprintPolicy,
       updatedAt: new Date(),
@@ -761,7 +737,7 @@ router.post("/rooms/:roomId/start", async (req, res): Promise<void> => {
     players.length,
     room.victoryRequirement,
     room.cinematicMode === "epic" ? "epic" : "standard",
-    { blueprintSetups },
+    { blueprintSetups, eventFrequency: getRoomEventFrequency(room) },
   );
   gameData.turnTimerSeconds = room.turnTimerSeconds ?? null;
   updateTurnDeadline(gameData);

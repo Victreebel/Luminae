@@ -1,0 +1,7 @@
+{
+  "name": "Echo",
+  "source": "/Users/chaoscalligraphy/.codex/generated_images/01a0f23c-8e30-7ba2-875e-316cd0496d67/exec-825b56b2-23ab-4101-8ea1-7f5fb82314e4.png",
+  "prompt": "Use case: precise-object-edit. Image 1 is the edit target: the Echo insignia with three nested crescent/ripple contours. Keep precisely the same three shapes, placement, orientation, dimensions and ivory color. REMOVE ALL glow, halos, light scattering, blur, shadows, gradients, illuminated borders, backdrop and other non-shape pixels. Render the three contours as completely FLAT SOLID IVORY INK (#F1E8D7), uniform opacity 100% within each shape, with hard clean edges. Everything between and outside the three shapes must be truly alpha-transparent, with no haze. This is a flat one-color pictogram, not luminous objects. Keep the same empty source position; do not add a dot, other shapes, outline or text.",
+  "output": "/Users/chaoscalligraphy/.codex/generated_images/01a0f23c-8e30-7ba2-875e-316cd0496d67/exec-735d2614-1b3e-49d2-8ef7-f1118f53aadf.png",
+  "reason": "Flatten rendering while preserving the three ripple contours."
+}

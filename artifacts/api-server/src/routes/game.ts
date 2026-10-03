@@ -19,6 +19,7 @@ import { runAiTurnsIfNeeded } from "../lib/aiTurnRunner";
 import { withRoomLock } from "../lib/roomLock";
 import { armTurnTimer, updateTurnDeadline } from "../lib/turnTimer";
 import { completeFinishedGame } from "../lib/finishedGame";
+import { getRoomEventFrequency } from "../lib/roomEventSettings";
 import {
   captureDevSnapshot,
   getDevSnapshot,
@@ -87,6 +88,7 @@ router.get("/rooms/:roomId/state", async (req, res): Promise<void> => {
     res.json({
       roomId: rawId,
       status: "lobby",
+      eventFrequency: getRoomEventFrequency(room),
       scenarioId: room.scenarioId,
       finishReason: null,
       currentPlayerIndex: 0,

@@ -12,6 +12,9 @@ describe("AntimatterBlueprintCard", () => {
     expect(
       screen.getByAltText("The Antimatter Detonator suspended above a planet"),
     ).toBeInTheDocument();
+    expect(
+      screen.getByText("Satellite-scale manifestation"),
+    ).toBeInTheDocument();
 
     fireEvent.click(
       screen.getByRole("button", {
@@ -41,9 +44,12 @@ describe("AntimatterBlueprintCard", () => {
     ).toBeInTheDocument();
     expect(
       within(panel).getByText(
-        /Before it fires, it asks what will happen three steps later/,
+        /Before it fires, the coil tests what the spark will cause/,
       ),
     ).toBeInTheDocument();
+    expect(within(panel).getByText("Functions")).toBeVisible();
+    expect(within(panel).getByText("Energy")).toBeVisible();
+    expect(within(panel).getByText("Protection")).toBeVisible();
   });
 
   it("uses artwork hotspots as the card's only component controls", async () => {
@@ -92,6 +98,7 @@ describe("AntimatterBlueprintCard", () => {
     expect(screen.queryByText("Causal Spark Coil")).not.toBeInTheDocument();
     expect(screen.queryByText("Horizon Extractor")).not.toBeInTheDocument();
     expect(screen.getAllByText("Unknown component")).toHaveLength(2);
+    expect(screen.queryByText("Functions")).not.toBeInTheDocument();
     expect(screen.getByText("Effect")).toBeInTheDocument();
     expect(screen.getByText(ANTIMATTER_EFFECT)).toBeInTheDocument();
   });

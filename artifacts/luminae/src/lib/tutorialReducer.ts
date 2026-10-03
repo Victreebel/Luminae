@@ -15,7 +15,13 @@ import {
   type TutorialCard,
   type TutorialBranchChoice,
   type TutorialForgeView,
+  type TutorialTransmissionFaultVariant,
 } from "@/lib/tutorialData";
+import type {
+  ArchitectFirstContactStance,
+  FirstContactRapport,
+  TutorialDiscoveryId,
+} from "@workspace/game-types";
 
 // ─── State ────────────────────────────────────────────────────────────────────
 export interface TutState {
@@ -43,6 +49,15 @@ export interface TutState {
   lumDone: boolean;
   showLuminary: boolean;
   navigateTo: string | null;
+  currentRunStance: ArchitectFirstContactStance | null;
+  currentRunRapport: FirstContactRapport | null;
+  discoveries: TutorialDiscoveryId[];
+  dialogueFlags: string[];
+  pendingEffect: {
+    type: "transmission_fault";
+    variant: TutorialTransmissionFaultVariant;
+  } | null;
+  completed: boolean;
   animTrigger?: {
     type: "forge";
     eminence: number;
@@ -68,6 +83,12 @@ export const INIT_STATE: TutState = {
   wellSel: {}, nudge: null, view: "needed",
   t3choice: null, ffDone: false, tier3PlanVersion: 0, tier3GrantPending: false, tier2GrantPending: false, tier2DeliveryComplete: false, finalGrantPending: false, finalDeliveryComplete: false, lumDone: false, showLuminary: false,
   navigateTo: null,
+  currentRunStance: null,
+  currentRunRapport: null,
+  discoveries: [],
+  dialogueFlags: [],
+  pendingEffect: null,
+  completed: false,
 };
 
 export type TAction =
@@ -76,6 +97,8 @@ export type TAction =
   | { type: "RESET" }
   | { type: "PLAYER_RESPONSE" }
   | { type: "BRANCH_CHOICE"; choice: TutorialBranchChoice }
+  | { type: "EFFECT_COMPLETE" }
+  | { type: "COMPLETE_TUTORIAL" }
   | { type: "SEL_AFF"; affinity: AffinityKey; delta: 1 | 2 | -1 }
   | { type: "CLEAR_SEL" }
   | { type: "HARNESS" }
@@ -94,7 +117,7 @@ export type TAction =
   | { type: "GRANT_FINAL_RESERVE" }
   | { type: "FINAL_FORGE_PRESENTED" }
   | { type: "LUM_DONE" }
-  | { type: "PANEL_VIEWED" }
+  | { type: "PANEL_VIEWED"; panel: "civilization" }
   | { type: "JUMP_BEAT"; toIndex: number; entryState?: TutState };
 
 // ─── Helpers ──────────────────────────────────────────────────────────────────
@@ -214,14 +237,24 @@ function matchesHarnessPattern(
 
 // ─── Reducer ──────────────────────────────────────────────────────────────────
 export function tutorialReducer(s: TutState, a: TAction): TutState {
-  if (a.type === "RESET") return { ...INIT_STATE };
+  if (a.type === "RESET") {
+    return {
+      ...INIT_STATE,
+      dialogueFlags: [],
+    };
+  }
   const beat = TUTORIAL_BEATS[s.beat];
   if (!beat) return s;
   const isLastDlg = s.dlgLine >= beat.dialogue.length - 1;
 
+  if (s.pendingEffect && (a.type === "NEXT_DLG" || a.type === "PLAYER_RESPONSE")) {
+    return s;
+  }
+
   switch (a.type) {
     case "NEXT_DLG": {
       if (!isLastDlg) return { ...s, dlgLine: s.dlgLine + 1, nudge: null };
+      if (beat.choices?.length) return s;
       if (beat.id === "b3b_farewell") {
         return { ...s, navigateTo: "/" };
       }
@@ -239,6 +272,7 @@ export function tutorialReducer(s: TutState, a: TAction): TutState {
     }
 
     case "NEXT_BEAT": {
+      if (beat.completion.type !== "animation") return s;
       const nextBeat = s.beat + 1;
       if (nextBeat >= TUTORIAL_BEATS.length) return s;
       return { ...s, beat: nextBeat, dlgLine: 0, subStep: 0, nudge: null, wellSel: {} };
@@ -492,77 +526,55 @@ export function tutorialReducer(s: TutState, a: TAction): TutState {
     }
 
     case "BRANCH_CHOICE": {
-      if (beat.id === "b3_architect") {
-        const targetId = a.choice === "curious"
-          ? "b3a_stance_curious"
-          : a.choice === "guarded"
-            ? "b3a_stance_guarded"
-            : a.choice === "resolute"
-              ? "b3a_stance_resolute"
-              : null;
-        if (!targetId) return s;
-        return { ...s, beat: BEAT_INDEX[targetId], dlgLine: 0, subStep: 0, nudge: null };
-      }
-
-      if (beat.id === "b3c_border") {
-        if (
-          a.choice === "curious" ||
-          a.choice === "guarded" ||
-          a.choice === "resolute"
-        ) {
-          return { ...s, beat: BEAT_INDEX.b4_shatter, dlgLine: 0, subStep: 0, nudge: null };
-        }
-        if (a.choice !== "go" && a.choice !== "home") return s;
-        const targetId = a.choice === "home" ? "b3b_farewell" : "b4_shatter";
-        const targetIndex = TUTORIAL_BEATS.findIndex(candidate => candidate.id === targetId);
-        return { ...s, beat: targetIndex, dlgLine: 0, subStep: 0, nudge: null };
-      }
-
-      if (beat.id === "b5_luminae_interface") {
-        if (a.choice !== "continue" && a.choice !== "inquire") return s;
-        const targetId = a.choice === "inquire" ? "b5a_luminae_origin" : "b5_affinities";
-        const targetIndex = TUTORIAL_BEATS.findIndex(candidate => candidate.id === targetId);
-        return { ...s, beat: targetIndex, dlgLine: 0, subStep: 0, nudge: null };
-      }
-
-      if (beat.id === "b5a_luminae_origin") {
-        const targetId = a.choice === "origin_unsettled"
-          ? "b5a2_luminae_reassurance"
-          : a.choice === "continue"
-            ? "b5_affinities"
-            : a.choice === "origin_expected"
-              ? "b5a3_luminae_expected"
-              : null;
-        if (!targetId) return s;
-        return { ...s, beat: BEAT_INDEX[targetId], dlgLine: 0, subStep: 0, nudge: null };
-      }
-
-      if (beat.id === "b9b_forge_complete") {
-        const targetId = a.choice === "artifact_continue"
-          ? "b9c_transition"
-          : a.choice === "artifact_where"
-            ? "b9d_signature"
-            : null;
-        if (!targetId) return s;
-        return { ...s, beat: BEAT_INDEX[targetId], dlgLine: 0, subStep: 0, nudge: null };
-      }
-
-      if (beat.id === "b10_encrypt_principle") {
-        const targetId = a.choice === "encrypt_inquire"
-          ? "b10a_encrypt_origin"
-          : a.choice === "encrypt_act"
-            ? "b10_encrypt_pathway"
-            : null;
-        if (!targetId) return s;
-        return { ...s, beat: BEAT_INDEX[targetId], dlgLine: 0, subStep: 0, nudge: null };
-      }
-
-      return s;
+      if (!isLastDlg) return s;
+      const choice = beat.choices?.find((candidate) => candidate.id === a.choice);
+      if (!choice) return s;
+      if (choice.requiresFlags?.some((flag) => !s.dialogueFlags.includes(flag))) return s;
+      const targetIndex = BEAT_INDEX[choice.destinationBeatId];
+      if (targetIndex == null) return s;
+      const discoveries = choice.discovery && !s.discoveries.includes(choice.discovery)
+        ? [...s.discoveries, choice.discovery]
+        : s.discoveries;
+      const dialogueFlags = choice.setFlags
+        ? Array.from(new Set([...s.dialogueFlags, ...choice.setFlags]))
+        : s.dialogueFlags;
+      const currentRunStance = dialogueFlags.includes("asked_boundary_identity")
+        ? "guarded"
+        : choice.stance ?? s.currentRunStance;
+      return {
+        ...s,
+        beat: targetIndex,
+        dlgLine: 0,
+        subStep: 0,
+        nudge: null,
+        currentRunStance,
+        currentRunRapport: choice.rapport ?? s.currentRunRapport,
+        discoveries,
+        dialogueFlags,
+        pendingEffect: choice.effect ?? null,
+      };
     }
+
+    case "EFFECT_COMPLETE":
+      if (!s.pendingEffect) return s;
+      return {
+        ...s,
+        pendingEffect: null,
+        dlgLine: beat.id === "b3f_identity_fault" && s.dlgLine === 0 ? 1 : s.dlgLine,
+      };
+
+    case "COMPLETE_TUTORIAL":
+      if (
+        beat.id !== "b18_victory" ||
+        !isLastDlg ||
+        !s.currentRunStance ||
+        s.completed
+      ) return s;
+      return { ...s, completed: true, nudge: null };
 
     case "PLAYER_RESPONSE": {
       const beat = TUTORIAL_BEATS[s.beat];
-      if (!beat) return s;
+      if (!beat?.playerResponse || !isLastDlg) return s;
       if (beat.completion.type === "dialogue") {
         const nextBeat = beat.nextBeatId == null
           ? s.beat + 1
@@ -698,8 +710,28 @@ export function tutorialReducer(s: TutState, a: TAction): TutState {
 
     case "PANEL_VIEWED": {
       const beat = TUTORIAL_BEATS[s.beat];
-      if (!beat || beat.completion.type !== "panel_view") return s;
-      return { ...s, beat: s.beat + 1, dlgLine: 0, subStep: 0, nudge: null };
+      if (
+        !beat ||
+        !isLastDlg ||
+        beat.completion.type !== "panel_view" ||
+        beat.completion.panel !== a.panel
+      ) return s;
+      const nextBeat = beat.nextBeatId == null
+        ? s.beat + 1
+        : BEAT_INDEX[beat.nextBeatId];
+      if (nextBeat == null || nextBeat >= TUTORIAL_BEATS.length) return s;
+      const discovery = beat.completion.discovery;
+      const discoveries = discovery && !s.discoveries.includes(discovery)
+        ? [...s.discoveries, discovery]
+        : s.discoveries;
+      return {
+        ...s,
+        beat: nextBeat,
+        dlgLine: 0,
+        subStep: 0,
+        nudge: null,
+        discoveries,
+      };
     }
 
     case "JUMP_BEAT": {
@@ -713,6 +745,7 @@ export function tutorialReducer(s: TutState, a: TAction): TutState {
         animTrigger: undefined,
         nudge: null,
         navigateTo: null,
+        pendingEffect: null,
       };
     }
 
@@ -730,6 +763,9 @@ function freshTutorialState(): TutState {
     reserved: [],
     forged: [],
     wellSel: {},
+    discoveries: [],
+    dialogueFlags: [],
+    pendingEffect: null,
   };
 }
 
@@ -790,5 +826,6 @@ export function buildTutorialEntryState(targetBeat: number): TutState {
     animTrigger: undefined,
     nudge: null,
     navigateTo: null,
+    pendingEffect: null,
   };
 }

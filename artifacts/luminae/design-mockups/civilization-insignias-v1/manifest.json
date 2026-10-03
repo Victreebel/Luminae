@@ -1,0 +1,259 @@
+{
+  "version": 1,
+  "status": "design draft",
+  "generator": "built-in image_gen",
+  "items": [
+    {
+      "id": "vortex",
+      "family": "dyad",
+      "name": "Vortex",
+      "affinities": [
+        "Flare",
+        "Radiance"
+      ],
+      "meaning": "Three hooked vanes follow a single governed inward course.",
+      "prompt": "Use case: logo-brand.\nAsset type: original civilization insignia for the science-fantasy strategy game LUMINAe, one member of a coherent 20-mark heraldic family.\nCreate ONE finished abstract emblem, front-facing orthographic, centered in a square canvas, emblem occupying about 72% of the canvas with generous clear margin. Truly transparent background.\nVisual language: elegant ancient-future civic heraldry; bold sculptural geometry; warm pale platinum face, narrowly bevelled metal edges, dark recessed cuts, very restrained luminous colored enamel inside a few major channels. Sophisticated and mysterious, austere, memorable. Clear masses and intentional negative space. Strong silhouette readable at 48 pixels. Keep to 3-7 main visual parts and broad thick strokes; no thin filigree. A flat graphic silhouette with subtle material depth, not a scene.\nEvery cutout outside/between the mark should be actual transparent negative space. No enclosing coin, outer medallion, common shield template, vignette, background plane, drop shadow, nebula, stars, smoke, lettering, numbers, labels, runes, watermark, extra ornaments, or presentation mockup. No color reliance for identity. Do not draw the affinity icons separately. The geometry must form one integrated distinctive mark.\n\nName for internal reference only (DO NOT print text): Vortex.\nMeaning: directed transformation held to a governing course; Flare + Radiance.\nGeometry: a tight, asymmetric inward-curling three-bladed spiral, like three broad tapered metal sails following one shared curve into a small diamond-shaped central aperture. A short straight gate-like transverse bar arrests the spiral at one edge, visibly steering its motion. The spiral's sweep is dominant, the gate is secondary. Broad voids between blades. Not a recycling symbol, not a fan, no arrowheads.\nColor accents: restrained coral red (#FF5A3C) on the moving inner bevel and pale solar gold (#DFC878) on the guiding gate. Main face pale platinum.\n",
+      "status": "generated",
+      "source": "/Users/chaoscalligraphy/.codex/generated_images/01a0f23c-8e30-7ba2-875e-316cd0496d67/exec-ed03da78-b626-4040-995b-38a2c87026ba.png",
+      "file": "vortex.png"
+    },
+    {
+      "id": "flux",
+      "family": "dyad",
+      "name": "Flux",
+      "affinities": [
+        "Flare",
+        "Continuum"
+      ],
+      "meaning": "One continuous ribbon changes from angular to flowing geometry.",
+      "prompt": "Use case: logo-brand.\nAsset type: original civilization insignia for the science-fantasy strategy game LUMINAe, one member of a coherent 20-mark heraldic family.\nCreate ONE finished abstract emblem, front-facing orthographic, centered in a square canvas, emblem occupying about 72% of the canvas with generous clear margin. Truly transparent background.\nVisual language: elegant ancient-future civic heraldry; bold sculptural geometry; warm pale platinum face, narrowly bevelled metal edges, dark recessed cuts, very restrained luminous colored enamel inside a few major channels. Sophisticated and mysterious, austere, memorable. Clear masses and intentional negative space. Strong silhouette readable at 48 pixels. Keep to 3-7 main visual parts and broad thick strokes; no thin filigree. A flat graphic silhouette with subtle material depth, not a scene.\nEvery cutout outside/between the mark should be actual transparent negative space. No enclosing coin, outer medallion, common shield template, vignette, background plane, drop shadow, nebula, stars, smoke, lettering, numbers, labels, runes, watermark, extra ornaments, or presentation mockup. No color reliance for identity. Do not draw the affinity icons separately. The geometry must form one integrated distinctive mark.\n\nName for internal reference only (DO NOT print): Flux.\nAffinities: Flare + Continuum.\nGeometry and meaning: One broad unbroken upright S-shaped ribbon. At its bottom it is sharply stepped and angular; the same continuous strip progressively becomes smooth and sweeping at its top. Both ends remain open and clearly distinct. A single decisive S silhouette, without an infinity crossing, spiral, circle or multiple strands. Coral red #FF5A3C in one bevel changing into cobalt blue #3D6BFF along the continuous other edge. The continuous material persists while its shape changes.\n",
+      "status": "pending"
+    },
+    {
+      "id": "bloom",
+      "family": "dyad",
+      "name": "Bloom",
+      "affinities": [
+        "Flare",
+        "Verdance"
+      ],
+      "meaning": "An expanding branch changes form as it reproduces.",
+      "prompt": "Use case: logo-brand.\nAsset type: original civilization insignia for the science-fantasy strategy game LUMINAe, one member of a coherent 20-mark heraldic family.\nCreate ONE finished abstract emblem, front-facing orthographic, centered in a square canvas, emblem occupying about 72% of the canvas with generous clear margin. Truly transparent background.\nVisual language: elegant ancient-future civic heraldry; bold sculptural geometry; warm pale platinum face, narrowly bevelled metal edges, dark recessed cuts, very restrained luminous colored enamel inside a few major channels. Sophisticated and mysterious, austere, memorable. Clear masses and intentional negative space. Strong silhouette readable at 48 pixels. Keep to 3-7 main visual parts and broad thick strokes; no thin filigree. A flat graphic silhouette with subtle material depth, not a scene.\nEvery cutout outside/between the mark should be actual transparent negative space. No enclosing coin, outer medallion, common shield template, vignette, background plane, drop shadow, nebula, stars, smoke, lettering, numbers, labels, runes, watermark, extra ornaments, or presentation mockup. No color reliance for identity. Do not draw the affinity icons separately. The geometry must form one integrated distinctive mark.\n\nName for internal reference only (DO NOT print): Bloom.\nAffinities: Flare + Verdance.\nGeometry and meaning: An asymmetric diagonal expanding fork: a single broad tapered base at lower left divides into two solid branches and then into five larger angular fan-shaped tips toward upper right. Each branching generation visibly changes shape, from a narrow lozenge to broader bent facets. Bold outward burst, no enclosing frame, no central symmetry, no flowers or leaves. Coral red #FF5A3C at the initial split and emerald green #2ECC71 in the multiplying channels. Propagation transforms as it spreads.\n",
+      "status": "pending"
+    },
+    {
+      "id": "chrysalis",
+      "family": "dyad",
+      "name": "Chrysalis",
+      "affinities": [
+        "Flare",
+        "Abyss"
+      ],
+      "meaning": "A splitting enclosure reveals a differently shaped emerging form.",
+      "prompt": "Use case: logo-brand.\nAsset type: original civilization insignia for the science-fantasy strategy game LUMINAe, one member of a coherent 20-mark heraldic family.\nCreate ONE finished abstract emblem, front-facing orthographic, centered in a square canvas, emblem occupying about 72% of the canvas with generous clear margin. Truly transparent background.\nVisual language: elegant ancient-future civic heraldry; bold sculptural geometry; warm pale platinum face, narrowly bevelled metal edges, dark recessed cuts, very restrained luminous colored enamel inside a few major channels. Sophisticated and mysterious, austere, memorable. Clear masses and intentional negative space. Strong silhouette readable at 48 pixels. Keep to 3-7 main visual parts and broad thick strokes; no thin filigree. A flat graphic silhouette with subtle material depth, not a scene.\nEvery cutout outside/between the mark should be actual transparent negative space. No enclosing coin, outer medallion, common shield template, vignette, background plane, drop shadow, nebula, stars, smoke, lettering, numbers, labels, runes, watermark, extra ornaments, or presentation mockup. No color reliance for identity. Do not draw the affinity icons separately. The geometry must form one integrated distinctive mark.\n\nName for internal reference only (DO NOT print): Chrysalis.\nAffinities: Flare + Abyss.\nGeometry and meaning: A tall pointed enclosing shell made of two broad unequal convex facets, split by a narrow but clear diagonal opening. Inside that opening is one rising angular blade, markedly unlike the curved old shell, emerging at the top. Strong vertical almond silhouette interrupted once, enclosing one transformed form. No insect, butterfly, seed cluster, wings or branches. Violet #7B1FA2 on the enclosing inward faces and coral red #FF5A3C along the new blade.\n",
+      "status": "pending"
+    },
+    {
+      "id": "orbit",
+      "family": "dyad",
+      "name": "Orbit",
+      "affinities": [
+        "Radiance",
+        "Continuum"
+      ],
+      "meaning": "Two distinct bodies remain bound to one ordered track.",
+      "prompt": "Use case: logo-brand.\nAsset type: original civilization insignia for the science-fantasy strategy game LUMINAe, one member of a coherent 20-mark heraldic family.\nCreate ONE finished abstract emblem, front-facing orthographic, centered in a square canvas, emblem occupying about 72% of the canvas with generous clear margin. Truly transparent background.\nVisual language: elegant ancient-future civic heraldry; bold sculptural geometry; warm pale platinum face, narrowly bevelled metal edges, dark recessed cuts, very restrained luminous colored enamel inside a few major channels. Sophisticated and mysterious, austere, memorable. Clear masses and intentional negative space. Strong silhouette readable at 48 pixels. Keep to 3-7 main visual parts and broad thick strokes; no thin filigree. A flat graphic silhouette with subtle material depth, not a scene.\nEvery cutout outside/between the mark should be actual transparent negative space. No enclosing coin, outer medallion, common shield template, vignette, background plane, drop shadow, nebula, stars, smoke, lettering, numbers, labels, runes, watermark, extra ornaments, or presentation mockup. No color reliance for identity. Do not draw the affinity icons separately. The geometry must form one integrated distinctive mark.\n\nName for internal reference only (DO NOT print): Orbit.\nAffinities: Radiance + Continuum.\nGeometry and meaning: One broad elegant elliptical loop tilted 35 degrees, with two unequal solid lozenges structurally attached on opposing sides of the loop. Exactly two bodies, both visibly different from the band. Clear open central negative space. A crisp oblique silhouette, no planet, stars, atomic multiple orbits, central sphere or arrowheads. Pale gold #DFC878 on the regulating lozenges and cobalt blue #3D6BFF recessed along the uninterrupted binding track.\n",
+      "status": "pending"
+    },
+    {
+      "id": "canopy",
+      "family": "dyad",
+      "name": "Canopy",
+      "affinities": [
+        "Radiance",
+        "Verdance"
+      ],
+      "meaning": "A branching structure expands one shared organizing span.",
+      "prompt": "Use case: logo-brand.\nAsset type: original civilization insignia for the science-fantasy strategy game LUMINAe, one member of a coherent 20-mark heraldic family.\nCreate ONE finished abstract emblem, front-facing orthographic, centered in a square canvas, emblem occupying about 72% of the canvas with generous clear margin. Truly transparent background.\nVisual language: elegant ancient-future civic heraldry; bold sculptural geometry; warm pale platinum face, narrowly bevelled metal edges, dark recessed cuts, very restrained luminous colored enamel inside a few major channels. Sophisticated and mysterious, austere, memorable. Clear masses and intentional negative space. Strong silhouette readable at 48 pixels. Keep to 3-7 main visual parts and broad thick strokes; no thin filigree. A flat graphic silhouette with subtle material depth, not a scene.\nEvery cutout outside/between the mark should be actual transparent negative space. No enclosing coin, outer medallion, common shield template, vignette, background plane, drop shadow, nebula, stars, smoke, lettering, numbers, labels, runes, watermark, extra ornaments, or presentation mockup. No color reliance for identity. Do not draw the affinity icons separately. The geometry must form one integrated distinctive mark.\n\nName for internal reference only (DO NOT print): Canopy.\nAffinities: Radiance + Verdance.\nGeometry and meaning: A wide symmetric architectural branching crown: one short central foot splits into three thick supports; each support forks once into paired broad shoulders that join a single shallow spanning upper arc. Wide low shape, repeating growth organized into a shared domain. Solid graphic structure with three generous arch-shaped negative spaces. No leaves, tree bark, royal crown points, shield or circle. Pale gold #DFC878 along the spanning organizing arc and emerald #2ECC71 in branching bevels.\n",
+      "status": "pending"
+    },
+    {
+      "id": "eclipse",
+      "family": "dyad",
+      "name": "Eclipse",
+      "affinities": [
+        "Radiance",
+        "Abyss"
+      ],
+      "meaning": "Ordered influence extends from an occluded source.",
+      "prompt": "Use case: logo-brand.\nAsset type: original civilization insignia for the science-fantasy strategy game LUMINAe, one member of a coherent 20-mark heraldic family.\nCreate ONE finished abstract emblem, front-facing orthographic, centered in a square canvas, emblem occupying about 72% of the canvas with generous clear margin. Truly transparent background.\nVisual language: elegant ancient-future civic heraldry; bold sculptural geometry; warm pale platinum face, narrowly bevelled metal edges, dark recessed cuts, very restrained luminous colored enamel inside a few major channels. Sophisticated and mysterious, austere, memorable. Clear masses and intentional negative space. Strong silhouette readable at 48 pixels. Keep to 3-7 main visual parts and broad thick strokes; no thin filigree. A flat graphic silhouette with subtle material depth, not a scene.\nEvery cutout outside/between the mark should be actual transparent negative space. No enclosing coin, outer medallion, common shield template, vignette, background plane, drop shadow, nebula, stars, smoke, lettering, numbers, labels, runes, watermark, extra ornaments, or presentation mockup. No color reliance for identity. Do not draw the affinity icons separately. The geometry must form one integrated distinctive mark.\n\nName for internal reference only (DO NOT print): Eclipse.\nAffinities: Radiance + Abyss.\nGeometry and meaning: A heavy broad horizontal convex occluding cap at top, with an empty concealed source underneath; three strong evenly spaced tapered rays descend from behind its lower edge into open space, center ray longer. No visible sun, central light or eye. Emblem is a broad quiet top mass with three precisely ordered lower prongs. Violet #7B1FA2 recessed on the cap and pale gold #DFC878 along the three outgoing ray faces. Visible governance from a withheld origin.\n",
+      "status": "pending"
+    },
+    {
+      "id": "lineage",
+      "family": "dyad",
+      "name": "Lineage",
+      "affinities": [
+        "Continuum",
+        "Verdance"
+      ],
+      "meaning": "An identical form is transmitted along an unbroken spine.",
+      "prompt": "Use case: logo-brand.\nAsset type: original civilization insignia for the science-fantasy strategy game LUMINAe, one member of a coherent 20-mark heraldic family.\nCreate ONE finished abstract emblem, front-facing orthographic, centered in a square canvas, emblem occupying about 72% of the canvas with generous clear margin. Truly transparent background.\nVisual language: elegant ancient-future civic heraldry; bold sculptural geometry; warm pale platinum face, narrowly bevelled metal edges, dark recessed cuts, very restrained luminous colored enamel inside a few major channels. Sophisticated and mysterious, austere, memorable. Clear masses and intentional negative space. Strong silhouette readable at 48 pixels. Keep to 3-7 main visual parts and broad thick strokes; no thin filigree. A flat graphic silhouette with subtle material depth, not a scene.\nEvery cutout outside/between the mark should be actual transparent negative space. No enclosing coin, outer medallion, common shield template, vignette, background plane, drop shadow, nebula, stars, smoke, lettering, numbers, labels, runes, watermark, extra ornaments, or presentation mockup. No color reliance for identity. Do not draw the affinity icons separately. The geometry must form one integrated distinctive mark.\n\nName for internal reference only (DO NOT print): Lineage.\nAffinities: Continuum + Verdance.\nGeometry and meaning: Three identical hollow angular lozenge links step diagonally upward along one continuous thick stepped spine. Each repeated lozenge is exactly the same shape and size, structurally connected to the same spine. Compact ascending chain silhouette, not a DNA helix or plant. Three main angular apertures. Cobalt blue #3D6BFF on the shared spine and emerald #2ECC71 inside the three repeated link bevels. Identity transmitted through repetition without transformation.\n",
+      "status": "pending"
+    },
+    {
+      "id": "echo",
+      "family": "dyad",
+      "name": "Echo",
+      "affinities": [
+        "Continuum",
+        "Abyss"
+      ],
+      "meaning": "Surviving contours preserve the influence of an absent origin.",
+      "prompt": "Use case: logo-brand.\nAsset type: original civilization insignia for the science-fantasy strategy game LUMINAe, one member of a coherent 20-mark heraldic family.\nCreate ONE finished abstract emblem, front-facing orthographic, centered in a square canvas, emblem occupying about 72% of the canvas with generous clear margin. Truly transparent background.\nVisual language: elegant ancient-future civic heraldry; bold sculptural geometry; warm pale platinum face, narrowly bevelled metal edges, dark recessed cuts, very restrained luminous colored enamel inside a few major channels. Sophisticated and mysterious, austere, memorable. Clear masses and intentional negative space. Strong silhouette readable at 48 pixels. Keep to 3-7 main visual parts and broad thick strokes; no thin filigree. A flat graphic silhouette with subtle material depth, not a scene.\nEvery cutout outside/between the mark should be actual transparent negative space. No enclosing coin, outer medallion, common shield template, vignette, background plane, drop shadow, nebula, stars, smoke, lettering, numbers, labels, runes, watermark, extra ornaments, or presentation mockup. No color reliance for identity. Do not draw the affinity icons separately. The geometry must form one integrated distinctive mark.\n\nName for internal reference only (DO NOT print): Echo.\nAffinities: Continuum + Abyss.\nGeometry and meaning: Two large nested open angular arch contours face toward the same deliberately empty off-center source position. The outer contour extends lower than the inner, both stop short of an unoccupied center. Think two thick open offset chevron arches turned sideways with a missing innermost member: forceful asymmetric horizontal silhouette. No source dot, no center star, no Wi-Fi semicircles, no closed loop. Cobalt blue #3D6BFF on the surviving contours and muted violet #7B1FA2 at the inward-facing cut ends.\n",
+      "status": "pending"
+    },
+    {
+      "id": "spore",
+      "family": "dyad",
+      "name": "Spore",
+      "affinities": [
+        "Verdance",
+        "Abyss"
+      ],
+      "meaning": "A sealed boundary protects reproductive multiplicity.",
+      "prompt": "Use case: logo-brand.\nAsset type: original civilization insignia for the science-fantasy strategy game LUMINAe, one member of a coherent 20-mark heraldic family.\nCreate ONE finished abstract emblem, front-facing orthographic, centered in a square canvas, emblem occupying about 72% of the canvas with generous clear margin. Truly transparent background.\nVisual language: elegant ancient-future civic heraldry; bold sculptural geometry; warm pale platinum face, narrowly bevelled metal edges, dark recessed cuts, very restrained luminous colored enamel inside a few major channels. Sophisticated and mysterious, austere, memorable. Clear masses and intentional negative space. Strong silhouette readable at 48 pixels. Keep to 3-7 main visual parts and broad thick strokes; no thin filigree. A flat graphic silhouette with subtle material depth, not a scene.\nEvery cutout outside/between the mark should be actual transparent negative space. No enclosing coin, outer medallion, common shield template, vignette, background plane, drop shadow, nebula, stars, smoke, lettering, numbers, labels, runes, watermark, extra ornaments, or presentation mockup. No color reliance for identity. Do not draw the affinity icons separately. The geometry must form one integrated distinctive mark.\n\nName for internal reference only (DO NOT print): Spore.\nAffinities: Verdance + Abyss.\nGeometry and meaning: One squat closed lenticular vessel, wider than tall, composed of a single broad smoothly faceted shell with three small but clear seed-shaped apertures held together inside its boundary. Protected multiplicity; three compact kernels enclosed, no escaping tendrils or emerging blade. Emblem silhouette is a low horizontal pointed oval, not a shield, egg or mushroom. Muted violet #7B1FA2 on enclosing sidewall and emerald #2ECC71 inside the three kernel bevels.\n",
+      "status": "pending"
+    },
+    {
+      "id": "homeostasis",
+      "family": "triad",
+      "name": "Homeostasis",
+      "affinities": [
+        "Flare",
+        "Radiance",
+        "Continuum"
+      ],
+      "meaning": "Opposed adjustable forms preserve a shared invariant opening.",
+      "prompt": "Use case: logo-brand.\nAsset type: original civilization insignia for the science-fantasy strategy game LUMINAe, one member of a coherent 20-mark heraldic family.\nCreate ONE finished abstract emblem, front-facing orthographic, centered in a square canvas, emblem occupying about 72% of the canvas with generous clear margin. Truly transparent background.\nVisual language: elegant ancient-future civic heraldry; bold sculptural geometry; warm pale platinum face, narrowly bevelled metal edges, dark recessed cuts, very restrained luminous colored enamel inside a few major channels. Sophisticated and mysterious, austere, memorable. Clear masses and intentional negative space. Strong silhouette readable at 48 pixels. Keep to 3-7 main visual parts and broad thick strokes; no thin filigree. A flat graphic silhouette with subtle material depth, not a scene.\nEvery cutout outside/between the mark should be actual transparent negative space. No enclosing coin, outer medallion, common shield template, vignette, background plane, drop shadow, nebula, stars, smoke, lettering, numbers, labels, runes, watermark, extra ornaments, or presentation mockup. No color reliance for identity. Do not draw the affinity icons separately. The geometry must form one integrated distinctive mark.\n\nName for internal reference only (DO NOT print): Homeostasis.\nAffinities: Flare + Radiance + Continuum.\nGeometry and meaning: Four broad bent brackets face inward around one clear square central aperture. The four bracket arms interlock into a compact squared cyclic structure, their inner notches aligned exactly to preserve the same central opening. Two opposite arms slightly advanced, two retracted, suggesting active compensating adjustment. A strong symmetric four-lobed regulator silhouette, no arrows, cross, gear teeth or outer ring. Cobalt #3D6BFF follows the continuous interlocking relation, pale gold #DFC878 marks four short governing stops, coral #FF5A3C appears in two moving inner edges. Regulated change preserves an invariant.\n",
+      "status": "pending"
+    },
+    {
+      "id": "cascade",
+      "family": "triad",
+      "name": "Cascade",
+      "affinities": [
+        "Flare",
+        "Radiance",
+        "Verdance"
+      ],
+      "meaning": "A central directive controls a branching sequence of activations.",
+      "prompt": "Use case: logo-brand.\nAsset type: original civilization insignia for the science-fantasy strategy game LUMINAe, one member of a coherent 20-mark heraldic family.\nCreate ONE finished abstract emblem, front-facing orthographic, centered in a square canvas, emblem occupying about 72% of the canvas with generous clear margin. Truly transparent background.\nVisual language: elegant ancient-future civic heraldry; bold sculptural geometry; warm pale platinum face, narrowly bevelled metal edges, dark recessed cuts, very restrained luminous colored enamel inside a few major channels. Sophisticated and mysterious, austere, memorable. Clear masses and intentional negative space. Strong silhouette readable at 48 pixels. Keep to 3-7 main visual parts and broad thick strokes; no thin filigree. A flat graphic silhouette with subtle material depth, not a scene.\nEvery cutout outside/between the mark should be actual transparent negative space. No enclosing coin, outer medallion, common shield template, vignette, background plane, drop shadow, nebula, stars, smoke, lettering, numbers, labels, runes, watermark, extra ornaments, or presentation mockup. No color reliance for identity. Do not draw the affinity icons separately. The geometry must form one integrated distinctive mark.\n\nName for internal reference only (DO NOT print): Cascade.\nAffinities: Flare + Radiance + Verdance.\nGeometry and meaning: A compact downward widening stepped fan: one upper keystone connects to two mid-level angular forks, which divide into four broad lower prongs. A single straight central organizing spine passes through the branching levels. Each successive tier changes from compact diamond to fork to flared trapezoid. Broad open channels between branches; no circuit-board microdetail, tree leaves, waterfall, flames or circular halo. Pale gold #DFC878 central control spine; coral #FF5A3C at activation joints; emerald #2ECC71 in the propagated lower branches. Directive stays physically connected and governs every branching transformation.\n",
+      "status": "pending"
+    },
+    {
+      "id": "alchemy",
+      "family": "triad",
+      "name": "Alchemy",
+      "affinities": [
+        "Flare",
+        "Radiance",
+        "Abyss"
+      ],
+      "meaning": "A governing gate directs transformation within a concealed chamber.",
+      "prompt": "Use case: logo-brand.\nAsset type: original civilization insignia for the science-fantasy strategy game LUMINAe, one member of a coherent 20-mark heraldic family.\nCreate ONE finished abstract emblem, front-facing orthographic, centered in a square canvas, emblem occupying about 72% of the canvas with generous clear margin. Truly transparent background.\nVisual language: elegant ancient-future civic heraldry; bold sculptural geometry; warm pale platinum face, narrowly bevelled metal edges, dark recessed cuts, very restrained luminous colored enamel inside a few major channels. Sophisticated and mysterious, austere, memorable. Clear masses and intentional negative space. Strong silhouette readable at 48 pixels. Keep to 3-7 main visual parts and broad thick strokes; no thin filigree. A flat graphic silhouette with subtle material depth, not a scene.\nEvery cutout outside/between the mark should be actual transparent negative space. No enclosing coin, outer medallion, common shield template, vignette, background plane, drop shadow, nebula, stars, smoke, lettering, numbers, labels, runes, watermark, extra ornaments, or presentation mockup. No color reliance for identity. Do not draw the affinity icons separately. The geometry must form one integrated distinctive mark.\n\nName for internal reference only (DO NOT print): Alchemy.\nAffinities: Flare + Radiance + Abyss.\nGeometry and meaning: A bold upright hollow triangular chamber with a short horizontal gate traversing its upper third; a small angular wedge enters above the gate and a differently shaped split diamond emerges below, through the concealed center. Abstract seal of a controlled hidden transmutation. Broad clean triangular silhouette, prominent dark/transparent internal chamber, only 4-5 principal parts. No real-world alchemical notation, letters, flask, magic circle, flame or star. Pale gold #DFC878 on the transverse governing gate, violet #7B1FA2 in the hidden chamber bevel, coral #FF5A3C on the emerging transformed diamond.\n",
+      "status": "pending"
+    },
+    {
+      "id": "evolution",
+      "family": "triad",
+      "name": "Evolution",
+      "affinities": [
+        "Flare",
+        "Continuum",
+        "Verdance"
+      ],
+      "meaning": "Branches diversify while retaining a continuous inherited structure.",
+      "prompt": "Use case: logo-brand.\nAsset type: original civilization insignia for the science-fantasy strategy game LUMINAe, one member of a coherent 20-mark heraldic family.\nCreate ONE finished abstract emblem, front-facing orthographic, centered in a square canvas, emblem occupying about 72% of the canvas with generous clear margin. Truly transparent background.\nVisual language: elegant ancient-future civic heraldry; bold sculptural geometry; warm pale platinum face, narrowly bevelled metal edges, dark recessed cuts, very restrained luminous colored enamel inside a few major channels. Sophisticated and mysterious, austere, memorable. Clear masses and intentional negative space. Strong silhouette readable at 48 pixels. Keep to 3-7 main visual parts and broad thick strokes; no thin filigree. A flat graphic silhouette with subtle material depth, not a scene.\nEvery cutout outside/between the mark should be actual transparent negative space. No enclosing coin, outer medallion, common shield template, vignette, background plane, drop shadow, nebula, stars, smoke, lettering, numbers, labels, runes, watermark, extra ornaments, or presentation mockup. No color reliance for identity. Do not draw the affinity icons separately. The geometry must form one integrated distinctive mark.\n\nName for internal reference only (DO NOT print): Evolution.\nAffinities: Flare + Continuum + Verdance.\nGeometry and meaning: One continuous diagonal backbone rises from lower left toward upper right, carrying three successive generations of connected forked forms: first a simple two-prong fork, second a fork with one extra angular offshoot, third a wider branching fan with the inherited fork shape still visible. Compact branching feather-like silhouette, asymmetrical, no literal feather, DNA, animal, plant or arrow. Cobalt #3D6BFF follows the continuous inherited backbone, emerald #2ECC71 in the branching tips, coral #FF5A3C on new divergent joints. Visible inheritance plus reproduction plus modification.\n",
+      "status": "pending"
+    },
+    {
+      "id": "ouroboros",
+      "family": "triad",
+      "name": "Ouroboros",
+      "affinities": [
+        "Flare",
+        "Continuum",
+        "Abyss"
+      ],
+      "meaning": "A continuous whole consumes its old form and remakes itself.",
+      "prompt": "Use case: logo-brand.\nAsset type: original civilization insignia for the science-fantasy strategy game LUMINAe, one member of a coherent 20-mark heraldic family.\nCreate ONE finished abstract emblem, front-facing orthographic, centered in a square canvas, emblem occupying about 72% of the canvas with generous clear margin. Truly transparent background.\nVisual language: elegant ancient-future civic heraldry; bold sculptural geometry; warm pale platinum face, narrowly bevelled metal edges, dark recessed cuts, very restrained luminous colored enamel inside a few major channels. Sophisticated and mysterious, austere, memorable. Clear masses and intentional negative space. Strong silhouette readable at 48 pixels. Keep to 3-7 main visual parts and broad thick strokes; no thin filigree. A flat graphic silhouette with subtle material depth, not a scene.\nEvery cutout outside/between the mark should be actual transparent negative space. No enclosing coin, outer medallion, common shield template, vignette, background plane, drop shadow, nebula, stars, smoke, lettering, numbers, labels, runes, watermark, extra ornaments, or presentation mockup. No color reliance for identity. Do not draw the affinity icons separately. The geometry must form one integrated distinctive mark.\n\nName for internal reference only (DO NOT print): Ouroboros.\nAffinities: Flare + Continuum + Abyss.\nGeometry and meaning: A single broad nearly circular self-consuming ribbon, with an abstract angular serpent head at upper right visibly enclosing its own tapering tail. No scales, eyes, teeth or tiny details: the head is a simple folded wedge and the mouth a broad dark cleft. Around the same continuous body, smooth material transitions into two faceted sections then becomes smooth again. A confident almost closed ring with one unmistakable inward bite. Cobalt #3D6BFF along the continuous inner edge; coral #FF5A3C at the re-forming transition; violet #7B1FA2 inside the consuming cleft. It must read as self-consuming continuity, not arrows in a recycling symbol.\n",
+      "status": "pending"
+    },
+    {
+      "id": "contagion",
+      "family": "triad",
+      "name": "Contagion",
+      "affinities": [
+        "Flare",
+        "Verdance",
+        "Abyss"
+      ],
+      "meaning": "A concealed connection transforms separate recipients into matching carriers.",
+      "prompt": "Use case: logo-brand.\nAsset type: original civilization insignia for the science-fantasy strategy game LUMINAe, one member of a coherent 20-mark heraldic family.\nCreate ONE finished abstract emblem, front-facing orthographic, centered in a square canvas, emblem occupying about 72% of the canvas with generous clear margin. Truly transparent background.\nVisual language: elegant ancient-future civic heraldry; bold sculptural geometry; warm pale platinum face, narrowly bevelled metal edges, dark recessed cuts, very restrained luminous colored enamel inside a few major channels. Sophisticated and mysterious, austere, memorable. Clear masses and intentional negative space. Strong silhouette readable at 48 pixels. Keep to 3-7 main visual parts and broad thick strokes; no thin filigree. A flat graphic silhouette with subtle material depth, not a scene.\nEvery cutout outside/between the mark should be actual transparent negative space. No enclosing coin, outer medallion, common shield template, vignette, background plane, drop shadow, nebula, stars, smoke, lettering, numbers, labels, runes, watermark, extra ornaments, or presentation mockup. No color reliance for identity. Do not draw the affinity icons separately. The geometry must form one integrated distinctive mark.\n\nName for internal reference only (DO NOT print): Contagion.\nAffinities: Flare + Verdance + Abyss.\nGeometry and meaning: Three unequal broad hollow pod-like facets arranged in an asymmetric diagonal chain, linked by one thick channel that repeatedly disappears behind their opaque faces and reappears between them. The first pod contains a simple angular cut; the second and third acquire the same cut while their outer forms visibly change. Use clear interrupted/occluded connections and repeated internal clefts, not three exposed connected nodes. A low jagged linked silhouette distinct from branching Cascade. Coral #FF5A3C at transforming clefts, emerald #2ECC71 on replicated internal cuts, violet #7B1FA2 along channels hidden behind the pods. No microbe, biohazard, virus, skull or disease imagery.\n",
+      "status": "pending"
+    },
+    {
+      "id": "dynasty",
+      "family": "triad",
+      "name": "Dynasty",
+      "affinities": [
+        "Radiance",
+        "Continuum",
+        "Verdance"
+      ],
+      "meaning": "An authoritative form is reproduced through a continuous line of succession.",
+      "prompt": "Use case: logo-brand.\nAsset type: original civilization insignia for the science-fantasy strategy game LUMINAe, one member of a coherent 20-mark heraldic family.\nCreate ONE finished abstract emblem, front-facing orthographic, centered in a square canvas, emblem occupying about 72% of the canvas with generous clear margin. Truly transparent background.\nVisual language: elegant ancient-future civic heraldry; bold sculptural geometry; warm pale platinum face, narrowly bevelled metal edges, dark recessed cuts, very restrained luminous colored enamel inside a few major channels. Sophisticated and mysterious, austere, memorable. Clear masses and intentional negative space. Strong silhouette readable at 48 pixels. Keep to 3-7 main visual parts and broad thick strokes; no thin filigree. A flat graphic silhouette with subtle material depth, not a scene.\nEvery cutout outside/between the mark should be actual transparent negative space. No enclosing coin, outer medallion, common shield template, vignette, background plane, drop shadow, nebula, stars, smoke, lettering, numbers, labels, runes, watermark, extra ornaments, or presentation mockup. No color reliance for identity. Do not draw the affinity icons separately. The geometry must form one integrated distinctive mark.\n\nName for internal reference only (DO NOT print): Dynasty.\nAffinities: Radiance + Continuum + Verdance.\nGeometry and meaning: Three equal upright fork-topped standards, each a thick vertical stem capped by the same small two-pronged angular diadem. They rise in a staircase from left low to right high and are joined at their bases by one continuous stepped foundation. An architectural ascending three-tower silhouette with open spaces. Authority is repeated without changing its form. No literal castle, monarchy crown, flags, ornamental shield or genealogical tree. Pale gold #DFC878 at all three authoritative caps, cobalt #3D6BFF along the binding stepped foundation, emerald #2ECC71 in the repeating stem bevels.\n",
+      "status": "pending"
+    },
+    {
+      "id": "testament",
+      "family": "triad",
+      "name": "Testament",
+      "affinities": [
+        "Radiance",
+        "Continuum",
+        "Abyss"
+      ],
+      "meaning": "An absent authority leaves a directive that still binds the whole.",
+      "prompt": "Use case: logo-brand.\nAsset type: original civilization insignia for the science-fantasy strategy game LUMINAe, one member of a coherent 20-mark heraldic family.\nCreate ONE finished abstract emblem, front-facing orthographic, centered in a square canvas, emblem occupying about 72% of the canvas with generous clear margin. Truly transparent background.\nVisual language: elegant ancient-future civic heraldry; bold sculptural geometry; warm pale platinum face, narrowly bevelled metal edges, dark recessed cuts, very restrained luminous colored enamel inside a few major channels. Sophisticated and mysterious, austere, memorable. Clear masses and intentional negative space. Strong silhouette readable at 48 pixels. Keep to 3-7 main visual parts and broad thick strokes; no thin filigree. A flat graphic silhouette with subtle material depth, not a scene.\nEvery cutout outside/between the mark should be actual transparent negative space. No enclosing coin, outer medallion, common shield template, vignette, background plane, drop shadow, nebula, stars, smoke, lettering, numbers, labels, runes, watermark, extra ornaments, or presentation mockup. No color reliance for identity. Do not draw the affinity icons separately. The geometry must form one integrated distinctive mark.\n\nName for internal reference only (DO NOT print): Testament.\nAffinities: Radiance + Continuum + Abyss.\nGeometry and meaning: A tall open arch whose apex keystone is conspicuously missing, leaving a square negative-space absence at the very top. Beneath the empty apex a broad suspended horizontal governing bar joins two inner vertical uprights, which descend and remain tied by a heavy lower bracket. The vanished source's imprint is echoed once in a square notch on the governing bar. Compact upright monumental seal, visibly incomplete at the top but firmly bound below. No book, scroll, writing, tombstone, cross or ghost. Violet #7B1FA2 in the absent-apex facing cuts, pale gold #DFC878 along the surviving directive bar, cobalt #3D6BFF along its continuing lower binding structure.\n",
+      "status": "pending"
+    },
+    {
+      "id": "mycelium",
+      "family": "triad",
+      "name": "Mycelium",
+      "affinities": [
+        "Radiance",
+        "Verdance",
+        "Abyss"
+      ],
+      "meaning": "A concealed branching network coordinates growth and shared flows.",
+      "prompt": "Use case: logo-brand.\nAsset type: original civilization insignia for the science-fantasy strategy game LUMINAe, one member of a coherent 20-mark heraldic family.\nCreate ONE finished abstract emblem, front-facing orthographic, centered in a square canvas, emblem occupying about 72% of the canvas with generous clear margin. Truly transparent background.\nVisual language: elegant ancient-future civic heraldry; bold sculptural geometry; warm pale platinum face, narrowly bevelled metal edges, dark recessed cuts, very restrained luminous colored enamel inside a few major channels. Sophisticated and mysterious, austere, memorable. Clear masses and intentional negative space. Strong silhouette readable at 48 pixels. Keep to 3-7 main visual parts and broad thick strokes; no thin filigree. A flat graphic silhouette with subtle material depth, not a scene.\nEvery cutout outside/between the mark should be actual transparent negative space. No enclosing coin, outer medallion, common shield template, vignette, background plane, drop shadow, nebula, stars, smoke, lettering, numbers, labels, runes, watermark, extra ornaments, or presentation mockup. No color reliance for identity. Do not draw the affinity icons separately. The geometry must form one integrated distinctive mark.\n\nName for internal reference only (DO NOT print): Mycelium.\nAffinities: Radiance + Verdance + Abyss.\nGeometry and meaning: A broad low faceted canopy plate conceals the upper origin of a branching web underneath it. From behind the plate five thick angular roots spread downward and sideways, reconnecting with two unmistakable cross-links to create a coordinated mesh with three large irregular negative-space cells. Overall silhouette wide, rootlike and horizontally spreading, unlike a tree crown; the hidden source is not drawn. No mushroom, leaves, many hairlike roots, neurons, spider or star. Violet #7B1FA2 on the concealing top plate, emerald #2ECC71 along spreading branches, pale gold #DFC878 at the two coordinating cross-links.\n",
+      "status": "pending"
+    },
+    {
+      "id": "atavism",
+      "family": "triad",
+      "name": "Atavism",
+      "affinities": [
+        "Continuum",
+        "Verdance",
+        "Abyss"
+      ],
+      "meaning": "An ancestral form travels through hidden inheritance and reappears.",
+      "prompt": "Use case: logo-brand.\nAsset type: original civilization insignia for the science-fantasy strategy game LUMINAe, one member of a coherent 20-mark heraldic family.\nCreate ONE finished abstract emblem, front-facing orthographic, centered in a square canvas, emblem occupying about 72% of the canvas with generous clear margin. Truly transparent background.\nVisual language: elegant ancient-future civic heraldry; bold sculptural geometry; warm pale platinum face, narrowly bevelled metal edges, dark recessed cuts, very restrained luminous colored enamel inside a few major channels. Sophisticated and mysterious, austere, memorable. Clear masses and intentional negative space. Strong silhouette readable at 48 pixels. Keep to 3-7 main visual parts and broad thick strokes; no thin filigree. A flat graphic silhouette with subtle material depth, not a scene.\nEvery cutout outside/between the mark should be actual transparent negative space. No enclosing coin, outer medallion, common shield template, vignette, background plane, drop shadow, nebula, stars, smoke, lettering, numbers, labels, runes, watermark, extra ornaments, or presentation mockup. No color reliance for identity. Do not draw the affinity icons separately. The geometry must form one integrated distinctive mark.\n\nName for internal reference only (DO NOT print): Atavism.\nAffinities: Continuum + Verdance + Abyss.\nGeometry and meaning: A compact upright descending chain of three broad joined lozenge compartments on one uninterrupted narrow backbone. The upper and lower compartments contain exactly the same bold three-pronged ancestral cleft; the middle compartment is closed and opaque except for the backbone emerging above and below it. The repeated ancestral shape visibly disappears in the middle generation and reappears below. Silhouette vertical, broad middle, upper/lower facets slightly smaller. No DNA, animal, spiral, rebirth ring or arrows. Cobalt #3D6BFF follows the continuous inheritance spine, emerald #2ECC71 in the matching transmitted outer-generation cuts, violet #7B1FA2 on the intervening concealing compartment.\n",
+      "status": "pending"
+    }
+  ]
+}

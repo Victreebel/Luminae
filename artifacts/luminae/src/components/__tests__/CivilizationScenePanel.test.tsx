@@ -1,13 +1,28 @@
 import React from 'react';
-import { act, fireEvent, render, screen } from '@testing-library/react';
+import { act, fireEvent, render, screen, within } from '@testing-library/react';
 import { beforeEach, describe, expect, it, vi } from 'vitest';
-import type { ArtifactCard } from '@workspace/api-client-react';
+import type { ArtifactCard, CivilizationPublicState } from '@workspace/api-client-react';
+import {
+  ARTIFACT_CATALOG,
+  CIVILIZATION_STATE_VERSION,
+  CIVILIZATION_SURFACE_CONSTRUCTION_PLAN_ID,
+  createCivilizationEnvironmentIdentity,
+  createInitialCivilizationDistrictIdentityState,
+  createInitialCivilizationNestedIdentityState,
+  createInitialCivilizationState,
+  reconcileCivilizationDerivedState,
+} from '@workspace/game-types';
+import type { CivilizationDyadId } from '@workspace/game-types';
 import {
   CivilizationMiniatureScene,
   CivilizationScenePanel,
+  resolveCivilizationScanMarkerAnchors,
 } from '@/components/CivilizationScenePanel';
-import type { CivilizationDeploymentSite } from '@/lib/civilizationDeploymentSites';
+import { buildCivilizationDeploymentSites, type CivilizationDeploymentSite } from '@/lib/civilizationDeploymentSites';
+import { getArtifactManifestationProfile } from '@/lib/civilizationArtifactManifestations';
 import { buildCivilizationProfile } from '@/lib/civilizationProfile';
+import { CARD_NAME_FALLBACK } from '@/lib/cardNameFallback';
+import { getCivilizationSaturatedPreviewIds } from '@/lib/civilizationArtifactProof';
 
 const mobileState = vi.hoisted(() => ({ isMobile: false }));
 
@@ -69,12 +84,136 @@ function site(index: number, overrides: Partial<CivilizationDeploymentSite> = {}
   };
 }
 
+function getScanMapPin(siteId: string): HTMLElement {
+  const pin = screen.getAllByTestId('civilization-scan-map-pin')
+    .find((element) => element.dataset.siteId === siteId);
+  expect(pin).toBeDefined();
+  return pin!;
+}
+
+function civilizationTransitionFixture(
+  presentationDyad: CivilizationDyadId,
+  committedTurnCount: number,
+  retiredScaleDyad: CivilizationDyadId,
+): CivilizationPublicState {
+  const identityScales = createInitialCivilizationNestedIdentityState();
+  for (const layer of Object.keys(identityScales) as (keyof typeof identityScales)[]) {
+    identityScales[layer] = {
+      ...identityScales[layer],
+      status: 'committed',
+      candidateDyad: retiredScaleDyad,
+      committedDyad: retiredScaleDyad,
+      committedTurnCount,
+    };
+  }
+  const districtIdentity = {
+    ...createInitialCivilizationDistrictIdentityState(),
+    rawDominantDyad: presentationDyad,
+    presentationDyad,
+    calculatedTurnCount: committedTurnCount,
+    presentationCommittedTurnCount: committedTurnCount,
+  };
+  const counts = { flare: 3, radiance: 0, verdance: 0, continuum: 0, abyss: 2 };
+  const shares = { flare: 0.6, radiance: 0, verdance: 0, continuum: 0, abyss: 0.4 };
+
+  return {
+    version: CIVILIZATION_STATE_VERSION,
+    environmentIdentity: createCivilizationEnvironmentIdentity('transition-authority-test'),
+    artifacts: [],
+    affinityIdentity: {
+      policyId: 'provisional-ratio-v1',
+      form: 'dyad',
+      historicalCounts: counts,
+      operationalCounts: counts,
+      rankedAffinities: [
+        { affinity: 'flare', historicalWeight: 3, operationalWeight: 3 },
+        { affinity: 'abyss', historicalWeight: 2, operationalWeight: 2 },
+        { affinity: 'radiance', historicalWeight: 0, operationalWeight: 0 },
+        { affinity: 'verdance', historicalWeight: 0, operationalWeight: 0 },
+        { affinity: 'continuum', historicalWeight: 0, operationalWeight: 0 },
+      ],
+      dominantAffinity: 'flare',
+      dominantDyad: presentationDyad,
+      foundingDyad: 'chrysalis',
+      presentationDyad,
+      identityEpochs: [{
+        epochIndex: 0,
+        dyad: presentationDyad,
+        startedTurnCount: committedTurnCount,
+        endedTurnCount: null,
+        historicalSharesAtStart: shares,
+        historyEvidence: 'recorded',
+      }],
+      normalizedHistoricalShares: shares,
+      normalizedOperationalShares: shares,
+      thirdAffinity: null,
+      dominantShare: 0.6,
+      secondaryToPrimaryRatio: 2 / 3,
+      thirdToPrimaryRatio: 0,
+    },
+    districtIdentity,
+    identityScales,
+    scale: {
+      historicalMaturity: 'galactic',
+      currentReach: 'galactic',
+      currentReachCondition: 'intact',
+      literalKardashevType: 3,
+      literalKardashevEvidence: 'recorded',
+    },
+    stability: {
+      band: 'stable',
+      score: 100,
+      calibrationId: null,
+      contributors: [],
+      calculatedTurnCount: committedTurnCount,
+      historyEvidence: 'recorded',
+    },
+    activeConditions: [],
+    projects: [],
+    activeCapabilityIds: [],
+    manifestationAssignments: [],
+    events: [],
+    legacy: { completedTurnCount: null, historyEvidence: 'recorded' },
+  };
+}
+
 describe('CivilizationScenePanel', () => {
   beforeEach(() => {
     mobileState.isMobile = false;
   });
 
-  it('defaults planetary civilizations to planet view and zooms into city detail', () => {
+  it('sources evolution notices from the live district direction instead of retired scale locks', () => {
+    sessionStorage.clear();
+    const renderPanel = (civilization: CivilizationPublicState) => (
+      <CivilizationScenePanel
+        tier={3}
+        palette={{ primary: '#ff6a28', secondary: '#a832d4', accent: '#ffba8e' }}
+        profile={buildCivilizationProfile([])}
+        progressFraction={1}
+        paused
+        defaultScene="surface"
+        civilization={civilization}
+        deploymentSites={[]}
+        forgedArtifacts={[]}
+        onOpenArtifact={vi.fn()}
+      />
+    );
+    const { rerender } = render(renderPanel(
+      civilizationTransitionFixture('chrysalis', 3, 'flux'),
+    ));
+
+    expect(screen.getByTestId('civilization-identity-transition'))
+      .toHaveTextContent('Chrysalis architecture now leads');
+    expect(screen.getByTestId('civilization-identity-transition')).not.toHaveTextContent('Flux');
+
+    rerender(renderPanel(civilizationTransitionFixture('echo', 9, 'bloom')));
+
+    expect(screen.getByTestId('civilization-identity-transition'))
+      .toHaveTextContent('Echo architecture now leads');
+    expect(screen.getByTestId('civilization-identity-transition')).not.toHaveTextContent('Bloom');
+  });
+
+  it('defaults planetary civilizations to the neutral authored world and preserves scale navigation', () => {
     render(
       <CivilizationScenePanel
         tier={1}
@@ -97,55 +236,37 @@ describe('CivilizationScenePanel', () => {
       />,
     );
 
-    expect(screen.getByText('Planet View')).toBeInTheDocument();
-    expect(screen.getByRole('button', { name: 'Planet' })).toHaveAttribute('aria-pressed', 'true');
+    expect(screen.queryByTestId('civilization-scene-details')).not.toBeInTheDocument();
     expect(screen.getByRole('button', { name: 'Planet' })).toHaveAttribute('data-active-scale', 'true');
     expect(screen.getAllByTestId('civilization-scale-active-indicator')).toHaveLength(1);
-    expect(screen.getByRole('button', { name: 'City' })).toHaveAttribute('aria-pressed', 'false');
-    expect(screen.getByRole('button', { name: 'City' })).not.toHaveAttribute('data-active-scale');
-    expect(screen.getByTestId('civilization-zoom-hotspot')).toBeInTheDocument();
-    expect(screen.getByTestId('civilization-evolved-plate-state')).toHaveAttribute('data-state-flags', 'living');
+    expect(screen.getByTestId('civilization-scene-panel')).toHaveAttribute('data-render-generation', 'authored-world');
     expect(screen.getByTestId('civilization-plate-art'))
-      .toHaveAttribute('data-art-slot', 'civilization.plate.orbit.living_arcology.cinematic');
-    expect(screen.getByTestId('civilization-plate-art'))
-      .toHaveAttribute('data-art-resolution', 'bitmap');
-    expect(screen.getByTestId('civilization-plate-art'))
-      .toHaveAttribute('data-plate-focus', 'biosphere-bands');
-    expect(screen.getByTestId('civilization-scale-theater')).toHaveAttribute('data-scene', 'orbit');
-    expect(screen.getByTestId('civilization-scale-theater')).toHaveAttribute('data-aggregate-count', '1');
-    expect(screen.getByTestId('civilization-scale-theater-aggregate')).toHaveAttribute('data-native-scene', 'surface');
-    expect(screen.getByTestId('civilization-archetype-atmosphere'))
-      .toHaveAttribute('data-archetype', 'living_arcology');
-    expect(screen.getByTestId('civilization-archetype-atmosphere'))
-      .toHaveAttribute('data-composition-key', 'bio-canopy');
-    expect(screen.getByTestId('civilization-archetype-composition')).toHaveAttribute('data-archetype', 'living_arcology');
-    expect(screen.getByTestId('civilization-archetype-composition'))
-      .toHaveAttribute('data-asset-slot', 'civilization.archetype.living_arcology.orbit');
-    expect(screen.getByTestId('civilization-archetype-composition'))
-      .toHaveAttribute('data-art-resolution', 'procedural');
-    expect(screen.getByTestId('civilization-archetype-label')).toHaveTextContent('Visual identity // Living Arcology');
+      .toHaveAttribute('data-art-slot', 'civilization.environment.aurora_basin.orbit.cinematic');
+    expect(screen.queryByTestId('civilization-evolved-plate-state')).not.toBeInTheDocument();
+    expect(screen.queryByTestId('civilization-scale-theater')).not.toBeInTheDocument();
+    expect(screen.queryByTestId('civilization-archetype-atmosphere')).not.toBeInTheDocument();
 
-    fireEvent.click(screen.getByTestId('civilization-zoom-hotspot'));
+    fireEvent.click(screen.getByRole('button', { name: /^Scan$/i }));
 
-    expect(screen.getByText(/City \/ surface detail/i)).toBeInTheDocument();
+    expect(screen.getByTestId('civilization-artifact-structure-markers')).toBeInTheDocument();
+    expect(screen.queryByTestId('civilization-command-frame')).not.toBeInTheDocument();
+    expect(screen.queryByTestId('civilization-project-washes')).not.toBeInTheDocument();
+
+    fireEvent.click(screen.getByRole('button', { name: 'City' }));
+
     expect(screen.getByRole('button', { name: 'City' })).toHaveAttribute('data-active-scale', 'true');
     expect(screen.getByTestId('civilization-plate-art'))
-      .toHaveAttribute('data-art-slot', 'civilization.plate.surface.living_arcology.cinematic');
-    expect(screen.getByTestId('civilization-plate-art'))
-      .toHaveAttribute('data-plate-focus', 'living-district');
-    expect(screen.getByTestId('civilization-evolved-surface-state')).toBeInTheDocument();
-    expect(screen.getByTestId('civilization-scale-theater')).toHaveAttribute('data-scene', 'surface');
-    expect(screen.getByTestId('civilization-scale-theater-native')).toHaveAttribute('data-native-scene', 'surface');
-    expect(screen.getByTestId('civilization-integrated-consequences')).toBeInTheDocument();
-    expect(screen.getByTestId('civilization-integrated-recovery')).toBeInTheDocument();
-    expect(screen.queryByTestId('civilization-native-work-layer')).not.toBeInTheDocument();
+      .toHaveAttribute('data-art-slot', 'civilization.environment.aurora_basin.surface.city-1.neutral.cinematic');
+    expect(screen.getByTestId('civilization-artifact-structure'))
+      .toHaveAttribute('data-artifact-unit', 't1r01');
 
     fireEvent.click(screen.getByRole('button', { name: 'Planet' }));
 
-    expect(screen.getByText('Planet View')).toBeInTheDocument();
+    expect(screen.getByTestId('civilization-plate-art'))
+      .toHaveAttribute('data-art-slot', 'civilization.environment.aurora_basin.orbit.cinematic');
   });
 
-  it('starts planetary scan mode at city detail when local work is present', () => {
+  it('starts planetary Scan at the native City layer without changing the authored world', () => {
     render(
       <CivilizationScenePanel
         tier={1}
@@ -179,235 +300,575 @@ describe('CivilizationScenePanel', () => {
       />,
     );
 
-    expect(screen.getByText(/City \/ surface detail/i)).toBeInTheDocument();
-    expect(screen.getByRole('button', { name: 'City' })).toHaveAttribute('aria-pressed', 'true');
     expect(screen.getByRole('button', { name: 'City' })).toHaveAttribute('data-active-scale', 'true');
     expect(screen.getByRole('button', { name: 'Scan' })).toHaveAttribute('aria-pressed', 'true');
+    expect(screen.getByTestId('civilization-scan-map-pin'))
+      .toHaveAttribute('data-artifact-id', 't1r01');
+    expect(screen.getByTestId('civilization-scan-map-pin'))
+      .toHaveAttribute('data-pin-presentation', 'artifact-structure');
+    expect(screen.getByTestId('civilization-artifact-structure'))
+      .toHaveAttribute('data-artifact-unit', 't1r01');
     expect(screen.getByTestId('civilization-plate-art'))
-      .toHaveAttribute('data-art-slot', 'civilization.plate.surface.forge_spine.scan');
+      .toHaveAttribute('data-art-slot', 'civilization.environment.aurora_basin.surface.city-1.neutral.cinematic');
   });
 
-  it('keeps higher-scale projects visible as scan context when zoomed into local work', () => {
+  it('keeps physical Artifacts stable while Scan adds annotation-only identity pins', () => {
+    const sites = [
+      site(1, { artifactId: 't1r01', id: 'artifact:t1r01', affinity: 'flare' }),
+      site(2, { artifactId: 't1r02', id: 'artifact:t1r02', affinity: 'verdance' }),
+    ];
+
     render(
       <CivilizationScenePanel
         tier={1}
-        palette={{ primary: '#dfb86b', secondary: '#5f3813', accent: '#fff0b8' }}
-        profile={{
-          key: 'test',
-          seed: 1,
-          artifactCount: 2,
-          affinityCounts: { flare: 1, continuum: 1, verdance: 0, abyss: 0, radiance: 0 },
-          traitCounts: {},
-          traitWeights: {},
-          dominantTraits: ['transit', 'ignition'],
-          landmarks: [],
-        }}
+        palette={{ primary: '#4ade80', secondary: '#0f5a28', accent: '#a7f3c0' }}
+        profile={buildCivilizationProfile([
+          artifact('t1r01', 'Ignition Kernel'),
+          artifact('t1r02', 'Ashroot Bloom'),
+        ])}
         progressFraction={1}
         paused
-        defaultScanActive
+        defaultScene="surface"
+        deploymentSites={sites}
+        forgedArtifacts={[
+          artifact('t1r01', 'Ignition Kernel'),
+          artifact('t1r02', 'Ashroot Bloom'),
+        ]}
+        onOpenArtifact={vi.fn()}
+      />,
+    );
+
+    expect(screen.getByTestId('civilization-artifact-manifestation-layer'))
+      .toHaveAttribute('data-render-mode', 'portrait');
+    expect(screen.getAllByTestId('civilization-artifact-structure')).toHaveLength(2);
+    expect(screen.queryByTestId('civilization-artifact-structure-markers')).not.toBeInTheDocument();
+
+    fireEvent.click(screen.getByRole('button', { name: /^Scan$/i }));
+
+    expect(screen.getByTestId('civilization-artifact-manifestation-layer'))
+      .toHaveAttribute('data-render-mode', 'scan-annotation');
+    expect(screen.getAllByTestId('civilization-artifact-structure')).toHaveLength(2);
+    expect(screen.getAllByTestId('civilization-scan-map-pin')).toHaveLength(2);
+    expect(screen.getAllByTestId('civilization-scan-map-pin').map((pin) => pin.dataset.artifactId))
+      .toEqual(expect.arrayContaining(['t1r01', 't1r02']));
+    expect(screen.getAllByTestId('civilization-artifact-map-pin-art')).toHaveLength(2);
+    expect(screen.queryByTestId('civilization-command-frame')).not.toBeInTheDocument();
+  });
+
+  it('uses the persistent environment and authored Artifact path without requiring the full Civilization state', () => {
+    render(
+      <CivilizationScenePanel
+        tier={1}
+        palette={{ primary: '#4ade80', secondary: '#0f5a28', accent: '#a7f3c0' }}
+        profile={buildCivilizationProfile([artifact('t1r01', 'Ignition Kernel')])}
+        progressFraction={1}
+        paused
+        defaultScene="surface"
+        environmentIdentity={createCivilizationEnvironmentIdentity(
+          'tutorial-environment-proof',
+          'aurora_basin',
+          'recorded',
+        )}
         deploymentSites={[
           site(1, {
-            id: 'artifact:t1s02',
-            artifactId: 't1s02',
-            title: 'Mantlelift Driver Coil Trace',
-            trait: 'transit',
-            affinity: 'continuum',
-            artifactVisualMotif: 'coil',
-            artifactSceneTreatment: 'mantlelift_driver',
-            depictionScale: 'room',
-            scalePresence: 'deployment_site',
+            id: 'artifact:t1r01',
+            artifactId: 't1r01',
+            affinity: 'flare',
             nativeArtworkLayer: 'surface',
-            nativeArtworkLabel: 'City site',
-          }),
-          site(2, {
-            id: 'blueprint:bp_mantle_to_orbit_foundry',
-            kind: 'blueprint',
-            artifactId: undefined,
-            completedBlueprintId: undefined,
-            blueprintId: 'bp_mantle_to_orbit_foundry',
-            title: 'Mantle-to-Orbit Freight Lane',
-            representationMode: 'blueprint_consequence',
-            scaleBand: 'planetary',
-            trait: 'transit',
-            relatedArtifactIds: [],
-            priority: 1000,
+            artifactManifestation: getArtifactManifestationProfile('t1r01'),
           }),
         ]}
-        forgedArtifacts={[artifact('t1s02', 'Mantlelift Driver Coil')]}
+        forgedArtifacts={[artifact('t1r01', 'Ignition Kernel')]}
         onOpenArtifact={vi.fn()}
       />,
     );
 
-    expect(screen.getByText(/City \/ surface detail/i)).toBeInTheDocument();
-    expect(screen.getByTestId('civilization-scan-scale-context')).toBeInTheDocument();
-    expect(screen.getByTestId('civilization-scan-scale-context-item'))
-      .toHaveAttribute('data-native-scene', 'orbit');
-    expect(screen.getByText('Mantle-to-Orbit Freight Lane')).toBeInTheDocument();
-    expect(screen.getByText(/Native layer \/\/ Planet view/i)).toBeInTheDocument();
+    expect(screen.getByTestId('civilization-plate-art')).toHaveAttribute(
+      'data-art-slot',
+      'civilization.environment.aurora_basin.surface.city-1.neutral.cinematic',
+    );
+    expect(screen.getByTestId('civilization-plate-art'))
+      .toHaveAttribute('data-art-substrate', 'inhabited-growth');
+    expect(screen.getByTestId('civilization-plate-art'))
+      .not.toHaveAttribute('data-atlas-cell');
+    expect(screen.getByTestId('civilization-artifact-manifestation-layer'))
+      .toHaveAttribute('data-world-layout', 'invariant');
+    expect(screen.getByTestId('civilization-artifact-structure'))
+      .toHaveAttribute('data-artifact-unit', 't1r01');
+    expect(screen.getByTestId('civilization-scene-panel'))
+      .toHaveAttribute('data-render-generation', 'authored-world');
+    expect(screen.queryByTestId('civilization-materialized-sites')).not.toBeInTheDocument();
+    expect(screen.queryByTestId('civilization-scale-theater')).not.toBeInTheDocument();
+    expect(screen.queryByTestId('civilization-project-washes')).not.toBeInTheDocument();
+    expect(screen.queryByTestId('civilization-command-frame')).not.toBeInTheDocument();
+    expect(screen.queryByTestId('civilization-scan-focus')).not.toBeInTheDocument();
 
-    fireEvent.click(screen.getByTestId('civilization-scan-scale-context-item'));
+    fireEvent.click(screen.getByRole('button', { name: /^Scan$/i }));
 
-    expect(screen.getByRole('button', { name: 'Planet' })).toHaveAttribute('data-active-scale', 'true');
-    expect(screen.getByTestId('civilization-focused-deployment-projection'))
-      .toHaveAttribute('data-site-id', 'blueprint:bp_mantle_to_orbit_foundry');
+    expect(screen.queryByTestId('civilization-scale-theater')).not.toBeInTheDocument();
+    expect(screen.queryByTestId('civilization-project-washes')).not.toBeInTheDocument();
+    expect(screen.queryByTestId('civilization-command-frame')).not.toBeInTheDocument();
+    expect(screen.queryByTestId('civilization-scan-focus')).not.toBeInTheDocument();
+    expect(screen.getByTestId('civilization-scan-map-pin')).toBeInTheDocument();
   });
 
-  it('keeps deployment details hidden until scan mode is opened', () => {
+  it('changes Surface atmosphere without moving the shared construction plan', () => {
+    const renderPanel = (variantId: 'aurora_basin' | 'obsidian_steppe') => (
+      <CivilizationScenePanel
+        tier={1}
+        palette={{ primary: '#4ade80', secondary: '#0f5a28', accent: '#a7f3c0' }}
+        profile={buildCivilizationProfile([artifact('t1r01', 'Ignition Kernel')])}
+        progressFraction={1}
+        paused
+        defaultScene="surface"
+        environmentIdentity={createCivilizationEnvironmentIdentity(
+          `shared-plan:${variantId}`,
+          variantId,
+          'recorded',
+        )}
+        deploymentSites={[
+          site(1, {
+            id: 'artifact:t1r01',
+            artifactId: 't1r01',
+            affinity: 'flare',
+            nativeArtworkLayer: 'surface',
+            artifactManifestation: getArtifactManifestationProfile('t1r01'),
+          }),
+        ]}
+        forgedArtifacts={[artifact('t1r01', 'Ignition Kernel')]}
+        onOpenArtifact={vi.fn()}
+      />
+    );
+    const { rerender } = render(renderPanel('aurora_basin'));
+    const auroraPlate = screen.getByTestId('civilization-plate-art');
+    const auroraSrc = auroraPlate.getAttribute('src');
+    const auroraPosition = auroraPlate.style.objectPosition;
+    const auroraFilter = auroraPlate.style.filter;
+
+    expect(auroraPlate).toHaveAttribute(
+      'data-construction-plan',
+      CIVILIZATION_SURFACE_CONSTRUCTION_PLAN_ID,
+    );
+    expect(screen.getByTestId('civilization-environment-dressing'))
+      .toHaveAttribute('data-environment-dressing', 'aurora_basin');
+
+    rerender(renderPanel('obsidian_steppe'));
+
+    const obsidianPlate = screen.getByTestId('civilization-plate-art');
+    expect(obsidianPlate.getAttribute('src')).toBe(auroraSrc);
+    expect(obsidianPlate.style.objectPosition).toBe(auroraPosition);
+    expect(obsidianPlate.style.filter).not.toBe(auroraFilter);
+    expect(obsidianPlate).toHaveAttribute(
+      'data-construction-plan',
+      CIVILIZATION_SURFACE_CONSTRUCTION_PLAN_ID,
+    );
+    expect(screen.getByTestId('civilization-environment-dressing'))
+      .toHaveAttribute('data-environment-dressing', 'obsidian_steppe');
+  });
+
+  it('links each annotation-only Scan pin to its matching physical Artifact manifestation', () => {
+    const sites = [
+      site(1, { artifactId: 't1r01', id: 'artifact:t1r01', affinity: 'flare' }),
+      site(2, { artifactId: 't1r02', id: 'artifact:t1r02', affinity: 'verdance' }),
+    ];
+
+    render(
+      <CivilizationScenePanel
+        tier={1}
+        palette={{ primary: '#4ade80', secondary: '#0f5a28', accent: '#a7f3c0' }}
+        profile={buildCivilizationProfile([
+          artifact('t1r01', 'Ignition Kernel'),
+          artifact('t1r02', 'Ashroot Bloom'),
+        ])}
+        progressFraction={1}
+        paused
+        defaultScene="surface"
+        defaultScanActive
+        deploymentSites={sites}
+        forgedArtifacts={[
+          artifact('t1r01', 'Ignition Kernel'),
+          artifact('t1r02', 'Ashroot Bloom'),
+        ]}
+        onOpenArtifact={vi.fn()}
+      />,
+    );
+
+    const secondPin = screen.getAllByTestId('civilization-scan-map-pin')
+      .find((element) => element.dataset.artifactId === 't1r02');
+    const secondManifestation = screen.getAllByTestId('civilization-artifact-structure')
+      .find((element) => element.dataset.artifactUnit === 't1r02');
+    const firstManifestation = screen.getAllByTestId('civilization-artifact-structure')
+      .find((element) => element.dataset.artifactUnit === 't1r01');
+
+    expect(secondPin).toHaveAttribute('data-pin-link-state', 'available');
+    expect(firstManifestation).toHaveAttribute('data-scan-link-state', 'available');
+    expect(secondManifestation).toHaveAttribute('data-scan-link-state', 'available');
+
+    fireEvent.pointerEnter(secondPin!);
+
+    expect(secondPin).toHaveAttribute('data-pin-link-state', 'linked');
+    expect(firstManifestation).toHaveAttribute('data-scan-link-state', 'available');
+    expect(secondManifestation).toHaveAttribute('data-scan-link-state', 'linked');
+    expect(screen.getByTestId('civilization-artifact-pin-host-link'))
+      .toHaveAttribute('data-site-id', 'artifact:t1r02');
+  });
+
+  it('can expose every real Artifact identity pin in the comparison lab', () => {
+    const sites = Array.from({ length: 7 }, (_, index) => site(index + 1));
+
+    render(
+      <CivilizationScenePanel
+        tier={1}
+        palette={{ primary: '#4ade80', secondary: '#0f5a28', accent: '#a7f3c0' }}
+        profile={buildCivilizationProfile(sites.map((entry) => artifact(entry.artifactId!, entry.title)))}
+        progressFraction={1}
+        paused
+        defaultScene="surface"
+        defaultScanActive
+        showAllArtifactPins
+        deploymentSites={sites}
+        forgedArtifacts={sites.map((entry) => artifact(entry.artifactId!, entry.title))}
+        onOpenArtifact={vi.fn()}
+      />,
+    );
+
+    expect(screen.getAllByTestId('civilization-scan-map-pin')).toHaveLength(7);
+    expect(screen.getAllByTestId('civilization-scan-map-pin').every((marker) => (
+      marker.getAttribute('data-marker-mode') === 'artifact-structure'
+    ))).toBe(true);
+  });
+
+  it('keeps compact Scan annotations individually separated around their physical hosts', () => {
+    const crowdedSites = Array.from({ length: 12 }, (_, index) => site(index + 1, {
+      id: `artifact:crowded-${index}`,
+      artifactId: ARTIFACT_CATALOG[index]!.id,
+      anchor: { x: 50, y: 50 },
+    }));
+    const anchors = [...resolveCivilizationScanMarkerAnchors(crowdedSites, undefined, true).values()];
+
+    expect(anchors).toHaveLength(12);
+    expect(new Set(anchors.map((anchor) => `${anchor.x}:${anchor.y}`)).size).toBe(12);
+    anchors.forEach((anchor, index) => {
+      anchors.slice(index + 1).forEach((other) => {
+        expect(
+          Math.abs(anchor.x - other.x) >= 14 ||
+          Math.abs(anchor.y - other.y) >= 12,
+        ).toBe(true);
+      });
+    });
+  });
+
+  it.each([
+    { width: 498, height: 280, hitSize: 32 },
+    { width: 818, height: 460, hitSize: 44 },
+    { width: 293, height: 366, hitSize: 32 },
+  ])('fits all 45 resident markers at $width×$height with clearance even when selected', dimensions => {
+    const crowdedSites = Array.from({ length: 45 }, (_, index) => site(index, {
+      anchor: { x: 20 + (index % 5) * 15, y: 60 + (index % 3) * 10 },
+    }));
+    const resolved = resolveCivilizationScanMarkerAnchors(crowdedSites, undefined, false, false, dimensions);
+    expect(resolved.size).toBe(45);
+    const points = [...resolved.values()].map(point => ({
+      x: point.x * dimensions.width / 100, y: point.y * dimensions.height / 100,
+    }));
+    const halfSize = dimensions.hitSize * 1.16 / 2;
+    points.forEach((point, index) => {
+      expect(point.x - halfSize).toBeGreaterThanOrEqual(0);
+      expect(point.x + halfSize).toBeLessThanOrEqual(dimensions.width);
+      expect(point.y - halfSize).toBeGreaterThanOrEqual(0);
+      expect(point.y + halfSize).toBeLessThanOrEqual(dimensions.height);
+      points.slice(index + 1).forEach(other => {
+        expect(Math.abs(point.x - other.x) >= halfSize * 2 || Math.abs(point.y - other.y) >= halfSize * 2).toBe(true);
+      });
+    });
+    expect(resolveCivilizationScanMarkerAnchors([...crowdedSites].reverse(), undefined, false, false, dimensions)).toEqual(resolved);
+  });
+
+  it('keeps dense compact Scan annotations close while preserving marker clearance', () => {
+    const crowdedSites = Array.from({ length: 40 }, (_, index) => site(index + 1, {
+      id: `artifact:dense-${index}`,
+      anchor: { x: 50, y: 50 },
+    }));
+    const anchors = [...resolveCivilizationScanMarkerAnchors(crowdedSites, undefined, true).values()];
+
+    expect(anchors).toHaveLength(40);
+    expect(Math.max(...anchors.map((anchor) => Math.hypot(anchor.x - 50, anchor.y - 50))))
+      .toBeLessThanOrEqual(62);
+    anchors.forEach((anchor, index) => {
+      anchors.slice(index + 1).forEach((other) => {
+        expect(
+          Math.abs(anchor.x - other.x) >= 12.79 ||
+          Math.abs(anchor.y - other.y) >= 10.59,
+        ).toBe(true);
+      });
+    });
+  });
+
+  it('opens and closes Scan without adding a blocking guidance overlay', () => {
+    render(
+      <CivilizationScenePanel
+        tier={1}
+        palette={{ primary: '#4ade80', secondary: '#0f5a28', accent: '#a7f3c0' }}
+        profile={buildCivilizationProfile([artifact('t1r01', 'Ignition Kernel')])}
+        progressFraction={1}
+        paused
+        guidanceEnabled
+        deploymentSites={[site(1, { id: 'artifact:t1r01', artifactId: 't1r01' })]}
+        forgedArtifacts={[artifact('t1r01', 'Ignition Kernel')]}
+        onOpenArtifact={vi.fn()}
+      />,
+    );
+
+    const portraitTransform = screen.getByTestId('civilization-plate-art').style.transform;
+    fireEvent.click(screen.getByRole('button', { name: /^Scan$/i }));
+    expect(screen.getByTestId('civilization-artifact-structure-markers')).toBeInTheDocument();
+    expect(screen.getByTestId('civilization-plate-art')).toHaveAttribute('data-scan-geometry', 'invariant');
+    expect(screen.getByTestId('civilization-plate-art').style.transform).toBe(portraitTransform);
+    expect(screen.queryByTestId('civilization-scan-guide')).not.toBeInTheDocument();
+
+    fireEvent.click(screen.getByRole('button', { name: /^Scan$/i }));
+    expect(screen.queryByTestId('civilization-artifact-structure-markers')).not.toBeInTheDocument();
+    expect(screen.getByTestId('civilization-plate-art').style.transform).toBe(portraitTransform);
+    expect(screen.queryByTestId('civilization-scan-guide')).not.toBeInTheDocument();
+  });
+
+
+  it('keeps Artifact dossiers hidden until annotation-only Scan is opened', () => {
+    const card = artifact('t1r01', 'Ashroot Bloom');
     render(
       <CivilizationScenePanel
         tier={2}
         palette={{ primary: '#4ade80', secondary: '#0f5a28', accent: '#a7f3c0' }}
-        profile={{
-          key: 'test',
-          seed: 1,
-          artifactCount: 1,
-          affinityCounts: { flare: 0, continuum: 0, verdance: 1, abyss: 0, radiance: 0 },
-          traitCounts: {},
-          traitWeights: {},
-          dominantTraits: ['biosphere'],
-          landmarks: [],
-        }}
+        profile={buildCivilizationProfile([card])}
         progressFraction={1}
         paused
+        defaultScene="surface"
         deploymentSites={[site(1)]}
-        forgedArtifacts={[artifact('t1r01', 'Ashroot Bloom')]}
+        forgedArtifacts={[card]}
         onOpenArtifact={vi.fn()}
       />,
     );
 
-    expect(screen.getByText('Civilization Portrait')).toBeInTheDocument();
-    expect(screen.getByText(/Local artifact traces \/\/ Ashroot Bloom/i)).toBeInTheDocument();
-    expect(screen.getByTestId('civilization-scene-deployment-ledger')).toBeInTheDocument();
-    expect(screen.getByTestId('civilization-plate-identity-grade')).toBeInTheDocument();
-    expect(screen.getByTestId('civilization-evolved-plate-state')).toBeInTheDocument();
-    expect(screen.getByTestId('civilization-archetype-atmosphere')).toBeInTheDocument();
-    expect(screen.getByTestId('civilization-archetype-composition')).toBeInTheDocument();
-    expect(screen.getByTestId('civilization-plate-dialect')).toBeInTheDocument();
-    expect(screen.getByTestId('civilization-scale-context')).toBeInTheDocument();
-    expect(screen.getByTestId('civilization-depth-composition')).toBeInTheDocument();
-    expect(screen.getByTestId('civilization-trait-dialect')).toBeInTheDocument();
-    expect(screen.getByTestId('civilization-signature-atmosphere')).toBeInTheDocument();
-    expect(screen.getByTestId('civilization-environment-signatures')).toBeInTheDocument();
-    expect(screen.getByTestId('civilization-artifact-substructures')).toBeInTheDocument();
-    expect(screen.getAllByTestId('civilization-artifact-motif').length).toBeGreaterThan(0);
-    expect(screen.queryByTestId('civilization-trait-signatures')).not.toBeInTheDocument();
-    expect(screen.getAllByText('Living Recovery Trace').length).toBeGreaterThanOrEqual(1);
-    expect(screen.getByTestId('civilization-scene-deployment-ledger')).toBeInTheDocument();
-    expect(screen.getByTestId('civilization-scene-deployment-ledger-item'))
-      .toHaveAttribute('data-impact-kind', 'artifact');
-    expect(screen.queryByText('Deployment Site 1')).not.toBeInTheDocument();
+    expect(screen.getByTestId('civilization-artifact-structure')).toBeInTheDocument();
+    expect(screen.queryByRole('button', { name: /Inspect Deployment Site 1/i })).not.toBeInTheDocument();
+    expect(screen.queryByLabelText('Deployment Site 1 dossier')).not.toBeInTheDocument();
+    const restingCameraTransform = screen.getByTestId('civilization-scene-camera').style.transform;
 
-    fireEvent.click(screen.getByRole('button', { name: /scan/i }));
+    fireEvent.click(screen.getByRole('button', { name: /^Scan$/i }));
 
-    expect(screen.getByTestId('civilization-focused-deployment-projection'))
-      .toHaveAttribute('data-scale-relation', 'magnified');
-    expect(screen.getByTestId('civilization-focused-deployment-projection'))
-      .toHaveAttribute('data-scale-presence', 'artifact_pin');
-    expect(screen.getByTestId('civilization-trait-signatures')).toBeInTheDocument();
-    expect(screen.getAllByText('Deployment Site 1').length).toBeGreaterThanOrEqual(1);
-    expect(screen.getAllByText('Living Recovery').length).toBeGreaterThanOrEqual(1);
-    expect(screen.getAllByText('macro').length).toBeGreaterThanOrEqual(1);
-    expect(screen.getByText(/Native city \/\/ habitat ecology chains threaded between worlds/i)).toBeInTheDocument();
-    expect(screen.getByTestId('civilization-scan-focus')).toBeInTheDocument();
-    expect(screen.getByTestId('civilization-command-frame'))
-      .toHaveAttribute('data-scan-active', 'true');
-    expect(screen.getByTestId('civilization-command-frame'))
-      .toHaveAttribute('data-frame-scene', 'stellar');
-    expect(screen.getByTestId('civilization-scan-command-primary'))
-      .toHaveAttribute('data-impact-kind', 'artifact');
-    expect(screen.getByTestId('civilization-scan-command-primary'))
-      .toHaveAttribute('data-native-scene', 'surface');
-    expect(screen.getByTestId('civilization-desktop-scan-rail')).toBeInTheDocument();
-    expect(screen.queryByText(/Visible as/i)).not.toBeInTheDocument();
+    expect(getScanMapPin('artifact:t1r01')).toBeInTheDocument();
+    fireEvent.click(getScanMapPin('artifact:t1r01'));
 
-    fireEvent.click(screen.getByRole('button', { name: /Deployment Site 1/i }));
+    expect(getScanMapPin('artifact:t1r01')).toHaveAttribute('aria-pressed', 'true');
+    expect(screen.getByTestId('civilization-artifact-selection-toolbar')).toHaveTextContent('1 selected');
+    expect(screen.queryByLabelText('Deployment Site 1 dossier')).not.toBeInTheDocument();
+    expect(screen.getByTestId('civilization-scene-camera')).toHaveAttribute('data-camera-shift', 'resting');
 
-    expect(screen.getByTestId('civilization-scan-focus')).toBeInTheDocument();
-    expect(screen.queryByTestId('civilization-desktop-scan-rail')).not.toBeInTheDocument();
-    expect(screen.queryByTestId('civilization-artifact-substructures')).not.toBeInTheDocument();
-    expect(screen.queryByTestId('civilization-environment-signatures')).not.toBeInTheDocument();
-    expect(screen.queryByTestId('civilization-trait-dialect')).not.toBeInTheDocument();
-    expect(screen.getByText(/close-up object scale/i)).toBeInTheDocument();
-    expect(screen.getByText(/City \/ surface detail/i)).toBeInTheDocument();
-    expect(screen.getByRole('button', { name: 'City' })).toHaveAttribute('aria-pressed', 'true');
-    expect(screen.getByRole('button', { name: 'City' })).toHaveAttribute('data-active-scale', 'true');
+    fireEvent.doubleClick(getScanMapPin('artifact:t1r01'));
+
+    const dossier = screen.getByLabelText('Deployment Site 1 dossier');
+    expect(dossier).toBeInTheDocument();
+    expect(dossier).toHaveAttribute('data-dossier-side');
+    expect(dossier).toHaveAttribute('data-dossier-vertical-side');
+    expect(screen.getByTestId('civilization-dossier-district')).toHaveTextContent(/district/i);
+    expect(screen.getByTestId('civilization-dossier-details')).not.toHaveAttribute('open');
     expect(screen.getByTestId('civilization-dossier-scale-kicker'))
-      .toHaveTextContent('Artifact deployment // Native City detail');
-    expect(screen.getByTestId('civilization-dossier-scale-kicker'))
-      .toHaveAttribute('data-view-scale', 'surface');
-    expect(screen.getByTestId('civilization-dossier-scale-kicker'))
-      .toHaveAttribute('data-native-scale', 'surface');
-    expect(screen.getByTestId('civilization-dossier-scale-context'))
-      .toHaveAccessibleName('Native: City detail; Influence: Stellar system');
-    expect(screen.getByText('Native: City detail')).toBeInTheDocument();
-    expect(screen.getByText('Influence: Stellar system')).toBeInTheDocument();
-    expect(screen.getByTestId('civilization-dossier-site-report')).toHaveTextContent('Site report');
-    expect(screen.getByTestId('civilization-dossier-site-report')).toHaveTextContent('macro');
-    expect(screen.getByTestId('civilization-dossier-site-report'))
-      .toHaveTextContent('Native city // habitat ecology chains threaded between worlds');
-    expect(screen.getByTestId('civilization-dossier-intelligence')).toHaveTextContent('Local trace integrated');
-    expect(screen.getByTestId('civilization-dossier-source-label')).toHaveTextContent('Ashroot Bloom');
-    expect(screen.getByTestId('civilization-dossier-readout-label')).toHaveTextContent('Pin plus consequence layer');
-    expect(screen.getByTestId('civilization-dossier-intelligence')).toHaveTextContent('Authored card lore');
-    expect(screen.queryByText('Pin layer')).not.toBeInTheDocument();
-    expect(screen.queryByText('Art macro')).not.toBeInTheDocument();
-    expect(screen.queryByText('Motif Seed-form')).not.toBeInTheDocument();
+      .toHaveTextContent('Native City detail');
+    expect(screen.getByTestId('civilization-scene-camera')).toHaveAttribute('data-camera-shift', 'artifact-focus');
+    expect(screen.getByTestId('civilization-scene-camera')).not.toHaveAttribute('data-camera-focus-offset', '0,0');
+    expect(screen.getByTestId('civilization-scene-camera').style.transform).not.toBe(restingCameraTransform);
+    expect(screen.getByTestId('civilization-return-overview')).toBeInTheDocument();
     expect(screen.getByRole('button', { name: /Ashroot Bloom/i })).toBeInTheDocument();
-    expect(screen.getAllByTestId('civilization-scale-active-indicator')).toHaveLength(1);
-    expect(screen.getByTestId('civilization-focused-deployment-projection'))
-      .toHaveAttribute('data-scale-relation', 'native');
-    expect(screen.getByTestId('civilization-focused-deployment-projection'))
-      .toHaveAttribute('data-native-presentation', 'local-site');
-    expect(screen.getByRole('button', { name: /Deployment Site 1/i })).toBeInTheDocument();
+    expect(screen.queryByTestId('civilization-focused-deployment-projection')).not.toBeInTheDocument();
+    expect(screen.queryByTestId('civilization-command-frame')).not.toBeInTheDocument();
+
+    fireEvent.click(screen.getByTestId('civilization-return-overview'));
+
+    expect(screen.queryByLabelText('Deployment Site 1 dossier')).not.toBeInTheDocument();
+    expect(screen.getByTestId('civilization-scene-camera')).toHaveAttribute('data-camera-shift', 'resting');
   });
 
-  it('lets the default cinematic ledger open the matching scan focus', () => {
+  it('multi-selects damaged Artifacts and offers free queued repair in both selection and dossier views', async () => {
+    const repairArtifacts = vi.fn();
+    const sites = [
+      site(1, { id: 'artifact:t1r01', artifactId: 't1r01', implementationState: 'damaged' }),
+      site(2, { id: 'artifact:t1r02', artifactId: 't1r02', implementationState: 'damaged' }),
+    ];
+
     render(
       <CivilizationScenePanel
-        tier={2}
+        tier={1}
         palette={{ primary: '#4ade80', secondary: '#0f5a28', accent: '#a7f3c0' }}
-        profile={{
-          key: 'test',
-          seed: 1,
-          artifactCount: 1,
-          affinityCounts: { flare: 0, continuum: 0, verdance: 1, abyss: 0, radiance: 0 },
-          traitCounts: {},
-          traitWeights: {},
-          dominantTraits: ['biosphere'],
-          landmarks: [],
-        }}
+        profile={buildCivilizationProfile([
+          artifact('t1r01', 'Ignition Kernel'),
+          artifact('t1r02', 'Ashroot Bloom'),
+        ])}
         progressFraction={1}
         paused
-        deploymentSites={[site(1)]}
+        defaultScene="surface"
+        defaultScanActive
+        deploymentSites={sites}
+        forgedArtifacts={[
+          artifact('t1r01', 'Ignition Kernel'),
+          artifact('t1r02', 'Ashroot Bloom'),
+        ]}
+        onRepairArtifacts={repairArtifacts}
+        onOpenArtifact={vi.fn()}
+      />,
+    );
+
+    fireEvent.click(getScanMapPin('artifact:t1r01'));
+    fireEvent.click(getScanMapPin('artifact:t1r02'));
+
+    expect(screen.getByTestId('civilization-artifact-selection-toolbar')).toHaveTextContent('2 selected');
+    expect(screen.getByTestId('civilization-repair-action')).toHaveAttribute('data-repair-state', 'ready');
+    expect(screen.getByTestId('civilization-repair-action')).toHaveTextContent('Repair 2 Artifacts');
+
+    await act(async () => {
+      fireEvent.click(screen.getByTestId('civilization-repair-action'));
+    });
+
+    expect(repairArtifacts).toHaveBeenCalledWith(['t1r01', 't1r02']);
+
+    fireEvent.doubleClick(getScanMapPin('artifact:t1r01'));
+
+    expect(screen.queryByTestId('civilization-artifact-selection-toolbar')).not.toBeInTheDocument();
+    expect(screen.getByLabelText('Deployment Site 1 dossier')).toBeInTheDocument();
+    expect(screen.getByTestId('civilization-repair-action')).toHaveTextContent('Repair Artifact');
+  });
+
+  it('distinguishes damaged, queued, and restored Artifact states without overstating repair eligibility', async () => {
+    const healthySite = site(1, {
+      id: 'artifact:t1r01',
+      artifactId: 't1r01',
+      implementationState: 'operational',
+    });
+    const damagedSite = site(2, {
+      id: 'artifact:t1r02',
+      artifactId: 't1r02',
+      implementationState: 'damaged',
+    });
+    const sharedProps = {
+      tier: 1 as const,
+      palette: { primary: '#4ade80', secondary: '#0f5a28', accent: '#a7f3c0' },
+      profile: buildCivilizationProfile([
+        artifact('t1r01', 'Ignition Kernel'),
+        artifact('t1r02', 'Ashroot Bloom'),
+      ]),
+      progressFraction: 1,
+      paused: true,
+      defaultScene: 'surface' as const,
+      defaultScanActive: true,
+      forgedArtifacts: [
+        artifact('t1r01', 'Ignition Kernel'),
+        artifact('t1r02', 'Ashroot Bloom'),
+      ],
+      onRepairArtifacts: vi.fn(),
+      onOpenArtifact: vi.fn(),
+    };
+    const { rerender } = render(
+      <CivilizationScenePanel
+        {...sharedProps}
+        deploymentSites={[healthySite, damagedSite]}
+        pendingRepairArtifactIds={[]}
+      />,
+    );
+
+    expect(getScanMapPin('artifact:t1r02')).toHaveAttribute('data-operational-state', 'damaged');
+    expect(screen.getByTestId('civilization-artifact-damaged-badge')).toBeInTheDocument();
+    fireEvent.click(getScanMapPin('artifact:t1r01'));
+    expect(screen.getByTestId('civilization-artifact-selection-toolbar'))
+      .toHaveTextContent('1 selected · 0 repairable');
+    expect(screen.getByTestId('civilization-repair-action'))
+      .toHaveTextContent('No damaged Artifacts selected');
+    expect(screen.getByTestId('civilization-repair-action')).toBeDisabled();
+
+    rerender(
+      <CivilizationScenePanel
+        {...sharedProps}
+        deploymentSites={[healthySite, damagedSite]}
+        pendingRepairArtifactIds={['t1r02']}
+      />,
+    );
+    expect(getScanMapPin('artifact:t1r02')).toHaveAttribute('data-repair-state', 'queued');
+    expect(screen.getByTestId('civilization-artifact-repair-queued-badge')).toBeInTheDocument();
+
+    rerender(
+      <CivilizationScenePanel
+        {...sharedProps}
+        deploymentSites={[healthySite, { ...damagedSite, implementationState: 'operational' }]}
+        pendingRepairArtifactIds={[]}
+      />,
+    );
+    expect(await screen.findByTestId('civilization-repair-complete-notice'))
+      .toHaveTextContent('1 Artifact restored');
+    expect(screen.getByTestId('civilization-artifact-repair-ring')).toBeInTheDocument();
+    expect(getScanMapPin('artifact:t1r02')).toHaveAttribute('data-repair-state', 'restored');
+  });
+
+  it('restores the originating scale after native-scale inspection', () => {
+    const blueprintSite = site(1, {
+      id: 'blueprint:bp_antimatter_detonator',
+      kind: 'blueprint',
+      blueprintId: 'bp_antimatter_detonator',
+      artifactId: undefined,
+      scaleBand: 'stellar',
+      title: 'Antimatter Quarantine Orbit',
+      relatedArtifactIds: [],
+    });
+    render(
+      <CivilizationScenePanel
+        tier={3}
+        palette={{ primary: '#4ade80', secondary: '#0f5a28', accent: '#a7f3c0' }}
+        profile={buildCivilizationProfile([])}
+        progressFraction={1}
+        paused
+        defaultScene="galaxy"
+        deploymentSites={[blueprintSite]}
+        forgedArtifacts={[]}
+        onOpenArtifact={vi.fn()}
+      />,
+    );
+
+    fireEvent.click(screen.getByRole('button', { name: /^Scan$/i }));
+    expect(screen.getByRole('button', { name: 'Galaxy' })).toHaveAttribute('data-active-scale', 'true');
+    fireEvent.click(getScanMapPin('blueprint:bp_antimatter_detonator'));
+    expect(screen.getByRole('button', { name: 'System' })).toHaveAttribute('data-active-scale', 'true');
+    fireEvent.click(screen.getByTestId('civilization-return-overview'));
+    expect(screen.getByRole('button', { name: 'Galaxy' })).toHaveAttribute('data-active-scale', 'true');
+    expect(screen.getByTestId('civilization-scene-camera')).toHaveAttribute('data-camera-shift', 'resting');
+  });
+
+  it('uses Space for multi-select and Enter for inspection on Artifact pins', () => {
+    render(
+      <CivilizationScenePanel
+        tier={1}
+        palette={{ primary: '#4ade80', secondary: '#0f5a28', accent: '#a7f3c0' }}
+        profile={buildCivilizationProfile([artifact('t1r01', 'Ashroot Bloom')])}
+        progressFraction={1}
+        paused
+        defaultScene="surface"
+        defaultScanActive
+        deploymentSites={[site(1, { id: 'artifact:t1r01', artifactId: 't1r01' })]}
         forgedArtifacts={[artifact('t1r01', 'Ashroot Bloom')]}
         onOpenArtifact={vi.fn()}
       />,
     );
 
-    expect(screen.getByRole('button', { name: /^Scan$/i })).toHaveAttribute('aria-pressed', 'false');
-
-    fireEvent.click(screen.getByRole('button', { name: /Focus deployment Deployment Site 1/i }));
-
-    expect(screen.getByRole('button', { name: /^Scan$/i })).toHaveAttribute('aria-pressed', 'true');
-    expect(screen.getByTestId('civilization-focused-deployment-projection'))
-      .toHaveAttribute('data-site-id', 'artifact:t1r01');
+    const pin = getScanMapPin('artifact:t1r01');
+    fireEvent.keyDown(pin, { key: ' ' });
+    expect(pin).toHaveAttribute('aria-pressed', 'true');
+    fireEvent.keyDown(pin, { key: 'Enter' });
+    expect(screen.getByLabelText('Deployment Site 1 dossier')).toBeInTheDocument();
   });
 
-  it('opens recent local-scale work at its native zoom layer', async () => {
+
+  it('opens recent local-scale work at its native authored layer', async () => {
     render(
       <CivilizationScenePanel
         tier={3}
         palette={{ primary: '#60a5fa', secondary: '#1a3a8f', accent: '#bfdbfe' }}
-        profile={{
-          key: 'test',
-          seed: 1,
-          artifactCount: 1,
-          affinityCounts: { flare: 0, continuum: 0, verdance: 1, abyss: 0, radiance: 0 },
-          traitCounts: {},
-          traitWeights: {},
-          dominantTraits: ['biosphere'],
-          landmarks: [],
-        }}
+        profile={buildCivilizationProfile([artifact('t1r01', 'Ashroot Bloom')])}
         progressFraction={1}
         paused
         deploymentSites={[site(1, { title: 'Ashroot Bloom Trace' })]}
@@ -417,31 +878,27 @@ describe('CivilizationScenePanel', () => {
       />,
     );
 
-    expect(await screen.findByText(/New trace recorded \/\/ Ashroot Bloom Trace/i))
+    expect(await screen.findByText(/New work realized \/\/ Ashroot Bloom Trace/i))
       .toBeInTheDocument();
-    expect(screen.getByText(/City \/ surface detail \/\/ 1 trace recorded/i)).toBeInTheDocument();
-    expect(screen.getByRole('button', { name: /^Scan$/i })).toHaveAttribute('aria-pressed', 'true');
+    expect(screen.getByRole('button', { name: 'City' })).toHaveAttribute('data-active-scale', 'true');
+    expect(screen.getByTestId('civilization-plate-art'))
+      .toHaveAttribute('data-art-slot', 'civilization.environment.aurora_basin.surface.city-1.neutral.cinematic');
+    expect(screen.queryByTestId('civilization-trace-reveal')).not.toBeInTheDocument();
+
+    fireEvent.click(screen.getByRole('button', { name: /^Scan/i }));
+    fireEvent.doubleClick(getScanMapPin('artifact:t1r01'));
+
     expect(screen.getByLabelText('Ashroot Bloom Trace dossier')).toBeInTheDocument();
     expect(screen.getByTestId('civilization-dossier-scale-kicker'))
       .toHaveTextContent('Native City detail');
-    expect(screen.queryByTestId('civilization-zoom-hotspot')).not.toBeInTheDocument();
   });
 
-  it('promotes completed Blueprints into the default cinematic consequence layer', () => {
+  it('keeps manifested Blueprint structures stable while Scan adds identification only', () => {
     render(
       <CivilizationScenePanel
         tier={2}
         palette={{ primary: '#f87171', secondary: '#3f0f1a', accent: '#fecdd3' }}
-        profile={{
-          key: 'test',
-          seed: 1,
-          artifactCount: 1,
-          affinityCounts: { flare: 0, continuum: 0, verdance: 0, abyss: 1, radiance: 0 },
-          traitCounts: {},
-          traitWeights: {},
-          dominantTraits: ['transit', 'biosphere'],
-          landmarks: [],
-        }}
+        profile={buildCivilizationProfile([artifact('t1p04', 'Magnetic Bottle')])}
         progressFraction={1}
         paused
         deploymentSites={[
@@ -449,6 +906,8 @@ describe('CivilizationScenePanel', () => {
             id: 'blueprint:bp_antimatter_detonator',
             kind: 'blueprint',
             blueprintId: 'bp_antimatter_detonator',
+            blueprintManifestationScale: 'satellite',
+            blueprintManifestationMotion: 'gimbaled_orbit',
             artifactId: undefined,
             representationMode: 'blueprint_consequence',
             sourceQuality: 'authored',
@@ -469,280 +928,227 @@ describe('CivilizationScenePanel', () => {
       />,
     );
 
-    expect(screen.getByTestId('civilization-dominant-blueprints')).toBeInTheDocument();
-    expect(screen.getByTestId('civilization-blueprint-antimatter-native')).toBeInTheDocument();
-    expect(screen.queryByTestId('civilization-artifact-substructures')).not.toBeInTheDocument();
+    const portraitDevice = screen.getByTestId('civilization-blueprint-antimatter-device');
+    expect(screen.getByTestId('civilization-blueprint-antimatter-native'))
+      .toHaveAttribute('data-manifestation-scale', 'satellite');
+    expect(screen.getByTestId('civilization-blueprint-antimatter-native'))
+      .toHaveAttribute('data-manifestation-socket', 'stellar:outer_system:0');
+    expect(screen.queryByTestId('civilization-project-zones')).not.toBeInTheDocument();
+
+    fireEvent.click(screen.getByRole('button', { name: /scan/i }));
+
+    expect(screen.getByTestId('civilization-blueprint-antimatter-device')).toBe(portraitDevice);
+    expect(screen.queryByTestId('civilization-project-zones')).not.toBeInTheDocument();
+    expect(getScanMapPin('blueprint:bp_antimatter_detonator')).toBeInTheDocument();
+    expect(getScanMapPin('blueprint:bp_antimatter_detonator'))
+      .toHaveAttribute(
+        'data-world-anchor',
+        screen.getByTestId('civilization-blueprint-antimatter-native')
+          .getAttribute('data-world-anchor'),
+      );
+    expect(Number(getScanMapPin('blueprint:bp_antimatter_detonator').getAttribute('data-pin-offset')))
+      .toBeGreaterThan(0);
     expect(screen.queryByTestId('civilization-environment-signatures')).not.toBeInTheDocument();
     expect(screen.queryByTestId('civilization-trait-signatures')).not.toBeInTheDocument();
-    expect(screen.getByText(/Local artifact traces \/\/ Magnetic Bottle/i)).toBeInTheDocument();
-    expect(screen.getAllByText('Antimatter Quarantine Orbit').length).toBeGreaterThanOrEqual(1);
-
-    fireEvent.click(screen.getByRole('button', { name: /scan/i }));
-
-    expect(screen.getByTestId('civilization-environment-signatures')).toBeInTheDocument();
-    expect(screen.getByTestId('civilization-trait-signatures')).toBeInTheDocument();
-    expect(screen.getByRole('button', { name: /Magnetic Bottle Trace/i })).toBeInTheDocument();
   });
 
-  it('preserves accord and archive identities instead of flattening them into living or route scenes', () => {
-    const accordArtifact = {
-      ...artifact('t2p03', 'Living Treaty Organ'),
-      tier: 2,
-      eminence: 2,
-      bonusAffinity: 'radiance' as const,
-    };
-    const { unmount } = render(
-      <CivilizationScenePanel
-        tier={1}
-        palette={{ primary: '#facc15', secondary: '#8a6f1e', accent: '#fef3c7' }}
-        profile={buildCivilizationProfile([accordArtifact])}
-        progressFraction={1}
-        paused
-        deploymentSites={[site(1, {
-          id: 'artifact:t2p03',
-          artifactId: 't2p03',
-          trait: 'accord',
-          affinity: 'radiance',
-          title: 'Living Treaty Organ Trace',
-          laneLabel: 'Civic order',
-          visibleAs: 'public treaty beacons in civic centers',
-        })]}
-        forgedArtifacts={[accordArtifact]}
-        onOpenArtifact={vi.fn()}
-      />,
-    );
-
-    expect(screen.getByTestId('civilization-archetype-atmosphere'))
-      .toHaveAttribute('data-archetype', 'accord_beacon');
-    expect(screen.getByTestId('civilization-archetype-label')).toHaveTextContent('Visual identity // Accord Beacon');
-    expect(screen.getByTestId('civilization-archetype-composition'))
-      .toHaveAttribute('data-asset-slot', 'civilization.archetype.accord_beacon.orbit');
-    expect(screen.getByTestId('civilization-plate-art'))
-      .toHaveAttribute('data-art-slot', 'civilization.plate.orbit.accord_beacon.cinematic');
-
-    unmount();
-
-    const archiveArtifact = {
-      ...artifact('t3s03', 'Extinction Signal Decoder'),
-      tier: 3,
-      eminence: 3,
-      bonusAffinity: 'continuum' as const,
-    };
-
-    const { unmount: unmountArchive } = render(
-      <CivilizationScenePanel
-        tier={3}
-        palette={{ primary: '#60a5fa', secondary: '#1a3a8f', accent: '#bfdbfe' }}
-        profile={buildCivilizationProfile([archiveArtifact])}
-        progressFraction={1}
-        paused
-        defaultScene="galaxy"
-        deploymentSites={[site(1, {
-          id: 'artifact:t3s03',
-          artifactId: 't3s03',
-          trait: 'archive',
-          affinity: 'continuum',
-          scaleBand: 'galactic',
-          title: 'Extinction Archive Trace',
-          laneLabel: 'Memory',
-          visibleAs: 'archive spines preserving dead-system records',
-        })]}
-        forgedArtifacts={[archiveArtifact]}
-        onOpenArtifact={vi.fn()}
-      />,
-    );
-
-    expect(screen.getByTestId('civilization-archetype-atmosphere'))
-      .toHaveAttribute('data-archetype', 'archive_lattice');
-    expect(screen.getByTestId('civilization-archetype-label')).toHaveTextContent('Visual identity // Archive Lattice');
-    expect(screen.getByTestId('civilization-archetype-composition'))
-      .toHaveAttribute('data-asset-slot', 'civilization.archetype.archive_lattice.galaxy');
-    expect(screen.getByTestId('civilization-plate-art'))
-      .toHaveAttribute('data-art-slot', 'civilization.plate.galaxy.archive_lattice.cinematic');
-
-    unmountArchive();
-
-    const { unmount: unmountAccordGalaxy } = render(
-      <CivilizationScenePanel
-        tier={3}
-        palette={{ primary: '#facc15', secondary: '#8a6f1e', accent: '#fef3c7' }}
-        profile={buildCivilizationProfile([accordArtifact])}
-        progressFraction={1}
-        paused
-        defaultScene="galaxy"
-        deploymentSites={[site(1, {
-          id: 'artifact:t2p03',
-          artifactId: 't2p03',
-          trait: 'accord',
-          affinity: 'radiance',
-          scaleBand: 'galactic',
-          title: 'Living Treaty Organ Trace',
-          laneLabel: 'Civic order',
-          visibleAs: 'treaty paths between witness constellations',
-        })]}
-        forgedArtifacts={[accordArtifact]}
-        onOpenArtifact={vi.fn()}
-      />,
-    );
-
-    expect(screen.getByTestId('civilization-plate-art'))
-      .toHaveAttribute('data-art-slot', 'civilization.plate.galaxy.accord_beacon.cinematic');
-
-    unmountAccordGalaxy();
-
-    render(
-      <CivilizationScenePanel
-        tier={2}
-        palette={{ primary: '#60a5fa', secondary: '#1a3a8f', accent: '#bfdbfe' }}
-        profile={buildCivilizationProfile([archiveArtifact])}
-        progressFraction={1}
-        paused
-        defaultScene="stellar"
-        deploymentSites={[site(1, {
-          id: 'artifact:t3s03',
-          artifactId: 't3s03',
-          trait: 'archive',
-          affinity: 'continuum',
-          scaleBand: 'stellar',
-          title: 'Extinction Archive Trace',
-          laneLabel: 'Memory',
-          visibleAs: 'storm-memory filaments and system warning relays',
-        })]}
-        forgedArtifacts={[archiveArtifact]}
-        onOpenArtifact={vi.fn()}
-      />,
-    );
-
-    expect(screen.getByTestId('civilization-plate-art'))
-      .toHaveAttribute('data-art-slot', 'civilization.plate.stellar.archive_lattice.cinematic');
-  });
-
-  it('caps visible desktop influences and clusters overflow sites by lane', () => {
-    const sites = Array.from({ length: 8 }, (_, index) => site(index + 1, {
-      laneLabel: index < 6 ? 'Habitat ecology' : 'Controlled catastrophe',
-      scaleBand: index === 7 ? 'galactic' : 'stellar',
-    }));
-
-    render(
-      <CivilizationScenePanel
-        tier={3}
-        palette={{ primary: '#60a5fa', secondary: '#1a3a8f', accent: '#bfdbfe' }}
-        profile={{
-          key: 'test',
-          seed: 1,
-          artifactCount: 7,
-          affinityCounts: { flare: 0, continuum: 0, verdance: 7, abyss: 0, radiance: 0 },
-          traitCounts: {},
-          traitWeights: {},
-          dominantTraits: [],
-          landmarks: [],
-        }}
-        progressFraction={1}
-        paused
-        deploymentSites={sites}
-        forgedArtifacts={sites.map((entry, index) => artifact(entry.artifactId!, `Artifact ${index + 1}`))}
-        onOpenArtifact={vi.fn()}
-      />,
-    );
-
-    fireEvent.click(screen.getByRole('button', { name: /scan/i }));
-
-    expect(screen.getByText('+2 clustered')).toBeInTheDocument();
-    expect(screen.getAllByText(/small artifact trace/i).length).toBeGreaterThanOrEqual(1);
-    expect(screen.getAllByRole('button', { name: /Deployment Site/i })).toHaveLength(6);
-  });
-
-  it('keeps at least one small artifact trace visible when stronger events compete for scan slots', () => {
-    const sites: CivilizationDeploymentSite[] = [
+  it('keeps every manifested Blueprint physically present when Scan is toggled', () => {
+    const blueprintSites = [
       site(1, {
         id: 'blueprint:bp_antimatter_detonator',
         kind: 'blueprint',
         blueprintId: 'bp_antimatter_detonator',
+        blueprintManifestationScale: 'satellite',
+        blueprintManifestationMotion: 'gimbaled_orbit',
         artifactId: undefined,
-        relatedArtifactIds: [],
-        priority: 1000,
+        scaleBand: 'stellar',
+        representationMode: 'blueprint_consequence',
+        sourceQuality: 'authored',
         title: 'Antimatter Quarantine Orbit',
+        relatedArtifactIds: [],
       }),
       site(2, {
-        id: 'protocol:sealed_protocol_01',
-        kind: 'protocol',
+        id: 'blueprint:bp_mantle_to_orbit_foundry',
+        kind: 'blueprint',
+        blueprintId: 'bp_mantle_to_orbit_foundry',
         artifactId: undefined,
+        scaleBand: 'planetary',
+        representationMode: 'blueprint_consequence',
+        sourceQuality: 'authored',
+        title: 'Mantle-to-Orbit Foundry',
         relatedArtifactIds: [],
-        priority: 900,
-        title: 'Sealed Protocol 01',
       }),
       site(3, {
-        id: 'luminary:lum_verdant',
-        kind: 'luminary',
+        id: 'blueprint:bp_ascension_registry',
+        kind: 'blueprint',
+        blueprintId: 'bp_ascension_registry',
+        blueprintManifestationScale: 'distributed',
+        blueprintManifestationMotion: 'signal_constellation',
         artifactId: undefined,
+        scaleBand: 'stellar',
+        representationMode: 'blueprint_consequence',
+        sourceQuality: 'authored',
+        title: 'Ascension Registry',
         relatedArtifactIds: [],
-        priority: 800,
-        title: 'Verdance Luminary Pressure',
       }),
       site(4, {
-        id: 'artifact:t3r01',
-        artifactId: 't3r01',
-        artifactTier: 3,
-        priority: 500,
-        title: 'Great Engine Trace',
-      }),
-      site(5, {
-        id: 'artifact:t3r02',
-        artifactId: 't3r02',
-        artifactTier: 3,
-        priority: 490,
-        title: 'Orbital Ark Trace',
-      }),
-      site(6, {
-        id: 'artifact:t3r03',
-        artifactId: 't3r03',
-        artifactTier: 3,
-        priority: 480,
-        title: 'Sky Furnace Trace',
-      }),
-      site(7, {
-        id: 'artifact:t1r01',
-        artifactId: 't1r01',
-        artifactTier: 1,
-        priority: 110,
-        title: 'Ashroot Bloom Trace',
+        id: 'blueprint:bp_worldshield_covenant',
+        kind: 'blueprint',
+        blueprintId: 'bp_worldshield_covenant',
+        artifactId: undefined,
+        scaleBand: 'planetary',
+        representationMode: 'blueprint_consequence',
+        sourceQuality: 'authored',
+        title: 'Worldshield Covenant',
+        relatedArtifactIds: [],
       }),
     ];
 
     render(
       <CivilizationScenePanel
         tier={3}
-        palette={{ primary: '#60a5fa', secondary: '#1a3a8f', accent: '#bfdbfe' }}
+        palette={{ primary: '#dfb86b', secondary: '#5f3417', accent: '#ffe4a3' }}
         profile={{
-          key: 'test',
+          key: 'all-blueprints-test',
           seed: 1,
-          artifactCount: 4,
-          affinityCounts: { flare: 0, continuum: 0, verdance: 4, abyss: 0, radiance: 0 },
+          artifactCount: 0,
+          affinityCounts: { flare: 0, continuum: 0, verdance: 0, abyss: 0, radiance: 0 },
           traitCounts: {},
           traitWeights: {},
-          dominantTraits: [],
+          dominantTraits: ['accord'],
           landmarks: [],
         }}
         progressFraction={1}
         paused
-        deploymentSites={sites}
-        forgedArtifacts={[
-          artifact('t3r01', 'Great Engine'),
-          artifact('t3r02', 'Orbital Ark'),
-          artifact('t3r03', 'Sky Furnace'),
-          artifact('t1r01', 'Ashroot Bloom'),
-        ]}
+        defaultScene="galaxy"
+        showAllArtifactPins
+        deploymentSites={blueprintSites}
+        forgedArtifacts={[]}
         onOpenArtifact={vi.fn()}
       />,
     );
 
-    fireEvent.click(screen.getByRole('button', { name: /scan/i }));
-    fireEvent.click(screen.getByRole('button', { name: /city/i }));
+    const blueprintTestIds = [
+      'civilization-blueprint-antimatter-native',
+      'civilization-blueprint-mantle-native',
+      'civilization-blueprint-ascension-native',
+      'civilization-blueprint-worldshield-native',
+    ];
+    const physicalBlueprints = blueprintTestIds.map((testId) => screen.getByTestId(testId));
+    const physicalStyles = physicalBlueprints.map((element) => element.getAttribute('style'));
+    expect(screen.getByTestId('civilization-blueprint-mantle-native'))
+      .toHaveAttribute('data-representation-mode', 'distant-consequence');
+    expect(screen.getByTestId('civilization-blueprint-worldshield-native'))
+      .toHaveAttribute('data-representation-mode', 'distant-consequence');
 
-    expect(screen.getByRole('button', { name: /Ashroot Bloom Trace/i })).toBeInTheDocument();
+    fireEvent.click(screen.getByRole('button', { name: /^Scan$/i }));
+
+    blueprintTestIds.forEach((testId, index) => {
+      const manifestation = screen.getByTestId(testId);
+      expect(manifestation).toBe(physicalBlueprints[index]);
+      expect(manifestation.getAttribute('style')).toBe(physicalStyles[index]);
+      expect(manifestation.querySelector('img')).toBeInTheDocument();
+    });
+    expect(screen.queryByTestId('civilization-project-zones')).not.toBeInTheDocument();
   });
 
-  it('reserves compact default ledger space for a small artifact trace', () => {
+  it('renders Ascension Registry as a physical distributed stellar institution', () => {
+    render(
+      <CivilizationScenePanel
+        tier={2}
+        palette={{ primary: '#dfb86b', secondary: '#4b3f1f', accent: '#fff4c2' }}
+        profile={{
+          key: 'ascension-registry-test',
+          seed: 3,
+          artifactCount: 0,
+          affinityCounts: { flare: 0, continuum: 0, verdance: 0, abyss: 0, radiance: 3 },
+          traitCounts: {},
+          traitWeights: {},
+          dominantTraits: ['accord'],
+          landmarks: [],
+        }}
+        progressFraction={1}
+        paused
+        defaultScene="stellar"
+        deploymentSites={[
+          site(1, {
+            id: 'blueprint:bp_ascension_registry',
+            kind: 'blueprint',
+            blueprintId: 'bp_ascension_registry',
+            blueprintManifestationScale: 'distributed',
+            blueprintManifestationMotion: 'signal_constellation',
+            artifactId: undefined,
+            scaleBand: 'stellar',
+            representationMode: 'blueprint_consequence',
+            sourceQuality: 'authored',
+            title: 'Ascension Registry Beacon',
+            relatedArtifactIds: [],
+          }),
+        ]}
+        forgedArtifacts={[]}
+        onOpenArtifact={vi.fn()}
+      />,
+    );
+
+    const registry = screen.getByTestId('civilization-blueprint-ascension-native');
+    expect(registry).toHaveAttribute('data-manifestation-scale', 'distributed');
+    expect(registry).toHaveAttribute('data-manifestation-motion', 'signal_constellation');
+    expect(registry.querySelector('img')).toBeInTheDocument();
+    expect(registry.querySelector('svg')).not.toBeInTheDocument();
+
+    fireEvent.click(screen.getByRole('button', { name: /scan/i }));
+    expect(screen.getByTestId('civilization-blueprint-ascension-native')).toBe(registry);
+    expect(screen.queryByTestId('civilization-project-zones')).not.toBeInTheDocument();
+  });
+
+  it('reveals major Blueprint work at its authored scale before civilization maturity catches up', () => {
+    const antimatterSite = site(1, {
+      id: 'blueprint:bp_antimatter_detonator',
+      kind: 'blueprint',
+      scaleBand: 'stellar',
+      blueprintId: 'bp_antimatter_detonator',
+      artifactId: undefined,
+      representationMode: 'blueprint_consequence',
+      sourceQuality: 'authored',
+      priority: 1000,
+      title: 'Antimatter Quarantine Orbit',
+      relatedArtifactIds: [],
+    });
+
+    render(
+      <CivilizationScenePanel
+        tier={1}
+        palette={{ primary: '#f87171', secondary: '#3f0f1a', accent: '#fecdd3' }}
+        profile={{
+          key: 'test',
+          seed: 1,
+          artifactCount: 0,
+          affinityCounts: { flare: 0, continuum: 0, verdance: 0, abyss: 1, radiance: 0 },
+          traitCounts: {},
+          traitWeights: {},
+          dominantTraits: ['containment'],
+          landmarks: [],
+        }}
+        progressFraction={1}
+        paused
+        showAllArtifactPins
+        deploymentSites={[antimatterSite]}
+        forgedArtifacts={[]}
+        externalRecentSiteIds={[antimatterSite.id]}
+        onOpenArtifact={vi.fn()}
+      />,
+    );
+
+    expect(screen.getByRole('button', { name: 'System' })).toHaveAttribute('aria-pressed', 'true');
+    expect(screen.getByRole('button', { name: /^Scan/i })).toHaveAttribute('aria-pressed', 'true');
+    expect(screen.getByTestId('civilization-blueprint-antimatter-native')).toBeInTheDocument();
+    expect(screen.getByTestId('civilization-blueprint-antimatter-device')).toBeInTheDocument();
+  });
+
+
+
+
+  it('keeps the compact portrait clean until Scan is opened', () => {
     mobileState.isMobile = true;
     const sites: CivilizationDeploymentSite[] = [
       site(1, {
@@ -802,13 +1208,16 @@ describe('CivilizationScenePanel', () => {
       />,
     );
 
-    const ledger = screen.getByTestId('civilization-scene-deployment-ledger');
-    expect(ledger).toHaveTextContent('Mantle-to-Orbit Freight Lane');
-    expect(ledger).toHaveTextContent('Mantlelift Driver Coil Trace');
-    expect(ledger).not.toHaveTextContent('Flare Luminary Pressure');
+    expect(screen.queryByTestId('civilization-scene-deployment-ledger')).not.toBeInTheDocument();
+    expect(screen.queryByText('Mantle-to-Orbit Freight Lane')).not.toBeInTheDocument();
+    fireEvent.click(screen.getByRole('button', { name: /^Scan$/i }));
+    expect(screen.getByRole('button', { name: /Inspect Blueprint Mantle-to-Orbit Freight Lane/i }))
+      .toBeInTheDocument();
+    expect(screen.getByTestId('civilization-blueprint-map-pin-art')).toBeInTheDocument();
+    expect(screen.getByTestId('civilization-blueprint-paper-badge')).toBeInTheDocument();
   });
 
-  it('announces newly recorded traces and nudges scan after forged artifacts change', () => {
+  it('announces newly realized work without covering the physical manifestation', () => {
     const firstSite = site(1, { title: 'Ashroot Bloom Trace' });
     const secondSite = site(2, {
       id: 'artifact:t1s02',
@@ -817,20 +1226,10 @@ describe('CivilizationScenePanel', () => {
     });
     const firstCard = artifact('t1r01', 'Ashroot Bloom');
     const secondCard = artifact('t1s02', 'Mantlelift Driver Coil');
-
     const props = {
       tier: 2 as const,
       palette: { primary: '#4ade80', secondary: '#0f5a28', accent: '#a7f3c0' },
-      profile: {
-        key: 'test',
-        seed: 1,
-        artifactCount: 1,
-        affinityCounts: { flare: 0, continuum: 0, verdance: 1, abyss: 0, radiance: 0 },
-        traitCounts: {},
-        traitWeights: {},
-        dominantTraits: [],
-        landmarks: [],
-      },
+      profile: buildCivilizationProfile([firstCard]),
       progressFraction: 1,
       paused: true,
       onOpenArtifact: vi.fn(),
@@ -844,234 +1243,68 @@ describe('CivilizationScenePanel', () => {
       />,
     );
 
-    expect(screen.queryByText(/New trace recorded/i)).not.toBeInTheDocument();
-
     rerender(
       <CivilizationScenePanel
         {...props}
-        profile={{ ...props.profile, artifactCount: 2 }}
+        profile={buildCivilizationProfile([firstCard, secondCard])}
         deploymentSites={[firstSite, secondSite]}
         forgedArtifacts={[firstCard, secondCard]}
       />,
     );
 
-    expect(screen.getByText(/New trace recorded \/\/ Mantlelift Driver Coil Trace/i)).toBeInTheDocument();
-    expect(screen.getByRole('button', { name: /^Scan$/i })).toHaveAttribute('aria-pressed', 'true');
-    expect(screen.queryByText('Artifact absorbed')).not.toBeInTheDocument();
-    expect(screen.queryByText('ART')).not.toBeInTheDocument();
-    expect(screen.getByTestId('civilization-trace-reveal')).toHaveAttribute('data-impact-kind', 'artifact');
-    expect(screen.getByTestId('civilization-trace-reveal')).toHaveAttribute('data-primary-title', 'Mantlelift Driver Coil');
-    expect(screen.queryByTestId('civilization-trace-reveal-title')).not.toBeInTheDocument();
+    expect(screen.getByText(/New work realized \/\/ Mantlelift Driver Coil Trace/i)).toBeInTheDocument();
+    expect(screen.getByRole('button', { name: /^Scan/i })).toHaveAttribute('aria-pressed', 'false');
+    expect(screen.getAllByTestId('civilization-artifact-structure')).toHaveLength(2);
+    expect(screen.queryByTestId('civilization-trace-reveal')).not.toBeInTheDocument();
 
-    expect(screen.getByRole('button', { name: /Mantlelift Driver Coil Trace/i })).toBeInTheDocument();
+    fireEvent.click(screen.getByRole('button', { name: /^Scan/i }));
+
+    expect(getScanMapPin('artifact:t1s02'))
+      .toHaveAttribute('data-pin-state', 'focused');
   });
 
-  it('categorizes non-artifact recent trace reveals', () => {
-    const baseProps = {
-      tier: 2 as const,
-      palette: { primary: '#60a5fa', secondary: '#1a3a8f', accent: '#bfdbfe' },
-      profile: {
-        key: 'test',
-        seed: 1,
-        artifactCount: 1,
-        affinityCounts: { flare: 0, continuum: 1, verdance: 0, abyss: 0, radiance: 0 },
-        traitCounts: {},
-        traitWeights: {},
-        dominantTraits: [],
-        landmarks: [],
-      },
-      progressFraction: 1,
-      paused: true,
-      defaultScanActive: true,
-      forgedArtifacts: [],
-      onOpenArtifact: vi.fn(),
-    };
-    const cases: Array<{
-      site: CivilizationDeploymentSite;
-      impactKind: string;
-    }> = [
-      {
-        site: site(1, {
-          id: 'blueprint:bp_antimatter_detonator',
-          kind: 'blueprint',
-          artifactId: undefined,
-          blueprintId: 'bp_antimatter_detonator',
-          representationMode: 'blueprint_consequence',
-          title: 'Antimatter Quarantine Orbit',
-          relatedArtifactIds: [],
-        }),
-        impactKind: 'blueprint',
-      },
-      {
-        site: site(2, {
-          id: 'luminary:lum_continuum',
-          kind: 'luminary',
-          artifactId: undefined,
-          representationMode: 'luminary_influence',
-          title: 'Continuum Luminary Pressure',
-          relatedArtifactIds: [],
-        }),
-        impactKind: 'luminary',
-      },
-      {
-        site: site(3, {
-          id: 'protocol:sealed_protocol_01',
-          kind: 'protocol',
-          artifactId: undefined,
-          representationMode: 'sealed_protocol',
-          title: 'Sealed Protocol 01',
-          relatedArtifactIds: [],
-        }),
-        impactKind: 'protocol',
-      },
-      {
-        site: site(4, {
-          id: 'chronicle:outer_vault_access',
-          kind: 'chronicle',
-          artifactId: undefined,
-          chronicleId: 'outer_vault_access',
-          representationMode: 'chronicle_record',
-          title: 'Outer Vault Access',
-          relatedArtifactIds: [],
-        }),
-        impactKind: 'chronicle',
-      },
-    ];
 
-    const { rerender } = render(
+  it('opens non-Artifact recent work on its native scale without a decorative reveal overlay', () => {
+    const blueprintSite = site(1, {
+      id: 'blueprint:bp_mantle_to_orbit_foundry',
+      kind: 'blueprint',
+      scaleBand: 'planetary',
+      artifactId: undefined,
+      blueprintId: 'bp_mantle_to_orbit_foundry',
+      representationMode: 'blueprint_consequence',
+      title: 'Mantle-to-Orbit Freight Lane',
+      visibleAs: 'a forged ascent corridor connecting deep crust to orbital industry',
+      relatedArtifactIds: [],
+    });
+
+    render(
       <CivilizationScenePanel
-        {...baseProps}
-        deploymentSites={[cases[0]!.site]}
-        externalRecentSiteIds={[cases[0]!.site.id]}
+        tier={1}
+        palette={{ primary: '#dfb86b', secondary: '#5f3813', accent: '#fff0b8' }}
+        profile={buildCivilizationProfile([])}
+        progressFraction={1}
+        paused
+        defaultScanActive
+        defaultScene="surface"
+        deploymentSites={[blueprintSite]}
+        externalRecentSiteIds={[blueprintSite.id]}
+        forgedArtifacts={[]}
+        onOpenArtifact={vi.fn()}
       />,
     );
 
-    for (const entry of cases) {
-      rerender(
-        <CivilizationScenePanel
-          {...baseProps}
-          deploymentSites={[entry.site]}
-          externalRecentSiteIds={[entry.site.id]}
-        />,
-      );
+    expect(screen.getByText(/New work realized \/\/ Mantle-to-Orbit Freight Lane/i)).toBeInTheDocument();
+    expect(screen.getByRole('button', { name: 'Planet' })).toHaveAttribute('data-active-scale', 'true');
+    expect(screen.queryByTestId('civilization-trace-reveal')).not.toBeInTheDocument();
 
-      expect(screen.getByTestId('civilization-trace-reveal')).toHaveAttribute('data-impact-kind', entry.impactKind);
-      expect(screen.getByTestId('civilization-trace-reveal')).toHaveAttribute('data-primary-title', entry.site.title);
-      expect(screen.getByLabelText(`${entry.site.title} dossier`)).toBeInTheDocument();
-      expect(screen.queryByTestId('civilization-trace-reveal-title')).not.toBeInTheDocument();
-    }
+    fireEvent.click(getScanMapPin('blueprint:bp_mantle_to_orbit_foundry'));
+
+    expect(screen.getByLabelText('Mantle-to-Orbit Freight Lane dossier')).toBeInTheDocument();
+    expect(screen.getByTestId('civilization-dossier-scale-kicker'))
+      .toHaveAttribute('data-native-scale', 'orbit');
   });
 
-  it('opens non-artifact recent work on its native scale with category-aware reveal copy', () => {
-    const baseProps = {
-      tier: 1 as const,
-      palette: { primary: '#dfb86b', secondary: '#5f3813', accent: '#fff0b8' },
-      profile: {
-        key: 'test',
-        seed: 1,
-        artifactCount: 0,
-        affinityCounts: { flare: 1, continuum: 0, verdance: 0, abyss: 0, radiance: 0 },
-        traitCounts: {},
-        traitWeights: {},
-        dominantTraits: [],
-        landmarks: [],
-      },
-      progressFraction: 1,
-      paused: true,
-      defaultScanActive: true,
-      defaultScene: 'surface' as const,
-      forgedArtifacts: [],
-      onOpenArtifact: vi.fn(),
-    };
-    const cases: Array<{
-      site: CivilizationDeploymentSite;
-      impactKind: string;
-    }> = [
-      {
-        site: site(1, {
-          id: 'blueprint:bp_mantle_to_orbit_foundry',
-          kind: 'blueprint',
-          scaleBand: 'planetary',
-          artifactId: undefined,
-          blueprintId: 'bp_mantle_to_orbit_foundry',
-          representationMode: 'blueprint_consequence',
-          title: 'Mantle-to-Orbit Freight Lane',
-          visibleAs: 'a forged ascent corridor connecting deep crust to orbital industry',
-          relatedArtifactIds: [],
-        }),
-        impactKind: 'blueprint',
-      },
-      {
-        site: site(2, {
-          id: 'luminary:lum_continuum',
-          kind: 'luminary',
-          scaleBand: 'planetary',
-          artifactId: undefined,
-          representationMode: 'luminary_influence',
-          title: 'Continuum Luminary Pressure',
-          visibleAs: "Continuum pressure in the civilization's weather, light, and civic rhythm",
-          relatedArtifactIds: [],
-        }),
-        impactKind: 'luminary',
-      },
-      {
-        site: site(3, {
-          id: 'protocol:sealed_protocol_01',
-          kind: 'protocol',
-          scaleBand: 'planetary',
-          artifactId: undefined,
-          representationMode: 'sealed_protocol',
-          title: 'Sealed Protocol 01',
-          visibleAs: 'a redacted signal scar in the deployment intelligence layer',
-          relatedArtifactIds: [],
-        }),
-        impactKind: 'protocol',
-      },
-      {
-        site: site(4, {
-          id: 'chronicle:outer_vault_access',
-          kind: 'chronicle',
-          scaleBand: 'planetary',
-          artifactId: undefined,
-          chronicleId: 'outer_vault_access',
-          representationMode: 'chronicle_record',
-          title: 'Outer Vault Access',
-          visibleAs: 'a restored archive signal threaded through civic memory and threshold records',
-          relatedArtifactIds: [],
-        }),
-        impactKind: 'chronicle',
-      },
-    ];
-
-    const { rerender } = render(
-      <CivilizationScenePanel
-        {...baseProps}
-        deploymentSites={[cases[0]!.site]}
-        externalRecentSiteIds={[cases[0]!.site.id]}
-      />,
-    );
-
-    for (const entry of cases) {
-      rerender(
-        <CivilizationScenePanel
-          {...baseProps}
-          deploymentSites={[entry.site]}
-          externalRecentSiteIds={[entry.site.id]}
-        />,
-      );
-
-      expect(screen.getByText(new RegExp(`New trace recorded // ${entry.site.title}`, 'i')))
-        .toBeInTheDocument();
-      expect(screen.getByText(/Planetary scale \/\/ 1 trace recorded/i)).toBeInTheDocument();
-      expect(screen.getByTestId('civilization-trace-reveal')).toHaveAttribute('data-impact-kind', entry.impactKind);
-      expect(screen.getByTestId('civilization-trace-reveal')).toHaveAttribute('data-primary-title', entry.site.title);
-      expect(screen.queryByTestId('civilization-trace-reveal-title')).not.toBeInTheDocument();
-      expect(screen.getByLabelText(`${entry.site.title} dossier`)).toBeInTheDocument();
-      expect(screen.queryByTestId('civilization-scale-recent-target-indicator')).not.toBeInTheDocument();
-    }
-  });
-
-  it('displays externally pending recent traces when mounted after a game update', () => {
+  it('keeps externally pending work highlighted until it is acknowledged', () => {
     vi.useFakeTimers();
     const acknowledge = vi.fn();
 
@@ -1080,16 +1313,10 @@ describe('CivilizationScenePanel', () => {
         <CivilizationScenePanel
           tier={2}
           palette={{ primary: '#4ade80', secondary: '#0f5a28', accent: '#a7f3c0' }}
-          profile={{
-            key: 'test',
-            seed: 1,
-            artifactCount: 2,
-            affinityCounts: { flare: 0, continuum: 0, verdance: 2, abyss: 0, radiance: 0 },
-            traitCounts: {},
-            traitWeights: {},
-            dominantTraits: ['transit', 'biosphere'],
-            landmarks: [],
-          }}
+          profile={buildCivilizationProfile([
+            artifact('t1r01', 'Ashroot Bloom'),
+            artifact('t1s02', 'Mantlelift Driver Coil'),
+          ])}
           progressFraction={1}
           paused
           deploymentSites={[
@@ -1100,11 +1327,6 @@ describe('CivilizationScenePanel', () => {
               title: 'Mantlelift Driver Coil Trace',
               trait: 'transit',
               affinity: 'continuum',
-              depictionScale: 'room',
-              scalePresence: 'deployment_site',
-              nativeArtworkLabel: 'City site',
-              representationMode: 'civilization_infrastructure',
-              artifactVisualMotif: 'coil',
               artifactSceneTreatment: 'mantlelift_driver',
             }),
           ]}
@@ -1118,19 +1340,12 @@ describe('CivilizationScenePanel', () => {
         />,
       );
 
-      expect(screen.getByText(/New trace recorded \/\/ Mantlelift Driver Coil Trace/i)).toBeInTheDocument();
-      expect(screen.getByRole('button', { name: /^Scan$/i })).toHaveAttribute('aria-pressed', 'true');
-      expect(screen.getByRole('button', { name: /Mantlelift Driver Coil Trace/i })).toBeInTheDocument();
-      expect(screen.getByLabelText('Mantlelift Driver Coil Trace dossier')).toBeInTheDocument();
-      expect(screen.getByTestId('civilization-dossier-site-report')).toHaveTextContent('room-scale');
+      expect(screen.getByText(/New work realized \/\/ Mantlelift Driver Coil Trace/i)).toBeInTheDocument();
+      fireEvent.click(screen.getByRole('button', { name: /^Scan/i }));
+
+      expect(getScanMapPin('artifact:t1s02'))
+        .toHaveAttribute('data-pin-state', 'focused');
       expect(acknowledge).not.toHaveBeenCalled();
-
-      fireEvent.click(screen.getByRole('button', { name: /Close scan dossier/i }));
-
-      expect(screen.getByTestId('civilization-scan-command-primary'))
-        .toHaveAttribute('data-recent-trace', 'true');
-      expect(screen.getByTestId('civilization-scan-command-primary'))
-        .toHaveTextContent(/New trace/i);
 
       act(() => {
         vi.advanceTimersByTime(6_500);
@@ -1142,7 +1357,7 @@ describe('CivilizationScenePanel', () => {
     }
   });
 
-  it('opens related artifact sheets from a dossier component chip', () => {
+  it('opens related Artifact sheets from an authored Scan dossier', () => {
     const handleOpenArtifact = vi.fn();
     const card = artifact('t1r01', 'Ashroot Bloom');
 
@@ -1150,80 +1365,146 @@ describe('CivilizationScenePanel', () => {
       <CivilizationScenePanel
         tier={2}
         palette={{ primary: '#4ade80', secondary: '#0f5a28', accent: '#a7f3c0' }}
-        profile={{
-          key: 'test',
-          seed: 1,
-          artifactCount: 1,
-          affinityCounts: { flare: 0, continuum: 0, verdance: 1, abyss: 0, radiance: 0 },
-          traitCounts: {},
-          traitWeights: {},
-          dominantTraits: [],
-          landmarks: [],
-        }}
+        profile={buildCivilizationProfile([card])}
         progressFraction={1}
         paused
         defaultScanActive
+        defaultScene="surface"
         deploymentSites={[site(1)]}
         forgedArtifacts={[card]}
         onOpenArtifact={handleOpenArtifact}
       />,
     );
 
-    fireEvent.click(screen.getByRole('button', { name: /Deployment Site 1/i }));
+    fireEvent.doubleClick(getScanMapPin('artifact:t1r01'));
     fireEvent.click(screen.getByRole('button', { name: /Ashroot Bloom/i }));
 
     expect(handleOpenArtifact).toHaveBeenCalledWith(card);
   });
 
-  it('presents selected artifact traces as source-to-civilization intelligence', () => {
+  it('presents selected physical Artifacts as source-to-civilization intelligence', () => {
     const card = artifact('t1r01', 'Ashroot Bloom');
 
     render(
       <CivilizationScenePanel
         tier={2}
         palette={{ primary: '#4ade80', secondary: '#0f5a28', accent: '#a7f3c0' }}
-        profile={{
-          key: 'test',
-          seed: 1,
-          artifactCount: 1,
-          affinityCounts: { flare: 0, continuum: 0, verdance: 1, abyss: 0, radiance: 0 },
-          traitCounts: {},
-          traitWeights: {},
-          dominantTraits: [],
-          landmarks: [],
-        }}
+        profile={buildCivilizationProfile([card])}
         progressFraction={1}
         paused
         defaultScanActive
+        defaultScene="surface"
         deploymentSites={[site(1)]}
         forgedArtifacts={[card]}
         onOpenArtifact={vi.fn()}
       />,
     );
 
-    fireEvent.click(screen.getByRole('button', { name: /Deployment Site 1/i }));
+    fireEvent.doubleClick(getScanMapPin('artifact:t1r01'));
 
-    expect(screen.getByTestId('civilization-dossier-intelligence')).toHaveTextContent('Local trace integrated');
     expect(screen.getByTestId('civilization-dossier-source-label')).toHaveTextContent('Ashroot Bloom');
-    expect(screen.getByTestId('civilization-dossier-readout-label')).toHaveTextContent('Pin plus consequence layer');
     expect(screen.getByTestId('civilization-dossier-source-artifacts')).toHaveTextContent('Inspect artifact record');
+    expect(screen.getByTestId('civilization-dossier-intelligence')).toBeInTheDocument();
+    expect(screen.getByRole('list', { name: 'Function tags' })).toBeVisible();
+    expect(screen.getByTestId('artifact-function-tags')).toHaveTextContent('Energy');
   });
 
-  it('shows Blueprint component and effect context in scan dossiers', () => {
+  it('reports each Coastal parcel occupancy from its actual persisted residents', () => {
+    const ids = getCivilizationSaturatedPreviewIds('chrysalis', true);
+    const cards = ids.map((id) => ({ ...ARTIFACT_CATALOG.find((card) => card.id === id)!, name: id, flavor: '' }));
+    let state = createInitialCivilizationState();
+    ids.forEach((artifactId, index) => {
+      state.artifacts[artifactId] = {
+        artifactId, firstMasteredTurnCount: index + 1, masteryCount: 1,
+        implementationState: 'operational', implementationStateChangedTurnCount: index + 1,
+        implementationChangeSource: null, historyEvidence: 'recorded',
+      };
+      state = reconcileCivilizationDerivedState(state, [], index + 1, {}, { commitPresentation: true });
+    });
+    const civilization = civilizationTransitionFixture('chrysalis', ids.length, 'chrysalis');
+    civilization.districtIdentity = state.districtIdentity;
+    civilization.manifestationAssignments = Object.values(state.manifestationAssignments);
+    civilization.artifacts = Object.values(state.artifacts).map((artifact) => ({
+      ...artifact, changeSourceType: null,
+    }));
+    const sites = buildCivilizationDeploymentSites({
+      forgedArtifacts: cards, tier: 3, manifestationAssignments: civilization.manifestationAssignments,
+    });
+    render(<CivilizationScenePanel
+      tier={3} palette={{ primary: '#f97316', secondary: '#7c3aed', accent: '#fde68a' }}
+      profile={buildCivilizationProfile(cards)} progressFraction={1} paused placementProof
+      defaultScanActive defaultScene="surface" deploymentSites={sites} forgedArtifacts={cards}
+      civilization={civilization}
+    />);
+    const envelopes = screen.getAllByTestId('civilization-district-socket-envelope');
+    expect(envelopes.find((element) => element.dataset.parcelId === 'coastal-east'))
+      .toHaveAttribute('data-occupancy', '2');
+    expect(envelopes.find((element) => element.dataset.parcelId === 'coastal-northeast'))
+      .toHaveAttribute('data-occupancy', '3');
+    expect(document.querySelector('[data-artifact-unit="t1s09"]'))
+      .toHaveAttribute('data-district-parcel', 'coastal-northeast');
+    expect(getScanMapPin('artifact:t1s09')).toBeInTheDocument();
+  });
+
+  it('reads the persistent district rather than inferring residents or dyad from the surrounding city', () => {
+    const cards = ['t1r02', 't1p08', 't1s09'].map(id => ({
+      ...ARTIFACT_CATALOG.find(card => card.id === id)!, name: CARD_NAME_FALLBACK[id], flavor: '',
+    }));
+    const civilization = civilizationTransitionFixture('echo', 12, 'chrysalis');
+    const districtId = 'district:wilderness_margin:0';
+    civilization.districtIdentity!.artifactAssignments = { t1r02: districtId, t1p08: districtId };
+    civilization.districtIdentity!.districts[districtId] = {
+      districtId, family: 'wilderness_margin', instance: 0,
+      residentArtifactIds: ['t1r02', 't1p08'], residentAffinities: ['flare', 'radiance'],
+      foundingAffinities: ['flare', 'radiance'], permanentDyad: 'vortex',
+      softCapacity: 2, hardCapacity: 3, influence: 2,
+      establishedTurnCount: 2, committedTurnCount: 4, historyEvidence: 'recorded',
+    };
+    civilization.artifacts = cards.map(card => ({
+      artifactId: card.id, firstMasteredTurnCount: 2, masteryCount: 1,
+      implementationState: card.id === 't1r02' ? 'damaged' : 'operational',
+      implementationStateChangedTurnCount: 12, changeSourceType: null, historyEvidence: 'recorded',
+    }));
+    const sites = cards.map((card, index) => site(index + 1, {
+      id: `artifact:${card.id}`, artifactId: card.id, title: card.name,
+      affinity: card.bonusAffinity, relatedArtifactIds: [card.id],
+      synergySummary: 'Unsupported city-wide partnership', supportingArtifactNames: ['Landfall Loom'],
+    }));
+    const props = {
+      tier: 2 as const, palette: { primary: '#4ade80', secondary: '#0f5a28', accent: '#a7f3c0' },
+      profile: buildCivilizationProfile(cards), progressFraction: 1, paused: true,
+      defaultScanActive: true, defaultScene: 'surface' as const,
+      deploymentSites: sites, forgedArtifacts: cards, civilization, onOpenArtifact: vi.fn(),
+    };
+    const { rerender } = render(<CivilizationScenePanel {...props} />);
+    fireEvent.doubleClick(getScanMapPin('artifact:t1p08'));
+    const readout = screen.getByTestId('civilization-dossier-district-membership');
+    expect(readout).toHaveAttribute('data-district-id', districtId);
+    expect(readout).toHaveTextContent('Wilderness Margin 1 · Vortex');
+    expect(readout).toHaveTextContent('2/3 residents · Influence 2 · Dyad locked');
+    expect(within(readout).getAllByRole('listitem')).toHaveLength(2);
+    expect(readout).toHaveTextContent('Ashroot Bloom');
+    expect(readout).toHaveTextContent('Petrified Bloom');
+    expect(readout).toHaveTextContent('Damaged');
+    expect(readout).not.toHaveTextContent('Landfall Loom');
+    expect(screen.queryByTestId('civilization-dossier-district')).not.toBeInTheDocument();
+    expect(screen.queryByText('Unsupported city-wide partnership')).not.toBeInTheDocument();
+
+    rerender(<CivilizationScenePanel {...props} civilization={{
+      ...civilization,
+      artifacts: civilization.artifacts.map(artifact => ({ ...artifact, implementationState: 'operational' })),
+    }} />);
+    expect(readout).not.toHaveTextContent('Damaged');
+    expect(readout).toHaveTextContent('Influence 2 · Dyad locked');
+    expect(within(readout).getAllByRole('listitem')).toHaveLength(2);
+  });
+
+  it('shows Blueprint component and effect context in authored Scan dossiers', () => {
     render(
       <CivilizationScenePanel
         tier={2}
         palette={{ primary: '#60a5fa', secondary: '#1a3a8f', accent: '#bfdbfe' }}
-        profile={{
-          key: 'test',
-          seed: 1,
-          artifactCount: 1,
-          affinityCounts: { flare: 0, continuum: 0, verdance: 1, abyss: 0, radiance: 0 },
-          traitCounts: {},
-          traitWeights: {},
-          dominantTraits: [],
-          landmarks: [],
-        }}
+        profile={buildCivilizationProfile([])}
         progressFraction={1}
         paused
         defaultScanActive
@@ -1248,358 +1529,28 @@ describe('CivilizationScenePanel', () => {
       />,
     );
 
-    fireEvent.click(screen.getByRole('button', { name: /Antimatter Quarantine Orbit/i }));
+    fireEvent.click(getScanMapPin('blueprint:bp_antimatter_detonator'));
 
-    expect(screen.getByText(/Components/i)).toBeInTheDocument();
     expect(screen.getByTestId('civilization-dossier-source-label')).toHaveTextContent('Antimatter Detonator');
-    expect(screen.getByTestId('civilization-dossier-intelligence')).toHaveTextContent('Blueprint state');
     expect(screen.getByText(/Reaction Core \/ Containment Cage/i)).toBeInTheDocument();
-    expect(screen.getByText(/Effect/i)).toBeInTheDocument();
     expect(screen.getByText(/Tier II Artifact becomes secretly marked/i)).toBeInTheDocument();
     expect(screen.getByTestId('civilization-site-art-slot'))
       .toHaveAttribute('data-art-slot', 'civilization.blueprint.bp_antimatter_detonator');
-    expect(screen.getByTestId('civilization-site-art-slot'))
-      .toHaveAttribute('data-art-resolution', 'procedural');
+    expect(screen.queryByTestId('artifact-function-tags')).not.toBeInTheDocument();
   });
 
-  it('renders lost implementations as historical scars with inactive capability dossiers', () => {
-    const { container } = render(
-      <CivilizationScenePanel
-        tier={2}
-        palette={{ primary: '#ef7777', secondary: '#4b1520', accent: '#ffc2c2' }}
-        profile={{
-          key: 'test',
-          seed: 1,
-          artifactCount: 1,
-          affinityCounts: { flare: 1, continuum: 0, verdance: 0, abyss: 0, radiance: 0 },
-          traitCounts: {},
-          traitWeights: {},
-          dominantTraits: ['ignition'],
-          landmarks: [],
-        }}
-        progressFraction={1}
-        paused
-        defaultScanActive
-        deploymentSites={[site(1, {
-          title: 'Ignition Kernel Trace',
-          affinity: 'flare',
-          trait: 'ignition',
-          implementationState: 'annihilated',
-          implementationStateChangedTurnCount: 8,
-          masteryCount: 1,
-          capabilityIds: ['artifact:controlled_energy'],
-          activeCapabilityIds: [],
-        })]}
-        forgedArtifacts={[artifact('t1r01', 'Ignition Kernel')]}
-        onOpenArtifact={vi.fn()}
-      />,
-    );
 
-    expect(screen.getByTestId('civilization-artifact-lifecycle-scars')).toBeInTheDocument();
-    expect(container.querySelector('[data-artifact-state="annihilated"]')).toBeInTheDocument();
-    fireEvent.click(screen.getByRole('button', { name: /Ignition Kernel Trace/i }));
-    expect(screen.getByTestId('civilization-dossier-operational-status')).toHaveTextContent('Annihilated');
-    expect(screen.getByTestId('civilization-dossier-capabilities')).toHaveTextContent('Controlled energy');
-    expect(screen.getByTestId('civilization-dossier-capabilities')).toHaveTextContent('Inactive');
-    expect(screen.queryByTestId('civilization-focused-deployment-projection')).not.toBeInTheDocument();
-  });
 
-  it('renders authored first-pool artifact treatment glyphs in scan mode', () => {
-    render(
-      <CivilizationScenePanel
-        tier={2}
-        palette={{ primary: '#f87171', secondary: '#7f1d1d', accent: '#fecaca' }}
-        profile={{
-          key: 'test',
-          seed: 1,
-          artifactCount: 2,
-          affinityCounts: { flare: 1, continuum: 0, verdance: 0, abyss: 1, radiance: 0 },
-          traitCounts: {},
-          traitWeights: {},
-          dominantTraits: ['containment', 'aperture'],
-          landmarks: [],
-        }}
-        progressFraction={1}
-        paused
-        defaultScanActive
-        deploymentSites={[
-          site(1, {
-            id: 'artifact:t1p04',
-            artifactId: 't1p04',
-            title: 'Magnetic Bottle Trace',
-            trait: 'containment',
-            affinity: 'radiance',
-            artifactVisualMotif: 'containment',
-            artifactSceneTreatment: 'magnetic_bottle',
-          }),
-          site(2, {
-            id: 'artifact:t2o01',
-            artifactId: 't2o01',
-            artifactTier: 2,
-            title: 'Horizon Extractor Trace',
-            trait: 'aperture',
-            affinity: 'abyss',
-            artifactVisualMotif: 'aperture',
-            artifactSceneTreatment: 'horizon_extractor',
-          }),
-        ]}
-        forgedArtifacts={[
-          artifact('t1p04', 'Magnetic Bottle'),
-          artifact('t2o01', 'Horizon Extractor'),
-        ]}
-        onOpenArtifact={vi.fn()}
-      />,
-    );
 
-    expect(screen.getAllByTestId('civilization-artifact-treatment-magnetic_bottle').length)
-      .toBeGreaterThan(0);
-    expect(screen.getAllByTestId('civilization-artifact-treatment-horizon_extractor').length)
-      .toBeGreaterThan(0);
-    expect(screen.getAllByTestId('civilization-artifact-treatment-influence-magnetic_bottle').length)
-      .toBeGreaterThan(0);
-    expect(screen.getByTestId('civilization-focused-artifact-magnetic_bottle'))
-      .toBeInTheDocument();
-    expect(screen.queryByTestId('civilization-artifact-treatment-influence-horizon_extractor'))
-      .not.toBeInTheDocument();
-    expect(screen.getAllByText('Containment Bottle').length).toBeGreaterThan(0);
-    expect(screen.getAllByText('Horizon Sampler').length).toBeGreaterThan(0);
 
-    fireEvent.click(screen.getAllByRole('button', { name: /Horizon Extractor Trace/i })[0]);
 
-    expect(screen.queryByTestId('civilization-artifact-treatment-influence-horizon_extractor'))
-      .not.toBeInTheDocument();
-    expect(screen.getByTestId('civilization-focused-artifact-horizon_extractor'))
-      .toBeInTheDocument();
 
-    fireEvent.click(screen.getByRole('button', { name: /Magnetic Bottle Trace/i }));
-
-    expect(screen.getByTestId('civilization-dossier-readout-label')).toHaveTextContent('Pin plus consequence layer');
-    expect(screen.queryByText('Signature Containment Bottle')).not.toBeInTheDocument();
-  });
-
-  it('uses the bespoke containment surface plate for hazard city views', () => {
-    render(
-      <CivilizationScenePanel
-        tier={2}
-        palette={{ primary: '#f87171', secondary: '#7f1d1d', accent: '#fecaca' }}
-        profile={{
-          key: 'test',
-          seed: 1,
-          artifactCount: 1,
-          affinityCounts: { flare: 0, continuum: 0, verdance: 0, abyss: 1, radiance: 0 },
-          traitCounts: {},
-          traitWeights: {},
-          dominantTraits: ['containment'],
-          landmarks: [],
-        }}
-        progressFraction={1}
-        paused
-        defaultScene="surface"
-        defaultScanActive
-        deploymentSites={[
-          site(1, {
-            id: 'artifact:t1p04',
-            artifactId: 't1p04',
-            title: 'Magnetic Bottle Trace',
-            trait: 'containment',
-            affinity: 'abyss',
-            artifactVisualMotif: 'containment',
-            artifactSceneTreatment: 'magnetic_bottle',
-          }),
-        ]}
-        forgedArtifacts={[artifact('t1p04', 'Magnetic Bottle')]}
-        onOpenArtifact={vi.fn()}
-      />,
-    );
-
-    expect(screen.getByTestId('civilization-archetype-label')).toHaveTextContent('Visual identity // Containment Sentinel');
-    expect(screen.getByTestId('civilization-plate-art'))
-      .toHaveAttribute('data-art-slot', 'civilization.plate.surface.containment_sentinel.scan');
-  });
-
-  it('uses treatment-specific native deployment silhouettes in city detail', () => {
-    render(
-      <CivilizationScenePanel
-        tier={1}
-        palette={{ primary: '#dfb86b', secondary: '#3f2d12', accent: '#ffe4a3' }}
-        profile={{
-          key: 'test',
-          seed: 1,
-          artifactCount: 2,
-          affinityCounts: { flare: 1, continuum: 1, verdance: 0, abyss: 0, radiance: 0 },
-          traitCounts: {},
-          traitWeights: {},
-          dominantTraits: ['transit', 'ignition'],
-          landmarks: [],
-        }}
-        progressFraction={1}
-        paused
-        defaultScene="surface"
-        deploymentSites={[
-          site(1, {
-            id: 'artifact:t1s02',
-            artifactId: 't1s02',
-            title: 'Mantlelift Driver Coil Trace',
-            trait: 'transit',
-            affinity: 'continuum',
-            depictionScale: 'room',
-            scalePresence: 'deployment_site',
-            nativeArtworkLabel: 'City site',
-            representationMode: 'civilization_infrastructure',
-            artifactVisualMotif: 'coil',
-            artifactSceneTreatment: 'mantlelift_driver',
-            visibleAs: 'orbital freight lanes rising from a city-scale driver site',
-            laneLabel: 'Orbital logistics / Launch district',
-          }),
-          site(2, {
-            id: 'artifact:t1r01',
-            artifactId: 't1r01',
-            title: 'Ignition Kernel Trace',
-            trait: 'ignition',
-            affinity: 'flare',
-            artifactVisualMotif: 'forge',
-            artifactSceneTreatment: 'ignition_kernel',
-            visibleAs: 'thermal forge districts around controlled ignition sites',
-            laneLabel: 'Planetary forge culture / Thermal district',
-          }),
-        ]}
-        forgedArtifacts={[
-          artifact('t1s02', 'Mantlelift Driver Coil'),
-          artifact('t1r01', 'Ignition Kernel'),
-        ]}
-        onOpenArtifact={vi.fn()}
-      />,
-    );
-
-    expect(screen.getByTestId('civilization-artifact-deployments')).toBeInTheDocument();
-    expect(screen.getByTestId('civilization-materialized-sites'))
-      .toHaveAttribute('data-render-mode', 'solid-local-forms');
-    expect(screen.getByTestId('civilization-materialized-site-mantlelift_driver'))
-      .toHaveAttribute('data-solid-form', 'local-city-site');
-    expect(screen.getByTestId('civilization-archetype-label')).toHaveTextContent('Visual identity // Forge Spine');
-    expect(screen.getByTestId('civilization-archetype-atmosphere'))
-      .toHaveAttribute('data-archetype', 'forge_spine');
-    expect(screen.getByTestId('civilization-plate-art'))
-      .toHaveAttribute('data-plate-focus', 'forge-spine');
-    const mantleliftDeployment = screen.getAllByTestId('civilization-artifact-treatment-deployment-mantlelift_driver')[0];
-    expect(mantleliftDeployment).toBeInTheDocument();
-    expect(mantleliftDeployment).toHaveAttribute('data-native-work-scale', 'local-site');
-    expect(screen.queryByTestId('civilization-artifact-treatment-deployment-ignition_kernel'))
-      .not.toBeInTheDocument();
-  });
-
-  it('classifies standalone transit infrastructure as Route Network instead of Forge Spine', () => {
-    render(
-      <CivilizationScenePanel
-        tier={2}
-        palette={{ primary: '#60a5fa', secondary: '#1a3a8f', accent: '#bfdbfe' }}
-        profile={{
-          key: 'test',
-          seed: 1,
-          artifactCount: 1,
-          affinityCounts: { flare: 0, continuum: 1, verdance: 0, abyss: 0, radiance: 0 },
-          traitCounts: {},
-          traitWeights: {},
-          dominantTraits: ['transit'],
-          landmarks: [],
-        }}
-        progressFraction={1}
-        paused
-        defaultScene="surface"
-        defaultScanActive
-        deploymentSites={[
-          site(1, {
-            id: 'artifact:t1s02',
-            artifactId: 't1s02',
-            title: 'Mantlelift Driver Coil Trace',
-            trait: 'transit',
-            affinity: 'continuum',
-            depictionScale: 'room',
-            scalePresence: 'deployment_site',
-            nativeArtworkLabel: 'City site',
-            representationMode: 'civilization_infrastructure',
-            artifactVisualMotif: 'coil',
-            artifactSceneTreatment: 'mantlelift_driver',
-            visibleAs: 'interplanetary freight lanes fed by planetary lift coils and orbital handoff stations',
-            laneLabel: 'Orbital logistics / Interplanetary freight lane',
-          }),
-        ]}
-        forgedArtifacts={[artifact('t1s02', 'Mantlelift Driver Coil')]}
-        onOpenArtifact={vi.fn()}
-      />,
-    );
-
-    expect(screen.getByTestId('civilization-archetype-label')).toHaveTextContent('Visual identity // Route Network');
-    expect(screen.getByTestId('civilization-archetype-atmosphere'))
-      .toHaveAttribute('data-archetype', 'route_network');
-    expect(screen.getByTestId('civilization-plate-art'))
-      .toHaveAttribute('data-art-slot', 'civilization.plate.surface.route_network.scan');
-    expect(screen.getByTestId('civilization-plate-art'))
-      .toHaveAttribute('data-plate-focus', 'route-grid');
-  });
-
-  it('keeps focused scan projections out of the lower-right influence tray', () => {
-    render(
-      <CivilizationScenePanel
-        tier={1}
-        palette={{ primary: '#dfb86b', secondary: '#3f2d12', accent: '#ffe4a3' }}
-        profile={{
-          key: 'test',
-          seed: 1,
-          artifactCount: 1,
-          affinityCounts: { flare: 1, continuum: 0, verdance: 0, abyss: 0, radiance: 0 },
-          traitCounts: {},
-          traitWeights: {},
-          dominantTraits: ['ignition'],
-          landmarks: [],
-        }}
-        progressFraction={1}
-        paused
-        defaultScene="surface"
-        defaultScanActive
-        deploymentSites={[
-          site(1, {
-            id: 'artifact:t1r01',
-            artifactId: 't1r01',
-            title: 'Ignition Kernel Trace',
-            trait: 'ignition',
-            affinity: 'flare',
-            anchor: { x: 76, y: 64 },
-            depictionScale: 'macro',
-            artifactVisualMotif: 'forge',
-            artifactSceneTreatment: 'ignition_kernel',
-          }),
-        ]}
-        forgedArtifacts={[artifact('t1r01', 'Ignition Kernel')]}
-        onOpenArtifact={vi.fn()}
-      />,
-    );
-
-    expect(screen.getByTestId('civilization-focused-deployment-projection'))
-      .toHaveAttribute('data-layout-zone', 'scene-reserved');
-    expect(screen.queryByLabelText('Ignition Kernel Trace dossier')).not.toBeInTheDocument();
-
-    fireEvent.click(screen.getByRole('button', { name: /Ignition Kernel Trace/i }));
-
-    expect(screen.getByLabelText('Ignition Kernel Trace dossier'))
-      .toHaveAttribute('data-dossier-side', 'left');
-  });
-
-  it('renders the Mantle-to-Orbit Foundry as an authored lift and foundry chain', () => {
+  it('renders the Mantle-to-Orbit Foundry as a stable authored lift and foundry chain', () => {
     render(
       <CivilizationScenePanel
         tier={1}
         palette={{ primary: '#dfb86b', secondary: '#5f3417', accent: '#ffe4a3' }}
-        profile={{
-          key: 'test',
-          seed: 1,
-          artifactCount: 1,
-          affinityCounts: { flare: 1, continuum: 1, verdance: 0, abyss: 0, radiance: 0 },
-          traitCounts: {},
-          traitWeights: {},
-          dominantTraits: ['transit'],
-          landmarks: [],
-        }}
+        profile={buildCivilizationProfile([])}
         progressFraction={1}
         paused
         deploymentSites={[
@@ -1623,218 +1574,42 @@ describe('CivilizationScenePanel', () => {
       />,
     );
 
-    expect(screen.getByTestId('civilization-dominant-blueprints')).toBeInTheDocument();
-    expect(screen.getByTestId('civilization-blueprint-mantle-native')).toBeInTheDocument();
-    expect(screen.getByTestId('civilization-scale-theater')).toHaveAttribute('data-scene', 'orbit');
-    expect(screen.getByTestId('civilization-scale-theater-native')).toHaveAttribute('data-native-scene', 'orbit');
-    expect(screen.getAllByText('Mantle-to-Orbit Freight Lane').length).toBeGreaterThanOrEqual(1);
+    const foundry = screen.getByTestId('civilization-blueprint-mantle-native');
+    expect(screen.queryByTestId('civilization-project-zones')).not.toBeInTheDocument();
+
+    fireEvent.click(screen.getByRole('button', { name: /^Scan$/i }));
+
+    expect(screen.getByTestId('civilization-blueprint-mantle-native')).toBe(foundry);
+    expect(screen.queryByTestId('civilization-project-zones')).not.toBeInTheDocument();
+    expect(screen.queryByTestId('civilization-scale-theater')).not.toBeInTheDocument();
+    expect(screen.getByRole('button', { name: /Inspect Blueprint Mantle-to-Orbit Freight Lane/i }))
+      .toBeInTheDocument();
+    expect(screen.getByTestId('civilization-blueprint-map-pin-art')).toBeInTheDocument();
   });
 
-  it('uses the Forge Spine orbit plate for ignition-dominant planetary views', () => {
-    render(
-      <CivilizationScenePanel
-        tier={1}
-        palette={{ primary: '#f97316', secondary: '#7c2d12', accent: '#fed7aa' }}
-        profile={{
-          key: 'test',
-          seed: 1,
-          artifactCount: 1,
-          affinityCounts: { flare: 1, continuum: 0, verdance: 0, abyss: 0, radiance: 0 },
-          traitCounts: {},
-          traitWeights: {},
-          dominantTraits: ['ignition'],
-          landmarks: [],
-        }}
-        progressFraction={1}
-        paused
-        defaultScene="orbit"
-        defaultScanActive
-        deploymentSites={[
-          site(1, {
-            id: 'artifact:t1r01',
-            artifactId: 't1r01',
-            title: 'Ignition Kernel Trace',
-            trait: 'ignition',
-            affinity: 'flare',
-            artifactVisualMotif: 'forge',
-            artifactSceneTreatment: 'ignition_kernel',
-            visibleAs: 'thermal forge districts and mantle-to-orbit ignition spines',
-            laneLabel: 'Planetary forge culture / Ignition district',
-          }),
-        ]}
-        forgedArtifacts={[artifact('t1r01', 'Ignition Kernel')]}
-        onOpenArtifact={vi.fn()}
-      />,
-    );
 
-    expect(screen.getByTestId('civilization-archetype-label')).toHaveTextContent('Visual identity // Forge Spine');
-    expect(screen.getByTestId('civilization-plate-art'))
-      .toHaveAttribute('data-art-slot', 'civilization.plate.orbit.forge_spine.scan');
-  });
 
-  it('collapses lower-scale Blueprint structures into aggregate signals at galaxy scale', () => {
-    render(
-      <CivilizationScenePanel
-        tier={3}
-        palette={{ primary: '#dfb86b', secondary: '#5f3417', accent: '#ffe4a3' }}
-        profile={{
-          key: 'test',
-          seed: 1,
-          artifactCount: 1,
-          affinityCounts: { flare: 1, continuum: 1, verdance: 0, abyss: 0, radiance: 0 },
-          traitCounts: {},
-          traitWeights: {},
-          dominantTraits: ['transit'],
-          landmarks: [],
-        }}
-        progressFraction={1}
-        paused
-        defaultScene="galaxy"
-        deploymentSites={[
-          site(1, {
-            id: 'blueprint:bp_mantle_to_orbit_foundry',
-            kind: 'blueprint',
-            blueprintId: 'bp_mantle_to_orbit_foundry',
-            artifactId: undefined,
-            scaleBand: 'planetary',
-            representationMode: 'blueprint_consequence',
-            sourceQuality: 'authored',
-            componentSummary: 'Ignition / Coil / Die',
-            gameplayEffect: 'Artifacts can be assembled into a civilization-scale launch project.',
-            title: 'Mantle-to-Orbit Freight Lane',
-            visibleAs: 'a forged ascent corridor connecting deep crust to orbital industry',
-            relatedArtifactIds: [],
-          }),
-        ]}
-        forgedArtifacts={[]}
-        onOpenArtifact={vi.fn()}
-      />,
-    );
 
-    expect(screen.getByTestId('civilization-scale-theater')).toHaveAttribute('data-scene', 'galaxy');
-    expect(screen.getByTestId('civilization-scale-theater-aggregate')).toHaveAttribute('data-native-scene', 'orbit');
-    expect(screen.getByTestId('civilization-integrated-aggregate')).toHaveAttribute('data-native-scene', 'orbit');
-    expect(screen.queryByTestId('civilization-integrated-lift')).not.toBeInTheDocument();
-  });
 
-  it('uses the galactic Route Network plate for route-heavy galaxy scenes', () => {
-    render(
-      <CivilizationScenePanel
-        tier={3}
-        palette={{ primary: '#60a5fa', secondary: '#1a3a8f', accent: '#bfdbfe' }}
-        profile={{
-          key: 'test',
-          seed: 1,
-          artifactCount: 1,
-          affinityCounts: { flare: 0, continuum: 1, verdance: 0, abyss: 0, radiance: 0 },
-          traitCounts: {},
-          traitWeights: {},
-          dominantTraits: ['transit'],
-          landmarks: [],
-        }}
-        progressFraction={1}
-        paused
-        defaultScene="galaxy"
-        defaultScanActive
-        deploymentSites={[
-          site(1, {
-            id: 'artifact:t1s02',
-            artifactId: 't1s02',
-            title: 'Mantlelift Driver Coil Trace',
-            trait: 'transit',
-            affinity: 'continuum',
-            artifactVisualMotif: 'coil',
-            artifactSceneTreatment: 'mantlelift_driver',
-            visibleAs: 'spiral-arm freight lanes anchored by distant wormgate approaches',
-            laneLabel: 'Galactic logistics / Route network',
-          }),
-        ]}
-        forgedArtifacts={[artifact('t1s02', 'Mantlelift Driver Coil')]}
-        onOpenArtifact={vi.fn()}
-      />,
-    );
-
-    expect(screen.getByTestId('civilization-archetype-label')).toHaveTextContent('Visual identity // Route Network');
-    expect(screen.getByTestId('civilization-plate-art'))
-      .toHaveAttribute('data-art-slot', 'civilization.plate.galaxy.route_network.scan');
-  });
-
-  it('keeps forge-plus-route galaxy scenes on the Forge Spine plate', () => {
-    render(
-      <CivilizationScenePanel
-        tier={3}
-        palette={{ primary: '#dfb86b', secondary: '#5f3417', accent: '#ffe4a3' }}
-        profile={{
-          key: 'test',
-          seed: 1,
-          artifactCount: 2,
-          affinityCounts: { flare: 1, continuum: 1, verdance: 0, abyss: 0, radiance: 0 },
-          traitCounts: {},
-          traitWeights: {},
-          dominantTraits: ['transit', 'ignition'],
-          landmarks: [],
-        }}
-        progressFraction={1}
-        paused
-        defaultScene="galaxy"
-        defaultScanActive
-        deploymentSites={[
-          site(1, {
-            id: 'artifact:t1s02',
-            artifactId: 't1s02',
-            title: 'Mantlelift Driver Coil Trace',
-            trait: 'transit',
-            affinity: 'continuum',
-            artifactVisualMotif: 'coil',
-            artifactSceneTreatment: 'mantlelift_driver',
-            visibleAs: 'galactic freight lanes fed by planetary lift coils and orbital handoff stations',
-            laneLabel: 'Galactic logistics / Launch corridor',
-          }),
-          site(2, {
-            id: 'artifact:t1r01',
-            artifactId: 't1r01',
-            title: 'Ignition Kernel Trace',
-            trait: 'ignition',
-            affinity: 'flare',
-            artifactVisualMotif: 'forge',
-            artifactSceneTreatment: 'ignition_kernel',
-            visibleAs: 'starbirth foundry sectors and controlled ignition wakes',
-            laneLabel: 'Cosmic forge culture / Thermal sector',
-          }),
-        ]}
-        forgedArtifacts={[
-          artifact('t1s02', 'Mantlelift Driver Coil'),
-          artifact('t1r01', 'Ignition Kernel'),
-        ]}
-        onOpenArtifact={vi.fn()}
-      />,
-    );
-
-    expect(screen.getByTestId('civilization-archetype-label')).toHaveTextContent('Visual identity // Forge Spine');
-    expect(screen.getByTestId('civilization-plate-art'))
-      .toHaveAttribute('data-art-slot', 'civilization.plate.galaxy.forge_spine.scan');
-  });
-
-  it('caps mobile scan influences at four', () => {
+  it('keeps dense mobile Scan identities individually visible with one focused readout', () => {
     mobileState.isMobile = true;
-    const sites = Array.from({ length: 6 }, (_, index) => site(index + 1));
+    const catalogArtifacts = ARTIFACT_CATALOG.slice(0, 12);
+    const sites = catalogArtifacts.map((entry, index) => site(index + 1, {
+      id: `artifact:${entry.id}`,
+      artifactId: entry.id,
+      relatedArtifactIds: [entry.id],
+    }));
 
     render(
       <CivilizationScenePanel
-        tier={2}
+        tier={1}
         palette={{ primary: '#4ade80', secondary: '#0f5a28', accent: '#a7f3c0' }}
-        profile={{
-          key: 'test',
-          seed: 1,
-          artifactCount: 6,
-          affinityCounts: { flare: 0, continuum: 0, verdance: 6, abyss: 0, radiance: 0 },
-          traitCounts: {},
-          traitWeights: {},
-          dominantTraits: [],
-          landmarks: [],
-        }}
+        profile={buildCivilizationProfile(
+          sites.map((entry, index) => artifact(entry.artifactId!, `Artifact ${index + 1}`)),
+        )}
         progressFraction={1}
         paused
+        defaultScene="surface"
         defaultScanActive
         deploymentSites={sites}
         forgedArtifacts={sites.map((entry, index) => artifact(entry.artifactId!, `Artifact ${index + 1}`))}
@@ -1842,15 +1617,45 @@ describe('CivilizationScenePanel', () => {
       />,
     );
 
-    expect(screen.getAllByRole('button', { name: /Deployment Site/i })).toHaveLength(4);
-    expect(screen.getByTestId('civilization-mobile-scan-rail')).toBeInTheDocument();
-    expect(screen.getByTestId('civilization-mobile-scan-command-primary'))
-      .toHaveAttribute('data-impact-kind', 'artifact');
-    expect(screen.getByTestId('civilization-mobile-scan-command-primary'))
-      .toHaveAttribute('data-native-scene', 'surface');
-    expect(screen.getAllByRole('button', { name: /Inspect scan site/i })).toHaveLength(4);
-    expect(screen.getByText('+2 more')).toBeInTheDocument();
-    expect(screen.getByText('+2 clustered')).toBeInTheDocument();
+    expect(screen.queryByTestId('civilization-mobile-scan-rail')).not.toBeInTheDocument();
+    expect(screen.queryByTestId('civilization-mobile-scan-dock')).not.toBeInTheDocument();
+    expect(screen.getAllByTestId('civilization-scan-map-pin')).toHaveLength(12);
+    expect(screen.queryByTestId('civilization-scan-district-stack')).not.toBeInTheDocument();
+    fireEvent.click(getScanMapPin(`artifact:${catalogArtifacts[11]!.id}`));
+    expect(screen.getByTestId('civilization-mobile-scan-dock')).toBeInTheDocument();
+    expect(screen.queryByTestId('civilization-mobile-scan-rail')).not.toBeInTheDocument();
+    fireEvent.click(screen.getByTestId('civilization-mobile-scan-command-primary'));
+    expect(screen.getByLabelText('Deployment Site 12 dossier')).toBeInTheDocument();
+  });
+
+  it('keeps the mobile portrait free of deployment ledgers', () => {
+    mobileState.isMobile = true;
+
+    render(
+      <CivilizationScenePanel
+        tier={1}
+        palette={{ primary: '#4ade80', secondary: '#0f5a28', accent: '#a7f3c0' }}
+        profile={{
+          key: 'test',
+          seed: 1,
+          artifactCount: 1,
+          affinityCounts: { flare: 0, continuum: 0, verdance: 1, abyss: 0, radiance: 0 },
+          traitCounts: {},
+          traitWeights: {},
+          dominantTraits: ['biosphere'],
+          landmarks: [],
+        }}
+        progressFraction={1}
+        paused
+        defaultScene="surface"
+        deploymentSites={[site(1)]}
+        forgedArtifacts={[artifact('t1r01', 'Ashroot Bloom')]}
+        onOpenArtifact={vi.fn()}
+      />,
+    );
+
+    expect(screen.queryByTestId('civilization-mobile-deployment-dock')).not.toBeInTheDocument();
+    expect(screen.queryByTestId('civilization-scene-deployment-ledger')).not.toBeInTheDocument();
   });
 
   it('keeps the new trace marker visible in the mobile scan readout after the dossier closes', () => {
@@ -1887,14 +1692,18 @@ describe('CivilizationScenePanel', () => {
         />,
       );
 
-      expect(screen.getByLabelText('Ashroot Bloom Trace dossier')).toBeInTheDocument();
+      expect(screen.queryByLabelText('Ashroot Bloom Trace dossier')).not.toBeInTheDocument();
+      expect(screen.queryByTestId('civilization-mobile-scan-command-primary')).not.toBeInTheDocument();
 
-      fireEvent.click(screen.getByRole('button', { name: /Close scan dossier/i }));
+      fireEvent.click(screen.getByRole('button', { name: /^Scan/i }));
 
       expect(screen.getByTestId('civilization-mobile-scan-command-primary'))
         .toHaveAttribute('data-recent-trace', 'true');
       expect(screen.getByTestId('civilization-mobile-scan-command-primary'))
         .toHaveTextContent(/New/i);
+
+      fireEvent.click(screen.getByRole('button', { name: /Inspect primary mobile scan readout/i }));
+      expect(screen.getByLabelText('Ashroot Bloom Trace dossier')).toBeInTheDocument();
     } finally {
       vi.useRealTimers();
     }
@@ -1941,20 +1750,23 @@ describe('CivilizationScenePanel', () => {
     );
     expect(screen.getByTestId('civilization-miniature-scene')).toHaveAttribute('data-archetype', 'living_arcology');
     expect(screen.getByTestId('civilization-plate-art'))
-      .toHaveAttribute('data-art-slot', 'civilization.plate.surface.living_arcology.cinematic');
+      .toHaveAttribute('data-art-slot', 'civilization.environment.aurora_basin.surface.city-2.neutral.cinematic');
     expect(screen.getByTestId('civilization-miniature-trace-pulse')).toBeInTheDocument();
     expect(screen.getAllByTestId('civilization-miniature-registration-ring')).toHaveLength(2);
-    expect(screen.getByTestId('civilization-miniature-work-ledger')).toBeInTheDocument();
-    expect(screen.getByTestId('civilization-plate-identity-grade')).toBeInTheDocument();
-    expect(screen.getByTestId('civilization-evolved-plate-state')).toBeInTheDocument();
-    expect(screen.getByTestId('civilization-plate-dialect')).toBeInTheDocument();
-    expect(screen.getByTestId('civilization-signature-atmosphere')).toBeInTheDocument();
-    expect(screen.getByTestId('civilization-environment-signatures')).toBeInTheDocument();
-    expect(screen.getByTestId('civilization-integrated-consequences')).toBeInTheDocument();
-    expect(screen.getByTestId('civilization-materialized-sites')).toHaveAttribute('data-render-mode', 'solid-local-forms');
+    expect(screen.getByTestId('civilization-artifact-manifestation-layer'))
+      .toHaveAttribute('data-world-layout', 'invariant');
+    expect(screen.getAllByTestId('civilization-artifact-structure')).toHaveLength(2);
+    expect(screen.queryByTestId('civilization-miniature-work-ledger')).not.toBeInTheDocument();
+    expect(screen.queryByTestId('civilization-plate-identity-grade')).not.toBeInTheDocument();
+    expect(screen.queryByTestId('civilization-evolved-plate-state')).not.toBeInTheDocument();
+    expect(screen.queryByTestId('civilization-plate-dialect')).not.toBeInTheDocument();
+    expect(screen.queryByTestId('civilization-signature-atmosphere')).not.toBeInTheDocument();
+    expect(screen.queryByTestId('civilization-environment-signatures')).not.toBeInTheDocument();
+    expect(screen.queryByTestId('civilization-integrated-consequences')).not.toBeInTheDocument();
+    expect(screen.queryByTestId('civilization-materialized-sites')).not.toBeInTheDocument();
     expect(screen.queryByTestId('civilization-artifact-substructures')).not.toBeInTheDocument();
     expect(screen.queryByTestId('civilization-native-work-layer')).not.toBeInTheDocument();
-    expect(screen.getByTestId('civilization-integrated-lift')).toBeInTheDocument();
+    expect(screen.queryByTestId('civilization-integrated-lift')).not.toBeInTheDocument();
     expect(screen.getByText('Civilization updated')).toBeInTheDocument();
     expect(screen.getByText('Mantlelift Driver Coil')).toBeInTheDocument();
     expect(screen.getByText('Lift Driver')).toBeInTheDocument();
@@ -1963,6 +1775,49 @@ describe('CivilizationScenePanel', () => {
     expect(screen.queryByTestId('civilization-scale-frame')).not.toBeInTheDocument();
     expect(screen.queryByTestId('civilization-trait-signatures')).not.toBeInTheDocument();
     expect(screen.queryByRole('button', { name: /scan/i })).not.toBeInTheDocument();
+  });
+
+  it('uses the authored Chrysalis world in the board miniature without legacy overlay proxies', () => {
+    render(
+      <CivilizationMiniatureScene
+        tier={1}
+        palette={{ primary: '#f97316', secondary: '#7e22ce', accent: '#fed7aa' }}
+        profile={{
+          key: 'chrysalis-miniature',
+          seed: 7,
+          artifactCount: 1,
+          affinityCounts: { flare: 1, continuum: 0, verdance: 0, abyss: 1, radiance: 0 },
+          traitCounts: {},
+          traitWeights: {},
+          dominantTraits: ['foundry'],
+          landmarks: [],
+        }}
+        progressFraction={1}
+        paused
+        deploymentSites={[
+          site(1, {
+            id: 'artifact:t1r01',
+            artifactId: 't1r01',
+            affinity: 'flare',
+            nativeArtworkLayer: 'surface',
+            artifactManifestation: getArtifactManifestationProfile('t1r01'),
+          }),
+        ]}
+        recentSiteIds={['artifact:t1r01']}
+      />,
+    );
+
+    expect(screen.getByTestId('civilization-living-world')).toHaveAttribute('data-dyad', 'chrysalis');
+    expect(screen.getByTestId('civilization-artifact-manifestation-layer'))
+      .toHaveAttribute('data-world-layout', 'invariant');
+    expect(screen.getByTestId('civilization-artifact-structure'))
+      .toHaveAttribute('data-artifact-unit', 't1r01');
+    expect(screen.getByTestId('civilization-artifact-arrival-ring')).toBeInTheDocument();
+    expect(screen.queryByTestId('civilization-authored-host')).not.toBeInTheDocument();
+    expect(screen.queryByTestId('civilization-miniature-work-ledger')).not.toBeInTheDocument();
+    expect(screen.queryByTestId('civilization-evolved-plate-state')).not.toBeInTheDocument();
+    expect(screen.queryByTestId('civilization-plate-dialect')).not.toBeInTheDocument();
+    expect(screen.queryByTestId('civilization-materialized-sites')).not.toBeInTheDocument();
   });
 
   it('renders notice thumbnails without miniature ledger or readout clutter', () => {
@@ -2002,8 +1857,10 @@ describe('CivilizationScenePanel', () => {
 
     expect(screen.getByTestId('civilization-miniature-scene')).toHaveAttribute('data-presentation', 'thumbnail');
     expect(screen.getByTestId('civilization-miniature-scene')).toHaveAttribute('data-scene', 'surface');
-    expect(screen.getByTestId('civilization-materialized-sites')).toBeInTheDocument();
-    expect(screen.getByTestId('civilization-integrated-lift')).toBeInTheDocument();
+    expect(screen.getByTestId('civilization-artifact-manifestation-layer')).toBeInTheDocument();
+    expect(screen.getAllByTestId('civilization-artifact-structure')).toHaveLength(2);
+    expect(screen.queryByTestId('civilization-materialized-sites')).not.toBeInTheDocument();
+    expect(screen.queryByTestId('civilization-integrated-lift')).not.toBeInTheDocument();
     expect(screen.queryByTestId('civilization-miniature-work-ledger')).not.toBeInTheDocument();
     expect(screen.queryByTestId('civilization-miniature-trace-pulse')).not.toBeInTheDocument();
     expect(screen.queryByTestId('civilization-plate-dialect')).not.toBeInTheDocument();
@@ -2088,6 +1945,7 @@ describe('CivilizationScenePanel', () => {
         }}
         progressFraction={1}
         paused
+        defaultScene="surface"
         deploymentSites={[site(1)]}
         forgedArtifacts={[artifact('t1r01', 'Ashroot Bloom')]}
         stabilityBand="crisis"
@@ -2098,6 +1956,301 @@ describe('CivilizationScenePanel', () => {
 
     expect(screen.getByTestId('civilization-scene-panel')).toHaveAttribute('data-stability', 'crisis');
     expect(screen.getByTestId('civilization-system-state')).toHaveAttribute('data-conditions', 'damaged,quarantined');
-    expect(screen.getByTestId('civilization-system-state-label')).toHaveTextContent('Stability // Crisis // 2 active conditions');
+    expect(screen.getByTestId('civilization-system-state')).toHaveAttribute('data-state-composition', 'localized-physical');
+    expect(screen.getByTestId('civilization-attention-state')).toHaveTextContent('2 active conditions');
+    expect(screen.getByTestId('civilization-system-state')
+      .querySelector('[data-state-treatment="environmental"]')).not.toBeInTheDocument();
+    expect(screen.getByTestId('civilization-system-state')
+      .querySelectorAll('[data-state-treatment="power-fault"]')).toHaveLength(3);
+    expect(screen.getByTestId('civilization-system-state')
+      .querySelectorAll('[data-state-treatment="structural-damage"]')).toHaveLength(3);
+    expect(screen.getByTestId('civilization-system-state')
+      .querySelectorAll('[data-state-treatment="damage-ember"]')).toHaveLength(3);
+    expect(screen.getByTestId('civilization-system-state')
+      .querySelectorAll('[data-state-treatment="quarantine-beacon"]')).toHaveLength(3);
+    expect(screen.getByTestId('civilization-artifact-damage-smoke')).toBeInTheDocument();
+    expect(screen.getByTestId('civilization-artifact-quarantine-beacon')).toBeInTheDocument();
+    expect(screen.getByTestId('civilization-system-state').querySelector('[class*="border"]'))
+      .not.toBeInTheDocument();
+  });
+
+  it('expresses Isolation and Disruption through localized physical operation changes', () => {
+    render(
+      <CivilizationScenePanel
+        tier={2}
+        palette={{ primary: '#4ade80', secondary: '#0f5a28', accent: '#a7f3c0' }}
+        profile={{
+          key: 'test',
+          seed: 1,
+          artifactCount: 1,
+          affinityCounts: { flare: 0, continuum: 0, verdance: 1, abyss: 0, radiance: 0 },
+          traitCounts: {},
+          traitWeights: {},
+          dominantTraits: ['biosphere'],
+          landmarks: [],
+        }}
+        progressFraction={1}
+        paused
+        defaultScene="surface"
+        deploymentSites={[site(1)]}
+        forgedArtifacts={[artifact('t1r01', 'Ashroot Bloom')]}
+        stabilityBand="unstable"
+        activeConditions={['isolated', 'disrupted']}
+        onOpenArtifact={vi.fn()}
+      />,
+    );
+
+    expect(screen.getByTestId('civilization-living-world'))
+      .toHaveAttribute('data-condition-motion', 'suspended');
+    expect(screen.getByTestId('civilization-system-state')
+      .querySelectorAll('[data-state-treatment="operational-blackout"]')).toHaveLength(3);
+    expect(screen.getByTestId('civilization-system-state')
+      .querySelectorAll('[data-state-treatment="power-disruption"]')).toHaveLength(3);
+    expect(screen.getByTestId('civilization-artifact-disruption')).toBeInTheDocument();
+    expect(screen.getAllByTestId('civilization-artifact-structure')[0])
+      .toHaveAttribute('data-condition-treatment', 'localized-physical');
+    expect(screen.getAllByTestId('civilization-artifact-structure')[0]?.style.opacity).toBe('1');
+    expect(screen.getAllByTestId('civilization-artifact-structure')[0]?.style.filter)
+      .not.toContain('grayscale');
+  });
+
+  it('uses canonical dyad identity, Reach, history, and scale transitions when Civilization state is available', () => {
+    const civilization = {
+      version: 2,
+      artifacts: [{
+        artifactId: 't1r01',
+        firstMasteredTurnCount: 2,
+        masteryCount: 1,
+        implementationState: 'operational',
+        implementationStateChangedTurnCount: null,
+        changeSourceType: 'artifact',
+        historyEvidence: 'recorded',
+      }],
+      affinityIdentity: {
+        policyId: 'provisional-ratio-v1',
+        form: 'dyad',
+        historicalCounts: { flare: 0, radiance: 5, verdance: 0, continuum: 0, abyss: 4 },
+        operationalCounts: { flare: 0, radiance: 5, verdance: 0, continuum: 0, abyss: 4 },
+        rankedAffinities: [
+          { affinity: 'radiance', historicalWeight: 5, operationalWeight: 5 },
+          { affinity: 'abyss', historicalWeight: 4, operationalWeight: 4 },
+          { affinity: 'flare', historicalWeight: 0, operationalWeight: 0 },
+          { affinity: 'verdance', historicalWeight: 0, operationalWeight: 0 },
+          { affinity: 'continuum', historicalWeight: 0, operationalWeight: 0 },
+        ],
+        dominantAffinity: 'radiance',
+        dominantDyad: 'eclipse',
+        thirdAffinity: null,
+        dominantShare: 5 / 9,
+        secondaryToPrimaryRatio: 0.8,
+        thirdToPrimaryRatio: 0,
+      },
+      scale: {
+        historicalMaturity: 'galactic',
+        currentReach: 'planetary',
+        currentReachCondition: 'fractured',
+        literalKardashevType: 1,
+        literalKardashevEvidence: 'recorded',
+      },
+      stability: {
+        band: 'unstable',
+        score: 42,
+        calibrationId: null,
+        contributors: [],
+        calculatedTurnCount: 3,
+        historyEvidence: 'recorded',
+      },
+      activeConditions: [],
+      activeCapabilityIds: [],
+      events: [],
+    } satisfies CivilizationPublicState;
+
+    const renderPanel = (civilizationState: CivilizationPublicState) => (
+      <CivilizationScenePanel
+        tier={3}
+        palette={{ primary: '#dfc878', secondary: '#a832d4', accent: '#f5e8b8' }}
+        profile={buildCivilizationProfile([artifact('t1r01', 'Ignition Kernel')])}
+        progressFraction={1}
+        paused
+        civilizationName="The Eclipse Archive"
+        civilization={civilizationState}
+        deploymentSites={[site(1)]}
+        forgedArtifacts={[artifact('t1r01', 'Ignition Kernel')]}
+        onOpenArtifact={vi.fn()}
+      />
+    );
+    const { rerender } = render(renderPanel(civilization));
+
+    expect(screen.getByTestId('civilization-scene-panel')).toHaveAttribute('data-visual-identity', 'eclipse');
+    expect(screen.getByTestId('civilization-scene-panel')).toHaveAttribute('data-global-complexity', '3');
+    expect(screen.queryByTestId('civilization-canonical-morphology')).not.toBeInTheDocument();
+    expect(screen.queryByTestId('civilization-complexity-atmosphere')).not.toBeInTheDocument();
+    expect(screen.getByRole('heading', { name: 'The Eclipse Archive' })).toBeInTheDocument();
+    expect(screen.queryByTestId('civilization-scene-details')).not.toBeInTheDocument();
+    expect(screen.getByRole('group', { name: /Civilization portrait where artifacts/i })).toBeInTheDocument();
+    expect(screen.queryByTestId('civilization-reach-layer')).not.toBeInTheDocument();
+    expect(screen.queryByTestId('civilization-history-ribbon')).not.toBeInTheDocument();
+    fireEvent.click(screen.getByRole('button', { name: /^Scan$/i }));
+    expect(screen.queryByTestId('civilization-canonical-morphology')).not.toBeInTheDocument();
+    expect(screen.queryByTestId('civilization-complexity-atmosphere')).not.toBeInTheDocument();
+    expect(screen.queryByTestId('civilization-reach-layer')).not.toBeInTheDocument();
+    expect(screen.getByTestId('civilization-history-ribbon')).toBeInTheDocument();
+    expect(screen.getByTestId('civilization-history-artifact-thumbnail'))
+      .toHaveAttribute('data-artifact-id', 't1r01');
+
+    const stellarCivilization = {
+      ...civilization,
+      scale: {
+        ...civilization.scale,
+        historicalMaturity: 'stellar',
+        currentReach: 'stellar',
+        currentReachCondition: 'intact',
+        literalKardashevType: 2,
+      },
+    } satisfies CivilizationPublicState;
+    rerender(renderPanel(stellarCivilization));
+    expect(screen.getByTestId('civilization-maturity-cinematic')).toHaveTextContent('Civilization ascendsStellar');
+
+    rerender(renderPanel(civilization));
+
+    fireEvent.click(screen.getByRole('button', { name: 'System' }));
+    expect(screen.getByTestId('civilization-scale-transition')).toHaveAttribute('data-direction', 'in');
+    expect(screen.getByTestId('civilization-scene-panel')).toHaveAttribute('data-current-reach', 'historical');
+  });
+
+
+  it('keeps Chrysalis city Scan on the portrait world and annotates only local physical Artifacts', () => {
+    const deploymentSites = [
+      site(1, {
+        id: 'artifact:t1r01',
+        artifactId: 't1r01',
+        affinity: 'flare',
+        scaleBand: 'planetary',
+        nativeArtworkLayer: 'surface',
+        artifactManifestation: getArtifactManifestationProfile('t1r01'),
+      }),
+      site(7, {
+        id: 'artifact:t1r07',
+        artifactId: 't1r07',
+        affinity: 'flare',
+        scaleBand: 'planetary',
+        nativeArtworkLayer: 'surface',
+        artifactManifestation: getArtifactManifestationProfile('t1r07'),
+      }),
+      site(9, {
+        id: 'artifact:t2r01',
+        artifactId: 't2r01',
+        affinity: 'abyss',
+        artifactTier: 2,
+        scaleBand: 'planetary',
+        nativeArtworkLayer: 'orbit',
+        artifactManifestation: getArtifactManifestationProfile('t2r01'),
+      }),
+    ];
+    const profile = {
+      key: 'chrysalis-test',
+      seed: 7,
+      artifactCount: 3,
+      affinityCounts: { flare: 2, continuum: 0, verdance: 0, abyss: 1, radiance: 0 },
+      traitCounts: {},
+      traitWeights: {},
+      dominantTraits: [],
+      landmarks: [],
+    };
+    render(
+      <CivilizationScenePanel
+        tier={3}
+        palette={{ primary: '#f97316', secondary: '#7e22ce', accent: '#fed7aa' }}
+        profile={profile}
+        progressFraction={1}
+        paused
+        defaultScene="surface"
+        showAllArtifactPins
+        deploymentSites={deploymentSites}
+        forgedArtifacts={[
+          artifact('t1r01', 'Ignition Kernel'),
+          artifact('t1r07', 'Entropy Pyre Baffle'),
+          artifact('t2r01', 'Orbital Crucible'),
+        ]}
+        onOpenArtifact={vi.fn()}
+      />,
+    );
+
+    const plate = screen.getByTestId('civilization-plate-art');
+    const portraitPlate = { src: plate.getAttribute('src'), style: plate.getAttribute('style') };
+    const getHostGeometry = () => Array.from(
+      document.querySelectorAll<HTMLElement>('[data-manifestation-kind="dyad-artifact-composite"]'),
+    ).map((host) => ({
+      key: host.dataset.worldHostKey,
+      anchor: host.dataset.worldAnchor,
+      left: host.style.left,
+      top: host.style.top,
+      width: host.style.width,
+      height: host.style.height,
+    }));
+    const portraitHosts = getHostGeometry();
+
+    fireEvent.click(screen.getByRole('button', { name: /^Scan$/i }));
+
+    expect(screen.getByTestId('civilization-scene-panel')).toHaveAttribute('data-visual-identity', 'chrysalis');
+    expect(screen.getByRole('button', { name: 'City' })).toHaveAttribute('aria-pressed', 'true');
+    const restingMarkers = screen.getAllByTestId('civilization-scan-map-pin');
+    expect(restingMarkers).toHaveLength(2);
+    expect(restingMarkers.every((marker) => marker.getAttribute('data-marker-mode') === 'artifact-structure'))
+      .toBe(true);
+    expect(restingMarkers.every((marker) => marker.classList.contains('opacity-100')))
+      .toBe(true);
+    const markerHostKeys = restingMarkers.map((marker) => marker.getAttribute('data-world-host-key'));
+    expect(markerHostKeys.every((key) => key?.startsWith('native:chrysalis:')))
+      .toBe(true);
+    expect(markerHostKeys.every(Boolean)).toBe(true);
+    expect(restingMarkers[0]).not.toHaveAttribute(
+      'data-world-anchor',
+      restingMarkers[1]!.getAttribute('data-world-anchor'),
+    );
+    expect(screen.queryByTestId('civilization-scan-host-count')).not.toBeInTheDocument();
+    expect(screen.queryByTestId('civilization-artifact-pin-host-link')).not.toBeInTheDocument();
+    expect(screen.queryByTestId('civilization-artifact-index')).not.toBeInTheDocument();
+    fireEvent.click(screen.getByText('Artifact index'));
+    const artifactIndex = screen.getByTestId('civilization-artifact-index');
+    const artifactIndexButtons = artifactIndex.querySelectorAll('button');
+    expect(artifactIndexButtons).toHaveLength(2);
+    const selectedArtifactStructure = document.querySelector<HTMLElement>(
+      '[data-testid="civilization-artifact-structure"][data-artifact-unit="t1r07"]',
+    );
+    const selectedArtifactHostKey = selectedArtifactStructure?.dataset.worldHostKey;
+    expect(selectedArtifactHostKey).toBeTruthy();
+
+    fireEvent.click(artifactIndexButtons[1]!);
+
+    expect(screen.getByTestId('civilization-artifact-pin-host-link')).toHaveAttribute(
+      'data-world-host-key',
+      selectedArtifactHostKey,
+    );
+    expect(screen.getByTestId('civilization-artifact-pin-host-link')).toHaveAttribute(
+      'data-site-id',
+      'artifact:t1r07',
+    );
+    const selectedMarker = screen.getAllByTestId('civilization-scan-map-pin')
+      .find((marker) => marker.getAttribute('data-pin-state') === 'selected');
+    expect(screen.getAllByTestId('civilization-scan-map-pin').every((marker) => (
+      marker.classList.contains('opacity-100')
+    ))).toBe(true);
+    expect(selectedMarker).toHaveAttribute(
+      'data-site-id',
+      'artifact:t1r07',
+    );
+    expect(selectedMarker).toHaveAttribute('data-pin-link-state', 'linked');
+    expect(Number(selectedMarker?.getAttribute('data-pin-offset'))).toBeGreaterThan(0);
+    const connectorCoordinates = screen.getByTestId('civilization-artifact-pin-host-link')
+      .getAttribute('d')!
+      .match(/-?\d+(?:\.\d+)?/g)!
+      .map(Number);
+    expect(connectorCoordinates[1]).toBeLessThan(connectorCoordinates.at(-1)!);
+    expect(screen.queryByTestId('civilization-materialized-sites')).not.toBeInTheDocument();
+    expect(screen.queryByTestId('civilization-artifact-deployments')).not.toBeInTheDocument();
+    expect(screen.queryByTestId('civilization-scan-focus')).not.toBeInTheDocument();
+    expect(getHostGeometry()).toEqual(portraitHosts);
+    expect({ src: plate.getAttribute('src'), style: plate.getAttribute('style') }).toEqual(portraitPlate);
   });
 });

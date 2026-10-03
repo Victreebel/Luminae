@@ -1,0 +1,19 @@
+{
+  "name": "Ouroboros",
+  "status": "Revised example for review",
+  "file": "ouroboros-abstract-v4.png",
+  "source": "/Users/chaoscalligraphy/.codex/generated_images/01a0f23c-8e30-7ba2-875e-316cd0496d67/exec-924f44c7-eff2-4d66-88ee-3777bf0efe33.png",
+  "generator": "built-in image_gen",
+  "editTarget": "/Users/chaoscalligraphy/Documents/Lumiane/artifacts/luminae/design-mockups/civilization-insignias-v3-examples/ouroboros-fire-crystal-v3.png",
+  "prompt": "Use case: precise-object-edit.\nImage 1 is the edit target. Make one focused change to the UPPER-RIGHT SNAKE HEAD: remove its eye and make the head abstract, while preserving the current design everywhere else.\n\nErase the eye completely: NO eyeball, iris, pupil, eyelid, socket, brow, glowing dot, star, gem, slit or other substitute eye. Fill that whole area with uninterrupted blue crystalline planes that flow naturally from the adjoining body facets. Nothing at the former eye position should read as a facial feature.\n\nSimplify the remaining face into a clean, abstract folded crystalline terminal: remove the nostril and individual anatomical fangs/gums. Use two simple opposing sapphire-blue faceted curves and one broad dark bite cleft around the red tail. Retain the physical red tail entering that cleft so the Ouroboros self-consuming loop stays unmistakable. The form should suggest a serpent through its looping body and self-bite, without a realistic animal face or threatening expression. Do not replace it with a dragon or add horns.\n\nPRESERVE: the same continuous circular body, proportions, placement of the head and tail junction, red → violet → blue order, fiery red lower-right arc, saturated violet lower-left transition, crystalline blue upper arc, three-color luminous central core, detailed circular engraved rim, all current colors and lighting, and transparent exterior. Do not simplify the whole medallion or change its material style. Do not move or resize the central core or alter the border.\n\nThis is a local edit of the head only. No other redesign, no additional symbols, words, labels or background. Keep the complete token inside the canvas and preserve transparency.",
+  "changes": [
+    "Removed eye and anatomical facial details",
+    "Abstract crystalline head retains the tail-biting cleft"
+  ],
+  "preserved": [
+    "Red → violet → blue cycle",
+    "Fire and crystalline materials",
+    "Central luminous core",
+    "Circular affinity-token framing"
+  ]
+}

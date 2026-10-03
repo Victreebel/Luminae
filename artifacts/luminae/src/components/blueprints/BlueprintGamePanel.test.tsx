@@ -79,6 +79,106 @@ describe("BlueprintGamePanel", () => {
     expect(screen.queryByRole("button", { name: /Recover/i })).not.toBeInTheDocument();
   });
 
+  it("uses Antimatter Detonator as a complete private-to-public Legacy project example", () => {
+    const assembling = player({
+      blueprintPrivateStates: [{
+        blueprintId: "bp_antimatter_detonator",
+        slotIndex: 0,
+        matchedComponentIds: ["t1r01"],
+        manifested: false,
+        definition: BLUEPRINT_DEFINITIONS.bp_antimatter_detonator as never,
+      }],
+    });
+    const { rerender } = render(
+      <BlueprintGamePanel
+        me={assembling}
+        players={[assembling]}
+        onOpenArtifact={() => undefined}
+      />,
+    );
+
+    expect(screen.getByText("Antimatter Detonator")).toBeInTheDocument();
+    expect(screen.getByText("1 / 4")).toBeInTheDocument();
+    expect(screen.getByTestId("antimatter-blueprint-card")).toHaveAttribute(
+      "data-blueprint-state",
+      "assembling",
+    );
+    expect(screen.queryByText(/Legacy \d+\/\d+/)).not.toBeInTheDocument();
+
+    const manifested = player({
+      blueprintPrivateStates: [{
+        blueprintId: "bp_antimatter_detonator",
+        slotIndex: 0,
+        matchedComponentIds: BLUEPRINT_DEFINITIONS.bp_antimatter_detonator.components.map((component) => component.artifactId),
+        manifested: true,
+        definition: BLUEPRINT_DEFINITIONS.bp_antimatter_detonator as never,
+      }],
+      manifestedBlueprintDevices: [{
+        blueprintId: "bp_antimatter_detonator",
+        ownerPlayerId: "p1",
+        slotIndex: 0,
+        state: "armed",
+        presentationVariant: "armored",
+        definition: BLUEPRINT_DEFINITIONS.bp_antimatter_detonator as never,
+      }],
+      civilization: {
+        projects: [{
+          projectId: "project:0:bp_antimatter_detonator",
+          blueprintId: "bp_antimatter_detonator",
+          slotIndex: 0,
+          status: "manifested",
+          deviceState: "armed",
+          presentationVariant: "armored",
+          manifestedTurnCount: 4,
+          stateChangedTurnCount: 4,
+          activeCapabilityIds: ["project:claim_annihilation"],
+          historyEvidence: "recorded",
+        }],
+      } as never,
+    });
+    rerender(
+      <BlueprintGamePanel
+        me={manifested}
+        players={[manifested]}
+        onOpenArtifact={() => undefined}
+      />,
+    );
+
+    expect(screen.getByTestId("antimatter-blueprint-card")).toHaveAttribute(
+      "data-blueprint-state",
+      "manifested",
+    );
+    expect(screen.getByText("Armed")).toBeInTheDocument();
+    expect(screen.queryByText(/Capability (online|dormant)/)).not.toBeInTheDocument();
+    expect(screen.queryByText(/Legacy \d+\/\d+/)).not.toBeInTheDocument();
+  });
+
+  it("uses a Blueprint card for projects without dedicated hero artwork", () => {
+    const me = player({
+      blueprintPrivateStates: [{
+        blueprintId: "bp_worldshield_covenant",
+        slotIndex: 0,
+        matchedComponentIds: ["t1o01"],
+        manifested: false,
+        definition: BLUEPRINT_DEFINITIONS.bp_worldshield_covenant as never,
+      }],
+    });
+
+    render(
+      <BlueprintGamePanel
+        me={me}
+        players={[me]}
+        onOpenArtifact={() => undefined}
+      />,
+    );
+
+    expect(screen.getByTestId("bp_worldshield_covenant-blueprint-card")).toHaveAttribute(
+      "data-blueprint-presentation",
+      "card",
+    );
+    expect(screen.getByText("1 / 3")).toBeInTheDocument();
+  });
+
   it("renders public Ascension Deferral pressure without revealing a sealed protocol identity", () => {
     const lumii = player({
       playerId: "lumii",

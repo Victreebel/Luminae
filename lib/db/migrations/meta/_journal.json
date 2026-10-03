@@ -148,6 +148,20 @@
       "when": 1788134258000,
       "tag": "0020_default_victory_requirement",
       "breakpoints": true
+    },
+    {
+      "idx": 21,
+      "version": "7",
+      "when": 1788494400000,
+      "tag": "0021_investigation_quiz",
+      "breakpoints": true
+    },
+    {
+      "idx": 22,
+      "version": "7",
+      "when": 1790467200000,
+      "tag": "0022_room_event_frequency",
+      "breakpoints": true
     }
   ]
 }

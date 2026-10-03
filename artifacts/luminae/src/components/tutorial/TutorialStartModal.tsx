@@ -59,16 +59,16 @@ export function TutorialStartModal({ hasProgress, savedBeat, totalBeats, onChoic
               <BookOpen className="h-5 w-5" />
             </span>
             <OutOfMatchSectionHeading
-              eyebrow="Guided Match"
-              title={hasProgress ? "Continue Tutorial" : "Learn Luminae"}
+              eyebrow="First Contact"
+              title={hasProgress ? "Continue First Contact" : "Meet Lumii"}
               titleId="tutorial-start-title"
             />
           </div>
 
           <p className="mb-1 text-sm leading-relaxed text-muted-foreground">
             {hasProgress
-              ? "Resume your current lesson, or restart from the beginning."
-              : "Practice the four core actions on a playable board with Lumii."}
+              ? "Resume the encounter, or restart it before it becomes part of your record."
+              : "Meet Lumii and learn the four core actions through a guided encounter."}
           </p>
           {stepDisplay && (
             <p className="mb-6 mt-2 text-xs font-semibold text-[#e5c56f]/80">
@@ -101,7 +101,7 @@ export function TutorialStartModal({ hasProgress, savedBeat, totalBeats, onChoic
                 className="oom-action-primary h-12"
               >
                 <Play className="h-4 w-4 fill-current" />
-                Start Tutorial
+                  Begin First Contact
               </button>
             )}
             <button

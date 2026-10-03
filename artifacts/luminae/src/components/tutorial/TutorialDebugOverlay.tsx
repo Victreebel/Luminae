@@ -12,6 +12,7 @@ import { useState, type Dispatch, type CSSProperties } from "react";
 import { TUTORIAL_BEATS, BEAT_INDEX } from "@/lib/tutorialData";
 import type { TutState, TAction } from "@/lib/tutorialReducer";
 import { clearTutorialProgress, clearIntroSeen } from "@/lib/tutorialProgress";
+import { getTutorialCopyStatus } from "@/lib/tutorialDialogueGovernance";
 
 // ─── cameraFocus mirror (must stay in sync with GameplayPhase) ────────────────
 function deriveCameraFocus(
@@ -24,7 +25,7 @@ function deriveCameraFocus(
   if (beatId === "b11_forge_reserved" && subStep === 0) return "tier1";
   if (beatId === "b12_tier2" && subStep === 1) return "well";
   if (beatId === "b16_final_forge" && subStep === 0) return "well";
-  if (beatId === "b9b_forge_complete" || beatId === "b9c_transition" || beatId === "b14_win_condition")
+  if (beatId === "b9b_forge_complete" || beatId === "b9d_signature" || beatId === "b9c_transition" || beatId === "b14_win_condition")
     return "storage";
   if (beatId === "b10_reserve" || beatId === "b10b_reserve_granted") return "forge";
   return "overview";
@@ -32,20 +33,15 @@ function deriveCameraFocus(
 
 // ─── Known bug annotations keyed by beat id ──────────────────────────────────
 const BEAT_BUGS: Record<string, string[]> = {
-  "b9b_forge_complete":   ["BUG-01: camera='storage' has no scroll handler → scrolls to board top", "BUG-11: isForgeHighlighted persists after forge"],
-  "b9c_transition":       ["BUG-01: camera='storage' has no scroll handler → scrolls to board top"],
+  "b9b_forge_complete":   ["BUG-11: isForgeHighlighted persists after forge"],
   "b10_reserve":          ["BUG-08: no Artifact highlighted at subStep=0 — 'reserve this one' has no visual referent"],
   "b10b_reserve_granted": ["BUG-05: PlayerHand highlighted but off-screen (camera=forge shows board top)"],
   "b11_forge_reserved":   ["BUG-06: camera=tier1 shows two ghost slots at subStep=0; PlayerHand off-screen"],
-  "b12_tier2":            ["BUG-03 P1 SOFT-LOCK: view='needed' arrives from b11; subStep=0 requires re-clicking already-active Needed tab"],
-  "b14_win_condition":    ["BUG-01: camera='storage' scrolls to top (Eminence ok — pinned panel — but storage section missed)"],
 };
 
 // ─── Soft-lock runtime detection ─────────────────────────────────────────────
 function detectRuntimeWarnings(s: TutState, beatId: string): string[] {
   const warns: string[] = [];
-  if (beatId === "b12_tier2" && s.subStep === 0 && s.view === "needed")
-    warns.push("LIVE SOFT-LOCK: view is already 'needed' — player cannot advance without re-clicking active tab");
   if ((beatId === "b9b_forge_complete" || beatId === "b9c_transition") && s.forged.length === 0)
     warns.push("No forged Artifacts: PlayerStorage not rendered (hidden by conditional)");
   return warns;
@@ -187,9 +183,16 @@ export function TutorialDebugOverlay({ s }: { s: TutState; dispatch: Dispatch<TA
   const beatId = beat.id;
   const subStep = s.subStep;
   const isCinematic = s.beat <= 9;
+  const dialogueCopyStatus = beat.dialogue[s.dlgLine]
+    ? getTutorialCopyStatus({ kind: "dialogue", beatId, lineIndex: s.dlgLine })
+    : "none";
+  const choiceCopyStatuses = beat.choices?.length
+    ? Array.from(new Set(beat.choices.map((choice) =>
+      getTutorialCopyStatus({ kind: "choice", beatId, choiceId: choice.id }),
+    ))).join(" / ")
+    : "none";
 
   const cameraFocus = isCinematic ? "cinematic" : deriveCameraFocus(beatId, subStep);
-  const cameraWarn = cameraFocus === "storage";
 
   const completionStr =
     beat.completion.type === "action"   ? `action → ${beat.completion.action}` :
@@ -203,6 +206,7 @@ export function TutorialDebugOverlay({ s }: { s: TutState; dispatch: Dispatch<TA
     if (beat.completion.type === "action") return beat.completion.action;
     if (beat.completion.type === "animation") return "wait for animation";
     if (beat.completion.type === "auto") return `auto-advance (${beat.completion.ms} ms)`;
+    if (beat.completion.type === "panel_view") return `open ${beat.completion.panel}`;
     return "—";
   })();
 
@@ -218,15 +222,14 @@ export function TutorialDebugOverlay({ s }: { s: TutState; dispatch: Dispatch<TA
       : `harness: [${(s.animTrigger as Extract<typeof s.animTrigger, { type: "harness" }>).affinities.join(", ")}]`
     : "none";
 
-  const cardFlipStr = (() => {
+  const forgeFormationStr = (() => {
     const b6Idx  = BEAT_INDEX["b6_forge_appears"]  ?? 10;
     const b6bIdx = BEAT_INDEX["b6b_root_lattice"]  ?? 11;
     if (s.beat < b6Idx)  return "pre-mount (Forge not yet shown)";
-    if (s.beat === b6Idx)  return "back face shown — awaiting flip at next beat";
-    if (s.beat === b6bIdx) return "flipping now (CardFlipReveal fresh-mount, shouldAnimate=true)";
-    return "post-flip (irrelevant)";
+    if (s.beat === b6Idx)  return "empty mold shown — awaiting path formation";
+    if (s.beat === b6bIdx) return "forming now (molten fill inside destination mold)";
+    return "path formed";
   })();
-  const cardFlipWarn = false;
 
   const heldAffinityStr = Object.entries(s.affinities).filter(([, v]) => v > 0).map(([k, v]) => `${k}:${v}`).join(" ") || "none";
   const bonusStr   = Object.entries(s.bonuses).filter(([, v]) => v > 0).map(([k, v]) => `${k}:${v}`).join(" ") || "none";
@@ -333,6 +336,8 @@ export function TutorialDebugOverlay({ s }: { s: TutState; dispatch: Dispatch<TA
           {/* ── DIALOGUE ──────────────────────────────────────────────────── */}
           <Section id="dialogue" title="DIALOGUE">
             <Row label="dlg line"       value={`${s.dlgLine + 1} / ${beat.dialogue.length}`} />
+            <Row label="copy status"    value={dialogueCopyStatus} warn={dialogueCopyStatus === "draft"} />
+            <Row label="choice copy"    value={choiceCopyStatuses} warn={choiceCopyStatuses.includes("draft")} />
             <Row label="completion"     value={completionStr} />
             <Row label="expectedAction" value={expectedAction} />
             {beat.wrongClickNudge && (
@@ -341,18 +346,8 @@ export function TutorialDebugOverlay({ s }: { s: TutState; dispatch: Dispatch<TA
           </Section>
 
           {/* ── CAMERA / LUMII ────────────────────────────────────────────── */}
-          <Section
-            id="camera"
-            title="CAMERA / LUMII"
-            badge={cameraWarn ? "⚠ storage bug" : undefined}
-            warnBadge
-          >
-            <Row label="cameraFocus"     value={cameraFocus} warn={cameraWarn} />
-            {cameraWarn && (
-              <div style={{ ...C.warn, fontSize: 10, paddingLeft: 4 }}>
-                BUG-01: no scroll handler for 'storage' — scrolls to board top
-              </div>
-            )}
+          <Section id="camera" title="CAMERA / LUMII">
+            <Row label="cameraFocus"     value={cameraFocus} />
             <Row label="lumiiZone"       value={beat.lumiiZone} />
             <Row label="highlightZone"   value={beat.highlightZone ?? "none"} dim={!beat.highlightZone} />
             <Row label="foregroundCard"  value={beat.foregroundCardId ?? "none"} dim={!beat.foregroundCardId} />
@@ -363,7 +358,7 @@ export function TutorialDebugOverlay({ s }: { s: TutState; dispatch: Dispatch<TA
           {/* ── ANIMATION STATE ───────────────────────────────────────────── */}
           <Section id="anim" title="ANIMATION STATE">
             <Row label="animTrigger"   value={animStr} dim={animStr === "none"} />
-            <Row label="cardFlipReveal" value={cardFlipStr} warn={cardFlipWarn} />
+            <Row label="forgeFormation" value={forgeFormationStr} />
           </Section>
 
           {/* ── GAME STATE ────────────────────────────────────────────────── */}
@@ -374,6 +369,13 @@ export function TutorialDebugOverlay({ s }: { s: TutState; dispatch: Dispatch<TA
             <Row label="reserved" value={s.reserved.length ? s.reserved.join(", ") : "none"} dim={!s.reserved.length} />
             <Row label="eminence" value={String(s.eminence)} dim={s.eminence === 0} />
             <Row label="wellSel"  value={wellSelStr} dim />
+            <Row label="stance" value={s.currentRunStance ?? "none"} dim={!s.currentRunStance} />
+            <Row label="rapport" value={s.currentRunRapport ?? "none"} dim={!s.currentRunRapport} />
+            <Row
+              label="discoveries"
+              value={s.discoveries.length ? s.discoveries.join(", ") : "none"}
+              dim={!s.discoveries.length}
+            />
           </Section>
 
           {/* ── KNOWN BUGS ────────────────────────────────────────────────── */}

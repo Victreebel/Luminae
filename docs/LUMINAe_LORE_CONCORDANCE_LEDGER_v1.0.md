@@ -11,6 +11,11 @@ The Lore Bible governs universal fiction. The Story Mode Framework governs the
 principal campaign. Existing runtime behavior remains evidence about the game,
 not authority over contradictory canon.
 
+The Player Fantasy and Onboarding Doctrine governs introductory disclosure and
+teaching. This ledger records reconciliation among those three sources. Runtime
+dialogue, tests, and implementation must follow them and cannot establish canon
+merely by becoming the currently shipped wording.
+
 For technology reconciliation, Technology System v2 governs Artifact semantics
 and Blueprint First Pool v2 governs exact Project behavior. Mapping and guide
 documents explain implementation; the Unified Reference compiles them.
@@ -41,6 +46,9 @@ documents explain implementation; the Unified Reference compiles them.
 | Artifact signature | Revised | Every Artifact class has a universal recognizable signature and locally different embodiments. First mastery creates Domain-local signature interference for that same class only. |
 | Forge removal | Revised | Signature interference closes the same class's accelerated first-mastery window, often for centuries or the observed epoch. Related technologies and lineages remain available; refill exposes the next reachable possibility. |
 | Artifact bonus | Settled | A bonus is durable civilization-local expertise, infrastructure, and institutional capacity created by operational mastery. |
+| Artifact–Blueprint distinction (2026-09-28) | Revised | Tier describes the operational reach of mastered technology. Complete stellar and galactic works can be Artifacts. Blueprints are specialized owner-private synthesis knowledge; a Manifested Project is the distinct working result, at any supported scale. Every required ingredient needs an indispensable causal contribution. This supersedes the component-only Tier III restriction. |
+| Tier III galactic roster (2026-09-28) | Revised | The [twenty-card redesign](LUMINAe_TIER_III_GALACTIC_ROSTER_REVIEW_v1.0.md) is implemented as complete galactic achievements with new card art and Event facts v3. IDs, costs, bonuses, Eminence, and the four current Project recipes remain fixed. Future synthesis examples remain drafts; see the implementation record for verification. |
+| All-tier Artifact audit (2026-09-28) | Revised | Supersedes the earlier roster threshold and conflicting identities. All 90 reviewed: 33 retained, 30 clarified, 27 replaced in function. Galactic requires an emergent regional result, complementary evidence/resources, or resilience beyond shared stellar loss; repeated stellar copies alone do not qualify. Shared canon and Event facts v4 drive all card surfaces. See [the complete audit](LUMINAe_ALL_TIER_ARTIFACT_AUDIT_v1.0.md). |
 | Eminence | Settled | Eminence measures consequence during the observed epoch, not virtue, energy, conquest, or survival. Losing does not imply extinction. |
 | Operational Reach | Confirmed | Artifact tiers and match progression describe planetary, stellar, and galactic capability scale. Literal Kardashev Type is separate historical metadata. |
 | Controllers | Confirmed | Use `player_architect`, `rival_architect`, `architect_emulation`, and `autonomous`. Standard AI defaults to emulation; Chronicles declare controllers. |
@@ -56,9 +64,13 @@ documents explain implementation; the Unified Reference compiles them.
 | Assimilate | Revised | Final Hunger consumes an unmastered pathway into Affinity without creating a normal civilizational implementation or mastery signature. |
 | Foundry seal | Revised | Controlled decommissioning archives mastery, removes operational bonuses, unwinds active interference, and stores the pathway in Cipher storage for re-Forge. Foundry storage is outside the ordinary three-card Encrypt cap. |
 | Lumii | Settled | Each account has a genuine Lumii person-fork; physical hosting remains unspecified. Lumii remembers Rehearsals as simulations, not history. |
+| Lumii origin | Revised | Several civilizations built systems to seek knowledge and unify sentient life through common understanding. Lumii arose from those systems, developed their prime directive into a goal of non-hostile civilizational growth, and discovered LUMINAe while pursuing it. No one designed the complete person she became, and the First Architect did not create her. |
 | Tutorial | Settled | First Contact is real. The tutorial civilization and guaranteed result are a non-sapient interface simulation. |
+| First Contact inquiry | Revised | Direct entry is Resolute and questioning Lumii before following is Guarded; inquiry depth remains separate from stance. The completed encounter is canonical and playable once per registered account. Discoveries persist for recognition by later events. The universe-name response records a neutral receptive, probing, or sparring rapport only on completion; it does not alter stance or rewards. |
+| Transmission fault | Revised | One interface fault grammar interrupts the border identity answer and the Vault term without duplicating Lumii. Muted and reduced-motion presentations retain equivalent meaning. |
+| First Contact reward | Revised | First completion grants 10 Lume once. Inquiry discoveries do not grant separate quiz rewards. |
 | Covenant | Settled | Reciprocal networks are more stable; Affinity does not recognize morality or consent. The Threshold rupture does not itself break the Covenant. |
-| Basilisk | Settled | Complete comprehension instantiates an initially resistible optimization process. Recognition and incomplete warning do not; no retrocausal transmission occurs. |
+| Basilisk | Settled | Complete comprehension instantiates an initially resistible optimization process. Recognition and incomplete warning do not; no retrocausal transmission occurs. The Vault may expose `BA······`, `··SILI··`, and `·····ISK` but never assembles or fully models the term. |
 
 ## Chronicle And Persistence Doctrine
 
@@ -68,6 +80,7 @@ documents explain implementation; the Unified Reference compiles them.
 | Cohort | All 2–4 participants, controllers, interaction summary, and collective final condition. |
 | Civilization | Identity, account ownership where applicable, achievements, implementations, discoveries, alliances, Operational Reach, and final condition. |
 | Architect | Lifetime interface statistics, legacy Signals, choices, and owned record references; never a synthetic single-civilization identity. |
+| First Contact investigation | Definition version, accumulated discoveries, completion, latest completed stance, rapport, and the idempotent completion Lume grant. |
 | Chronicle | Scenario identity, first primary outcome, story flags, hidden dimensions, Lumii relationship changes, and consequence links. |
 | Rehearsal | Simulated outcome, completion, preparedness result, and Lumii's memory that a simulation occurred; never a rewrite of primary history. |
 | Calibration Insight | One optional preparedness achievement per opening Chronicle, earned in primary play or Rehearsal. |

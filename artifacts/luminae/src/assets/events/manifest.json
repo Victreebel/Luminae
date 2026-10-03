@@ -1,0 +1,62 @@
+{
+  "generatedWith": "Codex built-in image_gen",
+  "promptSet": "SOURCES.md",
+  "assets": [
+    {
+      "file": "affinity-bloom-v1.webp",
+      "width": 448,
+      "height": 640,
+      "bytes": 38062,
+      "sha256": "b50ac2b44bd01c184c9a181489b942883a2ed5423a209ee9253f5a979c0f41da"
+    },
+    {
+      "file": "affinity-inversion-v1.webp",
+      "width": 448,
+      "height": 640,
+      "bytes": 57776,
+      "sha256": "2c7e74c07f12551799abd24cf0d4d4671b0a5fb8b4f66305d15a58f9c7a6944f"
+    },
+    {
+      "file": "containment-cascade-v1.webp",
+      "width": 448,
+      "height": 640,
+      "bytes": 46414,
+      "sha256": "fb165c79d2f0ef676923bb763eee8bdd1474e8a64f9b252020c9d25ec3bb7e3b"
+    },
+    {
+      "file": "cosmic-reflux-v1.webp",
+      "width": 448,
+      "height": 640,
+      "bytes": 41804,
+      "sha256": "6f71ab416abc77cfc7df1fde44e3c63b2428b7a9fbe89555e7c0daf452e60401"
+    },
+    {
+      "file": "entropy-storm-v1.webp",
+      "width": 448,
+      "height": 640,
+      "bytes": 47616,
+      "sha256": "7dbf40bd4d0852d2a10a5cc03ec4a67706902caa288db00c71d55001407e50db"
+    },
+    {
+      "file": "forge-drift-v1.webp",
+      "width": 448,
+      "height": 640,
+      "bytes": 33068,
+      "sha256": "b7fb48589361488826bd3bc2523a476c9f25c6aaa1c4add11fb504dfe59d5e63"
+    },
+    {
+      "file": "fracture-wave-v1.webp",
+      "width": 448,
+      "height": 640,
+      "bytes": 52962,
+      "sha256": "66fa8e5d5e3a76d9b644881c63cc21fed5d0cbeac1f1187c497052591c07088c"
+    },
+    {
+      "file": "system-shock-v1.webp",
+      "width": 448,
+      "height": 640,
+      "bytes": 47822,
+      "sha256": "d1d9a466b4e3a543ea58a37deafde74c40ff484f5d8587e35f4039f01e1a179f"
+    }
+  ]
+}

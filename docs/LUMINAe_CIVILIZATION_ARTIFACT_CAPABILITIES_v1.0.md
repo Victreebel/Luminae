@@ -1,8 +1,16 @@
 # LUMINAe Civilization Artifact Capabilities v1.0
 
+Current tier review: [All-Tier Artifact Audit](LUMINAe_ALL_TIER_ARTIFACT_AUDIT_v1.0.md). All 90 functional sentences now come from `lib/game-types/src/artifact-canon.ts`; Event facts v4 reference that authority. Four capability pairs changed with replacement functions; the 32-capability vocabulary remains fixed. Synchronization membership is explicitly reviewed at 11 Artifacts, with 79 exclusions.
+
 ## Status
 
 Adopted Civilization semantic doctrine and shared implementation reference.
+
+The September 28 [Event semantic consistency review](LUMINAe_EVENT_SEMANTIC_CONSISTENCY_REVIEW_v1.0.md)
+corrects eight assignments against existing practical lore. The closed vocabulary
+and one/two-capability limit remain unchanged. These corrections also affect
+capability-based pressure responses, Chronicle preparedness, and operational
+Civilization breadth; they do not change approved prose or Blueprint recipes.
 
 This document resolves the Artifact-ontology and capability-tag decisions that
 were deferred by the Civilization implementation audit. It does not change
@@ -23,10 +31,12 @@ This decision reconciles:
 3. `LUMINAe_TECHNOLOGY_SYSTEM_v2.0.md`
 4. `LUMINAe_TECHNOLOGY_LINEAGE_MATRIX_v2.0.md`
 5. the 90-card shared mechanical registry
-6. the canonical Tier III bounded-keystone registry
+6. the canonical Tier III galactic-achievement registry
 
-Where old Tier III megastructure art or names disagree with Technology v2, the
-Technology v2 bounded keystone is authoritative.
+The revised Technology v2 distinction and shared Tier III registry govern
+current identities. The former bounded-keystone restriction is superseded;
+complete galactic works can be Artifacts. Historical art and names do not
+override the implemented practical function.
 
 ## Ontology Decision
 
@@ -143,9 +153,16 @@ Assignments follow these rules:
 3. Prefer the minimum tag set that preserves the Artifact's useful response.
 4. Do not add a tag merely because a lower-tier antecedent has it.
 5. Do not add a tag merely because a future Project uses the Artifact.
-6. For Tier III, tag the bounded keystone, not the displaced Project artwork.
+6. For Tier III, tag the approved practical achievement. Neither a historical
+   component identity nor proposed future artwork supplies targeting evidence.
 7. Preserve cross-Affinity equivalence where different disciplines can supply
    the same response.
+
+The 2026-09-28 galactic roster revision is implemented in Event facts v3.
+All twenty Tier III functions have explicit reviewed capability assignments,
+dependency memberships, and exclusions. Tier I/II classifications are unchanged.
+See the [implementation record](LUMINAe_TIER_III_GALACTIC_IMPLEMENTATION_v1.0.md)
+for the resulting Event eligibility changes; artwork alone never creates a tag.
 
 ## First-Pool Blueprint Coherence
 

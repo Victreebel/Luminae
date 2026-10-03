@@ -16,19 +16,38 @@ export default defineConfig({
   },
   projects: [
     {
+      name: "compact-phone",
+      use: {
+        ...devices["Pixel 5"],
+        baseURL,
+        viewport: { width: 320, height: 568 },
+        screenshot: "only-on-failure",
+      },
+    },
+    {
+      name: "phone-portrait",
+      use: {
+        ...devices["Pixel 5"],
+        baseURL,
+        viewport: { width: 390, height: 844 },
+        screenshot: "only-on-failure",
+      },
+    },
+    {
+      name: "tablet",
+      use: {
+        ...devices["Desktop Chrome"],
+        baseURL,
+        viewport: { width: 768, height: 1024 },
+        screenshot: "only-on-failure",
+      },
+    },
+    {
       name: "desktop",
       use: {
         ...devices["Desktop Chrome"],
         baseURL,
         viewport: { width: 1440, height: 900 },
-        screenshot: "only-on-failure",
-      },
-    },
-    {
-      name: "android-portrait",
-      use: {
-        ...devices["Pixel 5"],
-        baseURL,
         screenshot: "only-on-failure",
       },
     },

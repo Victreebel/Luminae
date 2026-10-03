@@ -8,24 +8,51 @@ import {
   ARTIFACT_CIVILIZATION_CAPABILITIES_BY_ID,
   ARTIFACT_CATALOG,
   BLUEPRINT_DEFINITIONS,
+  CIVILIZATION_EVENT_CARD_DEFINITIONS,
+  CIVILIZATION_EVENT_CARD_IDS,
+  CIVILIZATION_EVENT_POOLS,
+  LORE_PILOT_CIVILIZATION_EVENT_CARD_IDS,
+  CIVILIZATION_EVENT_WINDOWS,
+  isCivilizationEventCardId,
   CIVILIZATION_ARTIFACT_IMPLEMENTATION_STATES,
+  CIVILIZATION_DISTRICT_HARD_CAPACITY,
+  CIVILIZATION_DISTRICT_IDENTITY_POLICY_ID,
+  CIVILIZATION_DISTRICT_SOFT_CAPACITY,
+  CIVILIZATION_DYAD_DEFINITIONS,
+  CIVILIZATION_ENVIRONMENT_POLICY_ID,
+  CIVILIZATION_ENVIRONMENT_VARIANTS,
+  CIVILIZATION_CAMERA_SCALES,
   CIVILIZATION_HISTORICAL_QUALITY_DIMENSIONS,
+  CIVILIZATION_IDENTITY_LAYERS,
+  CIVILIZATION_IDENTITY_STATUSES,
   CIVILIZATION_MATURITY_LEVELS,
+  ARTIFACT_PLACEMENT_FAMILIES,
   CIVILIZATION_PRESSURE_TAGS,
+  CIVILIZATION_PROJECT_CAPABILITIES,
   CIVILIZATION_REACH_CONDITIONS,
   CIVILIZATION_RESOLUTION_FORMS,
   CIVILIZATION_STABILITY_BANDS,
   CIVILIZATION_STABILITY_IMPACT_MAGNITUDES,
   CIVILIZATION_STATE_VERSION,
+  CIVILIZATION_SURFACE_DISTRICT_FAMILIES,
   DEFAULT_VICTORY_REQUIREMENT,
+  LEGACY_BLUEPRINT_REQUIREMENT,
   MIN_VICTORY_REQUIREMENT,
   compareVictoryStandings,
   foundryStoredArtifactIds,
   ordinaryEncryptedCount,
   applyCivilizationResolution,
   buildCivilizationResolutionSnapshot,
+  civilizationProjectId,
+  createCivilizationEnvironmentIdentity,
+  createCivilizationEnvironmentSet,
+  createInitialCivilizationDistrictIdentityState,
   createInitialCivilizationState,
+  createInitialCivilizationNestedIdentityState,
   deriveCivilizationAffinityIdentity,
+  deriveCivilizationLegacyArtifactEligibility,
+  emptyCivilizationNaturalAffinityCounts,
+  getCivilizationLegacyProgress,
   reconcileCivilizationDerivedState,
   resolveCivilizationEvent,
   RECURRENCE_CHRONICLE_ID,
@@ -55,6 +82,7 @@ import {
   upsertCivilizationEntity,
   KNOWN_AURA_STYLES,
   LUMINARY_IDS,
+  LUMINARY_NATIVE_EMINENCE,
   STANDARD_AFFINITY_KEYS,
 } from '@workspace/game-types';
 import type {
@@ -64,6 +92,7 @@ import type {
   BlueprintDetonationEvent,
   BlueprintArtifactSnapshot,
   BlueprintClaimAction,
+  BlueprintDeviceState,
   BlueprintId,
   BlueprintManifestationEvent,
   BlueprintPresentationVariant,
@@ -71,15 +100,42 @@ import type {
   CivilizationArtifactChangeSource,
   CivilizationArtifactImplementationState,
   CivilizationArtifactLifecycleState,
+  CivilizationAffinityIdentity,
   CivilizationAdversityEvidence,
+  CivilizationCapabilityId,
   CivilizationCondition,
+  CivilizationConsequence,
+  CivilizationDistrictIdentityState,
+  CivilizationDistrictInstance,
+  CivilizationDyadId,
   CivilizationEntity,
+  CivilizationEnvironmentIdentity,
+  CivilizationEventCardId,
+  CivilizationEventContentProfile,
+  CivilizationEventDeckState,
   CivilizationEventHistoryEntry,
+  CivilizationEventInstance,
+  CivilizationEventOutcomeId,
+  CivilizationEventPlayerOutcome,
+  CivilizationEventRespondingManifestation,
+  CivilizationEventTargetEvidence,
+  CivilizationEventWindow,
+  EventFrequency,
+  EventDelivery,
+  EventForecast,
   CivilizationHistoryEvidence,
+  CivilizationIdentityEvidence,
+  CivilizationIdentityLayerState,
+  CivilizationNestedIdentityState,
   CivilizationOutcomeSignal,
+  CivilizationProjectLifecycleState,
+  CivilizationProjectStatus,
+  CivilizationResolutionTrajectory,
   CivilizationScaleEvidence,
+  CivilizationManifestationAssignment,
   CivilizationStabilityContributor,
   CivilizationState,
+  CivilizationSurfaceDistrictFamily,
   CivilizationWorld,
   LuminaryId,
   LuminaryArrivalSoundVariant,
@@ -97,6 +153,7 @@ import type {
   TriangulationScenarioState,
 } from '@workspace/game-types';
 import { getCardLore } from "./cardLore";
+import { buildFrozenLoreEventPlan, type FrozenLoreEventPlan } from "./loreEventPlan.js";
 import { GUIDED_LUMII_AVATAR_ID } from "./avatarAssignment";
 import {
   resolveAntimatterCivilizationPolicy,
@@ -240,6 +297,7 @@ export function addArtifactBrand(
   artifactId: string,
   brand: ArtifactBrand,
 ): boolean {
+  if (isCivilizationEventCardId(artifactId)) return false;
   if (!state.artifactMarkers) state.artifactMarkers = {};
   const existing = getArtifactBrands(state.artifactMarkers[artifactId]);
   const duplicateIndex = existing.findIndex(
@@ -321,10 +379,21 @@ export interface InitialBoardSnapshot {
   deckTier3: string[];
   activeLuminaries: string[];
   firstPlayerId?: string | null;
+  eventContentProfile?: CivilizationEventContentProfile;
+  eventFrequency?: EventFrequency;
+  eventDelivery?: EventDelivery;
+  eventSchedule?: { queue: CivilizationEventCardId[]; roundFloors: number[] };
+  /** Canonical membership only; the private schedule or Archives retain draw order. */
+  selectedEventDefinitionIds?: CivilizationEventCardId[];
 }
 
 interface InitializeGameOptions {
   replayBoard?: InitialBoardSnapshot | null;
+  /** Explicit authored/test pool; never inferred from an account's story progress. */
+  eventContentProfile?: CivilizationEventContentProfile;
+  eventFrequency?: EventFrequency;
+  /** Test-only override. Production matches always generate a fresh world set. */
+  civilizationEnvironmentSeed?: string | number;
   blueprintSetups?: Record<string, {
     blueprintIds: BlueprintId[];
     presentationVariants?: Partial<Record<BlueprintId, BlueprintPresentationVariant>>;
@@ -349,6 +418,8 @@ export interface PlayerGameState {
   artifactForgeCounts?: Record<string, number>;
   /** Backend-owned Artifact mastery and implementation history for this match. */
   civilization: CivilizationState;
+  /** Damaged implementations queued for free repair at the end of this player's turn. */
+  pendingArtifactRepairIds?: string[];
   /**
    * Historical record of Artifacts consumed by Final Hunger. Assimilated
    * Artifacts are no longer operational and cannot satisfy Blueprint recipes,
@@ -406,6 +477,7 @@ export interface BurnEvent {
 
 export type PendingTurnTransitionStage =
   | "after_action"
+  | "after_repairs"
   | "after_end_effects"
   | "after_start_effects";
 
@@ -448,6 +520,8 @@ export interface GameStateData {
   phase: "playing" | "last_round" | "finished";
   finishReason?: "win" | "surrender" | "withdrawal";
   victoryRequirement?: number;
+  /** Manifested Blueprint projects required to qualify for Legacy Victory. */
+  legacyVictoryRequirement?: number;
   cinematicMode?: "standard" | "epic";
   affinityWell: AffinityCounts;
   forgeTier1: string[];
@@ -460,6 +534,8 @@ export interface GameStateData {
   luminaryAffinities: LuminaryAffinity[];
   players: PlayerGameState[];
   winnerId: string | null;
+  /** First civilization to complete the Legacy Path; Eminence remains the primary match winner. */
+  legacyWinnerId: string | null;
   winTriggerLuminaryId: string | null;
   /**
    * Invariant: every code path that increments `version` MUST also stamp
@@ -481,6 +557,14 @@ export interface GameStateData {
   pendingLuminaryActivationEvents: PendingLuminaryActivationEvent[];
   pendingBlueprintManifestationEvents: BlueprintManifestationEvent[];
   pendingBlueprintDetonationEvents: BlueprintDetonationEvent[];
+  /** Revealed deck Events awaiting synchronized presentation. */
+  pendingCivilizationEventCards: CivilizationEventInstance[];
+  /** Private, explicit pilot consequences frozen at reveal; never projected to clients. */
+  pendingCivilizationEventPlans?: Record<string, FrozenLoreEventPlan>;
+  /** Private Event catalog and presentation cursor; draws live in the three Artifact decks. */
+  civilizationEventDeck: CivilizationEventDeckState;
+  /** Private provenance for Events drawn outside a regular Forge mold. */
+  archiveRevealedEventCardIds?: CivilizationEventCardId[];
   /** Staged turn handoff held until all Luminary resolutions are presented. */
   pendingTurnTransition?: PendingTurnTransition | null;
   /** DEV-only delayed-effect cursor advanced after all arrival effects finish. */
@@ -580,7 +664,7 @@ export const LUMINARIES: LuminaryDef[] = [
     id: "lum_moth",
     name: "Red Moth",
     domain: "Rupture",
-    eminence: 2,
+    eminence: LUMINARY_NATIVE_EMINENCE.lum_moth,
     requirements: { flare: 6, continuum: 0, verdance: 0, abyss: 0, radiance: 0, singularity: 0 },
     flavor: "Where it passes, the universe is divided into before and after.",
     summonColor: "#ef4444",
@@ -593,7 +677,7 @@ export const LUMINARIES: LuminaryDef[] = [
     id: "lum_tide",
     name: "The Tide Architect",
     domain: "Tides",
-    eminence: 2,
+    eminence: LUMINARY_NATIVE_EMINENCE.lum_tide,
     requirements: { flare: 0, continuum: 6, verdance: 0, abyss: 0, radiance: 0, singularity: 0 },
     flavor: "Possibility collapses to its bias.",
     summonColor: "#60a5fa",
@@ -606,7 +690,7 @@ export const LUMINARIES: LuminaryDef[] = [
     id: "lum_verdant",
     name: "The Verdant Oracle",
     domain: "Verdance",
-    eminence: 1,
+    eminence: LUMINARY_NATIVE_EMINENCE.lum_verdant,
     requirements: { flare: 0, continuum: 0, verdance: 5, abyss: 0, radiance: 0, singularity: 0 },
     flavor: "It answers only after the question has taken root.",
     summonColor: "#4ade80",
@@ -619,7 +703,7 @@ export const LUMINARIES: LuminaryDef[] = [
     id: "lum_void",
     name: "The Void Warden",
     domain: "Void",
-    eminence: 2,
+    eminence: LUMINARY_NATIVE_EMINENCE.lum_void,
     oblivion: 8,
     requirements: { flare: 0, continuum: 0, verdance: 0, abyss: 6, radiance: 0, singularity: 0 },
     flavor: "In the space between stars, something watches without eyes.",
@@ -633,7 +717,7 @@ export const LUMINARIES: LuminaryDef[] = [
     id: "lum_radiant",
     name: "Concordance Mandala",
     domain: "Coherence",
-    eminence: 4,
+    eminence: LUMINARY_NATIVE_EMINENCE.lum_radiant,
     requirements: { flare: 0, continuum: 0, verdance: 0, abyss: 0, radiance: 6, singularity: 0 },
     flavor: "Truth is not revealed. It is aligned.",
     summonColor: "#fef9c3",
@@ -647,7 +731,7 @@ export const LUMINARIES: LuminaryDef[] = [
     id: "lum_astral",
     name: "Phoenix Paradox",
     domain: "Recurrence",
-    eminence: 4,
+    eminence: LUMINARY_NATIVE_EMINENCE.lum_astral,
     requirements: { flare: 4, continuum: 4, verdance: 0, abyss: 0, radiance: 0, singularity: 0 },
     flavor: "Every ending becomes fuel. Every return comes back less innocent.",
     summonColor: "#f43f5e",
@@ -660,7 +744,7 @@ export const LUMINARIES: LuminaryDef[] = [
     id: "lum_bloom",
     name: "Catalyst Bloom",
     domain: "Aftergrowth",
-    eminence: 4,
+    eminence: LUMINARY_NATIVE_EMINENCE.lum_bloom,
     requirements: { flare: 4, continuum: 0, verdance: 4, abyss: 0, radiance: 0, singularity: 0 },
     flavor: "It waits for the nova to wound the world, then flowers in the scar.",
     summonColor: "#86efac",
@@ -673,7 +757,7 @@ export const LUMINARIES: LuminaryDef[] = [
     id: "lum_forge",
     name: "The Iron Harbinger",
     domain: "Ruin",
-    eminence: 3,
+    eminence: LUMINARY_NATIVE_EMINENCE.lum_forge,
     requirements: { flare: 4, continuum: 0, verdance: 0, abyss: 4, radiance: 0, singularity: 0 },
     flavor: "The hammer falls only after the future has already broken.",
     summonColor: "#f97316",
@@ -686,7 +770,7 @@ export const LUMINARIES: LuminaryDef[] = [
     id: "lum_compass",
     name: "???",
     domain: "Erasure",
-    eminence: 1,
+    eminence: LUMINARY_NATIVE_EMINENCE.lum_compass,
     requirements: { flare: 0, continuum: 4, verdance: 0, abyss: 4, radiance: 0, singularity: 0 },
     flavor: "Everyone remembers something happened, but no one recalls what was lost.",
     summonColor: "#2563eb",
@@ -699,7 +783,7 @@ export const LUMINARIES: LuminaryDef[] = [
     id: "lum_seed",
     name: "The Seed Beyond Seasons",
     domain: "Propagation",
-    eminence: 3,
+    eminence: LUMINARY_NATIVE_EMINENCE.lum_seed,
     requirements: { flare: 0, continuum: 4, verdance: 4, abyss: 0, radiance: 0, singularity: 0 },
     flavor: "It leaves its avatars where tomorrow has already begun to remember.",
     summonColor: "#38bdf8",
@@ -712,7 +796,7 @@ export const LUMINARIES: LuminaryDef[] = [
     id: "lum_orchard",
     name: "The Glass Orchard",
     domain: "Replication",
-    eminence: 3,
+    eminence: LUMINARY_NATIVE_EMINENCE.lum_orchard,
     requirements: { flare: 0, continuum: 0, verdance: 4, abyss: 0, radiance: 4, singularity: 0 },
     flavor: "It learned to copy itself perfectly, and called the absence of error peace.",
     summonColor: "#4ade80",
@@ -725,7 +809,7 @@ export const LUMINARIES: LuminaryDef[] = [
     id: "lum_pale",
     name: "The Pale Merchant",
     domain: "Balance",
-    eminence: 3,
+    eminence: LUMINARY_NATIVE_EMINENCE.lum_pale,
     requirements: { flare: 0, continuum: 0, verdance: 0, abyss: 4, radiance: 4, singularity: 0 },
     flavor: "Every bargain reveals one truth and buries another.",
     summonColor: "#cbd5e1",
@@ -734,12 +818,12 @@ export const LUMINARIES: LuminaryDef[] = [
     effectName: "Balance Due",
     effectDescription: "On arrival, each player returns 2 tokens of every Affinity, including Singularity, that they hold at half or more of its starting supply (rounded up).",
   },
-  // ── Triple-color Luminaries (2–4 Eminence) ──────────────────────────────────
+  // ── Triple-color Luminaries ────────────────────────────────────────────────
   {
     id: "lum_ember",
     name: "The Ember Sovereign",
     domain: "Flame",
-    eminence: 4,
+    eminence: LUMINARY_NATIVE_EMINENCE.lum_ember,
     requirements: { flare: 3, continuum: 0, verdance: 0, abyss: 3, radiance: 3, singularity: 0 },
     flavor: "What cannot survive the fire is granted the mercy of disappearance.",
     summonColor: "#ff5a3c",
@@ -752,7 +836,7 @@ export const LUMINARIES: LuminaryDef[] = [
     id: "lum_hunger",
     name: "The Final Hunger",
     domain: "Assimilation",
-    eminence: 2,
+    eminence: LUMINARY_NATIVE_EMINENCE.lum_hunger,
     requirements: { flare: 3, continuum: 0, verdance: 3, abyss: 0, radiance: 3, singularity: 0 },
     flavor: "Its first act is consumption. Its second is perfect repetition.",
     summonColor: "#fbbf24",
@@ -765,7 +849,7 @@ export const LUMINARIES: LuminaryDef[] = [
     id: "lum_null",
     name: "The Null Sovereign",
     domain: "Transcendence",
-    eminence: 0,
+    eminence: LUMINARY_NATIVE_EMINENCE.lum_null,
     requirements: { flare: 0, continuum: 4, verdance: 0, abyss: 4, radiance: 4, singularity: 0 },
     flavor: "Past the last observable star, entire futures fall silent without being destroyed.",
     summonColor: "#ffffff",
@@ -779,7 +863,7 @@ export const LUMINARIES: LuminaryDef[] = [
     id: "lum_oracle",
     name: "The Cosmic Oracle",
     domain: "Prophecy",
-    eminence: 4,
+    eminence: LUMINARY_NATIVE_EMINENCE.lum_oracle,
     requirements: { flare: 3, continuum: 3, verdance: 3, abyss: 0, radiance: 0, singularity: 0 },
     flavor: "She sees what will be, and what might have been, and cannot tell the difference.",
     summonColor: "#fbbf24",
@@ -791,7 +875,7 @@ export const LUMINARIES: LuminaryDef[] = [
     id: "lum_scholar",
     name: "The Celestial Scholar",
     domain: "Erasure",
-    eminence: 3,
+    eminence: LUMINARY_NATIVE_EMINENCE.lum_scholar,
     requirements: { flare: 0, continuum: 4, verdance: 0, abyss: 0, radiance: 4, singularity: 0 },
     flavor: "It does not forget. It simply removes the possibility that anything was ever known.",
     summonColor: "#818cf8",
@@ -935,8 +1019,8 @@ function usageCountsFromIds(ids: unknown): Record<string, number> {
   return counts;
 }
 
-function emptyCivilizationState(): CivilizationState {
-  return createInitialCivilizationState();
+function emptyCivilizationState(environmentIdentity?: CivilizationEnvironmentIdentity): CivilizationState {
+  return createInitialCivilizationState(environmentIdentity);
 }
 
 function isRecord(value: unknown): value is Record<string, unknown> {
@@ -1229,6 +1313,15 @@ function normalizeCivilizationEvents(value: unknown): CivilizationEventHistoryEn
       : null;
     return [{
       eventId: candidate.eventId,
+      ...(typeof candidate.definitionId === "string" && isCivilizationEventCardId(candidate.definitionId)
+        ? { definitionId: candidate.definitionId } : {}),
+      ...(typeof candidate.rulesVersion === "string" ? { rulesVersion: candidate.rulesVersion } : {}),
+      ...(Array.isArray(candidate.targetEvidence) ? {
+        targetEvidence: candidate.targetEvidence.filter((evidence): evidence is CivilizationEventTargetEvidence =>
+          isRecord(evidence) && typeof evidence.artifactId === "string" && typeof evidence.reason === "string" &&
+          ["responder", "target", "mitigator"].includes(String(evidence.role)) && isRecord(evidence.match) &&
+          ["capability", "event_fact"].includes(String(evidence.match.kind)) && typeof evidence.match.id === "string"),
+      } : {}),
       source,
       turnCount:
         typeof candidate.turnCount === "number" && candidate.turnCount >= 0
@@ -1247,13 +1340,453 @@ function normalizeCivilizationEvents(value: unknown): CivilizationEventHistoryEn
   }).slice(-64);
 }
 
+function isBlueprintDeviceState(value: unknown): value is BlueprintDeviceState {
+  return value === "armed" ||
+    value === "ready" ||
+    value === "recovering" ||
+    value === "vigilant" ||
+    value === "spent";
+}
+
+function isCivilizationProjectStatus(value: unknown): value is CivilizationProjectStatus {
+  return value === "assembling" || value === "ready_to_manifest" || value === "manifested";
+}
+
+function normalizeBlueprintPresentationVariant(value: unknown): BlueprintPresentationVariant {
+  return value === "original" || value === "asymmetric" || value === "lattice"
+    ? value
+    : "armored";
+}
+
+function normalizeCivilizationProjects(player: {
+  civilization?: unknown;
+  blueprintPrivateStates?: unknown;
+  blueprintPresentationVariants?: unknown;
+  manifestedBlueprintDevices?: unknown;
+  civilizationTurnCount?: unknown;
+}): Record<string, CivilizationProjectLifecycleState> {
+  const rawCivilization = isRecord(player.civilization) ? player.civilization : {};
+  const rawProjects = isRecord(rawCivilization.projects) ? rawCivilization.projects : {};
+  const privateStates = Array.isArray(player.blueprintPrivateStates)
+    ? player.blueprintPrivateStates.filter(isRecord)
+    : [];
+  const devices = Array.isArray(player.manifestedBlueprintDevices)
+    ? player.manifestedBlueprintDevices.filter(isRecord)
+    : [];
+  const presentationVariants = isRecord(player.blueprintPresentationVariants)
+    ? player.blueprintPresentationVariants
+    : {};
+  const turnCount = typeof player.civilizationTurnCount === "number" &&
+      player.civilizationTurnCount >= 0
+    ? Math.floor(player.civilizationTurnCount)
+    : null;
+  const projects: Record<string, CivilizationProjectLifecycleState> = {};
+
+  for (const [recordKey, value] of Object.entries(rawProjects)) {
+    if (!isRecord(value) || typeof value.blueprintId !== "string") continue;
+    if (!(value.blueprintId in BLUEPRINT_DEFINITIONS)) continue;
+    const blueprintId = value.blueprintId as BlueprintId;
+    const slotIndex = typeof value.slotIndex === "number" && value.slotIndex >= 0
+      ? Math.floor(value.slotIndex)
+      : 0;
+    const projectId = civilizationProjectId(blueprintId, slotIndex);
+    const status = isCivilizationProjectStatus(value.status) ? value.status : "assembling";
+    projects[projectId] = {
+      projectId,
+      blueprintId,
+      slotIndex,
+      status,
+      matchedComponentIds: Array.isArray(value.matchedComponentIds)
+        ? [...new Set(value.matchedComponentIds.filter((id): id is string => typeof id === "string"))]
+        : [],
+      deviceState: isBlueprintDeviceState(value.deviceState) ? value.deviceState : null,
+      presentationVariant: normalizeBlueprintPresentationVariant(value.presentationVariant),
+      manifestedTurnCount: typeof value.manifestedTurnCount === "number" && value.manifestedTurnCount >= 0
+        ? Math.floor(value.manifestedTurnCount)
+        : null,
+      stateChangedTurnCount: typeof value.stateChangedTurnCount === "number" && value.stateChangedTurnCount >= 0
+        ? Math.floor(value.stateChangedTurnCount)
+        : null,
+      historyEvidence: normalizeHistoryEvidence(value.historyEvidence),
+    };
+    if (recordKey !== projectId) delete projects[recordKey];
+  }
+
+  for (const privateState of privateStates) {
+    if (typeof privateState.blueprintId !== "string" ||
+        !(privateState.blueprintId in BLUEPRINT_DEFINITIONS)) continue;
+    const blueprintId = privateState.blueprintId as BlueprintId;
+    const slotIndex = typeof privateState.slotIndex === "number" && privateState.slotIndex >= 0
+      ? Math.floor(privateState.slotIndex)
+      : 0;
+    const projectId = civilizationProjectId(blueprintId, slotIndex);
+    const existing = projects[projectId];
+    const matchedComponentIds = Array.isArray(privateState.matchedComponentIds)
+      ? [...new Set(privateState.matchedComponentIds.filter((id): id is string => typeof id === "string"))]
+      : existing?.matchedComponentIds ?? [];
+    const device = devices.find((candidate) =>
+      candidate.blueprintId === blueprintId && candidate.slotIndex === slotIndex,
+    );
+    const definition = BLUEPRINT_DEFINITIONS[blueprintId];
+    const recipeComplete = definition.components.every((component) =>
+      matchedComponentIds.includes(component.artifactId),
+    );
+    const manifested = existing?.status === "manifested" ||
+      privateState.manifested === true ||
+      device !== undefined;
+    projects[projectId] = {
+      projectId,
+      blueprintId,
+      slotIndex,
+      status: manifested ? "manifested" : recipeComplete ? "ready_to_manifest" : "assembling",
+      matchedComponentIds,
+      deviceState: manifested
+        ? existing?.deviceState ??
+          (device && isBlueprintDeviceState(device.state) ? device.state : definition.initialDeviceState)
+        : null,
+      presentationVariant: existing?.presentationVariant ??
+        normalizeBlueprintPresentationVariant(device?.presentationVariant ?? presentationVariants[blueprintId]),
+      manifestedTurnCount: manifested
+        ? existing?.manifestedTurnCount ?? turnCount
+        : null,
+      stateChangedTurnCount: existing?.stateChangedTurnCount ?? (manifested ? turnCount : null),
+      historyEvidence: existing?.historyEvidence ?? "legacy_inferred",
+    };
+  }
+
+  for (const device of devices) {
+    if (typeof device.blueprintId !== "string" || !(device.blueprintId in BLUEPRINT_DEFINITIONS)) continue;
+    const blueprintId = device.blueprintId as BlueprintId;
+    const slotIndex = typeof device.slotIndex === "number" && device.slotIndex >= 0
+      ? Math.floor(device.slotIndex)
+      : 0;
+    const projectId = civilizationProjectId(blueprintId, slotIndex);
+    if (projects[projectId]) continue;
+    projects[projectId] = {
+      projectId,
+      blueprintId,
+      slotIndex,
+      status: "manifested",
+      matchedComponentIds: BLUEPRINT_DEFINITIONS[blueprintId].components.map(
+        (component) => component.artifactId,
+      ),
+      deviceState: isBlueprintDeviceState(device.state)
+        ? device.state
+        : BLUEPRINT_DEFINITIONS[blueprintId].initialDeviceState,
+      presentationVariant: normalizeBlueprintPresentationVariant(device.presentationVariant),
+      manifestedTurnCount: turnCount,
+      stateChangedTurnCount: turnCount,
+      historyEvidence: "legacy_inferred",
+    };
+  }
+
+  return projects;
+}
+
+function normalizeCivilizationEnvironmentIdentity(
+  value: unknown,
+  fallback?: CivilizationEnvironmentIdentity,
+): CivilizationEnvironmentIdentity {
+  const raw = isRecord(value) ? value : {};
+  const variant = CIVILIZATION_ENVIRONMENT_VARIANTS.find((candidate) => (
+    candidate.id === raw.variantId
+  ));
+  if (!variant) {
+    return fallback ?? createCivilizationEnvironmentIdentity(
+      'legacy-unassigned',
+      CIVILIZATION_ENVIRONMENT_VARIANTS[0].id,
+      'legacy_inferred',
+    );
+  }
+  return {
+    policyId: CIVILIZATION_ENVIRONMENT_POLICY_ID,
+    matchScopedSeed: typeof raw.matchScopedSeed === 'number' && Number.isFinite(raw.matchScopedSeed)
+      ? Math.max(0, Math.floor(raw.matchScopedSeed))
+      : fallback?.matchScopedSeed ?? createCivilizationEnvironmentIdentity(String(raw.variantId)).matchScopedSeed,
+    variantId: variant.id,
+    terrain: variant.terrain,
+    celestial: variant.celestial,
+    atmosphere: variant.atmosphere,
+    historyEvidence: raw.historyEvidence === 'recorded' ? 'recorded' : 'legacy_inferred',
+  };
+}
+
+function normalizeCivilizationAffinityIdentity(
+  value: unknown,
+  derived: CivilizationAffinityIdentity,
+): CivilizationAffinityIdentity {
+  const raw = isRecord(value) ? value : {};
+  const validDyadIds = new Set(CIVILIZATION_DYAD_DEFINITIONS.map((definition) => definition.id));
+  const foundingDyad = typeof raw.foundingDyad === 'string' && validDyadIds.has(raw.foundingDyad as never)
+    ? raw.foundingDyad as CivilizationAffinityIdentity['foundingDyad']
+    : typeof raw.dominantDyad === 'string' && validDyadIds.has(raw.dominantDyad as never)
+      ? raw.dominantDyad as CivilizationAffinityIdentity['foundingDyad']
+      : derived.dominantDyad;
+  const presentationDyad = typeof raw.presentationDyad === 'string' && validDyadIds.has(raw.presentationDyad as never)
+    ? raw.presentationDyad as CivilizationAffinityIdentity['presentationDyad']
+    : foundingDyad;
+  const epochs = Array.isArray(raw.identityEpochs)
+    ? raw.identityEpochs.flatMap((candidate, index) => {
+        if (!isRecord(candidate) || typeof candidate.dyad !== 'string' || !validDyadIds.has(candidate.dyad as never)) {
+          return [];
+        }
+        const historicalSharesAtStart = { ...derived.normalizedHistoricalShares };
+        if (isRecord(candidate.historicalSharesAtStart)) {
+          for (const affinity of STANDARD_AFFINITY_KEYS) {
+            const share = candidate.historicalSharesAtStart[affinity];
+            historicalSharesAtStart[affinity] = typeof share === 'number' && Number.isFinite(share)
+              ? Math.max(0, Math.min(1, share))
+              : historicalSharesAtStart[affinity];
+          }
+        }
+        return [{
+          epochIndex: index,
+          dyad: candidate.dyad as NonNullable<CivilizationAffinityIdentity['presentationDyad']>,
+          startedTurnCount: typeof candidate.startedTurnCount === 'number'
+            ? Math.max(0, Math.floor(candidate.startedTurnCount))
+            : null,
+          endedTurnCount: typeof candidate.endedTurnCount === 'number'
+            ? Math.max(0, Math.floor(candidate.endedTurnCount))
+            : null,
+          historicalSharesAtStart,
+          historyEvidence: candidate.historyEvidence === 'recorded' ? 'recorded' as const : 'legacy_inferred' as const,
+        }];
+      })
+    : [];
+  return {
+    ...derived,
+    foundingDyad,
+    presentationDyad,
+    identityEpochs: epochs.length > 0
+      ? epochs
+      : presentationDyad
+        ? [{
+            epochIndex: 0,
+            dyad: presentationDyad,
+            startedTurnCount: null,
+            endedTurnCount: null,
+            historicalSharesAtStart: derived.normalizedHistoricalShares,
+            historyEvidence: 'legacy_inferred',
+          }]
+        : [],
+  };
+}
+
+function normalizeCivilizationNestedIdentityState(
+  value: unknown,
+  fallbackEvidence: CivilizationHistoryEvidence,
+): CivilizationNestedIdentityState {
+  const fallback = createInitialCivilizationNestedIdentityState(fallbackEvidence);
+  if (!isRecord(value)) return fallback;
+  const validDyadIds = new Set(CIVILIZATION_DYAD_DEFINITIONS.map((definition) => definition.id));
+
+  return Object.fromEntries(CIVILIZATION_IDENTITY_LAYERS.map((layer) => {
+    const raw = isRecord(value[layer]) ? value[layer] : {};
+    const evidence = Array.isArray(raw.evidence)
+      ? raw.evidence.flatMap((candidate): CivilizationIdentityEvidence[] => {
+          if (!isRecord(candidate)) return [];
+          if (
+            typeof candidate.evidenceId !== "string" ||
+            typeof candidate.artifactId !== "string" ||
+            typeof candidate.masteryOrdinal !== "number" ||
+            candidate.masteryOrdinal < 1 ||
+            !STANDARD_AFFINITY_KEYS.includes(candidate.affinity as StandardAffinityKey)
+          ) return [];
+          return [{
+            evidenceId: candidate.evidenceId,
+            artifactId: candidate.artifactId,
+            masteryOrdinal: Math.floor(candidate.masteryOrdinal),
+            affinity: candidate.affinity as StandardAffinityKey,
+            routedTurnCount: typeof candidate.routedTurnCount === "number" && candidate.routedTurnCount >= 0
+              ? Math.floor(candidate.routedTurnCount)
+              : null,
+            historyEvidence: candidate.historyEvidence === "recorded" ? "recorded" : "legacy_inferred",
+          }];
+        })
+      : [];
+    const rankedAffinities = STANDARD_AFFINITY_KEYS.map((affinity) => ({
+      affinity,
+      weight: evidence.filter((entry) => entry.affinity === affinity).length,
+    }));
+    const committedDyad = typeof raw.committedDyad === "string" && validDyadIds.has(raw.committedDyad as never)
+      ? raw.committedDyad as CivilizationIdentityLayerState["committedDyad"]
+      : null;
+    const candidateDyad = typeof raw.candidateDyad === "string" && validDyadIds.has(raw.candidateDyad as never)
+      ? raw.candidateDyad as CivilizationIdentityLayerState["candidateDyad"]
+      : null;
+    const historyEvidence = raw.historyEvidence === "recorded" ? "recorded" : fallbackEvidence;
+    return [layer, {
+      ...fallback[layer],
+      status: CIVILIZATION_IDENTITY_STATUSES.includes(raw.status as never)
+        ? raw.status as CivilizationIdentityLayerState["status"]
+        : committedDyad
+          ? "committed"
+          : evidence.length > 0
+            ? "forming"
+            : "plain",
+      eraStartedTurnCount: typeof raw.eraStartedTurnCount === "number" && raw.eraStartedTurnCount >= 0
+        ? Math.floor(raw.eraStartedTurnCount)
+        : fallback[layer].eraStartedTurnCount,
+      affinityCounts: emptyCivilizationNaturalAffinityCounts(),
+      normalizedShares: emptyCivilizationNaturalAffinityCounts(),
+      rankedAffinities,
+      dominantAffinity: STANDARD_AFFINITY_KEYS.includes(raw.dominantAffinity as StandardAffinityKey)
+        ? raw.dominantAffinity as StandardAffinityKey
+        : null,
+      candidateDyad,
+      committedDyad,
+      committedTurnCount: typeof raw.committedTurnCount === "number" && raw.committedTurnCount >= 0
+        ? Math.floor(raw.committedTurnCount)
+        : null,
+      evidence,
+      historyEvidence,
+    }];
+  })) as CivilizationNestedIdentityState;
+}
+
+function normalizeCivilizationManifestationAssignments(
+  value: unknown,
+): Record<string, CivilizationManifestationAssignment> {
+  if (!isRecord(value)) return {};
+  const assignments: Record<string, CivilizationManifestationAssignment> = {};
+  for (const [key, candidate] of Object.entries(value)) {
+    if (!isRecord(candidate)) continue;
+    if (candidate.sourceType !== 'artifact' && candidate.sourceType !== 'blueprint') continue;
+    if (typeof candidate.sourceId !== 'string' || candidate.sourceId.length === 0) continue;
+    if (!CIVILIZATION_CAMERA_SCALES.includes(candidate.nativeScene as never)) continue;
+    if (!ARTIFACT_PLACEMENT_FAMILIES.includes(candidate.placementFamily as never)) continue;
+    if (typeof candidate.socketId !== 'string' || candidate.socketId.length === 0) continue;
+    assignments[key] = {
+      sourceId: candidate.sourceId,
+      sourceType: candidate.sourceType,
+      nativeScene: candidate.nativeScene as CivilizationManifestationAssignment['nativeScene'],
+      placementFamily: candidate.placementFamily as CivilizationManifestationAssignment['placementFamily'],
+      socketId: candidate.socketId,
+      assignmentTurnCount: typeof candidate.assignmentTurnCount === 'number'
+        ? Math.max(0, Math.floor(candidate.assignmentTurnCount))
+        : null,
+      historyEvidence: candidate.historyEvidence === 'recorded' ? 'recorded' : 'legacy_inferred',
+    };
+  }
+  return assignments;
+}
+
+function normalizeCivilizationDistrictIdentity(
+  value: unknown,
+): CivilizationDistrictIdentityState {
+  const fallback = createInitialCivilizationDistrictIdentityState('legacy_inferred');
+  if (!isRecord(value)) return fallback;
+  const validDyads = new Set<CivilizationDyadId>(
+    CIVILIZATION_DYAD_DEFINITIONS.map((definition) => definition.id),
+  );
+  const validAffinities = new Set<StandardAffinityKey>(STANDARD_AFFINITY_KEYS);
+  const districts: Record<string, CivilizationDistrictInstance> = {};
+  if (isRecord(value.districts)) {
+    for (const [districtId, candidate] of Object.entries(value.districts)) {
+      if (!isRecord(candidate)) continue;
+      if (!(CIVILIZATION_SURFACE_DISTRICT_FAMILIES as readonly unknown[]).includes(candidate.family)) {
+        continue;
+      }
+      const family = candidate.family as CivilizationSurfaceDistrictFamily;
+      const instance = typeof candidate.instance === 'number' && candidate.instance >= 0
+        ? Math.floor(candidate.instance)
+        : Number.parseInt(districtId.split(':').at(-1) ?? '', 10);
+      if (!Number.isFinite(instance) || instance < 0) continue;
+      const residentArtifactIds = Array.isArray(candidate.residentArtifactIds)
+        ? [...new Set(candidate.residentArtifactIds.filter(
+            (artifactId): artifactId is string => typeof artifactId === 'string' && artifactId.length > 0,
+          ))]
+        : [];
+      const residentAffinities = Array.isArray(candidate.residentAffinities)
+        ? [...new Set(candidate.residentAffinities.filter(
+            (affinity): affinity is StandardAffinityKey => validAffinities.has(affinity as StandardAffinityKey),
+          ))]
+        : [];
+      const foundingAffinities = Array.isArray(candidate.foundingAffinities)
+        ? [...new Set(candidate.foundingAffinities.filter(
+            (affinity): affinity is StandardAffinityKey => validAffinities.has(affinity as StandardAffinityKey),
+          ))].slice(0, 2)
+        : [];
+      const permanentDyad = validDyads.has(candidate.permanentDyad as CivilizationDyadId)
+        ? candidate.permanentDyad as CivilizationDyadId
+        : null;
+      districts[districtId] = {
+        districtId,
+        family,
+        instance,
+        residentArtifactIds,
+        residentAffinities,
+        foundingAffinities: foundingAffinities.length >= 2
+          ? [foundingAffinities[0]!, foundingAffinities[1]!]
+          : foundingAffinities.length === 1
+            ? [foundingAffinities[0]!]
+            : [],
+        permanentDyad,
+        softCapacity: CIVILIZATION_DISTRICT_SOFT_CAPACITY,
+        hardCapacity: CIVILIZATION_DISTRICT_HARD_CAPACITY,
+        influence: typeof candidate.influence === 'number'
+          ? Math.max(0, Math.floor(candidate.influence))
+          : permanentDyad
+            ? residentArtifactIds.length
+            : 0,
+        establishedTurnCount: typeof candidate.establishedTurnCount === 'number'
+          ? Math.max(0, Math.floor(candidate.establishedTurnCount))
+          : null,
+        committedTurnCount: typeof candidate.committedTurnCount === 'number'
+          ? Math.max(0, Math.floor(candidate.committedTurnCount))
+          : null,
+        historyEvidence: normalizeHistoryEvidence(candidate.historyEvidence),
+      };
+    }
+  }
+  const artifactAssignments = isRecord(value.artifactAssignments)
+    ? Object.fromEntries(Object.entries(value.artifactAssignments).filter(
+        ([artifactId, districtId]) => (
+          artifactId.length > 0 && typeof districtId === 'string' && Boolean(districts[districtId])
+        ),
+      )) as Record<string, string>
+    : {};
+  const influenceByDyad = Object.fromEntries(CIVILIZATION_DYAD_DEFINITIONS.map((definition) => [
+    definition.id,
+    isRecord(value.influenceByDyad) && typeof value.influenceByDyad[definition.id] === 'number'
+      ? Math.max(0, Math.floor(value.influenceByDyad[definition.id] as number))
+      : 0,
+  ])) as Record<CivilizationDyadId, number>;
+  return {
+    policyId: CIVILIZATION_DISTRICT_IDENTITY_POLICY_ID,
+    districts,
+    artifactAssignments,
+    influenceByDyad,
+    totalInfluence: typeof value.totalInfluence === 'number'
+      ? Math.max(0, Math.floor(value.totalInfluence))
+      : Object.values(influenceByDyad).reduce((total, influence) => total + influence, 0),
+    rawDominantDyad: validDyads.has(value.rawDominantDyad as CivilizationDyadId)
+      ? value.rawDominantDyad as CivilizationDyadId
+      : null,
+    presentationDyad: validDyads.has(value.presentationDyad as CivilizationDyadId)
+      ? value.presentationDyad as CivilizationDyadId
+      : null,
+    calculatedTurnCount: typeof value.calculatedTurnCount === 'number'
+      ? Math.max(0, Math.floor(value.calculatedTurnCount))
+      : null,
+    presentationCommittedTurnCount: typeof value.presentationCommittedTurnCount === 'number'
+      ? Math.max(0, Math.floor(value.presentationCommittedTurnCount))
+      : null,
+    historyEvidence: normalizeHistoryEvidence(value.historyEvidence),
+  };
+}
+
 function normalizeCivilizationState(player: {
   civilization?: unknown;
   forgedArtifactIds?: unknown;
   artifactForgeCounts?: unknown;
   discountedForgeIds?: unknown;
+  blueprintPrivateStates?: unknown;
+  blueprintPresentationVariants?: unknown;
   manifestedBlueprintDevices?: unknown;
   civilizationTurnCount?: unknown;
+  civilizationEnvironmentFallback?: CivilizationEnvironmentIdentity;
+  commitDistrictPresentation?: boolean;
 }): CivilizationState {
   const activeCounts = usageCountsFromIds(player.forgedArtifactIds);
   const forgeCounts = isRecord(player.artifactForgeCounts)
@@ -1264,6 +1797,7 @@ function normalizeCivilizationState(player: {
       )
     : {};
   const rawCivilization = isRecord(player.civilization) ? player.civilization : {};
+  const projects = normalizeCivilizationProjects(player);
   const rawArtifacts = isRecord(rawCivilization.artifacts) ? rawCivilization.artifacts : {};
   const artifactIds = new Set([
     ...Object.keys(rawArtifacts),
@@ -1299,7 +1833,9 @@ function normalizeCivilizationState(player: {
       : "legacy_inferred" as const;
 
     if (hasActiveImplementation) {
-      implementationState = "operational";
+      // Tableau membership includes damaged implementations. Loading or
+      // projecting a save must not silently repair them.
+      implementationState = implementationState === "damaged" ? "damaged" : "operational";
       if (!isRecord(rawArtifacts[artifactId])) {
         stateChangedTurnCount = null;
         historyEvidence = "legacy_inferred";
@@ -1328,6 +1864,7 @@ function normalizeCivilizationState(player: {
   }
 
   const currentShape = rawCivilization.version === CIVILIZATION_STATE_VERSION;
+  const hasNestedIdentityHistory = isRecord(rawCivilization.identityScales);
   const { homeworldId, worlds } = normalizeCivilizationWorlds(
     rawCivilization.worlds,
     rawCivilization.homeworldId,
@@ -1375,10 +1912,47 @@ function normalizeCivilizationState(player: {
     ? rawStability.band as (typeof CIVILIZATION_STABILITY_BANDS)[number]
     : "stable";
 
+  const entities = normalizeCivilizationEntities(rawCivilization.entities);
+  for (const project of Object.values(projects)) {
+    if (project.status !== "manifested" || project.deviceState === null) continue;
+    const existing = entities[project.projectId];
+    entities[project.projectId] = {
+      id: project.projectId,
+      kind: "project",
+      state: project.deviceState === "spent" || project.deviceState === "recovering"
+        ? "disabled"
+        : "operational",
+      worldId: existing?.worldId ?? null,
+      sourceId: project.blueprintId,
+      establishedTurnCount: project.manifestedTurnCount,
+      stateChangedTurnCount: project.stateChangedTurnCount,
+      conditionIds: existing?.conditionIds ?? [],
+      historyEvidence: project.historyEvidence,
+    };
+  }
+
+  const derivedAffinityIdentity = deriveCivilizationAffinityIdentity(artifacts);
+  const affinityIdentity = normalizeCivilizationAffinityIdentity(
+    rawCivilization.affinityIdentity,
+    derivedAffinityIdentity,
+  );
+  const identityScales = normalizeCivilizationNestedIdentityState(
+    rawCivilization.identityScales,
+    hasNestedIdentityHistory ? "recorded" : "legacy_inferred",
+  );
+  const rawLegacy = isRecord(rawCivilization.legacy) ? rawCivilization.legacy : {};
+
   const normalized: CivilizationState = {
     version: CIVILIZATION_STATE_VERSION,
+    environmentIdentity: normalizeCivilizationEnvironmentIdentity(
+      rawCivilization.environmentIdentity,
+      player.civilizationEnvironmentFallback,
+    ),
     artifacts,
-    affinityIdentity: deriveCivilizationAffinityIdentity(artifacts),
+    projects,
+    affinityIdentity,
+    districtIdentity: normalizeCivilizationDistrictIdentity(rawCivilization.districtIdentity),
+    identityScales,
     scale: {
       historicalMaturity,
       historicalMaturityEvidence: Array.isArray(rawScale.historicalMaturityEvidence)
@@ -1400,7 +1974,7 @@ function normalizeCivilizationState(player: {
     },
     homeworldId,
     worlds,
-    entities: normalizeCivilizationEntities(rawCivilization.entities),
+    entities,
     conditions: normalizeCivilizationConditions(rawCivilization.conditions),
     stability: {
       band: stabilityBand,
@@ -1418,7 +1992,20 @@ function normalizeCivilizationState(player: {
         ? normalizeHistoryEvidence(rawStability.historyEvidence)
         : "legacy_inferred",
     },
+    manifestationAssignments: normalizeCivilizationManifestationAssignments(
+      rawCivilization.manifestationAssignments,
+    ),
     events: normalizeCivilizationEvents(rawCivilization.events),
+    legacy: {
+      completedTurnCount: typeof rawLegacy.completedTurnCount === "number" && rawLegacy.completedTurnCount >= 0
+        ? Math.floor(rawLegacy.completedTurnCount)
+        : null,
+      historyEvidence: rawLegacy.historyEvidence === "recorded"
+        ? "recorded"
+        : currentShape
+          ? "recorded"
+          : "legacy_inferred",
+    },
   };
   const manifestedDevices = Array.isArray(player.manifestedBlueprintDevices)
     ? player.manifestedBlueprintDevices.filter((device) =>
@@ -1434,13 +2021,20 @@ function normalizeCivilizationState(player: {
     typeof player.civilizationTurnCount === "number" && player.civilizationTurnCount >= 0
       ? Math.floor(player.civilizationTurnCount)
       : normalized.stability.calculatedTurnCount,
+    hasNestedIdentityHistory ? {} : { missingEvidenceHistory: "legacy_inferred" },
+    { commitPresentation: player.commitDistrictPresentation === true },
   );
 }
 
-function refreshPlayerCivilization(player: PlayerGameState, turnCount: number): void {
+function refreshPlayerCivilization(
+  player: PlayerGameState,
+  turnCount: number,
+  commitDistrictPresentation = false,
+): void {
   player.civilization = normalizeCivilizationState({
     ...player,
     civilizationTurnCount: turnCount,
+    commitDistrictPresentation,
   });
 }
 
@@ -1609,7 +2203,12 @@ function completeFoundryClaim(
   if (action.blueprintAction === "foundry_recovery") {
     removeArtifactFromFoundryStorage(privateState, action.cardId!);
     if ((privateState.foundryStoredArtifactIds?.length ?? 0) === 0) {
-      foundry.state = "ready";
+      setBlueprintProjectDeviceState(
+        player,
+        "bp_mantle_to_orbit_foundry",
+        "ready",
+        state.turnCount,
+      );
       foundry.foundryUsesRemaining = 0;
     }
     recordBlueprintCivilizationEvent(
@@ -1650,7 +2249,12 @@ function completeFoundryClaim(
     player,
     privateState,
   );
-  foundry.state = recoverable && movedIds.length > 0 ? "recovering" : "spent";
+  setBlueprintProjectDeviceState(
+    player,
+    "bp_mantle_to_orbit_foundry",
+    recoverable && movedIds.length > 0 ? "recovering" : "spent",
+    state.turnCount,
+  );
   recordBlueprintCivilizationEvent(
     state,
     player,
@@ -1688,7 +2292,44 @@ function cloneInitialBoardSnapshot(board: InitialBoardSnapshot): InitialBoardSna
     deckTier3: [...board.deckTier3],
     activeLuminaries: [...board.activeLuminaries],
     firstPlayerId: board.firstPlayerId ?? null,
+    eventContentProfile: board.eventContentProfile ?? "general_v1",
+    eventFrequency: board.eventFrequency ?? "standard",
+    eventDelivery: board.eventDelivery ?? "archive_v1",
+    ...(board.eventDelivery === "scheduled_forge_v1" && board.eventSchedule ? {
+      eventSchedule: { queue: [...board.eventSchedule.queue], roundFloors: [...board.eventSchedule.roundFloors] },
+    } : {}),
+    selectedEventDefinitionIds: canonicalEventSelection(
+      board.eventContentProfile ?? "general_v1",
+      board.selectedEventDefinitionIds ?? [
+        ...board.forgeTier1, ...board.forgeTier2, ...board.forgeTier3,
+        ...board.deckTier1, ...board.deckTier2, ...board.deckTier3,
+      ],
+    ),
   };
+}
+
+/** Never expose selection order as a hint about the shuffled Archives. */
+function canonicalEventSelection(
+  profile: CivilizationEventContentProfile,
+  ids: readonly string[],
+): CivilizationEventCardId[] {
+  const selected = new Set(ids);
+  return CIVILIZATION_EVENT_POOLS[profile].filter((id) => selected.has(id));
+}
+
+function selectInitialEvents(
+  profile: CivilizationEventContentProfile,
+  frequency: EventFrequency,
+): CivilizationEventCardId[] {
+  if (frequency === "off") return [];
+  const pool = CIVILIZATION_EVENT_POOLS[profile];
+  // Earlier explicit profiles are frozen compatibility/authoring contracts.
+  if (profile !== "general_v2") return [...pool];
+  const perTier = frequency === "frequent" ? 2 : 1;
+  const selected = ([1, 2, 3] as const).flatMap((tier) => shuffle(
+    pool.filter((id) => CIVILIZATION_EVENT_CARD_DEFINITIONS[id].tier === tier),
+  ).slice(0, perTier));
+  return canonicalEventSelection(profile, selected);
 }
 
 function makeInitialBoardSnapshot(state: Pick<GameStateData,
@@ -1699,7 +2340,9 @@ function makeInitialBoardSnapshot(state: Pick<GameStateData,
   | "deckTier2"
   | "deckTier3"
   | "activeLuminaries"
->, firstPlayerId: string | null): InitialBoardSnapshot {
+>, firstPlayerId: string | null, eventContentProfile: CivilizationEventContentProfile = "general_v1",
+eventFrequency: EventFrequency = "standard", selectedEventDefinitionIds?: readonly CivilizationEventCardId[],
+eventDelivery: EventDelivery = "archive_v1", eventSchedule?: InitialBoardSnapshot["eventSchedule"]): InitialBoardSnapshot {
   return {
     forgeTier1: [...state.forgeTier1],
     forgeTier2: [...state.forgeTier2],
@@ -1709,6 +2352,15 @@ function makeInitialBoardSnapshot(state: Pick<GameStateData,
     deckTier3: [...state.deckTier3],
     activeLuminaries: [...state.activeLuminaries],
     firstPlayerId,
+    eventContentProfile,
+    eventFrequency,
+    eventDelivery,
+    ...(eventSchedule ? { eventSchedule: { queue: [...eventSchedule.queue], roundFloors: [...eventSchedule.roundFloors] } } : {}),
+    selectedEventDefinitionIds: canonicalEventSelection(eventContentProfile,
+      selectedEventDefinitionIds ?? [
+        ...state.forgeTier1, ...state.forgeTier2, ...state.forgeTier3,
+        ...state.deckTier1, ...state.deckTier2, ...state.deckTier3,
+      ]),
   };
 }
 
@@ -1728,6 +2380,11 @@ export function getReplayBoardSnapshot(state: GameStateData): InitialBoardSnapsh
       activeLuminaries: state.activeLuminaries,
     },
     state.openingTurnOrder?.firstPlayerId ?? null,
+    state.civilizationEventDeck.contentProfile ?? "general_v1",
+    state.civilizationEventDeck.eventFrequency ?? "standard",
+    state.civilizationEventDeck.definitionIds,
+    state.civilizationEventDeck.delivery ?? "archive_v1",
+    state.civilizationEventDeck.scheduled,
   );
 }
 
@@ -1747,6 +2404,21 @@ export function initializeGame(
   const replayBoard = options.replayBoard
     ? cloneInitialBoardSnapshot(options.replayBoard)
     : null;
+  const eventContentProfile = replayBoard?.eventContentProfile ?? options.eventContentProfile ?? "general_v2";
+  const eventFrequency = replayBoard?.eventFrequency ?? options.eventFrequency ?? "standard";
+  const selectedEventDefinitionIds = eventFrequency === "off" ? [] : replayBoard
+    ? canonicalEventSelection(eventContentProfile, replayBoard.selectedEventDefinitionIds ?? [])
+    : selectInitialEvents(eventContentProfile, eventFrequency);
+
+  const eventDelivery: EventDelivery = replayBoard?.eventDelivery ??
+    (eventContentProfile === "general_v2" ? "scheduled_forge_v1" : "archive_v1");
+  const eventSchedule = eventDelivery === "scheduled_forge_v1" ? replayBoard?.eventSchedule ?? {
+    queue: ([1, 2, 3] as const).flatMap((tier) => shuffle(selectedEventDefinitionIds.filter(
+      (id) => CIVILIZATION_EVENT_CARD_DEFINITIONS[id].tier === tier,
+    ))),
+    roundFloors: eventFrequency === "off" ? [] : eventFrequency === "frequent" ? [4, 6, 8, 10, 12, 14] : [4, 8, 12],
+  } : undefined;
+  const archiveEventIds = eventDelivery === "archive_v1" ? selectedEventDefinitionIds : [];
 
   let forgeTier1: string[];
   let forgeTier2: string[];
@@ -1757,12 +2429,14 @@ export function initializeGame(
   let activeLuminaries: string[];
 
   if (replayBoard) {
-    forgeTier1 = [...replayBoard.forgeTier1];
-    forgeTier2 = [...replayBoard.forgeTier2];
-    forgeTier3 = [...replayBoard.forgeTier3];
-    deckTier1 = [...replayBoard.deckTier1];
-    deckTier2 = [...replayBoard.deckTier2];
-    deckTier3 = [...replayBoard.deckTier3];
+    const allowedInReplay = (id: string) => !isCivilizationEventCardId(id) ||
+      (eventDelivery === "archive_v1" && eventFrequency !== "off" && selectedEventDefinitionIds.includes(id));
+    forgeTier1 = replayBoard.forgeTier1.filter(allowedInReplay);
+    forgeTier2 = replayBoard.forgeTier2.filter(allowedInReplay);
+    forgeTier3 = replayBoard.forgeTier3.filter(allowedInReplay);
+    deckTier1 = replayBoard.deckTier1.filter(allowedInReplay);
+    deckTier2 = replayBoard.deckTier2.filter(allowedInReplay);
+    deckTier3 = replayBoard.deckTier3.filter(allowedInReplay);
     activeLuminaries = [...replayBoard.activeLuminaries];
   } else {
     const tier1Ids = shuffle(
@@ -1783,15 +2457,61 @@ export function initializeGame(
     );
 
     forgeTier1 = tier1Ids.slice(0, 4);
-    deckTier1 = tier1Ids.slice(4);
+    deckTier1 = shuffle([
+      ...tier1Ids.slice(4),
+      ...archiveEventIds.filter((id) => CIVILIZATION_EVENT_CARD_DEFINITIONS[id].tier === 1),
+    ]);
     forgeTier2 = tier2Ids.slice(0, 4);
-    deckTier2 = tier2Ids.slice(4);
+    deckTier2 = shuffle([
+      ...tier2Ids.slice(4),
+      ...archiveEventIds.filter((id) => CIVILIZATION_EVENT_CARD_DEFINITIONS[id].tier === 2),
+    ]);
     forgeTier3 = tier3Ids.slice(0, 4);
-    deckTier3 = tier3Ids.slice(4);
+    deckTier3 = shuffle([
+      ...tier3Ids.slice(4),
+      ...archiveEventIds.filter((id) => CIVILIZATION_EVENT_CARD_DEFINITIONS[id].tier === 3),
+    ]);
   }
+
+  const startedAt = Date.now();
+  const civilizationEnvironmentSeed = options.civilizationEnvironmentSeed ??
+    `${startedAt}:${players.map((player) => player.id).join(':')}:${Math.random()}`;
+  const civilizationEnvironments = createCivilizationEnvironmentSet(
+    civilizationEnvironmentSeed,
+    players.map((player) => player.id),
+  );
 
   const playerStates: PlayerGameState[] = players.map((p) => {
     const blueprintSetup = options.blueprintSetups?.[p.id];
+    const blueprintPrivateStates = (blueprintSetup?.blueprintIds ?? []).map(
+      (blueprintId, slotIndex): BlueprintPrivateState => ({
+        blueprintId,
+        slotIndex,
+        matchedComponentIds: [],
+        manifested: false,
+        secretTargetCardId: null,
+        safePreManifestActionPlayerIds: [],
+        ...(blueprintId === "bp_mantle_to_orbit_foundry"
+          ? { foundryStoredArtifactIds: [] }
+          : {}),
+      }),
+    );
+    const civilization = emptyCivilizationState(civilizationEnvironments[p.id]);
+    for (const privateState of blueprintPrivateStates) {
+      const projectId = civilizationProjectId(privateState.blueprintId, privateState.slotIndex);
+      civilization.projects[projectId] = {
+        projectId,
+        blueprintId: privateState.blueprintId,
+        slotIndex: privateState.slotIndex,
+        status: "assembling",
+        matchedComponentIds: [],
+        deviceState: null,
+        presentationVariant: blueprintSetup?.presentationVariants?.[privateState.blueprintId] ?? "armored",
+        manifestedTurnCount: null,
+        stateChangedTurnCount: 0,
+        historyEvidence: "recorded",
+      };
+    }
     return {
       playerId: p.id,
       playerName: p.name,
@@ -1803,23 +2523,12 @@ export function initializeGame(
       privateReservedArtifactIds: [],
       forgedArtifactIds: [],
       artifactForgeCounts: {},
-      civilization: emptyCivilizationState(),
+      civilization,
+      pendingArtifactRepairIds: [],
       assimilatedArtifactIds: [],
       discountedForgeIds: [],
       blueprintBlockedCardIds: [],
-      blueprintPrivateStates: (blueprintSetup?.blueprintIds ?? []).map(
-        (blueprintId, slotIndex): BlueprintPrivateState => ({
-          blueprintId,
-          slotIndex,
-          matchedComponentIds: [],
-          manifested: false,
-          secretTargetCardId: null,
-          safePreManifestActionPlayerIds: [],
-          ...(blueprintId === "bp_mantle_to_orbit_foundry"
-            ? { foundryStoredArtifactIds: [] }
-            : {}),
-        }),
-      ),
+      blueprintPrivateStates,
       blueprintPresentationVariants: blueprintSetup?.presentationVariants ?? {},
       manifestedBlueprintDevices: [],
       tideArchiveForgeAvailable: false,
@@ -1831,7 +2540,6 @@ export function initializeGame(
     };
   });
 
-  const startedAt = Date.now();
   const replayFirstPlayerIndex = replayBoard?.firstPlayerId
     ? playerStates.findIndex((player) => player.playerId === replayBoard.firstPlayerId)
     : -1;
@@ -1853,6 +2561,11 @@ export function initializeGame(
         activeLuminaries,
       },
       startingPlayer.playerId,
+      eventContentProfile,
+      eventFrequency,
+      selectedEventDefinitionIds,
+      eventDelivery,
+      eventSchedule,
     ),
     openingTurnOrder: {
       id: `${startedAt}:${startingPlayer.playerId}`,
@@ -1865,6 +2578,7 @@ export function initializeGame(
     turnCount: 0,
     phase: "playing",
     victoryRequirement: Math.max(MIN_VICTORY_REQUIREMENT, Math.floor(victoryRequirement)),
+    legacyVictoryRequirement: LEGACY_BLUEPRINT_REQUIREMENT,
     cinematicMode: cinematicMode === "epic" ? "epic" : "standard",
     affinityWell: affinityWellForPlayerCount(playerCount),
     forgeTier1: forgeTier1,
@@ -1879,6 +2593,27 @@ export function initializeGame(
     pendingLuminaryActivationEvents: [],
     pendingBlueprintManifestationEvents: [],
     pendingBlueprintDetonationEvents: [],
+    pendingCivilizationEventCards: [],
+    pendingCivilizationEventPlans: {},
+    civilizationEventDeck: {
+      definitionIds: selectedEventDefinitionIds,
+      contentProfile: eventContentProfile,
+      eventFrequency,
+      delivery: eventDelivery,
+      ...(eventSchedule ? { scheduled: {
+        queue: [...eventSchedule.queue],
+        roundFloors: [...eventSchedule.roundFloors],
+        nextQueueIndex: 0,
+        dueAfterTurnCount: (eventSchedule.roundFloors[0] ?? 0) * playerStates.length,
+        lastEventTurnCount: null,
+        readyCardId: null,
+      } } : {}),
+      rulesVersion: eventDelivery === "scheduled_forge_v1" ? "scheduled-events-v1" : eventContentProfile === "lore_pilot_v1" ? "lore-events-v1"
+        : eventContentProfile === "general_v2" ? "regular-events-v2" : "general-events-v1",
+      nextIndex: 0,
+      firedWindows: [],
+      completedEventIds: [],
+    },
     pendingTurnTransition: null,
     nullifiedFirstForge: null,
     forgottenHourCycle: {},
@@ -1887,6 +2622,7 @@ export function initializeGame(
     voidSealOwnerId: null,
     players: playerStates,
     winnerId: null,
+    legacyWinnerId: null,
     winTriggerLuminaryId: null,
     lastAction: null,
     actionLog: [
@@ -1969,6 +2705,8 @@ export function configureTraceScenario(
     autonomous.civilization,
     traceRoutingNetwork(TRACE_KEELBORN_ROUTING_NETWORK_ID),
   );
+
+  removeCompetitiveEventsForChronicle(state);
 
   state.traceScenario = {
     chronicleId: TRACE_CHRONICLE_ID,
@@ -2250,6 +2988,8 @@ export function configureRecurrenceScenario(
     autonomous.civilization,
     recurrenceArchiveEntity(RECURRENCE_ORU_INDEX_ID),
   );
+
+  removeCompetitiveEventsForChronicle(state);
 
   state.recurrenceScenario = {
     chronicleId: RECURRENCE_CHRONICLE_ID,
@@ -2534,6 +3274,8 @@ export function configureTriangulationScenario(
       triangulationNetworkEntity(TRIANGULATION_LATTICE_ID),
     );
   }
+
+  removeCompetitiveEventsForChronicle(state);
 
   state.triangulationScenario = {
     chronicleId: TRIANGULATION_CHRONICLE_ID,
@@ -2822,11 +3564,13 @@ type ActionType =
   | "resolve_luminary_activation"
   | "resolve_blueprint_manifestation"
   | "resolve_blueprint_detonation"
+  | "resolve_civilization_event"
   | "plan_action"
   | "execute_plan"
   | "cancel_plan"
   | "tutorial_fast_forward"
   | "set_civ_name"
+  | "repair_artifacts"
   | "choose_luminary_order"
   | "resolve_chronicle_choice";
 
@@ -2837,6 +3581,8 @@ export interface ActionPayload {
   affinity?: StandardAffinityKey;
   returnAffinities?: Partial<AffinityCounts>;
   cardId?: string;
+  /** One or more damaged Artifact implementations to repair at end of turn. */
+  artifactIds?: string[];
   tier?: 1 | 2 | 3;
   /** Explicit Project claim path; absent means an ordinary Forge. */
   blueprintAction?: BlueprintClaimAction;
@@ -2893,6 +3639,7 @@ export function effectiveAffinityBonuses(
   state: GameStateData,
   player: PlayerGameState,
 ): AffinityCounts {
+  // Affinity bonuses record acquired technology and survive implementation damage.
   const result = { ...player.bonuses };
   for (const la of state.luminaryAffinities ?? []) {
     if (la.ownerId !== player.playerId) continue;
@@ -2918,13 +3665,153 @@ function effectiveCost(
   return result;
 }
 
+function writeCivilizationProject(
+  player: PlayerGameState,
+  project: CivilizationProjectLifecycleState,
+): void {
+  const disabled = project.deviceState === "spent" || project.deviceState === "recovering";
+  const existingEntity = player.civilization.entities[project.projectId];
+  player.civilization = {
+    ...player.civilization,
+    projects: {
+      ...(player.civilization.projects ?? {}),
+      [project.projectId]: project,
+    },
+    entities: project.status === "manifested"
+      ? {
+          ...player.civilization.entities,
+          [project.projectId]: {
+            id: project.projectId,
+            kind: "project",
+            state: disabled ? "disabled" : "operational",
+            worldId: existingEntity?.worldId ?? null,
+            sourceId: project.blueprintId,
+            establishedTurnCount: project.manifestedTurnCount,
+            stateChangedTurnCount: project.stateChangedTurnCount,
+            conditionIds: existingEntity?.conditionIds ?? [],
+            historyEvidence: project.historyEvidence,
+          },
+        }
+      : player.civilization.entities,
+  };
+}
+
+function recordBlueprintProjectAssembly(
+  player: PlayerGameState,
+  privateState: BlueprintPrivateState,
+  matchedComponentIds: string[],
+  status: Exclude<CivilizationProjectStatus, "manifested">,
+  turnCount: number,
+): CivilizationProjectLifecycleState {
+  const projectId = civilizationProjectId(privateState.blueprintId, privateState.slotIndex);
+  const existing = player.civilization.projects?.[projectId];
+  if (existing?.status === "manifested") return existing;
+  const project: CivilizationProjectLifecycleState = {
+    projectId,
+    blueprintId: privateState.blueprintId,
+    slotIndex: privateState.slotIndex,
+    status,
+    matchedComponentIds: [...matchedComponentIds],
+    deviceState: null,
+    presentationVariant: existing?.presentationVariant ?? blueprintVariant(
+      player,
+      privateState.blueprintId,
+    ),
+    manifestedTurnCount: null,
+    stateChangedTurnCount: turnCount,
+    historyEvidence: "recorded",
+  };
+  writeCivilizationProject(player, project);
+  return project;
+}
+
+function manifestCivilizationProject(
+  player: PlayerGameState,
+  privateState: BlueprintPrivateState,
+  deviceState: BlueprintDeviceState,
+  presentationVariant: BlueprintPresentationVariant,
+  turnCount: number,
+): CivilizationProjectLifecycleState {
+  const projectId = civilizationProjectId(privateState.blueprintId, privateState.slotIndex);
+  const existing = player.civilization.projects?.[projectId];
+  const project: CivilizationProjectLifecycleState = {
+    projectId,
+    blueprintId: privateState.blueprintId,
+    slotIndex: privateState.slotIndex,
+    status: "manifested",
+    matchedComponentIds: [...privateState.matchedComponentIds],
+    deviceState,
+    presentationVariant,
+    manifestedTurnCount: existing?.manifestedTurnCount ?? turnCount,
+    stateChangedTurnCount: turnCount,
+    historyEvidence: "recorded",
+  };
+  writeCivilizationProject(player, project);
+  return project;
+}
+
+function setBlueprintProjectDeviceState(
+  player: PlayerGameState,
+  blueprintId: BlueprintId,
+  deviceState: BlueprintDeviceState,
+  turnCount: number,
+): void {
+  const device = player.manifestedBlueprintDevices?.find(
+    (candidate) => candidate.blueprintId === blueprintId,
+  );
+  if (device) device.state = deviceState;
+  const privateState = findPrivateBlueprintState(player, blueprintId);
+  const slotIndex = device?.slotIndex ?? privateState?.slotIndex;
+  if (slotIndex === undefined) return;
+  const projectId = civilizationProjectId(blueprintId, slotIndex);
+  const existing = player.civilization.projects?.[projectId];
+  const definition = BLUEPRINT_DEFINITIONS[blueprintId];
+  const project: CivilizationProjectLifecycleState = {
+    projectId,
+    blueprintId,
+    slotIndex,
+    status: "manifested",
+    matchedComponentIds: existing?.matchedComponentIds ??
+      privateState?.matchedComponentIds ??
+      definition.components.map((component) => component.artifactId),
+    deviceState,
+    presentationVariant: existing?.presentationVariant ??
+      device?.presentationVariant ??
+      blueprintVariant(player, blueprintId),
+    manifestedTurnCount: existing?.manifestedTurnCount ?? turnCount,
+    stateChangedTurnCount: turnCount,
+    historyEvidence: existing?.historyEvidence ?? "recorded",
+  };
+  writeCivilizationProject(player, project);
+}
+
 function getManifestedDevice(
   player: PlayerGameState,
   blueprintId: BlueprintId,
 ): ManifestedDevicePublicState | undefined {
-  return player.manifestedBlueprintDevices?.find(
+  const device = player.manifestedBlueprintDevices?.find(
     (device) => device.blueprintId === blueprintId,
   );
+  const project = Object.values(player.civilization.projects ?? {}).find(
+    (candidate) => candidate.blueprintId === blueprintId && candidate.status === "manifested",
+  );
+  if (device && project?.deviceState) {
+    device.state = project.deviceState;
+    device.presentationVariant = project.presentationVariant;
+  }
+  return device;
+}
+
+function playerHasCivilizationCapability(
+  player: PlayerGameState,
+  capabilityId: CivilizationCapabilityId,
+): boolean {
+  player.civilization = normalizeCivilizationState(player);
+  return buildCivilizationResolutionSnapshot(
+    player.civilization,
+    [],
+    player.manifestedBlueprintDevices ?? [],
+  ).activeCapabilityIds.includes(capabilityId);
 }
 
 function foundryUsesRemaining(device: ManifestedDevicePublicState): number {
@@ -2994,7 +3881,8 @@ function eligibleBlueprintArtifactIds(player: PlayerGameState): Set<string> {
   const blocked = new Set(player.blueprintBlockedCardIds ?? []);
   return new Set(
     [...(player.forgedArtifactIds ?? [])]
-      .filter((artifactId) => !blocked.has(artifactId)),
+      .filter((artifactId) => !blocked.has(artifactId) &&
+        player.civilization.artifacts[artifactId]?.implementationState !== "damaged"),
   );
 }
 
@@ -3008,8 +3896,8 @@ function findPrivateBlueprintState(
 }
 
 function randomFaceUpTierTwo(state: GameStateData): string | null {
-  if (state.forgeTier2.length === 0) return null;
-  return state.forgeTier2[Math.floor(Math.random() * state.forgeTier2.length)] ?? null;
+  const artifacts = state.forgeTier2.filter((id) => CARD_MAP.has(id));
+  return artifacts[Math.floor(Math.random() * artifacts.length)] ?? null;
 }
 
 function retargetUnavailableAntimatterCharges(state: GameStateData): void {
@@ -3042,6 +3930,63 @@ function settlePreManifestAction(state: GameStateData, playerId: string): void {
   retargetUnavailableAntimatterCharges(state);
 }
 
+function getLegacyVictoryRequirement(state: GameStateData): number {
+  return Math.max(
+    1,
+    Math.floor(state.legacyVictoryRequirement ?? LEGACY_BLUEPRINT_REQUIREMENT),
+  );
+}
+
+function playerHasCompletedLegacyPath(
+  state: GameStateData,
+  player: PlayerGameState,
+): boolean {
+  const civilizationProgress = getCivilizationLegacyProgress(
+    player.civilization,
+    getLegacyVictoryRequirement(state),
+    deriveCivilizationLegacyArtifactEligibility(player.civilization),
+  );
+  return civilizationProgress.achieved;
+}
+
+function markPlayerLegacyCompletion(
+  player: PlayerGameState,
+  turnCount: number,
+  historyEvidence: CivilizationHistoryEvidence = "recorded",
+): void {
+  const civilization = normalizeCivilizationState({
+    ...player,
+    civilizationTurnCount: turnCount,
+  });
+  if (civilization.legacy.completedTurnCount === null) {
+    civilization.legacy = {
+      completedTurnCount: turnCount,
+      historyEvidence,
+    };
+  }
+  player.civilization = reconcileCivilizationDerivedState(
+    civilization,
+    player.manifestedBlueprintDevices ?? [],
+    turnCount,
+  );
+}
+
+function registerLegacyVictory(
+  state: GameStateData,
+  player: PlayerGameState,
+): void {
+  if (state.legacyWinnerId || !playerHasCompletedLegacyPath(state, player)) return;
+
+  state.legacyWinnerId = player.playerId;
+  markPlayerLegacyCompletion(player, state.turnCount);
+  pushLog(state, {
+    playerId: player.playerId,
+    playerName: player.playerName,
+    summary: "completed the Legacy Path",
+    turn: state.roundNumber,
+  });
+}
+
 function checkBlueprintManifestations(state: GameStateData, player: PlayerGameState): void {
   const eligibleArtifacts = eligibleBlueprintArtifactIds(player);
   const privateStates = [...(player.blueprintPrivateStates ?? [])]
@@ -3053,8 +3998,21 @@ function checkBlueprintManifestations(state: GameStateData, player: PlayerGameSt
     privateState.matchedComponentIds = definition.components
       .map((component) => component.artifactId)
       .filter((artifactId) => eligibleArtifacts.has(artifactId));
-    if (privateState.manifested) continue;
-    if (privateState.matchedComponentIds.length !== definition.components.length) continue;
+    const projectId = civilizationProjectId(privateState.blueprintId, privateState.slotIndex);
+    const existingProject = player.civilization.projects?.[projectId];
+    if (existingProject?.status === "manifested") {
+      privateState.manifested = true;
+      continue;
+    }
+    const recipeComplete = privateState.matchedComponentIds.length === definition.components.length;
+    recordBlueprintProjectAssembly(
+      player,
+      privateState,
+      privateState.matchedComponentIds,
+      recipeComplete ? "ready_to_manifest" : "assembling",
+      state.turnCount,
+    );
+    if (privateState.manifested || !recipeComplete) continue;
 
     privateState.manifested = true;
     const presentationVariant = blueprintVariant(player, privateState.blueprintId);
@@ -3071,8 +4029,20 @@ function checkBlueprintManifestations(state: GameStateData, player: PlayerGameSt
         ? { ascensionDeferrals: 0 }
         : {}),
     };
+    manifestCivilizationProject(
+      player,
+      privateState,
+      device.state,
+      presentationVariant,
+      state.turnCount,
+    );
     if (!player.manifestedBlueprintDevices) player.manifestedBlueprintDevices = [];
-    player.manifestedBlueprintDevices.push(device);
+    const compatibilityDevice = player.manifestedBlueprintDevices.find(
+      (candidate) => candidate.blueprintId === device.blueprintId &&
+        candidate.slotIndex === device.slotIndex,
+    );
+    if (compatibilityDevice) Object.assign(compatibilityDevice, device);
+    else player.manifestedBlueprintDevices.push(device);
 
     if (privateState.blueprintId === "bp_antimatter_detonator") {
       privateState.safePreManifestActionPlayerIds = state.players
@@ -3111,6 +4081,7 @@ function checkBlueprintManifestations(state: GameStateData, player: PlayerGameSt
       event.eventId,
       `${definition.name} manifested as ${definition.civilization.projectForm}`,
     );
+    registerLegacyVictory(state, player);
   }
   refreshPlayerCivilization(player, state.turnCount);
 }
@@ -3233,7 +4204,12 @@ function settleAscensionRegistryObservation(
     if (state.brokenCovenantDeclared) {
       device.ascensionDeferrals = 0;
     } else {
-      device.state = "spent";
+      setBlueprintProjectDeviceState(
+        owner,
+        "bp_ascension_registry",
+        "spent",
+        state.turnCount,
+      );
     }
     recordBlueprintCivilizationEvent(
       state,
@@ -3319,13 +4295,20 @@ function resolveAntimatterClaim(
     return "none";
   }
 
-  const worldshield = getManifestedDevice(claimant, "bp_worldshield_covenant");
   claimant.civilization = normalizeCivilizationState(claimant);
-  const worldshieldVigilant = worldshield?.state === "vigilant";
+  const worldshield = getManifestedDevice(claimant, "bp_worldshield_covenant");
+  const worldshieldVigilant = buildCivilizationResolutionSnapshot(
+    claimant.civilization,
+    [],
+    claimant.manifestedBlueprintDevices ?? [],
+  ).activeCapabilityIds.includes(
+    CIVILIZATION_PROJECT_CAPABILITIES.hostileClaimInterception,
+  );
   const hostileClaim = claimant.playerId !== candidate.owner.playerId;
   const collateralCandidates = state.brokenCovenantDeclared && !(hostileClaim && worldshieldVigilant)
     ? shuffle(
-        claimant.forgedArtifactIds.filter((artifactId) => CARD_MAP.get(artifactId)?.tier === 1),
+        claimant.forgedArtifactIds.filter((artifactId) => CARD_MAP.get(artifactId)?.tier === 1 &&
+          claimant.civilization.artifacts[artifactId]?.implementationState === "operational"),
       ).slice(0, 2)
     : [];
   const pendingEventId = hostileClaim && worldshieldVigilant
@@ -3344,9 +4327,21 @@ function resolveAntimatterClaim(
   claimant.civilization = civilizationResolution.civilization;
 
   if (civilizationResolution.outcome === "intercepted" && worldshield) {
-    candidate.device.state = "spent";
+    setBlueprintProjectDeviceState(
+      candidate.owner,
+      "bp_antimatter_detonator",
+      "spent",
+      state.turnCount,
+    );
     candidate.privateState.secretTargetCardId = null;
-    if (!state.brokenCovenantDeclared) worldshield.state = "spent";
+    if (!state.brokenCovenantDeclared) {
+      setBlueprintProjectDeviceState(
+        claimant,
+        "bp_worldshield_covenant",
+        "spent",
+        state.turnCount,
+      );
+    }
     state.pendingBlueprintDetonationEvents.push({
       eventId: pendingEventId,
       blueprintId: "bp_antimatter_detonator",
@@ -3373,7 +4368,12 @@ function resolveAntimatterClaim(
     return "intercepted";
   }
 
-  candidate.device.state = "spent";
+  setBlueprintProjectDeviceState(
+    candidate.owner,
+    "bp_antimatter_detonator",
+    "spent",
+    state.turnCount,
+  );
   candidate.privateState.secretTargetCardId = null;
   if (!state.annihilatedArtifactIds.includes(targetCardId)) {
     state.annihilatedArtifactIds.push(targetCardId);
@@ -3708,6 +4708,18 @@ function refillForgeSlot(
   // Remove any marker on the leaving card.
   if (state.artifactMarkers) delete state.artifactMarkers[removedId];
 
+  // An armed Event takes the next genuine vacancy before an Archive draw.
+  // Consuming an Event is not another Artifact departure: its acknowledgement
+  // must draw the delayed Artifact, never reinsert the same scheduled Event.
+  const scheduledEvent = CARD_MAP.has(removedId) ? scheduledEventForForgeRefill(state) : null;
+  if (scheduledEvent) {
+    forgeRow[idx] = scheduledEvent;
+    retargetUnavailableAntimatterCharges(state);
+    return scheduledEvent;
+  }
+
+  while (deck[0] && isCivilizationEventCardId(deck[0]) && !eventAvailableInMatch(state, deck[0])) deck.shift();
+
   if (deck.length > 0) {
     const newId = deck.shift()!;
     forgeRow[idx] = newId;
@@ -3832,8 +4844,10 @@ function interceptHostilePlannedClaim(
 ): boolean {
   const protectedPlayer = state.players.find((candidate) => {
     if (candidate.playerId === sourcePlayerId) return false;
-    const worldshield = getManifestedDevice(candidate, "bp_worldshield_covenant");
-    return worldshield?.state === "vigilant" &&
+    return playerHasCivilizationCapability(
+      candidate,
+      CIVILIZATION_PROJECT_CAPABILITIES.hostileClaimInterception,
+    ) &&
       isProtectedPlannedClaimLegal(state, candidate, cardId);
   });
   if (!protectedPlayer) return false;
@@ -3841,7 +4855,14 @@ function interceptHostilePlannedClaim(
   const worldshield = getManifestedDevice(protectedPlayer, "bp_worldshield_covenant");
   if (!worldshield) return false;
   const eventId = `bp-worldshield-${hostileEffect}-v${state.version}-${Date.now()}-${cardId}`;
-  if (!state.brokenCovenantDeclared) worldshield.state = "spent";
+  if (!state.brokenCovenantDeclared) {
+    setBlueprintProjectDeviceState(
+      protectedPlayer,
+      "bp_worldshield_covenant",
+      "spent",
+      state.turnCount,
+    );
+  }
   recordBlueprintCivilizationEvent(
     state,
     protectedPlayer,
@@ -3894,6 +4915,7 @@ function burnCard(
   suppressLog = false,
   opts?: { triggeredByPlayerId?: string },
 ): boolean {
+  if (isCivilizationEventCardId(cardId)) return false;
   if (!Array.isArray(state.burnPile)) state.burnPile = [];
   if (!Array.isArray(state.burnEvents)) state.burnEvents = [];
   const burntLore = getCardLore(cardId);
@@ -4003,7 +5025,9 @@ function applySummonEffect_avatarSeeds(
   for (const tier of [1, 2, 3] as const) {
     const forgeRow = getForgeRowForTier(state, tier);
     if (forgeRow.length === 0) continue;
-    const slotIndex = Math.floor(Math.random() * forgeRow.length);
+    const moldCount = forgeRow.filter((id) => !(state.archiveRevealedEventCardIds ?? []).includes(id as CivilizationEventCardId)).length;
+    if (moldCount === 0) continue;
+    const slotIndex = Math.floor(Math.random() * Math.min(4, moldCount));
     moldSlots.push(`${tier}-${slotIndex}`);
   }
   state.avatarSeedState = {
@@ -4379,7 +5403,8 @@ function applySummonEffect(
       for (const tier of [1, 2, 3] as const) {
         const deck = getDeckForTier(state, tier);
         while (deck.length > 0 && drawn.length < 2) {
-          drawn.push({ id: deck.shift()!, tier });
+          const artifactId = drawArchiveArtifact(state, tier);
+          if (artifactId) drawn.push({ id: artifactId, tier });
         }
       }
       if (drawn.length > 0) {
@@ -4420,6 +5445,67 @@ function applySummonEffect(
  * Runs after every arrival and summon-effect presentation produced by the core
  * action, but before turnCount advances to the incoming turn.
  */
+function resolvePendingArtifactRepairs(
+  state: GameStateData,
+  player: PlayerGameState,
+): void {
+  const requestedIds = [...new Set(player.pendingArtifactRepairIds ?? [])];
+  if (requestedIds.length === 0) return;
+
+  const civilization = normalizeCivilizationState({
+    ...player,
+    civilizationTurnCount: state.turnCount,
+  });
+  const repairableIds = requestedIds.filter(
+    (artifactId) => player.forgedArtifactIds.includes(artifactId) &&
+      civilization.artifacts[artifactId]?.implementationState === "damaged",
+  );
+  player.pendingArtifactRepairIds = [];
+  if (repairableIds.length === 0) return;
+
+  const repairedIdSet = new Set(repairableIds);
+  const artifacts = { ...civilization.artifacts };
+  for (const artifactId of repairableIds) {
+    const lifecycle = artifacts[artifactId]!;
+    artifacts[artifactId] = {
+      ...lifecycle,
+      implementationState: "operational",
+      implementationStateChangedTurnCount: state.turnCount,
+      implementationChangeSource: {
+        sourceType: "system",
+        sourceId: "artifact_repair",
+      },
+    };
+  }
+
+  const conditions = Object.fromEntries(
+    Object.entries(civilization.conditions).map(([conditionId, condition]) => [
+      conditionId,
+      condition.resolvedTurnCount === null &&
+      condition.coreType === "damaged" &&
+      condition.target.kind === "artifact_implementation" &&
+      repairedIdSet.has(condition.target.id)
+        ? { ...condition, resolvedTurnCount: state.turnCount }
+        : condition,
+    ]),
+  );
+  player.civilization = reconcileCivilizationDerivedState(
+    { ...civilization, artifacts, conditions },
+    player.manifestedBlueprintDevices ?? [],
+    state.turnCount,
+  );
+  pushLog(state, {
+    playerId: player.playerId,
+    playerName: player.playerName,
+    summary: `Repaired ${repairableIds.length} Artifact implementation${repairableIds.length === 1 ? "" : "s"}`,
+    turn: state.roundNumber,
+  });
+  // Repairs can complete an exact recipe without another Forge action. The
+  // existing presentation queue holds the turn for any newly ready Project.
+  checkBlueprintManifestations(state, player);
+  checkLuminaries(state, player);
+}
+
 function applyEndOfTurnEffects(state: GameStateData, player: PlayerGameState): void {
   // ── Concordance Mandala: one +2 payout at 8 and another at 10 Radiance Artifacts ──
   if (player.luminaries.includes("lum_radiant")) {
@@ -4614,7 +5700,7 @@ function applyStartOfTurnEffects(state: GameStateData, player: PlayerGameState):
       const forgeRow = getForgeRowForTier(state, tier);
       const archive = getDeckForTier(state, tier);
       while (forgeRow.length < 4 && archive.length > 0) {
-        forgeRow.push(archive.shift()!);
+        forgeRow.push(scheduledEventForForgeRefill(state) ?? archive.shift()!);
         refilled++;
       }
     }
@@ -4774,11 +5860,12 @@ function primeDevStartOfTurnEffects(
   recurrence.summonedAtTurnCount = state.turnCount - 1;
   recurrence.recoveryPending = true;
   if (state.burnPile.length === 0) {
-    const seededBurnIds = [
-      state.deckTier1.shift(),
-      state.deckTier2.shift(),
-      state.deckTier3.shift(),
-    ].filter((id): id is string => !!id);
+    const seededBurnIds = [state.deckTier1, state.deckTier2, state.deckTier3]
+      .map((deck) => {
+        // This debug fixture selects an Artifact; it must never seed an Event into the Burn Pile.
+        const index = deck.findIndex((id) => CARD_MAP.has(id));
+        return index < 0 ? undefined : deck.splice(index, 1)[0];
+      }).filter((id): id is string => !!id);
     state.burnPile.push(...seededBurnIds);
   }
 }
@@ -4788,7 +5875,8 @@ function hasPendingLuminaryPresentation(state: GameStateData): boolean {
     (state.pendingSummonEvents?.length ?? 0) > 0 ||
     (state.pendingLuminaryActivationEvents?.length ?? 0) > 0 ||
     (state.pendingBlueprintManifestationEvents?.length ?? 0) > 0 ||
-    (state.pendingBlueprintDetonationEvents?.length ?? 0) > 0
+    (state.pendingBlueprintDetonationEvents?.length ?? 0) > 0 ||
+    (state.pendingCivilizationEventCards?.length ?? 0) > 0
   );
 }
 
@@ -4798,6 +5886,7 @@ function completeDevLuminarySequenceIfIdle(state: GameStateData): void {
     !state.devLuminarySequenceStage &&
     !hasPendingLuminaryPresentation(state)
   ) {
+    if (queueEligibleCivilizationEvent(state)) return;
     state.devLuminarySequenceActive = false;
   }
 }
@@ -4824,6 +5913,7 @@ function advanceDevLuminarySequenceStage(state: GameStateData): void {
     stage.includeEndOfTurnEffects || stage.includeStartOfTurnEffects
   );
   while (state.devLuminarySequenceStage && !hasPendingLuminaryPresentation(state)) {
+    if (queueEligibleCivilizationEvent(state)) return;
     const phase = stage.phase ?? "arrivals";
     if (phase === "arrivals") {
       stage.phase = "end_of_turn";
@@ -4868,6 +5958,9 @@ export function runDevLuminarySequence(
   if (
     state.pendingSummonEvents.length > 0 ||
     state.pendingLuminaryActivationEvents.length > 0 ||
+    state.pendingCivilizationEventCards.length > 0 ||
+    state.pendingBlueprintManifestationEvents.length > 0 ||
+    state.pendingBlueprintDetonationEvents.length > 0 ||
     state.pendingTurnTransition ||
     state.pendingLuminaryChoice ||
     state.devLuminarySequenceActive
@@ -4969,19 +6062,32 @@ function getVictoryRequirement(state: GameStateData): number {
   );
 }
 
-function checkWin(state: GameStateData): boolean {
+function checkEminenceWin(state: GameStateData): boolean {
   const victoryRequirement = getVictoryRequirement(state);
   return state.players.some((p) => p.eminence >= victoryRequirement);
 }
 
-function forgeAndArchivesAreEmpty(state: GameStateData): boolean {
+function checkLegacyWin(state: GameStateData): boolean {
+  if (state.legacyWinnerId) {
+    const recordedWinner = state.players.find((player) => player.playerId === state.legacyWinnerId);
+    if (recordedWinner) markPlayerLegacyCompletion(recordedWinner, state.turnCount);
+    return true;
+  }
+  const legacyWinner = state.players.find((player) => playerHasCompletedLegacyPath(state, player));
+  if (!legacyWinner) return false;
+  registerLegacyVictory(state, legacyWinner);
+  return state.legacyWinnerId !== null;
+}
+
+function checkFinalRoundTrigger(state: GameStateData): boolean {
+  return checkEminenceWin(state) || checkLegacyWin(state);
+}
+
+function forgeAndArchivesAreEmpty(state: GameStateData, ignoredCardId?: string | null): boolean {
   return (
-    state.forgeTier1.length === 0 &&
-    state.forgeTier2.length === 0 &&
-    state.forgeTier3.length === 0 &&
-    state.deckTier1.length === 0 &&
-    state.deckTier2.length === 0 &&
-    state.deckTier3.length === 0
+    [state.forgeTier1, state.forgeTier2, state.forgeTier3,
+      state.deckTier1, state.deckTier2, state.deckTier3]
+      .every((zone) => zone.every((id) => id === ignoredCardId))
   );
 }
 
@@ -5013,6 +6119,7 @@ function selectWinnerId(players: ReadonlyArray<PlayerGameState>): string | null 
 }
 
 function assignWinner(state: GameStateData, players = state.players): void {
+  checkLegacyWin(state);
   state.winnerId = selectWinnerId(players);
 
   if (state.winTriggerLuminaryId) {
@@ -5088,6 +6195,749 @@ function recordFailedPlannedAction(
   state.version++;
 }
 
+// ─── Civilization Event Cards ────────────────────────────────────────────────
+
+/** All dates are completed player-turn counts, independent of the randomized opening seat. */
+function scheduledEventWindowClosed(state: GameStateData): boolean {
+  return state.phase !== "playing" || checkEminenceWin(state) || !!state.legacyWinnerId ||
+    state.players.some((player) => playerHasCompletedLegacyPath(state, player)) ||
+    forgeAndArchivesAreEmpty(state, state.civilizationEventDeck.scheduled?.readyCardId);
+}
+
+/** The separate Event queue claims a real refill; it never displaces an occupied Artifact. */
+function scheduledEventForForgeRefill(state: GameStateData): CivilizationEventCardId | null {
+  const deck = state.civilizationEventDeck;
+  const definitionId = deck.scheduled?.readyCardId;
+  if (deck.delivery !== "scheduled_forge_v1" || !definitionId ||
+    state.pendingCivilizationEventCards.length > 0 || scheduledEventWindowClosed(state) ||
+    !eventAvailableInMatch(state, definitionId) ||
+    [state.forgeTier1, state.forgeTier2, state.forgeTier3].some((row) => row.includes(definitionId))) return null;
+  return definitionId;
+}
+
+/** Older scheduled receipts and blind Archive reveals used extra, non-mold spaces. */
+function temporaryCivilizationEventSourceIds(state: GameStateData): Set<string> {
+  return new Set([
+    ...(state.archiveRevealedEventCardIds ?? []),
+    ...state.pendingCivilizationEventCards.flatMap((event) =>
+      event.sourceCard?.forgeSlotIndex === null ? [event.sourceCard.id] : []),
+  ]);
+}
+
+export function getEventForecast(state: GameStateData): EventForecast | null {
+  const deck = state.civilizationEventDeck;
+  if (deck.delivery !== "scheduled_forge_v1") return null;
+  const empty = { tier: null, roundsRemaining: null, turnsRemainingByPlayerId: {} } as const;
+  if (deck.eventFrequency === "off" || state.traceScenario || state.recurrenceScenario || state.triangulationScenario) {
+    return { ...empty, status: "off" };
+  }
+  const schedule = deck.scheduled;
+  if (scheduledEventWindowClosed(state)) return { ...empty, status: "closed" };
+  const definitionId = schedule?.queue[schedule.nextQueueIndex];
+  if (!schedule || !definitionId) return { ...empty, status: "complete" };
+  const tier = CIVILIZATION_EVENT_CARD_DEFINITIONS[definitionId].tier;
+  if (state.pendingCivilizationEventCards.length > 0 || (schedule.readyCardId &&
+    [state.forgeTier1, state.forgeTier2, state.forgeTier3].some((row) => row.includes(schedule.readyCardId!)))) {
+    return { ...empty, tier, status: "resolving" };
+  }
+  const remaining = Math.max(0, schedule.dueAfterTurnCount - state.turnCount);
+  const playerCount = Math.max(1, state.players.length);
+  return {
+    status: remaining === 0 ? "armed" : "countdown",
+    tier,
+    roundsRemaining: Math.ceil(remaining / playerCount),
+    turnsRemainingByPlayerId: Object.fromEntries(state.players.map((player, index) => {
+      const offset = (index - state.currentPlayerIndex + playerCount) % playerCount;
+      return [player.playerId, Math.max(0, Math.ceil((remaining - offset) / playerCount))];
+    })),
+  };
+}
+
+/** Called only by successful Forge actions, never by Encryption, repair, or an Artifact grant. */
+function requestScheduledEventAfterForge(state: GameStateData): void {
+  const deck = state.civilizationEventDeck;
+  const schedule = deck.scheduled;
+  if (deck.delivery !== "scheduled_forge_v1" || deck.eventFrequency === "off" || !schedule ||
+    schedule.readyCardId || state.pendingCivilizationEventCards.length > 0 ||
+    state.turnCount < schedule.dueAfterTurnCount || state.phase !== "playing") return;
+  schedule.readyCardId = schedule.queue[schedule.nextQueueIndex] ?? null;
+}
+
+function normalizeScheduledEventState(
+  raw: unknown,
+  definitionIds: readonly CivilizationEventCardId[],
+): CivilizationEventDeckState["scheduled"] {
+  if (!raw || typeof raw !== "object" || Array.isArray(raw)) return undefined;
+  const schedule = raw as Record<string, unknown>;
+  if (!Array.isArray(schedule.queue) || !Array.isArray(schedule.roundFloors)) return undefined;
+  // Persist order exactly. Canonical selection order is not the shuffled queue.
+  const queue = schedule.queue.filter((id): id is CivilizationEventCardId =>
+    typeof id === "string" && definitionIds.includes(id as CivilizationEventCardId));
+  if (queue.length !== schedule.queue.length || new Set(queue).size !== queue.length ||
+    schedule.roundFloors.length !== queue.length ||
+    schedule.roundFloors.some((floor) => typeof floor !== "number" || !Number.isInteger(floor) || floor < 0)) return undefined;
+  const nonnegativeInteger = (value: unknown) => typeof value === "number" && Number.isFinite(value)
+    ? Math.max(0, Math.trunc(value)) : 0;
+  const nextQueueIndex = Math.min(queue.length, nonnegativeInteger(schedule.nextQueueIndex));
+  return {
+    queue,
+    roundFloors: [...schedule.roundFloors] as number[],
+    nextQueueIndex,
+    dueAfterTurnCount: nonnegativeInteger(schedule.dueAfterTurnCount),
+    lastEventTurnCount: typeof schedule.lastEventTurnCount === "number" ? nonnegativeInteger(schedule.lastEventTurnCount) : null,
+    readyCardId: typeof schedule.readyCardId === "string" && schedule.readyCardId === queue[nextQueueIndex]
+      ? schedule.readyCardId as CivilizationEventCardId : null,
+  };
+}
+
+function completeScheduledEvent(state: GameStateData, definitionId: CivilizationEventCardId): void {
+  const deck = state.civilizationEventDeck;
+  const schedule = deck.scheduled;
+  if (deck.delivery !== "scheduled_forge_v1" || !schedule || schedule.readyCardId !== definitionId) return;
+  schedule.nextQueueIndex++;
+  schedule.readyCardId = null;
+  schedule.lastEventTurnCount = state.turnCount;
+  const interval = deck.eventFrequency === "frequent" ? 2 : 4;
+  schedule.dueAfterTurnCount = Math.max(
+    (schedule.roundFloors[schedule.nextQueueIndex] ?? 0) * state.players.length,
+    // The triggering turn is not a recovery opportunity: it is already resolving.
+    state.turnCount + 1 + interval * state.players.length,
+  );
+}
+
+function eventAvailableInMatch(state: GameStateData, definitionId: CivilizationEventCardId): boolean {
+  const profile = state.civilizationEventDeck.contentProfile ?? "general_v1";
+  return (state.civilizationEventDeck.delivery !== "scheduled_forge_v1" ||
+    state.civilizationEventDeck.scheduled?.readyCardId === definitionId) &&
+    state.civilizationEventDeck.eventFrequency !== "off" &&
+    (CIVILIZATION_EVENT_POOLS[profile] as readonly string[]).includes(definitionId) &&
+    state.civilizationEventDeck.definitionIds.includes(definitionId);
+}
+
+function civilizationEventSource(
+  definitionId: CivilizationEventCardId,
+): CivilizationArtifactChangeSource {
+  return { sourceType: "scenario", sourceId: definitionId };
+}
+
+function civilizationEventResponseManifestations(
+  player: PlayerGameState,
+  capabilityIds: readonly CivilizationCapabilityId[],
+): CivilizationEventRespondingManifestation[] {
+  const requested = new Set(capabilityIds);
+  const manifestations: CivilizationEventRespondingManifestation[] = [];
+
+  for (const lifecycle of Object.values(player.civilization.artifacts ?? {})) {
+    if (lifecycle.implementationState !== "operational") continue;
+    const provided = ARTIFACT_CIVILIZATION_CAPABILITIES_BY_ID[
+      lifecycle.artifactId as keyof typeof ARTIFACT_CIVILIZATION_CAPABILITIES_BY_ID
+    ] ?? [];
+    const matching = provided.filter((capabilityId) => requested.has(capabilityId));
+    if (matching.length === 0) continue;
+    manifestations.push({
+      sourceType: "artifact",
+      sourceId: lifecycle.artifactId,
+      capabilityIds: [...matching],
+    });
+  }
+
+  for (const project of Object.values(player.civilization.projects ?? {})) {
+    if (
+      project.status !== "manifested" ||
+      project.deviceState === null ||
+      project.deviceState === "spent" ||
+      project.deviceState === "recovering"
+    ) {
+      continue;
+    }
+    const provided = BLUEPRINT_DEFINITIONS[project.blueprintId]
+      ?.civilization.providedCapabilityIds ?? [];
+    const matching = provided.filter((capabilityId) => requested.has(capabilityId));
+    if (matching.length === 0) continue;
+    manifestations.push({
+      sourceType: "blueprint",
+      sourceId: project.blueprintId,
+      capabilityIds: [...matching],
+    });
+  }
+
+  return manifestations.sort((left, right) => (
+    left.sourceType.localeCompare(right.sourceType) || left.sourceId.localeCompare(right.sourceId)
+  ));
+}
+
+function resolveStellarContainmentCascade(
+  state: GameStateData,
+  player: PlayerGameState,
+  eventId: string,
+): CivilizationEventPlayerOutcome {
+  const source = civilizationEventSource("event_stellar_containment_cascade");
+  const disruptionCondition: CivilizationCondition = {
+    id: `${eventId}:${player.playerId}:disrupted`,
+    type: "disrupted",
+    coreType: "disrupted",
+    target: { kind: "world", id: player.civilization.homeworldId },
+    source,
+    appliedTurnCount: state.turnCount,
+    resolvedTurnCount: null,
+    historyEvidence: "recorded",
+  };
+  const pressureContributor = (
+    magnitude: number,
+    label: string,
+  ): CivilizationStabilityContributor => ({
+    id: `${eventId}:${player.playerId}:stability`,
+    direction: "pressure",
+    magnitude,
+    label,
+    source,
+    target: { kind: "world", id: player.civilization.homeworldId },
+    appliedTurnCount: state.turnCount,
+    resolvedTurnCount: null,
+    historyEvidence: "recorded",
+  });
+  const trajectories: CivilizationResolutionTrajectory[] = [
+    {
+      id: "protected",
+      label: "Operational containment",
+      requirements: [
+        {
+          type: "pressure_capability_coverage",
+          pressureTag: "disruption",
+          minimum: "strong",
+        },
+      ],
+      uncertainty: null,
+      successConsequences: [
+        { type: "record_history", key: "containment", value: "protected" },
+      ],
+      failureConsequences: [],
+    },
+    {
+      id: "partial",
+      label: "Supporting containment",
+      requirements: [
+        {
+          type: "pressure_capability_coverage",
+          pressureTag: "disruption",
+          minimum: "partial",
+        },
+      ],
+      uncertainty: null,
+      successConsequences: [
+        {
+          type: "add_stability_contributor",
+          contributor: pressureContributor(
+            CIVILIZATION_STABILITY_IMPACT_MAGNITUDES.trace,
+            "Containment cascade strain",
+          ),
+        },
+        { type: "record_history", key: "containment", value: "partial" },
+      ],
+      failureConsequences: [],
+    },
+    {
+      id: "exposed",
+      label: "Uncontained cascade",
+      requirements: [],
+      uncertainty: null,
+      successConsequences: [
+        { type: "apply_condition", condition: disruptionCondition },
+        {
+          type: "add_stability_contributor",
+          contributor: pressureContributor(
+            CIVILIZATION_STABILITY_IMPACT_MAGNITUDES.material,
+            "Uncontained stellar cascade",
+          ),
+        },
+        { type: "record_history", key: "containment", value: "exposed" },
+      ],
+      failureConsequences: [],
+    },
+  ];
+  const resolution = resolveCivilizationEvent({
+    eventId,
+    source,
+    form: "automatic",
+    timing: "trigger_window",
+    pressureTags: ["disruption"],
+    snapshot: buildCivilizationResolutionSnapshot(
+      player.civilization,
+      [],
+      player.manifestedBlueprintDevices ?? [],
+    ),
+    trajectories,
+  });
+  if (resolution.status !== "resolved" || !resolution.selectedTrajectoryId) {
+    throw new Error(`Civilization Event ${eventId} could not resolve automatically`);
+  }
+
+  const outcomeId = resolution.selectedTrajectoryId as CivilizationEventOutcomeId;
+  const response = resolution.pressureResponses[0];
+  const respondingCapabilityIds = outcomeId === "protected"
+    ? [...(response?.activePrimaryCapabilityIds ?? [])]
+    : outcomeId === "partial"
+      ? [...(response?.activeSupportingCapabilityIds ?? [])]
+      : [];
+  const summary = outcomeId === "protected"
+    ? "Operational containment prevented the Disruption."
+    : outcomeId === "partial"
+      ? "Supporting systems contained the cascade under strain."
+      : "The cascade Disrupted the homeworld.";
+  const applied = applyCivilizationResolution(
+    player.civilization,
+    resolution,
+    state.turnCount,
+    summary,
+    {
+      outcomeSignals: outcomeId === "protected"
+        ? [{
+            signalId: `${eventId}:${player.playerId}:agency`,
+            dimension: "agency",
+            direction: "support",
+            magnitude: "material",
+            label: "Operational preparation contained a stellar cascade",
+          }]
+        : [],
+      adversity: outcomeId === "protected"
+        ? null
+        : {
+            evidenceId: `${eventId}:${player.playerId}:adversity`,
+            magnitude: outcomeId === "partial" ? "minor" : "material",
+            label: "Stellar containment cascade",
+            recoveryEligible: true,
+          },
+    },
+  );
+  player.civilization = applied.state;
+
+  return {
+    playerId: player.playerId,
+    outcomeId,
+    capabilityCoverage: response?.capabilityCoverage ?? "none",
+    respondingCapabilityIds,
+    respondingManifestations: civilizationEventResponseManifestations(
+      player,
+      respondingCapabilityIds,
+    ),
+    appliedConditionType: outcomeId === "exposed" ? "disrupted" : null,
+    stabilityPressure: outcomeId === "partial"
+      ? CIVILIZATION_STABILITY_IMPACT_MAGNITUDES.trace
+      : outcomeId === "exposed"
+        ? CIVILIZATION_STABILITY_IMPACT_MAGNITUDES.material
+        : 0,
+    summary,
+  };
+}
+
+/** Cards drawn outside a Forge refill still enter the public Event lane. */
+function drawArchiveArtifact(state: GameStateData, tier: 1 | 2 | 3): string | null {
+  const deck = getDeckForTier(state, tier);
+  while (deck.length > 0) {
+    const cardId = deck.shift()!;
+    if (!isCivilizationEventCardId(cardId)) return cardId;
+    if (!eventAvailableInMatch(state, cardId)) continue;
+    // Extra positions are temporary reveal spaces, never additional Artifact molds.
+    const forge = getForgeRowForTier(state, tier);
+    forge.push(cardId);
+    state.archiveRevealedEventCardIds ??= [];
+    state.archiveRevealedEventCardIds.push(cardId);
+  }
+  return null;
+}
+
+/** Presentation consumes the source card, never repeats its already-committed consequences. */
+function consumeCivilizationEventSource(state: GameStateData, event: CivilizationEventInstance): void {
+  if (!event.sourceCard) return;
+  const { tier, id, forgeSlotIndex } = event.sourceCard;
+  if (id !== event.definitionId) return;
+  const forge = getForgeRowForTier(state, tier);
+  if (forgeSlotIndex === null) {
+    const index = forge.indexOf(id);
+    if (index >= 0) forge.splice(index, 1);
+    state.archiveRevealedEventCardIds = (state.archiveRevealedEventCardIds ?? [])
+      .filter((cardId) => cardId !== id);
+  } else {
+    refillForgeSlot(state, forge, getDeckForTier(state, tier), id);
+  }
+}
+
+function removeCompetitiveEventsForChronicle(state: GameStateData): void {
+  for (const tier of [1, 2, 3] as const) {
+    const deck = getDeckForTier(state, tier);
+    const forge = getForgeRowForTier(state, tier);
+    deck.splice(0, deck.length, ...deck.filter((id) => !isCivilizationEventCardId(id)));
+    forge.splice(0, forge.length, ...forge.filter((id) => !isCivilizationEventCardId(id)));
+  }
+  state.civilizationEventDeck.eventFrequency = "off";
+  state.civilizationEventDeck.definitionIds = [];
+  delete state.civilizationEventDeck.scheduled;
+  if (state.initialBoard) {
+    const board = state.initialBoard;
+    for (const key of ["forgeTier1", "forgeTier2", "forgeTier3", "deckTier1", "deckTier2", "deckTier3"] as const) {
+      board[key] = board[key].filter((id) => !isCivilizationEventCardId(id));
+    }
+    board.eventFrequency = "off";
+    board.selectedEventDefinitionIds = [];
+    delete board.eventSchedule;
+  }
+}
+
+function totalEventAffinities(player: PlayerGameState): number {
+  return AFFINITY_KEYS.reduce((total, key) => total + player.affinities[key], 0);
+}
+
+function grantEventAffinity(
+  state: GameStateData,
+  player: PlayerGameState,
+  singularity = false,
+): AffinityKey | null {
+  if (totalEventAffinities(player) >= 10) return null;
+  const candidates: AffinityKey[] = singularity ? ["singularity"] : [...STANDARD_AFFINITY_KEYS];
+  const affinity = candidates
+    .filter((key) => state.affinityWell[key] > 0)
+    .sort((a, b) => player.affinities[a] - player.affinities[b])[0];
+  if (!affinity) return null;
+  state.affinityWell[affinity]--;
+  player.affinities[affinity]++;
+  return affinity;
+}
+
+function returnDominantEventAffinity(
+  state: GameStateData,
+  player: PlayerGameState,
+  maximum: number,
+  minimumHeld = 0,
+): { affinity: StandardAffinityKey; amount: number } {
+  const affinity = [...STANDARD_AFFINITY_KEYS]
+    .sort((a, b) => player.affinities[b] - player.affinities[a])[0]!;
+  const amount = player.affinities[affinity] >= minimumHeld
+    ? Math.min(maximum, player.affinities[affinity]) : 0;
+  player.affinities[affinity] -= amount;
+  state.affinityWell[affinity] += amount;
+  return { affinity, amount };
+}
+
+/** Apply shared board effects once, never once per affected player. */
+function resolveEventSharedBoard(state: GameStateData, definitionId: CivilizationEventCardId): string | null {
+  if (definitionId === "event_planetary_forge_drift") {
+    const cardId = state.forgeTier1.find((id) => CARD_MAP.has(id) && !state.artifactMarkers?.[id]);
+    if (!cardId) return "No unmarked Planetary Artifact could drift.";
+    state.deckTier1.push(cardId);
+    refillForgeSlot(state, state.forgeTier1, state.deckTier1, cardId);
+    return "The leftmost unmarked Planetary Artifact returned to its Archive; its replacement entered the Forge.";
+  }
+  if (definitionId === "event_galactic_terminus_tide") {
+    let restored = 0;
+    for (const tier of [1, 2, 3] as const) {
+      const burntId = state.burnPile.find((id) => CARD_MAP.get(id)?.tier === tier);
+      if (!burntId) continue;
+      const forge = getForgeRowForTier(state, tier);
+      const replacementIndex = forge.findIndex((id) => CARD_MAP.has(id) && !state.artifactMarkers?.[id]);
+      const temporaryEvents = temporaryCivilizationEventSourceIds(state);
+      const moldCount = forge.filter((id) => !temporaryEvents.has(id)).length;
+      if (moldCount >= 4 && replacementIndex < 0) continue;
+      if (moldCount < 4) forge.push(burntId);
+      else {
+        const displaced = forge[replacementIndex]!;
+        getDeckForTier(state, tier).push(displaced);
+        forge[replacementIndex] = burntId;
+      }
+      state.burnPile.splice(state.burnPile.indexOf(burntId), 1);
+      restored++;
+    }
+    retargetUnavailableAntimatterCharges(state);
+    return `${restored} Burned Artifact${restored === 1 ? "" : "s"} returned from the Burn Pile to the Forge.`;
+  }
+  return null;
+}
+
+function resolveDeckEventPlayer(
+  state: GameStateData,
+  player: PlayerGameState,
+  eventId: string,
+  definitionId: CivilizationEventCardId,
+  sharedSummary: string | null,
+): CivilizationEventPlayerOutcome {
+  if (definitionId === "event_stellar_containment_cascade") {
+    return resolveStellarContainmentCascade(state, player, eventId);
+  }
+  if (definitionId === "event_stellar_system_shock" || definitionId === "event_galactic_fracture_wave") {
+    return resolveArtifactDamageEvent(state, player, eventId, definitionId);
+  }
+  let summary = sharedSummary ?? "The Event resolved without changing your resources.";
+  let outcomeId: CivilizationEventOutcomeId = "protected";
+  if (definitionId === "event_planetary_affinity_bloom" || definitionId === "event_stellar_affinity_inversion") {
+    const returned = definitionId === "event_stellar_affinity_inversion"
+      ? returnDominantEventAffinity(state, player, 2, 3) : null;
+    if (returned && returned.amount > 0) {
+      outcomeId = "exposed";
+      summary = `Returned ${returned.amount} ${AFFINITY_LABEL[returned.affinity]} to the Well.`;
+    } else {
+      const gained = grantEventAffinity(state, player);
+      summary = gained
+        ? `Gained 1 ${AFFINITY_LABEL[gained as StandardAffinityKey]} from the Well.`
+        : "No Affinity gained: your hand is full or the standard Affinity Well is empty.";
+    }
+  } else if (definitionId === "event_galactic_entropy_storm") {
+    const returned = returnDominantEventAffinity(state, player, 3);
+    const foundryIds = new Set(foundryStoredArtifactIds(player));
+    const releasedId = player.reservedArtifactIds.find((id) => !foundryIds.has(id) && CARD_MAP.has(id));
+    if (releasedId) {
+      player.reservedArtifactIds = player.reservedArtifactIds.filter((id) => id !== releasedId);
+      player.privateReservedArtifactIds = (player.privateReservedArtifactIds ?? []).filter((id) => id !== releasedId);
+      if (state.artifactMarkers) delete state.artifactMarkers[releasedId];
+      getDeckForTier(state, CARD_MAP.get(releasedId)!.tier).push(releasedId);
+    }
+    outcomeId = returned.amount > 0 || releasedId ? "exposed" : "protected";
+    // Encrypted identities must never appear in public receipts or logs.
+    summary = `Returned ${returned.amount} ${AFFINITY_LABEL[returned.affinity]} to the Well; ${releasedId ? "1 Encrypted Artifact returned to its Archive" : "no Encrypted Artifact to release"}.`;
+  } else if (definitionId === "event_galactic_terminus_tide") {
+    const gained = grantEventAffinity(state, player, true);
+    summary = `${sharedSummary} ${gained ? "Gained 1 Singularity." : "No Singularity gained: your hand is full or the Well has none."}`;
+  } else {
+    outcomeId = "partial";
+  }
+
+  const definition = CIVILIZATION_EVENT_CARD_DEFINITIONS[definitionId];
+  const resolution = resolveCivilizationEvent({
+    eventId,
+    source: civilizationEventSource(definitionId),
+    form: "automatic",
+    timing: "trigger_window",
+    pressureTags: [...definition.pressureTags],
+    snapshot: buildCivilizationResolutionSnapshot(player.civilization, [], player.manifestedBlueprintDevices ?? []),
+    trajectories: [{
+      id: outcomeId, label: definition.title, requirements: [], uncertainty: null,
+      successConsequences: [{ type: "record_history", key: "cosmic_event", value: definitionId }],
+      failureConsequences: [],
+    }],
+  });
+  player.civilization = applyCivilizationResolution(player.civilization, resolution, state.turnCount, summary).state;
+  return {
+    playerId: player.playerId, outcomeId, capabilityCoverage: "none",
+    respondingCapabilityIds: [], respondingManifestations: [], appliedConditionType: null,
+    stabilityPressure: 0, summary,
+  };
+}
+
+function resolveArtifactDamageEvent(
+  state: GameStateData,
+  player: PlayerGameState,
+  eventId: string,
+  definitionId: "event_stellar_system_shock" | "event_galactic_fracture_wave",
+): CivilizationEventPlayerOutcome {
+  const definition = CIVILIZATION_EVENT_CARD_DEFINITIONS[definitionId];
+  const galactic = definitionId === "event_galactic_fracture_wave";
+  const reserved = new Set(player.reservedArtifactIds);
+  // The tableau is chronological, including reacquired implementations. Use
+  // that order rather than an imprecise legacy first-mastery timestamp.
+  const forgedOrder = new Map(player.forgedArtifactIds.map((id, index) => [id, index]));
+  const damagedArtifactIds = [...forgedOrder.keys()]
+    .filter((id) => CARD_MAP.has(id) && !reserved.has(id) &&
+      player.civilization.artifacts[id]?.implementationState === "operational")
+    .sort((left, right) => (
+      (galactic ? CARD_MAP.get(right)!.tier - CARD_MAP.get(left)!.tier : 0) ||
+      forgedOrder.get(right)! - forgedOrder.get(left)! || left.localeCompare(right)
+    ))
+    .slice(0, galactic ? 2 : 1);
+  const source = civilizationEventSource(definitionId);
+  const consequences: CivilizationConsequence[] = damagedArtifactIds.flatMap((artifactId) => [
+    {
+      type: "set_artifact_implementation" as const,
+      artifactId,
+      implementationState: "damaged" as const,
+      turnCount: state.turnCount,
+      source,
+    },
+    {
+      type: "apply_condition" as const,
+      condition: {
+        id: `${eventId}:${player.playerId}:${artifactId}:damaged`,
+        type: "damaged", coreType: "damaged" as const,
+        target: { kind: "artifact_implementation" as const, id: artifactId },
+        source, appliedTurnCount: state.turnCount, resolvedTurnCount: null,
+        historyEvidence: "recorded" as const,
+      },
+    },
+  ]);
+  consequences.push({ type: "record_history", key: "damaged_artifact_ids", value: damagedArtifactIds.join(",") });
+  const outcomeId = damagedArtifactIds.length > 0 ? "exposed" : "protected";
+  const summary = damagedArtifactIds.length > 0
+    ? `Damaged ${damagedArtifactIds.map((id) => getCardLore(id).name).join(" and ")}.`
+    : "No operational forged Artifacts were eligible for damage.";
+  const resolution = resolveCivilizationEvent({
+    eventId, source, form: "automatic", timing: "trigger_window",
+    pressureTags: [...definition.pressureTags],
+    snapshot: buildCivilizationResolutionSnapshot(player.civilization, [], player.manifestedBlueprintDevices ?? []),
+    trajectories: [{
+      id: outcomeId, label: definition.title, requirements: [], uncertainty: null,
+      successConsequences: consequences, failureConsequences: [],
+    }],
+  });
+  player.civilization = applyCivilizationResolution(
+    player.civilization, resolution, state.turnCount, summary,
+    { adversity: damagedArtifactIds.length > 0 ? {
+      evidenceId: `${eventId}:${player.playerId}:artifact_damage`,
+      magnitude: galactic ? "material" : "minor",
+      label: definition.title, recoveryEligible: true,
+    } : null },
+  ).state;
+  refreshBlueprintReadinessAfterEventDamage(state, player);
+  return {
+    playerId: player.playerId, outcomeId, capabilityCoverage: "none",
+    respondingCapabilityIds: [], respondingManifestations: [],
+    appliedConditionType: damagedArtifactIds.length > 0 ? "damaged" : null,
+    stabilityPressure: damagedArtifactIds.length * CIVILIZATION_STABILITY_IMPACT_MAGNITUDES.minor,
+    summary, damagedArtifactIds,
+  };
+}
+
+/** Damage retains Affinity bonuses and ownership, while future assembly needs repair. */
+function refreshBlueprintReadinessAfterEventDamage(state: GameStateData, player: PlayerGameState): void {
+  for (const privateState of player.blueprintPrivateStates ?? []) {
+    if (privateState.manifested) continue;
+    const eligible = eligibleBlueprintArtifactIds(player);
+    privateState.matchedComponentIds = BLUEPRINT_DEFINITIONS[privateState.blueprintId].components
+      .map((component) => component.artifactId).filter((id) => eligible.has(id));
+    recordBlueprintProjectAssembly(player, privateState, privateState.matchedComponentIds,
+      "assembling", state.turnCount);
+  }
+}
+
+/** This transaction is deterministic while the Event owns the action gate. */
+function resolveCivilizationEventConsequences(
+  state: GameStateData,
+  eventId: string,
+  definitionId: CivilizationEventCardId,
+): Record<string, CivilizationEventPlayerOutcome> {
+  const definition = CIVILIZATION_EVENT_CARD_DEFINITIONS[definitionId];
+  const sharedSummary = resolveEventSharedBoard(state, definitionId);
+  const outcomesByPlayerId: Record<string, CivilizationEventPlayerOutcome> = {};
+  // Scarce gifts use the current player's turn order, rather than permanent seat priority.
+  const playersInOrder = [...state.players.slice(state.currentPlayerIndex), ...state.players.slice(0, state.currentPlayerIndex)];
+  for (const player of playersInOrder) {
+    const outcome = resolveDeckEventPlayer(state, player, eventId, definitionId, sharedSummary);
+    const history = player.civilization.events.find((entry) => entry.eventId === eventId);
+    if (history) history.definitionId = definitionId;
+    outcomesByPlayerId[player.playerId] = outcome;
+    pushLog(state, { playerId: player.playerId, playerName: player.playerName,
+      summary: `${definition.title}: ${outcome.summary}`, turn: state.roundNumber });
+    registerLegacyVictory(state, player);
+  }
+  return outcomesByPlayerId;
+}
+
+function commitCivilizationEventConsequences(state: GameStateData, event: CivilizationEventInstance): boolean {
+  // Legacy saved `receipt` Events committed before presentation; never apply them twice.
+  if (event.phase !== "reveal") return true;
+  const plan = state.pendingCivilizationEventPlans?.[event.eventId];
+  if (plan) {
+    if (plan.schemaVersion !== 1 || plan.eventId !== event.eventId || plan.definitionId !== event.definitionId) return false;
+    // The presentation gate keeps this ledger stable. Validate all grants before
+    // mutating anything, and never silently select a replacement after reconnect.
+    const required: AffinityCounts = { flare: 0, continuum: 0, verdance: 0, abyss: 0, radiance: 0, singularity: 0 };
+    for (const item of plan.players) {
+      const player = state.players.find((candidate) => candidate.playerId === item.playerId);
+      if (!player) return false;
+      if (item.grantedAffinity) {
+        if (totalEventAffinities(player) >= 10) return false;
+        required[item.grantedAffinity]++;
+      }
+    }
+    if (STANDARD_AFFINITY_KEYS.some((key) => state.affinityWell[key] < required[key])) return false;
+    for (const item of plan.players) {
+      const player = state.players.find((candidate) => candidate.playerId === item.playerId)!;
+      if (item.grantedAffinity) {
+        state.affinityWell[item.grantedAffinity]--;
+        player.affinities[item.grantedAffinity]++;
+      }
+      const applied = applyCivilizationResolution(player.civilization, item.resolution,
+        plan.triggerTurnCount, item.outcome.summary, item.options);
+      player.civilization = applied.state;
+      applied.event.definitionId = plan.definitionId;
+      applied.event.rulesVersion = plan.rulesVersion;
+      applied.event.targetEvidence = structuredClone(item.outcome.targetEvidence ?? []);
+      if ((item.outcome.damagedArtifactIds?.length ?? 0) > 0) refreshBlueprintReadinessAfterEventDamage(state, player);
+      pushLog(state, { playerId: player.playerId, playerName: player.playerName,
+        summary: `${item.resolution.evaluations[0]?.label ?? "Cosmic Event"}: ${item.outcome.summary}`, turn: state.roundNumber });
+      registerLegacyVictory(state, player);
+    }
+    event.outcomesByPlayerId = Object.fromEntries(plan.players.map((item) => [item.playerId, structuredClone(item.outcome)]));
+    delete state.pendingCivilizationEventPlans![event.eventId];
+  } else {
+    // An unknown/missing pilot plan must never reinterpret a preview using today's catalog.
+    if ((LORE_PILOT_CIVILIZATION_EVENT_CARD_IDS as readonly string[]).includes(event.definitionId)) return false;
+    event.outcomesByPlayerId = resolveCivilizationEventConsequences(state, event.eventId, event.definitionId);
+  }
+  event.phase = "receipt";
+  return true;
+}
+
+/** Reveal one Event after prior effects settle; commit consequences only after presentation. */
+function queueEligibleCivilizationEvent(state: GameStateData): boolean {
+  if (state.traceScenario || state.recurrenceScenario || state.triangulationScenario) return false;
+  const schedule = state.civilizationEventDeck.delivery === "scheduled_forge_v1"
+    ? state.civilizationEventDeck.scheduled : undefined;
+  if (schedule?.readyCardId) {
+    // Forging can summon Luminaries or manifest Blueprints that end the game.
+    // Their full chain settles before deciding whether an Event may still begin.
+    if (scheduledEventWindowClosed(state) || !eventAvailableInMatch(state, schedule.readyCardId)) {
+      const cancelledId = schedule.readyCardId;
+      schedule.readyCardId = null;
+      // A prior Forge may have reserved a mold before its Luminary/Blueprint
+      // chain ended the Event window. Restore the delayed ordinary refill.
+      for (const tier of [1, 2, 3] as const) {
+        refillForgeSlot(state, getForgeRowForTier(state, tier), getDeckForTier(state, tier), cancelledId);
+      }
+      return false;
+    }
+    // Reserve/Tide/Foundry Forges can arm the queue without vacating a mold.
+    // Leave the turn free to advance until a later genuine refill claims it.
+  }
+  for (const tier of [1, 2, 3] as const) {
+    const forge = getForgeRowForTier(state, tier);
+    const slotIndex = forge.findIndex(isCivilizationEventCardId);
+    if (slotIndex < 0) continue;
+    const definitionId = forge[slotIndex] as CivilizationEventCardId;
+    if (!eventAvailableInMatch(state, definitionId)) {
+      // Invalid future content never becomes an implicit story/account unlock.
+      // Already queued receipts bypass this check and retain their frozen plan.
+      refillForgeSlot(state, forge, getDeckForTier(state, tier), definitionId);
+      return queueEligibleCivilizationEvent(state);
+    }
+    const eventId = `${definitionId}:${state.startedAt ?? 0}:${state.civilizationEventDeck.nextIndex++}`;
+    // Preview locked, deterministic outcomes without changing the visible board,
+    // resources, civilization history, or logs before the activation finishes.
+    const plan = buildFrozenLoreEventPlan(state, eventId, definitionId);
+    let outcomesByPlayerId: Record<string, CivilizationEventPlayerOutcome>;
+    if (plan) {
+      state.pendingCivilizationEventPlans ??= {};
+      state.pendingCivilizationEventPlans[eventId] = plan;
+      outcomesByPlayerId = Object.fromEntries(plan.players.map((item) => [item.playerId, structuredClone(item.outcome)]));
+    } else {
+      const preview: GameStateData = JSON.parse(JSON.stringify(state));
+      outcomesByPlayerId = resolveCivilizationEventConsequences(preview, eventId, definitionId);
+    }
+    state.pendingCivilizationEventCards.push({
+      eventId, definitionId, triggerWindow: "deck_reveal", triggerTurnCount: state.turnCount,
+      ...(plan ? { rulesVersion: plan.rulesVersion, rulesText: plan.rulesText } : {}),
+      sourceCard: {
+        id: definitionId, tier,
+        origin: schedule?.readyCardId === definitionId ? "scheduled"
+          : state.archiveRevealedEventCardIds?.includes(definitionId) ? "archive" : "forge",
+        forgeSlotIndex: state.archiveRevealedEventCardIds?.includes(definitionId) ? null : slotIndex,
+      },
+      phase: "reveal", affectedPlayerIds: state.players.map((player) => player.playerId),
+      outcomesByPlayerId, createdAt: Date.now(),
+    });
+    // Preserve the action/acknowledgement that caused this reveal so clients can
+    // finish its animation before showing the Event receipt.
+    return true;
+  }
+  return false;
+}
+
 // ─── Staged Turn Resolution ───────────────────────────────────────────────────
 
 function hasPendingLuminaryEvents(state: GameStateData): boolean {
@@ -5095,7 +6945,8 @@ function hasPendingLuminaryEvents(state: GameStateData): boolean {
     (state.pendingSummonEvents?.length ?? 0) > 0 ||
     (state.pendingLuminaryActivationEvents?.length ?? 0) > 0 ||
     (state.pendingBlueprintManifestationEvents?.length ?? 0) > 0 ||
-    (state.pendingBlueprintDetonationEvents?.length ?? 0) > 0
+    (state.pendingBlueprintDetonationEvents?.length ?? 0) > 0 ||
+    (state.pendingCivilizationEventCards?.length ?? 0) > 0
   );
 }
 
@@ -5113,7 +6964,7 @@ function finishGameIfNeeded(
     return;
   }
 
-  if (state.phase === "playing" && checkWin(state)) {
+  if (state.phase === "playing" && checkFinalRoundTrigger(state)) {
     state.phase = "last_round";
   }
 
@@ -5142,11 +6993,21 @@ function continuePendingTurnTransition(state: GameStateData): void {
     !hasPendingLuminaryEvents(state) &&
     safety++ < 4
   ) {
+    if (queueEligibleCivilizationEvent(state)) return;
     const transition = state.pendingTurnTransition;
 
     if (transition.stage === "after_action") {
+      transition.stage = "after_repairs";
+      const endingPlayer = state.players.find(
+        (player) => player.playerId === transition.endingPlayerId,
+      );
+      if (endingPlayer) resolvePendingArtifactRepairs(state, endingPlayer);
+      continue;
+    }
+
+    if (transition.stage === "after_repairs") {
       // End-of-turn effects are deliberately later than all summon effects
-      // produced by the player's core action.
+      // produced by the player's core action and completed repairs.
       transition.stage = "after_end_effects";
       const endingPlayer = state.players.find(
         (player) => player.playerId === transition.endingPlayerId,
@@ -5154,6 +7015,7 @@ function continuePendingTurnTransition(state: GameStateData): void {
       if (endingPlayer) {
         settleAscensionRegistryObservation(state, endingPlayer);
         applyEndOfTurnEffects(state, endingPlayer);
+        refreshPlayerCivilization(endingPlayer, state.turnCount, true);
       }
       continue;
     }
@@ -5177,7 +7039,7 @@ function continuePendingTurnTransition(state: GameStateData): void {
         state.traceScenario.phase !== 'finished';
       const terminalTraceWindow = unresolvedTrace && (
         forgeAndArchivesAreEmpty(state) ||
-        ((state.phase === 'last_round' || checkWin(state)) && nextPlayerIndex === 0)
+        ((state.phase === 'last_round' || checkFinalRoundTrigger(state)) && nextPlayerIndex === 0)
       );
       if (traceGuidanceIsDue(state) || terminalTraceWindow) {
         state.traceScenario!.phase = 'awaiting_guidance';
@@ -5192,7 +7054,7 @@ function continuePendingTurnTransition(state: GameStateData): void {
         state.recurrenceScenario.phase !== 'finished';
       const terminalRecurrenceWindow = unresolvedRecurrence && (
         forgeAndArchivesAreEmpty(state) ||
-        ((state.phase === 'last_round' || checkWin(state)) && nextPlayerIndex === 0)
+        ((state.phase === 'last_round' || checkFinalRoundTrigger(state)) && nextPlayerIndex === 0)
       );
       if (recurrenceCustodyIsDue(state) || terminalRecurrenceWindow) {
         state.recurrenceScenario!.phase = 'awaiting_custody';
@@ -5207,7 +7069,7 @@ function continuePendingTurnTransition(state: GameStateData): void {
         state.triangulationScenario.phase !== 'finished';
       const terminalTriangulationWindow = unresolvedTriangulation && (
         forgeAndArchivesAreEmpty(state) ||
-        ((state.phase === 'last_round' || checkWin(state)) && nextPlayerIndex === 0)
+        ((state.phase === 'last_round' || checkFinalRoundTrigger(state)) && nextPlayerIndex === 0)
       );
       if (triangulationAlignmentIsDue(state) || terminalTriangulationWindow) {
         state.triangulationScenario!.phase = 'awaiting_alignment';
@@ -5281,18 +7143,23 @@ function validatePlannedAction(
   const clone: GameStateData = JSON.parse(JSON.stringify(state));
   const idx = clone.players.findIndex((p) => p.playerId === playerId);
   if (idx === -1) return { ok: false, error: "Player not found" };
-  // Planning is the sole gameplay exception to presentation gates. Validate
-  // against the post-presentation state without consuming real events.
-  clone.pendingSummonEvents = [];
-  clone.pendingLuminaryActivationEvents = [];
-  clone.pendingBlueprintManifestationEvents = [];
-  clone.pendingBlueprintDetonationEvents = [];
-  clone.pendingLuminaryChoice = null;
-  continuePendingTurnTransition(clone);
-  clone.pendingSummonEvents = [];
-  clone.pendingLuminaryActivationEvents = [];
-  clone.pendingBlueprintManifestationEvents = [];
-  clone.pendingBlueprintDetonationEvents = [];
+  // Planning is provisional. Drain the cloned presentation pipeline, consuming
+  // already-resolved source cards without applying the same Event twice.
+  for (let safety = 0; safety < 64; safety++) {
+    clone.pendingSummonEvents = [];
+    clone.pendingLuminaryActivationEvents = [];
+    clone.pendingBlueprintManifestationEvents = [];
+    clone.pendingBlueprintDetonationEvents = [];
+    for (const event of clone.pendingCivilizationEventCards) {
+      if (!commitCivilizationEventConsequences(clone, event)) return { ok: false, error: "The saved Event resolution is unavailable" };
+      consumeCivilizationEventSource(clone, event);
+      completeScheduledEvent(clone, event.definitionId);
+    }
+    clone.pendingCivilizationEventCards = [];
+    clone.pendingLuminaryChoice = null;
+    continuePendingTurnTransition(clone);
+    if (!hasPendingLuminaryEvents(clone)) break;
+  }
   clone.pendingTurnTransition = null;
   clone.currentPlayerIndex = idx;
   clone.coreActionUsed = false;
@@ -5398,6 +7265,7 @@ export function applyAction(
     action.type === "resolve_luminary_activation" ||
     action.type === "resolve_blueprint_manifestation" ||
     action.type === "resolve_blueprint_detonation" ||
+    action.type === "resolve_civilization_event" ||
     action.type === "choose_luminary_order" ||
     action.type === "resolve_chronicle_choice" ||
     action.type === "plan_action" ||
@@ -5418,10 +7286,12 @@ export function applyAction(
     action.type !== "resolve_luminary_activation" &&
     action.type !== "resolve_blueprint_manifestation" &&
     action.type !== "resolve_blueprint_detonation" &&
+    action.type !== "resolve_civilization_event" &&
     action.type !== "plan_action" &&
     action.type !== "cancel_plan" &&
     action.type !== "tutorial_fast_forward" &&
     action.type !== "set_civ_name" &&
+    action.type !== "repair_artifacts" &&
     action.type !== "choose_luminary_order" &&
     action.type !== "resolve_chronicle_choice";
   if (isTurnGated && state.currentPlayerIndex !== playerIdx) {
@@ -5459,6 +7329,43 @@ export function applyAction(
       if (player.civName === newName) return { success: true };
       player.civName = newName;
       state.lastAction = { type: "set_civ_name", playerId };
+      state.version++;
+      return { success: true };
+    }
+    case "repair_artifacts": {
+      const requestedIds = [...new Set(
+        (action.artifactIds ?? []).filter((artifactId): artifactId is string => (
+          typeof artifactId === "string" && artifactId.length > 0
+        )),
+      )].slice(0, 64);
+      if (requestedIds.length === 0) {
+        return { success: false, error: "Select at least one damaged Artifact" };
+      }
+
+      const repairableIds = requestedIds.filter(
+        (artifactId) => player.forgedArtifactIds.includes(artifactId) &&
+          player.civilization.artifacts[artifactId]?.implementationState === "damaged",
+      );
+      if (repairableIds.length === 0) {
+        return { success: false, error: "Selected Artifacts do not need repair" };
+      }
+
+      const existingIds = new Set(player.pendingArtifactRepairIds ?? []);
+      const newlyQueuedIds = repairableIds.filter((artifactId) => !existingIds.has(artifactId));
+      if (newlyQueuedIds.length === 0) return { success: true };
+
+      player.pendingArtifactRepairIds = [...existingIds, ...newlyQueuedIds];
+      state.lastAction = {
+        type: "repair_artifacts",
+        playerId,
+        artifactIds: newlyQueuedIds,
+      };
+      pushLog(state, {
+        playerId,
+        playerName: player.playerName,
+        summary: `Scheduled ${newlyQueuedIds.length} Artifact repair${newlyQueuedIds.length === 1 ? "" : "s"} for end of turn`,
+        turn: state.roundNumber,
+      });
       state.version++;
       return { success: true };
     }
@@ -5622,7 +7529,11 @@ export function applyAction(
         if (deck.length === 0)
           return { success: false, error: "Archive is empty" };
         if (tier === 2) clearAscensionRegistryDeferrals(state, playerId);
-        const blindId = deck.shift()!;
+        const blindId = drawArchiveArtifact(state, tier);
+        if (!blindId) {
+          actionSummaryOverride = "Revealed a cosmic Event from the Archive; no Artifact remained to Encrypt";
+          break;
+        }
         player.reservedArtifactIds.push(blindId);
         if (!player.privateReservedArtifactIds) player.privateReservedArtifactIds = [];
         player.privateReservedArtifactIds.push(blindId);
@@ -5782,6 +7693,7 @@ export function applyAction(
         });
       }
 
+      requestScheduledEventAfterForge(state);
       if (isFoundryRecovery) {
         const storedIndex = player.reservedArtifactIds.indexOf(action.cardId);
         if (storedIndex !== -1) player.reservedArtifactIds.splice(storedIndex, 1);
@@ -5893,6 +7805,7 @@ export function applyAction(
         });
       }
 
+      requestScheduledEventAfterForge(state);
       checkBlueprintManifestations(state, player);
       checkLuminaries(state, player);
       if (reservedSeedAlly && reservedSeedAlly.playerId !== player.playerId) {
@@ -6137,6 +8050,41 @@ export function applyAction(
       return { success: true };
     }
 
+    case "resolve_civilization_event": {
+      const { eventId } = action;
+      const resolvedEvent = state.pendingCivilizationEventCards.find(
+        (event) => event.eventId === eventId,
+      );
+      if (!resolvedEvent) return { success: true };
+      if (state.pendingCivilizationEventCards[0]?.eventId !== eventId ||
+        state.pendingSummonEvents.length > 0 || state.pendingLuminaryActivationEvents.length > 0 ||
+        state.pendingBlueprintManifestationEvents.length > 0 || state.pendingBlueprintDetonationEvents.length > 0) {
+        return { success: false, error: "Complete prior presentations before resolving this Event" };
+      }
+      if (!commitCivilizationEventConsequences(state, resolvedEvent)) {
+        return { success: false, error: "The saved Event resolution is unavailable or incompatible; its preview has not been changed" };
+      }
+      consumeCivilizationEventSource(state, resolvedEvent);
+      completeScheduledEvent(state, resolvedEvent.definitionId);
+      state.pendingCivilizationEventCards = state.pendingCivilizationEventCards.filter(
+        (event) => event.eventId !== eventId,
+      );
+      state.civilizationEventDeck.completedEventIds = [
+        ...state.civilizationEventDeck.completedEventIds.filter((id) => id !== eventId),
+        eventId!,
+      ].slice(-32);
+      state.lastAction = {
+        type: "resolve_civilization_event",
+        playerId,
+        eventId,
+        definitionId: resolvedEvent.definitionId,
+      };
+      advanceDevLuminarySequenceStage(state);
+      continuePendingTurnTransition(state);
+      state.version++;
+      return { success: true };
+    }
+
     case "choose_luminary_order": {
       // Turn-gated action sent by the current player to resolve a pending
       // simultaneous multi-Luminary claim.  orderedIds must be a permutation
@@ -6182,6 +8130,7 @@ export function applyAction(
         "resolve_luminary_activation",
         "resolve_blueprint_manifestation",
         "resolve_blueprint_detonation",
+        "resolve_civilization_event",
         "surrender",
         "pass",
       ];
@@ -6475,6 +8424,10 @@ function resetForgeThroughArchives(state: GameStateData, sourcePlayerId: string)
     const archive = getDeckForTier(state, tier);
     const protectedSlots = new Map<number, string>();
     const returnedFromRow = forgeRow.filter((cardId, slotIndex) => {
+      if (isCivilizationEventCardId(cardId)) {
+        protectedSlots.set(slotIndex, cardId);
+        return false;
+      }
       const protectedClaim = interceptHostilePlannedClaim(
         state,
         cardId,
@@ -6487,9 +8440,17 @@ function resetForgeThroughArchives(state: GameStateData, sourcePlayerId: string)
     returnedIds.push(...returnedFromRow);
 
     const randomizedPool = shuffle([...archive, ...returnedFromRow]);
-    const nextRow = forgeRow.map((_, slotIndex) =>
-      protectedSlots.get(slotIndex) ?? randomizedPool.shift()!,
-    );
+    let scheduledEvent = scheduledEventForForgeRefill(state);
+    const nextRow = forgeRow.map((_, slotIndex) => {
+      const protectedId = protectedSlots.get(slotIndex);
+      if (protectedId) return protectedId;
+      if (scheduledEvent) {
+        const eventId = scheduledEvent;
+        scheduledEvent = null;
+        return eventId;
+      }
+      return randomizedPool.shift()!;
+    });
     const nextArchive = randomizedPool;
 
     forgeRow.splice(0, forgeRow.length, ...nextRow);
@@ -6516,7 +8477,15 @@ export function normalizeState(raw: unknown): GameStateData {
     state.openingTurnOrder = null;
   }
   if (Array.isArray(state.players)) {
-    state.players = (state.players as Record<string, unknown>[]).map((p) => {
+    const rawPlayers = state.players as Record<string, unknown>[];
+    const migrationEnvironmentSet = createCivilizationEnvironmentSet(
+      `${state.startedAt}:civilization-migration`,
+      rawPlayers.map((player, index) => (
+        typeof player.playerId === 'string' ? player.playerId : `seat-${index}`
+      )),
+      'legacy_inferred',
+    );
+    state.players = rawPlayers.map((p, playerIndex) => {
       // ensure luminaries array exists
       if (!Array.isArray(p.luminaries)) p = { ...p, luminaries: [] };
       if (p.luminaryArrivalSound !== "first_resonance") {
@@ -6578,19 +8547,56 @@ export function normalizeState(raw: unknown): GameStateData {
         p = { ...p, blueprintPresentationVariants: {} };
       }
       if (!Array.isArray(p.assimilatedArtifactIds)) p = { ...p, assimilatedArtifactIds: [] };
+      if (!Array.isArray(p.pendingArtifactRepairIds)) p = { ...p, pendingArtifactRepairIds: [] };
       if (!p.artifactForgeCounts || typeof p.artifactForgeCounts !== "object" || Array.isArray(p.artifactForgeCounts)) {
         p = { ...p, artifactForgeCounts: usageCountsFromIds(p.forgedArtifactIds) };
       }
+      const civilization = normalizeCivilizationState({
+        civilization: p.civilization,
+        forgedArtifactIds: p.forgedArtifactIds,
+        artifactForgeCounts: p.artifactForgeCounts,
+        discountedForgeIds: p.discountedForgeIds,
+        blueprintPrivateStates: p.blueprintPrivateStates,
+        blueprintPresentationVariants: p.blueprintPresentationVariants,
+        manifestedBlueprintDevices: p.manifestedBlueprintDevices,
+        civilizationTurnCount: typeof state.turnCount === "number" ? state.turnCount : null,
+        civilizationEnvironmentFallback: migrationEnvironmentSet[
+          typeof p.playerId === 'string' ? p.playerId : `seat-${playerIndex}`
+        ],
+      });
+      const compatibilityDevices = [...(p.manifestedBlueprintDevices as ManifestedDevicePublicState[])];
+      for (const project of Object.values(civilization.projects)) {
+        if (project.status !== "manifested" || project.deviceState === null) continue;
+        const existing = compatibilityDevices.find((device) =>
+          device.blueprintId === project.blueprintId && device.slotIndex === project.slotIndex,
+        );
+        if (existing) {
+          existing.state = project.deviceState;
+          existing.presentationVariant = project.presentationVariant;
+        } else {
+          compatibilityDevices.push({
+            blueprintId: project.blueprintId,
+            ownerPlayerId: typeof p.playerId === "string" ? p.playerId : "",
+            slotIndex: project.slotIndex,
+            state: project.deviceState,
+            presentationVariant: project.presentationVariant,
+          });
+        }
+      }
+      const privateStates = p.blueprintPrivateStates as BlueprintPrivateState[];
+      for (const privateState of privateStates) {
+        const project = civilization.projects[
+          civilizationProjectId(privateState.blueprintId, privateState.slotIndex)
+        ];
+        if (!project) continue;
+        privateState.matchedComponentIds = [...project.matchedComponentIds];
+        privateState.manifested = project.status === "manifested";
+      }
       p = {
         ...p,
-        civilization: normalizeCivilizationState({
-          civilization: p.civilization,
-          forgedArtifactIds: p.forgedArtifactIds,
-          artifactForgeCounts: p.artifactForgeCounts,
-          discountedForgeIds: p.discountedForgeIds,
-          manifestedBlueprintDevices: p.manifestedBlueprintDevices,
-          civilizationTurnCount: typeof state.turnCount === "number" ? state.turnCount : null,
-        }),
+        civilization,
+        manifestedBlueprintDevices: compatibilityDevices,
+        blueprintPrivateStates: privateStates,
       };
       if (!p.luminaryAllianceCounts || typeof p.luminaryAllianceCounts !== "object" || Array.isArray(p.luminaryAllianceCounts)) {
         p = { ...p, luminaryAllianceCounts: usageCountsFromIds(p.luminaries) };
@@ -6609,9 +8615,44 @@ export function normalizeState(raw: unknown): GameStateData {
       return p;
     });
   }
+  state.legacyVictoryRequirement = Math.max(
+    1,
+    Math.floor(
+      typeof state.legacyVictoryRequirement === "number"
+        ? state.legacyVictoryRequirement
+        : LEGACY_BLUEPRINT_REQUIREMENT,
+    ),
+  );
+  if (
+    typeof state.legacyWinnerId !== "string" ||
+    !(state.players as PlayerGameState[] | undefined)?.some(
+      (player) => player.playerId === state.legacyWinnerId,
+    )
+  ) {
+    state.legacyWinnerId = null;
+  }
+  if (!state.legacyWinnerId && Array.isArray(state.players)) {
+    const migratedLegacyWinner = (state.players as PlayerGameState[]).find((player) => (
+      getCivilizationLegacyProgress(
+        player.civilization,
+        state.legacyVictoryRequirement as number,
+        deriveCivilizationLegacyArtifactEligibility(player.civilization),
+      ).achieved
+    ));
+    state.legacyWinnerId = migratedLegacyWinner?.playerId ?? null;
+  }
   // ensure turnCount exists (added in Living Luminary Affinity feature)
   if (typeof state.turnCount !== "number") {
     state.turnCount = 0;
+  }
+  const normalizedTurnCount = typeof state.turnCount === "number" ? state.turnCount : 0;
+  if (state.legacyWinnerId && Array.isArray(state.players)) {
+    const legacyWinner = (state.players as PlayerGameState[]).find(
+      (player) => player.playerId === state.legacyWinnerId,
+    );
+    if (legacyWinner && legacyWinner.civilization.legacy.completedTurnCount === null) {
+      markPlayerLegacyCompletion(legacyWinner, normalizedTurnCount, "legacy_inferred");
+    }
   }
   if (state.traceScenario && typeof state.traceScenario === 'object' && !Array.isArray(state.traceScenario)) {
     const trace = state.traceScenario as unknown as Partial<TraceScenarioState>;
@@ -6783,6 +8824,78 @@ export function normalizeState(raw: unknown): GameStateData {
   }
   if (!Array.isArray(state.pendingBlueprintDetonationEvents)) {
     state.pendingBlueprintDetonationEvents = [];
+  }
+  if (!Array.isArray(state.pendingCivilizationEventCards)) {
+    state.pendingCivilizationEventCards = [];
+  }
+  if (!state.pendingCivilizationEventPlans || typeof state.pendingCivilizationEventPlans !== "object" ||
+    Array.isArray(state.pendingCivilizationEventPlans)) state.pendingCivilizationEventPlans = {};
+  if (
+    !state.civilizationEventDeck ||
+    typeof state.civilizationEventDeck !== "object" ||
+    Array.isArray(state.civilizationEventDeck)
+  ) {
+    const board = state.initialBoard as InitialBoardSnapshot | undefined;
+    const contentProfile = board?.eventContentProfile ?? "general_v1";
+    const eventFrequency = board?.eventFrequency ?? "standard";
+    state.civilizationEventDeck = {
+      definitionIds: eventFrequency === "off" ? [] : canonicalEventSelection(contentProfile,
+        board?.selectedEventDefinitionIds ?? CIVILIZATION_EVENT_POOLS[contentProfile]),
+      contentProfile,
+      eventFrequency,
+      delivery: board?.eventDelivery ?? "archive_v1",
+      ...(board?.eventDelivery === "scheduled_forge_v1" && board.eventSchedule ? { scheduled: {
+        queue: [...board.eventSchedule.queue], roundFloors: [...board.eventSchedule.roundFloors],
+        nextQueueIndex: 0, dueAfterTurnCount: (board.eventSchedule.roundFloors[0] ?? 0) * (state.players as unknown[]).length,
+        readyCardId: null, lastEventTurnCount: null,
+      } } : {}),
+      rulesVersion: board?.eventDelivery === "scheduled_forge_v1" ? "scheduled-events-v1" : contentProfile === "general_v2" ? "regular-events-v2"
+        : contentProfile === "lore_pilot_v1" ? "lore-events-v1" : "general-events-v1",
+      nextIndex: 0,
+      firedWindows: [],
+      completedEventIds: [],
+    };
+  } else {
+    const deck = state.civilizationEventDeck as unknown as Record<string, unknown>;
+    const contentProfile = deck.contentProfile === "lore_pilot_v1" ? "lore_pilot_v1"
+      : deck.contentProfile === "general_v2" ? "general_v2" : "general_v1";
+    const eventFrequency = deck.eventFrequency === "off" ? "off"
+      : deck.eventFrequency === "frequent" ? "frequent" : "standard";
+    const definitionIds = Array.isArray(deck.definitionIds)
+      ? deck.definitionIds.filter(
+          (id): id is CivilizationEventCardId =>
+            typeof id === "string" &&
+            (CIVILIZATION_EVENT_CARD_IDS as readonly string[]).includes(id),
+        )
+      : [];
+    const firedWindows = Array.isArray(deck.firedWindows)
+      ? deck.firedWindows.filter(
+          (window): window is CivilizationEventWindow =>
+            typeof window === "string" &&
+            (CIVILIZATION_EVENT_WINDOWS as readonly string[]).includes(window),
+        )
+      : [];
+    const completedEventIds = Array.isArray(deck.completedEventIds)
+      ? deck.completedEventIds.filter((id): id is string => typeof id === "string").slice(-32)
+      : [];
+    state.civilizationEventDeck = {
+      contentProfile,
+      eventFrequency,
+      delivery: deck.delivery === "scheduled_forge_v1" ? "scheduled_forge_v1" : "archive_v1",
+      ...(deck.delivery === "scheduled_forge_v1" ? {
+        scheduled: normalizeScheduledEventState(deck.scheduled, definitionIds),
+      } : {}),
+      rulesVersion: typeof deck.rulesVersion === "string" ? deck.rulesVersion
+        : contentProfile === "general_v2" ? "regular-events-v2"
+        : contentProfile === "lore_pilot_v1" ? "lore-events-v1" : "general-events-v1",
+      definitionIds: eventFrequency === "off" ? [] : canonicalEventSelection(contentProfile, definitionIds),
+      nextIndex: Math.max(
+        0,
+        Math.trunc(typeof deck.nextIndex === "number" && Number.isFinite(deck.nextIndex) ? deck.nextIndex : 0),
+      ),
+      firedWindows: [...new Set(firedWindows)],
+      completedEventIds,
+    };
   }
   // Older persisted games have already advanced around any legacy pending
   // cinematic events. Never infer a transition retroactively.
@@ -7051,18 +9164,18 @@ export function formatGameState(
   aiMap?: Map<string, { isAi: boolean; aiDifficulty: AiDifficulty | null }>,
   scenarioId: string | null = null,
 ) {
-  const forgeTier1 = stateData.forgeTier1
-    .map((id) => CARD_MAP.get(id))
-    .filter(Boolean)
-    .map((c) => withLore(c as ArtifactCard));
-  const forgeTier2 = stateData.forgeTier2
-    .map((id) => CARD_MAP.get(id))
-    .filter(Boolean)
-    .map((c) => withLore(c as ArtifactCard));
-  const forgeTier3 = stateData.forgeTier3
-    .map((id) => CARD_MAP.get(id))
-    .filter(Boolean)
-    .map((c) => withLore(c as ArtifactCard));
+  const archiveEvents = temporaryCivilizationEventSourceIds(stateData);
+  const formatForge = (row: string[]) => row
+    // Blind Archive reveals use a temporary space beside the ordinary molds.
+    .filter((id) => !archiveEvents.has(id))
+    .map((id) => {
+      const card = CARD_MAP.get(id);
+      // Preserve ordinary mold indexes while a revealed Event occupies one.
+      return card ? withLore(card) : null;
+    });
+  const forgeTier1 = formatForge(stateData.forgeTier1);
+  const forgeTier2 = formatForge(stateData.forgeTier2);
+  const forgeTier3 = formatForge(stateData.forgeTier3);
   const luminaries = stateData.activeLuminaries
     .map((id) => LUMINARY_MAP.get(id))
     .filter(Boolean) as LuminaryDef[];
@@ -7090,7 +9203,7 @@ export function formatGameState(
       isAi: aiEntry?.isAi ?? false,
       aiDifficulty: aiEntry?.aiDifficulty ?? null,
       affinities: p.affinities,
-      bonuses: p.bonuses,
+      bonuses: { ...p.bonuses },
       eminence: p.eminence,
       reservedArtifacts: p.reservedArtifactIds
         .map((id) => CARD_MAP.get(id))
@@ -7102,6 +9215,7 @@ export function formatGameState(
         ...p,
         civilizationTurnCount: stateData.turnCount,
       }),
+      pendingArtifactRepairIds: p.pendingArtifactRepairIds ?? [],
       assimilatedArtifactIds: p.assimilatedArtifactIds ?? [],
       discountedForgeIds: p.discountedForgeIds ?? [],
       forgedArtifacts: p.forgedArtifactIds
@@ -7135,6 +9249,7 @@ export function formatGameState(
     roundNumber: stateData.roundNumber,
     turnCount: stateData.turnCount ?? 0,
     victoryRequirement: getVictoryRequirement(stateData),
+    legacyVictoryRequirement: getLegacyVictoryRequirement(stateData),
     cinematicMode: stateData.cinematicMode === "epic" ? "epic" : "standard",
     affinityWell: stateData.affinityWell,
     forgeTier1: forgeTier1,
@@ -7149,6 +9264,7 @@ export function formatGameState(
     luminaryAffinities: stateData.luminaryAffinities ?? [],
     players,
     winnerId: stateData.winnerId,
+    legacyWinnerId: stateData.legacyWinnerId ?? null,
     winTriggerLuminaryId: stateData.winTriggerLuminaryId ?? null,
     lastAction: stateData.lastAction,
     actionLog: stateData.actionLog,
@@ -7159,6 +9275,25 @@ export function formatGameState(
     pendingLuminaryActivationEvents: stateData.pendingLuminaryActivationEvents ?? [],
     pendingBlueprintManifestationEvents: stateData.pendingBlueprintManifestationEvents ?? [],
     pendingBlueprintDetonationEvents: stateData.pendingBlueprintDetonationEvents ?? [],
+    pendingCivilizationEventCards: stateData.pendingCivilizationEventCards ?? [],
+    eventContentProfile: stateData.civilizationEventDeck.contentProfile ?? "general_v1",
+    eventFrequency: stateData.traceScenario || stateData.recurrenceScenario || stateData.triangulationScenario
+      ? "off" : stateData.civilizationEventDeck.eventFrequency ?? "standard",
+    eventDelivery: stateData.civilizationEventDeck.delivery ?? "archive_v1",
+    eventForecast: getEventForecast(stateData) ?? undefined,
+    eventCardPool: stateData.traceScenario || stateData.recurrenceScenario || stateData.triangulationScenario
+      ? []
+      : CIVILIZATION_EVENT_POOLS[stateData.civilizationEventDeck.contentProfile ?? "general_v1"]
+        .filter((id) => stateData.civilizationEventDeck.eventFrequency !== "off" &&
+          (stateData.civilizationEventDeck.delivery === "scheduled_forge_v1" || stateData.civilizationEventDeck.definitionIds.includes(id))),
+    eventRulesVersion: stateData.civilizationEventDeck.rulesVersion ?? "general-events-v1",
+    civilizationEventDeck: {
+      // Shuffled Archive contents and the private catalog are never public.
+      definitionIds: [],
+      nextIndex: stateData.civilizationEventDeck?.nextIndex ?? 0,
+      firedWindows: [],
+      completedEventIds: stateData.civilizationEventDeck?.completedEventIds ?? [],
+    },
     scenarioProtocols: [],
     pendingScenarioProtocolEvents: [],
     pendingTurnTransition: stateData.pendingTurnTransition ?? null,

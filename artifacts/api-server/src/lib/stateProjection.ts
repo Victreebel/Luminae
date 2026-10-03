@@ -2,10 +2,12 @@ import { createHmac, randomBytes } from "node:crypto";
 import {
   BLUEPRINT_DEFINITIONS,
   buildCivilizationResolutionSnapshot,
+  deriveCivilizationLegacyArtifactEligibility,
   type BlueprintArtifactSnapshot,
   type BlueprintDeviceState,
   type BlueprintId,
   type CivilizationArtifactChangeSource,
+  type CivilizationPublicProjectState,
   type CivilizationPublicState,
   type CivilizationState,
   type ManifestedDevicePublicState,
@@ -245,18 +247,45 @@ function projectPublicCivilization(
   players: ProjectedPlayer[],
   redactScenarioProtocols: boolean,
 ): CivilizationPublicState {
-  const publicBlueprintIds = new Set(devices.map((device) => device.blueprintId));
+  const manifestedProjects = Object.values(civilization.projects ?? {})
+    .filter((project) => project.status === "manifested" && project.deviceState !== null);
+  const publicBlueprintIds = new Set([
+    ...manifestedProjects.map((project) => project.blueprintId),
+    ...devices.map((device) => device.blueprintId),
+  ]);
   const operationalDevices = redactScenarioProtocols
     ? []
     : devices as ManifestedDevicePublicState[];
+  const visibleCivilization = redactScenarioProtocols
+    ? { ...civilization, projects: {} }
+    : civilization;
   const activeCapabilityIds = buildCivilizationResolutionSnapshot(
-    civilization,
+    visibleCivilization,
     [],
     operationalDevices,
   ).activeCapabilityIds;
+  const projects: CivilizationPublicProjectState[] = redactScenarioProtocols
+    ? []
+    : manifestedProjects
+        .map((project) => ({
+          projectId: project.projectId,
+          blueprintId: project.blueprintId,
+          slotIndex: project.slotIndex,
+          status: "manifested" as const,
+          deviceState: project.deviceState!,
+          presentationVariant: project.presentationVariant,
+          manifestedTurnCount: project.manifestedTurnCount,
+          stateChangedTurnCount: project.stateChangedTurnCount,
+          activeCapabilityIds: project.deviceState === "spent" || project.deviceState === "recovering"
+            ? []
+            : [...(BLUEPRINT_DEFINITIONS[project.blueprintId]?.civilization.providedCapabilityIds ?? [])],
+          historyEvidence: project.historyEvidence,
+        }))
+        .sort((left, right) => left.slotIndex - right.slotIndex);
 
   return {
     version: civilization.version,
+    environmentIdentity: civilization.environmentIdentity,
     artifacts: Object.values(civilization.artifacts)
       .map((artifact) => ({
         artifactId: artifact.artifactId,
@@ -269,6 +298,8 @@ function projectPublicCivilization(
       }))
       .sort((left, right) => left.artifactId.localeCompare(right.artifactId)),
     affinityIdentity: civilization.affinityIdentity,
+    districtIdentity: civilization.districtIdentity,
+    identityScales: civilization.identityScales,
     scale: {
       historicalMaturity: civilization.scale.historicalMaturity,
       currentReach: civilization.scale.currentReach,
@@ -316,7 +347,14 @@ function projectPublicCivilization(
         appliedTurnCount: condition.appliedTurnCount,
         historyEvidence: condition.historyEvidence,
       })),
+    projects,
     activeCapabilityIds: [...activeCapabilityIds],
+    manifestationAssignments: Object.values(civilization.manifestationAssignments ?? {})
+      .sort((left, right) => (
+        (left.assignmentTurnCount ?? Number.MAX_SAFE_INTEGER) -
+          (right.assignmentTurnCount ?? Number.MAX_SAFE_INTEGER) ||
+        left.socketId.localeCompare(right.socketId)
+      )),
     events: civilization.events.slice(-8).map((event, index) => {
       const sourceIsPublic = isPublicBlueprintSource(
         event.source,
@@ -325,6 +363,9 @@ function projectPublicCivilization(
       );
       return {
         eventId: sourceIsPublic ? event.eventId : `sealed-event-${index + 1}`,
+        ...(sourceIsPublic && event.definitionId ? { definitionId: event.definitionId } : {}),
+        ...(sourceIsPublic && event.rulesVersion ? { rulesVersion: event.rulesVersion } : {}),
+        ...(sourceIsPublic && event.targetEvidence ? { targetEvidence: structuredClone(event.targetEvidence) } : {}),
         sourceType: event.source.sourceType,
         turnCount: event.turnCount,
         form: event.form,
@@ -336,6 +377,8 @@ function projectPublicCivilization(
         historyEvidence: event.historyEvidence,
       };
     }),
+    legacy: civilization.legacy,
+    legacyArtifactEligibility: deriveCivilizationLegacyArtifactEligibility(visibleCivilization),
   };
 }
 

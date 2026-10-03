@@ -12,6 +12,7 @@ import chroniclesRouter from "./chronicles";
 import moderationRouter from "./moderation";
 import telemetryRouter from "./telemetry";
 import uxReviewRouter from "./uxReview";
+import onboardingRouter from "./onboarding";
 
 const router: IRouter = Router();
 
@@ -26,6 +27,7 @@ router.use(chroniclesRouter);
 router.use(moderationRouter);
 router.use(telemetryRouter);
 router.use(uxReviewRouter);
+router.use(onboardingRouter);
 router.use(roomsRouter);
 router.use(gameRouter);
 

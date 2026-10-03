@@ -7,12 +7,16 @@ import type {
   ScenarioProtocolPublicState,
 } from '@workspace/api-client-react';
 import {
+  type ArtifactImplementationScale,
   ARTIFACT_DEPICTION_SCALE_BY_ID,
   ARTIFACT_DEFINITION_BY_ID,
   ARTIFACT_TECHNOLOGY_METADATA_BY_ID,
   type ArtifactId,
   type BlueprintId,
+  type BlueprintManifestationMotion,
+  type BlueprintManifestationScale,
   type CivilizationCapabilityId,
+  type CivilizationManifestationAssignment,
 } from '@workspace/game-types';
 import type { KardashevTier } from '@/lib/kardashev';
 import {
@@ -28,6 +32,10 @@ import {
   hashCivilizationValue,
   type CivilizationTrait,
 } from '@/lib/civilizationProfile';
+import {
+  getArtifactManifestationProfile,
+  type ArtifactManifestationProfile,
+} from '@/lib/civilizationArtifactManifestations';
 
 export type CivilizationScaleBand = 'planetary' | 'stellar' | 'galactic';
 export type CivilizationDeploymentKind = 'artifact' | 'blueprint' | 'luminary' | 'protocol' | 'chronicle';
@@ -71,6 +79,8 @@ export interface CivilizationDeploymentSite {
   blueprintRole?: string;
   blueprintFamilies?: string;
   completedBlueprintId?: BlueprintId;
+  blueprintManifestationScale?: BlueprintManifestationScale;
+  blueprintManifestationMotion?: BlueprintManifestationMotion;
   componentSummary?: string;
   gameplayEffect?: string;
   capabilityIds?: readonly CivilizationCapabilityId[];
@@ -92,6 +102,8 @@ export interface CivilizationDeploymentSite {
   scalePolicyCopy?: string;
   artifactVisualMotif?: ArtifactVisualMotif;
   artifactSceneTreatment?: ArtifactSceneTreatment;
+  artifactManifestation?: ArtifactManifestationProfile;
+  manifestationAssignment?: CivilizationManifestationAssignment;
   representationMode: 'local_trace' | 'civilization_infrastructure' | 'blueprint_consequence' | 'luminary_influence' | 'sealed_protocol' | 'chronicle_record';
   sourceQuality: 'authored' | 'derived';
   blueprintId?: BlueprintId;
@@ -132,6 +144,7 @@ export interface BuildCivilizationDeploymentSitesInput {
   chronicleRecords?: readonly CivilizationChronicleState[];
   civilizationArtifacts?: readonly CivilizationPublicArtifactState[];
   activeCapabilityIds?: readonly string[];
+  manifestationAssignments?: readonly CivilizationManifestationAssignment[];
 }
 
 export function buildCivilizationArtifactHistoryCards(
@@ -462,6 +475,18 @@ function sceneScaleBand(tier: KardashevTier): CivilizationScaleBand {
   return 'planetary';
 }
 
+function scaleBandForImplementation(
+  implementationScale: ArtifactImplementationScale,
+): CivilizationScaleBand {
+  if (implementationScale === 'galactic' || implementationScale === 'interstellar') {
+    return 'galactic';
+  }
+  if (implementationScale === 'orbital' || implementationScale === 'system') {
+    return 'stellar';
+  }
+  return 'planetary';
+}
+
 function formatForm(lore: CardLoreCatalog[string] | undefined): string {
   const firstForm = lore?.artifactForm?.split('/')?.[0]?.trim();
   return (firstForm || 'artifact').toLowerCase();
@@ -672,21 +697,19 @@ function buildArtifactSiteContexts(
   forgedArtifacts.forEach((card) => {
     duplicateCounts.set(card.id, (duplicateCounts.get(card.id) ?? 0) + 1);
   });
-  const seenCounts = new Map<string, number>();
+  const uniqueArtifacts = [...new Map(forgedArtifacts.map((card) => [card.id, card])).values()];
 
-  return forgedArtifacts.map((card) => {
+  return uniqueArtifacts.map((card) => {
     const lore = loreCatalog?.[card.id];
     const trait = getArtifactCivilizationTrait(card);
-    const occurrenceIndex = seenCounts.get(card.id) ?? 0;
-    seenCounts.set(card.id, occurrenceIndex + 1);
     return {
       card,
       lore,
       trait,
       lane: formatLane(lore, trait),
-      occurrenceIndex,
+      occurrenceIndex: 0,
       duplicateCount: duplicateCounts.get(card.id) ?? 1,
-      siteId: occurrenceIndex === 0 ? `artifact:${card.id}` : `artifact:${card.id}#${occurrenceIndex + 1}`,
+      siteId: `artifact:${card.id}`,
       lifecycle: lifecycleByArtifactId.get(card.id),
     };
   });
@@ -765,17 +788,13 @@ function buildArtifactSummary(
   trait: CivilizationTrait,
   scaleBand: CivilizationScaleBand,
   depictionScale: ArtifactDepictionScale,
+  manifestation: ArtifactManifestationProfile,
 ): string {
   const form = lore?.artifactForm ? formatForm(lore) : fallbackForm(trait);
   const role = sentence(lore?.practicalCapability ?? fallbackRole(trait, scaleBand));
   const roleClause = role ? ` ${role}` : '';
-  const policy = getArtifactArtworkScalePolicy(depictionScale);
-  const scaleText = policy.presence === 'artifact_pin'
-    ? `${card.name} is depicted at ${getDepictionScaleLabel(depictionScale)} scale as a ${form}; the scene uses a deployment pin and consequence layer instead of pretending the object is a visible landmark.`
-    : policy.canRenderAsStructure
-      ? `${card.name} is depicted as ${policy.label.toLowerCase()} and belongs natively in the ${policy.nativeLabel.toLowerCase()} layer as a ${form}.`
-      : `${card.name} is depicted at ${getDepictionScaleLabel(depictionScale)} scale as a ${form}; the scene refuses to pretend it is visible from impossible scale.`;
-  return `${scaleText} The scan registers its work through ${visibleAs}.${roleClause}`;
+  const scaleText = `${card.name} is shown on its card at ${getDepictionScaleLabel(depictionScale)} scale as a ${form}. In the civilization it becomes ${manifestation.nativeRepresentation}.`;
+  return `${scaleText} From this view, its physical consequence is ${visibleAs}.${roleClause}`;
 }
 
 function buildArtifactSite(
@@ -794,7 +813,11 @@ function buildArtifactSite(
   const synergy = getArtifactSynergyContext(context, allContexts);
   const completedBlueprintId = getCompletedBlueprintIdForArtifact(context, completedBlueprintDevices);
   const projectPriorityBonus = Math.min(24, synergy.supportingArtifactNames.length * 8 + synergy.sharedLaneCount * 3);
-  const depictionScale = deriveDepictionScaleFromLore(card, lore);
+  const artifactManifestation = getArtifactManifestationProfile(card.id);
+  const catalogArtifact = Boolean(ARTIFACT_DEFINITION_BY_ID[card.id as ArtifactId]);
+  const depictionScale = catalogArtifact
+    ? artifactManifestation.cardSubjectScale
+    : deriveDepictionScaleFromLore(card, lore);
   const scalePolicy = getArtifactArtworkScalePolicy(depictionScale);
   const artifactVisualMotif = deriveArtifactVisualMotif(card, lore);
   const artifactSceneTreatment = deriveArtifactSceneTreatment(card, lore);
@@ -808,7 +831,9 @@ function buildArtifactSite(
   return {
     id: context.siteId,
     kind: 'artifact',
-    scaleBand,
+    scaleBand: catalogArtifact
+      ? scaleBandForImplementation(artifactManifestation.implementationScale)
+      : scaleBand,
     trait,
     artifactId: card.id,
     artifactTier: card.tier,
@@ -833,18 +858,43 @@ function buildArtifactSite(
     engineeringScale: lore?.engineeringScale ?? fallbackEngineeringScale(card, scaleBand),
     depictionScale,
     scalePresence: scalePolicy.presence,
-    nativeArtworkLayer: scalePolicy.nativeLayer,
-    nativeArtworkLabel: scalePolicy.nativeLabel,
+    nativeArtworkLayer: catalogArtifact
+      ? artifactManifestation.nativeCameraScale
+      : scalePolicy.nativeLayer,
+    nativeArtworkLabel: catalogArtifact
+      ? artifactManifestation.nativeCameraScale === 'surface'
+        ? 'Surface work'
+        : artifactManifestation.nativeCameraScale === 'orbit'
+          ? 'Orbital work'
+          : artifactManifestation.nativeCameraScale === 'stellar'
+            ? 'System work'
+            : 'Galactic work'
+      : scalePolicy.nativeLabel,
     scalePolicyCopy: scalePolicy.scanCopy,
     artifactVisualMotif,
     artifactSceneTreatment,
-    representationMode: isArtifactPinDepictionScale(depictionScale) ? 'local_trace' : 'civilization_infrastructure',
+    artifactManifestation,
+    representationMode: catalogArtifact
+      ? artifactManifestation.implementationScale === 'local'
+        ? 'local_trace'
+        : 'civilization_infrastructure'
+      : isArtifactPinDepictionScale(depictionScale)
+        ? 'local_trace'
+        : 'civilization_infrastructure',
     sourceQuality: lore ? 'authored' : 'derived',
     affinity: card.bonusAffinity,
     anchor: jitterAnchor(ANCHORS[scaleBand][trait], seed),
     priority: card.tier * 100 + Math.max(0, card.eminence) * 10 + projectPriorityBonus + (12 - index),
-    title: `${card.name} Trace${formatArtifactOccurrenceSuffix(context)}`,
-    summary: buildArtifactSummary(card, lore, visibleAs, trait, scaleBand, depictionScale),
+    title: `${card.name} Work${formatArtifactOccurrenceSuffix(context)}`,
+    summary: buildArtifactSummary(
+      card,
+      lore,
+      visibleAs,
+      trait,
+      scaleBand,
+      depictionScale,
+      artifactManifestation,
+    ),
     visibleAs,
     laneLabel: `${laneLabel} / ${title}`,
     relatedArtifactIds: [card.id],
@@ -877,6 +927,8 @@ function buildBlueprintSite(
     scaleBand,
     trait,
     blueprintId,
+    blueprintManifestationScale: definition.civilization.manifestationScale,
+    blueprintManifestationMotion: definition.civilization.manifestationMotion,
     artifactForm: definition.civilization.projectForm,
     blueprintRole: definition.name,
     componentSummary,
@@ -1040,6 +1092,7 @@ export function buildCivilizationDeploymentSites({
   chronicleRecords = [],
   civilizationArtifacts = [],
   activeCapabilityIds,
+  manifestationAssignments = [],
 }: BuildCivilizationDeploymentSitesInput): CivilizationDeploymentSite[] {
   const band = sceneScaleBand(tier);
   const activeCapabilityIdSet = activeCapabilityIds
@@ -1080,13 +1133,27 @@ export function buildCivilizationDeploymentSites({
     .filter((record) => !ownerPlayerId || !record.ownerPlayerId || record.ownerPlayerId === ownerPlayerId)
     .map((record, index) => buildChronicleSite(record, band, index));
 
+  const assignmentBySource = new Map(manifestationAssignments.map((assignment) => [
+    `${assignment.sourceType}:${assignment.sourceId}`,
+    assignment,
+  ]));
+
   return [
     ...blueprintSites,
     ...protocolSites,
     ...chronicleSites,
     ...luminarySites,
     ...artifactSites,
-  ].sort((left, right) => (
+  ].map((site) => {
+    const assignmentKey = site.kind === 'artifact' && site.artifactId
+      ? `artifact:${site.artifactId}`
+      : site.kind === 'blueprint' && site.blueprintId
+        ? `blueprint:${site.blueprintId}`
+        : null;
+    return assignmentKey
+      ? { ...site, manifestationAssignment: assignmentBySource.get(assignmentKey) }
+      : site;
+  }).sort((left, right) => (
     right.priority - left.priority ||
     left.title.localeCompare(right.title) ||
     left.id.localeCompare(right.id)
@@ -1130,6 +1197,7 @@ export function getCivilizationDeploymentSiteSignature(site: CivilizationDeploym
     site.nativeArtworkLabel ?? '',
     site.artifactVisualMotif ?? '',
     site.artifactSceneTreatment ?? '',
+    site.artifactManifestation?.visualIdentity ?? '',
     site.representationMode,
     site.sourceQuality,
     site.blueprintId ?? '',

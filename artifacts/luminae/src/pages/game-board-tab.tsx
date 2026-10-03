@@ -25,6 +25,8 @@ export interface BoardTabMainScope {
   handleCardTap: any;
   handleDeckTap: any;
   hiddenSlots: any;
+  archivePendingSlotKeys?: ReadonlySet<string>;
+  archiveRevealedSlotKeys?: ReadonlySet<string>;
   isCameraControlled: any;
   luminaryPresentationActive: any;
   isLandscapeCockpit: any;
@@ -80,6 +82,8 @@ export function BoardTabMain({ scope }: { scope: BoardTabMainScope }) {
     handleCardTap,
     handleDeckTap,
     hiddenSlots,
+    archivePendingSlotKeys,
+    archiveRevealedSlotKeys,
     isCameraControlled,
     luminaryPresentationActive,
     isLandscapeCockpit,
@@ -164,6 +168,8 @@ export function BoardTabMain({ scope }: { scope: BoardTabMainScope }) {
         handleCardTap={handleCardTap}
         handleDeckTap={handleDeckTap}
         hiddenSlots={hiddenSlots}
+        archivePendingSlotKeys={archivePendingSlotKeys}
+        archiveRevealedSlotKeys={archiveRevealedSlotKeys}
         isCameraControlled={isCameraControlled}
         isLandscapeCockpit={isLandscapeCockpit}
         isMyTurn={isMyTurn}

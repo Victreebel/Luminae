@@ -1,11 +1,14 @@
 import { describe, expect, it } from "vitest";
 import type {
+  CivilizationPublicState,
   ScenarioProtocolEvent,
   ScenarioProtocolPublicState,
 } from "@workspace/game-types";
 import {
   createInitialCivilizationState,
   deriveCivilizationAffinityIdentity,
+  deriveCivilizationLegacyArtifactEligibility,
+  getCivilizationLegacyProgress,
 } from "@workspace/game-types";
 import { filterStateForPlayer } from "./stateProjection";
 
@@ -31,6 +34,52 @@ function artifact(id: string, tier: number, name: string) {
 }
 
 describe("filterStateForPlayer", () => {
+  it("projects the authoritative damaged-Artifact Legacy eligibility without private evidence", () => {
+    const civilization = createInitialCivilizationState();
+    civilization.scale.historicalMaturity = "galactic";
+    civilization.identityScales.galaxy = {
+      ...civilization.identityScales.galaxy,
+      status: "forming",
+      candidateDyad: "vortex",
+    };
+    civilization.artifacts.t1r01 = {
+      artifactId: "t1r01", masteryCount: 1, firstMasteredTurnCount: 1,
+      implementationState: "damaged", implementationStateChangedTurnCount: 4,
+      implementationChangeSource: { sourceType: "scenario", sourceId: "private-damage-source" },
+      historyEvidence: "recorded",
+    };
+    civilization.projects["private-project"] = {
+      projectId: "private-project", blueprintId: "bp_antimatter_detonator", slotIndex: 0,
+      status: "assembling", matchedComponentIds: ["private-component"], deviceState: null,
+      presentationVariant: "armored", manifestedTurnCount: null, stateChangedTurnCount: 2,
+      historyEvidence: "recorded",
+    };
+    const state = { players: [{
+      playerId: "owner", plannedAction: null, plannedActionCancelReason: null,
+      reservedArtifacts: [artifact("private-reserve", 2, "Private Reserve")],
+      privateReservedArtifactIds: ["private-reserve"],
+      civilization,
+    }] };
+    const projected = filterStateForPlayer(state, "opponent");
+    const publicCivilization = projected.players[0].civilization as unknown as CivilizationPublicState;
+    const eligibility = deriveCivilizationLegacyArtifactEligibility(civilization);
+    expect(publicCivilization.districtIdentity).toEqual(civilization.districtIdentity);
+    expect(publicCivilization.legacyArtifactEligibility).toEqual(eligibility);
+    expect(getCivilizationLegacyProgress(publicCivilization)).toEqual(
+      getCivilizationLegacyProgress(civilization, 2, eligibility),
+    );
+    expect(publicCivilization.legacyArtifactEligibility).toEqual({
+      qualifyingMaturity: "planetary", galacticIdentityReady: false,
+      excludedDamagedArtifactIds: ["t1r01"],
+    });
+    const serialized = JSON.stringify(projected);
+    for (const secret of ["private-component", "private-project", "private-reserve", "private-damage-source"]) {
+      expect(serialized).not.toContain(secret);
+    }
+    expect(publicCivilization.projects).toEqual([]);
+    expect(civilization.projects["private-project"].matchedComponentIds).toEqual(["private-component"]);
+  });
+
   it("keeps the viewer's reserve complete and conceals opponent reserves", () => {
     const state = {
       roomId: "room-1",

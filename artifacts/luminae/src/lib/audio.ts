@@ -53,6 +53,12 @@ const FANFARE_COLOR_MAP: Record<string, AffinityKey> = {
 
 export type LuminaryEffectSoundBeat = 'target' | 'resolve' | 'aftermath';
 
+export type ForgeRefillSound = {
+  reveal(): void;
+  complete(): void;
+  cancel(): void;
+};
+
 // Card draw / flip — pre-built MP3 asset.
 const CARD_DRAW_MP3 = new URL('../assets/audio/Effects/Card draw.mp3', import.meta.url).href;
 
@@ -169,6 +175,12 @@ export class GameAudio {
   private transientEpoch = 0;
   private tutorialCueLastPlayed = new Map<string, number>();
   private transientVoices = new Map<AudioScheduledSourceNode, AudioNode[]>();
+  private forgeRefillSounds = new Map<GainNode, {
+    kind: 'swell' | 'settle';
+    sources: AudioScheduledSourceNode[];
+    cleanupTimer: ReturnType<typeof setTimeout>;
+  }>();
+  private lastForgeRefillChimeAt = Number.NEGATIVE_INFINITY;
   private transientBuses = new Map<AudioNode, {
     nodes: AudioNode[];
     cleanupTimer: ReturnType<typeof setTimeout>;
@@ -275,6 +287,8 @@ export class GameAudio {
   /** Dispose one-shot presentation audio without interrupting ambient music. */
   resetTransientAudio() {
     this.transientEpoch += 1;
+    this.stopForgeRefillSounds();
+    this.lastForgeRefillChimeAt = Number.NEGATIVE_INFINITY;
     this.tutorialCueLastPlayed.clear();
     this.disposeAntimatterBlueprintCinematic(false);
     this.stopArrivalCutscene();
@@ -318,6 +332,7 @@ export class GameAudio {
     this.muted = !this.muted;
     localStorage.setItem('luminae_muted', String(this.muted));
     if (this.muted) this.disposeAntimatterBlueprintCinematic(false);
+    if (this.muted) this.stopForgeRefillSounds();
     if (this.masterMusicGain && this.ctx) {
       const now = this.ctx.currentTime;
       this.masterMusicGain.gain.cancelScheduledValues(now);
@@ -331,6 +346,7 @@ export class GameAudio {
     this.muted = value;
     localStorage.setItem('luminae_muted', String(this.muted));
     if (this.muted) this.disposeAntimatterBlueprintCinematic(false);
+    if (this.muted) this.stopForgeRefillSounds();
     if (this.masterMusicGain && this.ctx) {
       const now = this.ctx.currentTime;
       this.masterMusicGain.gain.cancelScheduledValues(now);
@@ -431,6 +447,7 @@ export class GameAudio {
     this.trackVoice(src, [filt, g]);
     src.start(startTime);
     src.stop(startTime + duration + 0.05);
+    return src;
   }
 
   private noiseSweep(ctx: AudioContext, startTime: number, duration: number, vol: number, freqStart: number, freqEnd: number, dest?: AudioNode) {
@@ -457,15 +474,54 @@ export class GameAudio {
     src.stop(startTime + duration + 0.05);
   }
 
+  private staticInterference(ctx: AudioContext, startTime: number, duration: number, vol: number, dest?: AudioNode) {
+    const bufLen = Math.ceil(ctx.sampleRate * duration);
+    const buf = ctx.createBuffer(1, bufLen, ctx.sampleRate);
+    const data = buf.getChannelData(0);
+    for (let i = 0; i < bufLen; i++) {
+      const white = Math.random() * 2 - 1;
+      const crackle = Math.random() < 0.0018 ? (Math.random() * 2 - 1) * 0.85 : 0;
+      data[i] = Math.max(-1, Math.min(1, white * 0.72 + crackle));
+    }
+
+    const source = ctx.createBufferSource();
+    source.buffer = buf;
+    const highpass = ctx.createBiquadFilter();
+    highpass.type = 'highpass';
+    highpass.frequency.value = 240;
+    highpass.Q.value = 0.7;
+    const lowpass = ctx.createBiquadFilter();
+    lowpass.type = 'lowpass';
+    lowpass.frequency.value = 7_400;
+    lowpass.Q.value = 0.65;
+    const gain = ctx.createGain();
+    gain.gain.setValueAtTime(0.001, startTime);
+    gain.gain.linearRampToValueAtTime(vol, startTime + 0.012);
+    gain.gain.setValueAtTime(vol * 0.92, startTime + duration * 0.18);
+    gain.gain.linearRampToValueAtTime(vol * 0.34, startTime + duration * 0.24);
+    gain.gain.linearRampToValueAtTime(vol * 0.88, startTime + duration * 0.31);
+    gain.gain.setValueAtTime(vol * 0.72, startTime + duration * 0.68);
+    gain.gain.linearRampToValueAtTime(vol, startTime + duration * 0.76);
+    gain.gain.exponentialRampToValueAtTime(0.001, startTime + duration);
+    source.connect(highpass);
+    highpass.connect(lowpass);
+    lowpass.connect(gain);
+    gain.connect(dest ?? ctx.destination);
+    this.trackVoice(source, [highpass, lowpass, gain]);
+    source.start(startTime);
+    source.stop(startTime + duration + 0.05);
+  }
+
   /** A muted, low-register contact that makes a card feel seated in its mold. */
-  private playMoldSettle(ctx: AudioContext, startTime: number, intensity = 1) {
+  private playMoldSettle(ctx: AudioContext, startTime: number, intensity = 1, dest?: AudioNode) {
     // The paired low tones preserve a physical metal-and-stone weight without
     // the abrasive high-frequency scrape in the previous sample.
-    this.osc(ctx, 104, 'sine', startTime, startTime + 0.18, 0.058 * intensity, 0.006);
-    this.osc(ctx, 208, 'triangle', startTime + 0.008, startTime + 0.15, 0.017 * intensity, 0.01);
-    this.noiseBlip(ctx, startTime, 0.045, 0.012 * intensity, 260, 3);
+    const contact = this.osc(ctx, 104, 'sine', startTime, startTime + 0.18, 0.058 * intensity, 0.006, dest);
+    const overtone = this.osc(ctx, 208, 'triangle', startTime + 0.008, startTime + 0.15, 0.017 * intensity, 0.01, dest);
+    const texture = this.noiseBlip(ctx, startTime, 0.045, 0.012 * intensity, 260, 3, dest);
     // A short delayed body note reads as the artifact settling into place.
-    this.osc(ctx, 78, 'sine', startTime + 0.055, startTime + 0.19, 0.028 * intensity, 0.005);
+    const body = this.osc(ctx, 78, 'sine', startTime + 0.055, startTime + 0.19, 0.028 * intensity, 0.005, dest);
+    return [contact.o, overtone.o, texture, body.o];
   }
 
   /** Three-note Luminae identity: signal, ascent, illumination. */
@@ -1765,14 +1821,15 @@ export class GameAudio {
   }
 
   /** Card dealt from deck — papery thwip + soft mold settle. */
-  playCardDraw() {
+  playCardDraw(refillBus?: GainNode) {
     if (this.muted) return;
     try {
       const ctx = this.initCtx();
       const t = ctx.currentTime;
       // Play the real Card draw.mp3 asset as the core papery draw sound
-      this.scheduleAudioAsset(CARD_DRAW_MP3, t, 0.55);
-      this.playMoldSettle(ctx, t + 0.3);
+      this.scheduleAudioAsset(CARD_DRAW_MP3, t, 0.55, undefined, refillBus);
+      const sources = this.playMoldSettle(ctx, t + 0.3, 1, refillBus);
+      if (refillBus) this.forgeRefillSounds.get(refillBus)?.sources.push(...sources);
     } catch (e) {
       console.warn('SFX failed', e);
     }
@@ -3208,23 +3265,146 @@ export class GameAudio {
     }
   }
 
-  /**
-   * Soft Forge-refill chime — plays at the moment a replacement card slides
-   * into the burned slot (~1520 ms after burn detection).
-   *
-   * Sonic character: a quiet, low-register contact that confirms the new
-   * artifact has settled into its mold without competing with the burn cue.
-   *
-   * Total audible duration ~0.55 s.
-   */
-  playForgeRefill() {
+  /** Unlock the demo's audio context while a Replay/Play gesture is active. */
+  prepareForgeRefillAudio() {
     if (this.muted) return;
     try {
       const ctx = this.initCtx();
-      const t = ctx.currentTime;
-
-      this.playMoldSettle(ctx, t, 0.85);
+      void this.loadAudioAsset(CARD_DRAW_MP3, ctx).catch(() => {});
     } catch (e) {
+      console.warn('SFX failed', e);
+    }
+  }
+
+  private createForgeRefillBus(
+    ctx: AudioContext,
+    kind: 'swell' | 'settle',
+    lifetimeMs: number,
+  ) {
+    const bus = ctx.createGain();
+    bus.connect(ctx.destination);
+    const sources: AudioScheduledSourceNode[] = [];
+    const cleanupTimer = setTimeout(() => this.disposeForgeRefillBus(bus), lifetimeMs);
+    this.forgeRefillSounds.set(bus, { kind, sources, cleanupTimer });
+    return { bus, sources };
+  }
+
+  private disposeForgeRefillBus(bus: GainNode) {
+    const sound = this.forgeRefillSounds.get(bus);
+    if (!sound) return;
+    clearTimeout(sound.cleanupTimer);
+    for (const source of sound.sources) {
+      try { source.stop(); } catch {}
+      this.disconnect(source);
+      for (const node of this.transientVoices.get(source) ?? []) this.disconnect(node);
+      this.transientVoices.delete(source);
+    }
+    this.disconnect(bus);
+    this.forgeRefillSounds.delete(bus);
+  }
+
+  private stopForgeRefillSounds() {
+    for (const bus of [...this.forgeRefillSounds.keys()]) this.disposeForgeRefillBus(bus);
+  }
+
+  /** A breath of cosmic matter; the Artifact's reveal owns the familiar chime. */
+  startForgeRefill({ durationMs, delayMs = 0 }: {
+    durationMs: number;
+    delayMs?: number;
+  }): ForgeRefillSound {
+    const silent: ForgeRefillSound = { reveal() {}, complete() {}, cancel() {} };
+    if (this.muted) return silent;
+    let bus: GainNode | undefined;
+    try {
+      const ctx = this.initCtx();
+      // Decode during formation so the familiar deal cue can start on reveal.
+      void this.loadAudioAsset(CARD_DRAW_MP3, ctx).catch(() => {});
+      const duration = Math.max(0.12, durationMs / 1000);
+      const delay = Math.max(0, delayMs / 1000);
+      const start = ctx.currentTime + delay;
+      const end = start + duration;
+      const activeSwells = [...this.forgeRefillSounds.values()]
+        .filter((sound) => sound.kind === 'swell' && sound.sources.length > 0).length;
+      const sound = this.createForgeRefillBus(ctx, 'swell', (delay + duration + 1) * 1000);
+      bus = sound.bus;
+
+      // A whole row can refill at once. Only three carry the atmospheric bed;
+      // all slots retain their reveal cue, which is coalesced below.
+      if (activeSwells < 3) {
+        const level = 1 / Math.sqrt(activeSwells + 1);
+        const breath = ctx.createBufferSource();
+        breath.buffer = this.buildNoiseBuffer(ctx, duration);
+        const filter = ctx.createBiquadFilter();
+        filter.type = 'bandpass';
+        filter.Q.value = 0.65;
+        filter.frequency.setValueAtTime(320, start);
+        filter.frequency.exponentialRampToValueAtTime(1_050, start + duration * 0.48);
+        filter.frequency.exponentialRampToValueAtTime(440, end);
+        const envelope = ctx.createGain();
+        envelope.gain.setValueAtTime(0, start);
+        envelope.gain.linearRampToValueAtTime(0.018 * level, start + duration * 0.34);
+        envelope.gain.linearRampToValueAtTime(0.008 * level, start + duration * 0.7);
+        envelope.gain.linearRampToValueAtTime(0, end);
+        breath.connect(filter);
+        filter.connect(envelope);
+        envelope.connect(bus);
+        this.trackVoice(breath, [filter, envelope]);
+        sound.sources.push(breath);
+        breath.start(start);
+        breath.stop(end + 0.02);
+
+        // Close, slowly converging tones add a gentle shimmer without a
+        // percussive attack or an industrial/metallic texture.
+        for (const [frequency, volume, detune] of [[196, 0.011, -7], [293.66, 0.006, 6]]) {
+          const tone = this.osc(ctx, frequency, 'sine', start, end, volume * level, duration * 0.42, bus);
+          tone.o.detune.setValueAtTime(detune, start);
+          tone.o.detune.linearRampToValueAtTime(0, end);
+          sound.sources.push(tone.o);
+        }
+      }
+
+      const activeBus = bus;
+      let finished = false;
+      let revealed = false;
+      return {
+        reveal: () => {
+          if (finished || revealed || !this.forgeRefillSounds.has(activeBus)) return;
+          revealed = true;
+          this.playForgeRefill({ cardDeal: true });
+        },
+        complete: () => {
+          if (finished || !this.forgeRefillSounds.has(activeBus)) return;
+          finished = true;
+          this.disposeForgeRefillBus(activeBus);
+        },
+        cancel: () => {
+          if (finished) return;
+          finished = true;
+          this.disposeForgeRefillBus(activeBus);
+        },
+      };
+    } catch (e) {
+      if (bus) this.disposeForgeRefillBus(bus);
+      console.warn('SFX failed', e);
+      return silent;
+    }
+  }
+
+  /** Cosmic reveal uses the original card-deal cue; fallback pulses retain their quiet contact. */
+  playForgeRefill({ cardDeal = false }: { cardDeal?: boolean } = {}) {
+    if (this.muted) return;
+    let bus: GainNode | undefined;
+    try {
+      const ctx = this.initCtx();
+      const t = ctx.currentTime;
+      if (t - this.lastForgeRefillChimeAt < 0.25) return;
+      this.lastForgeRefillChimeAt = t;
+      const sound = this.createForgeRefillBus(ctx, 'settle', cardDeal ? 2_600 : 950);
+      bus = sound.bus;
+      if (cardDeal) this.playCardDraw(bus);
+      else sound.sources.push(...this.playMoldSettle(ctx, t, 0.85, bus));
+    } catch (e) {
+      if (bus) this.disposeForgeRefillBus(bus);
       console.warn('SFX failed', e);
     }
   }
@@ -3475,10 +3655,12 @@ export class GameAudio {
   private async scheduleAudioAsset(url: string, scheduledTime: number, volume: number, fadeOut?: { afterSeconds: number; durationSeconds: number }, dest?: AudioNode, attackSeconds = 0, attackStartRatio = 0, sourceOffsetSeconds = 0, playbackDurationSeconds?: number): Promise<void> {
     if (this.muted) return;
     const epoch = this.transientEpoch;
+    const refillSound = dest ? this.forgeRefillSounds.get(dest as GainNode) : undefined;
     try {
       const ctx = this.initCtx();
       const audioBuf = await this.loadAudioAsset(url, ctx);
       if (this.muted || epoch !== this.transientEpoch) return;
+      if (refillSound && this.forgeRefillSounds.get(dest as GainNode) !== refillSound) return;
       const now = ctx.currentTime;
       if (now > scheduledTime + 0.6) return; // missed the window; skip silently
       const startAt = Math.max(now, scheduledTime);
@@ -3502,6 +3684,7 @@ export class GameAudio {
       // after the ramp was scheduled (race-free skip behaviour).
       gain.connect(dest ?? ctx.destination);
       this.trackVoice(src, [gain]);
+      refillSound?.sources.push(src);
       const sourceOffset = Math.min(
         Math.max(0, sourceOffsetSeconds),
         Math.max(0, audioBuf.duration - 0.01),
@@ -4113,6 +4296,14 @@ export class GameAudio {
           });
           this.noiseSweep(ctx, t + 0.05, 0.9, 0.01, 920, 180, bus);
           this.osc(ctx, 73.42, 'sine', t, t + 1.25, 0.022, 0.18, bus);
+          break;
+        }
+        case 'transmission-fault': {
+          this.duckMusic(0.4, 0.82, 0.025, 0.42);
+          this.staticInterference(ctx, t, 0.96, 0.13, bus);
+          this.noiseBlip(ctx, t + 0.075, 0.045, 0.055, 3_800, 0.9, bus);
+          this.noiseBlip(ctx, t + 0.33, 0.032, 0.05, 5_600, 0.8, bus);
+          this.noiseBlip(ctx, t + 0.71, 0.055, 0.048, 2_900, 1.1, bus);
           break;
         }
         case 'affinity-introduction': {

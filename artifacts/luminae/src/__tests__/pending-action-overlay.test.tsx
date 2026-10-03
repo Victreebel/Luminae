@@ -51,7 +51,7 @@ describe('PendingActionOverlay', () => {
     expect(onCancelPlan).toHaveBeenCalledTimes(1);
     expect(onDeckTap).not.toHaveBeenCalled();
     expect(container.querySelector('button button')).toBeNull();
-    expect(screen.getByRole('button', { name: /Tier 1 Archive/ })).toBeInTheDocument();
+    expect(screen.getByRole('button', { name: /Planetary Archive/ })).toBeInTheDocument();
   });
 
   it('labels a Tide plan as an Archive Forge rather than Encrypt', () => {

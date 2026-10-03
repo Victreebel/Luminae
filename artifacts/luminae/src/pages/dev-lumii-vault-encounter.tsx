@@ -176,6 +176,13 @@ function makePreviewState(
     pendingLuminaryActivationEvents: [],
     pendingBlueprintManifestationEvents: [],
     pendingBlueprintDetonationEvents: [],
+    pendingCivilizationEventCards: [],
+    civilizationEventDeck: {
+      definitionIds: ["event_stellar_containment_cascade"],
+      nextIndex: 0,
+      firedWindows: [],
+      completedEventIds: [],
+    },
     scenarioProtocols: [{
       protocolId: "sealed_protocol_01",
       ownerPlayerId: "lumii",

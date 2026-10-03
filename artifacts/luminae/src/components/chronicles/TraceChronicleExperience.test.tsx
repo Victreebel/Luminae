@@ -1,7 +1,8 @@
-import { fireEvent, render, screen } from '@testing-library/react';
+import { fireEvent, render, screen, waitFor } from '@testing-library/react';
 import { describe, expect, it, vi } from 'vitest';
 import type { TraceScenarioState } from '@workspace/api-client-react';
 import { TraceChronicleExperience } from './TraceChronicleExperience';
+import { gameAudio } from '@/lib/audio';
 
 vi.mock('@/lib/audio', () => ({
   gameAudio: { playTraceSignal: vi.fn() },
@@ -28,6 +29,36 @@ function traceState(overrides: Partial<TraceScenarioState> = {}): TraceScenarioS
 }
 
 describe('TraceChronicleExperience', () => {
+  it('waits to present and sound the decision until the prior effect releases the lane', () => {
+    vi.mocked(gameAudio.playTraceSignal).mockClear();
+    const onPresentationActiveChange = vi.fn();
+    const props = {
+      state: traceState(), gameStatus: 'playing' as const, localPlayerId: 'architect',
+      disableFocusTrap: true, onChoose: vi.fn(), onPresentationActiveChange,
+    };
+    const { rerender } = render(<TraceChronicleExperience {...props} presentationEnabled={false} />);
+    expect(screen.queryByRole('dialog')).not.toBeInTheDocument();
+    expect(gameAudio.playTraceSignal).not.toHaveBeenCalled();
+    expect(onPresentationActiveChange).toHaveBeenLastCalledWith(false);
+    rerender(<TraceChronicleExperience {...props} presentationEnabled />);
+    expect(screen.getByRole('dialog', { name: 'Crownfall guidance decision' })).toBeInTheDocument();
+    expect(gameAudio.playTraceSignal).toHaveBeenCalledWith('presence');
+    expect(onPresentationActiveChange).toHaveBeenLastCalledWith(true);
+  });
+
+  it('holds its lane through the decision exit after the server records the choice', async () => {
+    const onPresentationActiveChange = vi.fn();
+    const props = {
+      gameStatus: 'playing' as const, localPlayerId: 'architect', disableFocusTrap: true,
+      onChoose: vi.fn(), onPresentationActiveChange,
+    };
+    const { rerender } = render(<TraceChronicleExperience {...props} state={traceState()} />);
+    expect(onPresentationActiveChange).toHaveBeenLastCalledWith(true);
+    rerender(<TraceChronicleExperience {...props} state={traceState({ phase: 'guidance_resolved', guidanceMethod: 'expose_all_routes' })} />);
+    expect(onPresentationActiveChange).toHaveBeenLastCalledWith(true);
+    await waitFor(() => expect(onPresentationActiveChange).toHaveBeenLastCalledWith(false), { timeout: 2_000 });
+  });
+
   it('recalls the primary-history first-contact stance before the Chronicle setup', () => {
     const { rerender } = render(
       <TraceChronicleExperience

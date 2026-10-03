@@ -1,6 +1,6 @@
 import React from 'react';
 import { motion } from 'framer-motion';
-import { ChevronsRight, Hammer, LayoutGrid } from 'lucide-react';
+import { Hammer, LayoutGrid } from 'lucide-react';
 import { Tooltip, TooltipContent, TooltipTrigger } from '@/components/ui/tooltip';
 import type { ArtifactCard, GamePlayerState, GameState } from '@workspace/api-client-react';
 import type { AffinityKey } from '@/lib/affinityMeta';
@@ -52,6 +52,8 @@ export interface BoardForgeProps {
   handleCardTap: (card: ArtifactCard, fromReserve: boolean) => void;
   handleDeckTap: (tier: 1 | 2 | 3) => void;
   hiddenSlots: Set<string>;
+  archivePendingSlotKeys?: ReadonlySet<string>;
+  archiveRevealedSlotKeys?: ReadonlySet<string>;
   isCameraControlled: boolean;
   isLandscapeCockpit: boolean;
   isMyTurn: boolean;
@@ -96,6 +98,8 @@ export const BoardForge = React.memo(function BoardForge({
   handleCardTap,
   handleDeckTap,
   hiddenSlots,
+  archivePendingSlotKeys,
+  archiveRevealedSlotKeys,
   isCameraControlled,
   isLandscapeCockpit,
   isMyTurn,
@@ -183,6 +187,8 @@ export const BoardForge = React.memo(function BoardForge({
           handleCardTap={handleCardTap}
           handleDeckTap={handleDeckTap}
           hiddenSlots={hiddenSlots}
+          archivePendingSlotKeys={archivePendingSlotKeys}
+          archiveRevealedSlotKeys={archiveRevealedSlotKeys}
           isCameraControlled={isCameraControlled}
           isLandscapeCockpit={isLandscapeCockpit}
           isMyTurn={isMyTurn}
@@ -379,6 +385,8 @@ function ForgeTierShelves({
   handleCardTap,
   handleDeckTap,
   hiddenSlots,
+  archivePendingSlotKeys,
+  archiveRevealedSlotKeys,
   isMyTurn,
   isTutorial,
   forgeCompact,
@@ -439,6 +447,13 @@ function ForgeTierShelves({
         const deckPile = (
           <ForgeDeckPile
             deckCount={row.deck}
+            pendingDrawCount={row.cards.filter((card, index) => {
+              if (!card) return false;
+              const slotKey = `${row.tier}-${index}`;
+              if (archiveRevealedSlotKeys?.has(slotKey)) return false;
+              return hiddenSlots.has(slotKey) || archivePendingSlotKeys?.has(slotKey)
+                || !!burstGhostCards[slotKey] || !!ironHarbingerGhostIds[slotKey];
+            }).length}
             deckDisabled={deckDisabled}
             deckTitle={deckTitle}
             isDeckPending={isDeckPending}
@@ -470,7 +485,6 @@ function ForgeTierShelves({
                 <span className="board-forge-tier-full-label text-[10px] font-black uppercase tracking-wider" style={{ color: '#D4B46F', letterSpacing: '0.12em', textShadow: '0 1px 6px rgba(192,164,114,0.35)' }}>{TIER_CIVILIZATION[row.tier]}</span>
               </div>
               <div className="shrink-0 flex-1 h-[1.5px] divider-brass" />
-              <ChevronsRight className="board-forge-scroll-cue" aria-hidden="true" />
             </div>
             <div className="board-forge-shelf-content">
               <div className={'board-forge-card-row flex pb-1 no-scrollbar ' + (forgeCompact ? 'flex-wrap gap-2' : 'gap-2.5 overflow-x-auto')}>

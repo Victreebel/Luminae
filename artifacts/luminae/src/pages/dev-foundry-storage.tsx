@@ -166,6 +166,13 @@ export default function DevFoundryStorage() {
       pendingLuminaryActivationEvents: [],
       pendingBlueprintManifestationEvents: [],
       pendingBlueprintDetonationEvents: [],
+      pendingCivilizationEventCards: [],
+      civilizationEventDeck: {
+        definitionIds: ["event_stellar_containment_cascade"],
+        nextIndex: 0,
+        firedWindows: [],
+        completedEventIds: [],
+      },
       scenarioProtocols: [],
       pendingScenarioProtocolEvents: [],
       pendingTurnTransition: null,

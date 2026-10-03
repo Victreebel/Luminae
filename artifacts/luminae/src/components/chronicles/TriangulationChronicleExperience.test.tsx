@@ -2,6 +2,7 @@ import { fireEvent, render, screen } from '@testing-library/react';
 import { describe, expect, it, vi } from 'vitest';
 import type { TriangulationScenarioState } from '@workspace/game-types';
 import { TriangulationChronicleExperience } from './TriangulationChronicleExperience';
+import { gameAudio } from '@/lib/audio';
 
 vi.mock('@/lib/audio', () => ({ gameAudio: { playTriangulationSignal: vi.fn() } }));
 
@@ -38,6 +39,24 @@ function advanceDialogue(): void {
 }
 
 describe('TriangulationChronicleExperience', () => {
+  it('keeps the outcome and its closure sound behind the preceding effect', () => {
+    vi.mocked(gameAudio.playTriangulationSignal).mockClear();
+    const props = {
+      state: triangulationState({
+        phase: 'finished', coordinationArchitecture: 'instantiate_composite_mind',
+        referenceCivilization: 'vesper', outcomeId: 'triangulation_composite_vesper_reference',
+      }),
+      gameStatus: 'finished' as const, localPlayerId: 'architect', disableFocusTrap: true,
+      onChoose: vi.fn(),
+    };
+    const { rerender } = render(<TriangulationChronicleExperience {...props} presentationEnabled={false} />);
+    expect(screen.queryByRole('dialog')).not.toBeInTheDocument();
+    expect(gameAudio.playTriangulationSignal).not.toHaveBeenCalled();
+    rerender(<TriangulationChronicleExperience {...props} presentationEnabled />);
+    expect(screen.getByRole('heading', { name: 'One Sky' })).toBeInTheDocument();
+    expect(gameAudio.playTriangulationSignal).toHaveBeenCalledWith('closure');
+  });
+
   it('shows prior memory sentence-by-sentence and a labeled preparedness objective', () => {
     render(<TriangulationChronicleExperience state={triangulationState()} gameStatus="playing" localPlayerId="architect" disableFocusTrap onChoose={vi.fn()} />);
     expect(screen.getByText('At Vey, you made uncertainty public.')).toBeInTheDocument();

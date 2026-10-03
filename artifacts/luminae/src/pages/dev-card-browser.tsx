@@ -1,3 +1,5 @@
+import { ARTIFACT_CATALOG, ARTIFACT_TIER_AUDIT_BY_ID, type ArtifactId } from '@workspace/game-types';
+import { CARD_ART } from '@/lib/cardArtManifest';
 import { useEffect, useState, useCallback, useRef } from 'react';
 import { useLocation, useSearch } from 'wouter';
 import { AFFINITY_META, AFFINITY_KEYS, type AffinityKey } from '@/lib/affinityMeta';
@@ -6,16 +8,7 @@ import type { CardLoreEntry } from '@workspace/api-client-react';
 import cardTier1Bg from '@assets/generated_images/card_tier1.png';
 import cardTier3Bg from '@assets/generated_images/card_tier3.png';
 import { CARD_NAME_FALLBACK } from '@/lib/cardNameFallback';
-
-const CARD_ART_MODULES = import.meta.glob(
-  '../assets/cards/*.png',
-  { eager: true, query: '?url', import: 'default' },
-) as Record<string, string>;
-const CARD_ART: Record<string, string> = {};
-for (const [path, url] of Object.entries(CARD_ART_MODULES)) {
-  const id = path.split('/').pop()!.replace('.png', '');
-  CARD_ART[id] = url;
-}
+import { ArtifactEventFactsDetails } from '@/components/ArtifactEventFactsDetails';
 
 const TIER_BACKDROPS: Record<number, string> = { 1: cardTier1Bg, 3: cardTier3Bg };
 const AFFINITY_CARD_GRADIENTS: Record<string, string> = {
@@ -41,119 +34,8 @@ interface CardEntry {
   cost: Record<AffinityKey, number>;
 }
 
-function c(flare: number, continuum: number, verdance: number, abyss: number, radiance: number): Record<AffinityKey, number> {
-  return { flare, continuum, verdance, abyss, radiance, singularity: 0 };
-}
-
-const CATALOG: CardEntry[] = [
-  // ── Tier 1 · Flare ──────────────────────────────────────────────────────────
-  { id: "t1r01", tier: 1, bonusAffinity: "flare",     eminence: 0, cost: c(0,0,1,1,1) },
-  { id: "t1r02", tier: 1, bonusAffinity: "flare",     eminence: 0, cost: c(0,0,1,2,0) },
-  { id: "t1r03", tier: 1, bonusAffinity: "flare",     eminence: 0, cost: c(0,1,1,0,1) },
-  { id: "t1r04", tier: 1, bonusAffinity: "flare",     eminence: 0, cost: c(0,2,0,0,0) },
-  { id: "t1r05", tier: 1, bonusAffinity: "flare",     eminence: 0, cost: c(0,0,0,2,2) },
-  { id: "t1r06", tier: 1, bonusAffinity: "flare",     eminence: 0, cost: c(0,2,1,0,0) },
-  { id: "t1r07", tier: 1, bonusAffinity: "flare",     eminence: 0, cost: c(0,0,2,2,0) },
-  { id: "t1r08", tier: 1, bonusAffinity: "flare",     eminence: 1, cost: c(0,0,0,0,4) },
-  // ── Tier 1 · Continuum ──────────────────────────────────────────────────────
-  { id: "t1s01", tier: 1, bonusAffinity: "continuum", eminence: 0, cost: c(1,0,1,0,1) },
-  { id: "t1s02", tier: 1, bonusAffinity: "continuum", eminence: 0, cost: c(2,0,1,0,0) },
-  { id: "t1s03", tier: 1, bonusAffinity: "continuum", eminence: 0, cost: c(1,0,0,1,1) },
-  { id: "t1s04", tier: 1, bonusAffinity: "continuum", eminence: 0, cost: c(1,0,0,0,2) },
-  { id: "t1s05", tier: 1, bonusAffinity: "continuum", eminence: 0, cost: c(0,0,0,2,2) },
-  { id: "t1s06", tier: 1, bonusAffinity: "continuum", eminence: 0, cost: c(1,0,2,0,0) },
-  { id: "t1s07", tier: 1, bonusAffinity: "continuum", eminence: 0, cost: c(2,0,0,2,0) },
-  { id: "t1s08", tier: 1, bonusAffinity: "continuum", eminence: 1, cost: c(0,0,4,0,0) },
-  // ── Tier 1 · Verdance ───────────────────────────────────────────────────────
-  { id: "t1e01", tier: 1, bonusAffinity: "verdance",  eminence: 0, cost: c(1,1,0,0,1) },
-  { id: "t1e02", tier: 1, bonusAffinity: "verdance",  eminence: 0, cost: c(0,2,0,1,0) },
-  { id: "t1e03", tier: 1, bonusAffinity: "verdance",  eminence: 0, cost: c(1,1,0,1,0) },
-  { id: "t1e04", tier: 1, bonusAffinity: "verdance",  eminence: 0, cost: c(0,3,0,0,0) },
-  { id: "t1e05", tier: 1, bonusAffinity: "verdance",  eminence: 0, cost: c(2,0,0,0,2) },
-  { id: "t1e06", tier: 1, bonusAffinity: "verdance",  eminence: 0, cost: c(0,1,0,1,2) },
-  { id: "t1e07", tier: 1, bonusAffinity: "verdance",  eminence: 0, cost: c(0,0,0,2,1) },
-  { id: "t1e08", tier: 1, bonusAffinity: "verdance",  eminence: 1, cost: c(0,0,0,4,0) },
-  // ── Tier 1 · Abyss ──────────────────────────────────────────────────────────
-  { id: "t1o01", tier: 1, bonusAffinity: "abyss",     eminence: 0, cost: c(0,1,1,0,1) },
-  { id: "t1o02", tier: 1, bonusAffinity: "abyss",     eminence: 0, cost: c(0,1,0,0,2) },
-  { id: "t1o03", tier: 1, bonusAffinity: "abyss",     eminence: 0, cost: c(1,0,1,0,1) },
-  { id: "t1o04", tier: 1, bonusAffinity: "abyss",     eminence: 0, cost: c(0,0,2,1,0) },
-  { id: "t1o05", tier: 1, bonusAffinity: "abyss",     eminence: 0, cost: c(2,1,0,0,0) },
-  { id: "t1o06", tier: 1, bonusAffinity: "abyss",     eminence: 0, cost: c(0,2,2,0,0) },
-  { id: "t1o07", tier: 1, bonusAffinity: "abyss",     eminence: 0, cost: c(1,0,0,1,2) },
-  { id: "t1o08", tier: 1, bonusAffinity: "abyss",     eminence: 1, cost: c(0,4,0,0,0) },
-  // ── Tier 1 · Radiance ───────────────────────────────────────────────────────
-  { id: "t1p01", tier: 1, bonusAffinity: "radiance",    eminence: 0, cost: c(1,1,0,1,0) },
-  { id: "t1p02", tier: 1, bonusAffinity: "radiance",    eminence: 0, cost: c(0,1,0,2,0) },
-  { id: "t1p03", tier: 1, bonusAffinity: "radiance",    eminence: 0, cost: c(1,0,1,1,0) },
-  { id: "t1p04", tier: 1, bonusAffinity: "radiance",    eminence: 0, cost: c(2,0,0,0,1) },
-  { id: "t1p05", tier: 1, bonusAffinity: "radiance",    eminence: 0, cost: c(0,2,0,0,2) },
-  { id: "t1p06", tier: 1, bonusAffinity: "radiance",    eminence: 0, cost: c(1,0,1,0,2) },
-  { id: "t1p07", tier: 1, bonusAffinity: "radiance",    eminence: 0, cost: c(0,0,1,2,1) },
-  { id: "t1p08", tier: 1, bonusAffinity: "radiance",    eminence: 1, cost: c(0,0,4,0,0) },
-
-  // ── Tier 2 · Flare ──────────────────────────────────────────────────────────
-  { id: "t2r01", tier: 2, bonusAffinity: "flare",     eminence: 1, cost: c(0,2,0,3,2) },
-  { id: "t2r02", tier: 2, bonusAffinity: "flare",     eminence: 2, cost: c(0,1,4,2,0) },
-  { id: "t2r03", tier: 2, bonusAffinity: "flare",     eminence: 2, cost: c(3,0,0,0,3) },
-  { id: "t2r04", tier: 2, bonusAffinity: "flare",     eminence: 1, cost: c(2,0,2,0,2) },
-  { id: "t2r05", tier: 2, bonusAffinity: "flare",     eminence: 2, cost: c(0,3,0,2,2) },
-  { id: "t2r06", tier: 2, bonusAffinity: "flare",     eminence: 2, cost: c(0,0,0,5,0) },
-  // ── Tier 2 · Continuum ──────────────────────────────────────────────────────
-  { id: "t2s01", tier: 2, bonusAffinity: "continuum", eminence: 1, cost: c(2,0,3,0,2) },
-  { id: "t2s02", tier: 2, bonusAffinity: "continuum", eminence: 2, cost: c(4,0,0,2,1) },
-  { id: "t2s03", tier: 2, bonusAffinity: "continuum", eminence: 2, cost: c(0,3,0,0,3) },
-  { id: "t2s04", tier: 2, bonusAffinity: "continuum", eminence: 1, cost: c(0,0,2,0,3) },
-  { id: "t2s05", tier: 2, bonusAffinity: "continuum", eminence: 2, cost: c(5,0,0,0,0) },
-  { id: "t2s06", tier: 2, bonusAffinity: "continuum", eminence: 2, cost: c(2,0,0,3,2) },
-  // ── Tier 2 · Verdance ───────────────────────────────────────────────────────
-  { id: "t2e01", tier: 2, bonusAffinity: "verdance",  eminence: 1, cost: c(3,2,0,0,2) },
-  { id: "t2e02", tier: 2, bonusAffinity: "verdance",  eminence: 2, cost: c(2,4,0,1,0) },
-  { id: "t2e03", tier: 2, bonusAffinity: "verdance",  eminence: 2, cost: c(0,0,3,3,0) },
-  { id: "t2e04", tier: 2, bonusAffinity: "verdance",  eminence: 1, cost: c(0,2,0,2,2) },
-  { id: "t2e05", tier: 2, bonusAffinity: "verdance",  eminence: 2, cost: c(0,5,0,0,0) },
-  { id: "t2e06", tier: 2, bonusAffinity: "verdance",  eminence: 2, cost: c(2,0,0,2,3) },
-  // ── Tier 2 · Abyss ──────────────────────────────────────────────────────────
-  { id: "t2o01", tier: 2, bonusAffinity: "abyss",     eminence: 1, cost: c(0,2,2,0,3) },
-  { id: "t2o02", tier: 2, bonusAffinity: "abyss",     eminence: 2, cost: c(1,0,2,0,4) },
-  { id: "t2o03", tier: 2, bonusAffinity: "abyss",     eminence: 2, cost: c(3,0,0,3,0) },
-  { id: "t2o04", tier: 2, bonusAffinity: "abyss",     eminence: 1, cost: c(2,0,3,0,2) },
-  { id: "t2o05", tier: 2, bonusAffinity: "abyss",     eminence: 2, cost: c(0,0,5,0,0) },
-  { id: "t2o06", tier: 2, bonusAffinity: "abyss",     eminence: 2, cost: c(2,3,0,0,2) },
-  // ── Tier 2 · Radiance ───────────────────────────────────────────────────────
-  { id: "t2p01", tier: 2, bonusAffinity: "radiance",    eminence: 1, cost: c(2,3,0,2,0) },
-  { id: "t2p02", tier: 2, bonusAffinity: "radiance",    eminence: 2, cost: c(0,2,1,4,0) },
-  { id: "t2p03", tier: 2, bonusAffinity: "radiance",    eminence: 2, cost: c(0,0,4,0,3) },
-  { id: "t2p04", tier: 2, bonusAffinity: "radiance",    eminence: 2, cost: c(0,0,0,3,4) },
-  { id: "t2p05", tier: 2, bonusAffinity: "radiance",    eminence: 2, cost: c(3,1,3,0,0) },
-  { id: "t2p06", tier: 2, bonusAffinity: "radiance",    eminence: 2, cost: c(0,3,0,0,5) },
-
-  // ── Tier 3 · Flare ──────────────────────────────────────────────────────────
-  { id: "t3r01", tier: 3, bonusAffinity: "flare",     eminence: 3, cost: c(3,3,5,3,0) },
-  { id: "t3r02", tier: 3, bonusAffinity: "flare",     eminence: 4, cost: c(0,0,7,3,3) },
-  { id: "t3r03", tier: 3, bonusAffinity: "flare",     eminence: 4, cost: c(6,0,0,0,6) },
-  { id: "t3r04", tier: 3, bonusAffinity: "flare",     eminence: 5, cost: c(0,0,0,0,7) },
-  // ── Tier 3 · Continuum ──────────────────────────────────────────────────────
-  { id: "t3s01", tier: 3, bonusAffinity: "continuum", eminence: 3, cost: c(3,0,3,3,3) },
-  { id: "t3s02", tier: 3, bonusAffinity: "continuum", eminence: 4, cost: c(0,0,5,0,7) },
-  { id: "t3s03", tier: 3, bonusAffinity: "continuum", eminence: 4, cost: c(5,3,0,3,0) },
-  { id: "t3s04", tier: 3, bonusAffinity: "continuum", eminence: 5, cost: c(0,0,0,7,0) },
-  // ── Tier 3 · Verdance ───────────────────────────────────────────────────────
-  { id: "t3e01", tier: 3, bonusAffinity: "verdance",  eminence: 3, cost: c(0,3,3,0,5) },
-  { id: "t3e02", tier: 3, bonusAffinity: "verdance",  eminence: 4, cost: c(0,7,0,3,0) },
-  { id: "t3e03", tier: 3, bonusAffinity: "verdance",  eminence: 4, cost: c(3,0,5,0,3) },
-  { id: "t3e04", tier: 3, bonusAffinity: "verdance",  eminence: 5, cost: c(0,0,7,0,0) },
-  // ── Tier 3 · Abyss ──────────────────────────────────────────────────────────
-  { id: "t3o01", tier: 3, bonusAffinity: "abyss",     eminence: 3, cost: c(3,3,0,3,3) },
-  { id: "t3o02", tier: 3, bonusAffinity: "abyss",     eminence: 4, cost: c(3,0,3,0,5) },
-  { id: "t3o03", tier: 3, bonusAffinity: "abyss",     eminence: 4, cost: c(5,3,0,0,3) },
-  { id: "t3o04", tier: 3, bonusAffinity: "abyss",     eminence: 5, cost: c(0,7,0,0,0) },
-  // ── Tier 3 · Radiance ───────────────────────────────────────────────────────
-  { id: "t3p01", tier: 3, bonusAffinity: "radiance",    eminence: 3, cost: c(0,3,3,3,3) },
-  { id: "t3p02", tier: 3, bonusAffinity: "radiance",    eminence: 4, cost: c(0,0,3,7,0) },
-  { id: "t3p03", tier: 3, bonusAffinity: "radiance",    eminence: 4, cost: c(3,3,0,3,3) },
-  { id: "t3p04", tier: 3, bonusAffinity: "radiance",    eminence: 5, cost: c(0,0,0,0,9) },
-];
+// Review the same costs, bonuses, Eminence, and artwork that the game uses.
+const CATALOG: readonly CardEntry[] = ARTIFACT_CATALOG;
 
 const ALL_TIERS = [1, 2, 3] as const;
 const ALL_AFFINITIES: AffinityKey[] = ['flare', 'continuum', 'verdance', 'abyss', 'radiance'];
@@ -202,14 +84,16 @@ function ArtPromptBox({ prompt }: { prompt: string }) {
   );
 }
 
-function DevDetails({ lore }: { lore: CardLoreEntry }) {
+function DevDetails({ lore, artifactId }: { lore: CardLoreEntry; artifactId: string }) {
   const [open, setOpen] = useState(false);
+  const tierReview = ARTIFACT_TIER_AUDIT_BY_ID[artifactId as ArtifactId];
 
   const toSentenceCase = (s: string) => s.charAt(0).toUpperCase() + s.slice(1);
 
   const rows: { label: string; value: string | undefined }[] = [
     { label: 'Artifact Form', value: lore.artifactForm },
     { label: 'Practical Capability', value: lore.practicalCapability },
+    { label: 'Why this tier', value: tierReview?.confinementTest },
     { label: 'Culture', value: lore.civLane },
   ];
   const hasDetails = rows.some(r => r.value) || lore.artPrompt;
@@ -273,7 +157,7 @@ export default function DevCardBrowser() {
   }).current();
 
   const [idx, setIdx] = useState(initialIdx);
-  const didMountRef = useRef(false);
+  const previousFilters = useRef({ tier: filterTier, affinity: filterAffinity });
 
   const { data: loreData } = useGetCardLoreCatalog();
 
@@ -290,7 +174,9 @@ export default function DevCardBrowser() {
   }, [filtered.length]);
 
   useEffect(() => {
-    if (!didMountRef.current) { didMountRef.current = true; return; }
+    // Effect replay and hot reload must preserve the Artifact selected by URL.
+    if (previousFilters.current.tier === filterTier && previousFilters.current.affinity === filterAffinity) return;
+    previousFilters.current = { tier: filterTier, affinity: filterAffinity };
     setIdx(0);
   }, [filterTier, filterAffinity]);
 
@@ -474,7 +360,7 @@ export default function DevCardBrowser() {
       }}>
         <div style={{ display: 'flex', gap: 8, flexWrap: 'wrap', alignItems: 'center' }}>
           <span style={{ fontFamily: 'monospace', fontSize: 11, color: '#4060c0', background: '#0a1030', padding: '2px 8px', borderRadius: 4 }}>
-            {card.id}.png
+            {card.id}.webp
           </span>
           <span style={{ fontFamily: 'system-ui', fontSize: 11, color: '#8090b0', background: '#10142a', padding: '2px 8px', borderRadius: 4 }}>
             {TIER_LABELS[card.tier]}
@@ -517,18 +403,16 @@ export default function DevCardBrowser() {
         </div>
 
         {lore ? (
-          <>
-            <div style={{ fontFamily: 'system-ui', fontSize: 12, color: '#7080a0', lineHeight: 1.6, fontStyle: 'italic' }}>
-              {lore.flavor}
-            </div>
-
-            <DevDetails lore={lore} />
-          </>
+          <div style={{ fontFamily: 'system-ui', fontSize: 12, color: '#7080a0', lineHeight: 1.6, fontStyle: 'italic' }}>
+            {lore.flavor}
+          </div>
         ) : (
           <div style={{ fontFamily: 'system-ui', fontSize: 12, color: '#404870', lineHeight: 1.6, fontStyle: 'italic' }}>
             Loading…
           </div>
         )}
+        <ArtifactEventFactsDetails artifactId={card.id} />
+        {lore && <DevDetails lore={lore} artifactId={card.id} />}
       </div>
     </div>
   );

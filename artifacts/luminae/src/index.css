@@ -60,9 +60,7 @@
 /* ── Automatic mobile runtime budget ───────────────────────────────────────
    Persistent board decoration is deliberately cheaper than controlled
    cinematics. The policy is driven by runtimePerformance.ts on <html>. */
-html[data-document-visible="false"] .game-shell *,
-html[data-document-visible="false"] .game-shell *::before,
-html[data-document-visible="false"] .game-shell *::after {
+html[data-document-visible="false"] .game-shell :is(*, *::before, *::after) {
   animation-play-state: paused !important;
 }
 
@@ -73,6 +71,10 @@ html[data-document-visible="false"] .game-shell *::after {
 .game-shell > [data-premium-cinematic] {
   isolation: isolate;
   contain: paint style;
+}
+
+.game-shell {
+  --game-bottom-nav-offset: calc(2.125rem + max(env(safe-area-inset-bottom), 8px));
 }
 
 .artifact-card-view[data-runtime-visible="false"],
@@ -185,6 +187,10 @@ html[data-document-visible="false"] .game-shell *::after {
    and Compact for a complete twelve-card Forge overview. Functional content
    owns intrinsic height; only decorative layers may be clipped. */
 @media (max-width: 680px) {
+  .game-shell[data-board-density="stacked"] {
+    --game-bottom-nav-offset: 58px;
+  }
+
   .game-shell[data-board-density="stacked"][data-forge-density="compact"] {
     grid-template-columns: minmax(0, 1fr) !important;
     display: grid !important;
@@ -496,6 +502,7 @@ html[data-document-visible="false"] .game-shell *::after {
    but is never forced merely because the device is in landscape. */
 @media (min-width: 681px) and (max-width: 940px) and (max-height: 520px) and (orientation: landscape) {
   .game-shell[data-board-density="stacked"] {
+    --game-bottom-nav-offset: 48px;
     display: grid !important;
     grid-template-columns: minmax(0, 1fr) !important;
     grid-template-rows: 44px minmax(0, 1fr) 48px !important;
@@ -868,21 +875,15 @@ button,
   position: absolute;
   inset: 0;
   background:
-    radial-gradient(ellipse 36% 54% at 50% 48%, rgba(0, 0, 0, 0.58), transparent 78%),
-    linear-gradient(180deg, rgba(0, 2, 5, 0.42), rgba(0, 1, 3, 0.8)),
-    radial-gradient(circle at 14% 34%, rgba(255, 255, 255, 0.16) 0 1px, transparent 1.5px),
-    radial-gradient(circle at 76% 20%, rgba(255, 255, 255, 0.12) 0 1px, transparent 1.5px),
-    radial-gradient(circle at 88% 62%, rgba(255, 255, 255, 0.1) 0 1px, transparent 1.5px),
-    var(--terminus-starfield-image) center 18% / cover no-repeat;
-  filter: grayscale(0.88) saturate(0.28) brightness(0.42) contrast(1.32);
-  opacity: 0.76;
+    linear-gradient(180deg, rgba(3, 6, 14, 0.24), rgba(2, 4, 11, 0.48)),
+    var(--terminus-starfield-image) center 45% / cover no-repeat;
   pointer-events: none;
   z-index: 0;
 }
 
 .board-terminus-stars {
   z-index: 1;
-  opacity: 0.44;
+  opacity: 0.65;
   mix-blend-mode: screen;
 }
 
@@ -1196,10 +1197,11 @@ button,
 .opponent-affinity-cell__modifiers {
   align-self: end;
   display: flex;
-  flex-direction: column;
+  gap: 2px;
   align-items: center;
-  justify-content: end;
+  justify-content: center;
   min-width: 0;
+  max-width: 100%;
   line-height: 1;
 }
 
@@ -1220,12 +1222,42 @@ button,
 }
 
 .opponent-affinity-cell__bonus {
-  color: #b8c9ff;
+  display: inline-flex;
+  flex-shrink: 0;
+  min-width: 18px;
+  min-height: 14px;
+  align-items: center;
+  justify-content: center;
+  padding: 2px 3px;
+  border: 1px solid color-mix(in srgb, var(--opponent-affinity-glow) 33%, transparent);
+  border-radius: 4px;
+  color: var(--opponent-affinity-glow);
+  background: color-mix(in srgb, var(--opponent-affinity-color) 10%, transparent);
+  font-size: 9px;
+  line-height: 1;
+  text-shadow: none;
+  box-shadow: 0 0 7px currentColor;
 }
 
 .opponent-affinity-cell__encrypted {
   align-self: end;
-  font-size: 7px;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  gap: 3px;
+  font-size: 8px;
+  font-variant-numeric: tabular-nums;
+}
+
+.opponent-affinity-cell__cipher {
+  display: inline-flex;
+  width: 12px;
+  height: 12px;
+  flex-shrink: 0;
+}
+
+.opponent-affinity-cell[data-has-content="false"] .opponent-affinity-cell__encrypted {
+  opacity: 0.5;
 }
 
 .board-forge-controls {
@@ -1674,7 +1706,7 @@ button,
   z-index: -2;
   background:
     conic-gradient(
-      from 0.625turn,
+      from 0.5turn,
       var(--affinity-held-color, #a8c5ff) 0turn var(--affinity-held-progress, 0turn),
       rgba(116, 132, 165, 0.22) var(--affinity-held-progress, 0turn) 1turn
     );
@@ -5139,15 +5171,124 @@ button,
   }
 }
 
+.turn-announcement {
+  overflow: hidden;
+  padding: max(16px, env(safe-area-inset-top)) max(16px, env(safe-area-inset-right))
+    max(16px, env(safe-area-inset-bottom)) max(16px, env(safe-area-inset-left));
+}
+
+.turn-announcement__backdrop {
+  pointer-events: none;
+  /* Keep the center dark enough for the announcement and its readouts. */
+  background: radial-gradient(
+    ellipse clamp(20rem, 30vw, 28rem) clamp(17rem, 40vh, 23rem) at 50% 50%,
+    rgba(14, 16, 29, 0.98) 0%,
+    rgba(14, 16, 29, 0.96) 25%,
+    rgba(14, 16, 29, 0.88) 44%,
+    rgba(14, 16, 29, 0.70) 62%,
+    rgba(14, 16, 29, 0.48) 82%,
+    rgba(14, 16, 29, 0.42) 100%
+  );
+}
+
+.turn-announcement__backdrop::before,
+.turn-announcement__backdrop::after {
+  content: '';
+  position: absolute;
+  inset: 0;
+  pointer-events: none;
+  mask-image: radial-gradient(ellipse at center, #0003 0%, #0007 24%, #000 62%);
+}
+
+/* Offset star layers give depth without particles, blur, or extra motion. */
+.turn-announcement__backdrop::before {
+  background-image:
+    radial-gradient(circle at 23px 31px, #d9e9ff8c 0 0.6px, transparent 1.2px),
+    radial-gradient(circle at 91px 117px, #e9e7ff70 0 0.7px, transparent 1.3px),
+    radial-gradient(circle at 47px 163px, #bed7ff66 0 0.5px, transparent 1.1px),
+    radial-gradient(circle at 153px 59px, #fff5df85 0 0.8px, transparent 1.5px),
+    radial-gradient(circle at 209px 193px, #dae9ff80 0 0.7px, transparent 1.3px),
+    radial-gradient(circle at 73px 227px, #d2ccff55 0 0.5px, transparent 1px);
+  background-size: 173px 229px, 277px 191px, 211px 307px, 389px 263px, 317px 353px, 251px 283px;
+}
+
+.turn-announcement__backdrop::after {
+  background:
+    radial-gradient(circle at 14% 23%, #f0f6ffcc 0 0.8px, #9fbbff40 1.4px, transparent 4px),
+    radial-gradient(circle at 83% 17%, #fff2d8b8 0 0.9px, #ebcda330 1.6px, transparent 4.5px),
+    radial-gradient(circle at 26% 79%, #e0eaffad 0 0.7px, #a4bbff30 1.4px, transparent 3.5px),
+    radial-gradient(circle at 91% 64%, #eee5ffb3 0 0.8px, #c5b3ff35 1.5px, transparent 4px),
+    radial-gradient(circle at 57% 9%, #eff7ffb3 0 0.7px, #accfff30 1.4px, transparent 3.5px);
+}
+
+.turn-announcement__panel {
+  position: relative;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 16px;
+  width: min(23rem, 100%);
+  max-height: 100%;
+  overflow-y: auto;
+  padding: 28px;
+  color: #f2eee5;
+  text-align: center;
+}
+
+.turn-announcement__avatar {
+  flex-shrink: 0;
+  width: 72px;
+  height: 72px;
+  overflow: hidden;
+  border: 2px solid;
+  border-radius: 50%;
+}
+
+.turn-announcement__title {
+  max-width: 100%;
+  color: #f2eee5;
+  font-family: var(--app-font-serif);
+  font-size: clamp(26px, 5vw, 32px);
+  font-weight: 700;
+  line-height: 1.25;
+  overflow-wrap: anywhere;
+  text-wrap: balance;
+}
+
+.turn-announcement__event-warning {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 10px;
+  width: 100%;
+  padding-top: 16px;
+}
+
+.turn-announcement__event-label {
+  color: #d4d9ed;
+  font-size: 13px;
+  font-weight: 500;
+  line-height: 1.5;
+}
+
+.turn-announcement__timer {
+  background: #222633;
+  color: #d4d9ed;
+}
+
+.turn-announcement__timer > div {
+  font-size: inherit;
+  animation: none;
+}
+
 .turn-announcement-eminence {
   display: inline-grid;
-  grid-template-columns: 32px minmax(0, 1fr);
+  grid-template-columns: 38px minmax(0, 1fr);
   align-items: center;
-  gap: 3px;
-  min-height: 32px;
+  gap: 8px;
+  min-height: 38px;
   padding: 0;
   color: #fff4c5;
-  filter: drop-shadow(0 2px 4px rgba(0, 0, 0, 0.78));
 }
 
 .turn-announcement-eminence__sigil,
@@ -5157,59 +5298,73 @@ button,
 
 .turn-announcement-eminence__sigil {
   display: grid;
-  width: 32px;
-  height: 32px;
+  width: 38px;
+  height: 38px;
   place-items: center;
-  filter:
-    drop-shadow(0 0 7px rgba(255, 222, 133, 0.38))
-    drop-shadow(0 2px 3px rgba(0, 0, 0, 0.88));
 }
 
 .turn-announcement-eminence__readout {
   display: grid;
   min-width: 0;
-  gap: 0;
+  gap: 3px;
   justify-items: start;
 }
 
 .turn-announcement-eminence__label {
-  color: rgba(244, 207, 120, 0.76);
+  color: #d8c594;
   font-family: var(--app-font-sans);
-  font-size: 7px;
-  font-weight: 800;
-  line-height: 1;
-  letter-spacing: 0;
+  font-size: 11px;
+  font-weight: 600;
+  line-height: 1.2;
+  letter-spacing: 0.06em;
   text-transform: uppercase;
-  text-shadow: 0 1px 2px #000;
 }
 
 .turn-announcement-eminence__progress {
   display: flex;
   align-items: baseline;
-  gap: 2px;
+  gap: 4px;
   color: #fff4c5;
   font-family: var(--app-font-serif);
   font-variant-numeric: tabular-nums;
-  line-height: 1;
-  text-shadow:
-    0 0 10px rgba(255, 222, 133, 0.56),
-    0 1px 2px #000;
+  line-height: 1.1;
 }
 
 .turn-announcement-eminence__progress strong {
-  font-size: 18px;
-  font-weight: 900;
+  font-size: 22px;
+  font-weight: 700;
 }
 
 .turn-announcement-eminence__progress span {
-  color: rgba(244, 207, 120, 0.72);
-  font-size: 8px;
-  font-weight: 800;
+  color: #d8c594;
+  font-size: 14px;
+  font-weight: 600;
 }
 
 .turn-announcement-eminence__sigil svg {
-  width: 32px;
-  height: 32px;
+  width: 38px;
+  height: 38px;
+}
+
+@media (max-height: 500px) {
+  .turn-announcement__panel {
+    gap: 10px;
+    padding: 16px 24px;
+  }
+
+  .turn-announcement__avatar {
+    width: 52px;
+    height: 52px;
+  }
+
+  .turn-announcement__title {
+    font-size: 26px;
+  }
+
+  .turn-announcement__event-warning {
+    padding-top: 10px;
+    gap: 8px;
+  }
 }
 
 @keyframes shimmer-in {
@@ -12454,16 +12609,6 @@ button,
   z-index: 4;
 }
 
-.game-shell[data-board-presentation="celestial"] .board-terminus-space {
-  opacity: 0.78 !important;
-  background:
-    radial-gradient(ellipse 38% 62% at 50% 50%, rgba(0, 0, 0, 0.66), transparent 82%),
-    linear-gradient(180deg, rgba(0, 3, 7, 0.38), rgba(0, 1, 3, 0.82)),
-    var(--terminus-starfield-image) center 18% / cover no-repeat !important;
-  filter: grayscale(0.92) saturate(0.22) brightness(0.4) contrast(1.38);
-  transform: scale(1.035);
-}
-
 .game-shell[data-board-presentation="celestial"] .board-terminus-edge,
 .game-shell[data-board-presentation="celestial"] .board-terminus-threshold,
 .game-shell[data-board-presentation="celestial"] .board-terminus-compass-backdrop {
@@ -13553,118 +13698,24 @@ button,
 }
 
 .game-shell[data-board-presentation="celestial"] .board-opponents {
-  border: 1px solid rgba(115, 130, 137, 0.42) !important;
+  border: 0 !important;
   border-radius: 0 !important;
-  background: linear-gradient(180deg, rgba(13, 22, 26, 0.94), rgba(3, 6, 8, 0.98)) !important;
-  box-shadow: inset 0 0 0 3px rgba(0, 0, 0, 0.82) !important;
-  clip-path: polygon(10px 0, calc(100% - 10px) 0, 100% 10px, 100% 100%, 0 100%, 0 10px);
-  min-height: 42px !important;
+  background: transparent !important;
+  box-shadow: none !important;
+  clip-path: none;
+  min-height: 0 !important;
   padding: 0 !important;
-  overflow: hidden;
+  overflow: visible;
 }
 
-.game-shell[data-board-presentation="celestial"] .board-opponents-toggle {
-  display: grid;
-  grid-template-columns: auto minmax(0, 1fr) 24px;
-  align-items: center;
-  gap: 8px;
-  width: 100%;
-  min-height: 42px;
-  padding: 6px 10px;
-  color: #dbe2e4;
-  background: linear-gradient(180deg, rgba(20, 32, 37, 0.72), rgba(5, 9, 11, 0.9));
-}
-
-.game-shell[data-board-presentation="celestial"] .board-opponents-toggle:focus-visible {
-  outline: 2px solid rgba(108, 196, 239, 0.78);
-  outline-offset: -3px;
-}
-
-.game-shell[data-board-presentation="celestial"] .board-opponents-toggle__title {
-  font-size: 9px;
-  font-weight: 800;
-  line-height: 1;
-  letter-spacing: 0;
-  text-transform: uppercase;
-  color: #d7b87c;
-}
-
-.game-shell[data-board-presentation="celestial"] .board-opponents-toggle__summary {
-  display: flex;
-  min-width: 0;
-  align-items: center;
-  justify-content: center;
-  gap: 7px;
-}
-
-.game-shell[data-board-presentation="celestial"] .board-opponents-toggle__avatars {
-  display: flex;
-  align-items: center;
-  flex: 0 0 auto;
-}
-
-.game-shell[data-board-presentation="celestial"] .board-opponents-toggle__avatar {
-  display: inline-flex;
-  width: 22px;
-  height: 22px;
-  align-items: center;
-  justify-content: center;
-  border: 1px solid rgba(133, 149, 156, 0.5);
-  border-radius: 50%;
-  background: #05090b;
-  box-shadow: 0 0 0 2px rgba(3, 6, 8, 0.92);
-}
-
-.game-shell[data-board-presentation="celestial"] .board-opponents-toggle__avatar + .board-opponents-toggle__avatar {
-  margin-left: -4px;
-}
-
-.game-shell[data-board-presentation="celestial"] .board-opponents-toggle__avatar--active {
-  border-color: rgba(76, 190, 239, 0.92);
-  box-shadow:
-    0 0 0 2px rgba(3, 6, 8, 0.92),
-    0 0 8px rgba(76, 190, 239, 0.65);
-}
-
-.game-shell[data-board-presentation="celestial"] .board-opponents-toggle__status {
-  min-width: 0;
-  overflow: hidden;
+.game-shell[data-board-presentation="celestial"] .board-opponents-title {
+  margin: 0 4px 8px;
+  color: #8d9cac;
   font-size: 10px;
-  font-weight: 650;
-  line-height: 1;
-  letter-spacing: 0;
-  text-overflow: ellipsis;
-  white-space: nowrap;
-  color: rgba(219, 226, 228, 0.78);
-}
-
-.game-shell[data-board-presentation="celestial"] .board-opponents-toggle__chevron {
-  width: 16px;
-  height: 16px;
-  justify-self: end;
-  color: #d7b87c;
-  transition: transform 180ms ease;
-}
-
-.game-shell[data-board-presentation="celestial"] .board-opponents[data-board-opponents-expanded="true"] .board-opponents-toggle__chevron {
-  transform: rotate(180deg);
-}
-
-.game-shell[data-board-presentation="celestial"] .board-opponents-body {
-  padding: 8px 8px 12px;
-  border-top: 1px solid rgba(181, 139, 76, 0.24);
-}
-
-@media (max-width: 360px) {
-  .game-shell[data-board-presentation="celestial"] .board-opponents-toggle {
-    grid-template-columns: auto minmax(0, 1fr) 20px;
-    gap: 5px;
-    padding-inline: 8px;
-  }
-
-  .game-shell[data-board-presentation="celestial"] .board-opponents-toggle__summary {
-    gap: 5px;
-  }
+  font-weight: 600;
+  line-height: 1.4;
+  letter-spacing: 0.12em;
+  text-transform: uppercase;
 }
 
 @media (max-width: 680px) {
@@ -16318,11 +16369,28 @@ button,
   }
 }
 
-/* The Board opponent module is a disclosure rail, not a permanently tall board band. */
-.game-shell[data-board-presentation="celestial"][data-board-density] .board-opponents {
-  min-height: 42px !important;
+/* Keep opponent summaries visible; each row opens its own affinity details. */
+.game-shell[data-board-presentation="celestial"][data-board-density][data-board-layout] .board-opponents {
+  height: max-content !important;
+  min-height: 0 !important;
+  max-height: none !important;
   padding: 0 !important;
-  overflow: hidden !important;
+  overflow: visible !important;
+}
+
+.game-shell[data-board-presentation="celestial"][data-board-density][data-board-layout] .board-opponents-body {
+  display: block !important;
+  padding: 0 !important;
+  overflow: visible !important;
+}
+
+.game-shell[data-board-presentation="celestial"][data-board-density][data-board-layout] .board-opponents-list {
+  display: grid !important;
+  grid-template-columns: minmax(0, 1fr);
+  gap: 8px !important;
+  width: 100%;
+  min-width: 0;
+  padding: 0 !important;
 }
 
 /* The Archive is a Forge control. Keep it in a pinned rail while only the
@@ -16467,20 +16535,6 @@ button,
   display: none;
 }
 
-/* Full Forge preserves inspectable card size on phones. These chevrons make
-   its horizontal shelf behavior discoverable without adding another control. */
-.game-shell[data-board-presentation="celestial"] .board-forge-scroll-cue {
-  width: 16px;
-  height: 16px;
-  flex: 0 0 16px;
-  color: rgba(227, 190, 111, 0.9);
-  filter: drop-shadow(0 1px 3px rgba(0, 0, 0, 0.9));
-}
-
-.game-shell[data-board-presentation="celestial"] .board-forge--compact .board-forge-scroll-cue {
-  display: none;
-}
-
 @media (max-width: 360px) {
   .game-shell[data-board-presentation="celestial"] .board-forge-shelf-content {
     --forge-archive-rail-width: 48px;
@@ -16519,15 +16573,19 @@ button,
   z-index: 24 !important;
 }
 
-.game-shell[data-board-presentation="celestial"] .board-opponents-body > div > .rounded-2xl {
-  padding: 8px !important;
-  border-radius: 8px !important;
+.game-shell[data-board-presentation="celestial"] .board-opponent-card {
+  min-width: 0;
+  padding: 12px !important;
+  border-radius: 16px !important;
+  background: rgba(13, 15, 28, 0.9);
 }
 
 .game-shell[data-board-presentation="celestial"] .opponent-card-header {
   display: grid;
-  grid-template-columns: minmax(0, 1fr);
-  gap: 6px;
+  grid-template-columns: minmax(0, 1fr) auto;
+  min-height: 34px;
+  align-items: center;
+  gap: 10px;
   margin-bottom: 0;
 }
 
@@ -16543,30 +16601,27 @@ button,
   min-width: 0;
   flex: 1 1 auto;
   flex-direction: column;
-  line-height: 1.1;
+  gap: 2px;
+  line-height: 1.3;
 }
 
 .game-shell[data-board-presentation="celestial"] .opponent-card-identity__civ {
-  font-size: 9px;
-  font-weight: 500;
-  letter-spacing: 0;
+  font-size: 10px;
+  font-weight: 400;
+  letter-spacing: 0.025em;
 }
 
 .game-shell[data-board-presentation="celestial"] .opponent-card-metrics {
-  display: grid;
-  grid-template-columns: minmax(0, 1fr) auto 28px;
+  display: flex;
   min-width: 0;
   align-items: center;
-  gap: 7px;
-  padding-top: 5px;
-  border-top: 1px solid rgba(122, 145, 158, 0.16);
+  gap: 8px;
 }
 
 .game-shell[data-board-presentation="celestial"] .opponent-stat-strip {
   display: flex;
   min-width: 0;
   align-items: center;
-  justify-content: space-between;
   gap: 8px;
 }
 
@@ -16578,7 +16633,7 @@ button,
 }
 
 .game-shell[data-board-presentation="celestial"] .opponent-stat-value {
-  font-size: 13px !important;
+  font-size: 14px !important;
 }
 
 .game-shell[data-board-presentation="celestial"] .opponent-card-eminence {
@@ -16587,24 +16642,34 @@ button,
   gap: 3px;
   min-width: 24px;
   justify-content: center;
-  color: #f4ead8;
+  color: #fff;
   font-family: var(--app-font-serif);
-  font-size: 17px;
+  font-size: 18px;
   font-weight: 900;
   line-height: 1;
 }
 
 .game-shell[data-board-presentation="celestial"] .opponent-card-details {
   display: inline-flex;
-  width: 28px;
-  height: 26px;
+  flex: 0 0 auto;
+  min-width: 48px;
+  height: 28px;
+  gap: 4px;
+  padding: 0 6px;
   align-items: center;
   justify-content: center;
-  border: 1px solid rgba(117, 168, 225, 0.34);
-  border-radius: 5px;
-  color: #a8c5ff;
-  background: rgba(34, 63, 103, 0.28);
-  transition: background 160ms ease, color 160ms ease, transform 160ms ease;
+  border: 1px solid rgba(48, 139, 238, 0.35);
+  border-radius: 999px;
+  color: #399dff;
+  background: rgba(12, 79, 145, 0.18);
+  font-size: 10px;
+  font-weight: 600;
+  transition: background 160ms ease, color 160ms ease;
+}
+
+.game-shell[data-board-presentation="celestial"] .opponent-card-details svg {
+  width: 11px;
+  height: 11px;
 }
 
 .game-shell[data-board-presentation="celestial"] .opponent-card-details:hover,
@@ -16618,13 +16683,13 @@ button,
   background: rgba(65, 111, 171, 0.58);
 }
 
-.game-shell[data-board-presentation="celestial"] .opponent-card-details--open svg {
-  transform: rotate(180deg);
-}
-
 @media (max-width: 360px) {
-  .game-shell[data-board-presentation="celestial"] .opponent-card-identity__civ {
-    display: none;
+  .game-shell[data-board-presentation="celestial"] .board-opponent-card {
+    padding: 8px !important;
+  }
+
+  .game-shell[data-board-presentation="celestial"] .opponent-card-header {
+    gap: 6px;
   }
 
   .game-shell[data-board-presentation="celestial"] .opponent-card-metrics {
@@ -16636,32 +16701,36 @@ button,
   }
 }
 
-.affinity-well-dock-toggle {
-  display: none;
-}
-
 .affinity-well-compact-strip {
   display: none;
 }
 
-/* On short phones the Well becomes a persistent instrument dock. Its complete
-   control surface remains one tap away and opens automatically for active work. */
 @media (max-width: 680px) and (max-height: 650px) {
+  .game-shell[data-board-density][data-board-layout] > .affinity-well-panel[data-shared-affinity-well] .affinity-well-header {
+    grid-template-columns: minmax(0, 1fr) auto auto !important;
+    grid-template-areas: "title player status" !important;
+  }
+
+  .game-shell[data-board-density][data-board-layout] > .affinity-well-panel[data-shared-affinity-well] .affinity-well-player > span {
+    display: none !important;
+  }
+}
+
+/* Every phone can switch between the full Well and a playable compact dock. */
+@media (max-width: 680px) {
   .game-shell[data-board-density][data-board-layout]:has(> .affinity-well-panel[data-well-expanded="false"]) {
     grid-template-rows: 48px minmax(0, 1fr) 58px 58px !important;
   }
 
   .game-shell[data-board-density][data-board-layout] > .affinity-well-panel[data-shared-affinity-well][data-well-expanded="false"] {
-    grid-template-rows: 58px 0 0 !important;
+    --compact-well-actions-width: 57px;
+    grid-template-rows: 0 58px 0 !important;
     height: 58px !important;
     min-height: 58px !important;
     max-height: 58px !important;
-    overflow: hidden !important;
-  }
-
-  .game-shell[data-board-density][data-board-layout] > .affinity-well-panel[data-shared-affinity-well] .affinity-well-header {
-    grid-template-columns: minmax(0, 1fr) auto auto !important;
-    grid-template-areas: "title player status" !important;
+    overflow: visible !important;
+    contain: style;
+    transition-property: border-color, box-shadow;
   }
 
   .game-shell[data-board-density][data-board-layout] > .affinity-well-panel[data-shared-affinity-well][data-well-expanded="false"] .affinity-well-header {
@@ -16671,36 +16740,9 @@ button,
     max-height: 58px !important;
   }
 
-  .game-shell[data-board-density][data-board-layout] > .affinity-well-panel[data-shared-affinity-well] .affinity-well-player > span {
-    display: none !important;
-  }
-
   .game-shell[data-board-density][data-board-layout] > .affinity-well-panel[data-shared-affinity-well] .affinity-well-status {
     align-items: center;
     gap: 3px;
-  }
-
-  .game-shell[data-board-density][data-board-layout] > .affinity-well-panel[data-shared-affinity-well] .affinity-well-dock-toggle {
-    display: inline-flex;
-    width: 28px;
-    height: 28px;
-    flex: 0 0 28px;
-    align-items: center;
-    justify-content: center;
-    border: 1px solid rgba(168, 197, 255, 0.32);
-    border-radius: 6px;
-    color: rgba(198, 216, 255, 0.9);
-    background: rgba(34, 50, 88, 0.44);
-  }
-
-  .game-shell[data-board-density][data-board-layout] > .affinity-well-panel[data-shared-affinity-well] .affinity-well-dock-toggle svg {
-    width: 16px;
-    height: 16px;
-  }
-
-  .game-shell[data-board-density][data-board-layout] > .affinity-well-panel[data-shared-affinity-well] .affinity-well-dock-toggle:disabled {
-    cursor: default;
-    opacity: 0.42;
   }
 
   .game-shell[data-board-density][data-board-layout] > .affinity-well-panel[data-shared-affinity-well][data-well-expanded="false"] > :not(.affinity-well-compact-strip) {
@@ -16709,7 +16751,8 @@ button,
 
   .game-shell[data-board-density][data-board-layout] > .affinity-well-panel[data-shared-affinity-well][data-well-expanded="false"] > .affinity-well-compact-strip {
     display: grid !important;
-    grid-template-columns: 34px minmax(0, 1fr) 44px;
+    grid-row: 2;
+    grid-template-columns: 42px minmax(0, 1fr) var(--compact-well-actions-width);
     align-items: center;
     gap: 3px;
     width: 100%;
@@ -16723,13 +16766,11 @@ button,
   .affinity-well-compact-held {
     position: relative;
     display: grid;
-    width: 34px;
+    width: 42px;
     height: 48px;
     place-items: center;
-  }
-
-  .affinity-well-compact-held .affinity-well-symbol {
-    transform: translateX(3px);
+    padding: 0;
+    border-radius: 5px;
   }
 
   .affinity-well-compact-avatar {
@@ -16748,6 +16789,34 @@ button,
     box-shadow: 0 0 7px rgba(100, 149, 237, 0.32);
   }
 
+  .affinity-well-compact-clear {
+    position: absolute;
+    inset: -3px -1px 0;
+    z-index: 4;
+    border-radius: 5px;
+    touch-action: manipulation;
+  }
+
+  .affinity-well-compact-clear-badge {
+    position: absolute;
+    top: 0;
+    left: 0;
+    display: grid;
+    width: 18px;
+    height: 18px;
+    place-items: center;
+    border: 1px solid rgba(168, 197, 255, 0.4);
+    border-radius: 50%;
+    color: #eef4ff;
+    background: #080c19;
+    box-shadow: 0 1px 4px #000;
+    pointer-events: none;
+  }
+
+  .affinity-well-compact-clear:active .affinity-well-compact-clear-badge {
+    background: #26364e;
+  }
+
   .affinity-well-compact-overview {
     position: relative;
     display: grid;
@@ -16755,7 +16824,7 @@ button,
     width: 100%;
     min-width: 0;
     height: 48px;
-    padding: 3px 2px 2px;
+    padding: 1px 2px;
     overflow: hidden;
     border: 1px solid rgba(137, 164, 220, 0.32);
     border-radius: 5px;
@@ -16767,33 +16836,48 @@ button,
     touch-action: manipulation;
   }
 
-  .affinity-well-compact-overview:focus-visible {
+  .affinity-well-compact-strip button:focus-visible {
     outline: 2px solid rgba(129, 170, 255, 0.9);
     outline-offset: -2px;
-  }
-
-  .affinity-well-compact-chevron {
-    position: absolute;
-    top: -2px;
-    left: 50%;
-    z-index: 4;
-    width: 12px;
-    height: 12px;
-    transform: translateX(-50%);
-    color: rgba(190, 211, 255, 0.72);
-    filter: drop-shadow(0 0 4px rgba(106, 148, 255, 0.46));
-    pointer-events: none;
   }
 
   .affinity-well-compact-affinity {
     position: relative;
     display: grid;
     min-width: 0;
-    height: 41px;
+    height: 44px;
     grid-template-rows: 22px 14px;
     place-items: center;
     padding-top: 2px;
     border-right: 1px solid color-mix(in srgb, var(--compact-affinity, #a8c5ff) 18%, transparent);
+    touch-action: manipulation;
+  }
+
+  .affinity-well-compact-affinity:disabled {
+    opacity: 0.55;
+    cursor: default;
+  }
+
+  .affinity-well-compact-affinity[data-selected="true"] {
+    background: color-mix(in srgb, var(--compact-affinity) 24%, transparent);
+    box-shadow: inset 0 0 0 1px var(--compact-affinity-glow);
+  }
+
+  .affinity-well-compact-affinity:enabled:active {
+    background: color-mix(in srgb, var(--compact-affinity) 32%, transparent);
+  }
+
+  .affinity-well-compact-pending {
+    position: absolute;
+    left: 1px;
+    top: 2px;
+    padding: 1px 2px;
+    border-radius: 3px;
+    color: #fff;
+    background: #26364e;
+    font-size: 9px;
+    font-weight: 700;
+    line-height: 1;
   }
 
   .affinity-well-compact-affinity:last-of-type {
@@ -16858,33 +16942,122 @@ button,
   }
 
   .affinity-well-compact-eminence {
-    position: relative;
+    position: absolute;
+    top: -3px;
+    right: -1px;
+    z-index: 5;
     display: grid;
-    width: 44px;
-    height: 48px;
-    grid-template-columns: 20px minmax(0, 1fr);
+    min-width: 20px;
+    height: 20px;
+    grid-template-columns: 1fr;
     place-items: center;
     padding: 2px;
     border: 1px solid rgba(223, 184, 91, 0.34);
-    border-radius: 5px;
+    border-radius: 7px;
     color: #fff1bd;
-    background: linear-gradient(180deg, rgba(52, 35, 11, 0.56), rgba(10, 8, 14, 0.94));
-    box-shadow: inset 0 1px 0 rgba(255, 242, 193, 0.08);
+    background: linear-gradient(180deg, #302516, #0a080e);
+    box-shadow: 0 1px 4px #000, inset 0 1px 0 rgba(255, 242, 193, 0.08);
     font-family: var(--app-font-serif);
-    font-size: 12px;
+    font-size: 10px;
     font-weight: 900;
+    font-variant-numeric: tabular-nums;
     line-height: 1;
     touch-action: manipulation;
   }
 
   .affinity-well-compact-eminence-impact {
     position: absolute;
-    top: 1px;
+    top: 100%;
     right: 1px;
     color: #f9d77a;
     font-size: 7px;
     text-shadow: 0 0 5px rgba(240, 186, 69, 0.72);
   }
+
+  .affinity-well-compact-harness-idle {
+    grid-column: 3;
+    justify-self: end;
+    width: 57px;
+    height: 48px;
+    border: 1px solid rgba(168, 197, 255, 0.18);
+    border-radius: 6px;
+    background: rgba(8, 12, 25, 0.7);
+    color: rgba(226, 236, 255, 0.35);
+    font-size: 10px;
+    font-weight: 700;
+  }
+
+  /* Harness stays on the right; cancellation belongs to the Well symbol. */
+  .game-shell[data-board-density][data-board-layout] > .affinity-well-panel[data-shared-affinity-well][data-well-expanded="false"][data-harness-active="true"] > .affinity-well-action-zone {
+    display: block !important;
+    position: absolute !important;
+    inset: 5px 4px auto auto;
+    width: var(--compact-well-actions-width) !important;
+    height: 48px !important;
+    max-height: 48px !important;
+    min-height: 0 !important;
+    margin: 0 !important;
+    overflow: visible !important;
+    border: 0 !important;
+    background: none;
+    box-shadow: none !important;
+    pointer-events: none;
+  }
+
+  .affinity-well-panel[data-well-expanded="false"] .affinity-well-action-zone > div:first-child {
+    position: relative !important;
+    inset: auto !important;
+    width: 100%;
+    pointer-events: none !important;
+  }
+
+  .affinity-well-panel[data-well-expanded="false"] .affinity-well-harness-surface {
+    padding: 0;
+    border: 0;
+  }
+
+  .affinity-well-panel[data-well-expanded="false"] .affinity-well-harness-controls {
+    justify-content: flex-end;
+  }
+
+  .affinity-well-panel[data-well-expanded="false"] .affinity-well-harness-summary,
+  .affinity-well-panel[data-well-expanded="false"] .affinity-well-harness-hint,
+  .affinity-well-panel[data-well-expanded="false"] .affinity-well-harness-undo,
+  .affinity-well-panel[data-well-expanded="false"] .affinity-well-harness-clear,
+  .affinity-well-panel[data-well-expanded="false"] .affinity-well-harness-undo-hint {
+    display: none;
+  }
+
+  .affinity-well-panel[data-well-expanded="false"] .affinity-well-harness-actions {
+    display: grid;
+    grid-template-columns: minmax(0, 1fr);
+    width: 100%;
+  }
+
+  .affinity-well-panel[data-well-expanded="false"] .affinity-well-harness-actions > button {
+    min-width: 0;
+    width: 100%;
+    height: 48px;
+    padding: 0;
+    border-radius: 6px;
+    background: #080c19 !important;
+    pointer-events: auto;
+  }
+
+  .affinity-well-panel[data-well-expanded="false"] .affinity-well-harness-submit > span {
+    font-size: 10px;
+  }
+
+  .affinity-well-panel[data-well-expanded="false"] .affinity-well-harness-plan > span > span {
+    flex-direction: column;
+    gap: 4px;
+  }
+
+  .affinity-well-panel[data-well-expanded="false"] .affinity-well-harness-actions > button:focus-visible {
+    outline: 2px solid rgba(129, 170, 255, 0.9);
+    outline-offset: -2px;
+  }
+
 }
 
 @media (max-width: 680px) and (max-height: 800px) {
@@ -17510,8 +17683,7 @@ button,
   }
 
   .game-shell[data-board-presentation][data-board-viewport="phone-landscape"][data-board-density="cockpit"][data-board-layout][data-forge-density] .board-forge--compact .board-forge-tier-separator,
-  .game-shell[data-board-presentation][data-board-viewport="phone-landscape"][data-board-density="cockpit"][data-board-layout][data-forge-density] .board-forge--compact .board-forge-tier-header .divider-brass,
-  .game-shell[data-board-presentation][data-board-viewport="phone-landscape"][data-board-density="cockpit"][data-board-layout][data-forge-density] .board-forge--compact .board-forge-scroll-cue {
+  .game-shell[data-board-presentation][data-board-viewport="phone-landscape"][data-board-density="cockpit"][data-board-layout][data-forge-density] .board-forge--compact .board-forge-tier-header .divider-brass {
     display: none !important;
   }
 

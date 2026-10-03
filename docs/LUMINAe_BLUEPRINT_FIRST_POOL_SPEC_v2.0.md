@@ -6,13 +6,25 @@
 This document supersedes the v0.x first-pool notes and the first-release rules
 in `LUMINAe_BLUEPRINT_VERTICAL_SLICE_v1.0.md` where they conflict.
 
+The Artifact–Blueprint distinction revised on 2026-09-28 permits complete
+stellar and galactic works as Artifacts. A Blueprint supplies specialized
+synthesis knowledge; its Manifested Project performs a distinct operation
+through the indispensable contributions of its exact ingredients. Ingredients
+may contribute working infrastructure, services, or outputs rather than small
+physical components. This distinction leaves all four first-pool recipes,
+costs, effects, and lifecycle rules below unchanged.
+
 ## System Rules
 
 - A normal player has two owner-private Blueprint slots. Lumii receives three
   scenario-authored slots in the first clearance challenge.
-- Exact forged components satisfy recipes automatically. Components remain in
-  the tableau, keep their bonuses, may satisfy multiple recipes, and are not
+- Exact forged, operational components satisfy recipes automatically. Components remain in
+  the tableau, keep their Affinity bonuses even when damaged, may satisfy multiple recipes while operational, and are not
   consumed by manifestation unless a later Project rule explicitly moves them.
+- Damaged components retain recorded mastery but cannot complete a new Project
+  until repaired. End-of-turn repair rechecks readiness. Damage to a component
+  does not dismantle or remanifest an already manifested Project; its own public
+  device state continues to govern its behavior.
 - Before manifestation, identity, recipe, progress, targets, recovery cards,
   and cosmetic variant remain owner-private.
 - After manifestation, Project name, owner, public rule, operational state,
@@ -23,7 +35,7 @@ in `LUMINAe_BLUEPRINT_VERTICAL_SLICE_v1.0.md` where they conflict.
 
 ## Antimatter Detonator
 
-Form and scale: Stellar Device.
+Form and theater: Stellar Device. Canonical physical manifestation: satellite-scale.
 
 | Stage | Artifact |
 |---|---|

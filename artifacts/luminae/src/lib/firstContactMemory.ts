@@ -17,8 +17,6 @@ export function getLocalFirstContactStance(): ArchitectFirstContactStance | null
 export function rememberLocalFirstContactStance(
   stance: ArchitectFirstContactStance,
 ): ArchitectFirstContactStance {
-  const existing = getLocalFirstContactStance();
-  if (existing) return existing;
   try {
     localStorage.setItem(FIRST_CONTACT_STANCE_KEY, stance);
   } catch {
@@ -34,5 +32,13 @@ export function syncLocalFirstContactStance(
     localStorage.setItem(FIRST_CONTACT_STANCE_KEY, stance);
   } catch {
     // Preference synchronization remains best-effort locally.
+  }
+}
+
+export function clearLocalFirstContactStance(): void {
+  try {
+    localStorage.removeItem(FIRST_CONTACT_STANCE_KEY);
+  } catch {
+    // Local account isolation remains best-effort in constrained storage.
   }
 }

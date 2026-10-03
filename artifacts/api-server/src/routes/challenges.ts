@@ -15,6 +15,7 @@ import { randomBytes } from "crypto";
 import { z } from "zod";
 import { DEFAULT_VICTORY_REQUIREMENT } from "@workspace/game-types";
 import { pickUniqueAvatar } from "../lib/avatarAssignment";
+import { getRoomEventFrequency } from "../lib/roomEventSettings";
 
 const router: IRouter = Router();
 
@@ -72,6 +73,7 @@ router.post("/challenges", accountAuth, async (req: Request, res): Promise<void>
       .default(DEFAULT_VICTORY_REQUIREMENT),
     cinematicMode: z.union([z.literal("standard"), z.literal("epic")]).optional().default("standard"),
     turnTimerSeconds: z.number().int().nullable().optional(),
+    eventFrequency: z.enum(["off", "standard", "frequent"]).default("standard"),
   }).safeParse(req.body);
 
   if (!parsed.success) {
@@ -79,7 +81,7 @@ router.post("/challenges", accountAuth, async (req: Request, res): Promise<void>
     return;
   }
 
-  const { challengedUsername, maxPlayers, victoryRequirement, cinematicMode, turnTimerSeconds } = parsed.data;
+  const { challengedUsername, maxPlayers, victoryRequirement, cinematicMode, turnTimerSeconds, eventFrequency } = parsed.data;
 
   if (challengedUsername.toLowerCase() === account.username.toLowerCase()) {
     res.status(400).json({ error: "Cannot challenge yourself" });
@@ -146,6 +148,7 @@ router.post("/challenges", accountAuth, async (req: Request, res): Promise<void>
       maxPlayers,
       victoryRequirement,
       cinematicMode,
+      eventFrequency,
       gameMode: victoryRequirement === DEFAULT_VICTORY_REQUIREMENT ? "standard" : "custom",
       status: "lobby",
       turnTimerSeconds: turnTimerSeconds ?? null,
@@ -519,6 +522,7 @@ router.patch("/challenges/:id", accountAuth, async (req: Request, res): Promise<
       maxPlayers: row.room.maxPlayers,
       victoryRequirement: row.room.victoryRequirement,
       cinematicMode: row.room.cinematicMode,
+      eventFrequency: getRoomEventFrequency(row.room),
       turnTimerSeconds: row.room.turnTimerSeconds,
     },
     player: {

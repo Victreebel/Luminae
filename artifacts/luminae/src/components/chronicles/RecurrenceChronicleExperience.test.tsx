@@ -2,6 +2,7 @@ import { fireEvent, render, screen } from '@testing-library/react';
 import { describe, expect, it, vi } from 'vitest';
 import type { RecurrenceScenarioState } from '@workspace/game-types';
 import { RecurrenceChronicleExperience } from './RecurrenceChronicleExperience';
+import { gameAudio } from '@/lib/audio';
 
 vi.mock('@/lib/audio', () => ({ gameAudio: { playWhiteReturnSignal: vi.fn() } }));
 
@@ -20,6 +21,22 @@ function advanceSetup() {
 }
 
 describe('RecurrenceChronicleExperience', () => {
+  it('waits to show and sound the arrival while another presentation is active', () => {
+    vi.mocked(gameAudio.playWhiteReturnSignal).mockClear();
+    const props = {
+      state: recurrenceState({ phase: 'playing' }), gameStatus: 'playing' as const,
+      localPlayerId: 'architect', disableFocusTrap: true, forceArrival: true, onChoose: vi.fn(),
+    };
+    const { rerender } = render(<RecurrenceChronicleExperience {...props} presentationEnabled={false} />);
+    expect(screen.queryByRole('dialog')).not.toBeInTheDocument();
+    expect(gameAudio.playWhiteReturnSignal).not.toHaveBeenCalled();
+    rerender(<RecurrenceChronicleExperience {...props} presentationEnabled />);
+    expect(screen.getByRole('dialog', { name: 'Arrival at Eido' })).toBeInTheDocument();
+    expect(gameAudio.playWhiteReturnSignal).toHaveBeenCalledWith('presence');
+    rerender(<RecurrenceChronicleExperience {...props} presentationEnabled={false} />);
+    expect(screen.getByRole('dialog', { name: 'Arrival at Eido' })).toBeInTheDocument();
+  });
+
   it('presents Lumii sentence by sentence before the three custody choices', () => {
     render(<RecurrenceChronicleExperience state={recurrenceState()} gameStatus="playing" localPlayerId="architect" disableFocusTrap onChoose={vi.fn()} />);
     expect(screen.getByText('The Deep Index is genuine.')).toBeInTheDocument();

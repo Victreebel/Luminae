@@ -1,0 +1,42 @@
+{
+  "version": "planetary-foundations-v1",
+  "generator": "built-in image_gen",
+  "date": "2026-09-29",
+  "entries": [
+    {
+      "id": "t1r09",
+      "prompt": "Generate one isolated transparent-background science-fiction city-building sprite for LUMINAe. Full structure visible, centered square canvas, 10% empty margin on all sides. Orthographic three-quarter isometric view looking down about 30 degrees. Match detailed premium realistic game-building render, dark gunmetal mechanics, precise architectural ribs, restrained luminous Affinity accents, crisp readable silhouette at small size. One practical installation with a narrow low grounded foundation; NO floating coin, no text, letters, logos, labels, borders, people, horizon, sky or scenery. Genuine alpha transparency outside the object; no baked checkerboard, no ground shadow beyond footprint. Full building from base to highest antenna. Emberway Beacons: compact tall dark-metal navigational light tower with one dominant forward-facing red-amber Fresnel lens, three staggered protective shutter fins, weather sensor arms, a shorter secondary aligned beacon on the same narrow machinery foundation. Real freight-route signalling technology, warm copper pipes and dark steel, restrained red lights.",
+      "sourceGeneratedPath": "/Users/chaoscalligraphy/.codex/generated_images/01a0e5d5-4e9f-7792-8c15-a2504c2c9b0c/exec-2fa64324-6782-4245-8b68-522f580212f7.png",
+      "source": "t1r09.png",
+      "runtime": "t1r09.webp"
+    },
+    {
+      "id": "t1s09",
+      "prompt": "Generate one isolated transparent-background science-fiction city-building sprite for LUMINAe. Full structure visible, centered square canvas, 10% empty margin on all sides. Orthographic three-quarter isometric view looking down about 30 degrees. Match detailed premium realistic game-building render, dark gunmetal mechanics, precise architectural ribs, restrained luminous Affinity accents, crisp readable silhouette at small size. One practical installation with a narrow low grounded foundation; NO floating coin, no text, letters, logos, labels, borders, people, horizon, sky or scenery. Genuine alpha transparency outside the object; no baked checkerboard, no ground shadow beyond footprint. Full building from base to highest antenna. Landfall Loom: dark cobalt-blue planetary landing-control installation. Three articulated radar and optical tracking vanes surround a solid tilted concave blue plotting dish with fine restrained route-light traces. A compact landing-operations building with mechanical tracking gimbal on its roof and external cabling; no floating hologram, no portal.",
+      "sourceGeneratedPath": "/Users/chaoscalligraphy/.codex/generated_images/01a0e5d5-4e9f-7792-8c15-a2504c2c9b0c/exec-cbd90410-987d-4e8b-8706-ddcad8fc38b2.png",
+      "source": "t1s09.png",
+      "runtime": "t1s09.webp"
+    },
+    {
+      "id": "t1e09",
+      "prompt": "Generate one isolated transparent-background science-fiction city-building sprite for LUMINAe. Full structure visible, centered square canvas, 10% empty margin on all sides. Orthographic three-quarter isometric view looking down about 30 degrees. Match detailed premium realistic game-building render, dark gunmetal mechanics, precise architectural ribs, restrained luminous Affinity accents, crisp readable silhouette at small size. One practical installation with a narrow low grounded foundation; NO floating coin, no text, letters, logos, labels, borders, people, horizon, sky or scenery. Genuine alpha transparency outside the object; no baked checkerboard, no ground shadow beyond footprint. Full building from base to highest antenna. Tidemarrow Filter: living planetary water-treatment installation. Upright pale-green branching membranes and capillary lamellae contained within a dark-metal cylindrical processing frame, intake/outlet pipes, one shallow freshwater basin and small pale salt collection trays integrated into its footprint. Visible working industrial biological filter, green accent light.",
+      "sourceGeneratedPath": "/Users/chaoscalligraphy/.codex/generated_images/01a0e5d5-4e9f-7792-8c15-a2504c2c9b0c/exec-99b04552-6e0f-4d38-9869-273f816fc5d8.png",
+      "source": "t1e09.png",
+      "runtime": "t1e09.webp"
+    },
+    {
+      "id": "t1o09",
+      "prompt": "Generate one isolated transparent-background science-fiction city-building sprite for LUMINAe. Full structure visible, centered square canvas, 10% empty margin on all sides. Orthographic three-quarter isometric view looking down about 30 degrees. Match detailed premium realistic game-building render, dark gunmetal mechanics, precise architectural ribs, restrained luminous Affinity accents, crisp readable silhouette at small size. One practical installation with a narrow low grounded foundation; NO floating coin, no text, letters, logos, labels, borders, people, horizon, sky or scenery. Genuine alpha transparency outside the object; no baked checkerboard, no ground shadow beyond footprint. Full building from base to highest antenna. Duskline Relay: secure planetary freight-dispatch relay station. Three staggered rectangular opaque black-violet armored switching towers joined by thick bundled optical fibers; individually shuttered inspection panels show narrow violet activity paths. Compact utility-vault surface housing and conduit connections, distinctive asymmetric silhouette, no magical orb.",
+      "sourceGeneratedPath": "/Users/chaoscalligraphy/.codex/generated_images/01a0e5d5-4e9f-7792-8c15-a2504c2c9b0c/exec-e376a278-8ca7-42d6-acdd-c860f2a32d59.png",
+      "source": "t1o09.png",
+      "runtime": "t1o09.webp"
+    },
+    {
+      "id": "t1p09",
+      "prompt": "Generate one isolated transparent-background science-fiction city-building sprite for LUMINAe. Full structure visible, centered square canvas, 10% empty margin on all sides. Orthographic three-quarter isometric view looking down about 30 degrees. Match detailed premium realistic game-building render, dark gunmetal mechanics, precise architectural ribs, restrained luminous Affinity accents, crisp readable silhouette at small size. One practical installation with a narrow low grounded foundation; NO floating coin, no text, letters, logos, labels, borders, people, horizon, sky or scenery. Genuine alpha transparency outside the object; no baked checkerboard, no ground shadow beyond footprint. Full building from base to highest antenna. Watershed Accord: inspectable planetary reservoir-control installation. White-gold central circular calibrated regulator with three radial ivory hydraulic actuators, branching dark-metal water channels and clear inspection conduits. Built into a compact low cistern gatehouse with three controlled outlet channels, a few subtle green reeds at one contained basin. Warm gold accents, credible civic water infrastructure.",
+      "sourceGeneratedPath": "/Users/chaoscalligraphy/.codex/generated_images/01a0e5d5-4e9f-7792-8c15-a2504c2c9b0c/exec-528fb0cb-557e-404d-bc48-9954bb959693.png",
+      "source": "t1p09.png",
+      "runtime": "t1p09.webp"
+    }
+  ]
+}

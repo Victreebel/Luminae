@@ -281,6 +281,16 @@ describe('HandTab taxonomy', () => {
         outcome: 'success',
         summary: 'Foundry completed a sustainable orbital fabrication',
         historyEvidence: 'recorded',
+      }, {
+        eventId: 'event_stellar_containment_cascade:1:2',
+        definitionId: 'event_stellar_containment_cascade',
+        sourceType: 'scenario',
+        turnCount: 2,
+        form: 'automatic',
+        pressureTags: ['disruption'],
+        outcome: 'success',
+        summary: 'Operational containment prevented the Disruption.',
+        historyEvidence: 'recorded',
       }],
     };
 
@@ -324,7 +334,12 @@ describe('HandTab taxonomy', () => {
     render(<HandTab scope={scope} />);
 
     const civilizationCommand = screen.getByTestId('civilization-command-card');
-    expect(within(civilizationCommand).getByText('Civilization Record')).toBeInTheDocument();
+    expect(screen.getByText('Victory paths')).toBeInTheDocument();
+    const recordDetails = screen.getByTestId('civilization-record-details');
+    expect(recordDetails).not.toHaveAttribute('open');
+    const recordSummary = within(civilizationCommand).getByText('Civilization Record');
+    fireEvent.click(recordSummary);
+    expect(recordDetails).toHaveAttribute('open');
     expect(within(civilizationCommand).getByText('Green Horizon')).toBeInTheDocument();
     expect(within(civilizationCommand).getByText('Planetary')).toBeInTheDocument();
     expect(civilizationCommand.querySelector('[data-civilization-record-metric="Maturity"]'))
@@ -332,12 +347,25 @@ describe('HandTab taxonomy', () => {
     expect(civilizationCommand.querySelector('[data-civilization-record-metric="Stability"]'))
       .toHaveTextContent('Stable');
     expect(civilizationCommand.querySelector('[data-civilization-record-metric="Events"]'))
-      .toHaveTextContent('1');
-    expect(screen.getByText('Recent Consequences')).toBeInTheDocument();
+      .toHaveTextContent('2');
+    expect(within(civilizationCommand).getByTestId('civilization-event-history'))
+      .toHaveTextContent('Stellar Containment Cascade');
+    expect(within(civilizationCommand).getByTestId('civilization-event-history'))
+      .toHaveTextContent('Operational containment prevented the Disruption.');
+    fireEvent.click(screen.getByRole('button', { name: /civilization history/i }));
     expect(screen.getByText('Foundry completed a sustainable orbital fabrication')).toBeInTheDocument();
-    expect(within(civilizationCommand).getByTestId('civilization-command-new-trace'))
-      .toHaveTextContent('Mantlelift Driver Coil Trace');
-    expect(within(civilizationCommand).getByText('Scan view is focusing this change')).toBeInTheDocument();
+    expect(civilizationCommand.querySelector('[data-civilization-record-metric="Traces"]')).toBeNull();
+    expect(screen.queryByTestId('civilization-command-new-trace')).not.toBeInTheDocument();
+    expect(screen.queryByTestId('civilization-scene-details')).not.toBeInTheDocument();
+    const civilizationScene = screen.getByTestId('civilization-scene-panel');
+    const affinities = within(civilizationScene).getByRole('group', { name: 'Permanent Affinities' });
+    expect(affinities.parentElement).toHaveClass('civilization-scene-header');
+    expect(affinities).toHaveTextContent('2');
+    expect(screen.queryByText('Permanent Affinities')).not.toBeInTheDocument();
+    expect(civilizationScene.nextElementSibling).toBe(screen.getByTestId('civilization-artifacts-dropdown'));
+    const luminaryToggle = screen.getByRole('button', { name: 'Luminaries in play (1)' });
+    expect(luminaryToggle).toHaveTextContent('✦');
+    expect(luminaryToggle).not.toHaveTextContent('Luminaries');
     const forgedSection = screen.getByRole('button', { name: /forged artifacts/i }).parentElement!;
     expect(within(forgedSection).queryByText('The Verdant Oracle')).toBeNull();
     expect(within(forgedSection).getByText('No Artifacts forged yet.')).toBeInTheDocument();
@@ -396,6 +424,10 @@ describe('HandTab taxonomy', () => {
     expect(screen.getByText('(1/3)')).toBeInTheDocument();
     expect(screen.queryByText('(2/3)')).not.toBeInTheDocument();
     expect(screen.getByText('Foundry Components')).toBeInTheDocument();
+    const legacyProgress = container.querySelector('[data-civilization-legacy-progress]') as HTMLElement;
+    expect(legacyProgress).toBeInTheDocument();
+    expect(within(legacyProgress).getByText('Legacy Path')).toBeInTheDocument();
+    expect(legacyProgress).toHaveTextContent('1/2');
     expect(container.querySelector('[data-foundry-component-id="t1r07"]')).toBeInTheDocument();
     fireEvent.click(screen.getByRole('button', { name: /Recover/i }));
     expect(handleFoundryRecovery).toHaveBeenCalledWith('t1r07');

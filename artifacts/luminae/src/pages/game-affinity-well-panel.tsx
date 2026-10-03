@@ -1,12 +1,12 @@
 import React from 'react';
 import { motion, AnimatePresence } from 'framer-motion';
-import { Check, ChevronDown, ChevronUp, Undo2, X } from 'lucide-react';
+import { Check, Undo2, X } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { AffinityWellCells } from '@/components/AffinityWell';
 import { AffinityReservoirSymbol } from '@/components/AffinityReservoirSymbol';
 import { AFFINITY_META, type AffinityKey } from '@/lib/affinityMeta';
 import { AFFINITIES, localTurnVariants } from './game-constants';
-import { EminenceProgress, EminenceSigil, AffinityToken } from './game-card';
+import { EminenceProgress, AffinityToken } from './game-card';
 import { PlayerAvatar } from './game-player';
 import { HarnessConvergenceLayer } from './game-causal-motion';
 
@@ -62,6 +62,7 @@ export interface AffinityWellPanelScope {
   tutorialStep: any;
   tutorialZone: any;
   victoryRequirement: any;
+  wellExpanded: boolean;
 }
 
 function sameScope(previous: AffinityWellPanelScope, next: AffinityWellPanelScope) {
@@ -121,15 +122,8 @@ export const AffinityWellPanel = React.memo(function AffinityWellPanel({ scope }
     tutorialStep,
     tutorialZone,
     victoryRequirement,
+    wellExpanded,
   } = scope;
-  const [wellDockExpanded, setWellDockExpanded] = React.useState(false);
-  const wellActionActive = affinityQueueActive || !!returnPhase;
-  const wellForcedOpen = isSideAffinityWell || isTutorial || wellActionActive;
-  const wellExpanded = wellForcedOpen || wellDockExpanded;
-
-  React.useEffect(() => {
-    if (wellActionActive) setWellDockExpanded(true);
-  }, [wellActionActive]);
 
   if (!me) return null;
   const heldTotal = Object.values((me.affinities ?? {}) as AffinitySelection).reduce((a, b) => a + (b ?? 0), 0);
@@ -139,14 +133,17 @@ export const AffinityWellPanel = React.memo(function AffinityWellPanel({ scope }
   const affinityBonuses = (me.bonuses ?? {}) as AffinitySelection;
   const affinityBank = (state.affinityWell ?? {}) as AffinitySelection;
   const standardReservoirCapacity = state.players.length === 2 ? 4 : state.players.length === 3 ? 5 : 7;
-  const compactAffinityLabel = (AFFINITIES as AffinityKey[]).map((affinity) => {
-    const meta = AFFINITY_META[affinity];
-    const held = affinityHoldings[affinity] ?? 0;
-    const bonus = affinity === 'singularity' ? 0 : affinityBonuses[affinity] ?? 0;
-    const reservoir = affinityBank[affinity] ?? 0;
-    const capacity = affinity === 'singularity' ? 5 : standardReservoirCapacity;
-    return `${meta.name} ${held}${bonus > 0 ? ` plus ${bonus} permanent` : ''}, reservoir ${reservoir} of ${capacity}`;
-  }).join('. ');
+  const canSelectAffinities = !coreActionSubmitted && !returnPhase
+    && (isMyTurnForCoreAction || (!isActivePlayer && canPlan));
+  const selectedKeys = (Object.keys(selectedAffinities) as AffinityKey[])
+    .filter(affinity => (selectedAffinities[affinity] ?? 0) > 0);
+  const selectingPair = selectedKeys.some(affinity => selectedAffinities[affinity] === 2);
+  const clearSelectedAffinities = () => {
+    setActionMode('none');
+    setSelectedAffinities({});
+    setAffinityHistory([]);
+    setPrePromotionHistory(null);
+  };
 
 	  return (
 	    <div
@@ -154,6 +151,7 @@ export const AffinityWellPanel = React.memo(function AffinityWellPanel({ scope }
           data-testid="affinity-well-panel"
 	      data-shared-affinity-well=""
           data-well-expanded={wellExpanded ? 'true' : 'false'}
+          data-harness-active={affinityQueueActive ? 'true' : 'false'}
           data-return-phase={returnPhase && isMyTurn ? 'true' : 'false'}
 	          className={`affinity-well-panel shrink-0 z-20 transition-all ${isSideAffinityWell ? 'affinity-well-panel--side' : ''}`}
           style={{
@@ -165,7 +163,8 @@ export const AffinityWellPanel = React.memo(function AffinityWellPanel({ scope }
               ? '0 -4px 28px rgba(168,197,255,0.12)'
               : '0 -2px 12px rgba(0,0,0,0.4)',
           }}
-          onClickCapture={() => {
+          onClickCapture={(event) => {
+            if (event.detail === 0) return; // Keep keyboard focus for selection and confirmation.
             requestAnimationFrame(() => {
               const active = document.activeElement as HTMLElement | null;
               if (active && playerPanelRef.current?.contains(active)) active.blur();
@@ -218,23 +217,6 @@ export const AffinityWellPanel = React.memo(function AffinityWellPanel({ scope }
             <div className="affinity-well-status shrink-0">
               <button
                 type="button"
-                className="affinity-well-dock-toggle"
-                onClick={() => setWellDockExpanded((expanded) => !expanded)}
-                disabled={wellForcedOpen}
-                aria-expanded={wellExpanded}
-                aria-label={wellForcedOpen
-                  ? 'Affinity Well remains open during this action'
-                  : wellExpanded ? 'Collapse Affinity Well' : 'Expand Affinity Well'}
-                title={wellForcedOpen
-                  ? 'Finish or cancel this action to collapse the Affinity Well'
-                  : wellExpanded ? 'Collapse Affinity Well' : 'Expand Affinity Well'}
-              >
-                {wellExpanded
-                  ? <ChevronDown aria-hidden="true" />
-                  : <ChevronUp aria-hidden="true" />}
-              </button>
-              <button
-                type="button"
                 data-eminence-panel="player"
                 onClick={() => setShowEminenceBreakdown(true)}
                 className={`affinity-well-eminence rounded-md transition-transform hover:scale-[1.03] active:scale-95 ${
@@ -285,28 +267,73 @@ export const AffinityWellPanel = React.memo(function AffinityWellPanel({ scope }
               >
                 <PlayerAvatar avatarId={session.avatarId} name={me.playerName} size={16} />
               </span>
+              {affinityQueueActive && (
+                <button
+                  type="button"
+                  className="affinity-well-compact-clear"
+                  aria-label="Clear selected affinities"
+                  title="Clear selected affinities"
+                  onClick={clearSelectedAffinities}
+                >
+                  <span className="affinity-well-compact-clear-badge" aria-hidden="true">
+                    <X size={12} />
+                  </span>
+                </button>
+              )}
+              <button
+                type="button"
+                className="affinity-well-compact-eminence"
+                data-eminence-panel="player"
+                data-eminence-sigil="player"
+                onClick={() => setShowEminenceBreakdown(true)}
+                aria-label={`Eminence ${me.eminence} of ${victoryRequirement}. View Eminence breakdown.`}
+                title={`Eminence ${me.eminence} of ${victoryRequirement}`}
+              >
+                <span>{me.eminence}</span>
+                {eminencePanelImpact && (
+                  <span className="affinity-well-compact-eminence-impact">+{eminencePanelImpact.amount}</span>
+                )}
+              </button>
             </div>
 
-            <button
-              type="button"
+            <div
               className="affinity-well-compact-overview"
-              onClick={() => setWellDockExpanded(true)}
-              aria-label={`Expand Affinity Well. ${compactAffinityLabel}`}
-              title="Expand Affinity Well"
+              role="group"
+              aria-label="Compact Affinity Well"
             >
-              <ChevronUp className="affinity-well-compact-chevron" aria-hidden="true" />
               {(AFFINITIES as AffinityKey[]).map((affinity) => {
                 const meta = AFFINITY_META[affinity];
+                const isSingularity = affinity === 'singularity';
                 const held = affinityHoldings[affinity] ?? 0;
-                const bonus = affinity === 'singularity' ? 0 : affinityBonuses[affinity] ?? 0;
+                const pending = selectedAffinities[affinity] ?? 0;
+                const bonus = isSingularity ? 0 : affinityBonuses[affinity] ?? 0;
                 const reservoir = affinityBank[affinity] ?? 0;
-                const capacity = affinity === 'singularity' ? 5 : standardReservoirCapacity;
-                const reservoirProgress = Math.max(0, Math.min(1, reservoir / Math.max(1, capacity)));
+                const capacity = isSingularity ? 5 : standardReservoirCapacity;
+                const reservoirProgress = Math.max(0, Math.min(1, (reservoir - pending) / Math.max(1, capacity)));
+                const canSelect = canSelectAffinities && (pending > 0 || (
+                  selectingPair ? reservoir >= 4 : reservoir > 0 && selectedKeys.length < 3
+                ));
+                const description = `${meta.name}: ${held} held${pending > 0 ? `, ${pending} selected` : ''}${bonus > 0 ? `, ${bonus} permanent` : ''}; ${reservoir} in reservoir`;
                 return (
-                  <span
+                  <button
+                    type="button"
                     key={affinity}
                     className="affinity-well-compact-affinity"
+                    data-testid={`compact-affinity-${affinity}`}
                     data-affinity={affinity}
+                    data-selected={pending > 0 ? 'true' : undefined}
+                    {...(isSingularity ? { 'data-singularity-reserve-target': '' } : { 'data-affinity-well': affinity })}
+                    aria-label={isSingularity ? `Open encrypted Artifacts. ${description}` : description}
+                    aria-pressed={isSingularity ? undefined : pending > 0}
+                    title={isSingularity ? 'Open encrypted Artifacts' : description}
+                    disabled={!isSingularity && !canSelect}
+                    onClick={() => {
+                      if (isSingularity) setShowReservedOverlay(true);
+                      else if (canSelect) {
+                        if (pending === 1 && reservoir >= 4) promoteToTake2(affinity);
+                        else handleAffinityClick(affinity);
+                      }
+                    }}
                     style={{
                       '--compact-affinity': meta.hex,
                       '--compact-affinity-glow': meta.glowHex,
@@ -319,31 +346,24 @@ export const AffinityWellPanel = React.memo(function AffinityWellPanel({ scope }
                       data-affinity-symbol={affinity}
                       draggable={false}
                     />
-                    <span className="affinity-well-compact-count">{held}</span>
+                    <span className="affinity-well-compact-count">{held + pending}</span>
+                    {pending > 0 && <span className="affinity-well-compact-pending">+{pending}</span>}
                     {bonus > 0 && (
                       <span className="affinity-well-compact-bonus">+{bonus}</span>
                     )}
                     <span className="affinity-well-compact-meter" aria-hidden="true">
                       <span />
                     </span>
-                  </span>
+                  </button>
                 );
               })}
-            </button>
+            </div>
 
-            <button
-              type="button"
-              className="affinity-well-compact-eminence"
-              onClick={() => setShowEminenceBreakdown(true)}
-              aria-label={`Eminence ${me.eminence} of ${victoryRequirement}. View Eminence breakdown.`}
-              title={`Eminence ${me.eminence} of ${victoryRequirement}`}
-            >
-              <EminenceSigil size={20} value={me.eminence} target={victoryRequirement} />
-              <span>{me.eminence}</span>
-              {eminencePanelImpact && (
-                <span className="affinity-well-compact-eminence-impact">+{eminencePanelImpact.amount}</span>
-              )}
-            </button>
+            {!affinityQueueActive && (
+              <button type="button" className="affinity-well-compact-harness-idle" disabled title="Select affinities to Harness">
+                Harness
+              </button>
+            )}
           </div>
 
           {/* ── Affinity cells ── */}
@@ -382,9 +402,9 @@ export const AffinityWellPanel = React.memo(function AffinityWellPanel({ scope }
                 } : {}),
               }}
             >
-                <div className="px-2 pb-2 pt-1 border-t border-white/10">
-                  <div className="flex items-center gap-2">
-                    <div className="flex gap-1.5 flex-1 items-center flex-wrap">
+                <div className="affinity-well-harness-surface px-2 pb-2 pt-1 border-t border-white/10">
+                  <div className="affinity-well-harness-controls flex items-center gap-2">
+                    <div className="affinity-well-harness-summary flex gap-1.5 flex-1 items-center flex-wrap">
                       {Object.entries(selectedAffinities).filter(([c, n]) =>
                         (n ?? 0) > 0 && Object.prototype.hasOwnProperty.call(AFFINITY_META, c)
                       ).map(([c, n]) => (
@@ -399,7 +419,7 @@ export const AffinityWellPanel = React.memo(function AffinityWellPanel({ scope }
                           : harnessLegality.reason) || 'Pick affinities'}
                       </span>
                     </div>
-                    <div className="flex gap-1.5 shrink-0 relative">
+                    <div className="affinity-well-harness-actions flex gap-1.5 shrink-0 relative">
                       <AnimatePresence>
                         {showUndoHint && !showForgeHint && !showReserveHint && (
                           <motion.button
@@ -409,7 +429,7 @@ export const AffinityWellPanel = React.memo(function AffinityWellPanel({ scope }
                             exit={{ opacity: 0, y: -6, scale: 0.95 }}
                             transition={{ duration: 0.3 }}
                             onClick={dismissUndoHint}
-                            className="absolute bottom-full mb-1.5 left-0 whitespace-nowrap flex items-center gap-1 bg-black/90 border border-white/20 rounded-md px-2 py-1 text-[10px] text-white/80 shadow-lg z-10"
+                            className="affinity-well-harness-undo-hint absolute bottom-full mb-1.5 left-0 whitespace-nowrap flex items-center gap-1 bg-black/90 border border-white/20 rounded-md px-2 py-1 text-[10px] text-white/80 shadow-lg z-10"
                             title="Dismiss hint"
                           >
                             <Undo2 className="h-2.5 w-2.5 text-white/60 shrink-0" />
@@ -418,11 +438,12 @@ export const AffinityWellPanel = React.memo(function AffinityWellPanel({ scope }
                           </motion.button>
                         )}
                       </AnimatePresence>
-                      <Button variant="outline" size="sm" className="h-7 w-7 p-0 rounded-lg" onClick={handleUndoAffinity} title="Undo last affinity">
+                      <Button variant="outline" size="sm" className="affinity-well-harness-undo h-7 w-7 p-0 rounded-lg" onClick={handleUndoAffinity} title="Undo last affinity" aria-label="Undo last affinity">
                         <Undo2 className="h-3.5 w-3.5" />
                       </Button>
-                      <Button variant="outline" size="sm" className="h-7 w-7 p-0 rounded-lg"
-                        onClick={() => { setActionMode('none'); setSelectedAffinities({}); setAffinityHistory([]); setPrePromotionHistory(null); }}>
+                      <Button variant="outline" size="sm" className="affinity-well-harness-clear h-7 w-7 p-0 rounded-lg"
+                        aria-label="Clear selected affinities"
+                        onClick={clearSelectedAffinities}>
                         <X className="h-3.5 w-3.5" />
                       </Button>
                       {isMyTurnForCoreAction ? (
@@ -457,11 +478,13 @@ export const AffinityWellPanel = React.memo(function AffinityWellPanel({ scope }
                                 `linear-gradient(90deg, ${firstMeta?.hex ?? '#ffffff'}55, rgba(255,255,255,0.10), ${selMetas[selMetas.length - 1]?.meta.hex ?? firstMeta?.hex ?? '#ffffff'}55)`,
                               ].join(', ');
                           return (
-	                            <motion.div
-	                              role="button"
+	                            <motion.button
+                              type="button"
+                              disabled={!harnessLegality.ok}
+                              title={harnessLegality.reason || 'Harness selected affinities'}
                                   data-testid="harness-button"
 	                              whileTap={{ scale: 0.93, transition: { duration: 0.07 } }}
-                              className={`relative h-7 px-3 rounded-lg overflow-hidden flex items-center justify-center border transition-all duration-500 shrink-0 ${!harnessLegality.ok ? 'opacity-40 cursor-not-allowed' : 'cursor-pointer'}`}
+                              className={`affinity-well-harness-submit relative h-7 px-3 rounded-lg overflow-hidden flex items-center justify-center border transition-all duration-500 shrink-0 ${!harnessLegality.ok ? 'opacity-40 cursor-not-allowed' : 'cursor-pointer'}`}
                               style={{ background: 'rgba(255,255,255,0.03)', borderColor, boxShadow: hasColors ? `inset 0 1px 0 rgba(255,255,255,0.18), 0 0 14px ${firstMeta.hex}44` : 'inset 0 1px 0 rgba(255,255,255,0.08)', touchAction: 'manipulation' }}
                               onClick={harnessLegality.ok ? () => { setHarnessPulseKey(k => k + 1); confirmAffinities(); } : undefined}
                             >
@@ -484,7 +507,7 @@ export const AffinityWellPanel = React.memo(function AffinityWellPanel({ scope }
                                   )}
                                 </AnimatePresence>
                               </span>
-                            </motion.div>
+                            </motion.button>
                           );
                         })()
                       ) : canPlan && !coreActionSubmitted && harnessLegality.ok ? (
@@ -494,10 +517,10 @@ export const AffinityWellPanel = React.memo(function AffinityWellPanel({ scope }
                           );
                           const planHasColors = planSelKeys.length > 0;
                           return (
-                            <motion.div
-                              role="button"
+                            <motion.button
+                              type="button"
                               whileTap={{ scale: 0.93, transition: { duration: 0.07 } }}
-                              className="relative h-7 px-2.5 rounded-lg overflow-hidden flex items-center justify-center border transition-all duration-500 shrink-0 cursor-pointer"
+                              className="affinity-well-harness-submit affinity-well-harness-plan relative h-7 px-2.5 rounded-lg overflow-hidden flex items-center justify-center border transition-all duration-500 shrink-0 cursor-pointer"
                               style={{ background: planHasColors ? 'rgba(82,48,10,0.82)' : 'rgba(44,28,10,0.74)', borderColor: planHasColors ? 'rgba(251,191,36,0.55)' : 'rgba(251,191,36,0.28)', boxShadow: planHasColors ? 'inset 0 1px 0 rgba(255,255,255,0.12), 0 0 8px rgba(251,191,36,0.18)' : 'inset 0 1px 0 rgba(255,255,255,0.06)', touchAction: 'manipulation' }}
                               onClick={async () => {
                                 let sent = false;
@@ -535,7 +558,7 @@ export const AffinityWellPanel = React.memo(function AffinityWellPanel({ scope }
                                   )}
                                 </AnimatePresence>
                               </span>
-                            </motion.div>
+                            </motion.button>
                           );
                         })()
                       ) : null}
@@ -548,7 +571,7 @@ export const AffinityWellPanel = React.memo(function AffinityWellPanel({ scope }
               animate={{ opacity: affinityQueueActive ? 0 : 1 }}
               transition={{ duration: 0.15 }}
               style={{ pointerEvents: affinityQueueActive ? 'none' : 'auto', position: 'absolute', inset: 0 }}
-              className="flex items-center justify-center"
+              className="affinity-well-harness-hint flex items-center justify-center"
             >
               <span className="text-[8.5px] text-white/30 leading-none">
                 Select 3 different or 2 of the same affinities. Limit 10 can be held <span className="text-white/50 font-semibold">at once</span>.

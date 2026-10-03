@@ -66,12 +66,70 @@ export interface LoginBody {
   password: string;
 }
 
+export type ArchitectFirstContactStance =
+  (typeof ArchitectFirstContactStance)[keyof typeof ArchitectFirstContactStance];
+
+export const ArchitectFirstContactStance = {
+  curious: "curious",
+  guarded: "guarded",
+  resolute: "resolute",
+} as const;
+
+export type FirstContactRapport =
+  (typeof FirstContactRapport)[keyof typeof FirstContactRapport];
+
+export const FirstContactRapport = {
+  receptive: "receptive",
+  probing: "probing",
+  sparring: "sparring",
+} as const;
+
+export type TutorialDiscoveryId =
+  (typeof TutorialDiscoveryId)[keyof typeof TutorialDiscoveryId];
+
+export const TutorialDiscoveryId = {
+  lumii_origin: "lumii_origin",
+  artifact_mastery: "artifact_mastery",
+  encryption_authority: "encryption_authority",
+} as const;
+
+export interface TutorialInvestigationProgress {
+  investigationId: "first_contact";
+  definitionVersion: number;
+  completed: boolean;
+  /** @nullable */
+  completedAt: string | null;
+  firstContactRapport: FirstContactRapport | null;
+  discoveries: TutorialDiscoveryId[];
+  completionLumeAwarded: number;
+  /** @nullable */
+  lumeBalance: number | null;
+}
+
+export interface CompleteTutorialInvestigationBody {
+  stance: ArchitectFirstContactStance;
+  rapport?: FirstContactRapport | null;
+  discoveries: TutorialDiscoveryId[];
+}
+
 export type ActiveRoomEntryStatus =
   (typeof ActiveRoomEntryStatus)[keyof typeof ActiveRoomEntryStatus];
 
 export const ActiveRoomEntryStatus = {
   lobby: "lobby",
   playing: "playing",
+} as const;
+
+/**
+ * Regular game Event frequency; Standard selects one unique Event per tier, Frequent selects two, and Off selects none. New games use a separate countdown-driven Event deck. Omitted settings default to Standard.
+ */
+export type EventFrequency =
+  (typeof EventFrequency)[keyof typeof EventFrequency];
+
+export const EventFrequency = {
+  off: "off",
+  standard: "standard",
+  frequent: "frequent",
 } as const;
 
 export type GameMode = (typeof GameMode)[keyof typeof GameMode];
@@ -84,6 +142,7 @@ export const GameMode = {
 } as const;
 
 export interface ActiveRoomEntry {
+  eventFrequency?: EventFrequency;
   roomId: string;
   inviteCode: string;
   status: ActiveRoomEntryStatus;
@@ -303,6 +362,27 @@ export const BlueprintDefinitionCivilizationScaleBand = {
   galactic: "galactic",
 } as const;
 
+export type BlueprintDefinitionCivilizationManifestationScale =
+  (typeof BlueprintDefinitionCivilizationManifestationScale)[keyof typeof BlueprintDefinitionCivilizationManifestationScale];
+
+export const BlueprintDefinitionCivilizationManifestationScale = {
+  installation: "installation",
+  satellite: "satellite",
+  planetary: "planetary",
+  stellar: "stellar",
+  distributed: "distributed",
+} as const;
+
+export type BlueprintDefinitionCivilizationManifestationMotion =
+  (typeof BlueprintDefinitionCivilizationManifestationMotion)[keyof typeof BlueprintDefinitionCivilizationManifestationMotion];
+
+export const BlueprintDefinitionCivilizationManifestationMotion = {
+  gimbaled_orbit: "gimbaled_orbit",
+  industrial_transit: "industrial_transit",
+  signal_constellation: "signal_constellation",
+  shield_breath: "shield_breath",
+} as const;
+
 export type BlueprintDefinitionCivilizationAffinity =
   (typeof BlueprintDefinitionCivilizationAffinity)[keyof typeof BlueprintDefinitionCivilizationAffinity];
 
@@ -317,6 +397,8 @@ export const BlueprintDefinitionCivilizationAffinity = {
 export type BlueprintDefinitionCivilization = {
   projectForm: string;
   scaleBand: BlueprintDefinitionCivilizationScaleBand;
+  manifestationScale: BlueprintDefinitionCivilizationManifestationScale;
+  manifestationMotion: BlueprintDefinitionCivilizationManifestationMotion;
   affinity: BlueprintDefinitionCivilizationAffinity;
   siteTitle: string;
   visibleAs: string;
@@ -1129,6 +1211,7 @@ export const ActiveGameStatus = {
 } as const;
 
 export interface ActiveGame {
+  eventFrequency?: EventFrequency;
   roomId: string;
   inviteCode: string;
   status: ActiveGameStatus;
@@ -1566,6 +1649,7 @@ export const CreateChallengeBodyCinematicMode = {
 } as const;
 
 export interface CreateChallengeBody {
+  eventFrequency?: EventFrequency;
   challengedUsername: string;
   /**
    * @minimum 2
@@ -1603,6 +1687,7 @@ export interface ChallengeActionBody {
 }
 
 export type ChallengeAcceptedResponseRoom = {
+  eventFrequency?: EventFrequency;
   id: string;
   inviteCode: string;
   status: string;
@@ -1665,6 +1750,7 @@ export const BlueprintPolicy = {
 } as const;
 
 export interface CreateRoomBody {
+  eventFrequency?: EventFrequency;
   hostName: string;
   /**
    * @minimum 2
@@ -1793,6 +1879,7 @@ export const RoomInfoCinematicMode = {
 } as const;
 
 export interface RoomInfo {
+  eventFrequency?: EventFrequency;
   id: string;
   inviteCode: string;
   status: RoomInfoStatus;
@@ -1813,6 +1900,58 @@ export interface RoomWithPlayer {
   room: RoomInfo;
   player: RoomPlayer;
   sessionToken: string;
+}
+
+/**
+ * Historical Archive insertion or a separate Event deck armed by a countdown and revealed after a successful Forge.
+ */
+export type EventDelivery = (typeof EventDelivery)[keyof typeof EventDelivery];
+
+export const EventDelivery = {
+  archive_v1: "archive_v1",
+  scheduled_forge_v1: "scheduled_forge_v1",
+} as const;
+
+export type EventForecastStatus =
+  (typeof EventForecastStatus)[keyof typeof EventForecastStatus];
+
+export const EventForecastStatus = {
+  off: "off",
+  countdown: "countdown",
+  armed: "armed",
+  resolving: "resolving",
+  complete: "complete",
+  closed: "closed",
+} as const;
+
+/**
+ * @nullable
+ */
+export type EventForecastTier =
+  | (typeof EventForecastTier)[keyof typeof EventForecastTier]
+  | null;
+
+export const EventForecastTier = {
+  NUMBER_1: 1,
+  NUMBER_2: 2,
+  NUMBER_3: 3,
+} as const;
+
+export type EventForecastTurnsRemainingByPlayerId = { [key: string]: number };
+
+/**
+ * Public timing only; never includes the selected Event identities or their order.
+ */
+export interface EventForecast {
+  status: EventForecastStatus;
+  /** @nullable */
+  tier: EventForecastTier;
+  /**
+   * @minimum 0
+   * @nullable
+   */
+  roundsRemaining: number | null;
+  turnsRemainingByPlayerId: EventForecastTurnsRemainingByPlayerId;
 }
 
 /**
@@ -1951,6 +2090,229 @@ export interface BlueprintDetonationEvent {
   presentationVariant: BlueprintPresentationVariant;
   definition?: BlueprintDefinition;
   createdAt: number;
+}
+
+export type CivilizationEventRespondingManifestationSourceType =
+  (typeof CivilizationEventRespondingManifestationSourceType)[keyof typeof CivilizationEventRespondingManifestationSourceType];
+
+export const CivilizationEventRespondingManifestationSourceType = {
+  artifact: "artifact",
+  blueprint: "blueprint",
+} as const;
+
+export interface CivilizationEventRespondingManifestation {
+  sourceType: CivilizationEventRespondingManifestationSourceType;
+  sourceId: string;
+  capabilityIds: string[];
+}
+
+export type CivilizationEventTargetEvidenceMatchKind =
+  (typeof CivilizationEventTargetEvidenceMatchKind)[keyof typeof CivilizationEventTargetEvidenceMatchKind];
+
+export const CivilizationEventTargetEvidenceMatchKind = {
+  capability: "capability",
+  event_fact: "event_fact",
+} as const;
+
+export type CivilizationEventTargetEvidenceMatch = {
+  kind: CivilizationEventTargetEvidenceMatchKind;
+  id: string;
+};
+
+export type CivilizationEventTargetEvidenceRole =
+  (typeof CivilizationEventTargetEvidenceRole)[keyof typeof CivilizationEventTargetEvidenceRole];
+
+export const CivilizationEventTargetEvidenceRole = {
+  responder: "responder",
+  target: "target",
+  mitigator: "mitigator",
+} as const;
+
+/**
+ * Public, frozen causal evidence for an authored Event target or response.
+ */
+export interface CivilizationEventTargetEvidence {
+  artifactId: string;
+  match: CivilizationEventTargetEvidenceMatch;
+  role: CivilizationEventTargetEvidenceRole;
+  reason: string;
+}
+
+export type CivilizationEventPlayerOutcomeOutcomeId =
+  (typeof CivilizationEventPlayerOutcomeOutcomeId)[keyof typeof CivilizationEventPlayerOutcomeOutcomeId];
+
+export const CivilizationEventPlayerOutcomeOutcomeId = {
+  protected: "protected",
+  partial: "partial",
+  exposed: "exposed",
+} as const;
+
+export type CivilizationEventPlayerOutcomeCapabilityCoverage =
+  (typeof CivilizationEventPlayerOutcomeCapabilityCoverage)[keyof typeof CivilizationEventPlayerOutcomeCapabilityCoverage];
+
+export const CivilizationEventPlayerOutcomeCapabilityCoverage = {
+  none: "none",
+  partial: "partial",
+  strong: "strong",
+} as const;
+
+export interface CivilizationEventPlayerOutcome {
+  playerId: string;
+  outcomeId: CivilizationEventPlayerOutcomeOutcomeId;
+  capabilityCoverage: CivilizationEventPlayerOutcomeCapabilityCoverage;
+  respondingCapabilityIds: string[];
+  respondingManifestations: CivilizationEventRespondingManifestation[];
+  /** Public forged Artifact implementations damaged by this Event. */
+  damagedArtifactIds?: string[];
+  targetEvidence?: CivilizationEventTargetEvidence[];
+  /** @nullable */
+  appliedConditionType: string | null;
+  stabilityPressure: number;
+  summary: string;
+}
+
+export type CivilizationEventInstanceDefinitionId =
+  (typeof CivilizationEventInstanceDefinitionId)[keyof typeof CivilizationEventInstanceDefinitionId];
+
+export const CivilizationEventInstanceDefinitionId = {
+  event_planetary_affinity_bloom: "event_planetary_affinity_bloom",
+  event_planetary_forge_drift: "event_planetary_forge_drift",
+  event_stellar_containment_cascade: "event_stellar_containment_cascade",
+  event_stellar_affinity_inversion: "event_stellar_affinity_inversion",
+  event_stellar_system_shock: "event_stellar_system_shock",
+  event_galactic_entropy_storm: "event_galactic_entropy_storm",
+  event_galactic_terminus_tide: "event_galactic_terminus_tide",
+  event_galactic_fracture_wave: "event_galactic_fracture_wave",
+  event_planetary_signal_clarity: "event_planetary_signal_clarity",
+  event_stellar_synchronization_shear: "event_stellar_synchronization_shear",
+} as const;
+
+export type CivilizationEventInstanceSourceCardId =
+  (typeof CivilizationEventInstanceSourceCardId)[keyof typeof CivilizationEventInstanceSourceCardId];
+
+export const CivilizationEventInstanceSourceCardId = {
+  event_planetary_affinity_bloom: "event_planetary_affinity_bloom",
+  event_planetary_forge_drift: "event_planetary_forge_drift",
+  event_stellar_containment_cascade: "event_stellar_containment_cascade",
+  event_stellar_affinity_inversion: "event_stellar_affinity_inversion",
+  event_stellar_system_shock: "event_stellar_system_shock",
+  event_galactic_entropy_storm: "event_galactic_entropy_storm",
+  event_galactic_terminus_tide: "event_galactic_terminus_tide",
+  event_galactic_fracture_wave: "event_galactic_fracture_wave",
+  event_planetary_signal_clarity: "event_planetary_signal_clarity",
+  event_stellar_synchronization_shear: "event_stellar_synchronization_shear",
+} as const;
+
+export type CivilizationEventInstanceSourceCardTier =
+  (typeof CivilizationEventInstanceSourceCardTier)[keyof typeof CivilizationEventInstanceSourceCardTier];
+
+export const CivilizationEventInstanceSourceCardTier = {
+  NUMBER_1: 1,
+  NUMBER_2: 2,
+  NUMBER_3: 3,
+} as const;
+
+export type CivilizationEventInstanceSourceCardOrigin =
+  (typeof CivilizationEventInstanceSourceCardOrigin)[keyof typeof CivilizationEventInstanceSourceCardOrigin];
+
+export const CivilizationEventInstanceSourceCardOrigin = {
+  forge: "forge",
+  archive: "archive",
+  scheduled: "scheduled",
+} as const;
+
+export type CivilizationEventInstanceSourceCard = {
+  id: CivilizationEventInstanceSourceCardId;
+  tier: CivilizationEventInstanceSourceCardTier;
+  /** @nullable */
+  forgeSlotIndex: number | null;
+  origin?: CivilizationEventInstanceSourceCardOrigin;
+};
+
+export type CivilizationEventInstanceTriggerWindow =
+  (typeof CivilizationEventInstanceTriggerWindow)[keyof typeof CivilizationEventInstanceTriggerWindow];
+
+export const CivilizationEventInstanceTriggerWindow = {
+  deck_reveal: "deck_reveal",
+  first_contact: "first_contact",
+  late_pressure: "late_pressure",
+  authored: "authored",
+} as const;
+
+export type CivilizationEventInstancePhase =
+  (typeof CivilizationEventInstancePhase)[keyof typeof CivilizationEventInstancePhase];
+
+export const CivilizationEventInstancePhase = {
+  reveal: "reveal",
+  awaiting_choice: "awaiting_choice",
+  resolving: "resolving",
+  receipt: "receipt",
+  complete: "complete",
+} as const;
+
+export type CivilizationEventInstanceOutcomesByPlayerId = {
+  [key: string]: CivilizationEventPlayerOutcome;
+};
+
+export interface CivilizationEventInstance {
+  eventId: string;
+  rulesVersion?: string;
+  /** Frozen rules explanation captured with the versioned resolution plan. */
+  rulesText?: string;
+  definitionId: CivilizationEventInstanceDefinitionId;
+  sourceCard?: CivilizationEventInstanceSourceCard;
+  triggerWindow: CivilizationEventInstanceTriggerWindow;
+  triggerTurnCount: number;
+  phase: CivilizationEventInstancePhase;
+  affectedPlayerIds: string[];
+  outcomesByPlayerId: CivilizationEventInstanceOutcomesByPlayerId;
+  createdAt: number;
+}
+
+export type CivilizationEventDeckStateContentProfile =
+  (typeof CivilizationEventDeckStateContentProfile)[keyof typeof CivilizationEventDeckStateContentProfile];
+
+export const CivilizationEventDeckStateContentProfile = {
+  general_v1: "general_v1",
+  general_v2: "general_v2",
+  lore_pilot_v1: "lore_pilot_v1",
+} as const;
+
+export type CivilizationEventDeckStateDefinitionIdsItem =
+  (typeof CivilizationEventDeckStateDefinitionIdsItem)[keyof typeof CivilizationEventDeckStateDefinitionIdsItem];
+
+export const CivilizationEventDeckStateDefinitionIdsItem = {
+  event_planetary_affinity_bloom: "event_planetary_affinity_bloom",
+  event_planetary_forge_drift: "event_planetary_forge_drift",
+  event_stellar_containment_cascade: "event_stellar_containment_cascade",
+  event_stellar_affinity_inversion: "event_stellar_affinity_inversion",
+  event_stellar_system_shock: "event_stellar_system_shock",
+  event_galactic_entropy_storm: "event_galactic_entropy_storm",
+  event_galactic_terminus_tide: "event_galactic_terminus_tide",
+  event_galactic_fracture_wave: "event_galactic_fracture_wave",
+  event_planetary_signal_clarity: "event_planetary_signal_clarity",
+  event_stellar_synchronization_shear: "event_stellar_synchronization_shear",
+} as const;
+
+export type CivilizationEventDeckStateFiredWindowsItem =
+  (typeof CivilizationEventDeckStateFiredWindowsItem)[keyof typeof CivilizationEventDeckStateFiredWindowsItem];
+
+export const CivilizationEventDeckStateFiredWindowsItem = {
+  deck_reveal: "deck_reveal",
+  first_contact: "first_contact",
+  late_pressure: "late_pressure",
+  authored: "authored",
+} as const;
+
+export interface CivilizationEventDeckState {
+  delivery?: EventDelivery;
+  eventFrequency?: EventFrequency;
+  contentProfile?: CivilizationEventDeckStateContentProfile;
+  rulesVersion?: string;
+  definitionIds: CivilizationEventDeckStateDefinitionIdsItem[];
+  nextIndex: number;
+  firedWindows: CivilizationEventDeckStateFiredWindowsItem[];
+  completedEventIds: string[];
 }
 
 export type ScenarioProtocolId =
@@ -2137,6 +2499,391 @@ export interface CivilizationNaturalAffinityCounts {
   abyss: number;
 }
 
+export type CivilizationEnvironmentIdentityPolicyId =
+  (typeof CivilizationEnvironmentIdentityPolicyId)[keyof typeof CivilizationEnvironmentIdentityPolicyId];
+
+export const CivilizationEnvironmentIdentityPolicyId = {
+  "persistent-world-v1": "persistent-world-v1",
+} as const;
+
+export type CivilizationEnvironmentIdentityVariantId =
+  (typeof CivilizationEnvironmentIdentityVariantId)[keyof typeof CivilizationEnvironmentIdentityVariantId];
+
+export const CivilizationEnvironmentIdentityVariantId = {
+  aurora_basin: "aurora_basin",
+  terminator_reach: "terminator_reach",
+  oceanic_scar: "oceanic_scar",
+  obsidian_steppe: "obsidian_steppe",
+} as const;
+
+export type CivilizationEnvironmentIdentityTerrain =
+  (typeof CivilizationEnvironmentIdentityTerrain)[keyof typeof CivilizationEnvironmentIdentityTerrain];
+
+export const CivilizationEnvironmentIdentityTerrain = {
+  terraced_basin: "terraced_basin",
+  terminator_highlands: "terminator_highlands",
+  archipelago_scar: "archipelago_scar",
+  volcanic_steppe: "volcanic_steppe",
+} as const;
+
+export type CivilizationEnvironmentIdentityCelestial =
+  (typeof CivilizationEnvironmentIdentityCelestial)[keyof typeof CivilizationEnvironmentIdentityCelestial];
+
+export const CivilizationEnvironmentIdentityCelestial = {
+  near_ringed_world: "near_ringed_world",
+  binary_dawn: "binary_dawn",
+  tidal_moon: "tidal_moon",
+  distant_giant: "distant_giant",
+} as const;
+
+export type CivilizationEnvironmentIdentityAtmosphere =
+  (typeof CivilizationEnvironmentIdentityAtmosphere)[keyof typeof CivilizationEnvironmentIdentityAtmosphere];
+
+export const CivilizationEnvironmentIdentityAtmosphere = {
+  auroral_twilight: "auroral_twilight",
+  copper_haze: "copper_haze",
+  storm_blue: "storm_blue",
+  clear_violet: "clear_violet",
+} as const;
+
+export type CivilizationEnvironmentIdentityHistoryEvidence =
+  (typeof CivilizationEnvironmentIdentityHistoryEvidence)[keyof typeof CivilizationEnvironmentIdentityHistoryEvidence];
+
+export const CivilizationEnvironmentIdentityHistoryEvidence = {
+  recorded: "recorded",
+  legacy_inferred: "legacy_inferred",
+} as const;
+
+export interface CivilizationEnvironmentIdentity {
+  policyId: CivilizationEnvironmentIdentityPolicyId;
+  /** @minimum 0 */
+  matchScopedSeed: number;
+  variantId: CivilizationEnvironmentIdentityVariantId;
+  terrain: CivilizationEnvironmentIdentityTerrain;
+  celestial: CivilizationEnvironmentIdentityCelestial;
+  atmosphere: CivilizationEnvironmentIdentityAtmosphere;
+  historyEvidence: CivilizationEnvironmentIdentityHistoryEvidence;
+}
+
+export type CivilizationIdentityEpochDyad =
+  (typeof CivilizationIdentityEpochDyad)[keyof typeof CivilizationIdentityEpochDyad];
+
+export const CivilizationIdentityEpochDyad = {
+  vortex: "vortex",
+  flux: "flux",
+  bloom: "bloom",
+  chrysalis: "chrysalis",
+  orbit: "orbit",
+  canopy: "canopy",
+  eclipse: "eclipse",
+  lineage: "lineage",
+  echo: "echo",
+  spore: "spore",
+} as const;
+
+export type CivilizationIdentityEpochHistoryEvidence =
+  (typeof CivilizationIdentityEpochHistoryEvidence)[keyof typeof CivilizationIdentityEpochHistoryEvidence];
+
+export const CivilizationIdentityEpochHistoryEvidence = {
+  recorded: "recorded",
+  legacy_inferred: "legacy_inferred",
+} as const;
+
+export interface CivilizationIdentityEpoch {
+  /** @minimum 0 */
+  epochIndex: number;
+  dyad: CivilizationIdentityEpochDyad;
+  /** @nullable */
+  startedTurnCount: number | null;
+  /** @nullable */
+  endedTurnCount: number | null;
+  historicalSharesAtStart: CivilizationNaturalAffinityCounts;
+  historyEvidence: CivilizationIdentityEpochHistoryEvidence;
+}
+
+export type CivilizationManifestationAssignmentSourceType =
+  (typeof CivilizationManifestationAssignmentSourceType)[keyof typeof CivilizationManifestationAssignmentSourceType];
+
+export const CivilizationManifestationAssignmentSourceType = {
+  artifact: "artifact",
+  blueprint: "blueprint",
+} as const;
+
+export type CivilizationManifestationAssignmentNativeScene =
+  (typeof CivilizationManifestationAssignmentNativeScene)[keyof typeof CivilizationManifestationAssignmentNativeScene];
+
+export const CivilizationManifestationAssignmentNativeScene = {
+  surface: "surface",
+  orbit: "orbit",
+  stellar: "stellar",
+  galaxy: "galaxy",
+} as const;
+
+export type CivilizationManifestationAssignmentPlacementFamily =
+  (typeof CivilizationManifestationAssignmentPlacementFamily)[keyof typeof CivilizationManifestationAssignmentPlacementFamily];
+
+export const CivilizationManifestationAssignmentPlacementFamily = {
+  industrial_district: "industrial_district",
+  civic_core: "civic_core",
+  habitat_district: "habitat_district",
+  wilderness_margin: "wilderness_margin",
+  subsurface_works: "subsurface_works",
+  observatory_ridge: "observatory_ridge",
+  transit_terminus: "transit_terminus",
+  archive_quarter: "archive_quarter",
+  coastal_margin: "coastal_margin",
+  containment_zone: "containment_zone",
+  low_orbit: "low_orbit",
+  high_orbit: "high_orbit",
+  orbital_yard: "orbital_yard",
+  habitat_orbit: "habitat_orbit",
+  moonward_lane: "moonward_lane",
+  atmosphere_edge: "atmosphere_edge",
+  inner_system: "inner_system",
+  habitable_orbits: "habitable_orbits",
+  lagrange_network: "lagrange_network",
+  outer_system: "outer_system",
+  heliopause: "heliopause",
+  distributed_systems: "distributed_systems",
+  spiral_arm: "spiral_arm",
+  coreward_region: "coreward_region",
+  rimward_region: "rimward_region",
+  dark_sector: "dark_sector",
+  distributed_clusters: "distributed_clusters",
+  interarm_void: "interarm_void",
+} as const;
+
+export type CivilizationManifestationAssignmentHistoryEvidence =
+  (typeof CivilizationManifestationAssignmentHistoryEvidence)[keyof typeof CivilizationManifestationAssignmentHistoryEvidence];
+
+export const CivilizationManifestationAssignmentHistoryEvidence = {
+  recorded: "recorded",
+  legacy_inferred: "legacy_inferred",
+} as const;
+
+export interface CivilizationManifestationAssignment {
+  sourceId: string;
+  sourceType: CivilizationManifestationAssignmentSourceType;
+  nativeScene: CivilizationManifestationAssignmentNativeScene;
+  placementFamily: CivilizationManifestationAssignmentPlacementFamily;
+  socketId: string;
+  /** @nullable */
+  assignmentTurnCount: number | null;
+  historyEvidence: CivilizationManifestationAssignmentHistoryEvidence;
+}
+
+export type CivilizationDistrictInstanceFamily =
+  (typeof CivilizationDistrictInstanceFamily)[keyof typeof CivilizationDistrictInstanceFamily];
+
+export const CivilizationDistrictInstanceFamily = {
+  industrial_district: "industrial_district",
+  civic_core: "civic_core",
+  habitat_district: "habitat_district",
+  wilderness_margin: "wilderness_margin",
+  subsurface_works: "subsurface_works",
+  observatory_ridge: "observatory_ridge",
+  transit_terminus: "transit_terminus",
+  archive_quarter: "archive_quarter",
+  coastal_margin: "coastal_margin",
+  containment_zone: "containment_zone",
+} as const;
+
+export type CivilizationDistrictInstanceResidentAffinitiesItem =
+  (typeof CivilizationDistrictInstanceResidentAffinitiesItem)[keyof typeof CivilizationDistrictInstanceResidentAffinitiesItem];
+
+export const CivilizationDistrictInstanceResidentAffinitiesItem = {
+  flare: "flare",
+  radiance: "radiance",
+  verdance: "verdance",
+  continuum: "continuum",
+  abyss: "abyss",
+} as const;
+
+export type CivilizationDistrictInstanceFoundingAffinitiesItem =
+  (typeof CivilizationDistrictInstanceFoundingAffinitiesItem)[keyof typeof CivilizationDistrictInstanceFoundingAffinitiesItem];
+
+export const CivilizationDistrictInstanceFoundingAffinitiesItem = {
+  flare: "flare",
+  radiance: "radiance",
+  verdance: "verdance",
+  continuum: "continuum",
+  abyss: "abyss",
+} as const;
+
+/**
+ * @nullable
+ */
+export type CivilizationDistrictInstancePermanentDyad =
+  | (typeof CivilizationDistrictInstancePermanentDyad)[keyof typeof CivilizationDistrictInstancePermanentDyad]
+  | null;
+
+export const CivilizationDistrictInstancePermanentDyad = {
+  vortex: "vortex",
+  flux: "flux",
+  bloom: "bloom",
+  chrysalis: "chrysalis",
+  orbit: "orbit",
+  canopy: "canopy",
+  eclipse: "eclipse",
+  lineage: "lineage",
+  echo: "echo",
+  spore: "spore",
+} as const;
+
+export type CivilizationDistrictInstanceSoftCapacity =
+  (typeof CivilizationDistrictInstanceSoftCapacity)[keyof typeof CivilizationDistrictInstanceSoftCapacity];
+
+export const CivilizationDistrictInstanceSoftCapacity = {
+  NUMBER_2: 2,
+} as const;
+
+export type CivilizationDistrictInstanceHardCapacity =
+  (typeof CivilizationDistrictInstanceHardCapacity)[keyof typeof CivilizationDistrictInstanceHardCapacity];
+
+export const CivilizationDistrictInstanceHardCapacity = {
+  NUMBER_3: 3,
+} as const;
+
+export type CivilizationDistrictInstanceHistoryEvidence =
+  (typeof CivilizationDistrictInstanceHistoryEvidence)[keyof typeof CivilizationDistrictInstanceHistoryEvidence];
+
+export const CivilizationDistrictInstanceHistoryEvidence = {
+  recorded: "recorded",
+  legacy_inferred: "legacy_inferred",
+} as const;
+
+/**
+ * Persistent Surface district whose first two distinct resident Affinities permanently establish its dyad
+ */
+export interface CivilizationDistrictInstance {
+  districtId: string;
+  family: CivilizationDistrictInstanceFamily;
+  /** @minimum 0 */
+  instance: number;
+  residentArtifactIds: string[];
+  residentAffinities: CivilizationDistrictInstanceResidentAffinitiesItem[];
+  /** @maxItems 2 */
+  foundingAffinities: CivilizationDistrictInstanceFoundingAffinitiesItem[];
+  /** @nullable */
+  permanentDyad: CivilizationDistrictInstancePermanentDyad;
+  softCapacity: CivilizationDistrictInstanceSoftCapacity;
+  hardCapacity: CivilizationDistrictInstanceHardCapacity;
+  /** @minimum 0 */
+  influence: number;
+  /** @nullable */
+  establishedTurnCount: number | null;
+  /** @nullable */
+  committedTurnCount: number | null;
+  historyEvidence: CivilizationDistrictInstanceHistoryEvidence;
+}
+
+export interface CivilizationDyadInfluence {
+  /** @minimum 0 */
+  vortex: number;
+  /** @minimum 0 */
+  flux: number;
+  /** @minimum 0 */
+  bloom: number;
+  /** @minimum 0 */
+  chrysalis: number;
+  /** @minimum 0 */
+  orbit: number;
+  /** @minimum 0 */
+  canopy: number;
+  /** @minimum 0 */
+  eclipse: number;
+  /** @minimum 0 */
+  lineage: number;
+  /** @minimum 0 */
+  echo: number;
+  /** @minimum 0 */
+  spore: number;
+}
+
+export type CivilizationDistrictIdentityStatePolicyId =
+  (typeof CivilizationDistrictIdentityStatePolicyId)[keyof typeof CivilizationDistrictIdentityStatePolicyId];
+
+export const CivilizationDistrictIdentityStatePolicyId = {
+  "district-dyad-v1": "district-dyad-v1",
+} as const;
+
+export type CivilizationDistrictIdentityStateDistricts = {
+  [key: string]: CivilizationDistrictInstance;
+};
+
+export type CivilizationDistrictIdentityStateArtifactAssignments = {
+  [key: string]: string;
+};
+
+/**
+ * @nullable
+ */
+export type CivilizationDistrictIdentityStateRawDominantDyad =
+  | (typeof CivilizationDistrictIdentityStateRawDominantDyad)[keyof typeof CivilizationDistrictIdentityStateRawDominantDyad]
+  | null;
+
+export const CivilizationDistrictIdentityStateRawDominantDyad = {
+  vortex: "vortex",
+  flux: "flux",
+  bloom: "bloom",
+  chrysalis: "chrysalis",
+  orbit: "orbit",
+  canopy: "canopy",
+  eclipse: "eclipse",
+  lineage: "lineage",
+  echo: "echo",
+  spore: "spore",
+} as const;
+
+/**
+ * @nullable
+ */
+export type CivilizationDistrictIdentityStatePresentationDyad =
+  | (typeof CivilizationDistrictIdentityStatePresentationDyad)[keyof typeof CivilizationDistrictIdentityStatePresentationDyad]
+  | null;
+
+export const CivilizationDistrictIdentityStatePresentationDyad = {
+  vortex: "vortex",
+  flux: "flux",
+  bloom: "bloom",
+  chrysalis: "chrysalis",
+  orbit: "orbit",
+  canopy: "canopy",
+  eclipse: "eclipse",
+  lineage: "lineage",
+  echo: "echo",
+  spore: "spore",
+} as const;
+
+export type CivilizationDistrictIdentityStateHistoryEvidence =
+  (typeof CivilizationDistrictIdentityStateHistoryEvidence)[keyof typeof CivilizationDistrictIdentityStateHistoryEvidence];
+
+export const CivilizationDistrictIdentityStateHistoryEvidence = {
+  recorded: "recorded",
+  legacy_inferred: "legacy_inferred",
+} as const;
+
+/**
+ * Authoritative persistent district assignments and live civilization-wide dyad direction
+ */
+export interface CivilizationDistrictIdentityState {
+  policyId: CivilizationDistrictIdentityStatePolicyId;
+  districts: CivilizationDistrictIdentityStateDistricts;
+  artifactAssignments: CivilizationDistrictIdentityStateArtifactAssignments;
+  influenceByDyad: CivilizationDyadInfluence;
+  /** @minimum 0 */
+  totalInfluence: number;
+  /** @nullable */
+  rawDominantDyad: CivilizationDistrictIdentityStateRawDominantDyad;
+  /** @nullable */
+  presentationDyad: CivilizationDistrictIdentityStatePresentationDyad;
+  /** @nullable */
+  calculatedTurnCount: number | null;
+  /** @nullable */
+  presentationCommittedTurnCount: number | null;
+  historyEvidence: CivilizationDistrictIdentityStateHistoryEvidence;
+}
+
 export type CivilizationRankedAffinityAffinity =
   (typeof CivilizationRankedAffinityAffinity)[keyof typeof CivilizationRankedAffinityAffinity];
 
@@ -2209,6 +2956,46 @@ export const CivilizationAffinityIdentityDominantDyad = {
 /**
  * @nullable
  */
+export type CivilizationAffinityIdentityFoundingDyad =
+  | (typeof CivilizationAffinityIdentityFoundingDyad)[keyof typeof CivilizationAffinityIdentityFoundingDyad]
+  | null;
+
+export const CivilizationAffinityIdentityFoundingDyad = {
+  vortex: "vortex",
+  flux: "flux",
+  bloom: "bloom",
+  chrysalis: "chrysalis",
+  orbit: "orbit",
+  canopy: "canopy",
+  eclipse: "eclipse",
+  lineage: "lineage",
+  echo: "echo",
+  spore: "spore",
+} as const;
+
+/**
+ * @nullable
+ */
+export type CivilizationAffinityIdentityPresentationDyad =
+  | (typeof CivilizationAffinityIdentityPresentationDyad)[keyof typeof CivilizationAffinityIdentityPresentationDyad]
+  | null;
+
+export const CivilizationAffinityIdentityPresentationDyad = {
+  vortex: "vortex",
+  flux: "flux",
+  bloom: "bloom",
+  chrysalis: "chrysalis",
+  orbit: "orbit",
+  canopy: "canopy",
+  eclipse: "eclipse",
+  lineage: "lineage",
+  echo: "echo",
+  spore: "spore",
+} as const;
+
+/**
+ * @nullable
+ */
 export type CivilizationAffinityIdentityThirdAffinity =
   | (typeof CivilizationAffinityIdentityThirdAffinity)[keyof typeof CivilizationAffinityIdentityThirdAffinity]
   | null;
@@ -2232,10 +3019,213 @@ export interface CivilizationAffinityIdentity {
   /** @nullable */
   dominantDyad: CivilizationAffinityIdentityDominantDyad;
   /** @nullable */
+  foundingDyad: CivilizationAffinityIdentityFoundingDyad;
+  /** @nullable */
+  presentationDyad: CivilizationAffinityIdentityPresentationDyad;
+  identityEpochs: CivilizationIdentityEpoch[];
+  normalizedHistoricalShares: CivilizationNaturalAffinityCounts;
+  normalizedOperationalShares: CivilizationNaturalAffinityCounts;
+  /** @nullable */
   thirdAffinity: CivilizationAffinityIdentityThirdAffinity;
   dominantShare: number;
   secondaryToPrimaryRatio: number;
   thirdToPrimaryRatio: number;
+}
+
+export type CivilizationIdentityEvidenceAffinity =
+  (typeof CivilizationIdentityEvidenceAffinity)[keyof typeof CivilizationIdentityEvidenceAffinity];
+
+export const CivilizationIdentityEvidenceAffinity = {
+  flare: "flare",
+  radiance: "radiance",
+  verdance: "verdance",
+  continuum: "continuum",
+  abyss: "abyss",
+} as const;
+
+export type CivilizationIdentityEvidenceHistoryEvidence =
+  (typeof CivilizationIdentityEvidenceHistoryEvidence)[keyof typeof CivilizationIdentityEvidenceHistoryEvidence];
+
+export const CivilizationIdentityEvidenceHistoryEvidence = {
+  recorded: "recorded",
+  legacy_inferred: "legacy_inferred",
+} as const;
+
+export interface CivilizationIdentityEvidence {
+  evidenceId: string;
+  artifactId: string;
+  /** @minimum 1 */
+  masteryOrdinal: number;
+  affinity: CivilizationIdentityEvidenceAffinity;
+  /** @nullable */
+  routedTurnCount: number | null;
+  historyEvidence: CivilizationIdentityEvidenceHistoryEvidence;
+}
+
+export type CivilizationIdentityRankedAffinityAffinity =
+  (typeof CivilizationIdentityRankedAffinityAffinity)[keyof typeof CivilizationIdentityRankedAffinityAffinity];
+
+export const CivilizationIdentityRankedAffinityAffinity = {
+  flare: "flare",
+  radiance: "radiance",
+  verdance: "verdance",
+  continuum: "continuum",
+  abyss: "abyss",
+} as const;
+
+export interface CivilizationIdentityRankedAffinity {
+  affinity: CivilizationIdentityRankedAffinityAffinity;
+  /** @minimum 0 */
+  weight: number;
+}
+
+export type CivilizationIdentityLayerStatePolicyId =
+  (typeof CivilizationIdentityLayerStatePolicyId)[keyof typeof CivilizationIdentityLayerStatePolicyId];
+
+export const CivilizationIdentityLayerStatePolicyId = {
+  "nested-milestone-v1": "nested-milestone-v1",
+} as const;
+
+export type CivilizationIdentityLayerStateLayer =
+  (typeof CivilizationIdentityLayerStateLayer)[keyof typeof CivilizationIdentityLayerStateLayer];
+
+export const CivilizationIdentityLayerStateLayer = {
+  city: "city",
+  planet: "planet",
+  system: "system",
+  galaxy: "galaxy",
+} as const;
+
+export type CivilizationIdentityLayerStateStatus =
+  (typeof CivilizationIdentityLayerStateStatus)[keyof typeof CivilizationIdentityLayerStateStatus];
+
+export const CivilizationIdentityLayerStateStatus = {
+  plain: "plain",
+  forming: "forming",
+  committed: "committed",
+} as const;
+
+/**
+ * @nullable
+ */
+export type CivilizationIdentityLayerStateDominantAffinity =
+  | (typeof CivilizationIdentityLayerStateDominantAffinity)[keyof typeof CivilizationIdentityLayerStateDominantAffinity]
+  | null;
+
+export const CivilizationIdentityLayerStateDominantAffinity = {
+  flare: "flare",
+  radiance: "radiance",
+  verdance: "verdance",
+  continuum: "continuum",
+  abyss: "abyss",
+} as const;
+
+/**
+ * @nullable
+ */
+export type CivilizationIdentityLayerStateCandidateDyad =
+  | (typeof CivilizationIdentityLayerStateCandidateDyad)[keyof typeof CivilizationIdentityLayerStateCandidateDyad]
+  | null;
+
+export const CivilizationIdentityLayerStateCandidateDyad = {
+  vortex: "vortex",
+  flux: "flux",
+  bloom: "bloom",
+  chrysalis: "chrysalis",
+  orbit: "orbit",
+  canopy: "canopy",
+  eclipse: "eclipse",
+  lineage: "lineage",
+  echo: "echo",
+  spore: "spore",
+} as const;
+
+/**
+ * @nullable
+ */
+export type CivilizationIdentityLayerStateCommittedDyad =
+  | (typeof CivilizationIdentityLayerStateCommittedDyad)[keyof typeof CivilizationIdentityLayerStateCommittedDyad]
+  | null;
+
+export const CivilizationIdentityLayerStateCommittedDyad = {
+  vortex: "vortex",
+  flux: "flux",
+  bloom: "bloom",
+  chrysalis: "chrysalis",
+  orbit: "orbit",
+  canopy: "canopy",
+  eclipse: "eclipse",
+  lineage: "lineage",
+  echo: "echo",
+  spore: "spore",
+} as const;
+
+export type CivilizationIdentityLayerStateHistoryEvidence =
+  (typeof CivilizationIdentityLayerStateHistoryEvidence)[keyof typeof CivilizationIdentityLayerStateHistoryEvidence];
+
+export const CivilizationIdentityLayerStateHistoryEvidence = {
+  recorded: "recorded",
+  legacy_inferred: "legacy_inferred",
+} as const;
+
+export interface CivilizationIdentityLayerState {
+  policyId: CivilizationIdentityLayerStatePolicyId;
+  layer: CivilizationIdentityLayerStateLayer;
+  status: CivilizationIdentityLayerStateStatus;
+  /** @nullable */
+  eraStartedTurnCount: number | null;
+  affinityCounts: CivilizationNaturalAffinityCounts;
+  normalizedShares: CivilizationNaturalAffinityCounts;
+  rankedAffinities: CivilizationIdentityRankedAffinity[];
+  /** @nullable */
+  dominantAffinity: CivilizationIdentityLayerStateDominantAffinity;
+  /** @nullable */
+  candidateDyad: CivilizationIdentityLayerStateCandidateDyad;
+  /** @nullable */
+  committedDyad: CivilizationIdentityLayerStateCommittedDyad;
+  /** @nullable */
+  committedTurnCount: number | null;
+  evidence: CivilizationIdentityEvidence[];
+  historyEvidence: CivilizationIdentityLayerStateHistoryEvidence;
+}
+
+export interface CivilizationNestedIdentityState {
+  city: CivilizationIdentityLayerState;
+  planet: CivilizationIdentityLayerState;
+  system: CivilizationIdentityLayerState;
+  galaxy: CivilizationIdentityLayerState;
+}
+
+export type CivilizationLegacyStateHistoryEvidence =
+  (typeof CivilizationLegacyStateHistoryEvidence)[keyof typeof CivilizationLegacyStateHistoryEvidence];
+
+export const CivilizationLegacyStateHistoryEvidence = {
+  recorded: "recorded",
+  legacy_inferred: "legacy_inferred",
+} as const;
+
+export interface CivilizationLegacyState {
+  /** @nullable */
+  completedTurnCount: number | null;
+  historyEvidence: CivilizationLegacyStateHistoryEvidence;
+}
+
+export type CivilizationLegacyArtifactEligibilityQualifyingMaturity =
+  (typeof CivilizationLegacyArtifactEligibilityQualifyingMaturity)[keyof typeof CivilizationLegacyArtifactEligibilityQualifyingMaturity];
+
+export const CivilizationLegacyArtifactEligibilityQualifyingMaturity = {
+  planetary: "planetary",
+  stellar: "stellar",
+  galactic: "galactic",
+} as const;
+
+/**
+ * Current Legacy qualification excluding damaged Artifacts while preserving historical Civilization records and manifested Projects
+ */
+export interface CivilizationLegacyArtifactEligibility {
+  qualifyingMaturity: CivilizationLegacyArtifactEligibilityQualifyingMaturity;
+  galacticIdentityReady: boolean;
+  excludedDamagedArtifactIds: string[];
 }
 
 /**
@@ -2486,6 +3476,22 @@ export interface CivilizationPublicStabilityState {
   historyEvidence: CivilizationPublicStabilityStateHistoryEvidence;
 }
 
+export type CivilizationPublicEventHistoryEntryDefinitionId =
+  (typeof CivilizationPublicEventHistoryEntryDefinitionId)[keyof typeof CivilizationPublicEventHistoryEntryDefinitionId];
+
+export const CivilizationPublicEventHistoryEntryDefinitionId = {
+  event_planetary_affinity_bloom: "event_planetary_affinity_bloom",
+  event_planetary_forge_drift: "event_planetary_forge_drift",
+  event_stellar_containment_cascade: "event_stellar_containment_cascade",
+  event_stellar_affinity_inversion: "event_stellar_affinity_inversion",
+  event_stellar_system_shock: "event_stellar_system_shock",
+  event_galactic_entropy_storm: "event_galactic_entropy_storm",
+  event_galactic_terminus_tide: "event_galactic_terminus_tide",
+  event_galactic_fracture_wave: "event_galactic_fracture_wave",
+  event_planetary_signal_clarity: "event_planetary_signal_clarity",
+  event_stellar_synchronization_shear: "event_stellar_synchronization_shear",
+} as const;
+
 export type CivilizationPublicEventHistoryEntrySourceType =
   (typeof CivilizationPublicEventHistoryEntrySourceType)[keyof typeof CivilizationPublicEventHistoryEntrySourceType];
 
@@ -2537,6 +3543,9 @@ export const CivilizationPublicEventHistoryEntryHistoryEvidence = {
 
 export interface CivilizationPublicEventHistoryEntry {
   eventId: string;
+  definitionId?: CivilizationPublicEventHistoryEntryDefinitionId;
+  rulesVersion?: string;
+  targetEvidence?: CivilizationEventTargetEvidence[];
   sourceType: CivilizationPublicEventHistoryEntrySourceType;
   /** @nullable */
   turnCount: number | null;
@@ -2547,11 +3556,37 @@ export interface CivilizationPublicEventHistoryEntry {
   historyEvidence: CivilizationPublicEventHistoryEntryHistoryEvidence;
 }
 
+export type CivilizationPublicProjectStateHistoryEvidence =
+  (typeof CivilizationPublicProjectStateHistoryEvidence)[keyof typeof CivilizationPublicProjectStateHistoryEvidence];
+
+export const CivilizationPublicProjectStateHistoryEvidence = {
+  recorded: "recorded",
+  legacy_inferred: "legacy_inferred",
+} as const;
+
+/**
+ * Public lifecycle of a Blueprint project after Civilization manifestation
+ */
+export interface CivilizationPublicProjectState {
+  projectId: string;
+  blueprintId: BlueprintId;
+  slotIndex: number;
+  status: "manifested";
+  deviceState: BlueprintDeviceState;
+  presentationVariant: BlueprintPresentationVariant;
+  /** @nullable */
+  manifestedTurnCount: number | null;
+  /** @nullable */
+  stateChangedTurnCount: number | null;
+  activeCapabilityIds: string[];
+  historyEvidence: CivilizationPublicProjectStateHistoryEvidence;
+}
+
 export type CivilizationPublicStateVersion =
   (typeof CivilizationPublicStateVersion)[keyof typeof CivilizationPublicStateVersion];
 
 export const CivilizationPublicStateVersion = {
-  NUMBER_2: 2,
+  NUMBER_5: 5,
 } as const;
 
 /**
@@ -2559,13 +3594,21 @@ export const CivilizationPublicStateVersion = {
  */
 export interface CivilizationPublicState {
   version: CivilizationPublicStateVersion;
+  environmentIdentity: CivilizationEnvironmentIdentity;
   artifacts: CivilizationPublicArtifactState[];
   affinityIdentity: CivilizationAffinityIdentity;
+  districtIdentity: CivilizationDistrictIdentityState;
+  identityScales: CivilizationNestedIdentityState;
   scale: CivilizationPublicScaleState;
   stability: CivilizationPublicStabilityState;
   activeConditions: CivilizationPublicConditionState[];
+  /** Manifested Civilization projects; private assembly is projected separately to its owner */
+  projects?: CivilizationPublicProjectState[];
   activeCapabilityIds: string[];
+  manifestationAssignments: CivilizationManifestationAssignment[];
   events: CivilizationPublicEventHistoryEntry[];
+  legacy: CivilizationLegacyState;
+  legacyArtifactEligibility?: CivilizationLegacyArtifactEligibility;
 }
 
 /**
@@ -2623,6 +3666,8 @@ export interface GamePlayerState {
   forgedArtifactIds: string[];
   /** Public Civilization history and operational state; omitted only for legacy responses */
   civilization?: CivilizationPublicState;
+  /** Damaged Artifact implementations queued for free repair at the end of this player's turn */
+  pendingArtifactRepairIds?: string[];
   /** Owner-only assembly and secret device state; omitted from opponent projections */
   blueprintPrivateStates?: BlueprintPrivateState[];
   /** Owner-only presentation snapshot before manifestation */
@@ -2824,6 +3869,34 @@ export const GameStateStatus = {
 } as const;
 
 /**
+ * Fixed match content profile; never depends on individual account progress.
+ */
+export type GameStateEventContentProfile =
+  (typeof GameStateEventContentProfile)[keyof typeof GameStateEventContentProfile];
+
+export const GameStateEventContentProfile = {
+  general_v1: "general_v1",
+  general_v2: "general_v2",
+  lore_pilot_v1: "lore_pilot_v1",
+} as const;
+
+export type GameStateEventCardPoolItem =
+  (typeof GameStateEventCardPoolItem)[keyof typeof GameStateEventCardPoolItem];
+
+export const GameStateEventCardPoolItem = {
+  event_planetary_affinity_bloom: "event_planetary_affinity_bloom",
+  event_planetary_forge_drift: "event_planetary_forge_drift",
+  event_stellar_containment_cascade: "event_stellar_containment_cascade",
+  event_stellar_affinity_inversion: "event_stellar_affinity_inversion",
+  event_stellar_system_shock: "event_stellar_system_shock",
+  event_galactic_entropy_storm: "event_galactic_entropy_storm",
+  event_galactic_terminus_tide: "event_galactic_terminus_tide",
+  event_galactic_fracture_wave: "event_galactic_fracture_wave",
+  event_planetary_signal_clarity: "event_planetary_signal_clarity",
+  event_stellar_synchronization_shear: "event_stellar_synchronization_shear",
+} as const;
+
+/**
  * Normalized reason a finished game ended
  * @nullable
  */
@@ -2872,6 +3945,7 @@ export type GameStatePendingTurnTransitionStage =
 
 export const GameStatePendingTurnTransitionStage = {
   after_action: "after_action",
+  after_repairs: "after_repairs",
   after_end_effects: "after_end_effects",
   after_start_effects: "after_start_effects",
 } as const;
@@ -2921,8 +3995,16 @@ export type GameStatePendingLuminaryChoice = {
 } | null;
 
 export interface GameState {
+  eventDelivery?: EventDelivery;
+  eventForecast?: EventForecast;
+  eventFrequency?: EventFrequency;
   roomId: string;
   status: GameStateStatus;
+  /** Fixed match content profile; never depends on individual account progress. */
+  eventContentProfile?: GameStateEventContentProfile;
+  eventRulesVersion?: string;
+  /** Eligible Event catalog for scheduled delivery, or the historical exact selection for Archive delivery. Scheduled selections and order remain private. */
+  eventCardPool?: GameStateEventCardPoolItem[];
   /**
    * Server-authored campaign scenario identifier
    * @nullable
@@ -2956,6 +4038,8 @@ export interface GameState {
   turnCount: number;
   /** Eminence required to trigger the final round */
   victoryRequirement: number;
+  /** Distinct manifested Blueprint projects required to trigger the final round through the Legacy Path */
+  legacyVictoryRequirement?: number;
   /**
    * Deprecated compatibility field; Void Seal was removed and this is always null
    * @nullable
@@ -2963,9 +4047,12 @@ export interface GameState {
   voidSealOwnerId?: string | null;
   cinematicMode: GameStateCinematicMode;
   affinityWell: AffinityCounts;
-  forgeTier1: ArtifactCard[];
-  forgeTier2: ArtifactCard[];
-  forgeTier3: ArtifactCard[];
+  /** Public Artifact molds; an activating Event occupies a null mold until its presentation resolves. */
+  forgeTier1: (ArtifactCard | null)[];
+  /** Public Artifact molds; an activating Event occupies a null mold until its presentation resolves. */
+  forgeTier2: (ArtifactCard | null)[];
+  /** Public Artifact molds; an activating Event occupies a null mold until its presentation resolves. */
+  forgeTier3: (ArtifactCard | null)[];
   deckCounts: GameStateDeckCounts;
   luminaries: Luminary[];
   /** Active affinity state for each claimed Luminary */
@@ -2973,6 +4060,11 @@ export interface GameState {
   players: GamePlayerState[];
   /** @nullable */
   winnerId: string | null;
+  /**
+   * First player to complete the Legacy Path; null when no civilization completed it
+   * @nullable
+   */
+  legacyWinnerId?: string | null;
   /**
    * ID of the Luminary whose summon sealed the win; null if the win was sealed by a card forge
    * @nullable
@@ -2997,6 +4089,9 @@ export interface GameState {
   pendingBlueprintManifestationEvents: BlueprintManifestationEvent[];
   /** Blueprint detonation events awaiting synchronized presentation acknowledgement */
   pendingBlueprintDetonationEvents: BlueprintDetonationEvent[];
+  /** Authoritatively resolved Civilization Events awaiting synchronized presentation acknowledgement */
+  pendingCivilizationEventCards: CivilizationEventInstance[];
+  civilizationEventDeck: CivilizationEventDeckState;
   /** Anonymous public protocol devices used by identity-redacted scenarios */
   scenarioProtocols: ScenarioProtocolPublicState[];
   /** Anonymous scenario protocol events awaiting normal Blueprint acknowledgement */
@@ -3064,11 +4159,13 @@ export const ActionRequestType = {
   resolve_luminary_activation: "resolve_luminary_activation",
   resolve_blueprint_manifestation: "resolve_blueprint_manifestation",
   resolve_blueprint_detonation: "resolve_blueprint_detonation",
+  resolve_civilization_event: "resolve_civilization_event",
   plan_action: "plan_action",
   execute_plan: "execute_plan",
   cancel_plan: "cancel_plan",
   tutorial_fast_forward: "tutorial_fast_forward",
   set_civ_name: "set_civ_name",
+  repair_artifacts: "repair_artifacts",
   choose_luminary_order: "choose_luminary_order",
   resolve_chronicle_choice: "resolve_chronicle_choice",
   assimilate: "assimilate",
@@ -3140,6 +4237,11 @@ export interface ActionRequest {
   /** Deprecated compatibility field; ignored by the game engine */
   voidSealAffinity?: ActionRequestVoidSealAffinity;
   cardId?: string;
+  /**
+   * Damaged Artifact implementation IDs to queue for end-of-turn repair
+   * @maxItems 64
+   */
+  artifactIds?: string[];
   tier?: number;
   /** Explicit Project claim path; absent means an ordinary Forge */
   blueprintAction?: ActionRequestBlueprintAction;

@@ -1,4 +1,4 @@
-import { boolean, integer, jsonb, pgTable, text, timestamp, uniqueIndex, uuid } from "drizzle-orm/pg-core";
+import { boolean, index, integer, jsonb, pgTable, text, timestamp, uniqueIndex, uuid } from "drizzle-orm/pg-core";
 import { createInsertSchema } from "drizzle-zod";
 import { z } from "zod/v4";
 
@@ -157,6 +157,38 @@ export const insertAccountLumeTransactionSchema = createInsertSchema(accountLume
 export type InsertAccountLumeTransaction = z.infer<typeof insertAccountLumeTransactionSchema>;
 export type AccountLumeTransaction = typeof accountLumeTransactionsTable.$inferSelect;
 
+export const accountInvestigationProgressTable = pgTable(
+  "account_investigation_progress",
+  {
+    id: uuid("id").primaryKey().defaultRandom(),
+    accountId: uuid("account_id").notNull().references(() => accountsTable.id, { onDelete: "cascade" }),
+    investigationId: text("investigation_id").notNull(),
+    definitionVersion: integer("definition_version").notNull(),
+    discoveries: text("discoveries").array().notNull().default([]),
+    completedAt: timestamp("completed_at", { withTimezone: true }),
+    completionLumeAwarded: integer("completion_lume_awarded").notNull().default(0),
+    quizAnswers: jsonb("quiz_answers").$type<Record<string, string> | null>(),
+    quizScore: integer("quiz_score"),
+    quizOfferedQuestionCount: integer("quiz_offered_question_count"),
+    quizLumeAwarded: integer("quiz_lume_awarded").notNull().default(0),
+    quizSubmittedAt: timestamp("quiz_submitted_at", { withTimezone: true }),
+    createdAt: timestamp("created_at", { withTimezone: true }).notNull().defaultNow(),
+    updatedAt: timestamp("updated_at", { withTimezone: true }).notNull().defaultNow(),
+  },
+  (table) => ({
+    accountInvestigationIdx: uniqueIndex("account_investigation_progress_account_investigation_idx")
+      .on(table.accountId, table.investigationId),
+  }),
+);
+
+export const insertAccountInvestigationProgressSchema = createInsertSchema(accountInvestigationProgressTable).omit({
+  id: true,
+  createdAt: true,
+  updatedAt: true,
+});
+export type InsertAccountInvestigationProgress = z.infer<typeof insertAccountInvestigationProgressSchema>;
+export type AccountInvestigationProgress = typeof accountInvestigationProgressTable.$inferSelect;
+
 export const accountNativePurchasesTable = pgTable(
   "account_native_purchases",
   {
@@ -252,17 +284,24 @@ export const accountDeletionRequestsTable = pgTable(
   }),
 );
 
-export const telemetryEventsTable = pgTable("telemetry_events", {
-  id: uuid("id").primaryKey().defaultRandom(),
-  accountId: uuid("account_id").references(() => accountsTable.id, { onDelete: "set null" }),
-  sessionId: text("session_id").notNull(),
-  eventName: text("event_name").notNull(),
-  platform: text("platform").notNull(),
-  clientBuild: text("client_build"),
-  detail: jsonb("detail").$type<Record<string, string | number | boolean | null>>().notNull().default({}),
-  occurredAt: timestamp("occurred_at", { withTimezone: true }).notNull(),
-  receivedAt: timestamp("received_at", { withTimezone: true }).notNull().defaultNow(),
-});
+export const telemetryEventsTable = pgTable(
+  "telemetry_events",
+  {
+    id: uuid("id").primaryKey().defaultRandom(),
+    accountId: uuid("account_id").references(() => accountsTable.id, { onDelete: "set null" }),
+    sessionId: text("session_id").notNull(),
+    eventName: text("event_name").notNull(),
+    platform: text("platform").notNull(),
+    clientBuild: text("client_build"),
+    detail: jsonb("detail").$type<Record<string, string | number | boolean | null>>().notNull().default({}),
+    occurredAt: timestamp("occurred_at", { withTimezone: true }).notNull(),
+    receivedAt: timestamp("received_at", { withTimezone: true }).notNull().defaultNow(),
+  },
+  (table) => ({
+    receivedAtIdx: index("telemetry_events_received_at_idx").on(table.receivedAt),
+    onboardingFunnelIdx: index("telemetry_events_funnel_idx").on(table.eventName, table.occurredAt),
+  }),
+);
 
 export const accountCosmeticLoadoutItemsTable = pgTable(
   "account_cosmetic_loadout_items",

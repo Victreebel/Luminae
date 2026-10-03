@@ -50,6 +50,7 @@ import {
 } from "../lib/gameEngine.js";
 import { chooseAiAction, type AiDifficulty } from "../lib/aiPlayer.js";
 import { ordinaryEncryptedCount } from "@workspace/game-types";
+import { drainSimulationPresentationEvents } from "./simulationPresentation.js";
 
 // ── CLI args ──────────────────────────────────────────────────────────────────
 
@@ -97,6 +98,7 @@ function parseArgs(): {
 // ── Game simulation ───────────────────────────────────────────────────────────
 
 interface GameResult {
+  finished: boolean;
   turnsTotal: number;
   winnerEminence: number;
   luminaryClaims: Record<string, string>; // luminaryId → claimerPlayerId
@@ -140,15 +142,9 @@ function runOneGame(playerCount: number, difficulty: AiDifficulty): GameResult {
   for (let turn = 0; turn < MAX_TURNS_PER_GAME; turn++) {
     if (state.phase === "finished") break;
 
-    if (state.pendingSummonEvents && state.pendingSummonEvents.length > 0) {
-      for (const evt of [...state.pendingSummonEvents]) {
-        applyAction(state, state.players[0].playerId, {
-          type: "resolve_summon",
-          eventId: evt.eventId,
-        });
-      }
-      detectNewClaims();
-    }
+    drainSimulationPresentationEvents(state);
+    detectNewClaims();
+    if ((state.phase as string) === "finished") break;
 
     const currentPlayer = state.players[state.currentPlayerIndex];
     const action = chooseAiAction(state, currentPlayer.playerId, difficulty);
@@ -210,6 +206,7 @@ function runOneGame(playerCount: number, difficulty: AiDifficulty): GameResult {
     : state.players.reduce((best, p) => (p.eminence > best.eminence ? p : best));
 
   return {
+    finished: state.phase === "finished",
     turnsTotal: state.turnCount,
     winnerEminence: winner.eminence,
     luminaryClaims,
@@ -280,6 +277,7 @@ interface DifficultyStats {
   difficulty: AiDifficulty;
   playerCount: number;
   games: number;
+  completedGames: number;
   avgTurns: number;
   minTurns: number;
   maxTurns: number;
@@ -375,8 +373,10 @@ function runDifficulty(difficulty: AiDifficulty, games: number, players: number,
 
   const avgTurns = mean(turns);
   const avgWinEminence = mean(winnerEminence);
+  const completedGames = results.filter((result) => result.finished).length;
 
   const warnings: string[] = [];
+  if (completedGames < games) warnings.push(`${games - completedGames} game(s) did not reach a finished state`);
   if (monoAvgRate < 0.03) warnings.push("Mono Luminaries rarely claimed (<3% per game)");
   if (monoAvgRate > dualAvgRate * 1.5) warnings.push("Mono claimed more often than duals despite lower reward");
   if (avgTurns > 200) warnings.push("Games running long (>200 turns avg)");
@@ -398,7 +398,7 @@ function runDifficulty(difficulty: AiDifficulty, games: number, players: number,
   }
 
   return {
-    difficulty, playerCount: players, games, avgTurns,
+    difficulty, playerCount: players, games, completedGames, avgTurns,
     minTurns: Math.min(...turns), maxTurns: Math.max(...turns),
     avgWinEminence, claimedCount, totalClaims, avgClaimsPerGame: mean(claimsPerGame),
     gamesWithClaims, tierGroups, actionCounts: totalActionCounts,
@@ -420,6 +420,7 @@ function printDifficultyReport(s: DifficultyStats): void {
   console.log(`${"═".repeat(64)}`);
 
   console.log("\n── Game Pacing ──────────────────────────────────────────────────");
+  console.log(`  Completed     : ${s.completedGames}/${s.games}`);
   console.log(`  Avg turns     : ${s.avgTurns.toFixed(1)}  (${s.minTurns}–${s.maxTurns})`);
   console.log(`  Avg win Eminence: ${s.avgWinEminence.toFixed(1)}`);
 
@@ -1242,6 +1243,7 @@ function buildSimulationJson(allStats: DifficultyStats[]): SimulationOutput {
       games: s.games,
       players: s.playerCount,
       pacing: {
+        completedGames: s.completedGames,
         avgTurns: s.avgTurns,
         minTurns: s.minTurns,
         maxTurns: s.maxTurns,

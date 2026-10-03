@@ -24,6 +24,7 @@ import {
   type StandardAffinityKey,
 } from "../lib/gameEngine.js";
 import { chooseAiAction } from "../lib/aiPlayer.js";
+import { drainSimulationPresentationEvents } from "./simulationPresentation.js";
 
 // ── Config ────────────────────────────────────────────────────────────────────
 
@@ -105,35 +106,6 @@ function position(
   return "behind";
 }
 
-/** Auto-resolve all pending cutscene events. Safe to call repeatedly. */
-function drainEvents(state: GameStateData, anyId: string): void {
-  // Multi-luminary choice: pick candidates in existing order
-  let safety = 0;
-  while ((state as any).pendingLuminaryChoice && safety++ < 20) {
-    const ch = (state as any).pendingLuminaryChoice as
-      { playerId: string; candidates: string[] } | null;
-    if (!ch) break;
-    applyAction(state, ch.playerId, {
-      type: "choose_luminary_order",
-      orderedIds: ch.candidates,
-    });
-  }
-  // Arrival cutscene events
-  safety = 0;
-  while ((state.pendingSummonEvents ?? []).length > 0 && safety++ < 40) {
-    const evId = state.pendingSummonEvents[0]?.eventId;
-    if (!evId) break;
-    applyAction(state, anyId, { type: "resolve_summon", eventId: evId });
-  }
-  // Activation cinematics
-  safety = 0;
-  while ((state.pendingLuminaryActivationEvents ?? []).length > 0 && safety++ < 40) {
-    const ev = state.pendingLuminaryActivationEvents[0];
-    if (!ev?.eventId) break;
-    applyAction(state, anyId, { type: "resolve_luminary_activation", eventId: ev.eventId });
-  }
-}
-
 // ── Single-game runner ────────────────────────────────────────────────────────
 
 function runGame(gameId: string, playerCount: number): GameRecord {
@@ -142,7 +114,7 @@ function runGame(gameId: string, playerCount: number): GameRecord {
     name: `AI${i + 1}`,
   }));
   const state = initializeGame(defs, playerCount);
-  drainEvents(state, "p0");
+  drainSimulationPresentationEvents(state, "p0");
 
   const arrivals: ArrivalRecord[] = [];
   const knownArrivals = new Set<string>();  // "lumId::ownerId"
@@ -154,7 +126,7 @@ function runGame(gameId: string, playerCount: number): GameRecord {
   for (let t = 0; t < MAX_TURNS; t++) {
     if (state.phase === "finished") break;
 
-    drainEvents(state, state.players[state.currentPlayerIndex]?.playerId ?? "p0");
+    drainSimulationPresentationEvents(state, state.players[state.currentPlayerIndex]?.playerId ?? "p0");
     if ((state.phase as string) === "finished") break;
 
     const cp = state.players[state.currentPlayerIndex];
@@ -185,7 +157,7 @@ function runGame(gameId: string, playerCount: number): GameRecord {
       if (!recovered) break;
     }
 
-    drainEvents(state, cp.playerId);
+    drainSimulationPresentationEvents(state, cp.playerId);
     totalTurns = state.turnCount;
 
     // ── Detect new Luminary arrivals ──────────────────────────────────────

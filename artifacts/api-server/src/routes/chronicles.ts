@@ -229,6 +229,7 @@ router.post(
           maxPlayers: 2,
           victoryRequirement: DEFAULT_VICTORY_REQUIREMENT,
           cinematicMode: 'standard',
+          eventFrequency: 'off',
           gameMode: 'campaign',
           scenarioId: TRACE_SCENARIO_ID,
           blueprintPolicy: 'none',
@@ -279,6 +280,7 @@ router.post(
         2,
         15,
         'standard',
+        { eventFrequency: 'off' },
       );
       state.turnTimerSeconds = null;
       state.turnDeadline = null;
@@ -389,6 +391,7 @@ router.post(
         maxPlayers: 2,
         victoryRequirement: DEFAULT_VICTORY_REQUIREMENT,
         cinematicMode: 'standard',
+        eventFrequency: 'off',
         gameMode: 'campaign',
         scenarioId: RECURRENCE_SCENARIO_ID,
         blueprintPolicy: 'none',
@@ -431,6 +434,7 @@ router.post(
         2,
         15,
         'standard',
+        { eventFrequency: 'off' },
       );
       state.turnTimerSeconds = null;
       state.turnDeadline = null;
@@ -546,6 +550,7 @@ router.post(
         maxPlayers: 3,
         victoryRequirement: DEFAULT_VICTORY_REQUIREMENT,
         cinematicMode: 'standard',
+        eventFrequency: 'off',
         gameMode: 'campaign',
         scenarioId: TRIANGULATION_SCENARIO_ID,
         blueprintPolicy: 'none',
@@ -582,7 +587,7 @@ router.post(
         { id: architect.id, name: architect.name, luminaryArrivalSound },
         { id: myria.id, name: myria.name },
         { id: vesper.id, name: vesper.name },
-      ], 3, 15, 'standard');
+      ], 3, 15, 'standard', { eventFrequency: 'off' });
       state.turnTimerSeconds = null;
       state.turnDeadline = null;
       configureTriangulationScenario(

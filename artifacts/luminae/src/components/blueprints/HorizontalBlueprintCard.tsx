@@ -7,7 +7,10 @@ import {
   RotateCw,
   ShieldAlert,
 } from "lucide-react";
-import type { AffinityKey } from "@workspace/game-types";
+import type {
+  AffinityKey,
+  BlueprintManifestationScale,
+} from "@workspace/game-types";
 import {
   Sheet,
   SheetContent,
@@ -15,6 +18,7 @@ import {
   SheetTitle,
 } from "@/components/ui/sheet";
 import { AFFINITY_META } from "@/lib/affinityMeta";
+import { ArtifactFunctionTags } from "@/components/ArtifactFunctionTags";
 import "./HorizontalBlueprintCard.css";
 
 export type HorizontalBlueprintCardState = "assembling" | "manifested";
@@ -37,16 +41,32 @@ export interface HorizontalBlueprintComponentRecord {
   hotspot: CSSProperties;
 }
 
+const BLUEPRINT_MANIFESTATION_SCALE_LABELS: Record<
+  BlueprintManifestationScale,
+  string
+> = {
+  installation: "Installation-scale manifestation",
+  satellite: "Satellite-scale manifestation",
+  planetary: "Planetary-scale manifestation",
+  stellar: "Stellar-scale manifestation",
+  distributed: "Distributed manifestation",
+};
+
 interface HorizontalBlueprintCardProps {
   definition: {
     name: string;
     publicEffect: string;
-    presentation: { scaleLabel: string; serialCode: string };
+    presentation: {
+      scaleLabel: string;
+      serialCode: string;
+      manifestationScale: BlueprintManifestationScale;
+    };
     components: readonly { artifactId: string; stage: string; function: string }[];
   };
   state: HorizontalBlueprintCardState;
   matchedComponents: number;
-  artwork: string;
+  matchedComponentIds?: readonly string[];
+  artwork: string | readonly string[];
   artworkAlt: string;
   category: string;
   publicStateLabel: string;
@@ -65,6 +85,7 @@ export function HorizontalBlueprintCard({
   definition,
   state,
   matchedComponents,
+  matchedComponentIds,
   artwork,
   artworkAlt,
   category,
@@ -82,9 +103,18 @@ export function HorizontalBlueprintCard({
   const [selectedIndex, setSelectedIndex] = useState<number | null>(null);
   const [showBack, setShowBack] = useState(false);
   const manifested = state === "manifested";
-  const completedCount = manifested
-    ? components.length
-    : Math.max(0, Math.min(matchedComponents, components.length));
+  const matchedComponentSet = matchedComponentIds
+    ? new Set(matchedComponentIds)
+    : null;
+  const componentComplete = (
+    component: HorizontalBlueprintComponentRecord,
+    index: number,
+  ) =>
+    manifested ||
+    (matchedComponentSet
+      ? matchedComponentSet.has(component.artifactId)
+      : index < Math.max(0, Math.min(matchedComponents, components.length)));
+  const completedCount = components.filter(componentComplete).length;
   const knownComponentSet = knownComponentIds
     ? new Set(knownComponentIds)
     : null;
@@ -104,7 +134,9 @@ export function HorizontalBlueprintCard({
     ? componentKnown(selectedComponent)
     : false;
   const selectedMatched =
-    selectedIndex !== null && selectedIndex < completedCount;
+    selectedIndex !== null && selectedComponent
+      ? componentComplete(selectedComponent, selectedIndex)
+      : false;
 
   return (
     <Sheet
@@ -146,21 +178,49 @@ export function HorizontalBlueprintCard({
 
         {!showBack && (
           <div className="horizontal-blueprint-card__face horizontal-blueprint-card__face--front">
-            <img
-              className="horizontal-blueprint-card__artwork"
-              src={artwork}
-              alt={artworkAlt}
-              draggable={false}
-            />
+            {typeof artwork === "string" ? (
+              <img
+                className="horizontal-blueprint-card__artwork"
+                src={artwork}
+                alt={artworkAlt}
+                draggable={false}
+              />
+            ) : (
+              <div
+                className="horizontal-blueprint-card__artwork-grid"
+                role="img"
+                aria-label={artworkAlt}
+              >
+                {artwork.map((source, index) => (
+                  <img
+                    key={source}
+                    src={source}
+                    alt=""
+                    aria-hidden="true"
+                    draggable={false}
+                    style={{ zIndex: artwork.length - index }}
+                  />
+                ))}
+              </div>
+            )}
             <div
               className="horizontal-blueprint-card__scrim"
               aria-hidden="true"
             />
 
             <header className="horizontal-blueprint-card__header">
-              <span>
-                {definition.presentation.scaleLabel} Blueprint /{" "}
-                {definition.presentation.serialCode}
+              <span className="horizontal-blueprint-card__header-meta">
+                <span>
+                  {definition.presentation.scaleLabel} Blueprint /{" "}
+                  {definition.presentation.serialCode}
+                </span>
+                <span className="horizontal-blueprint-card__scale-tag">
+                  {
+                    BLUEPRINT_MANIFESTATION_SCALE_LABELS[
+                      definition.presentation.manifestationScale
+                    ]
+                  }
+                </span>
               </span>
               <span className="horizontal-blueprint-card__privacy">
                 {manifested ? (
@@ -177,7 +237,7 @@ export function HorizontalBlueprintCard({
               aria-label={`${definition.name} component inspection points`}
             >
               {components.map((component, index) => {
-                const complete = index < completedCount;
+                const complete = componentComplete(component, index);
                 const known = componentKnown(component);
                 const stage =
                   definition.components.find(
@@ -281,7 +341,7 @@ export function HorizontalBlueprintCard({
                       (candidate) =>
                         candidate.artifactId === component.artifactId,
                     )?.stage ?? `Socket ${index + 1}`;
-                  const matched = index < completedCount;
+                    const matched = componentComplete(component, index);
                   return (
                     <button
                       key={component.artifactId}
@@ -435,6 +495,8 @@ export function HorizontalBlueprintCard({
                 <span>Artifact Lore</span>
                 <p>{selectedComponent.flavor}</p>
               </section>
+
+              <ArtifactFunctionTags artifactId={selectedComponent.artifactId} />
 
               <dl className="blueprint-component-sheet__metadata">
                 <div>

@@ -1,0 +1,37 @@
+import type { ArtifactId } from '@workspace/game-types';
+
+/** Server-only design associations; never publish through the shared card canon. */
+export const ARTIFACT_BLUEPRINT_FAMILIES: Partial<Record<ArtifactId, string>> = {
+  "t1r01": "Mantle-to-Orbit Foundry",
+  "t1r03": "Mantle-to-Orbit Foundry",
+  "t1r04": "Mantle-to-Orbit Foundry; Causality Audit Court precursor",
+  "t1r05": "Worldshield Covenant; Mantle-to-Orbit Foundry",
+  "t1r07": "Mantle-to-Orbit Foundry; Worldshield Covenant",
+  "t1r08": "Worldshield Covenant",
+  "t1s01": "Worldshield Covenant",
+  "t1s02": "Mantle-to-Orbit Foundry",
+  "t1s03": "Worldshield Covenant; Causality Audit Court precursor",
+  "t1s05": "Worldshield Covenant",
+  "t1s07": "Mantle-to-Orbit Foundry",
+  "t1e07": "Mantle-to-Orbit Foundry",
+  "t1o01": "Worldshield Covenant",
+  "t1o02": "Worldshield Covenant",
+  "t1o03": "Worldshield Covenant",
+  "t1o04": "Worldshield Covenant",
+  "t1o05": "Mantle-to-Orbit Foundry",
+  "t1o07": "Worldshield Covenant",
+  "t1o08": "Causality Audit Court precursor; Worldshield Covenant",
+  "t1p02": "Worldshield Covenant; Causality Audit Court precursor",
+  "t1p03": "Worldshield Covenant",
+  "t1p04": "Mantle-to-Orbit Foundry",
+  "t1p05": "Causality Audit Court precursor",
+  "t1p07": "Worldshield Covenant",
+  "t2r05": "Causality Audit Court precursor",
+  "t2s03": "Causality Audit Court precursor",
+  "t2s06": "Causality Audit Court precursor",
+  "t2o02": "Worldshield Covenant",
+  "t2p05": "Causality Audit Court precursor",
+  "t3s04": "Causality Audit Court",
+  "t3p01": "Causality Audit Court",
+  "t3p04": "Causality Audit Court"
+};

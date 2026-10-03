@@ -10,6 +10,7 @@ import { getArtifactBrandTypes } from '@/lib/artifactBrands';
 import type { BoardForgeProps } from './game-board-forge';
 import { CARD_ART } from './game-constants';
 import { AvatarSeedMoldMark } from '@/components/AvatarSeedSymbol';
+import { ForgeMoldCavity, ForgeTabletSurface } from '@/components/ForgeReplacementDealAnimation';
 
 interface ForgeCardSlotProps extends Pick<BoardForgeProps,
   'brandDelayMap' | 'burstGhostCards' | 'cardDetailDiscovered' | 'computeCosts' | 'costMode' |
@@ -157,9 +158,10 @@ export function ForgeCardSlot({
         data-bonus-affinity={ghostCard.bonusAffinity ?? undefined}
         data-slot-key={slotKey}
         {...avatarSeedMoldProps}
-        className="forge-foundry-mold board-forge-compact-chip relative shrink-0 overflow-hidden rounded-lg"
+        className="forge-foundry-mold forge-depth-mold board-forge-compact-chip relative shrink-0 overflow-hidden rounded-lg"
         style={{ ...compactSlotStyle, ...getForgeAffinityStyle(ghostCard) }}
       >
+        <ForgeMoldCavity />
         {isAvatarSeedMold && <AvatarSeedMoldMark compact />}
         <div
           className="compact-forge-card-stage absolute inset-0 origin-top-left pointer-events-none"
@@ -183,9 +185,10 @@ export function ForgeCardSlot({
         data-testid="forge-card-slot"
         data-slot-key={slotKey}
         {...avatarSeedMoldProps}
-        className="forge-foundry-mold forge-foundry-slot relative shrink-0"
+        className="forge-foundry-mold forge-depth-mold forge-foundry-slot relative shrink-0"
         style={getForgeAffinityStyle(ghostCard)}
       >
+        <ForgeMoldCavity />
         {isAvatarSeedMold && <AvatarSeedMoldMark />}
         <div data-card-id={ghostCard.id} className="forge-foundry-card relative">
           <ArtifactCardView card={ghostCard} tier={row.tier} />
@@ -210,12 +213,13 @@ export function ForgeCardSlot({
         data-card-id={ironHeldCardId}
         data-slot-key={slotKey}
         {...avatarSeedMoldProps}
-        className={`forge-foundry-mold relative shrink-0 overflow-hidden rounded-xl ${
+        className={`forge-foundry-mold forge-depth-mold relative shrink-0 overflow-hidden rounded-xl ${
           forgeCompact ? 'board-forge-compact-chip' : 'forge-foundry-slot'
         }`}
         style={forgeCompact ? compactSlotStyle : undefined}
         aria-hidden="true"
       >
+        <ForgeMoldCavity />
         {isAvatarSeedMold && <AvatarSeedMoldMark compact={forgeCompact} />}
         {CARD_ART[ironHeldCardId] ? (
           <img
@@ -248,9 +252,10 @@ export function ForgeCardSlot({
         data-slot-key={slotKey}
         {...avatarSeedMoldProps}
         data-slot-hidden={isHidden ? 'true' : undefined}
-        className={`forge-foundry-mold forge-foundry-mold--empty ${isHidden ? 'forge-foundry-mold--vacated' : ''} ${forgeCompact ? 'board-forge-compact-chip' : 'forge-foundry-slot'} rounded-xl shrink-0`}
+        className={`forge-foundry-mold forge-depth-mold forge-foundry-mold--empty ${isHidden ? 'forge-foundry-mold--vacated' : ''} ${forgeCompact ? 'board-forge-compact-chip' : 'forge-foundry-slot'} rounded-xl shrink-0`}
         style={forgeCompact ? compactSlotStyle : undefined}
       >
+        <ForgeMoldCavity />
         {isAvatarSeedMold && <AvatarSeedMoldMark compact={forgeCompact} />}
       </div>
     );
@@ -285,11 +290,12 @@ export function ForgeCardSlot({
           data-planned={isPendingPlan ? 'true' : undefined}
           data-slot-key={slotKey}
           {...avatarSeedMoldProps}
-          className="forge-foundry-mold board-forge-compact-chip relative shrink-0"
+          className="forge-foundry-mold forge-depth-mold board-forge-compact-chip relative shrink-0"
           style={{ ...compactSlotStyle, ...getForgeAffinityStyle(c) }}
           title={cardTapTitle}
           {...(cardFocusProps ?? {})}
         >
+          <ForgeMoldCavity />
           {isAvatarSeedMold && <AvatarSeedMoldMark compact />}
           <div className="absolute inset-0 overflow-hidden rounded-lg">
             <div
@@ -326,9 +332,10 @@ export function ForgeCardSlot({
         data-planned={isPendingPlan ? 'true' : undefined}
         data-slot-key={slotKey}
         {...avatarSeedMoldProps}
-        className="forge-foundry-mold forge-foundry-slot relative shrink-0 rounded-xl"
+        className="forge-foundry-mold forge-depth-mold forge-foundry-slot relative shrink-0 rounded-xl"
         style={getForgeAffinityStyle(c)}
       >
+        <ForgeMoldCavity />
         {isAvatarSeedMold && <AvatarSeedMoldMark />}
         <div
           data-card-id={c.id}
@@ -387,7 +394,7 @@ export function ForgeCardSlot({
         data-selected={isTapped ? 'true' : undefined}
         data-slot-key={slotKey}
         {...avatarSeedMoldProps}
-        className="forge-foundry-mold board-forge-compact-chip relative shrink-0 cursor-pointer focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-amber-400/70 rounded-xl overflow-hidden"
+        className="forge-foundry-mold forge-depth-mold board-forge-compact-chip relative shrink-0 cursor-pointer focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-amber-400/70 rounded-xl overflow-hidden"
         style={{
           ...compactSlotStyle,
           ...getForgeAffinityStyle(c),
@@ -396,6 +403,7 @@ export function ForgeCardSlot({
         {...(cardFocusProps ?? {})}
         title={cardTapTitle}
       >
+        <ForgeMoldCavity />
         {isAvatarSeedMold && <AvatarSeedMoldMark compact />}
         <div
           className="compact-forge-card-stage pointer-events-none origin-top-left"
@@ -412,6 +420,7 @@ export function ForgeCardSlot({
           compact
         />
         <CompactForgeCardReadout card={c} costs={effCosts} />
+        <ForgeTabletSurface />
         <AnimatePresence>
           {refillingSlots.has(slotKey) && (
             <motion.div
@@ -450,9 +459,10 @@ export function ForgeCardSlot({
       data-planned={isPendingPlan ? 'true' : undefined}
       data-slot-key={slotKey}
       {...avatarSeedMoldProps}
-      className="forge-foundry-mold forge-foundry-slot relative shrink-0 rounded-xl"
+      className="forge-foundry-mold forge-depth-mold forge-foundry-slot relative shrink-0 rounded-xl"
       style={getForgeAffinityStyle(c)}
     >
+      <ForgeMoldCavity />
       {isAvatarSeedMold && <AvatarSeedMoldMark />}
       <div
         data-card-id={c.id}
@@ -473,6 +483,7 @@ export function ForgeCardSlot({
           hideStrike={costMode === 'needed_now'}
         />
         <span className="artifact-inspection-glint" aria-hidden="true" />
+        <ForgeTabletSurface />
         {showTutorialGlow && (
           <div
             className="pointer-events-none absolute inset-0 rounded-xl animate-pulse"
